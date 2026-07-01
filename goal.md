@@ -1082,6 +1082,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     entity-in-inventory preview path for the mount entity, with vanilla
     `AbstractMountInventoryScreen` rect / scale / offset and mouse-follow
     rotation.
+  - [x] smithing empty armor-stand preview call point：
+    native smithing screens emit the vanilla empty armor-stand `HudEntityPreview`
+    with fixed rect / scale / translation / rotation, `showArms = true`, and
+    hidden base plate; result-slot equipment projection remains the next
+    item/layer slice.
   - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
   - GUI pass 与 world pass 的 load/clear/depth ordering。
 

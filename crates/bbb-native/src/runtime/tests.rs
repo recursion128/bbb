@@ -6406,6 +6406,72 @@ fn hud_inventory_screen_projects_smithing_layout() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_smithing_armor_stand_preview() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 21,
+        title: "Smithing".to_string(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 40],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert_eq!(screen.entity_previews.len(), 1);
+    let preview = &screen.entity_previews[0];
+    assert_eq!(preview.entity.entity_id, -1);
+    match preview.entity.kind {
+        bbb_renderer::EntityModelKind::ArmorStand {
+            small,
+            marker,
+            show_arms,
+            show_base_plate,
+            pose,
+        } => {
+            assert!(!small);
+            assert!(!marker);
+            assert!(show_arms);
+            assert!(!show_base_plate);
+            assert_eq!(pose, DEFAULT_ARMOR_STAND_MODEL_POSE);
+        }
+        other => panic!("expected smithing armor stand preview, got {other:?}"),
+    }
+    assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 121,
+            y: 20,
+            width: 40,
+            height: 60,
+        }
+    );
+    assert_eq!(preview.scissor, None);
+    assert_close3(preview.translation, [0.0, 1.0, 0.0]);
+    assert_close4(
+        preview.rotation,
+        quaternion_mul(quaternion_x(0.43633232), quaternion_z(std::f32::consts::PI)),
+    );
+    assert_eq!(preview.override_camera_rotation, None);
+    assert_eq!(preview.scale, 25.0);
+    assert!(preview.depth_isolated);
+    assert!((preview.entity.render_state.body_rot - 210.0).abs() < 1.0e-6);
+    assert_eq!(preview.entity.render_state.head_yaw, 0.0);
+    assert_eq!(preview.entity.render_state.head_pitch, 25.0);
+    assert_eq!(
+        preview.entity.render_state.light_coords,
+        ENTITY_FULL_BRIGHT_LIGHT_COORDS
+    );
+    assert_eq!(preview.entity.render_state.outline_color, 0);
+    assert!(!preview.entity.render_state.appears_glowing);
+}
+
+#[test]
 fn hud_inventory_screen_projects_smithing_error_layer() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

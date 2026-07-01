@@ -1113,9 +1113,12 @@ When an agent does any of the following, update this file in the same slice:
     `LightCoordsUtil.FULL_BRIGHT` projection. Horse / nautilus mount inventory
     screens also fill the surface for the mount entity using the vanilla
     `AbstractMountInventoryScreen` rect, scale, offset, and mouse-follow
-    rotation. Container/merchant/other screen call points, actual GPU PIP
-    drawing, and armor / held-item / head-item layer-order drawing remain
-    subsequent P1-4 slices.
+    rotation. Smithing screens now fill the surface for the empty vanilla
+    armor-stand preview with fixed rect / scale / translation / rotation,
+    visible arms, and hidden base plate. Result-slot equipment projection,
+    container/merchant/other screen call points, actual GPU PIP drawing, and
+    armor / held-item / head-item layer-order drawing remain subsequent P1-4
+    slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

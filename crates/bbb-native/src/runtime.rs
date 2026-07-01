@@ -12,18 +12,18 @@ use bbb_protocol::{
     packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, FogEnvironment,
-    GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview, HudEntityPreviewRect, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
+    FogEnvironment, GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview,
+    HudEntityPreviewRect, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
+    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
@@ -2015,6 +2015,7 @@ fn hud_inventory_entity_previews(
                 .into_iter()
                 .collect()
         }
+        InventoryScreenBackground::Smithing => vec![hud_smithing_entity_preview()],
         _ => Vec::new(),
     }
 }
@@ -2130,9 +2131,60 @@ fn hud_entity_in_inventory_follows_mouse_preview(
     })
 }
 
+fn hud_smithing_entity_preview() -> HudEntityPreview {
+    const ENTITY_ID: i32 = -1;
+    const X0: i32 = 121;
+    const Y0: i32 = 20;
+    const X1: i32 = 161;
+    const Y1: i32 = 80;
+    const SCALE: f32 = 25.0;
+    const X_ROT_DEGREES: f32 = 25.0;
+    const BODY_ROT_DEGREES: f32 = 210.0;
+    const ARMOR_STAND_X_ROT_RADIANS: f32 = 0.43633232;
+
+    let mut entity = EntityModelInstance::armor_stand(
+        ENTITY_ID,
+        [0.0, 0.0, 0.0],
+        BODY_ROT_DEGREES,
+        false,
+        true,
+        false,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_look(0.0, X_ROT_DEGREES);
+    entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+    entity.render_state.outline_color = 0;
+    entity.render_state.appears_glowing = false;
+
+    HudEntityPreview {
+        entity,
+        lighting: GuiItemLightingEntry::EntityInUi,
+        rect: HudEntityPreviewRect {
+            x: X0,
+            y: Y0,
+            width: u32::try_from(X1 - X0).unwrap_or_default(),
+            height: u32::try_from(Y1 - Y0).unwrap_or_default(),
+        },
+        scissor: None,
+        translation: [0.0, 1.0, 0.0],
+        rotation: quaternion_mul(
+            quaternion_x(ARMOR_STAND_X_ROT_RADIANS),
+            quaternion_z(std::f32::consts::PI),
+        ),
+        override_camera_rotation: None,
+        scale: SCALE,
+        depth_isolated: true,
+    }
+}
+
 fn quaternion_x(angle_radians: f32) -> [f32; 4] {
     let half = angle_radians / 2.0;
     [half.sin(), 0.0, 0.0, half.cos()]
+}
+
+fn quaternion_z(angle_radians: f32) -> [f32; 4] {
+    let half = angle_radians / 2.0;
+    [0.0, 0.0, half.sin(), half.cos()]
 }
 
 fn quaternion_mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
