@@ -2481,6 +2481,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
         || (component == "minecraft:custom_data"
             && custom_data_predicate_value_to_nbt_summary(expected).is_some())
+        || (component == "minecraft:lodestone_tracker"
+            && lodestone_tracker_exact_value(expected).is_some())
         || (matches!(
             component,
             "minecraft:enchantments" | "minecraft:stored_enchantments"
@@ -2964,6 +2966,75 @@ fn nbt_summary_exact_matches(expected: &NbtSummaryValue, actual: &NbtSummaryValu
                     .all(|(expected, actual)| nbt_summary_exact_matches(expected, actual))
         }
         _ => expected == actual,
+    }
+}
+
+struct ExactLodestoneTracker<'a> {
+    target: Option<ExactLodestoneTarget<'a>>,
+    tracked: bool,
+}
+
+struct ExactLodestoneTarget<'a> {
+    dimension: &'a str,
+    pos: [i32; 3],
+}
+
+fn lodestone_tracker_exact_value(value: &Value) -> Option<ExactLodestoneTracker<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| key == "target" || key == "tracked") {
+        return None;
+    }
+    let tracked = match value.get("tracked") {
+        None => true,
+        Some(Value::Bool(tracked)) => *tracked,
+        Some(_) => return None,
+    };
+    let target = match value.get("target") {
+        None => None,
+        Some(target) => Some(lodestone_target_exact_value(target)?),
+    };
+    Some(ExactLodestoneTracker { target, tracked })
+}
+
+fn lodestone_target_exact_value(value: &Value) -> Option<ExactLodestoneTarget<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| key == "dimension" || key == "pos") {
+        return None;
+    }
+    let dimension = direct_registry_key_value(value.get("dimension")?)?;
+    let pos = value.get("pos")?.as_array()?;
+    let [x, y, z] = pos.as_slice() else {
+        return None;
+    };
+    Some(ExactLodestoneTarget {
+        dimension,
+        pos: [json_i32(x)?, json_i32(y)?, json_i32(z)?],
+    })
+}
+
+fn lodestone_tracker_exact_match(
+    expected: &ExactLodestoneTracker<'_>,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+        || component_patch.lodestone_tracked != Some(expected.tracked)
+    {
+        return false;
+    }
+    match (&expected.target, component_patch.lodestone_target.as_ref()) {
+        (None, None) => true,
+        (Some(expected), Some(actual)) => {
+            actual.dimension == expected.dimension
+                && actual.pos.x == expected.pos[0]
+                && actual.pos.y == expected.pos[1]
+                && actual.pos.z == expected.pos[2]
+        }
+        _ => false,
     }
 }
 
@@ -3683,6 +3754,13 @@ fn item_exact_component_matches(
                 .custom_data
                 .as_ref()
                 .is_some_and(|actual| nbt_summary_exact_matches(&expected, actual));
+    }
+
+    if component == "minecraft:lodestone_tracker" {
+        let Some(expected) = lodestone_tracker_exact_value(expected) else {
+            return false;
+        };
+        return lodestone_tracker_exact_match(&expected, &item.component_patch);
     }
 
     if matches!(

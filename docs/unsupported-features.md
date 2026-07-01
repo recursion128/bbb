@@ -5755,7 +5755,7 @@ When an agent does any of the following, update this file in the same slice:
     reference id (`armor_trim_material_id`), and the
     `minecraft:consumable` `consume_seconds` value (`consumable`), plus the
     `minecraft:item_model` resource id and `minecraft:lodestone_tracker`
-    target `GlobalPos`, so the
+    target `GlobalPos` / `tracked` flag, so the
     `CustomModelDataProperty.getFloat(index)`,
     `CustomModelData.getBoolean(index)`,
     `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
@@ -5918,7 +5918,9 @@ When an agent does any of the following, update this file in the same slice:
       trim-pattern keys, plus exact `minecraft:enchantments` and
       `minecraft:stored_enchantments` components for direct enchantment
       registry-key maps, plus exact `minecraft:villager/variant` components
-      for direct vanilla villager-type registry keys,
+      for direct vanilla villager-type registry keys, plus exact
+      `minecraft:lodestone_tracker` components for optional target `GlobalPos`
+      and `tracked`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
       `minecraft:writable_book_content`, `minecraft:written_book_content`,
@@ -5952,7 +5954,9 @@ When an agent does any of the following, update this file in the same slice:
       maps now compare decoded holder ids and levels against direct
       enchantment registry keys when that dynamic registry is available.
       Exact `minecraft:villager/variant` components now compare decoded holder
-      ids against direct vanilla villager-type registry keys. Remaining
+      ids against direct vanilla villager-type registry keys. Exact
+      `minecraft:lodestone_tracker` components now compare the decoded optional
+      target `GlobalPos` and `tracked` flag. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name

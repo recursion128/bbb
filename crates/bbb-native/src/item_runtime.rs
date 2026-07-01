@@ -22,8 +22,8 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
-    ResourceTextureSummary, WrittenBookContentSummary,
+    ItemStackTemplateSummary, LodestoneTargetSummary, NbtSummaryEntry, NbtSummaryValue,
+    ResolvableProfileSummary, ResourceTextureSummary, WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -7652,6 +7652,56 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_villager_variant_absent")
         );
+        let exact_lodestone_tracker = DataComponentPatchSummary {
+            added_type_ids: vec![67],
+            lodestone_target: Some(LodestoneTargetSummary {
+                dimension: "minecraft:overworld".to_string(),
+                pos: bbb_protocol::packets::chunks::BlockPos {
+                    x: 10,
+                    y: 64,
+                    z: -4,
+                },
+            }),
+            lodestone_tracked: Some(false),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(94, named_bundle_entry(exact_lodestone_tracker.clone())),
+            uv("component_condition_bundle_exact_lodestone_tracker_present")
+        );
+        assert_eq!(
+            selected(
+                94,
+                named_bundle_entry(DataComponentPatchSummary {
+                    lodestone_tracked: Some(true),
+                    ..exact_lodestone_tracker.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_lodestone_tracker_absent")
+        );
+        assert_eq!(
+            selected(
+                94,
+                named_bundle_entry(DataComponentPatchSummary {
+                    lodestone_target: Some(LodestoneTargetSummary {
+                        dimension: "minecraft:the_nether".to_string(),
+                        ..exact_lodestone_tracker.lodestone_target.clone().unwrap()
+                    }),
+                    ..exact_lodestone_tracker.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_lodestone_tracker_absent")
+        );
+        assert_eq!(
+            selected(
+                94,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![67],
+                    ..exact_lodestone_tracker
+                })
+            ),
+            uv("component_condition_bundle_exact_lodestone_tracker_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -11120,6 +11170,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ENCHANTMENTS = registerItem("component_condition_bundle_exact_enchantments");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_STORED_ENCHANTMENTS = registerItem("component_condition_bundle_exact_stored_enchantments");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_VILLAGER_VARIANT = registerItem("component_condition_bundle_exact_villager_variant");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LODESTONE_TRACKER = registerItem("component_condition_bundle_exact_lodestone_tracker");
             }"#,
         );
         write_json(
@@ -12085,6 +12136,49 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_villager_variant_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_lodestone_tracker.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:lodestone_tracker": {
+                                                "target": {
+                                                    "dimension": "minecraft:overworld",
+                                                    "pos": [
+                                                        10,
+                                                        64,
+                                                        -4
+                                                    ]
+                                                },
+                                                "tracked": false
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_lodestone_tracker_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_lodestone_tracker_absent"
                     }
                 }
             }"#,
@@ -14583,6 +14677,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_villager_variant_absent",
                 [65, 95, 45, 255],
+            ),
+            (
+                "component_condition_bundle_exact_lodestone_tracker_present",
+                [165, 220, 245, 255],
+            ),
+            (
+                "component_condition_bundle_exact_lodestone_tracker_absent",
+                [45, 80, 100, 255],
             ),
             (
                 "component_condition_container_components_present",

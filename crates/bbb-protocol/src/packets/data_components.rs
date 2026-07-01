@@ -149,6 +149,8 @@ pub struct DataComponentPatchSummary {
     pub villager_variant_id: Option<i32>,
     #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
+    #[serde(default)]
+    pub lodestone_tracked: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -590,7 +592,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.written_book = Some(decode_written_book_content(decoder)?);
             }
             67 => {
-                summary.lodestone_target = decode_lodestone_tracker(decoder)?;
+                let (target, tracked) = decode_lodestone_tracker(decoder)?;
+                summary.lodestone_target = target;
+                summary.lodestone_tracked = Some(tracked);
             }
             76 => {
                 summary.block_state_properties =
@@ -1582,10 +1586,12 @@ fn decode_jukebox_song_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32
     }
 }
 
-fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<Option<LodestoneTargetSummary>> {
+fn decode_lodestone_tracker(
+    decoder: &mut Decoder<'_>,
+) -> Result<(Option<LodestoneTargetSummary>, bool)> {
     let target = decode_optional_global_pos(decoder)?;
-    decoder.read_bool()?;
-    Ok(target)
+    let tracked = decoder.read_bool()?;
+    Ok((target, tracked))
 }
 
 fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<ResolvableProfileSummary> {
@@ -2136,6 +2142,7 @@ mod tests {
                         z: -4,
                     },
                 }),
+                lodestone_tracked: Some(false),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -2861,6 +2868,7 @@ mod tests {
                     dimension: "minecraft:overworld".to_string(),
                     pos: chunks::BlockPos { x: 0, y: 0, z: 0 },
                 }),
+                lodestone_tracked: Some(true),
                 profile: Some(ResolvableProfileSummary {
                     kind: ResolvableProfileKindSummary::Partial,
                     uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),
