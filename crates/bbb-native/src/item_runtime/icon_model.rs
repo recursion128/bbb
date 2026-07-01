@@ -1919,6 +1919,9 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.item_tags,
         ctx.enchantment_keys,
         ctx.enchantment_tags,
+        ctx.trim_material_keys,
+        ctx.trim_material_tags,
+        ctx.trim_pattern_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -1975,6 +1978,9 @@ fn item_stack_matches_container_predicate(
         ctx.item_tags,
         ctx.enchantment_keys,
         ctx.enchantment_tags,
+        ctx.trim_material_keys,
+        ctx.trim_material_tags,
+        ctx.trim_pattern_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2094,6 +2100,7 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
     match predicate {
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
         _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
+        "minecraft:trim" => trim_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2139,6 +2146,9 @@ fn item_collection_predicate_matches(
     item_tags: Option<&TagCatalog>,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2158,6 +2168,9 @@ fn item_collection_predicate_matches(
                     item_tags,
                     enchantment_keys,
                     enchantment_tags,
+                    trim_material_keys,
+                    trim_material_tags,
+                    trim_pattern_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2178,6 +2191,9 @@ fn item_collection_predicate_matches(
                 item_tags,
                 enchantment_keys,
                 enchantment_tags,
+                trim_material_keys,
+                trim_material_tags,
+                trim_pattern_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2206,6 +2222,9 @@ fn item_predicate_count_entry_matches(
     item_tags: Option<&TagCatalog>,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2225,6 +2244,9 @@ fn item_predicate_count_entry_matches(
                 item_tags,
                 enchantment_keys,
                 enchantment_tags,
+                trim_material_keys,
+                trim_material_tags,
+                trim_pattern_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2243,6 +2265,9 @@ fn item_predicate_matches(
     item_tags: Option<&TagCatalog>,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2278,6 +2303,9 @@ fn item_predicate_matches(
             resource_id,
             enchantment_keys,
             enchantment_tags,
+            trim_material_keys,
+            trim_material_tags,
+            trim_pattern_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2293,6 +2321,9 @@ fn item_data_component_matchers_match(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2317,6 +2348,9 @@ fn item_data_component_matchers_match(
             resource_id,
             enchantment_keys,
             enchantment_tags,
+            trim_material_keys,
+            trim_material_tags,
+            trim_pattern_tags,
             default_max_damage_for_item,
         ) {
             return false;
@@ -2361,6 +2395,9 @@ fn item_partial_component_predicates_match(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2377,6 +2414,9 @@ fn item_partial_component_predicates_match(
             resource_id,
             enchantment_keys,
             enchantment_tags,
+            trim_material_keys,
+            trim_material_tags,
+            trim_pattern_tags,
         )
     })
 }
@@ -2389,11 +2429,21 @@ fn item_partial_component_predicate_match(
     default_item_model_id: &str,
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
             damage_component_predicate_matches_value(value, component_patch, default_max_damage)
         }
+        "minecraft:trim" => item_stack_matches_trim_value(
+            value,
+            component_patch,
+            trim_material_keys,
+            trim_material_tags,
+            trim_pattern_tags,
+        ),
         "minecraft:firework_explosion" => {
             item_stack_matches_firework_explosion_value(value, component_patch)
         }
@@ -2523,7 +2573,14 @@ fn trim_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
     if component_condition_predicate(property) != Some("minecraft:trim") {
         return false;
     }
-    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    trim_predicate_value_is_supported(value)
+}
+
+fn trim_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
         return false;
     };
     value
@@ -2546,7 +2603,26 @@ fn item_stack_matches_trim_predicate(
     if !trim_component_predicate_is_supported(property) {
         return false;
     }
-    let Some(component_patch) = ctx.component_patch else {
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_trim_value(
+        value,
+        ctx.component_patch,
+        ctx.trim_material_keys,
+        ctx.trim_material_tags,
+        ctx.trim_pattern_tags,
+    )
+}
+
+fn item_stack_matches_trim_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    trim_material_keys: Option<&[String]>,
+    trim_material_tags: Option<&TagCatalog>,
+    trim_pattern_tags: Option<&TagCatalog>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
         return false;
     };
     if component_patch
@@ -2556,7 +2632,7 @@ fn item_stack_matches_trim_predicate(
     {
         return false;
     }
-    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+    let Some(value) = value.as_object() else {
         return false;
     };
     if let Some(material) = value.get("material") {
@@ -2566,17 +2642,11 @@ fn item_stack_matches_trim_predicate(
         let Ok(material_index) = usize::try_from(material_id) else {
             return false;
         };
-        let Some(material_key) = ctx
-            .trim_material_keys
-            .and_then(|keys| keys.get(material_index))
+        let Some(material_key) = trim_material_keys.and_then(|keys| keys.get(material_index))
         else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(
-            Some(material),
-            material_key,
-            ctx.trim_material_tags,
-        ) {
+        if !trim_registry_key_holder_set_matches(Some(material), material_key, trim_material_tags) {
             return false;
         }
     }
@@ -2590,8 +2660,7 @@ fn item_stack_matches_trim_predicate(
         let Some(pattern_key) = VANILLA_TRIM_PATTERN_KEYS.get(pattern_index) else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(Some(pattern), pattern_key, ctx.trim_pattern_tags)
-        {
+        if !trim_registry_key_holder_set_matches(Some(pattern), pattern_key, trim_pattern_tags) {
             return false;
         }
     }

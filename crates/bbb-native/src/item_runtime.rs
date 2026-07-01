@@ -7511,6 +7511,132 @@ mod tests {
             ),
             uv("component_condition_container_partial_fireworks_absent")
         );
+        assert_eq!(
+            selected(
+                44,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![56],
+                            armor_trim_material_id: Some(1),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_trim_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                44,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![56],
+                            armor_trim_material_id: Some(1),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_trim_present")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                44,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![56],
+                            armor_trim_material_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_trim_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                45,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![56],
+                                armor_trim_material_id: Some(1),
+                                armor_trim_pattern_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![56],
+                                armor_trim_material_id: Some(0),
+                                armor_trim_pattern_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_trim_present")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                45,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![56],
+                                armor_trim_material_id: Some(1),
+                                armor_trim_pattern_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![56],
+                                armor_trim_material_id: Some(1),
+                                armor_trim_pattern_id: Some(1),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_trim_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -9046,6 +9172,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_STORED_ENCHANTMENTS = registerItem("component_condition_container_partial_stored_enchantments");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_partial_firework_explosion");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_FIREWORKS = registerItem("component_condition_container_partial_fireworks");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_TRIM = registerItem("component_condition_bundle_partial_trim");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_TRIM = registerItem("component_condition_container_partial_trim");
             }"#,
         );
         write_json(
@@ -9834,6 +9962,83 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_trim.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:trim": {
+                                                "material": "#minecraft:component_condition_trim_materials"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_trim_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_trim_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_trim.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:trim": {
+                                                    "pattern": [
+                                                        "#minecraft:component_condition_trim_patterns"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_trim_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_trim_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_firework_explosion_star.json"),
             r#"{
                 "model": {
@@ -10601,6 +10806,22 @@ mod tests {
             (
                 "component_condition_container_partial_fireworks_absent",
                 [40, 90, 25, 255],
+            ),
+            (
+                "component_condition_bundle_partial_trim_present",
+                [210, 170, 245, 255],
+            ),
+            (
+                "component_condition_bundle_partial_trim_absent",
+                [70, 45, 90, 255],
+            ),
+            (
+                "component_condition_container_partial_trim_present",
+                [170, 210, 245, 255],
+            ),
+            (
+                "component_condition_container_partial_trim_absent",
+                [45, 70, 90, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
