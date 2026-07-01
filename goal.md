@@ -816,7 +816,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     matches decoded 0-based `VillagerType` holder ids against the vanilla
     `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
     now preserves decoded modifier entries and matches direct plus
-    container-nested `modifiers` collection predicates over direct registry-key
+    bundle/container-nested `modifiers` collection predicates over direct registry-key
     `attribute` HolderSets when `minecraft:attribute` registry keys are
     available, plus `id`, `amount`, `operation`, `slot`, and `size` /
     `contains` / `count`. `minecraft:custom_data` now preserves decoded
@@ -832,7 +832,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
     `minecraft:potion_contents`, `minecraft:writable_book_content`,
-    `minecraft:written_book_content`, `minecraft:villager/variant`, and
+    `minecraft:written_book_content`, `minecraft:villager/variant`,
+    `minecraft:attribute_modifiers`, `minecraft:custom_data`, and
     data-component AnyValue predicates over decoded bundle entries.
     `minecraft:container` now decodes non-empty container entries and matches
     the same direct item-key / item-tag / stack-count / exact scalar component /

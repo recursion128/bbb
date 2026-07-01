@@ -8513,8 +8513,73 @@ mod tests {
             uv("component_condition_container_partial_attribute_modifiers_attribute_present")
         );
         assert_eq!(
-            selected_with_attribute_keys(62, container_attribute_patch(scale_modifier)),
+            selected_with_attribute_keys(62, container_attribute_patch(scale_modifier.clone())),
             uv("component_condition_container_partial_attribute_modifiers_attribute_absent")
+        );
+        let bundle_attribute_modifiers_patch = |modifiers| DataComponentPatchSummary {
+            added_type_ids: vec![50],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![16],
+                    attribute_modifiers: modifiers,
+                    ..DataComponentPatchSummary::default()
+                },
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(
+                66,
+                bundle_attribute_modifiers_patch(vec![
+                    modifier("minecraft:test/speed", 1.5, 0, 1),
+                    modifier("minecraft:test/scale", 3.0, 1, 3),
+                ])
+            ),
+            uv("component_condition_bundle_partial_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected(
+                66,
+                bundle_attribute_modifiers_patch(vec![
+                    modifier("minecraft:test/speed", 1.5, 0, 1),
+                    modifier("minecraft:test/heavy", 2.0, 0, 2),
+                ])
+            ),
+            uv("component_condition_bundle_partial_attribute_modifiers_absent")
+        );
+        assert_eq!(
+            selected(
+                66,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![50],
+                    ..bundle_attribute_modifiers_patch(vec![
+                        modifier("minecraft:test/speed", 1.5, 0, 1),
+                        modifier("minecraft:test/scale", 3.0, 1, 3),
+                    ])
+                }
+            ),
+            uv("component_condition_bundle_partial_attribute_modifiers_absent")
+        );
+        let bundle_attribute_patch = |modifier| DataComponentPatchSummary {
+            added_type_ids: vec![50],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: attribute_patch(modifier),
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_attribute_keys(67, bundle_attribute_patch(attack_damage_modifier)),
+            uv("component_condition_bundle_partial_attribute_modifiers_attribute_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(67, bundle_attribute_patch(scale_modifier.clone())),
+            uv("component_condition_bundle_partial_attribute_modifiers_attribute_absent")
         );
         let custom_data_value = |owner: &str| {
             NbtSummaryValue::Compound(vec![
@@ -10173,6 +10238,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CUSTOM_DATA = registerItem("component_condition_custom_data");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA = registerItem("component_condition_bundle_partial_custom_data");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_CUSTOM_DATA = registerItem("component_condition_container_partial_custom_data");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_attribute_modifiers");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute");
             }"#,
         );
         write_json(
@@ -11917,6 +11984,92 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "count": [
+                                                        {
+                                                            "test": {
+                                                                "operation": "add_value"
+                                                            },
+                                                            "count": 1
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_attribute_modifiers_attribute.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "contains": [
+                                                        {
+                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "id": "minecraft:test/speed"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_attribute_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_attribute_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_custom_data.json"),
             r#"{
                 "model": {
@@ -12709,6 +12862,22 @@ mod tests {
             (
                 "component_condition_container_partial_attribute_modifiers_attribute_absent",
                 [90, 35, 95, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_present",
+                [200, 180, 245, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_absent",
+                [60, 50, 90, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_attribute_present",
+                [210, 150, 245, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_attribute_absent",
+                [80, 35, 95, 255],
             ),
             (
                 "component_condition_custom_data_present",

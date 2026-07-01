@@ -5880,7 +5880,7 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:villager/variant` now matches decoded 0-based
       `VillagerType` holder ids against the vanilla `VillagerType.bootstrap`
       registry-key order. `minecraft:attribute_modifiers` now preserves decoded
-      modifier entries and matches direct plus container-nested `modifiers`
+      modifier entries and matches direct plus bundle/container-nested `modifiers`
       collection predicates over direct registry-key `attribute` HolderSets
       when `minecraft:attribute` registry keys are available, plus `id`,
       `amount`, `operation`, `slot`, and `size` / `contains` / `count`.
@@ -5897,8 +5897,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
-      `minecraft:writable_book_content`, `minecraft:written_book_content`, and
-      `minecraft:villager/variant`, and data-component AnyValue predicates over
+      `minecraft:writable_book_content`, `minecraft:written_book_content`,
+      `minecraft:villager/variant`, `minecraft:attribute_modifiers`,
+      `minecraft:custom_data`, and data-component AnyValue predicates over
       decoded bundle entries.
       `minecraft:container` now decodes non-empty container entries and matches
       the same direct item-key / item-tag / stack-count / exact scalar component
@@ -6087,7 +6088,7 @@ When an agent does any of the following, update this file in the same slice:
     available, and direct plus nested bundle/container writable/written-book
     predicates for decoded raw string fields/pages, plus direct and
     bundle/container-nested villager variant predicates for vanilla registry
-    keys, plus direct and container-nested attribute modifier predicates for
+    keys, plus direct and bundle/container-nested attribute modifier predicates for
     decoded direct registry-key attribute / id / amount / operation / slot
     entries when the synced attribute registry is available, plus direct and
     bundle/container-nested custom-data NBT compound predicates for JSON-object
