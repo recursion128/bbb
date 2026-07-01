@@ -1243,6 +1243,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `[0.32, 0.5, 0.22]` color, `0.01` gravity, `1.0` friction, no physics,
     opaque layer, and existing `ParticleLimit.SPORE_BLOSSOM` cap/release
     behavior.
+  - [x] `SimpleVerticalParticle.PauseMobGrowthProvider` /
+    `ResetMobGrowthProvider`：renderer descriptor/test coverage now pins
+    vanilla random sprite selection, `0.5..1.1` quad-size scaling, fixed `8`
+    lifetime, command velocity with `-0.03` / `+0.03` y offset, `0.98`
+    friction, zero gravity, physics metadata, and opaque particle layer.
   - 初速度。
   - lifetime。
   - size curve。

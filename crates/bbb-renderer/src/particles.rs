@@ -2065,6 +2065,7 @@ mod tests {
         assert_eq!(pause_growth.friction, 0.98);
         assert_eq!(pause_growth.gravity, 0.0);
         assert!(pause_growth.has_physics);
+        assert_eq!(pause_growth.render_layer, ParticleRenderLayer::Opaque);
 
         let mut reset_random = ParticleRandom::new(60);
         let mut reset_command = spawn_command("minecraft:reset_mob_growth", 1.0);
@@ -2077,6 +2078,7 @@ mod tests {
         assert_eq!(reset_growth.lifetime_ticks, 8);
         assert_eq!(reset_growth.velocity, [1.0, 2.03, 3.0]);
         assert!(reset_growth.has_physics);
+        assert_eq!(reset_growth.render_layer, ParticleRenderLayer::Opaque);
 
         let mut witch_random = ParticleRandom::new(62);
         let witch = ParticleInstance::from_spawn_command(
