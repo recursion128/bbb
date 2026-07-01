@@ -711,9 +711,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     including `key.use` / `key.attack` / `key.pickItem`,
     `key.socialInteractions`, `key.quickActions`, screenshot / perspective /
     fullscreen / GUI toggles, creative toolbar activators, `key.spectatorHotbar`,
-    and hotbar 1-9. User-rebound/custom key mappings, default-unknown keys
-    such as `key.smoothCamera` / `key.spectatorOutlines`, and debug modifier
-    combos remain follow-up.
+    hotbar 1-9, and the valid default-unbound `key.smoothCamera` /
+    `key.spectatorOutlines` names as false under the vanilla default keymap.
+    User-rebound/custom key mappings and debug modifier combos remain
+    follow-up.
   - [x] `minecraft:fishing_rod/cast` item-model condition resolves for GUI/HUD
     hotbar local-player selected main-hand fishing rods from vanilla
     `FishingRodCast.get` / `FishingHookRenderer.getHoldingArm`: world tracks

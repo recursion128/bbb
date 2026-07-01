@@ -3291,6 +3291,10 @@ impl ItemModelKeybindContext {
             "key.socialInteractions" => self.social_interactions,
             "key.screenshot" => self.screenshot,
             "key.togglePerspective" => self.toggle_perspective,
+            // Vanilla Options registers these key mappings with
+            // InputConstants.UNKNOWN by default, so they are valid keybind names
+            // but cannot be down until user rebinding exists.
+            "key.smoothCamera" | "key.spectatorOutlines" => false,
             "key.fullscreen" => self.fullscreen,
             "key.advancements" => self.advancements,
             "key.quickActions" => self.quick_actions,

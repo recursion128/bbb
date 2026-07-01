@@ -4145,6 +4145,28 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
     assert!(context.keybind_down("key.spectatorHotbar"));
 }
 
+#[test]
+fn item_model_keybind_context_accepts_vanilla_default_unbound_keymappings() {
+    // Vanilla Options registers these with InputConstants.UNKNOWN, so
+    // IsKeybindDown can decode the key names but KeyMapping.isDown() is false
+    // under the default keymap.
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    for code in [KeyCode::F4, KeyCode::F5] {
+        handle_key_input_without_world(
+            &mut input,
+            &mut counters,
+            &None,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+
+    let context = input.item_model_keybind_context();
+    assert!(!context.keybind_down("key.smoothCamera"));
+    assert!(!context.keybind_down("key.spectatorOutlines"));
+}
+
 fn assert_sprint_key_on_mount_only_queues_raw_player_input(entity_type_id: i32) {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
