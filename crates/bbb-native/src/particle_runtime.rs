@@ -501,7 +501,7 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(CLOUD_PARTICLE_TYPE_ID, spawns)
             }
-            BONEMEAL_GROWTH_PARTICLES_LEVEL_EVENT | HAPPY_VILLAGER_PARTICLES_LEVEL_EVENT => self
+            BEE_GROWTH_PARTICLES_LEVEL_EVENT | TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT => self
                 .particle_in_block_batch(
                     event,
                     HAPPY_VILLAGER_PARTICLE_TYPE_ID,
@@ -1211,8 +1211,8 @@ const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
-const BONEMEAL_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
-const HAPPY_VILLAGER_PARTICLES_LEVEL_EVENT: i32 = 2012;
+const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
+const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const END_GATEWAY_SPAWN_LEVEL_EVENT: i32 = 3000;
 const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
@@ -2041,18 +2041,18 @@ mod tests {
             true,
         );
 
-        let mut bonemeal_growth_random = LevelEventSoundRandomState::with_seed(0);
-        let bonemeal_growth = resolver.resolve_level_event_particles(
+        let mut bee_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let bee_growth = resolver.resolve_level_event_particles(
             &LevelEvent {
                 event_type: 2011,
                 data: 3,
                 ..level_event_packet(2011)
             },
-            &mut bonemeal_growth_random,
+            &mut bee_growth_random,
         );
-        assert_eq!(bonemeal_growth.len(), 3);
+        assert_eq!(bee_growth.len(), 3);
         assert_particle_command(
-            &bonemeal_growth.commands[0],
+            &bee_growth.commands[0],
             43,
             "minecraft:happy_villager",
             [
@@ -2068,32 +2068,32 @@ mod tests {
             false,
         );
 
-        let mut happy_villager_random = LevelEventSoundRandomState::with_seed(0);
-        let happy_villager = resolver.resolve_level_event_particles(
+        let mut turtle_egg_placement_random = LevelEventSoundRandomState::with_seed(0);
+        let turtle_egg_placement = resolver.resolve_level_event_particles(
             &LevelEvent {
                 event_type: 2012,
                 data: 2,
                 ..level_event_packet(2012)
             },
-            &mut happy_villager_random,
+            &mut turtle_egg_placement_random,
         );
-        assert_eq!(happy_villager.len(), 2);
-        assert_eq!(happy_villager.commands[0].particle_type_id, 43);
+        assert_eq!(turtle_egg_placement.len(), 2);
+        assert_eq!(turtle_egg_placement.commands[0].particle_type_id, 43);
         assert_eq!(
-            happy_villager.commands[0].particle_id,
+            turtle_egg_placement.commands[0].particle_id,
             "minecraft:happy_villager"
         );
 
-        let mut zero_bonemeal_growth_random = LevelEventSoundRandomState::with_seed(0);
-        let zero_bonemeal_growth = resolver.resolve_level_event_particles(
+        let mut zero_bee_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let zero_bee_growth = resolver.resolve_level_event_particles(
             &LevelEvent {
                 event_type: 2011,
                 data: 0,
                 ..level_event_packet(2011)
             },
-            &mut zero_bonemeal_growth_random,
+            &mut zero_bee_growth_random,
         );
-        assert!(zero_bonemeal_growth.is_empty());
+        assert!(zero_bee_growth.is_empty());
 
         let mut trial_detect_ominous_random = LevelEventSoundRandomState::with_seed(0);
         let trial_detect_ominous = resolver.resolve_level_event_particles(

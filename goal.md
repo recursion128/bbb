@@ -1268,12 +1268,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     after consuming the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
     random draws; the ender-eye item particles remain deferred with item
     particle option rendering.
-  - [x] bonemeal / happy-villager in-block particles：events `2011` and
-    `2012` now mirror vanilla `ParticleUtils.spawnParticleInBlock` for the
-    air/default spread-height branch, using event `data` as count, gaussian
-    `0.02` velocity on all axes, and full-block random positions.
+  - [x] bee-growth / turtle-egg-placement happy-villager in-block particles：
+    events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
+    (`PARTICLES_TURTLE_EGG_PLACEMENT`) now mirror vanilla
+    `ParticleUtils.spawnParticleInBlock` for the air/default spread-height
+    branch, using event `data` as count, gaussian `0.02` velocity on all axes,
+    and full-block random positions.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
-    block/item option events remain follow-up work.
+    `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
+    branches plus block/item option events remain follow-up work.
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
     portal ring/happy-villager 之外的剩余事件。
 
