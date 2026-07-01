@@ -465,8 +465,28 @@ impl ParticleInstance {
         let particle_limit = particle_limit_for_particle(&command.particle_id);
         let render_group = particle_render_group_for_particle(&command.particle_id);
         let render_layer = particle_render_layer_for_particle(&command.particle_id);
-        let position = descriptor.initial_position(command.position, random);
+        let mut position = descriptor.initial_position(command.position, random);
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
+        if matches!(
+            descriptor.provider,
+            "FlyTowardsPositionParticle.EnchantProvider"
+                | "FlyTowardsPositionParticle.NautilusProvider"
+        ) {
+            position = [
+                command.position[0] + velocity[0],
+                command.position[1] + velocity[1],
+                command.position[2] + velocity[2],
+            ];
+        }
+        let start_position = if matches!(
+            descriptor.provider,
+            "FlyTowardsPositionParticle.EnchantProvider"
+                | "FlyTowardsPositionParticle.NautilusProvider"
+        ) {
+            command.position
+        } else {
+            position
+        };
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
         let visual = descriptor
@@ -478,7 +498,7 @@ impl ParticleInstance {
             sprite_ids: command.sprite_ids,
             current_sprite_id,
             current_sprite_index,
-            start_position: position,
+            start_position,
             previous_position: position,
             position,
             velocity,
@@ -559,6 +579,16 @@ impl ParticleInstance {
                 self.position[1] += self.velocity[1];
                 self.position[2] += self.velocity[2];
                 self.tick_angle += 0.08;
+            }
+            ParticleTickMotionDescriptor::FlyTowardsPosition => {
+                let next_age = self.age_ticks.saturating_add(1);
+                let lifetime = self.lifetime_ticks.max(1) as f32;
+                let pos = 1.0 - (next_age as f32 / lifetime).clamp(0.0, 1.0);
+                let pp = (1.0 - pos).powi(4);
+                self.position[0] = self.start_position[0] + self.velocity[0] * f64::from(pos);
+                self.position[1] = self.start_position[1] + self.velocity[1] * f64::from(pos)
+                    - f64::from(pp * 1.2);
+                self.position[2] = self.start_position[2] + self.velocity[2] * f64::from(pos);
             }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
@@ -1090,6 +1120,35 @@ mod tests {
         assert_close3(instance.position, [1.042, 1.95, 3.0]);
         assert_close3(instance.velocity, [0.042, -0.05, 0.0]);
         assert_close_f32(instance.tick_angle, 0.08);
+    }
+
+    #[test]
+    fn particle_runtime_fly_towards_position_tick_uses_vanilla_curve() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:enchant", 40);
+        instance.start_position = [10.0, 64.0, -2.0];
+        instance.position = [6.0, 65.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [-4.0, 1.0, 5.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        let pos = 1.0_f64 - 1.0 / 40.0;
+        let pp = (1.0 - pos).powi(4);
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [6.0, 65.0, 3.0]);
+        assert_close3(
+            instance.position,
+            [
+                10.0 - 4.0 * pos,
+                64.0 + 1.0 * pos - pp * 1.2,
+                -2.0 + 5.0 * pos,
+            ],
+        );
+        assert_close3(instance.velocity, [-4.0, 1.0, 5.0]);
     }
 
     #[test]
@@ -1806,6 +1865,50 @@ mod tests {
         assert!(magic.color[2] > magic.color[1]);
         assert!((4..=10).contains(&magic.lifetime_ticks));
 
+        let mut enchant_random = ParticleRandom::new(83);
+        let mut enchant_command = spawn_command("minecraft:enchant", 1.0);
+        enchant_command.position = [1.0, 2.0, 3.0];
+        enchant_command.velocity = [0.5, 1.0, -0.25];
+        let enchant = ParticleInstance::from_spawn_command(enchant_command, &mut enchant_random);
+        assert_eq!(
+            enchant.provider,
+            "FlyTowardsPositionParticle.EnchantProvider"
+        );
+        assert_eq!(enchant.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(enchant.start_position, [1.0, 2.0, 3.0]);
+        assert_eq!(enchant.previous_position, [1.5, 3.0, 2.75]);
+        assert_eq!(enchant.position, [1.5, 3.0, 2.75]);
+        assert_eq!(enchant.velocity, [0.5, 1.0, -0.25]);
+        assert_range_f32(enchant.base_quad_size, 0.02, 0.07);
+        assert_close_f32(enchant.color[0], enchant.color[2] * 0.9);
+        assert_close_f32(enchant.color[1], enchant.color[2] * 0.9);
+        assert_eq!(enchant.color[3], 1.0);
+        assert!((30..=39).contains(&enchant.lifetime_ticks));
+        assert!(!enchant.has_physics);
+        assert_eq!(
+            enchant.tick_motion,
+            ParticleTickMotionDescriptor::FlyTowardsPosition
+        );
+        assert_eq!(
+            enchant.light_emission,
+            ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
+        );
+
+        let mut nautilus_random = ParticleRandom::new(84);
+        let mut nautilus_command = spawn_command("minecraft:nautilus", 1.0);
+        nautilus_command.position = [1.0, 2.0, 3.0];
+        nautilus_command.velocity = [-0.25, 0.5, 1.25];
+        let nautilus = ParticleInstance::from_spawn_command(nautilus_command, &mut nautilus_random);
+        assert_eq!(
+            nautilus.provider,
+            "FlyTowardsPositionParticle.NautilusProvider"
+        );
+        assert_eq!(nautilus.start_position, [1.0, 2.0, 3.0]);
+        assert_eq!(nautilus.previous_position, [0.75, 2.5, 4.25]);
+        assert_eq!(nautilus.position, [0.75, 2.5, 4.25]);
+        assert_range_f32(nautilus.base_quad_size, 0.02, 0.07);
+        assert!((30..=39).contains(&nautilus.lifetime_ticks));
+
         let mut angry_villager_random = ParticleRandom::new(52);
         let angry_villager = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:angry_villager", 1.0),
@@ -2148,6 +2251,14 @@ mod tests {
             spawn_command("minecraft:current_down", 6.0),
             &mut random,
         );
+        let enchant = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:enchant", 7.0),
+            &mut random,
+        );
+        let nautilus = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:nautilus", 8.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -2155,12 +2266,16 @@ mod tests {
         assert_eq!(sculk.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(glow.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(current_down.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(enchant.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(nautilus.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(sculk.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(glow.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(enchant.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(nautilus.render_layer, ParticleRenderLayer::Opaque);
     }
 
     #[test]
@@ -2391,7 +2506,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(10, 10);
+        let mut particles = ParticleRuntimeState::with_capacities(11, 11);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2402,6 +2517,8 @@ mod tests {
         let sculk_charge_pop = test_instance_with_lifetime("minecraft:sculk_charge_pop", 20);
         let attack_sweep = test_instance_with_lifetime("minecraft:sweep_attack", 4);
         let end_rod = test_instance_with_lifetime("minecraft:end_rod", 60);
+        let mut enchant = test_instance_with_lifetime("minecraft:enchant", 40);
+        enchant.age_ticks = 20;
         let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
         portal.age_ticks = 20;
         let mut reverse_portal = test_instance_with_lifetime("minecraft:reverse_portal", 60);
@@ -2415,6 +2532,7 @@ mod tests {
         particles.active_instances.push_back(sculk_charge_pop);
         particles.active_instances.push_back(attack_sweep);
         particles.active_instances.push_back(end_rod);
+        particles.active_instances.push_back(enchant);
         particles.active_instances.push_back(portal);
         particles.active_instances.push_back(reverse_portal);
 
@@ -2455,6 +2573,11 @@ mod tests {
             sampled_light[0] + 0.5_f32.powi(4),
         );
         assert_close_f32(particles.active_instances()[9].light[1], sampled_light[1]);
+        assert_close_f32(
+            particles.active_instances()[10].light[0],
+            sampled_light[0] + 0.5_f32.powi(4),
+        );
+        assert_close_f32(particles.active_instances()[10].light[1], sampled_light[1]);
     }
 
     #[test]

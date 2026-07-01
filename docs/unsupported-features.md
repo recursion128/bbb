@@ -333,6 +333,15 @@ When an agent does any of the following, update this file in the same slice:
         damping `0.07`, `angle += 0.08`); its water-fluid / on-ground removal
         gate remains deferred with world-coupled particle collision/physics
         work
+      - `FlyTowardsPositionParticle.EnchantProvider` and `NautilusProvider`
+        use random sprite selection, command velocity, initial render position
+        at `spawn + velocity` with the original spawn position retained as the
+        curve start, `0.1 * (random * 0.5 + 0.2)` quad size, brightness-derived
+        `[0.9, 0.9, 1.0]` RGB scaling, `30..39` lifetime, opaque particle
+        layer, no-physics metadata, the vanilla fly-towards position curve
+        (`pos = 1 - age/lifetime`, `y -= (age/lifetime)^4 * 1.2`), and
+        quartic smooth block-light emission; `VaultConnectionProvider` remains
+        deferred until lifetime alpha and glowing variants are represented
       - Simple `SpellParticle.Provider` particles (`infested`, `raid_omen`,
         `trial_omen`) use the vanilla random horizontal constructor velocity,
         y-velocity scaling, still-horizontal x/z dampening, age sprite

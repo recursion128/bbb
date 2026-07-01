@@ -1202,6 +1202,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     0.6*sin(angle)`, horizontal damping `0.07`, `angle += 0.08`). The
     water-fluid / on-ground removal gate remains in the world-coupled
     collision/physics follow-up.
+  - [x] `FlyTowardsPositionParticle.EnchantProvider` /
+    `NautilusProvider`：renderer descriptor now mirrors vanilla random sprite
+    selection, command velocity, initial render position at `spawn + velocity`
+    while retaining the original spawn position as the curve start,
+    `0.1 * (random * 0.5 + 0.2)` quad size, brightness-derived
+    `[0.9, 0.9, 1.0]` RGB scaling, `30..39` lifetime, opaque layer,
+    no-physics metadata, fly-towards position curve (`pos = 1 - age/lifetime`,
+    `y -= (age/lifetime)^4 * 1.2`), and quartic smooth block-light emission.
+    `VaultConnectionProvider` remains a later alpha/glowing variant.
   - 初速度。
   - lifetime。
   - size curve。

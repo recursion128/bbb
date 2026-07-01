@@ -23,6 +23,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DirectGravityNoFriction,
     NoMotion,
     CurrentDown,
+    FlyTowardsPosition,
     Portal,
     ReversePortal,
 }
@@ -125,6 +126,7 @@ pub(crate) enum ParticleVisualDescriptor {
         color: ParticleColorDescriptor,
     },
     HugeExplosion,
+    FlyTowardsPosition,
     Portal,
     ReversePortal,
     BaseAshSmoke {
@@ -449,6 +451,21 @@ impl ParticleDescriptor {
                     },
                 friction: 0.7,
                 gravity: 0.5,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:enchant" | "minecraft:nautilus" => Self {
+                provider: if particle_id == "minecraft:nautilus" {
+                    "FlyTowardsPositionParticle.NautilusProvider"
+                } else {
+                    "FlyTowardsPositionParticle.EnchantProvider"
+                },
+                lifetime: ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 10 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::FlyTowardsPosition,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -1083,6 +1100,10 @@ impl ParticleDescriptor {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             "WaterCurrentDownParticle.Provider" => ParticleTickMotionDescriptor::CurrentDown,
+            "FlyTowardsPositionParticle.EnchantProvider"
+            | "FlyTowardsPositionParticle.NautilusProvider" => {
+                ParticleTickMotionDescriptor::FlyTowardsPosition
+            }
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1116,7 +1137,10 @@ impl ParticleDescriptor {
             | "GlowParticle.WaxOffProvider"
             | "GlowParticle.WaxOnProvider" => ParticleLightEmissionDescriptor::SmoothBlockByAge,
             // Vanilla portal particles add `(age / lifetime)^4` smooth block emission.
-            "PortalParticle.Provider" | "ReversePortalParticle.ReversePortalProvider" => {
+            "FlyTowardsPositionParticle.EnchantProvider"
+            | "FlyTowardsPositionParticle.NautilusProvider"
+            | "PortalParticle.Provider"
+            | "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
             }
             _ => ParticleLightEmissionDescriptor::World,
@@ -1246,6 +1270,15 @@ impl ParticleVisualDescriptor {
                 ParticleVisualState::new(
                     size,
                     [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::FlyTowardsPosition => {
+                let size = 0.1 * (random.next_f32() * 0.5 + 0.2);
+                let brightness = random.next_f32() * 0.6 + 0.4;
+                ParticleVisualState::new(
+                    size,
+                    [brightness * 0.9, brightness * 0.9, brightness, 1.0],
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -2028,6 +2061,44 @@ mod tests {
                 command_y_offset: 0.0,
             }
         );
+        for (particle_id, provider) in [
+            (
+                "minecraft:enchant",
+                "FlyTowardsPositionParticle.EnchantProvider",
+            ),
+            (
+                "minecraft:nautilus",
+                "FlyTowardsPositionParticle.NautilusProvider",
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 10 },
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::FlyTowardsPosition,
+                0.98,
+                0.0,
+                false,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Command,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.tick_motion(),
+                ParticleTickMotionDescriptor::FlyTowardsPosition,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.light_emission(),
+                ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic,
+                "{particle_id}"
+            );
+        }
         assert_descriptor(
             "minecraft:dragon_breath",
             "DragonBreathParticle.Provider",
