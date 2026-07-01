@@ -802,7 +802,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ArmorTrim.pattern()` holder ids through vanilla `TrimPatterns.bootstrap`
     order. `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
-    against the decoded bundle item count. `minecraft:enchantments` and
+    against the decoded bundle item count, and `items.contains` / `count`
+    now support vanilla `ItemPredicate` direct item-key plus stack-count bounds
+    over decoded bundle entries. `minecraft:enchantments` and
     patch-backed `minecraft:stored_enchantments` level-only predicates now match
     decoded enchantment levels; empty `minecraft:enchantments` predicate lists
     honor vanilla's default empty `ENCHANTMENTS` component unless id 13 is
@@ -810,7 +812,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     component until item-specific default components are modeled. Remaining
     constrained `DataComponentPredicate` types such as enchantment HolderSet
     matching / item-specific default `stored_enchantments`,
-    bundle `contains`/`count` item predicates, container item collection
+    bundle item tags / nested component matchers, container item collection
     predicates, and trim tag sets / inline material or pattern payloads /
     datapack pattern registry-key remaps remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla

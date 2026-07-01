@@ -865,6 +865,9 @@ pub(super) struct IconResolveContext<'a> {
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
+    /// Item registry keys by protocol id, used for vanilla `ItemPredicate.items`
+    /// matching inside collection component predicates.
+    pub item_resource_ids: Option<&'a [String]>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1510,7 +1513,7 @@ fn item_stack_matches_component_predicate(
         );
     }
     if bundle_contents_component_predicate_is_supported(property) {
-        return item_stack_matches_bundle_contents_predicate(property, ctx.component_patch);
+        return item_stack_matches_bundle_contents_predicate(property, ctx);
     }
     if enchantments_component_predicate_is_supported(property) {
         return item_stack_matches_enchantments_predicate(property, ctx.component_patch);
@@ -1714,33 +1717,41 @@ fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty
     let Some(items) = value.get("items") else {
         return false;
     };
-    value.len() == 1 && collection_predicate_is_size_only(items)
+    value.len() == 1 && item_collection_predicate_is_supported(items)
 }
 
 fn item_stack_matches_bundle_contents_predicate(
     property: &ItemModelProperty,
-    component_patch: Option<&DataComponentPatchSummary>,
+    ctx: IconResolveContext<'_>,
 ) -> bool {
     if !bundle_contents_component_predicate_is_supported(property) {
         return false;
     }
-    if !item_stack_has_component_id(BUNDLE_CONTENTS_COMPONENT_ID, component_patch, None, false) {
+    if !item_stack_has_component_id(
+        BUNDLE_CONTENTS_COMPONENT_ID,
+        ctx.component_patch,
+        None,
+        false,
+    ) {
         return false;
     }
-    let Some(size) = property
+    let Some(items) = property
         .raw()
         .get("value")
         .and_then(Value::as_object)
         .and_then(|value| value.get("items"))
-        .and_then(Value::as_object)
-        .and_then(|items| items.get("size"))
     else {
         return true;
     };
-    component_patch
-        .and_then(|patch| patch.bundle_contents_item_count)
-        .and_then(|item_count| i32::try_from(item_count).ok())
-        .is_some_and(|item_count| min_max_int_bounds_match(Some(size), item_count))
+    let Some(component_patch) = ctx.component_patch else {
+        return false;
+    };
+    item_collection_predicate_matches(
+        items,
+        &component_patch.bundle_contents_items,
+        component_patch.bundle_contents_item_count,
+        ctx.item_resource_ids,
+    )
 }
 
 fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
@@ -1759,13 +1770,167 @@ fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> b
             .unwrap_or(true)
 }
 
-fn collection_predicate_is_size_only(value: &Value) -> bool {
+fn item_collection_predicate_is_supported(value: &Value) -> bool {
     let Some(value) = value.as_object() else {
         return false;
     };
-    !value.contains_key("contains")
-        && !value.contains_key("count")
-        && value.keys().all(|key| key == "size")
+    value
+        .keys()
+        .all(|key| key == "contains" || key == "count" || key == "size")
+        && value
+            .get("contains")
+            .map(item_predicate_list_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("count")
+            .map(item_predicate_count_list_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_predicate_list_is_supported(value: &Value) -> bool {
+    value
+        .as_array()
+        .is_some_and(|predicates| predicates.iter().all(item_predicate_is_supported))
+}
+
+fn item_predicate_count_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|entries| {
+        entries.iter().all(|entry| {
+            let Some(entry) = entry.as_object() else {
+                return false;
+            };
+            entry.keys().all(|key| key == "test" || key == "count")
+                && entry.get("test").is_some_and(item_predicate_is_supported)
+                && entry.contains_key("count")
+        })
+    })
+}
+
+fn item_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.keys().all(|key| key == "items" || key == "count")
+        && value
+            .get("items")
+            .map(item_holder_set_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_holder_set_is_supported(value: &Value) -> bool {
+    match value {
+        Value::String(expected) => !expected.starts_with('#'),
+        Value::Array(expected) => expected.iter().all(|expected| {
+            expected
+                .as_str()
+                .is_some_and(|expected| !expected.starts_with('#'))
+        }),
+        _ => false,
+    }
+}
+
+fn item_collection_predicate_matches(
+    value: &Value,
+    items: &[ItemStackTemplateSummary],
+    item_count: Option<usize>,
+    item_resource_ids: Option<&[String]>,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(contains) = value.get("contains") {
+        let Some(predicates) = contains.as_array() else {
+            return false;
+        };
+        if !predicates.iter().all(|predicate| {
+            items
+                .iter()
+                .any(|item| item_predicate_matches(predicate, item, item_resource_ids))
+        }) {
+            return false;
+        }
+    }
+    if let Some(counts) = value.get("count") {
+        let Some(entries) = counts.as_array() else {
+            return false;
+        };
+        if !entries
+            .iter()
+            .all(|entry| item_predicate_count_entry_matches(entry, items, item_resource_ids))
+        {
+            return false;
+        }
+    }
+    if let Some(size) = value.get("size") {
+        let Some(item_count) = item_count
+            .or(Some(items.len()))
+            .and_then(|item_count| i32::try_from(item_count).ok())
+        else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), item_count) {
+            return false;
+        }
+    }
+    true
+}
+
+fn item_predicate_count_entry_matches(
+    entry: &Value,
+    items: &[ItemStackTemplateSummary],
+    item_resource_ids: Option<&[String]>,
+) -> bool {
+    let Some(entry) = entry.as_object() else {
+        return false;
+    };
+    let Some(test) = entry.get("test") else {
+        return false;
+    };
+    let count = items
+        .iter()
+        .filter(|item| item_predicate_matches(test, item, item_resource_ids))
+        .count();
+    let Ok(count) = i32::try_from(count) else {
+        return false;
+    };
+    min_max_int_bounds_match(entry.get("count"), count)
+}
+
+fn item_predicate_matches(
+    value: &Value,
+    item: &ItemStackTemplateSummary,
+    item_resource_ids: Option<&[String]>,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(items) = value.get("items") {
+        let Ok(item_index) = usize::try_from(item.item_id) else {
+            return false;
+        };
+        let Some(resource_id) = item_resource_ids.and_then(|ids| ids.get(item_index)) else {
+            return false;
+        };
+        if !item_holder_set_matches(items, resource_id) {
+            return false;
+        }
+    }
+    if let Some(count) = value.get("count") {
+        if !min_max_int_bounds_match(Some(count), item.count) {
+            return false;
+        }
+    }
+    true
+}
+
+fn item_holder_set_matches(value: &Value, resource_id: &str) -> bool {
+    match value {
+        Value::String(expected) => expected == resource_id,
+        Value::Array(expected) => expected
+            .iter()
+            .any(|expected| expected.as_str() == Some(resource_id)),
+        _ => false,
+    }
 }
 
 fn firework_explosions_collection_predicate_is_supported(value: &Value) -> bool {

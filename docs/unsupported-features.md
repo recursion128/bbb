@@ -5860,7 +5860,9 @@ When an agent does any of the following, update this file in the same slice:
       `ArmorTrim.material()` holder id through dynamic trim-material registry
       keys when no pattern constraint is present. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
-      the decoded bundle item count. `minecraft:fireworks`
+      the decoded bundle item count, and `items.contains` / `count` now support
+      vanilla `ItemPredicate` direct item-key plus stack-count bounds over
+      decoded bundle entries. `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
       registry-key pattern constraints now match decoded `ArmorTrim.pattern()`
@@ -5872,7 +5874,7 @@ When an agent does any of the following, update this file in the same slice:
       while `stored_enchantments` still requires a patch-visible component until
       item-specific default components are modeled. Remaining constrained
       predicate types (enchantment HolderSet matching / item-specific default
-      `stored_enchantments`, bundle `contains`/`count` item predicates,
+      `stored_enchantments`, bundle item tags / nested component matchers,
       container item collection predicates, trim tag sets / inline material or
       pattern payloads / datapack pattern registry-key remaps, and similar)
       remain follow-up.
