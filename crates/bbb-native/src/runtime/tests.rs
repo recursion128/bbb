@@ -2599,6 +2599,74 @@ fn hud_inventory_screen_uses_selected_item_condition_for_local_selected_slot_onl
 }
 
 #[test]
+fn hud_container_screen_uses_selected_item_condition_for_server_opened_hotbar_slot_only() {
+    let root = unique_runtime_temp_dir("container-selected-condition");
+    write_runtime_selected_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let normal_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let selected_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_selected(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            true,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(normal_uv, selected_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+    });
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 63];
+    items[54] = stack.clone();
+    items[55] = stack;
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 1,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    assert!(world.set_local_selected_hotbar_slot(1));
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+
+    let non_selected = screen.slots.iter().find(|slot| slot.slot_id == 54).unwrap();
+    let selected = screen.slots.iter().find(|slot| slot.slot_id == 55).unwrap();
+    assert_eq!(
+        non_selected.icon.as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: normal_uv.min,
+            max: normal_uv.max,
+        }
+    );
+    assert_eq!(
+        selected.icon.as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: selected_uv.min,
+            max: selected_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
     let root = unique_runtime_temp_dir("hud-carried-condition");
     write_runtime_carried_condition_item_assets(&root);

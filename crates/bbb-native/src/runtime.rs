@@ -43,7 +43,8 @@ use crate::{
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, inventory_screen_layout, release_active_input,
+        advance_using_item_at_partial_tick, inventory_screen_layout,
+        inventory_screen_selected_hotbar_slot_id, release_active_input,
         sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
@@ -1916,6 +1917,7 @@ fn hud_inventory_screen_with_local_state(
         world.inventory().open_container.as_ref()?
     };
 
+    let selected_hotbar_slot_id = inventory_screen_selected_hotbar_slot_id(world);
     let slots = layout
         .slots
         .iter()
@@ -1930,8 +1932,6 @@ fn hud_inventory_screen_with_local_state(
                 x: layout.x,
                 y: layout.y,
                 icon: inventory_slot.and_then(|slot| {
-                    let selected_item =
-                        hud_inventory_slot_is_local_selected_item(world, layout.slot_id);
                     hud_item_icon_for_stack(
                         world,
                         item_runtime,
@@ -1939,7 +1939,7 @@ fn hud_inventory_screen_with_local_state(
                         (slot.local_selected_bundle_item_index >= 0)
                             .then_some(slot.local_selected_bundle_item_index),
                         false,
-                        selected_item,
+                        selected_hotbar_slot_id == Some(layout.slot_id),
                         false,
                         false,
                         local_state.shift_down,
@@ -4170,11 +4170,6 @@ fn local_player_fishing_rod_casts_item(
                 .and_then(|runtime| runtime.item_resource_id(item_id))
                 .is_some_and(|resource_id| resource_id == "minecraft:fishing_rod")
         })
-}
-
-fn hud_inventory_slot_is_local_selected_item(world: &WorldStore, slot_id: i16) -> bool {
-    world.local_inventory_is_open()
-        && slot_id == 36 + i16::from(world.local_player().selected_hotbar_slot.min(8))
 }
 
 fn hud_item_icon_for_stack(

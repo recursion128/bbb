@@ -789,8 +789,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     the true branch and non-selected hotbar slots stay false. Local inventory
     GUI hotbar slots now resolve the same condition for slot
     `36 + selected_hotbar_slot`; same-stack non-selected slots stay false
-    instead of matching by item contents. Server-opened container player-slot
-    identity remains follow-up with the broader GUI owner/state surface.
+    instead of matching by item contents. Recognized server-opened container
+    GUI hotbar slots now resolve from the vanilla menu slot layout's player
+    hotbar start plus selected hotbar index; tests pin generic `9x3` slot `55`
+    true while same-stack slot `54` remains false.
   - [x] `minecraft:carried` item-model condition is recognized and resolved
     through an explicit local-player carried-stack context bit from vanilla
     `IsCarried.get` (`LocalPlayer.containerMenu.getCarried() == itemStack`):

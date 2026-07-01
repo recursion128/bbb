@@ -5836,9 +5836,9 @@ When an agent does any of the following, update this file in the same slice:
       the local selected hotbar slot resolves the true branch and non-selected
       hotbar slots resolve false. Local inventory GUI hotbar slots also resolve
       true for slot `36 + selected_hotbar_slot`, while same-stack non-selected
-      slots remain false instead of matching by item contents. Server-opened
-      container player-slot identity remains follow-up with the broader GUI
-      owner/state surface.
+      slots remain false instead of matching by item contents. Recognized
+      server-opened container GUI hotbar slots now resolve from the vanilla menu
+      slot layout's player hotbar start plus selected hotbar index.
     - `minecraft:carried` — `IsCarried.get`, projected as an explicit
       local-player carried-stack context bit in the native item icon resolver:
       ordinary HUD/GUI slot and generated recipe/offer item icons keep the
@@ -6134,8 +6134,8 @@ When an agent does any of the following, update this file in the same slice:
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
     wired for the stack-local `flags` list, and `minecraft:selected` is wired
-    for HUD hotbar selected-slot icons plus local inventory GUI hotbar slots.
-    Server-opened container player-slot identity remains follow-up.
+    for HUD hotbar selected-slot icons plus recognized local and server-opened
+    GUI hotbar slots.
     `minecraft:view_entity` is wired for
     GUI/HUD local-player icons in the normal camera==player path, and
     `minecraft:extended_view` is wired for Shift-held GUI/HUD local-player

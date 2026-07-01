@@ -32,8 +32,9 @@ use crate::item_runtime::NativeItemRuntime;
 mod layout;
 
 pub(crate) use layout::{
-    inventory_screen_layout, local_inventory_slot_layouts, InventoryScreenBackground,
-    InventoryScreenLayout, InventorySlotLayout,
+    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id,
+    local_inventory_slot_layouts, InventoryScreenBackground, InventoryScreenLayout,
+    InventorySlotLayout,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;

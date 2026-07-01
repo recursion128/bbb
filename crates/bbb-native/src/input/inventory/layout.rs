@@ -269,6 +269,58 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
     None
 }
 
+pub(crate) fn inventory_screen_selected_hotbar_slot_id(world: &WorldStore) -> Option<i16> {
+    let selected_hotbar_slot = i16::from(world.local_player().selected_hotbar_slot.min(8));
+    if world.local_inventory_is_open() {
+        return Some(36 + selected_hotbar_slot);
+    }
+
+    let container = world.inventory().open_container.as_ref()?;
+    if let Some(mount) = container.mount {
+        let kind = world.open_mount_inventory_kind()?;
+        let inventory_columns = match kind {
+            MountInventoryKind::Horse => clamped_mount_inventory_columns(mount.inventory_columns),
+            MountInventoryKind::Nautilus => 0,
+        };
+        let mount_inventory_slots =
+            i16::try_from(i32::from(inventory_columns) * MOUNT_INVENTORY_ROWS).ok()?;
+        return Some(
+            MOUNT_EQUIPMENT_SLOT_COUNT + mount_inventory_slots + 27 + selected_hotbar_slot,
+        );
+    }
+
+    inventory_screen_hotbar_start(container.menu_type_id?).map(|start| start + selected_hotbar_slot)
+}
+
+fn inventory_screen_hotbar_start(menu_type_id: i32) -> Option<i16> {
+    if let Some(rows) = generic_container_rows(menu_type_id) {
+        return Some(i16::from(rows) * GENERIC_CONTAINER_SLOT_COUNT_PER_ROW + 27);
+    }
+
+    match menu_type_id {
+        GENERIC_3X3_MENU_TYPE_ID => Some(GENERIC_3X3_SLOT_COUNT + 27),
+        CRAFTER_MENU_TYPE_ID => Some(CRAFTER_GRID_SLOT_COUNT + 27),
+        CRAFTING_MENU_TYPE_ID => Some(CRAFTING_SLOT_COUNT + 27),
+        ENCHANTMENT_MENU_TYPE_ID => Some(ENCHANTMENT_SLOT_COUNT + 27),
+        ANVIL_MENU_TYPE_ID => Some(ANVIL_SLOT_COUNT + 27),
+        BEACON_MENU_TYPE_ID => Some(BEACON_SLOT_COUNT + 27),
+        BREWING_STAND_MENU_TYPE_ID => Some(BREWING_STAND_SLOT_COUNT + 27),
+        BLAST_FURNACE_MENU_TYPE_ID | FURNACE_MENU_TYPE_ID | SMOKER_MENU_TYPE_ID => {
+            Some(FURNACE_SLOT_COUNT + 27)
+        }
+        GRINDSTONE_MENU_TYPE_ID => Some(GRINDSTONE_SLOT_COUNT + 27),
+        HOPPER_MENU_TYPE_ID => Some(HOPPER_SLOT_COUNT + 27),
+        LOOM_MENU_TYPE_ID => Some(LOOM_SLOT_COUNT + 27),
+        MERCHANT_MENU_TYPE_ID => Some(MERCHANT_SLOT_COUNT + 27),
+        SHULKER_BOX_MENU_TYPE_ID => Some(SHULKER_BOX_SLOT_COUNT + 27),
+        SMITHING_MENU_TYPE_ID => Some(SMITHING_SLOT_COUNT + 27),
+        CARTOGRAPHY_TABLE_MENU_TYPE_ID => Some(CARTOGRAPHY_TABLE_SLOT_COUNT + 27),
+        STONECUTTER_MENU_TYPE_ID => Some(STONECUTTER_SLOT_COUNT + 27),
+        LECTERN_MENU_TYPE_ID => None,
+        _ => None,
+    }
+}
+
 fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
     (GENERIC_CONTAINER_FIRST_MENU_TYPE_ID..=GENERIC_CONTAINER_LAST_MENU_TYPE_ID)
         .contains(&menu_type_id)

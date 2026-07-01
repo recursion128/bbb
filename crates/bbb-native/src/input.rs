@@ -42,7 +42,8 @@ pub(crate) use commands::{
 pub(crate) use inventory::{
     anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
     handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_inventory_text_input,
-    inventory_screen_layout, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id,
+    sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
     sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
 };
 pub(crate) use mouse::{
