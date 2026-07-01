@@ -1223,7 +1223,8 @@ impl ParticleDescriptor {
         match self.provider {
             "TotemParticle.Provider"
             | "SquidInkParticle.Provider"
-            | "SquidInkParticle.GlowInkProvider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            | "SquidInkParticle.GlowInkProvider"
+            | "EndRodParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
             "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
             "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleAlphaCurve::VaultConnectionFade

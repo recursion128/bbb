@@ -1256,6 +1256,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     ticks and reused during vertex emission. The vanilla in-air downward drift
     remains a world-coupled follow-up because particle ticking does not yet
     query block states.
+  - [x] `EndRodParticle.Provider` alpha/layer：renderer descriptor now pins
+    command velocity, `0.75` quad-size scaling, age sprites, `60..=71`
+    lifetime, `0.91` friction, `0.0125` gravity, full-bright light,
+    translucent layer, and `SimpleAnimatedParticle` half-lifetime alpha fade.
+    The vanilla `setFadeColor(15916745)` RGB fade and collision-free `move`
+    override remain provider-specific follow-up.
   - 初速度。
   - lifetime。
   - size curve。

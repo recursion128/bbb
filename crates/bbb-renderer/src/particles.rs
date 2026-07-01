@@ -1590,6 +1590,21 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_end_rod_alpha_fades_after_half_lifetime() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:end_rod", 60);
+        instance.age_ticks = 30;
+        instance.color[3] = 1.0;
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 31);
+        assert_close_f32(instance.color[3], 1.0 - 1.0 / 60.0);
+    }
+
+    #[test]
     fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
@@ -2333,6 +2348,8 @@ mod tests {
         assert_eq!(end_rod.friction, 0.91);
         assert_eq!(end_rod.gravity, 0.0125);
         assert!(end_rod.has_physics);
+        assert_eq!(end_rod.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(end_rod.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
 
         let mut dolphin_random = ParticleRandom::new(53);
         let dolphin = ParticleInstance::from_spawn_command(
