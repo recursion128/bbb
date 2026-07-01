@@ -5731,10 +5731,11 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `EndRodParticle.Provider` to command velocity,
         `0.75` quad-size scaling, age sprites, `60..=71` lifetime, friction
         `0.91`, gravity `0.0125`, full-bright light coords, translucent
-        particle layer, and `SimpleAnimatedParticle` half-lifetime alpha fade.
-        The `setFadeColor(15916745)` RGB fade and EndRod-specific
-        collision-free `move` override remain deferred until those
-        provider-specific states are represented.
+        particle layer, `SimpleAnimatedParticle` half-lifetime alpha fade, and
+        `setFadeColor(15916745)` RGB fade toward `0xF2DEC9` by 20% per tick
+        after half lifetime. The EndRod-specific collision-free `move`
+        override remains deferred until world-coupled particle collision state
+        is represented.
       - particle descriptors map `LavaParticle.Provider` to random sprite
         selection, constructor-random horizontal velocity damped by `0.8`,
         random upward velocity `0.05..0.45`, `0.2..2.2` quad-size scaling,

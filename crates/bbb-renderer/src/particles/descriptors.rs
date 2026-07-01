@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub(crate) const DEFAULT_PARTICLE_RANDOM_SEED: i64 = 0x5EED_2601;
+pub(crate) const END_ROD_FADE_COLOR: [f32; 3] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
 pub(crate) const VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT: usize = 1000;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1232,6 +1233,13 @@ impl ParticleDescriptor {
             _ => ParticleAlphaCurve::Constant,
         }
     }
+
+    pub(crate) fn color_fade_target(self) -> Option<[f32; 3]> {
+        match self.provider {
+            "EndRodParticle.Provider" => Some(END_ROD_FADE_COLOR),
+            _ => None,
+        }
+    }
 }
 
 pub(crate) fn particle_limit_for_particle(particle_id: &str) -> Option<ParticleLimitDescriptor> {
@@ -2339,6 +2347,10 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:end_rod").initial_velocity,
             ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:end_rod").color_fade_target(),
+            Some(END_ROD_FADE_COLOR)
         );
         assert_descriptor(
             "minecraft:explosion",

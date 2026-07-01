@@ -101,6 +101,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) base_quad_size: f32,
     #[serde(default = "default_particle_color")]
     pub(crate) color: [f32; 4],
+    #[serde(default)]
+    pub(crate) color_fade_target: Option<[f32; 3]>,
     #[serde(default = "default_particle_light")]
     pub(crate) light: [f32; 2],
     #[serde(default)]
@@ -404,6 +406,7 @@ impl ParticleRuntimeState {
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
+            instance.update_color_fade_from_age();
             active_instances.push_back(instance);
         }
         self.active_instances = active_instances;
@@ -537,6 +540,7 @@ impl ParticleInstance {
             lifetime_ticks: descriptor.lifetime.sample(random),
             base_quad_size: visual.base_quad_size,
             color: visual.color,
+            color_fade_target: descriptor.color_fade_target(),
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
             alpha_curve: descriptor.alpha_curve(),
@@ -691,6 +695,18 @@ impl ParticleInstance {
                 self.color[3] = vault_connection_alpha(self.age_ticks, self.lifetime_ticks, 0.0);
             }
         }
+    }
+
+    fn update_color_fade_from_age(&mut self) {
+        let Some(target) = self.color_fade_target else {
+            return;
+        };
+        if self.age_ticks <= self.lifetime_ticks / 2 {
+            return;
+        }
+        self.color[0] += (target[0] - self.color[0]) * 0.2;
+        self.color[1] += (target[1] - self.color[1]) * 0.2;
+        self.color[2] += (target[2] - self.color[2]) * 0.2;
     }
 }
 
@@ -1590,17 +1606,21 @@ mod tests {
     }
 
     #[test]
-    fn particle_runtime_end_rod_alpha_fades_after_half_lifetime() {
+    fn particle_runtime_end_rod_alpha_and_rgb_fade_after_half_lifetime() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:end_rod", 60);
         instance.age_ticks = 30;
-        instance.color[3] = 1.0;
+        instance.color = [1.0, 1.0, 1.0, 1.0];
         particles.active_instances.push_back(instance);
 
         particles.advance(1);
 
         let instance = &particles.active_instances()[0];
         assert_eq!(instance.age_ticks, 31);
+        let fade = descriptors::END_ROD_FADE_COLOR;
+        assert_close_f32(instance.color[0], 1.0 + (fade[0] - 1.0) * 0.2);
+        assert_close_f32(instance.color[1], 1.0 + (fade[1] - 1.0) * 0.2);
+        assert_close_f32(instance.color[2], 1.0 + (fade[2] - 1.0) * 0.2);
         assert_close_f32(instance.color[3], 1.0 - 1.0 / 60.0);
     }
 
@@ -2350,6 +2370,10 @@ mod tests {
         assert!(end_rod.has_physics);
         assert_eq!(end_rod.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(end_rod.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
+        assert_eq!(
+            end_rod.color_fade_target,
+            Some(descriptors::END_ROD_FADE_COLOR)
+        );
 
         let mut dolphin_random = ParticleRandom::new(53);
         let dolphin = ParticleInstance::from_spawn_command(
@@ -3294,6 +3318,7 @@ mod tests {
             lifetime_ticks,
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
+            color_fade_target: descriptor.color_fade_target(),
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
             alpha_curve: descriptor.alpha_curve(),
