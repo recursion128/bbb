@@ -270,6 +270,7 @@ pub(crate) fn dropped_item_models(
     age_ticks: f32,
     trim_material_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
 ) -> DroppedItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
@@ -339,6 +340,7 @@ pub(crate) fn dropped_item_models(
             BlockModelDisplayContext::Ground,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
         ) {
             quads.extend(bake_generated_item_quads(
                 &layer.mask,
@@ -464,6 +466,7 @@ pub(crate) fn held_item_models(
     };
     let enchantment_keys = world_enchantment_keys(world);
     let trim_material_keys = world_trim_material_keys(world);
+    let attribute_keys = world_attribute_keys(world);
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
 
     for instance in instances {
@@ -478,6 +481,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -492,6 +496,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -505,6 +510,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -518,6 +524,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -531,6 +538,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -544,6 +552,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -557,6 +566,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -570,6 +580,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -583,6 +594,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -596,6 +608,7 @@ pub(crate) fn held_item_models(
             terrain_textures,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
@@ -636,6 +649,18 @@ fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
         })
 }
 
+fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world
+        .registry_content("minecraft:attribute")
+        .map(|registry| {
+            registry
+                .entries
+                .iter()
+                .map(|entry| entry.id.clone())
+                .collect()
+        })
+}
+
 /// Bakes one arm's held item onto its arm bone with that arm's own
 /// `thirdperson_{left,right}hand` display transform. The logical hand slot is
 /// resolved from the entity's main arm, mirroring vanilla `getItemHeldByArm`.
@@ -648,6 +673,7 @@ fn bake_held_hand(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -683,6 +709,7 @@ fn bake_held_hand(
             using_item_ticks,
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
@@ -717,6 +744,7 @@ fn bake_fox_held_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -741,6 +769,7 @@ fn bake_fox_held_item(
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
         trim_material_keys,
+        attribute_keys,
         context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
@@ -764,6 +793,7 @@ fn bake_dolphin_carried_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -788,6 +818,7 @@ fn bake_dolphin_carried_item(
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
         trim_material_keys,
+        attribute_keys,
         context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
@@ -811,6 +842,7 @@ fn bake_witch_held_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -835,6 +867,7 @@ fn bake_witch_held_item(
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
         trim_material_keys,
+        attribute_keys,
         context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
@@ -857,6 +890,7 @@ fn bake_copper_golem_held_items(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -887,6 +921,7 @@ fn bake_copper_golem_held_items(
             entity_use_elapsed_ticks(instance, using_item),
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
@@ -912,6 +947,7 @@ fn bake_allay_held_items(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -942,6 +978,7 @@ fn bake_allay_held_items(
             entity_use_elapsed_ticks(instance, using_item),
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
@@ -965,6 +1002,7 @@ fn bake_villager_crossed_arms_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -989,6 +1027,7 @@ fn bake_villager_crossed_arms_item(
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
         trim_material_keys,
+        attribute_keys,
         context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
@@ -1012,6 +1051,7 @@ fn bake_panda_held_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -1036,6 +1076,7 @@ fn bake_panda_held_item(
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
         trim_material_keys,
+        attribute_keys,
         context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
@@ -1059,6 +1100,7 @@ fn bake_custom_head_item(
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
@@ -1092,6 +1134,7 @@ fn bake_custom_head_item(
             0.0,
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             context_dimension,
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
@@ -1203,6 +1246,7 @@ fn bake_item_stack_at_transform(
     using_item_ticks: f32,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     context_dimension: Option<&str>,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
@@ -1257,6 +1301,7 @@ fn bake_item_stack_at_transform(
         context_dimension,
         trim_material_keys,
         enchantment_keys,
+        attribute_keys,
         using_item,
         use_context,
     ) {
@@ -2157,6 +2202,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -2213,6 +2259,7 @@ mod tests {
                 context_entity_type,
                 false,
                 0.0,
+                None,
                 None,
                 None,
                 None,

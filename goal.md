@@ -816,9 +816,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     matches decoded 0-based `VillagerType` holder ids against the vanilla
     `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
     now preserves decoded modifier entries and matches direct plus
-    container-nested `modifiers` collection predicates over `id`, `amount`,
-    `operation`, `slot`, and `size` / `contains` / `count` when the predicate
-    does not require an `attribute` HolderSet.
+    container-nested `modifiers` collection predicates over direct registry-key
+    `attribute` HolderSets when `minecraft:attribute` registry keys are
+    available, plus `id`, `amount`, `operation`, `slot`, and `size` /
+    `contains` / `count`.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
@@ -848,9 +849,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
-    payloads / server datapack tag remaps, attribute HolderSet predicates /
-    default item-prototype attribute modifiers, remaining concrete partial
-    predicates and complex exact component codecs, rich/styled written-book page
+    payloads / server datapack tag remaps, attribute tag HolderSets / default
+    item-prototype attribute modifiers, remaining concrete partial predicates
+    and complex exact component codecs, rich/styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, villager type tags / datapack
     villager-type registry remaps, and jukebox inline song payloads / datapack

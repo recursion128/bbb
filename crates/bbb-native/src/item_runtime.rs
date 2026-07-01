@@ -1465,6 +1465,7 @@ impl NativeItemRuntime {
                             potion_tags: self.potion_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
+                            attribute_keys: None,
                         })
                         .into_iter()
                         .next()
@@ -1570,6 +1571,7 @@ impl NativeItemRuntime {
             display_context,
             trim_material_keys,
             None,
+            None,
         )
     }
 
@@ -1579,6 +1581,7 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
@@ -1590,6 +1593,7 @@ impl NativeItemRuntime {
             None,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
         )
     }
 
@@ -1622,6 +1626,7 @@ impl NativeItemRuntime {
             context_dimension,
             trim_material_keys,
             None,
+            None,
             using_item,
             use_context,
         )
@@ -1636,6 +1641,7 @@ impl NativeItemRuntime {
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
@@ -1649,6 +1655,7 @@ impl NativeItemRuntime {
             context_dimension,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
         )
     }
 
@@ -1663,6 +1670,7 @@ impl NativeItemRuntime {
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         let Some(icon) = self.icon_for_stack_with_model_registry_context(
             stack,
@@ -1673,6 +1681,7 @@ impl NativeItemRuntime {
             0.0,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1933,6 +1942,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             None,
+            None,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1958,6 +1968,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
@@ -1979,6 +1990,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -2059,6 +2071,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             None,
+            None,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -2084,6 +2097,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
@@ -2110,6 +2124,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -2144,6 +2159,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             false,
             false,
             false,
@@ -2166,6 +2182,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
@@ -2228,6 +2245,7 @@ impl NativeItemRuntime {
             potion_tags: self.potion_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
         };
         let layers = self
             .item_icon_models
@@ -2393,6 +2411,7 @@ impl NativeItemRuntime {
             potion_tags: parent_context.potion_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
+            attribute_keys: parent_context.attribute_keys,
         };
         let layers = self
             .item_icon_models
@@ -5671,6 +5690,10 @@ mod tests {
             "minecraft:sharpness".to_string(),
             "minecraft:mending".to_string(),
         ];
+        let attribute_keys = [
+            "minecraft:generic.attack_damage".to_string(),
+            "minecraft:generic.scale".to_string(),
+        ];
         let healing_potion_id = 24;
         let selected_with_trim_keys = |item_id, component_patch| {
             runtime
@@ -5707,6 +5730,39 @@ mod tests {
                     0.0,
                     None,
                     Some(&enchantment_keys),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    ItemModelKeybindContext::default(),
+                    false,
+                )
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+        let selected_with_attribute_keys = |item_id, component_patch| {
+            runtime
+                .icon_for_stack_with_model_registry_context(
+                    &ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch,
+                    },
+                    None,
+                    false,
+                    ItemModelUseContext::inactive(),
+                    BlockModelDisplayContext::Gui,
+                    0.0,
+                    None,
+                    None,
+                    Some(&attribute_keys),
                     None,
                     None,
                     None,
@@ -8312,6 +8368,14 @@ mod tests {
             uv("component_condition_container_partial_villager_variant_absent")
         );
 
+        let modifier_with_attribute =
+            |attribute_id, id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
+                attribute_id,
+                modifier_id: id.to_string(),
+                amount_bits: amount.to_bits(),
+                operation_id,
+                slot_id,
+            };
         let modifier = |id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
             attribute_id: 7,
             modifier_id: id.to_string(),
@@ -8411,6 +8475,46 @@ mod tests {
                 }
             ),
             uv("component_condition_container_partial_attribute_modifiers_absent")
+        );
+        let attack_damage_modifier = modifier_with_attribute(0, "minecraft:test/speed", 1.5, 0, 1);
+        let scale_modifier = modifier_with_attribute(1, "minecraft:test/speed", 1.5, 0, 1);
+        let attribute_patch = |modifier| DataComponentPatchSummary {
+            added_type_ids: vec![16],
+            attribute_modifiers: vec![modifier],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(61, attribute_patch(attack_damage_modifier.clone())),
+            uv("component_condition_attribute_modifiers_attribute_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(61, attribute_patch(attack_damage_modifier.clone())),
+            uv("component_condition_attribute_modifiers_attribute_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(61, attribute_patch(scale_modifier.clone())),
+            uv("component_condition_attribute_modifiers_attribute_absent")
+        );
+        let container_attribute_patch = |modifier| DataComponentPatchSummary {
+            added_type_ids: vec![75],
+            container_item_count: Some(1),
+            container_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: attribute_patch(modifier),
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_attribute_keys(
+                62,
+                container_attribute_patch(attack_damage_modifier.clone())
+            ),
+            uv("component_condition_container_partial_attribute_modifiers_attribute_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(62, container_attribute_patch(scale_modifier)),
+            uv("component_condition_container_partial_attribute_modifiers_attribute_absent")
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -9964,6 +10068,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_container_partial_villager_variant");
                 public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS = registerItem("component_condition_attribute_modifiers");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_attribute_modifiers");
+                public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_attribute_modifiers_attribute");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_container_partial_attribute_modifiers_attribute");
             }"#,
         );
         write_json(
@@ -11636,6 +11742,78 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_attribute_modifiers_attribute.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:attribute_modifiers",
+                    "value": {
+                        "modifiers": {
+                            "contains": [
+                                {
+                                    "attribute": "minecraft:generic.attack_damage",
+                                    "id": "minecraft:test/speed"
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_attribute_modifiers_attribute_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_attribute_modifiers_attribute_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_attribute_modifiers_attribute.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "contains": [
+                                                        {
+                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "id": "minecraft:test/speed"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_attribute_modifiers_attribute_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_attribute_modifiers_attribute_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_enchantments_level.json"),
             r#"{
                 "model": {
@@ -12307,6 +12485,22 @@ mod tests {
             (
                 "component_condition_container_partial_attribute_modifiers_absent",
                 [70, 50, 90, 255],
+            ),
+            (
+                "component_condition_attribute_modifiers_attribute_present",
+                [120, 220, 245, 255],
+            ),
+            (
+                "component_condition_attribute_modifiers_attribute_absent",
+                [35, 70, 95, 255],
+            ),
+            (
+                "component_condition_container_partial_attribute_modifiers_attribute_present",
+                [230, 150, 245, 255],
+            ),
+            (
+                "component_condition_container_partial_attribute_modifiers_attribute_absent",
+                [90, 35, 95, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

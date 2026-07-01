@@ -75,6 +75,7 @@ pub(crate) fn item_frame_models(
     terrain_textures: &TerrainTextureState,
     trim_material_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
     let mut block_meshes = Vec::new();
     let mut block_z_offset_forward_meshes = Vec::new();
@@ -206,6 +207,7 @@ pub(crate) fn item_frame_models(
             BlockModelDisplayContext::Fixed,
             trim_material_keys,
             enchantment_keys,
+            attribute_keys,
         ) {
             quads.extend(bake_generated_item_quads(
                 &layer.mask,
@@ -418,7 +420,14 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(700, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID));
 
-        let visible = item_frame_models(&world, None, &TerrainTextureState::default(), None, None);
+        let visible = item_frame_models(
+            &world,
+            None,
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
         assert!(visible.block_meshes.is_empty());
         assert_eq!(visible.block_z_offset_forward_meshes.len(), 1);
         assert!(visible.flat_meshes.is_empty());
@@ -433,7 +442,14 @@ mod tests {
                 ENTITY_SHARED_FLAG_INVISIBLE,
             )],
         }));
-        let hidden = item_frame_models(&world, None, &TerrainTextureState::default(), None, None);
+        let hidden = item_frame_models(
+            &world,
+            None,
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
         assert!(hidden.block_meshes.is_empty());
         assert!(hidden.block_z_offset_forward_meshes.is_empty());
         assert!(hidden.flat_meshes.is_empty());
@@ -455,7 +471,14 @@ mod tests {
         assert_eq!(state.map_id, Some(7));
         assert!(world.map_item(7).is_none());
 
-        let models = item_frame_models(&world, None, &TerrainTextureState::default(), None, None);
+        let models = item_frame_models(
+            &world,
+            None,
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
         assert!(models.block_meshes.is_empty());
         assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
@@ -492,7 +515,14 @@ mod tests {
             }),
         }));
 
-        let models = item_frame_models(&world, None, &TerrainTextureState::default(), None, None);
+        let models = item_frame_models(
+            &world,
+            None,
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
         assert!(models.block_meshes.is_empty());
         assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
@@ -589,6 +619,7 @@ mod tests {
             &world,
             Some(&item_runtime),
             &TerrainTextureState::default(),
+            None,
             None,
             None,
         );

@@ -1582,6 +1582,7 @@ pub(crate) fn pump_network_and_terrain(
         + entity_partial_tick;
     let trim_material_keys = world_trim_material_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
+    let attribute_keys = world_attribute_keys(world);
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -1589,6 +1590,7 @@ pub(crate) fn pump_network_and_terrain(
         item_model_age_ticks,
         trim_material_keys.as_deref(),
         enchantment_keys.as_deref(),
+        attribute_keys.as_deref(),
     );
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(
         world,
@@ -1608,6 +1610,7 @@ pub(crate) fn pump_network_and_terrain(
         terrain_textures,
         trim_material_keys.as_deref(),
         enchantment_keys.as_deref(),
+        attribute_keys.as_deref(),
     );
     let entity_block_meshes =
         entity_block_models(&entity_instances, world, item_runtime, terrain_textures);
@@ -4081,6 +4084,21 @@ fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
         })
 }
 
+/// The `minecraft:attribute` registry keys by holder id (registration order),
+/// projected from the world's synced dynamic registry so item-model
+/// `minecraft:attribute_modifiers` predicates can match entry attributes.
+fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world
+        .registry_content("minecraft:attribute")
+        .map(|registry| {
+            registry
+                .entries
+                .iter()
+                .map(|entry| entry.id.clone())
+                .collect()
+        })
+}
+
 fn local_player_fishing_rod_casts_item(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -4112,6 +4130,7 @@ fn hud_item_icon_for_stack(
     let item_runtime = item_runtime?;
     let trim_material_keys = world_trim_material_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
+    let attribute_keys = world_attribute_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
@@ -4169,6 +4188,7 @@ fn hud_item_icon_for_stack(
             item_model_cooldown_progress,
             trim_material_keys.as_deref(),
             enchantment_keys.as_deref(),
+            attribute_keys.as_deref(),
             owner_main_hand_left,
             context_entity_type,
             context_dimension,

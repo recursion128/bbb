@@ -3731,6 +3731,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         0.0,
         None,
         None,
+        None,
     );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_models::dropped_item_models(
@@ -3739,6 +3740,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &terrain_textures,
         0.0,
         Some(&trim_material_keys),
+        None,
         None,
     );
 
@@ -3774,6 +3776,7 @@ fn item_frame_models_use_world_trim_material_select_context() {
         &terrain_textures,
         None,
         None,
+        None,
     );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_frames::item_frame_models(
@@ -3781,6 +3784,7 @@ fn item_frame_models_use_world_trim_material_select_context() {
         Some(&item_runtime),
         &terrain_textures,
         Some(&trim_material_keys),
+        None,
         None,
     );
 

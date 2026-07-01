@@ -989,6 +989,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `minecraft:enchantment` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub enchantment_keys: Option<&'a [String]>,
+    /// `minecraft:attribute` registry keys by holder id (the dynamic registry,
+    /// projected from `bbb-world` at the call site).
+    pub attribute_keys: Option<&'a [String]>,
 }
 
 impl IconResolveContext<'_> {
@@ -1634,7 +1637,11 @@ fn item_stack_matches_component_predicate(
         );
     }
     if attribute_modifiers_component_predicate_is_supported(property) {
-        return item_stack_matches_attribute_modifiers_predicate(property, ctx.component_patch);
+        return item_stack_matches_attribute_modifiers_predicate(
+            property,
+            ctx.component_patch,
+            ctx.attribute_keys,
+        );
     }
     if bundle_contents_component_predicate_is_supported(property) {
         return item_stack_matches_bundle_contents_predicate(property, ctx);
@@ -2049,6 +2056,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
         ctx.potion_tags,
+        ctx.attribute_keys,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2110,6 +2118,7 @@ fn item_stack_matches_container_predicate(
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
         ctx.potion_tags,
+        ctx.attribute_keys,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2361,9 +2370,12 @@ fn attribute_modifier_entry_predicate_is_supported(value: &Value) -> bool {
     let Some(value) = value.as_object() else {
         return false;
     };
-    value
-        .keys()
-        .all(|key| key == "id" || key == "amount" || key == "operation" || key == "slot")
+    value.keys().all(|key| {
+        key == "attribute" || key == "id" || key == "amount" || key == "operation" || key == "slot"
+    }) && value
+        .get("attribute")
+        .map(registry_direct_key_holder_set_is_supported)
+        .unwrap_or(true)
         && value
             .get("id")
             .map(|id| id.as_str().is_some())
@@ -2396,6 +2408,7 @@ fn equipment_slot_group_is_supported(value: &Value) -> bool {
 fn item_stack_matches_attribute_modifiers_predicate(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     if !attribute_modifiers_component_predicate_is_supported(property) {
         return false;
@@ -2403,12 +2416,13 @@ fn item_stack_matches_attribute_modifiers_predicate(
     let Some(value) = property.raw().get("value") else {
         return false;
     };
-    item_stack_matches_attribute_modifiers_value(value, component_patch)
+    item_stack_matches_attribute_modifiers_value(value, component_patch, attribute_keys)
 }
 
 fn item_stack_matches_attribute_modifiers_value(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     let Some(component_patch) = component_patch else {
         return false;
@@ -2429,6 +2443,7 @@ fn item_stack_matches_attribute_modifiers_value(
         attribute_modifier_collection_predicate_matches(
             modifiers,
             &component_patch.attribute_modifiers,
+            attribute_keys,
         )
     })
 }
@@ -2436,6 +2451,7 @@ fn item_stack_matches_attribute_modifiers_value(
 fn attribute_modifier_collection_predicate_matches(
     value: &Value,
     modifiers: &[AttributeModifierSummary],
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2445,9 +2461,9 @@ fn attribute_modifier_collection_predicate_matches(
             return false;
         };
         if !predicates.iter().all(|predicate| {
-            modifiers
-                .iter()
-                .any(|modifier| attribute_modifier_entry_predicate_matches(predicate, modifier))
+            modifiers.iter().any(|modifier| {
+                attribute_modifier_entry_predicate_matches(predicate, modifier, attribute_keys)
+            })
         }) {
             return false;
         }
@@ -2458,7 +2474,7 @@ fn attribute_modifier_collection_predicate_matches(
         };
         if !entries
             .iter()
-            .all(|entry| attribute_modifier_count_entry_matches(entry, modifiers))
+            .all(|entry| attribute_modifier_count_entry_matches(entry, modifiers, attribute_keys))
         {
             return false;
         }
@@ -2477,6 +2493,7 @@ fn attribute_modifier_collection_predicate_matches(
 fn attribute_modifier_count_entry_matches(
     value: &Value,
     modifiers: &[AttributeModifierSummary],
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2486,7 +2503,9 @@ fn attribute_modifier_count_entry_matches(
     };
     let count = modifiers
         .iter()
-        .filter(|modifier| attribute_modifier_entry_predicate_matches(test, modifier))
+        .filter(|modifier| {
+            attribute_modifier_entry_predicate_matches(test, modifier, attribute_keys)
+        })
         .count();
     let Ok(count) = i32::try_from(count) else {
         return false;
@@ -2497,12 +2516,24 @@ fn attribute_modifier_count_entry_matches(
 fn attribute_modifier_entry_predicate_matches(
     value: &Value,
     modifier: &AttributeModifierSummary,
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
     };
     if let Some(id) = value.get("id") {
         if id.as_str() != Some(modifier.modifier_id.as_str()) {
+            return false;
+        }
+    }
+    if let Some(attribute) = value.get("attribute") {
+        let Ok(attribute_index) = usize::try_from(modifier.attribute_id) else {
+            return false;
+        };
+        let Some(attribute_key) = attribute_keys.and_then(|keys| keys.get(attribute_index)) else {
+            return false;
+        };
+        if !registry_key_holder_set_matches(Some(attribute), attribute_key, None) {
             return false;
         }
     }
@@ -2577,6 +2608,22 @@ fn item_holder_set_entry_is_supported(expected: &str) -> bool {
     }
 }
 
+fn registry_direct_key_holder_set_is_supported(value: &Value) -> bool {
+    match value {
+        Value::String(expected) => registry_direct_key_holder_set_entry_is_supported(expected),
+        Value::Array(expected) => expected.iter().all(|expected| {
+            expected
+                .as_str()
+                .is_some_and(registry_direct_key_holder_set_entry_is_supported)
+        }),
+        _ => false,
+    }
+}
+
+fn registry_direct_key_holder_set_entry_is_supported(expected: &str) -> bool {
+    !expected.is_empty() && !expected.starts_with('#')
+}
+
 fn item_collection_predicate_matches(
     value: &Value,
     items: &[ItemStackTemplateSummary],
@@ -2590,6 +2637,7 @@ fn item_collection_predicate_matches(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2614,6 +2662,7 @@ fn item_collection_predicate_matches(
                     trim_pattern_tags,
                     jukebox_song_tags,
                     potion_tags,
+                    attribute_keys,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2639,6 +2688,7 @@ fn item_collection_predicate_matches(
                 trim_pattern_tags,
                 jukebox_song_tags,
                 potion_tags,
+                attribute_keys,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2672,6 +2722,7 @@ fn item_predicate_count_entry_matches(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2696,6 +2747,7 @@ fn item_predicate_count_entry_matches(
                 trim_pattern_tags,
                 jukebox_song_tags,
                 potion_tags,
+                attribute_keys,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2719,6 +2771,7 @@ fn item_predicate_matches(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2759,6 +2812,7 @@ fn item_predicate_matches(
             trim_pattern_tags,
             jukebox_song_tags,
             potion_tags,
+            attribute_keys,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2779,6 +2833,7 @@ fn item_data_component_matchers_match(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2808,6 +2863,7 @@ fn item_data_component_matchers_match(
             trim_pattern_tags,
             jukebox_song_tags,
             potion_tags,
+            attribute_keys,
             default_max_damage_for_item,
         ) {
             return false;
@@ -2857,6 +2913,7 @@ fn item_partial_component_predicates_match(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2878,6 +2935,7 @@ fn item_partial_component_predicates_match(
             trim_pattern_tags,
             jukebox_song_tags,
             potion_tags,
+            attribute_keys,
         )
     })
 }
@@ -2895,6 +2953,7 @@ fn item_partial_component_predicate_match(
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
     potion_tags: Option<&TagCatalog>,
+    attribute_keys: Option<&[String]>,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
@@ -2927,7 +2986,7 @@ fn item_partial_component_predicate_match(
             item_stack_matches_villager_variant_value(value, component_patch)
         }
         "minecraft:attribute_modifiers" => {
-            item_stack_matches_attribute_modifiers_value(value, component_patch)
+            item_stack_matches_attribute_modifiers_value(value, component_patch, attribute_keys)
         }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
