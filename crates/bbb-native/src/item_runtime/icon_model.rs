@@ -2323,6 +2323,10 @@ fn simple_component_text_list(value: &Value) -> Option<Vec<&str>> {
         .collect()
 }
 
+fn unit_component_value_is_supported(value: &Value) -> bool {
+    value.as_object().is_some_and(|value| value.is_empty())
+}
+
 fn item_predicate_list_is_supported(value: &Value) -> bool {
     value
         .as_array()
@@ -2390,6 +2394,7 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (matches!(component, "minecraft:custom_name" | "minecraft:item_name")
             && simple_component_text(expected).is_some())
         || (component == "minecraft:lore" && simple_component_text_list(expected).is_some())
+        || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3520,6 +3525,15 @@ fn item_exact_component_matches(
                 .iter()
                 .zip(expected)
                 .all(|(actual, expected)| actual == expected);
+    }
+
+    if component == "minecraft:unbreakable" {
+        return unit_component_value_is_supported(expected)
+            && item.component_patch.unbreakable
+            && !item
+                .component_patch
+                .removed_type_ids
+                .contains(&UNBREAKABLE_COMPONENT_ID);
     }
 
     let Some(expected) = simple_component_text(expected) else {

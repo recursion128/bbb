@@ -838,7 +838,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, exact scalar/default `DataComponentMatchers`
     components, and patch-backed simple literal `minecraft:custom_name` /
-    `minecraft:item_name` / `minecraft:lore` exact components plus nested partial
+    `minecraft:item_name` / `minecraft:lore` exact components plus
+    `minecraft:unbreakable` Unit exact components and nested partial
     `minecraft:damage`, `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
@@ -866,7 +867,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs beyond
-    simple literal name/lore components,
+    simple literal name/lore and Unit `unbreakable` components,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry

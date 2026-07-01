@@ -7254,6 +7254,33 @@ mod tests {
         );
         assert_eq!(
             selected(
+                83,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![4],
+                    unbreakable: true,
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_unbreakable_present")
+        );
+        assert_eq!(
+            selected(83, named_bundle_entry(DataComponentPatchSummary::default())),
+            uv("component_condition_bundle_exact_unbreakable_absent")
+        );
+        assert_eq!(
+            selected(
+                83,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![4],
+                    removed_type_ids: vec![4],
+                    unbreakable: true,
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_unbreakable_absent")
+        );
+        assert_eq!(
+            selected(
                 33,
                 DataComponentPatchSummary {
                     added_type_ids: vec![75],
@@ -10709,6 +10736,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_COMPONENT_PAGE = registerItem("component_condition_written_book_component_page");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_COMPONENT_TEXT = registerItem("component_condition_bundle_exact_component_text");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LORE = registerItem("component_condition_bundle_exact_lore");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_UNBREAKABLE = registerItem("component_condition_bundle_exact_unbreakable");
             }"#,
         );
         write_json(
@@ -11265,6 +11293,39 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_lore_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_unbreakable.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:unbreakable": {}
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_unbreakable_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_unbreakable_absent"
                     }
                 }
             }"#,
@@ -13675,6 +13736,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_lore_absent",
                 [50, 75, 85, 255],
+            ),
+            (
+                "component_condition_bundle_exact_unbreakable_present",
+                [230, 210, 175, 255],
+            ),
+            (
+                "component_condition_bundle_exact_unbreakable_absent",
+                [85, 70, 50, 255],
             ),
             (
                 "component_condition_container_components_present",
