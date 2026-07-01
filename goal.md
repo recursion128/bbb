@@ -1225,6 +1225,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.
 - LevelEvent particle side effects：
+  - [x] ender-eye break portal ring：event `2003` now emits the vanilla
+    double portal ring (`angle += PI / 20`, velocity radii `-5` and `-7`)
+    after consuming the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
+    random draws; the ender-eye item particles remain deferred with item
+    particle option rendering.
   - [x] bonemeal / happy-villager in-block particles：events `2011` and
     `2012` now mirror vanilla `ParticleUtils.spawnParticleInBlock` for the
     air/default spread-height branch, using event `data` as count, gaussian
@@ -1232,7 +1237,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     block/item option events remain follow-up work.
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
-    happy-villager 之外的剩余事件。
+    portal ring/happy-villager 之外的剩余事件。
 
 完成标准：
 

@@ -391,6 +391,7 @@ impl ParticleCommandResolver {
                 batch
             }
             DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT => self.dragon_breath_particle_batch(event, random),
+            ENDER_EYE_BREAK_LEVEL_EVENT => self.ender_eye_break_particle_batch(event, random),
             EXPLOSION_LEVEL_EVENT => self.simple_particle_batch(
                 EXPLOSION_PARTICLE_TYPE_ID,
                 vec![(
@@ -631,6 +632,64 @@ impl ParticleCommandResolver {
                 powered_velocity,
                 false,
             ));
+        }
+
+        batch
+    }
+
+    fn ender_eye_break_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        for _ in 0..ENDER_EYE_BREAK_ITEM_PARTICLE_COUNT {
+            random.next_gaussian();
+            random.next_double();
+            random.next_gaussian();
+        }
+
+        let template = match self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        let center_x = f64::from(event.pos.x) + 0.5;
+        let y = f64::from(event.pos.y);
+        let center_z = f64::from(event.pos.z) + 0.5;
+        let mut angle = 0.0_f64;
+        while angle < std::f64::consts::TAU {
+            let angle_cos = angle.cos();
+            let angle_sin = angle.sin();
+            let position = Vec3d {
+                x: center_x + angle_cos * 5.0,
+                y: y - 0.4,
+                z: center_z + angle_sin * 5.0,
+            };
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                Vec3d {
+                    x: angle_cos * -5.0,
+                    y: 0.0,
+                    z: angle_sin * -5.0,
+                },
+                false,
+            ));
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                Vec3d {
+                    x: angle_cos * -7.0,
+                    y: 0.0,
+                    z: angle_sin * -7.0,
+                },
+                false,
+            ));
+            angle += std::f64::consts::PI / 20.0;
         }
 
         batch
@@ -1146,6 +1205,7 @@ const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
+const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
 const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
 const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
@@ -1177,6 +1237,7 @@ const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
+const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
 const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
@@ -1203,6 +1264,7 @@ const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
 const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
 const EGG_CRACK_PARTICLE_MAX: i32 = 6;
+const ENDER_EYE_BREAK_ITEM_PARTICLE_COUNT: i32 = 8;
 
 fn default_particle_seed() -> i64 {
     SystemTime::now()
@@ -1602,6 +1664,53 @@ mod tests {
                 0.188_500_336_334_049_33,
                 -7.453_970_007_633_87,
             ],
+            false,
+        );
+
+        let mut ender_eye_random = LevelEventSoundRandomState::with_seed(0);
+        let ender_eye = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2003,
+                ..level_event_packet(2003)
+            },
+            &mut ender_eye_random,
+        );
+        assert_eq!(ender_eye.len(), 80);
+        assert_eq!(
+            ender_eye.commands[0].sprite_ids,
+            vec![
+                "minecraft:generic_0".to_string(),
+                "minecraft:generic_1".to_string(),
+                "minecraft:generic_2".to_string(),
+                "minecraft:generic_3".to_string(),
+                "minecraft:generic_4".to_string(),
+                "minecraft:generic_5".to_string(),
+                "minecraft:generic_6".to_string(),
+                "minecraft:generic_7".to_string(),
+            ]
+        );
+        assert_particle_command(
+            &ender_eye.commands[0],
+            60,
+            "minecraft:portal",
+            [15.5, 63.6, -2.5],
+            [-5.0, 0.0, -0.0],
+            false,
+        );
+        assert_particle_command(
+            &ender_eye.commands[1],
+            60,
+            "minecraft:portal",
+            [15.5, 63.6, -2.5],
+            [-7.0, 0.0, -0.0],
+            false,
+        );
+        assert_particle_command(
+            &ender_eye.commands[20],
+            60,
+            "minecraft:portal",
+            [10.5, 63.6, 2.5],
+            [-0.0, 0.0, -5.0],
             false,
         );
 
@@ -2167,6 +2276,12 @@ mod tests {
             &[
                 "generic_7",
                 "generic_6",
+                "generic_0",
+                "generic_1",
+                "generic_2",
+                "generic_3",
+                "generic_4",
+                "generic_5",
                 "dragon_breath_0",
                 "flame",
                 "soul_fire_flame",
@@ -2282,6 +2397,21 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:poof_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("portal.json"),
+            r#"{
+              "textures": [
+                "minecraft:generic_0",
+                "minecraft:generic_1",
+                "minecraft:generic_2",
+                "minecraft:generic_3",
+                "minecraft:generic_4",
+                "minecraft:generic_5",
+                "minecraft:generic_6",
+                "minecraft:generic_7"
               ]
             }"#,
         );

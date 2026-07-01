@@ -215,6 +215,9 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
         particles for the current air/default spread-height path, using event
         `data` as count and gaussian `0.02` velocity
+      - event `2003`: the vanilla portal ring portion of ender-eye break,
+        preserving the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
+        random draws for future item-particle support
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
       - event `2006`: 200 vanilla-positioned `minecraft:dragon_breath`
@@ -244,6 +247,9 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:trial_omen`, and `minecraft:soul_fire_flame` particles
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
+    - Remaining item/block option LevelEvent branches, including event `2003`'s
+      ender-eye item particles, stay deferred with terrain/item particle option
+      rendering rather than being approximated as simple atlas particles.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
