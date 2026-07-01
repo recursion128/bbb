@@ -469,6 +469,7 @@ impl ParticleCommandResolver {
                 BLOCK_FACE_PARTICLE_MAX,
                 random,
             ),
+            SCULK_CHARGE_LEVEL_EVENT => self.sculk_charge_particle_batch(event, random),
             EGG_CRACK_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
                 EGG_CRACK_PARTICLE_TYPE_ID,
@@ -528,6 +529,112 @@ impl ParticleCommandResolver {
                 self.shoot_particles(event, WHITE_SMOKE_PARTICLE_TYPE_ID, random)
             }
             _ => ParticleSpawnBatch::default(),
+        }
+    }
+
+    fn sculk_charge_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let count = event.data >> 6;
+        if count <= 0 {
+            return ParticleSpawnBatch::default();
+        }
+
+        let template = match self.simple_particle_template(SCULK_CHARGE_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let particle_data = event.data & 63;
+
+        if particle_data == 0 {
+            for direction in BLOCK_FACE_DIRECTIONS {
+                let roll = if *direction == BLOCK_FACE_DIRECTION_DOWN {
+                    std::f32::consts::PI
+                } else {
+                    0.0
+                };
+                let step_factor = if direction.1 != 0 {
+                    SCULK_CHARGE_FULL_BLOCK_Y_FACTOR
+                } else {
+                    SCULK_CHARGE_FULL_BLOCK_SIDE_FACTOR
+                };
+                self.append_sculk_charge_face_particles(
+                    &mut batch,
+                    &template,
+                    event,
+                    *direction,
+                    step_factor,
+                    roll,
+                    count,
+                    random,
+                );
+            }
+        } else {
+            for (direction_index, direction) in BLOCK_FACE_DIRECTIONS.iter().enumerate() {
+                if particle_data & (1 << direction_index) == 0 {
+                    continue;
+                }
+                let roll = if *direction == BLOCK_FACE_DIRECTION_UP {
+                    std::f32::consts::PI
+                } else {
+                    0.0
+                };
+                self.append_sculk_charge_face_particles(
+                    &mut batch,
+                    &template,
+                    event,
+                    *direction,
+                    SCULK_CHARGE_MULTIFACE_FACTOR,
+                    roll,
+                    count,
+                    random,
+                );
+            }
+        }
+
+        batch
+    }
+
+    fn append_sculk_charge_face_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        event: &LevelEvent,
+        direction: (i32, i32, i32),
+        step_factor: f64,
+        roll: f32,
+        count: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let particle_count = random.next_int_bound(count + 1);
+        for _ in 0..particle_count {
+            let speed = Vec3d {
+                x: random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+                y: random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+                z: random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+            };
+            let (position, velocity) =
+                block_face_particle(event, direction, speed, step_factor, random);
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                position,
+                velocity,
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                ParticleOptionRenderState {
+                    roll: Some(roll),
+                    ..ParticleOptionRenderState::default()
+                },
+            ));
         }
     }
 
@@ -1575,6 +1682,7 @@ const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
+const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
 const SCULK_SHRIEK_PARTICLES_LEVEL_EVENT: i32 = 3007;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
 const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
@@ -1626,9 +1734,15 @@ const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
     (-1, 0, 0),
     (1, 0, 0),
 ];
+const BLOCK_FACE_DIRECTION_DOWN: (i32, i32, i32) = (0, -1, 0);
+const BLOCK_FACE_DIRECTION_UP: (i32, i32, i32) = (0, 1, 0);
 const BLOCK_FACE_STEP_FACTOR: f64 = 0.55;
 const BLOCK_FACE_PARTICLE_MIN: i32 = 3;
 const BLOCK_FACE_PARTICLE_MAX: i32 = 5;
+const SCULK_CHARGE_FULL_BLOCK_Y_FACTOR: f64 = 0.65;
+const SCULK_CHARGE_FULL_BLOCK_SIDE_FACTOR: f64 = 0.57;
+const SCULK_CHARGE_MULTIFACE_FACTOR: f64 = 0.35;
+const SCULK_CHARGE_SPEED_VAR: f64 = 0.005;
 const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
 const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
@@ -2542,6 +2656,76 @@ mod tests {
         assert_eq!(scrape.commands[0].particle_type_id, 104);
         assert_eq!(scrape.commands[0].particle_id, "minecraft:scrape");
 
+        let mut sculk_charge_full_random = LevelEventSoundRandomState::with_seed(0);
+        let sculk_charge_full_data = 2 << 6;
+        let sculk_charge_full = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3006,
+                data: sculk_charge_full_data,
+                ..level_event_packet(3006)
+            },
+            &mut sculk_charge_full_random,
+        );
+        let expected_sculk_charge_full = expected_sculk_charge_particles(sculk_charge_full_data);
+        assert_eq!(sculk_charge_full.len(), expected_sculk_charge_full.len());
+        assert_sculk_charge_command(
+            &sculk_charge_full.commands[0],
+            &expected_sculk_charge_full[0],
+        );
+        assert_eq!(
+            sculk_charge_full.commands[0].sprite_ids,
+            vec!["minecraft:sculk_charge_0".to_string()]
+        );
+        assert_eq!(
+            sculk_charge_full.commands[0].option_roll,
+            Some(expected_sculk_charge_full[0].roll)
+        );
+
+        let mut sculk_charge_mask_random = LevelEventSoundRandomState::with_seed(0);
+        let sculk_charge_mask_data = (3 << 6) | (1 << 1) | (1 << 4);
+        let sculk_charge_mask = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3006,
+                data: sculk_charge_mask_data,
+                ..level_event_packet(3006)
+            },
+            &mut sculk_charge_mask_random,
+        );
+        let expected_sculk_charge_mask = expected_sculk_charge_particles(sculk_charge_mask_data);
+        assert_eq!(sculk_charge_mask.len(), expected_sculk_charge_mask.len());
+        assert_sculk_charge_command(
+            &sculk_charge_mask.commands[0],
+            &expected_sculk_charge_mask[0],
+        );
+        assert_eq!(
+            sculk_charge_mask.commands[0].option_roll,
+            Some(std::f32::consts::PI)
+        );
+        let first_west_expected = expected_sculk_charge_mask
+            .iter()
+            .find(|expected| expected.direction == (-1, 0, 0))
+            .expect("west multiface particle");
+        let first_west_actual = sculk_charge_mask
+            .commands
+            .iter()
+            .find(|command| {
+                (command.position[0] - (10.5 - SCULK_CHARGE_MULTIFACE_FACTOR)).abs() < 1.0e-12
+            })
+            .expect("west multiface command");
+        assert_sculk_charge_command(first_west_actual, first_west_expected);
+        assert_eq!(first_west_actual.option_roll, Some(0.0));
+
+        let mut sculk_charge_pop_random = LevelEventSoundRandomState::with_seed(0);
+        let sculk_charge_pop = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3006,
+                data: 0,
+                ..level_event_packet(3006)
+            },
+            &mut sculk_charge_pop_random,
+        );
+        assert!(sculk_charge_pop.is_empty());
+
         let mut egg_crack_random = LevelEventSoundRandomState::with_seed(0);
         let egg_crack = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -3428,6 +3612,140 @@ mod tests {
             ],
             dist as f32,
         )
+    }
+
+    #[derive(Debug)]
+    struct ExpectedSculkChargeParticle {
+        direction: (i32, i32, i32),
+        position: [f64; 3],
+        velocity: [f64; 3],
+        roll: f32,
+    }
+
+    fn expected_sculk_charge_particles(data: i32) -> Vec<ExpectedSculkChargeParticle> {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let count = data >> 6;
+        if count <= 0 {
+            return Vec::new();
+        }
+
+        let mut particles = Vec::new();
+        let particle_data = data & 63;
+        if particle_data == 0 {
+            for direction in BLOCK_FACE_DIRECTIONS {
+                let roll = if *direction == BLOCK_FACE_DIRECTION_DOWN {
+                    std::f32::consts::PI
+                } else {
+                    0.0
+                };
+                let step_factor = if direction.1 != 0 {
+                    SCULK_CHARGE_FULL_BLOCK_Y_FACTOR
+                } else {
+                    SCULK_CHARGE_FULL_BLOCK_SIDE_FACTOR
+                };
+                append_expected_sculk_charge_face_particles(
+                    &mut particles,
+                    *direction,
+                    step_factor,
+                    roll,
+                    count,
+                    &mut random,
+                );
+            }
+        } else {
+            for (direction_index, direction) in BLOCK_FACE_DIRECTIONS.iter().enumerate() {
+                if particle_data & (1 << direction_index) == 0 {
+                    continue;
+                }
+                let roll = if *direction == BLOCK_FACE_DIRECTION_UP {
+                    std::f32::consts::PI
+                } else {
+                    0.0
+                };
+                append_expected_sculk_charge_face_particles(
+                    &mut particles,
+                    *direction,
+                    SCULK_CHARGE_MULTIFACE_FACTOR,
+                    roll,
+                    count,
+                    &mut random,
+                );
+            }
+        }
+        particles
+    }
+
+    fn append_expected_sculk_charge_face_particles(
+        particles: &mut Vec<ExpectedSculkChargeParticle>,
+        direction: (i32, i32, i32),
+        step_factor: f64,
+        roll: f32,
+        count: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let particle_count = random.next_int_bound(count + 1);
+        for _ in 0..particle_count {
+            let speed = [
+                expected_random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+                expected_random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+                expected_random_between(random, -SCULK_CHARGE_SPEED_VAR, SCULK_CHARGE_SPEED_VAR),
+            ];
+            let position = expected_block_face_position(direction, step_factor, random);
+            let velocity = [
+                if direction.0 == 0 { speed[0] } else { 0.0 },
+                if direction.1 == 0 { speed[1] } else { 0.0 },
+                if direction.2 == 0 { speed[2] } else { 0.0 },
+            ];
+            particles.push(ExpectedSculkChargeParticle {
+                direction,
+                position,
+                velocity,
+                roll,
+            });
+        }
+    }
+
+    fn expected_block_face_position(
+        (step_x, step_y, step_z): (i32, i32, i32),
+        step_factor: f64,
+        random: &mut LevelEventSoundRandomState,
+    ) -> [f64; 3] {
+        [
+            10.5 + if step_x == 0 {
+                expected_random_between(random, -0.5, 0.5)
+            } else {
+                f64::from(step_x) * step_factor
+            },
+            64.5 + if step_y == 0 {
+                expected_random_between(random, -0.5, 0.5)
+            } else {
+                f64::from(step_y) * step_factor
+            },
+            -2.5 + if step_z == 0 {
+                expected_random_between(random, -0.5, 0.5)
+            } else {
+                f64::from(step_z) * step_factor
+            },
+        ]
+    }
+
+    fn expected_random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -> f64 {
+        min + random.next_double() * (max - min)
+    }
+
+    fn assert_sculk_charge_command(
+        command: &ParticleSpawnCommand,
+        expected: &ExpectedSculkChargeParticle,
+    ) {
+        assert_particle_command(
+            command,
+            SCULK_CHARGE_PARTICLE_TYPE_ID,
+            "minecraft:sculk_charge",
+            expected.position,
+            expected.velocity,
+            true,
+        );
+        assert_eq!(command.option_roll, Some(expected.roll));
     }
 
     fn assert_particle_command(

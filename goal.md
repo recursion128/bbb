@@ -1425,6 +1425,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:shriek` submissions at block center / `SculkShriekerBlock.TOP_Y`
     with `ShriekParticleOption(i * 5)` delays. The waterlogged-gated
     `SCULK_SHRIEKER_SHRIEK` sound branch remains audio/world-state follow-up.
+  - [x] charged sculk block-face particles：event `3006` now mirrors the
+    `count = data >> 6` charged branch for `count > 0`, including
+    `UniformInt.of(0, count)` face repetition, full-block six-face vs
+    `MultifaceBlock.unpack(data & 63)` face selection, vanilla `0.65` /
+    `0.57` / `0.35` step factors, `+-0.005` speed supplier, and
+    `SculkChargeParticleOptions` roll (`DOWN` for full block, `UP` for
+    multiface). The `count == 0` `sculk_charge_pop` branch remains deferred
+    because vanilla chooses count/spread from the target block collision shape.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
     branches plus remaining block/item option event particles remain follow-up

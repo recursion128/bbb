@@ -242,6 +242,12 @@ When an agent does any of the following, update this file in the same slice:
       - event `3003`: vanilla block-face `minecraft:wax_on` particles
       - event `3004`: vanilla block-face `minecraft:wax_off` particles
       - event `3005`: vanilla block-face `minecraft:scrape` particles
+      - event `3006`: the charged `count = data >> 6`, `count > 0`
+        branch now emits vanilla block-face `minecraft:sculk_charge`
+        particles with `UniformInt.of(0, count)` repetition, full-block
+        six-face vs `MultifaceBlock.unpack(data & 63)` face selection,
+        `0.65` / `0.57` / `0.35` step factors, `+-0.005` speed supplier,
+        and `SculkChargeParticleOptions` roll
       - event `3009`: vanilla block-face `minecraft:egg_crack` particles
       - event `3011`: trial spawner smoke plus normal/ominous flame spawn
         particles
@@ -265,7 +271,9 @@ When an agent does any of the following, update this file in the same slice:
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
       `BonemealableBlock` type or water state before choosing the particle
-      spread.
+      spread. Event `3006`'s `count == 0` `minecraft:sculk_charge_pop` branch
+      remains deferred because vanilla chooses particle count/spread from the
+      target block collision shape.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
