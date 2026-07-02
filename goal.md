@@ -314,7 +314,6 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     enchant、nautilus、totem_of_undying、end_rod、sculk_charge、firework、portal、
     reverse_portal 等）经逐个 vanilla-provider 审计确认本就是把 aux 速度直传 base
     `Particle` ctor，flat `Command` 正确，无 gap。初速度这一档不再有可执行小 slice。
-  - lifetime。
   - size curve。
   - alpha/color curve。
   - gravity / collision / player-coupled physics。

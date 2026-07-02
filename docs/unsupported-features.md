@@ -319,6 +319,11 @@ When an agent does any of the following, update this file in the same slice:
       block-light particles, age-based smooth block emission, portal/enchant
       quartic emission, the `FireflyParticle` light fade, and world-sampled
       counterexamples.
+      Renderer lifetime-descriptor tests cover the vanilla 26.1 constructor /
+      provider formula families, including base particle lifetime, rising
+      particles, cloud scaling, ash smoke scaling/division, crit/random divisor
+      formulas, command-option lifetimes, portal/reverse-portal ranges, falling
+      dust, dust scale, and inclusive tick seed particles.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing

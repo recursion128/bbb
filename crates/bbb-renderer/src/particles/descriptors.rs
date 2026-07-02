@@ -5992,7 +5992,35 @@ mod tests {
     }
 
     #[test]
-    fn random_inclusive_lifetime_samples_configured_range() {
+    fn particle_lifetime_descriptors_sample_vanilla_ranges() {
+        let mut random = ParticleRandom::new(11);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::BaseParticle.sample(&mut random);
+            assert!((4..=40).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(12);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::Rising.sample(&mut random);
+            assert!((12..=44).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(13);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::PlayerCloud.sample(&mut random);
+            assert!((17..=65).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(14);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            }
+            .sample(&mut random);
+            assert!((20..=100).contains(&lifetime));
+        }
+
         let mut random = ParticleRandom::new(15);
         for _ in 0..32 {
             let lifetime =
@@ -6064,6 +6092,18 @@ mod tests {
             assert!((12..=24).contains(&lifetime));
         }
 
+        let mut random = ParticleRandom::new(18);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::Portal.sample(&mut random);
+            assert!((40..=49).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(19);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::ReversePortal.sample(&mut random);
+            assert!((60..=61).contains(&lifetime));
+        }
+
         let mut random = ParticleRandom::new(29);
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::FortyOverRandom.sample(&mut random);
@@ -6090,6 +6130,12 @@ mod tests {
             assert!((200..=300).contains(&lifetime));
         }
 
+        let mut random = ParticleRandom::new(47);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::FallingDust.sample(&mut random);
+            assert!((28..=144).contains(&lifetime));
+        }
+
         assert_eq!(
             ParticleLifetimeDescriptor::InclusiveTick {
                 vanilla_lifetime: 7,
@@ -6097,6 +6143,18 @@ mod tests {
             .sample(&mut ParticleRandom::new(49)),
             8
         );
+        assert_eq!(
+            ParticleLifetimeDescriptor::CommandOption { fallback: 3 }
+                .sample(&mut ParticleRandom::new(50)),
+            3
+        );
+
+        let mut random = ParticleRandom::new(51);
+        for _ in 0..32 {
+            let lifetime =
+                ParticleLifetimeDescriptor::DustScale { fallback_scale: 1 }.sample(&mut random);
+            assert!((8..=40).contains(&lifetime));
+        }
     }
 
     #[test]

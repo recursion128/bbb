@@ -1735,3 +1735,9 @@
     `FireflyParticle` light fade, and world-sampled counterexamples. The
     unsupported-features particle runtime ledger no longer tracks light curves
     as an open renderer slice.
+  - [x] particle lifetime coverage：renderer descriptor tests now sample every
+    `ParticleLifetimeDescriptor` formula family against vanilla 26.1 constructor
+    / provider ranges, including base particle, rising, player cloud,
+    ash-smoke, crit/random divisor, command-option, portal/reverse-portal,
+    falling-dust, dust-scale, and inclusive-tick lifetimes. The P1-5 provider
+    checklist no longer tracks lifetime as an open slice.
