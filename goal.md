@@ -282,9 +282,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 
 - 检查 block render shape、face culling、AO、tint、biome tint、fluid overlay 与 vanilla 差异。
   - 流体侧面 + 顶面已按 vanilla `FluidRenderer.addFace(..., addBackFace)` 发射反转背面
-    （submerged 视角可见，底面单面）；follow-up：`water_overlay` 贴图对
-    HalfTransparent / Leaves 邻居的选择（该情形 vanilla 会同时抑制该侧背面），以及
-    `CardinalLighting.NETHER` 的 `up()*side` 侧面 shade。
+    （submerged 视角可见，底面单面）。
+  - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色
+    （`BlockModelLighter`：shaded 面 `byFace(dir)`、非 shaded 面 `up()`），由
+    `DimensionType.cardinalLightType` 选择、经 `WorldStore` 穿进 `TerrainChunkSnapshot`：
+    Nether 维度用 `CardinalLighting.NETHER`（`down`/`up`=0.9，侧面同 DEFAULT），其余
+    内建维度用 `DEFAULT`。follow-up：`water_overlay` 贴图对 HalfTransparent / Leaves
+    邻居的选择（该情形 vanilla 会同时抑制该侧背面）；datapack 维度类型覆盖
+    `cardinal_light` 字段暂未解码（回退 DEFAULT）。
 - 补齐破坏进度、selection overlay、block entity 特殊 renderer、透明块排序等剩余 presentation。
 - 复核 terrain 与 entity/item 共用 atlas、mip、sampler、lightmap 时的状态差异。
 
