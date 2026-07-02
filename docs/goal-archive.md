@@ -1758,6 +1758,10 @@
     native now mirrors vanilla default `MapColor.NONE` for plain glass, glass
     pane, and iron bars. Tests pin the plain glass state and fully connected
     waterlogged pane/bars states to black `option_color`.
+  - [x] `falling_dust` metal bars/chain default-NONE static mapColor expansion：
+    native now mirrors vanilla default `MapColor.NONE` for iron chain plus
+    copper bars and copper chain weathering/waxed variants. Tests pin fully
+    connected waterlogged copper bars and axis/waterlogged chain states.
   - [x] `falling_dust` redstone/rail default-NONE static mapColor expansion：
     native now mirrors vanilla default `MapColor.NONE` for powered/detector/
     activator/ordinary rails, lever, repeater, comparator, tripwire hook, and

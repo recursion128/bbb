@@ -3395,6 +3395,9 @@ fn coral_static_map_color(name: &str) -> Option<u32> {
 
 fn utility_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
+    if copper_bars_or_chain_default_none(name) {
+        return Some(MAP_COLOR_NONE);
+    }
     Some(match name {
         "bedrock"
         | "sticky_piston"
@@ -3438,6 +3441,7 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         "glass"
         | "glass_pane"
         | "iron_bars"
+        | "iron_chain"
         | "ladder"
         | "torch"
         | "wall_torch"
@@ -3483,6 +3487,16 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
+}
+
+fn copper_bars_or_chain_default_none(name: &str) -> bool {
+    let name = name.strip_prefix("waxed_").unwrap_or(name);
+    let name = name
+        .strip_prefix("exposed_")
+        .or_else(|| name.strip_prefix("weathered_"))
+        .or_else(|| name.strip_prefix("oxidized_"))
+        .unwrap_or(name);
+    matches!(name, "copper_bars" | "copper_chain")
 }
 
 fn rotated_pillar_map_color(
@@ -7111,6 +7125,71 @@ mod tests {
                 "minecraft:iron_bars",
             ),
         ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_default_none_metal_bars_chain_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for block_name in [
+            "minecraft:copper_bars",
+            "minecraft:exposed_copper_bars",
+            "minecraft:weathered_copper_bars",
+            "minecraft:oxidized_copper_bars",
+            "minecraft:waxed_copper_bars",
+            "minecraft:waxed_exposed_copper_bars",
+            "minecraft:waxed_weathered_copper_bars",
+            "minecraft:waxed_oxidized_copper_bars",
+        ] {
+            let block_state_id = test_block_state_id(
+                block_name,
+                [
+                    ("east", "true"),
+                    ("north", "true"),
+                    ("south", "true"),
+                    ("waterlogged", "true"),
+                    ("west", "true"),
+                ],
+            );
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+
+        for block_name in [
+            "minecraft:iron_chain",
+            "minecraft:copper_chain",
+            "minecraft:exposed_copper_chain",
+            "minecraft:weathered_copper_chain",
+            "minecraft:oxidized_copper_chain",
+            "minecraft:waxed_copper_chain",
+            "minecraft:waxed_exposed_copper_chain",
+            "minecraft:waxed_weathered_copper_chain",
+            "minecraft:waxed_oxidized_copper_chain",
+        ] {
+            let block_state_id =
+                test_block_state_id(block_name, [("axis", "x"), ("waterlogged", "true")]);
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
