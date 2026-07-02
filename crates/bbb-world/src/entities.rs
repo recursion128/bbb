@@ -41,7 +41,6 @@ use dimensions::{
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
-use projectiles::initial_hurting_projectile_state;
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
 
@@ -1617,11 +1616,13 @@ impl WorldStore {
     pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
         self.counters.entities_received += 1;
         let packet_position = entity_vec3(packet.position);
-        let entity = EntityState {
+        let identity = crate::entities::components::EntityIdentity {
             id: packet.id,
             uuid: packet.uuid,
             entity_type_id: packet.entity_type_id,
             data: packet.data,
+        };
+        let transform = crate::entities::components::EntityTransform {
             position: vanilla_client_position_for_entity_data(
                 packet.entity_type_id,
                 packet_position,
@@ -1635,25 +1636,10 @@ impl WorldStore {
             x_rot: packet.x_rot,
             y_head_rot: packet.y_head_rot,
             on_ground: None,
-            data_values: Vec::new(),
-            equipment: Vec::new(),
-            attributes: Vec::new(),
-            vehicle_id: None,
-            passengers: Vec::new(),
-            leash_holder_id: None,
-            last_animation_action: None,
-            last_event_id: None,
-            last_hurt_yaw: None,
-            mob_effects: BTreeMap::new(),
-            client_animations: EntityClientAnimationState::default(),
-            last_damage: None,
-            minecart_lerp_steps: Vec::new(),
-            minecart_lerp_old_step: None,
-            minecart_lerp_delay: 0,
-            hurting_projectile: initial_hurting_projectile_state(packet.entity_type_id),
         };
 
-        self.entities.insert_or_replace(entity);
+        self.entities
+            .apply_add_entity_components(identity, transform);
         if packet.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
             self.trigger_sky_flash();
         }

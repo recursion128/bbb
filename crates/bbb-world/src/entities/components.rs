@@ -29,55 +29,55 @@ pub(crate) struct EntityTransform {
     pub(crate) on_ground: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMetadata {
     pub(crate) data_values: Vec<ProtocolEntityDataValue>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityEquipment {
     pub(crate) equipment: Vec<ProtocolEquipmentSlotUpdate>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityAttributes {
     pub(crate) attributes: Vec<ProtocolAttributeSnapshot>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct EntityTransientEvents {
     pub(crate) last_animation_action: Option<u8>,
     pub(crate) last_event_id: Option<i8>,
     pub(crate) last_hurt_yaw: Option<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct EntityMount {
     pub(crate) vehicle_id: Option<i32>,
     pub(crate) passengers: Vec<i32>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct EntityLeash {
     pub(crate) holder_id: Option<i32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct EntityMobEffects {
     pub(crate) effects: BTreeMap<i32, MobEffectState>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct EntityClientAnimations {
     pub(crate) animations: EntityClientAnimationState,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) struct EntityDamage {
     pub(crate) last_damage: Option<EntityDamageEventState>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMinecartLerp {
     pub(crate) steps: Vec<ProtocolMinecartStep>,
     pub(crate) old_step: Option<ProtocolMinecartStep>,

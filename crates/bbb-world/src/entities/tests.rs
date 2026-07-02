@@ -13973,3 +13973,26 @@ fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         component_patch: Default::default(),
     }
 }
+
+#[test]
+fn entity_store_clone_matches_projected_states_component_for_component() {
+    let mut store = WorldStore::new();
+    // Plain mob, a minecart (conditional lerp component), a hurting
+    // projectile (conditional acceleration component), and a re-added id.
+    store.apply_add_entity(protocol_add_entity_with_type(1, VANILLA_ENTITY_TYPE_COW_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        2,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        3,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(1, VANILLA_ENTITY_TYPE_COW_ID));
+
+    let cloned = store.clone();
+    assert_eq!(
+        serde_json::to_string(&cloned).unwrap(),
+        serde_json::to_string(&store).unwrap()
+    );
+}

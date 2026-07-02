@@ -354,6 +354,98 @@ impl EntityStore {
         self.spawn_components(state);
     }
 
+    /// Spawns (or re-add-resets) an entity directly from `AddEntity` packet
+    /// components without projecting through a full `EntityState`. A vanilla
+    /// re-add of an existing protocol id resets every component to its
+    /// spawn-fresh value.
+    pub(crate) fn apply_add_entity_components(
+        &mut self,
+        identity: EntityIdentity,
+        transform: EntityTransform,
+    ) {
+        let id = identity.id;
+        let entity_type_id = identity.entity_type_id;
+        let fresh_projectile = entity_hurting_projectile_from_state(entity_type_id, None);
+
+        if let Some(entity) = self.by_protocol_id.get(&id).copied() {
+            if let Ok(mut existing) = self.ecs.get::<&mut EntityIdentity>(entity) {
+                *existing = identity;
+            }
+            if let Ok(mut existing) = self.ecs.get::<&mut EntityTransform>(entity) {
+                *existing = transform;
+            }
+            fn reset<T: hecs::Component + Default>(ecs: &mut World, entity: Entity) {
+                if let Ok(mut existing) = ecs.get::<&mut T>(entity) {
+                    *existing = T::default();
+                }
+            }
+            reset::<EntityMetadata>(&mut self.ecs, entity);
+            reset::<EntityEquipment>(&mut self.ecs, entity);
+            reset::<EntityAttributes>(&mut self.ecs, entity);
+            reset::<EntityTransientEvents>(&mut self.ecs, entity);
+            reset::<EntityMount>(&mut self.ecs, entity);
+            reset::<EntityLeash>(&mut self.ecs, entity);
+            reset::<EntityMobEffects>(&mut self.ecs, entity);
+            reset::<EntityClientAnimations>(&mut self.ecs, entity);
+            reset::<EntityDamage>(&mut self.ecs, entity);
+            if is_vanilla_minecart_type(entity_type_id) {
+                let updated = {
+                    if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
+                        *lerp = EntityMinecartLerp::default();
+                        true
+                    } else {
+                        false
+                    }
+                };
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, EntityMinecartLerp::default());
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityMinecartLerp>(entity);
+            }
+            if let Some(projectile) = fresh_projectile {
+                let updated = {
+                    if let Ok(mut existing) = self.ecs.get::<&mut EntityHurtingProjectile>(entity) {
+                        *existing = projectile;
+                        true
+                    } else {
+                        false
+                    }
+                };
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, projectile);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityHurtingProjectile>(entity);
+            }
+            return;
+        }
+
+        if !self.order.contains(&id) {
+            self.order.push(id);
+        }
+        let entity = self.ecs.spawn((
+            identity,
+            transform,
+            EntityMetadata::default(),
+            EntityEquipment::default(),
+            EntityAttributes::default(),
+            EntityTransientEvents::default(),
+            EntityMount::default(),
+            EntityLeash::default(),
+            EntityMobEffects::default(),
+            EntityClientAnimations::default(),
+            EntityDamage::default(),
+        ));
+        if is_vanilla_minecart_type(entity_type_id) {
+            let _ = self.ecs.insert_one(entity, EntityMinecartLerp::default());
+        }
+        if let Some(projectile) = fresh_projectile {
+            let _ = self.ecs.insert_one(entity, projectile);
+        }
+        self.by_protocol_id.insert(id, entity);
+    }
+
     fn spawn_components(&mut self, state: EntityState) {
         let id = state.id;
         let entity = self.ecs.spawn((
@@ -2892,10 +2984,61 @@ impl Default for EntityStore {
 
 impl Clone for EntityStore {
     fn clone(&self) -> Self {
+        // Clone component-by-component instead of round-tripping every entity
+        // through a full `EntityState` projection; this runs on every control
+        // snapshot publish.
         let mut store = Self::default();
-        for state in self.states() {
-            store.insert_or_replace(state);
+        for (&id, &entity) in &self.by_protocol_id {
+            let (
+                Ok(identity),
+                Ok(transform),
+                Ok(metadata),
+                Ok(equipment),
+                Ok(attributes),
+                Ok(events),
+                Ok(mount),
+                Ok(leash),
+                Ok(effects),
+                Ok(animations),
+                Ok(damage),
+            ) = (
+                self.ecs.get::<&EntityIdentity>(entity),
+                self.ecs.get::<&EntityTransform>(entity),
+                self.ecs.get::<&EntityMetadata>(entity),
+                self.ecs.get::<&EntityEquipment>(entity),
+                self.ecs.get::<&EntityAttributes>(entity),
+                self.ecs.get::<&EntityTransientEvents>(entity),
+                self.ecs.get::<&EntityMount>(entity),
+                self.ecs.get::<&EntityLeash>(entity),
+                self.ecs.get::<&EntityMobEffects>(entity),
+                self.ecs.get::<&EntityClientAnimations>(entity),
+                self.ecs.get::<&EntityDamage>(entity),
+            )
+            else {
+                continue;
+            };
+            let cloned = store.ecs.spawn((
+                (*identity).clone(),
+                *transform,
+                (*metadata).clone(),
+                (*equipment).clone(),
+                (*attributes).clone(),
+                *events,
+                (*mount).clone(),
+                *leash,
+                (*effects).clone(),
+                *animations,
+                *damage,
+            ));
+            if let Ok(lerp) = self.ecs.get::<&EntityMinecartLerp>(entity) {
+                let _ = store.ecs.insert_one(cloned, (*lerp).clone());
+            }
+            if let Ok(projectile) = self.ecs.get::<&EntityHurtingProjectile>(entity) {
+                let _ = store.ecs.insert_one(cloned, *projectile);
+            }
+            store.by_protocol_id.insert(id, cloned);
         }
+        store.order = self.order.clone();
         store
     }
 }
