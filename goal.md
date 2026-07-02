@@ -295,6 +295,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vault particle RNG 之后抽取 `(nextFloat - nextFloat) * 0.2 + 1.0`
     pitch，保留 distance-delay；`3015` 仍 gate 在 event 位置已加载 vault
     block entity。
+  - `1501` / `1502` / `1503` post-sound smoke particle RNG 已覆盖：
+    audio-only path 会在 lava extinguish、redstone torch burnout、end portal
+    frame fill 声音记录后推进 vanilla 烟雾粒子随机流，再抽取后续
+    LevelEvent 声音 seed。
 
 完成标准：
 

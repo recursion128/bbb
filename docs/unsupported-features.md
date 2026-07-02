@@ -6079,7 +6079,10 @@ When an agent does any of the following, update this file in the same slice:
         waterlogged-gated `SCULK_SHRIEKER_SHRIEK` positioned sound when the
         loaded event block state is not waterlogged
       - lava extinguish and redstone torch burnout now share the dispatcher
-        path with renderer smoke side effects for events `1501` and `1502`
+        path with renderer smoke side effects for events `1501` and `1502`;
+        audio-only dispatch also advances the post-sound smoke particle random
+        stream for events `1501`, `1502`, and `1503` before later LevelEvent
+        sound seeds
       - cobweb place event `3018` consumes the vanilla poof-particle random
         sequence before recording/playing:
         - `minecraft:block.cobweb.place`

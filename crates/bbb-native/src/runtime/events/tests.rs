@@ -2981,6 +2981,118 @@ fn level_event_smoke_particles_emit_particle_runtime_batch_and_world_counters() 
 }
 
 #[test]
+fn post_sound_smoke_level_events_advance_particle_randoms_without_particle_sink() {
+    fn advance_expected_particle_randoms(event_type: i32, random: &mut LevelEventSoundRandomState) {
+        match event_type {
+            1501 => {
+                for _ in 0..8 {
+                    let _ = random.next_double();
+                    let _ = random.next_double();
+                }
+            }
+            1502 => {
+                for _ in 0..5 {
+                    let _ = random.next_double();
+                    let _ = random.next_double();
+                    let _ = random.next_double();
+                }
+            }
+            1503 => {
+                for _ in 0..16 {
+                    let _ = random.next_double();
+                    let _ = random.next_double();
+                }
+            }
+            _ => unreachable!("unexpected level event type {event_type}"),
+        }
+    }
+
+    let cases = [
+        (1501, "minecraft:block.lava.extinguish", true),
+        (1502, "minecraft:block.redstone_torch.burnout", true),
+        (1503, "minecraft:block.end_portal_frame.fill", false),
+    ];
+
+    for (event_type, expected_sound, randomized_pitch) in cases {
+        let event = LevelEvent {
+            event_type,
+            pos: ProtocolBlockPos {
+                x: event_type - 1500,
+                y: 65,
+                z: -7,
+            },
+            data: 0,
+            global: false,
+        };
+        let followup = LevelEvent {
+            event_type: 1004,
+            pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+            data: 0,
+            global: false,
+        };
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch = if randomized_pitch {
+            2.6 + (expected_random.next_float() - expected_random.next_float()) * 0.8
+        } else {
+            1.0
+        };
+        let expected_seed = expected_random.next_long();
+        advance_expected_particle_randoms(event_type, &mut expected_random);
+        let expected_followup_seed = expected_random.next_long();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut audio =
+            RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+        let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+        assert_eq!(
+            drain_net_events_with_sinks(
+                &mut rx,
+                &mut world,
+                &mut counters,
+                &None,
+                Some(&mut audio),
+                None,
+                None,
+                &mut level_event_sound_random,
+            ),
+            2
+        );
+
+        assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+        assert_eq!(audio.commands.len(), 2);
+        let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+            panic!(
+                "expected positioned smoke-side sound, got {:?}",
+                audio.commands[0]
+            );
+        };
+        assert_eq!(sound.sound.event_id, expected_sound);
+        assert_close(sound.packet_pitch, expected_pitch);
+        assert_eq!(sound.seed, expected_seed);
+
+        let AudioCommand::PlayPositionedSound(followup_sound) = &audio.commands[1] else {
+            panic!(
+                "expected positioned followup sound, got {:?}",
+                audio.commands[1]
+            );
+        };
+        assert_eq!(
+            followup_sound.sound.event_id,
+            "minecraft:entity.firework_rocket.shoot"
+        );
+        assert_eq!(followup_sound.seed, expected_followup_seed);
+        assert_eq!(world.counters().level_events_received, 2);
+        assert_eq!(world.counters().level_events_tracked, 2);
+    }
+}
+
+#[test]
 fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
     let full_block_event = LevelEvent {
         event_type: 3006,
@@ -6430,6 +6542,15 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]
+            },
+            "block.lava.extinguish": {
+                "sounds": ["random/fizz"]
+            },
+            "block.redstone_torch.burnout": {
+                "sounds": ["random/fizz"]
+            },
+            "block.end_portal_frame.fill": {
+                "sounds": ["block/end_portal_frame/fill"]
             },
             "entity.splash_potion.break": {
                 "sounds": ["random/glass"]

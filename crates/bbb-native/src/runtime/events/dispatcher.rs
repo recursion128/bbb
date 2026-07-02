@@ -24,9 +24,12 @@ const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
+const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
+const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
@@ -544,13 +547,19 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         ));
                         emit_positioned_sound(&mut audio_events, &state);
                     }
-                    emit_level_event_particles(
+                    let particles_consumed_random = emit_level_event_particles(
                         &mut particle_events,
                         &mut particle_renderer,
                         &event,
                         level_event_particle_context(world, &event),
                         level_event_sound_random,
                     );
+                    if !particles_consumed_random {
+                        advance_post_sound_level_event_particle_randoms(
+                            event.event_type,
+                            level_event_sound_random,
+                        );
+                    }
                 }
             }
             NetEvent::InitializeBorder(border) => {
@@ -1283,6 +1292,34 @@ fn advance_vault_level_event_particle_randoms(
     match event_type {
         VAULT_ACTIVATE_LEVEL_EVENT => advance_vault_activation_particle_randoms(random),
         VAULT_DEACTIVATE_LEVEL_EVENT => advance_vault_deactivation_particle_randoms(random),
+        _ => {}
+    }
+}
+
+fn advance_post_sound_level_event_particle_randoms(
+    event_type: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    match event_type {
+        LAVA_EXTINGUISH_LEVEL_EVENT => {
+            for _ in 0..8 {
+                let _ = random.next_double();
+                let _ = random.next_double();
+            }
+        }
+        REDSTONE_TORCH_BURNOUT_LEVEL_EVENT => {
+            for _ in 0..5 {
+                let _ = random.next_double();
+                let _ = random.next_double();
+                let _ = random.next_double();
+            }
+        }
+        END_PORTAL_FRAME_FILL_LEVEL_EVENT => {
+            for _ in 0..16 {
+                let _ = random.next_double();
+                let _ = random.next_double();
+            }
+        }
         _ => {}
     }
 }

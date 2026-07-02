@@ -1642,3 +1642,8 @@
     `minecraft:small_flame` for `data == 0` or `minecraft:soul_fire_flame`
     otherwise, spawning 20 particles from `randomPosCenterOfCage`
     (`0.4..0.6` on each axis) with gaussian `0.02` velocity.
+  - [x] post-sound smoke LevelEvent random stream：events `1501`, `1502`, and
+    `1503` now preserve vanilla `LevelEventHandler` ordering in audio-only
+    dispatch by recording/playing the lava extinguish, redstone torch burnout,
+    or end portal frame fill sound first, then advancing the smoke particle
+    random draws before later LevelEvent sounds draw their seeds.
