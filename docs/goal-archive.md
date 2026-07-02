@@ -2154,3 +2154,12 @@
   glass, tinted/stained glass, ice/frosted ice/blue ice, slime, honey,
   copper grates, and `_leaves` blocks while leaving panes, packed ice, stone,
   and lava outside the overlay path.
+- [x] datapack dimension `cardinal_light`：`WorldLevelInfo` now stores resolved
+  `WorldCardinalLighting`, with login/respawn resolving
+  `minecraft:dimension_type` registry entry raw NBT at the spawn
+  `dimension_type_id`. The parser reads the root compound's `cardinal_light`
+  string (`default` / `nether`) and treats an omitted field as `default`,
+  matching vanilla `DimensionType`'s
+  `CardinalLighting.Type.CODEC.optionalFieldOf("cardinal_light",
+  CardinalLighting.Type.DEFAULT)`. Missing registry data still falls back to
+  the built-in 26.1 dimension profiles.

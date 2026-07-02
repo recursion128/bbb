@@ -1126,9 +1126,10 @@ When an agent does any of the following, update this file in the same slice:
     / caves) uses `CardinalLighting.DEFAULT` (`down 0.5`, `up 1.0`, sides
     `0.8/0.6`). Water side faces now also select the vanilla `water_overlay`
     sprite against `HalfTransparentBlock` / `LeavesBlock` neighbors and suppress
-    that side's back face. Still deferred here: datapack dimension types that
-    override the `cardinal_light` field (not decoded; they fall back to
-    `DEFAULT`).
+    that side's back face. Datapack dimension types that override the
+    `cardinal_light` field now decode it from `minecraft:dimension_type`
+    registry NBT, defaulting omitted fields to `DEFAULT` like vanilla
+    `DimensionType`'s optional field.
     Existing blended entity-model buckets (`entityTranslucent`, dynamic-player
     translucent skins, `eyes`, `breezeWind`, and `energySwirl`) now draw in a
     main-target translucent feature pass after the vanilla-shaped

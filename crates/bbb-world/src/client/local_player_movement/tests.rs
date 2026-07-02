@@ -19,7 +19,7 @@ use crate::{
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     },
     BlockPos, ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-    PalettedContainerData, WorldDimension, WorldLevelInfo,
+    PalettedContainerData, WorldCardinalLighting, WorldDimension, WorldLevelInfo,
 };
 
 const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -3292,6 +3292,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         dimension: "minecraft:the_nether".to_string(),
         dimension_type_id: 1,
         dimension_type_name: Some("minecraft:the_nether".to_string()),
+        cardinal_lighting: WorldCardinalLighting::Nether,
         last_death_location: None,
         sea_level: 32,
         is_debug: false,
