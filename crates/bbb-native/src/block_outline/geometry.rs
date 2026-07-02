@@ -67,6 +67,13 @@ impl BlockOutlineShape {
             .map(|outline| outline.max[1])
             .fold(0.0, f64::max)
     }
+
+    pub(super) fn boxes_min_max(&self) -> Vec<([f64; 3], [f64; 3])> {
+        self.boxes()
+            .iter()
+            .map(|outline| (outline.min, outline.max))
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

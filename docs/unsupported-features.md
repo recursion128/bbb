@@ -192,8 +192,8 @@ When an agent does any of the following, update this file in the same slice:
         terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner/happy-villager/item-break/composter/full-cube block-destroy
-      side effects
+      trial-spawner/happy-villager/item-break/composter/known-shape
+      block-destroy side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -277,12 +277,13 @@ When an agent does any of the following, update this file in the same slice:
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
       - events `2001` / `3008`: vanilla `ClientLevel.addDestroyBlockEffect`
-        full-cube `0.25` density grid submissions for event-data block-state ids,
-        emitting 64 definition-less `minecraft:block` commands with
-        `BlockParticleOption` metadata and skipping air state `0`; shape-specific
-        voxel boxes, `shouldSpawnTerrainParticles` / moving-piston rejection,
-        terrain tint, and terrain-atlas GPU binding remain with broader
-        terrain/block particle work
+        density grid submissions for event-data block-state ids, using native
+        block-outline boxes when the state shape is known and full-cube fallback
+        otherwise, with definition-less `minecraft:block` commands carrying
+        `BlockParticleOption` metadata and skipping air state `0`; true
+        `shouldSpawnTerrainParticles` / moving-piston rejection, terrain tint,
+        and terrain-atlas GPU binding remain with broader terrain/block particle
+        work
       - events `2002` / `2007`: eight `minecraft:item` splash-potion break
         particles with vanilla `ItemParticleOption(Items.SPLASH_POTION)`,
         center position, and gaussian/upward velocity, followed by 100

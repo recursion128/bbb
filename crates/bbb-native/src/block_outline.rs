@@ -82,6 +82,13 @@ pub(crate) fn block_probe_shape_center_max_y(probe: &BlockProbe) -> Option<f64> 
         .map(|outline| outline.max_y_at_xz(0.5, 0.5))
 }
 
+pub(crate) fn block_state_shape_boxes(
+    block_state: &bbb_world::BlockStateInfo,
+) -> Option<Vec<([f64; 3], [f64; 3])>> {
+    outline_shape_for_block(Some(&block_state.name), &block_state.properties)
+        .map(|outline| outline.boxes_min_max())
+}
+
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
     selection_outline_for_box(pos, BlockOutlineBox::FULL)
 }

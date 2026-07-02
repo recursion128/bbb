@@ -1486,12 +1486,13 @@
   - [x] LevelEvent block-destroy particles：events `2001`
     (`PARTICLES_DESTROY_BLOCK`) and `3008`
     (`PARTICLES_AND_SOUND_BRUSH_BLOCK_COMPLETE`) now submit vanilla
-    `ClientLevel.addDestroyBlockEffect`-shaped full-cube `0.25` density grids:
-    64 definition-less `minecraft:block` commands using the event `data`
-    block-state id as `BlockParticleOption` metadata, with air state `0`
-    skipped. Non-full voxel shapes, `shouldSpawnTerrainParticles` /
-    moving-piston rejection, terrain tint, and terrain-atlas GPU binding remain
-    with broader block/terrain particle work.
+    `ClientLevel.addDestroyBlockEffect`-shaped `0.25` density grids from the
+    event `data` block-state id, using known native block-outline boxes with a
+    full-cube fallback for unsupported shapes. The emitted definition-less
+    `minecraft:block` commands carry `BlockParticleOption` metadata, and air
+    state `0` is skipped. True `shouldSpawnTerrainParticles` / moving-piston
+    rejection, terrain tint, and terrain-atlas GPU binding remain with broader
+    block/terrain particle work.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

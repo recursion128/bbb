@@ -681,11 +681,13 @@ impl ParticleCommandResolver {
             Ok(template) => template,
             Err(batch) => return batch,
         };
-        let count_x = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
-        let count_y = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
-        let count_z = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
+        let shape_boxes = destroy_block_shape_boxes(block_state_id);
+        let particle_count = shape_boxes
+            .iter()
+            .map(|(min, max)| destroy_block_box_particle_count(*min, *max))
+            .sum();
         let mut batch = ParticleSpawnBatch {
-            commands: Vec::with_capacity(count_x * count_y * count_z),
+            commands: Vec::with_capacity(particle_count),
             missing_sprite_count: template.missing_sprite_count,
             ..ParticleSpawnBatch::default()
         };
@@ -694,6 +696,38 @@ impl ParticleCommandResolver {
             ..ParticleOptionRenderState::default()
         };
         let raw_options_len = positive_var_i32_len(block_state_id);
+
+        for (min, max) in shape_boxes {
+            self.append_destroy_block_box_particles(
+                &mut batch,
+                &template,
+                event,
+                min,
+                max,
+                raw_options_len,
+                option_state,
+            );
+        }
+
+        batch
+    }
+
+    fn append_destroy_block_box_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        event: &LevelEvent,
+        min: [f64; 3],
+        max: [f64; 3],
+        raw_options_len: usize,
+        option_state: ParticleOptionRenderState,
+    ) {
+        let width_x = destroy_block_box_width(min[0], max[0]);
+        let width_y = destroy_block_box_width(min[1], max[1]);
+        let width_z = destroy_block_box_width(min[2], max[2]);
+        let count_x = destroy_block_axis_count(width_x);
+        let count_y = destroy_block_axis_count(width_y);
+        let count_z = destroy_block_axis_count(width_z);
 
         for xx in 0..count_x {
             for yy in 0..count_y {
@@ -705,9 +739,9 @@ impl ParticleCommandResolver {
                         template.particle_type,
                         &template.sprite_ids,
                         Vec3d {
-                            x: f64::from(event.pos.x) + rel_x,
-                            y: f64::from(event.pos.y) + rel_y,
-                            z: f64::from(event.pos.z) + rel_z,
+                            x: f64::from(event.pos.x) + rel_x * width_x + min[0],
+                            y: f64::from(event.pos.y) + rel_y * width_y + min[1],
+                            z: f64::from(event.pos.z) + rel_z * width_z + min[2],
                         },
                         Vec3d {
                             x: rel_x - 0.5,
@@ -723,8 +757,6 @@ impl ParticleCommandResolver {
                 }
             }
         }
-
-        batch
     }
 
     fn smash_attack_particle_batch(
@@ -2182,6 +2214,24 @@ fn direction_normal_from_3d_data_value(data: i32) -> (i32, i32, i32) {
 
 fn destroy_block_axis_count(width: f64) -> usize {
     ((width / DESTROY_BLOCK_PARTICLE_DENSITY).ceil() as usize).max(2)
+}
+
+fn destroy_block_box_width(min: f64, max: f64) -> f64 {
+    (max - min).min(DESTROY_BLOCK_FULL_BOX_WIDTH)
+}
+
+fn destroy_block_box_particle_count(min: [f64; 3], max: [f64; 3]) -> usize {
+    destroy_block_axis_count(destroy_block_box_width(min[0], max[0]))
+        * destroy_block_axis_count(destroy_block_box_width(min[1], max[1]))
+        * destroy_block_axis_count(destroy_block_box_width(min[2], max[2]))
+}
+
+fn destroy_block_shape_boxes(block_state_id: i32) -> Vec<([f64; 3], [f64; 3])> {
+    bbb_world::BlockStateRegistry::vanilla_26_1()
+        .by_id(block_state_id)
+        .and_then(crate::block_outline::block_state_shape_boxes)
+        .filter(|boxes| !boxes.is_empty())
+        .unwrap_or_else(|| vec![([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])])
 }
 
 fn block_face_particle(
@@ -4301,9 +4351,14 @@ mod tests {
     #[test]
     fn level_event_destroy_block_particles_use_block_particle_options() {
         let resolver = test_resolver(0);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+        let bottom_slab_id = test_block_state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        );
         let event = LevelEvent {
             event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
-            data: 321,
+            data: stone_id,
             ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
         };
         let mut random = LevelEventSoundRandomState::with_seed(0);
@@ -4315,13 +4370,13 @@ mod tests {
         assert_eq!(batch.missing_sprite_count, 0);
         assert_block_destroy_particle_command(
             &batch.commands[0],
-            321,
+            stone_id,
             [10.125, 64.125, -2.875],
             [-0.375, -0.375, -0.375],
         );
         assert_block_destroy_particle_command(
             &batch.commands[63],
-            321,
+            stone_id,
             [10.875, 64.875, -2.125],
             [0.375, 0.375, 0.375],
         );
@@ -4330,7 +4385,7 @@ mod tests {
         let brush = resolver.resolve_level_event_particles(
             &LevelEvent {
                 event_type: BRUSH_BLOCK_COMPLETE_LEVEL_EVENT,
-                data: 222,
+                data: stone_id,
                 ..level_event_packet(BRUSH_BLOCK_COMPLETE_LEVEL_EVENT)
             },
             &mut brush_random,
@@ -4338,9 +4393,32 @@ mod tests {
         assert_eq!(brush.len(), 64);
         assert_block_destroy_particle_command(
             &brush.commands[0],
-            222,
+            stone_id,
             [10.125, 64.125, -2.875],
             [-0.375, -0.375, -0.375],
+        );
+
+        let mut slab_random = LevelEventSoundRandomState::with_seed(0);
+        let slab = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+                data: bottom_slab_id,
+                ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+            },
+            &mut slab_random,
+        );
+        assert_eq!(slab.len(), 32);
+        assert_block_destroy_particle_command(
+            &slab.commands[0],
+            bottom_slab_id,
+            [10.125, 64.125, -2.875],
+            [-0.375, -0.25, -0.375],
+        );
+        assert_block_destroy_particle_command(
+            &slab.commands[31],
+            bottom_slab_id,
+            [10.875, 64.375, -2.125],
+            [0.375, 0.25, 0.375],
         );
 
         let mut air_random = LevelEventSoundRandomState::with_seed(0);
@@ -4977,6 +5055,17 @@ mod tests {
             data: 0,
             global: false,
         }
+    }
+
+    fn test_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+        let properties = props
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect();
+        bbb_world::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties(name, &properties)
+            .unwrap_or_else(|| panic!("missing test block state {name} {properties:?}"))
+            .id
     }
 
     fn first_composter_fill_particle(center_shape_max_y: f64) -> ([f64; 3], [f64; 3]) {
