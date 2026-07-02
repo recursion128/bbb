@@ -3,7 +3,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3};
 
-pub(crate) const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
 pub(crate) const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
 pub(crate) const ENDER_DRAGON_PHASE_HOVERING_ID: i32 = 10;
 

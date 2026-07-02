@@ -155,6 +155,7 @@ impl ProbeContext {
 mod tests {
     use super::*;
     use crate::connection::RawConnection;
+    use bbb_protocol::entity_types::*;
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
         AdvancementSummary, AttributeModifier, AttributeSnapshot, AwardStats, BlockChangedAck,
@@ -1972,8 +1973,6 @@ mod tests {
 
     #[tokio::test]
     async fn probe_applies_minecart_along_track_to_world() {
-        const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
-
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -2222,8 +2221,6 @@ mod tests {
 
     #[tokio::test]
     async fn probe_applies_entity_state_packets_to_world() {
-        const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
-
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -2528,8 +2525,6 @@ mod tests {
 
     #[tokio::test]
     async fn probe_projectile_power_updates_world_entity_state_and_counters() {
-        const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
-
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 

@@ -27,6 +27,7 @@ use super::{
     },
     ClientInputState,
 };
+use bbb_protocol::entity_types::*;
 
 const USE_ITEM_REPEAT_DELAY_TICKS: u8 = 4;
 const SPECTATOR_MOUSE_WHEEL_FLYING_SPEED_STEP: f32 = 0.005;
@@ -662,9 +663,6 @@ mod tests {
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
-    const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
-    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
     const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;

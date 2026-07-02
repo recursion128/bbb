@@ -32,6 +32,7 @@ use glam::{Mat4, Vec3};
 
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
+use bbb_protocol::entity_types::*;
 
 /// Fallback GROUND display transform for a block item (`minecraft:block/block`): rotation `0`,
 /// translation `[0, 3, 0]`/16, scale `0.25`. Used only when the item's own `ground` transform was not
@@ -1745,9 +1746,6 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
 
-    const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
-    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
-    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
     const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
     const GRASS_BLOCK_STATE_ID: i32 = 9;

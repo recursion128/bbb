@@ -63,6 +63,7 @@ use crate::{
         TerrainUploadState,
     },
 };
+use bbb_protocol::entity_types::*;
 
 mod control_requests;
 mod events;
@@ -83,7 +84,6 @@ const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
 const VANILLA_WEATHER_RENDER_RADIUS: u32 = 10;
 const VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD: f32 = 0.15;
-const VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID: i32 = 77;
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
 const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
 const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];

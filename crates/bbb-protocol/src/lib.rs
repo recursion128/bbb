@@ -1,6 +1,7 @@
 mod component;
 
 pub mod codec;
+pub mod entity_types;
 pub mod frame;
 pub mod ids;
 pub mod packets;

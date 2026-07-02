@@ -6,15 +6,13 @@ use crate::WorldStore;
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
-    VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
+use bbb_protocol::entity_types::*;
 
-const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
-const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 /// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
 /// the vehicle damage-roll accessors after base `Entity` ids `0..=7`.
 const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
@@ -30,14 +28,11 @@ const ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
 /// Vanilla `EntityType.ARROW` / `EntityType.SPECTRAL_ARROW`: both extend
 /// `AbstractArrow` and share the same client-side `shakeTime` impact wobble.
-const VANILLA_ENTITY_TYPE_ARROW_ID: i32 = 6;
-const VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID: i32 = 123;
 /// Vanilla `AbstractArrow.IN_GROUND`, the synced boolean after `ID_FLAGS` (`8`) and
 /// `PIERCE_LEVEL` (`9`). `onSyncedDataUpdated(IN_GROUND)` starts `shakeTime = 7`
 /// when the arrow is no longer on its first tick and the current shake has settled.
 const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 const ARROW_SHAKE_TICKS: i32 = 7;
-const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 /// Vanilla `ArmorStand.handleEntityEvent(32)`: client-side hit wobble.
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 /// Vanilla `ArmorStand.WOBBLE_TIME`.
@@ -45,23 +40,14 @@ const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 /// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN`. Both share
 /// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
 /// elder is the guardian mesh scaled 2.35×, with no animation override).
-const VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID: i32 = 40;
-const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
 /// Vanilla `Guardian.DATA_ID_MOVING` (`isMoving()`): the guardian's first own
 /// synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`) and `Mob`
 /// (`15`). A `Boolean`, default `false`.
 const GUARDIAN_MOVING_DATA_ID: u8 = 16;
 /// Vanilla `Guardian.DATA_ID_ATTACK_TARGET`, the int synced right after `DATA_ID_MOVING` (`17`).
 const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
-const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
-const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
-const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
-const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
-const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
-const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 /// Vanilla `EntityType.WITHER`; its two alternative render heads keep client-side
 /// `xRotHeads` / `yRotHeads` arrays that lerp toward synced target entities.
-const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
 /// Vanilla `WitherBoss.DATA_TARGET_B/C`, the two side-head target ids. `DATA_TARGET_A`
 /// (16) is the center combat target; model side heads read B/C at 17/18.
 const WITHER_TARGET_B_DATA_ID: u8 = 17;
@@ -70,14 +56,6 @@ const WITHER_TARGET_C_DATA_ID: u8 = 18;
 /// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
 /// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
 /// distance includes the vertical component.
-const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
-const VANILLA_ENTITY_TYPE_DONKEY_ID: i32 = 36;
-const VANILLA_ENTITY_TYPE_HORSE_ID: i32 = 66;
-const VANILLA_ENTITY_TYPE_MULE_ID: i32 = 87;
-const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
-const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
-const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
-const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 /// Vanilla `AbstractHorse.DATA_ID_FLAGS` (id 18): the shared equine flags byte after
 /// `AgeableMob`'s two accessors. `AbstractHorse.tick` eases render-state eat / stand / mouth
 /// amounts toward these bits every client tick.
@@ -97,10 +75,6 @@ const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`) replaces the base
 /// distance→speed mapping.
-const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
-const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
-pub(crate) const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
-const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// Vanilla `Pose.CROAKING` ordinal (`Pose.CROAKING(8, …)`), the synced `DATA_POSE` int value that
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
 /// CROAKING, tickCount)`).
@@ -120,14 +94,12 @@ const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 /// `FLAG_FALL_FLYING`, read by `LivingEntity.isFallFlying()`.
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_FLAG_FALL_FLYING: u8 = 1 << 7;
-const VANILLA_ENTITY_TYPE_BREEZE_ID: i32 = 17;
 /// Vanilla `Pose.SLIDING`/`SHOOTING`/`INHALING` ordinals (`Pose.SLIDING(15, …)`, `SHOOTING(16, …)`,
 /// `INHALING(17, …)`), the synced `DATA_POSE` int values that `Breeze.onSyncedDataUpdated` reads to
 /// `startIfStopped` the matching action one-shot, and `LONG_JUMPING(6)` for the jump.
 const VANILLA_POSE_SLIDING_ID: i32 = 15;
 const VANILLA_POSE_SHOOTING_ID: i32 = 16;
 const VANILLA_POSE_INHALING_ID: i32 = 17;
-const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
 /// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
 /// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
 /// Mob 15, AgeableMob 16–17, then Sniffer's first own accessor); `Sniffer.onSyncedDataUpdated` reads
@@ -143,7 +115,6 @@ const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
 const SNIFFER_STATE_SEARCHING_ID: i32 = 4;
 const SNIFFER_STATE_DIGGING_ID: i32 = 5;
 const SNIFFER_STATE_RISING_ID: i32 = 6;
-const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
 /// Vanilla `Armadillo.ARMADILLO_STATE`, the synced `EntityDataSerializers.ARMADILLO_STATE` accessor
 /// serialized as the `ArmadilloState` ordinal-id VarInt. Like `Sniffer.DATA_STATE` it is the first
 /// own accessor after `AgeableMob` (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17), id 18.
@@ -181,7 +152,6 @@ const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Cat` entity type id (`EntityType.CAT`).
-const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
 /// Vanilla `Cat.IS_LYING`, the synced boolean after `Cat.DATA_VARIANT_ID`:
 /// Entity 0-7, LivingEntity 8-14, Mob 15, AgeableMob 16-17, TamableAnimal 18-19,
 /// then Cat variant 20, lying 21, relax-state-one 22.
@@ -195,9 +165,7 @@ const CAT_LIE_DOWN_TAIL_AMOUNT_FALL_PER_TICK: f32 = 0.13;
 const CAT_RELAX_STATE_ONE_AMOUNT_RISE_PER_TICK: f32 = 0.1;
 const CAT_RELAX_STATE_ONE_AMOUNT_FALL_PER_TICK: f32 = 0.13;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
-const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 /// Vanilla `Wolf` entity type id (`EntityType.WOLF`).
-const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
 /// Vanilla `Wolf.DATA_INTERESTED_ID` (`isInterested()`), the wolf's first own accessor:
 /// Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, TamableAnimal 18–19,
 /// then Wolf interested 20.
@@ -214,14 +182,6 @@ const WOLF_SHAKE_ANIM_DONE: f32 = 2.0;
 const WOLF_INTERESTED_EASE: f32 = 0.4;
 /// Vanilla `Wolf.getHeadRollAngle(partialTick)`: `lerp(interestedAngleO, interestedAngle) * 0.15 * π`.
 const WOLF_HEAD_ROLL_SCALE: f32 = 0.15;
-const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
-const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
-const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
-const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
-const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
-const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
-const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
-const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 /// Vanilla `LivingEntity.updateSwimAmount`: the easing step per client tick.
 const LIVING_SWIM_AMOUNT_PER_TICK: f32 = 0.09;
 /// Vanilla `LivingEntity.updateSwimAmount`: the fully visually-swimming upper bound.
@@ -238,12 +198,6 @@ const ELYTRA_ROT_EASE: f32 = 0.3;
 const PLAYER_CLOAK_TELEPORT_THRESHOLD: f64 = 10.0;
 const PLAYER_CLOAK_EASE: f64 = 0.25;
 const PLAYER_CLOAK_WALK_DISTANCE_SCALE: f32 = 0.6;
-const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
-const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
-const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
-const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
-const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
-const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 /// Vanilla `Rabbit.handleEntityEvent`: event `1` (`spawnSprintParticle`) also seeds the client-side
 /// hop reconstruction — `jumpDuration = 15; jumpTicks = 0;` — so the `hopAnimationState` plays for
 /// one 15-tick (0.75s, exactly one loop of `RabbitAnimation.HOP`) jump arc.

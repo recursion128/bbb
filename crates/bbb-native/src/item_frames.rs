@@ -23,6 +23,7 @@ use glam::{Mat4, Vec3};
 use crate::item_models::{display_matrix, item_stack_foil_mode};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
+use bbb_protocol::entity_types::*;
 
 /// Vanilla `ItemFrameRenderer` pushes the framed item `0.4375` out of the visible frame surface toward
 /// the viewer before scaling and rotating it.
@@ -411,7 +412,6 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
     const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;

@@ -45,7 +45,6 @@ use crate::entities::animations::{
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
-    VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -56,14 +55,13 @@ use crate::entities::dimensions::{
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
-    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
-use crate::entities::dragon::{
-    ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-};
+use crate::entities::dragon::ender_dragon_part_pick_targets_at_partial_tick;
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
+use bbb_protocol::entity_types::*;
 
 /// Vanilla `AbstractVillager.DATA_UNHAPPY_COUNTER` (INT): `AgeableMob` consumes
 /// baby id 16 and age-locked id 17, so the abstract-villager counter is id 18.
@@ -85,20 +83,11 @@ const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
-const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 /// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
-const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
 /// Vanilla 26.1 skeleton-family ids whose renderers extend `HumanoidMobRenderer`
 /// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
-const VANILLA_ENTITY_TYPE_BOGGED_ID: i32 = 16;
-const VANILLA_ENTITY_TYPE_PARCHED_ID: i32 = 97;
-const VANILLA_ENTITY_TYPE_SKELETON_ID: i32 = 115;
-const VANILLA_ENTITY_TYPE_STRAY_ID: i32 = 128;
-const VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID: i32 = 146;
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
-const VANILLA_ENTITY_TYPE_EVOKER_ID: i32 = 46;
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
-const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 /// Vanilla `Pose.STANDING` ordinal, used by camel walk-animation gating.
 const VANILLA_POSE_STANDING_ID: i32 = 0;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.

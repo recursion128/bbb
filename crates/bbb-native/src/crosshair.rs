@@ -1,3 +1,5 @@
+#[cfg(test)]
+use bbb_protocol::entity_types::*;
 use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
@@ -1027,11 +1029,6 @@ mod tests {
     const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
-    const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
-    const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
-    const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
-    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
     #[test]
     fn crosshair_raycast_hits_first_selectable_block() {
@@ -1271,8 +1268,6 @@ mod tests {
 
     #[test]
     fn crosshair_target_hits_ender_dragon_part_id_from_world_state() {
-        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
-
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             100,
@@ -1293,8 +1288,6 @@ mod tests {
 
     #[test]
     fn crosshair_target_hits_ender_dragon_tail_and_wing_part_ids() {
-        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
-
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             100,
@@ -1327,7 +1320,6 @@ mod tests {
 
     #[test]
     fn crosshair_target_uses_entity_partial_tick_for_dragon_parts() {
-        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
         const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
         const HOLDING_PATTERN_PHASE_ID: i32 = 0;
 

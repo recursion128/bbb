@@ -938,7 +938,6 @@ fn entity_camera_pose_uses_vanilla_eye_height() {
 
 #[test]
 fn entity_model_sources_project_narrow_render_state_from_model_targets() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     let mut store = WorldStore::new();
@@ -979,8 +978,6 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
 
 #[test]
 fn entity_model_source_single_entity_matches_list_entry() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     let mut store = WorldStore::new();
@@ -1021,8 +1018,6 @@ fn entity_model_source_single_entity_matches_list_entry() {
 
 #[test]
 fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() {
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
     const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
     const ADVANCE: f32 = std::f32::consts::PI / 8.0;
@@ -1090,7 +1085,6 @@ fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() 
 
 #[test]
 fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
     const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
     const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
@@ -1159,7 +1153,6 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
 
 #[test]
 fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
     const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
     const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
@@ -1252,14 +1245,6 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
 
 #[test]
 fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
-    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
-    const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;
-    const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
-    const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
-    const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
-    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
     const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
     const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
@@ -1397,10 +1382,6 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 
 #[test]
 fn minecart_display_blocks_expand_model_culling_bounds() {
-    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
-    const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
-    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
     const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
     const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 
@@ -1484,7 +1465,6 @@ fn minecart_display_blocks_expand_model_culling_bounds() {
 
 #[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
@@ -1536,8 +1516,6 @@ fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
 
 #[test]
 fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
 
@@ -1597,8 +1575,6 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
 
 #[test]
 fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
 
@@ -1693,7 +1669,6 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
 
 #[test]
 fn entity_model_sources_project_glowing_shared_flag() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 
@@ -1722,7 +1697,6 @@ fn entity_model_sources_project_glowing_shared_flag() {
 
 #[test]
 fn entity_model_sources_project_team_outline_color() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 
@@ -1786,7 +1760,6 @@ fn entity_model_sources_project_team_outline_color() {
 #[test]
 fn entity_model_sources_project_worn_armor_materials() {
     use std::collections::BTreeMap;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     // The registry-derived item id → armor material table (installed by the native layer).
     let iron_helmet = 800;
     let iron_chestplate = 801;
@@ -1897,7 +1870,6 @@ fn entity_model_sources_project_worn_armor_materials() {
 #[test]
 fn entity_model_sources_project_worn_armor_dye_colors() {
     use std::collections::BTreeMap;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     let leather_chestplate = 810;
     let leather_boots = 811;
     let iron_helmet = 812;
@@ -1961,8 +1933,6 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
     use crate::ItemEquipmentSlot;
     use std::collections::BTreeMap;
 
-    const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const SADDLE_ITEM_ID: i32 = 820;
     const PLAIN_ITEM_ID: i32 = 821;
 
@@ -2037,8 +2007,6 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
 
 #[test]
 fn entity_model_sources_project_snow_golem_pumpkin_flag() {
-    const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 
     fn pumpkin(store: &WorldStore, entity_id: i32) -> bool {
@@ -2094,8 +2062,6 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
 
     const SADDLE_ITEM_ID: i32 = 830;
     const PLAIN_ITEM_ID: i32 = 831;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-    const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -2186,8 +2152,6 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
 
 #[test]
 fn entity_model_sources_project_equine_tail_counter() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         66,
@@ -2305,7 +2269,6 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
 
     const SADDLE_ITEM_ID: i32 = 832;
     const PLAIN_ITEM_ID: i32 = 833;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -2388,7 +2351,6 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
 
     const SADDLE_ITEM_ID: i32 = 834;
     const PLAIN_ITEM_ID: i32 = 835;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -2484,7 +2446,6 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
 
     const SADDLE_ITEM_ID: i32 = 836;
     const PLAIN_ITEM_ID: i32 = 837;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -2572,7 +2533,6 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 841;
     const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 842;
     const PLAIN_ITEM_ID: i32 = 843;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
@@ -2677,7 +2637,6 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     const DIAMOND_HORSE_ARMOR_ITEM_ID: i32 = 845;
     const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 846;
     const PLAIN_ITEM_ID: i32 = 847;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
     const LEATHER_DYE: i32 = 0x0033_66CC;
 
@@ -2795,8 +2754,6 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
 
     const WOLF_ARMOR_ITEM_ID: i32 = 848;
     const PLAIN_ITEM_ID: i32 = 849;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
     const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
 
@@ -2984,7 +2941,6 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     const WHITE_CARPET_ITEM_ID: i32 = 838;
     const BLACK_CARPET_ITEM_ID: i32 = 839;
     const PLAIN_ITEM_ID: i32 = 840;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
@@ -3088,7 +3044,6 @@ fn entity_model_sources_project_in_water_from_world_fluid() {
     // state. A cod (0.5 × 0.3 box) and a horse (whose `AbstractEquineModel.setupAnim`
     // slows the leg phase in water) submerged in source water are in water; the same
     // entities in air are not.
-    const VANILLA_ENTITY_TYPE_COD_ID: i32 = 27;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     let source_by_id = |store: &WorldStore, entity_id| {
         store
@@ -3177,7 +3132,6 @@ fn entity_model_sources_project_boat_underwater_from_top_fluid() {
     // Vanilla `AbstractBoat.isUnderWater()` is a top-slice test: bottom contact with
     // water is not enough, but water whose surface is above the boat AABB top sets
     // `BoatRenderState.isUnderWater` for bubble and water-mask gating.
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
@@ -3239,7 +3193,6 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
     // returns `0.75 + lerp(shakeAnimO, shakeAnim) * 0.125`, clamped to `1.0`, while wet. The client-side
     // drying timer advances `shakeAnim += 0.05` after the wolf leaves water and reaches white at 40 dry
     // ticks; f32 accumulation clears the wet state once the previous value compares `>= 2.0`.
-    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const AIR_BLOCK_STATE_ID: i32 = 0;
 
@@ -3381,7 +3334,6 @@ fn wolf_head_roll_follows_vanilla_interested_angle_ease() {
     // Vanilla `Wolf.tick`: `interestedAngleO = interestedAngle`, then the synced
     // `DATA_INTERESTED_ID` target eases the current angle by 0.4/tick. `getHeadRollAngle`
     // lerps those two endpoints and scales the result by `0.15π`.
-    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
     const WOLF_INTERESTED_DATA_ID: u8 = 20;
     const WOLF_HEAD_ROLL_SCALE: f32 = 0.15 * std::f32::consts::PI;
 
@@ -3443,7 +3395,6 @@ fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
     // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then if
     // `isVisuallySwimming()` (`Pose.SWIMMING`) add `0.09` up to `1.0`, else subtract
     // `0.09` down to `0.0`. `getSwimAmount(partialTick)` lerps the two endpoints.
-    const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
     const ENTITY_DATA_POSE_ID: u8 = 6;
     const POSE_STANDING: i32 = 0;
     const POSE_SWIMMING: i32 = 3;
@@ -3517,7 +3468,6 @@ fn entity_model_sources_project_on_ground_from_movement() {
     // Vanilla `Entity.onGround()`: the scene projects the entity's last synced movement ground
     // flag (combined with `isInWater` to drive the `TurtleRenderer` walk/swim branch). It
     // defaults to `false` until a movement packet sets it.
-    const VANILLA_ENTITY_TYPE_TURTLE_ID: i32 = 137;
 
     let on_ground = |store: &WorldStore| {
         store
@@ -3557,7 +3507,6 @@ fn entity_model_sources_project_on_ground_from_movement() {
 fn entity_model_sources_project_is_moving_from_velocity() {
     // Vanilla `DolphinRenderState.isMoving` (`getDeltaMovement().horizontalDistanceSqr() > 1e-7`):
     // the scene projects the entity's synced velocity into the swim-animation gate.
-    const VANILLA_ENTITY_TYPE_DOLPHIN_ID: i32 = 35;
 
     let is_moving = |store: &WorldStore| {
         store
@@ -3608,8 +3557,6 @@ fn entity_model_sources_project_is_moving_from_velocity() {
 
 #[test]
 fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let red_overlay = |store: &WorldStore| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -3648,8 +3595,6 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 
 #[test]
 fn entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const KINETIC_HIT_EVENT_ID: i8 = 2;
 
     let feedback = |store: &WorldStore, entity_id: i32, partial_tick: f32| {
@@ -3713,8 +3658,6 @@ fn entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event() 
 
 #[test]
 fn entity_model_sources_project_attack_swing_ramp() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let attack = |store: &WorldStore, partial: f32| {
         let source = store
             .entity_model_sources_at_partial_tick(partial)
@@ -3759,7 +3702,6 @@ fn entity_model_sources_project_attack_swing_ramp() {
 
 #[test]
 fn entity_model_sources_use_held_item_default_swing_duration() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, partial: f32| {
@@ -3805,7 +3747,6 @@ fn entity_model_sources_use_held_item_default_swing_duration() {
 
 #[test]
 fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, partial: f32| {
@@ -3869,7 +3810,6 @@ fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
 
 #[test]
 fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
     const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
     const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
     const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
@@ -3951,7 +3891,6 @@ fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
 
 #[test]
 fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_changes() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
     const PLAIN_ITEM_ID: i32 = 41;
     const SPEAR_ITEM_ID: i32 = 42;
     const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
@@ -4042,7 +3981,6 @@ fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_chan
 
 #[test]
 fn entity_model_sources_project_death_animation_counter() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
@@ -4106,7 +4044,6 @@ fn entity_model_sources_project_death_animation_counter() {
 
 #[test]
 fn entity_model_sources_project_ender_dragon_death_time() {
-    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
@@ -4170,8 +4107,6 @@ fn entity_model_sources_project_ender_dragon_death_time() {
 
 #[test]
 fn entity_model_sources_project_full_freeze_for_living_entities() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
     const INT_SERIALIZER_ID: i32 = 1;
 
@@ -4220,8 +4155,6 @@ fn entity_model_sources_project_full_freeze_for_living_entities() {
 
 #[test]
 fn entity_model_sources_project_auto_spin_attack_flag() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     // Vanilla LivingEntity.LIVING_ENTITY_FLAG_SPIN_ATTACK (4); IS_USING is bit 1.
     const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
     const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
@@ -4274,8 +4207,6 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
 
 #[test]
 fn entity_model_sources_project_using_item_flags() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     // Vanilla LivingEntity flags: IS_USING = bit 1, OFF_HAND = bit 2, SPIN_ATTACK = bit 4.
     const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
     const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
@@ -4339,9 +4270,6 @@ fn entity_model_sources_project_using_item_flags() {
 
 #[test]
 fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
@@ -4414,8 +4342,6 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
 
 #[test]
 fn entity_model_sources_project_aggressive_for_zombie_model_family() {
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     // Vanilla Mob.DATA_MOB_FLAGS_ID (15); MOB_FLAG_AGGRESSIVE (4), LEFTHANDED is bit 2.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
@@ -4478,12 +4404,6 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
     // NOT projected.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
-    const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
-    const VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID: i32 = 102;
-    const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
-    const VANILLA_ENTITY_TYPE_EVOKER_ID: i32 = 46;
-    const VANILLA_ENTITY_TYPE_ILLUSIONER_ID: i32 = 68;
-    const VANILLA_ENTITY_TYPE_VINDICATOR_ID: i32 = 140;
 
     let aggressive = |store: &WorldStore, id: i32| {
         store
@@ -4539,9 +4459,6 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
 
 #[test]
 fn entity_model_sources_project_villager_unhappy() {
-    const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
-    const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
     // Vanilla AbstractVillager.DATA_UNHAPPY_COUNTER (INT id 18): read by
     // VillagerRenderer and WanderingTraderRenderer as `getUnhappyCounter() > 0`.
     const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
@@ -4612,8 +4529,6 @@ fn entity_model_sources_project_villager_unhappy() {
 
 #[test]
 fn entity_model_sources_project_enderman_carrying_and_creepy() {
-    const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer 15),
     // DATA_CREEPY (17, BOOLEAN serializer 8).
     const CARRY_STATE_DATA_ID: u8 = 16;
@@ -4711,8 +4626,6 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
 
 #[test]
 fn entity_model_sources_project_bat_resting_from_flags() {
-    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     // Vanilla Bat.DATA_ID_FLAGS (16, BYTE); FLAG_RESTING (1).
     const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
     const BAT_FLAG_RESTING: i8 = 1;
@@ -4762,8 +4675,6 @@ fn entity_model_sources_project_bat_resting_from_flags() {
 
 #[test]
 fn entity_model_sources_project_wither_invulnerable_ticks() {
-    const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     // Vanilla WitherBoss.DATA_ID_INV (19, INT): the spawn-invulnerability countdown.
     const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
 
@@ -4813,8 +4724,6 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
 
 #[test]
 fn entity_model_sources_project_wither_side_head_tracking() {
-    const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     // Vanilla WitherBoss.DATA_TARGET_B/C (17/18): side-head target entity ids.
     const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
     const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = 18;
@@ -4970,8 +4879,6 @@ fn entity_model_sources_project_wither_side_head_tracking() {
 
 #[test]
 fn entity_model_sources_project_bee_stinger_from_flags() {
-    const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     // Vanilla Bee.DATA_FLAGS_ID (18, BYTE); FLAG_HAS_STUNG (4).
     const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
     const BEE_FLAG_HAS_STUNG: i8 = 4;
@@ -5019,8 +4926,6 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
 
 #[test]
 fn entity_model_sources_gate_crouch_pose_on_the_player() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
 
@@ -5067,9 +4972,6 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
 
 #[test]
 fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
-    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
-    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
     const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
@@ -5155,8 +5057,6 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
 
 #[test]
 fn entity_model_sources_project_elytra_animation_state() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_FLAG_FALL_FLYING: i8 = 0x80_u8 as i8;
     const POSE_CROUCHING: i32 = 5;
@@ -5306,7 +5206,6 @@ fn entity_model_sources_project_elytra_animation_state() {
 
 #[test]
 fn entity_model_sources_project_player_cape_cloak_state() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
     const EPSILON: f32 = 1.0e-5;
 
     let sync_position = |store: &mut WorldStore, x: f64, y: f64, z: f64| {
@@ -5380,9 +5279,6 @@ fn entity_model_sources_project_player_cape_cloak_state() {
 
 #[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
     const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
     const OPTIONAL_COMPONENT_SERIALIZER_ID: i32 = 6;
 
@@ -5707,8 +5603,6 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
 
 #[test]
 fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const POSE_STANDING: i32 = 0;
     const POSE_SLEEPING: i32 = 2;
 
@@ -5761,7 +5655,6 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
 
 #[test]
 fn entity_model_sources_resolve_sleeping_bed_orientation() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const POSE_SLEEPING: i32 = 2;
     const SLEEPING_POS_DATA_ID: u8 = 14;
     const OPTIONAL_BLOCK_POS_SERIALIZER_ID: i32 = 11;
@@ -5822,8 +5715,6 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
 
 #[test]
 fn entity_model_sources_project_scale_attribute() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 
     let scale = |store: &WorldStore, id: i32| {
@@ -5874,8 +5765,6 @@ fn entity_model_sources_project_scale_attribute() {
 
 #[test]
 fn death_animation_gates_on_living_entity_health() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
@@ -5901,7 +5790,6 @@ fn death_animation_gates_on_living_entity_health() {
 
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
-    const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
     const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
 
     // Read at partial tick 1.0 so getSwelling returns the current swell.
@@ -5952,7 +5840,6 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
 
 #[test]
 fn entity_model_sources_project_squid_tentacle_and_body_animation() {
-    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
     const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
@@ -6094,8 +5981,6 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
 
 #[test]
 fn squid_out_of_water_branch_flexes_tentacles_and_pitches_down() {
-    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
-
     let source = |store: &WorldStore| {
         store
             .entity_model_sources_at_partial_tick(1.0)
@@ -6135,9 +6020,6 @@ fn squid_out_of_water_branch_flexes_tentacles_and_pitches_down() {
 
 #[test]
 fn squid_tentacle_speed_is_seeded_by_entity_id() {
-    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
-    const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
-
     // The per-tick tentacle advance equals `tentacleSpeed`, so after one tick the
     // tentacle movement (read indirectly via the angle the half-cycle produces) is
     // a deterministic function of the id-seeded speed. Two squids with different
@@ -6180,7 +6062,6 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
     //   - out of water  → speed = 2.0   (the frantic flop)
     //   - in water, moving, from rest (speed < 0.5) → speed snaps to 4.0
     //   - in water, idle → speed eases toward 0.125 (≈ 0.025 from rest, by 0.2)
-    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
     let tail = |store: &WorldStore| {
@@ -6276,7 +6157,6 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
     // while idle (by `0.06`, spikes extend) or toward `0` while moving (by `0.25`, spikes retract);
     // out of water it randomizes — deferred, so the value is HELD. `GuardianRenderState.spikesAnimation`
     // lerps it, and `setupAnim` turns it into `withdrawal = (1 - it) · 0.55`.
-    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const AIR_BLOCK_STATE_ID: i32 = 0;
 
@@ -6370,8 +6250,6 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Vanilla `GuardianRenderer.extractRenderState`: a guardian whose synced `DATA_ID_ATTACK_TARGET`
     // (idx 17) names a live target projects the world eye→target vector and the ramping attack timing;
     // with no target it projects no beam.
-    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
-    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 
     let add_at = |id: i32, type_id: i32, x: f64| ProtocolAddEntity {
@@ -6441,8 +6319,6 @@ fn entity_model_sources_project_end_crystal_beam_target() {
     // Vanilla `EndCrystal.DATA_BEAM_TARGET` is Optional<BlockPos> id 8. `EndCrystalRenderer`
     // projects `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)` into
     // `EndCrystalRenderState.beamOffset`.
-    const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
-    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
     const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 
     let add_at = |id: i32, type_id: i32| ProtocolAddEntity {
@@ -6517,9 +6393,6 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
     // `getBoundingBox().inflate(32)`. `EnderDragonRenderer.extractRenderState` then writes
     // `beamOffset = crystal.getPosition(partialTicks) + getY(crystal.time + partialTicks)
     // - dragon.getPosition(partialTicks)`.
-    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
-    const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
-    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
 
     let add_at = |id: i32, type_id: i32, position: [f64; 3]| ProtocolAddEntity {
         id,
@@ -6620,7 +6493,6 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
     // the timer runs (in water, not moving) and the `-1.0` stopped sentinel otherwise. The frog
     // reads the previous tick's `WalkAnimationState.isMoving()` before the current tick's
     // `updateWalkAnimation` advances, matching vanilla's tick order.
-    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
     let source = |store: &WorldStore| {
@@ -6757,7 +6629,6 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
 
 #[test]
 fn frog_walk_animation_uses_vanilla_update_override() {
-    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 
     let walk = |store: &WorldStore| -> (f32, f32) {
@@ -6837,8 +6708,6 @@ fn squid_tentacle_speed_matches_java_random_for_known_id() {
 
 #[test]
 fn entity_model_sources_project_chicken_wing_flap() {
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let source = |store: &WorldStore, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
@@ -6931,8 +6800,6 @@ fn entity_model_sources_project_chicken_wing_flap() {
 
 #[test]
 fn entity_model_sources_project_slime_squish_from_ground_transitions() {
-    const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
-
     let squish = |store: &WorldStore, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
@@ -7006,8 +6873,6 @@ fn entity_model_sources_project_slime_squish_from_ground_transitions() {
 
 #[test]
 fn entity_model_sources_project_parrot_wing_flap() {
-    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
-
     let flap_angle = |store: &WorldStore, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
@@ -7080,9 +6945,6 @@ fn entity_model_sources_project_parrot_wing_flap() {
 
 #[test]
 fn entity_model_sources_project_parrot_party_from_playing_jukebox() {
-    const VANILLA_ENTITY_TYPE_COD_ID: i32 = 27;
-    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
-
     let jukebox = ProtocolBlockPos { x: 1, y: 64, z: -2 };
     let parrot_party = |store: &WorldStore, id: i32| {
         store
@@ -7176,11 +7038,9 @@ fn entity_model_sources_project_parrot_party_from_playing_jukebox() {
 
 #[test]
 fn parrot_passenger_holds_its_wings() {
-    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
     // Vanilla `Parrot.calculateFlapping` gates the airborne flap build-up on `!onGround() &&
     // !isPassenger()`. A parrot riding a vehicle (its `vehicle_id` set) is a passenger, so even
     // airborne its `flapSpeed` decays toward 0 and `flapAngle` stays at 0 (wings settled).
-    const VANILLA_ENTITY_TYPE_BOAT_ID: i32 = 9;
 
     let flap_angle = |store: &WorldStore| {
         store
@@ -7194,7 +7054,7 @@ fn parrot_passenger_holds_its_wings() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         92,
-        VANILLA_ENTITY_TYPE_BOAT_ID,
+        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(
         91,
@@ -7226,7 +7086,6 @@ fn parrot_passenger_holds_its_wings() {
 
 #[test]
 fn entity_model_sources_project_bee_roll_amount() {
-    const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
     // Vanilla `Bee.DATA_FLAGS_ID` is synced data id 18; `FLAG_ROLL` is mask 2 within that byte.
     let bee_flags = |raw: i8| ProtocolEntityDataValue {
         data_id: 18,
@@ -7286,7 +7145,6 @@ fn entity_model_sources_project_bee_roll_amount() {
 
 #[test]
 fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
-    const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
     // Vanilla `Panda.DATA_ID_FLAGS` id 23: roll=4, sitting=8, onBack=16.
     const PANDA_FLAGS_DATA_ID: u8 = 23;
@@ -7399,7 +7257,6 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
 
 #[test]
 fn entity_model_sources_project_frog_croak_seconds() {
-    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     // Vanilla `Pose.CROAKING(8, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated` starts
     // `croakAnimationState` when the pose becomes CROAKING and stops it otherwise.
     const VANILLA_POSE_STANDING_ID: i32 = 0;
@@ -7449,7 +7306,6 @@ fn entity_model_sources_project_frog_croak_seconds() {
 
 #[test]
 fn entity_model_sources_project_frog_tongue_seconds() {
-    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     // Vanilla `Pose.USING_TONGUE(9, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
     // starts `tongueAnimationState` when the pose becomes USING_TONGUE and stops it otherwise.
     const VANILLA_POSE_STANDING_ID: i32 = 0;
@@ -7497,7 +7353,6 @@ fn entity_model_sources_project_frog_tongue_seconds() {
 
 #[test]
 fn entity_model_sources_project_frog_jump_seconds() {
-    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     // Vanilla `Pose.LONG_JUMPING(6, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
     // starts `jumpAnimationState` when the pose becomes LONG_JUMPING and stops it otherwise.
     const VANILLA_POSE_STANDING_ID: i32 = 0;
@@ -7547,7 +7402,6 @@ fn entity_model_sources_project_frog_jump_seconds() {
 
 #[test]
 fn entity_model_sources_project_sniffer_state_animation() {
-    const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
     // Vanilla `Sniffer.DATA_STATE` (id 18), the `Sniffer.State` ordinal VarInt;
     // `Sniffer.onSyncedDataUpdated` `resetAnimations()` then starts the matching one-shot.
     const SNIFFER_STATE_DATA_ID: u8 = 18;
@@ -7643,7 +7497,6 @@ fn entity_model_sources_project_sniffer_state_animation() {
 
 #[test]
 fn entity_model_sources_project_armadillo_state_animation() {
-    const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
     // Vanilla `Armadillo.ARMADILLO_STATE` (id 18), the `ArmadilloState` id VarInt (serializer 36).
     // `Armadillo.setupAnimationStates` `.startIfStopped`s rollUp into ROLLING / rollOut into
     // UNROLLING, and `shouldHideInShell(inStateTicks)` gates the shell-ball swap.
@@ -7779,7 +7632,6 @@ fn entity_model_sources_project_armadillo_state_animation() {
 
 #[test]
 fn entity_model_sources_project_warden_combat_animations() {
-    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     // Vanilla `Pose.ROARING(11)` / `Pose.SNIFFING(12)` synced via `DATA_POSE` (id 6);
     // `Warden.onSyncedDataUpdated` `.start()`s the matching one-shot when the pose CHANGES to it.
     const VANILLA_POSE_STANDING_ID: i32 = 0;
@@ -7867,7 +7719,6 @@ fn entity_model_sources_project_warden_combat_animations() {
 
 #[test]
 fn entity_model_sources_project_warden_emerge_and_dig() {
-    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     // Vanilla `Pose.EMERGING(13)` / `Pose.DIGGING(14)` synced via `DATA_POSE` (id 6); like the
     // roar/sniff poses, `Warden.onSyncedDataUpdated` `.start()`s the spawn/despawn one-shot when the
     // pose CHANGES to it. These are the 6.68s `WARDEN_EMERGE` and 5.0s `WARDEN_DIG` keyframes.
@@ -7929,7 +7780,6 @@ fn entity_model_sources_project_warden_emerge_and_dig() {
 
 #[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
-    const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
     // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and
     // `FLAG_INTERESTED` is mask 8 within that byte.
     let fox_flags = |raw: i8| ProtocolEntityDataValue {
@@ -8018,8 +7868,6 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
 
 #[test]
 fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
-    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
-    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
     const CAT_IS_LYING_DATA_ID: u8 = 21;
     const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
 
@@ -8100,9 +7948,6 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
 
 #[test]
 fn entity_model_sources_project_cat_lying_on_sleeping_player() {
-    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
-    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
     const CAT_IS_LYING_DATA_ID: u8 = 21;
     const POSE_STANDING: i32 = 0;
     const POSE_SLEEPING: i32 = 2;
@@ -8194,8 +8039,6 @@ fn chicken_flap_state_initializes_flapping_to_one() {
 
 #[test]
 fn entity_model_sources_project_walk_animation_limb_swing() {
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-
     // partial tick 1.0 → WalkAnimationState.position/speed return the current
     // (un-lerped) accumulator values.
     let walk = |store: &WorldStore, partial: f32| -> (f32, f32) {
@@ -8287,7 +8130,6 @@ fn entity_model_sources_project_walk_animation_limb_swing() {
 
 #[test]
 fn entity_model_sources_walk_animation_scales_position_for_babies() {
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
     const BOOLEAN_SERIALIZER_ID: i32 = 8;
 
@@ -8367,8 +8209,6 @@ fn entity_model_sources_walk_animation_scales_position_for_babies() {
 
 #[test]
 fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-    const VANILLA_ENTITY_TYPE_BOAT_ID: i32 = 89;
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
@@ -8410,7 +8250,7 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         70,
-        VANILLA_ENTITY_TYPE_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(
         71,
@@ -8470,8 +8310,6 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     // `targetSpeed = min(distance * 6, 1)` and `WalkAnimationState.update(..., factor = 0.2)`.
     // Non-standing or dashing camels target zero. This differs from the base cow mapping
     // (`min(distance * 4, 1)`, factor 0.4) for the same movement.
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-    const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
     const CAMEL_DASH_DATA_ID: u8 = 19;
     const POSE_STANDING: i32 = 0;
     const POSE_SITTING: i32 = 10;
@@ -8556,8 +8394,6 @@ fn creaking_walk_uses_the_vanilla_distance_to_speed_override() {
     // `speed = 0 + (3 - 0) · 0.4 = 1.2` and `position = 1.2` — but `speed(partial)` clamps to `1.0`.
     // A cow with the base `min(distance · 4, 1)` mapping reaches only `position = speed = 0.4` from
     // the same movement, so the creaking ramps ~3× faster.
-    const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 
     let walk = |store: &WorldStore, id: i32| -> (f32, f32) {
         let source = store
@@ -10961,7 +10797,6 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
 #[test]
 fn armor_stand_marker_has_model_target_without_pick_target() {
-    const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
     const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
     const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 
@@ -11786,8 +11621,6 @@ fn minecart_along_track_updates_entity_from_latest_step() {
 
 #[test]
 fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
-    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
@@ -12139,9 +11972,6 @@ fn tracks_entity_transient_events() {
 
 #[test]
 fn sheep_eat_grass_event_drives_client_animation_tick() {
-    const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         70,
@@ -12197,9 +12027,6 @@ fn sheep_eat_grass_event_drives_client_animation_tick() {
 
 #[test]
 fn goat_ram_events_drive_the_lower_head_tick_counter() {
-    const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         72,
@@ -12259,9 +12086,6 @@ fn goat_ram_events_drive_the_lower_head_tick_counter() {
 
 #[test]
 fn iron_golem_attack_and_offer_events_drive_client_animation_timers() {
-    const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         74,
@@ -12333,9 +12157,6 @@ fn iron_golem_attack_and_offer_events_drive_client_animation_timers() {
 
 #[test]
 fn ravager_attack_stun_and_roar_timers_advance_together() {
-    const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         76,
@@ -12395,9 +12216,6 @@ fn ravager_attack_stun_and_roar_timers_advance_together() {
 
 #[test]
 fn evoker_fangs_attack_event_drives_the_bite_progress_ramp() {
-    const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         78,
@@ -12457,7 +12275,6 @@ fn evoker_fangs_attack_event_drives_the_bite_progress_ramp() {
 
 #[test]
 fn camel_dash_flag_drives_the_dash_animation_timer() {
-    const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
     const CAMEL_DASH_DATA_ID: u8 = 19;
 
     let mut store = WorldStore::new();
@@ -12549,7 +12366,6 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
 
 #[test]
 fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
-    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
     const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
     const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
     const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
@@ -12607,7 +12423,6 @@ fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
 
 #[test]
 fn copper_golem_getting_item_state_drives_interaction_timer() {
-    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
     const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
     const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
     const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
@@ -12659,7 +12474,6 @@ fn copper_golem_getting_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_getting_no_item_state_drives_interaction_timer() {
-    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
     const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
     const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
     const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
@@ -12711,7 +12525,6 @@ fn copper_golem_getting_no_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_dropping_item_state_drives_interaction_timer() {
-    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
     const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
     const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
     const COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
@@ -12763,7 +12576,6 @@ fn copper_golem_dropping_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_dropping_no_item_state_drives_interaction_timer() {
-    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
     const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
     const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
     const COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
@@ -12815,7 +12627,6 @@ fn copper_golem_dropping_no_item_state_drives_interaction_timer() {
 
 #[test]
 fn allay_dancing_flag_drives_the_dance_spin_state() {
-    const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
     const ALLAY_DANCING_DATA_ID: u8 = 16;
 
     let mut store = WorldStore::new();
@@ -12901,8 +12712,6 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
 
 #[test]
 fn allay_main_hand_equipment_drives_holding_item_progress() {
-    const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         92,
@@ -12952,7 +12761,6 @@ fn allay_main_hand_equipment_drives_holding_item_progress() {
 
 #[test]
 fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
-    const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
     const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 
     let mut store = WorldStore::new();
@@ -13015,7 +12823,6 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
 
 #[test]
 fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
-    const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
     const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 
     let mut store = WorldStore::new();
@@ -13065,7 +12872,6 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
 
 #[test]
 fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
-    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
     const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
     const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
 
@@ -13121,7 +12927,6 @@ fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
 
 #[test]
 fn axolotl_playing_dead_flag_drives_the_eased_factor() {
-    const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 
     let mut store = WorldStore::new();
@@ -13181,10 +12986,6 @@ fn axolotl_playing_dead_flag_drives_the_eased_factor() {
 
 #[test]
 fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
-    const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
-    const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         78,
@@ -13236,8 +13037,6 @@ fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
 
 #[test]
 fn rabbit_jump_event_drives_the_hop_window() {
-    const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const RABBIT_JUMP_EVENT_ID: i8 = 1;
 
     let mut store = WorldStore::new();
@@ -13308,9 +13107,6 @@ fn rabbit_jump_event_drives_the_hop_window() {
 
 #[test]
 fn entity_model_sources_project_arrow_impact_shake() {
-    const VANILLA_ENTITY_TYPE_ARROW_ID: i32 = 6;
-    const VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID: i32 = 123;
-    const VANILLA_ENTITY_TYPE_TRIDENT_ID: i32 = 135;
     const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 
     let source = |store: &WorldStore, id: i32, partial: f32| {
@@ -13400,8 +13196,6 @@ fn entity_model_sources_project_arrow_impact_shake() {
 
 #[test]
 fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
-    const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const CREAKING_ATTACK_EVENT_ID: i8 = 4;
     const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
     const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
@@ -13534,8 +13328,6 @@ fn breeze_pose_drives_the_action_animations() {
     // shoot/inhale/slide/longJump one-shots (active while their pose holds), and LEAVING `Pose.SLIDING`
     // fires the brief `slideBack`. Each is projected as the elapsed seconds since it started, `-1.0`
     // when stopped. The looping idle is renderer-side and not projected.
-    const VANILLA_ENTITY_TYPE_BREEZE_ID: i32 = 17;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const POSE_STANDING: i32 = 0;
     const POSE_LONG_JUMPING: i32 = 6;
     const POSE_SLIDING: i32 = 15;
@@ -13621,9 +13413,6 @@ fn breeze_pose_drives_the_action_animations() {
 
 #[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
-    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
-    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         80,

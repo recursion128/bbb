@@ -11,6 +11,7 @@ use bbb_control::{AudioCounters, NetCounters};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundCatalog, SoundEventRegistry};
 use bbb_protocol::codec::Encoder;
+use bbb_protocol::entity_types::*;
 use bbb_protocol::packets::PlayClientbound;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
@@ -2041,8 +2042,6 @@ fn simple_entity_update_ignored_counters_update_world_counters() {
 
 #[test]
 fn entity_metadata_ignored_counters_update_world_counters() {
-    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
-
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(124, VANILLA_ENTITY_TYPE_ITEM_ID),
@@ -2180,8 +2179,6 @@ fn add_entity_replacement_updates_world_active_effect_counters() {
 
 #[test]
 fn mob_effect_ignored_counters_update_world_counters() {
-    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
-
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(124, VANILLA_ENTITY_TYPE_ITEM_ID),
@@ -3909,8 +3906,6 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
 
 #[test]
 fn projectile_power_updates_world_entity_state_and_world_counters() {
-    const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
-
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::ProjectilePower(
         ProjectilePower {
