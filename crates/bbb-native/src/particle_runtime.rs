@@ -2644,9 +2644,21 @@ fn deepslate_family_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     if name == "deepslate"
         || name == "cobbled_deepslate"
+        || name == "cobbled_deepslate_stairs"
+        || name == "cobbled_deepslate_slab"
+        || name == "cobbled_deepslate_wall"
         || name == "polished_deepslate"
+        || name == "polished_deepslate_stairs"
+        || name == "polished_deepslate_slab"
+        || name == "polished_deepslate_wall"
         || name == "deepslate_tiles"
+        || name == "deepslate_tile_stairs"
+        || name == "deepslate_tile_slab"
+        || name == "deepslate_tile_wall"
         || name == "deepslate_bricks"
+        || name == "deepslate_brick_stairs"
+        || name == "deepslate_brick_slab"
+        || name == "deepslate_brick_wall"
         || name == "chiseled_deepslate"
         || name == "cracked_deepslate_bricks"
         || name == "cracked_deepslate_tiles"
@@ -4492,6 +4504,71 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_deepslate_construction_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        let wall = [
+            ("east", "low"),
+            ("north", "none"),
+            ("south", "none"),
+            ("up", "true"),
+            ("waterlogged", "false"),
+            ("west", "none"),
+        ];
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id(
+                    "minecraft:cobbled_deepslate_stairs",
+                    [
+                        ("facing", "east"),
+                        ("half", "bottom"),
+                        ("shape", "straight"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:cobbled_deepslate_stairs",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:polished_deepslate_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:polished_deepslate_slab",
+            ),
+            (
+                test_block_state_id("minecraft:deepslate_tile_wall", wall),
+                "minecraft:deepslate_tile_wall",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:deepslate_brick_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "inner_left"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:deepslate_brick_stairs",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x64, 0x64, 0x64)),
                 "{block_name}"
             );
         }

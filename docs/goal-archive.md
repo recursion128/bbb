@@ -1631,6 +1631,13 @@
     metal closed eyeblossom, and plant-green firefly bush RGBs. Full mapColor
     catalog coverage, biome-aware per-spawn BlockColors, and on-ground roll
     reset remain follow-up work.
+  - [x] `falling_dust` deepslate construction static mapColor expansion：
+    native extends the existing deepslate family fallback through vanilla
+    cobbled, polished, tile, and brick deepslate stairs/slab/wall variants that
+    inherit their base block mapColor with `ofLegacyCopy`. Tests pin
+    representative cobbled stairs, polished slab, tile wall, and brick stairs
+    RGBs. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
+    and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
