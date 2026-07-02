@@ -71,6 +71,7 @@ impl<F> ResolvableProfileResolver<F> {
 }
 
 impl<F: GameProfileFetcher> ResolvableProfileResolver<F> {
+    #[cfg(test)]
     pub(crate) fn resolve_or_partial(
         &mut self,
         profile: ResolvableProfileSummary,

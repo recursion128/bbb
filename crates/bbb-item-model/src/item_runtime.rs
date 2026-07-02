@@ -1288,6 +1288,7 @@ impl NativeItemRuntime {
         colors
     }
 
+    #[cfg(test)]
     pub(crate) fn llama_body_decor_color_count(&self) -> usize {
         self.llama_body_decor_colors_by_protocol_id().len()
     }
@@ -1718,6 +1719,7 @@ impl NativeItemRuntime {
     /// resolved item cuboid model. `None` if the item has no registry entry or no resolved model (the
     /// caller then falls back to the parent-model default). Used to place the 3D model in hand / frame /
     /// GUI exactly as vanilla's `model.applyTransform`.
+    #[cfg(test)]
     pub(crate) fn item_display_transform(
         &self,
         protocol_id: i32,
@@ -1749,6 +1751,7 @@ impl NativeItemRuntime {
     /// level-backed dynamic trim registry, such as dropped items (`GROUND`) and
     /// item frames (`FIXED`). Vanilla `TrimMaterialProperty.get` reads only the
     /// stack's `minecraft:trim` component and the trim material registry key.
+    #[cfg(test)]
     pub(crate) fn generated_item_layers_for_stack_with_trim_materials(
         &self,
         stack: &ItemStackSummary,
@@ -1796,6 +1799,7 @@ impl NativeItemRuntime {
     /// the owner's entity type key. Vanilla `TrimMaterialProperty.get` reads
     /// only the stack trim component and synced trim-material registry key, so
     /// owner-backed world-level callers may pass those keys too.
+    #[cfg(test)]
     pub(crate) fn generated_item_layers_for_stack_with_owner_context(
         &self,
         stack: &ItemStackSummary,
