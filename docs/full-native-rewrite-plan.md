@@ -28,6 +28,9 @@ The target state is:
 - `bbb-pack` owns official 26.1 resource-pack and asset resolution.
 - `bbb-renderer` owns GPU-facing terrain, entity, particle, HUD, and overlay
   runtime state.
+- `bbb-render-types` owns the pure value types shared between the renderer and
+  native projection code (skin decode, sprite masks, HUD glyph metrics), so
+  `bbb-item-model` does not depend on the GPU renderer.
 - `bbb-audio` or a narrow native audio runtime owns playback resources such as
   Kira managers, tracks, and sound handles.
 - `bbb-control` exposes snapshots and counters derived from canonical world and

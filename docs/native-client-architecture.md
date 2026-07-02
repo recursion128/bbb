@@ -80,8 +80,11 @@ Owns connection lifecycle and packet/event transport.
 - Converts decoded packets into `NetEvent` values.
 - Does not own canonical client state.
 
-Offline probes should apply every already-decoded packet that has a world apply
-API. Ignoring packets in probe code is a temporary gap, not the target design.
+Play-state packets flow as `NetEvent::Play(packet)`; both the offline probe and
+the online dispatcher delegate to the shared `WorldStore::apply_play_packet`
+table, so per-packet apply arms exist in exactly one place. Connection-owned
+packets (keepalive, cookies, chunk-batch feedback, movement responses,
+configuration handoff) are returned to the caller and stay net-owned.
 
 ### `bbb-world`
 
@@ -122,6 +125,15 @@ Owns GPU-facing rendering.
 - Entity rendering, particles, overlays, HUD geometry, and selection outlines.
 - Backend GPU buffers, pipelines, caches, and frame scheduling.
 
+Frame structure invariants (enforced by tests in `render.rs`):
+
+- `render()` is a pure orchestrator over ordered step methods; the sequence is
+  declared in `FRAME_STEPS` and a meta test pins call order, definition order,
+  and the absence of direct GPU commands in the orchestrator.
+- Render pipelines are created through `pipeline_builder::RenderPipelineBuilder`;
+  per-frame rebuilt vertex/index streams reuse `frame_buffers::FrameDataBuffer`
+  instead of allocating fresh buffers each frame.
+
 Renderer state is runtime state. It may cache data derived from `bbb-world` and
 `bbb-pack`, but `bbb-world` remains canonical.
 
@@ -156,7 +168,8 @@ Owns runtime orchestration.
 
 - Main event loop, input/camera integration, upload scheduling, platform
   boundary use, command queues, and integration tests.
-- Applies `NetEvent`s to `WorldStore`.
+- Routes `NetEvent::Play` into `WorldStore::apply_play_packet`, providing the
+  runtime `PlayApplyEffects` sinks (audio, particles, acknowledgements).
 - Runs systems or forwards derived commands to renderer/audio/control.
 - Does not duplicate world-owned canonical state.
 
@@ -169,8 +182,21 @@ Owns value-aware item-model resolution.
   rendering.
 - Exposes `NativeItemRuntime` and its context/result types; consumed by the
   `bbb-native` runtime, scene, and HUD paths.
-- Depends on `bbb-pack`, `bbb-protocol`, `bbb-renderer`, and `bbb-world`; holds
-  no runtime orchestration or canonical world state.
+- Depends on `bbb-pack`, `bbb-protocol`, `bbb-render-types`, and `bbb-world`;
+  holds no runtime orchestration or canonical world state, and must not depend
+  on `bbb-renderer`.
+
+### `bbb-render-types`
+
+Owns pure value types shared between the renderer and native projection code:
+player skin/texture PNG decode (vanilla `SkinTextureDownloader` semantics),
+entity skin/equipment texture refs, sprite alpha masks and atlas rects, HUD
+glyph metrics, and item-frame map decoration textures.
+
+- Leaf crate: no internal dependencies; `bbb-renderer` re-exports everything at
+  its pre-existing paths.
+- Exists so `bbb-item-model` can name renderer-facing data without depending on
+  the GPU renderer. New shared value types go here, not into `bbb-renderer`.
 
 ### `bbb-platform`
 
@@ -270,8 +296,11 @@ Backend runtime state belongs in renderer/audio/native/platform, not in
 - `protocol entity id -> hecs::Entity` map for packet lookup.
 - Stable protocol-order tracking for deterministic snapshots and tests.
 
-This is valid, but new entity work should move toward real ECS usage instead of
-only using `hecs` as a componentized object map.
+Components are the source of truth. `apply_add_entity` spawns components
+directly from the packet, re-adds reset components in place, and
+`EntityStore::clone` copies component-by-component; full `EntityState`
+projection exists only at the probe/serialize/debug boundary
+(`insert_or_replace` remains the serde deserialization path).
 
 ### Component Ownership
 
@@ -477,6 +506,15 @@ This avoids stale snapshots where native counters and world state disagree.
 Pure systems should be introduced when behavior is more than a direct packet
 application.
 
+Existing systems:
+
+- Render extraction: `bbb-native/src/runtime/render_extract.rs` owns the pure
+  `*_for_world` world->renderer projections and the per-frame `RendererFrame`
+  snapshot. The pump extracts each field at its client-tick sequence point and
+  commits the whole frame through one `apply_renderer_frame` call; new
+  world->renderer state goes through `RendererFrame`, not ad-hoc
+  `renderer.set_*` calls.
+
 Candidate systems:
 
 - Entity interpolation and movement.
@@ -485,7 +523,6 @@ Candidate systems:
 - Projectile acceleration/ticking.
 - Mob-effect ticking when needed.
 - Audio command extraction.
-- Render extraction.
 
 Systems should be deterministic functions over world state and small runtime
 inputs. They should be testable without network, renderer, or audio backends.
@@ -556,10 +593,14 @@ inputs. They should be testable without network, renderer, or audio backends.
 
 ### Medium Term
 
-- Introduce an explicit systems layer if behavior outgrows direct apply methods.
+- Extend the explicit systems layer (render extraction landed 2026-07-02) to
+  audio command extraction and entity movement systems as they outgrow direct
+  apply methods.
 - Build `bbb-pack` lookup APIs around official 26.1 assets.
 - Add the audio runtime boundary, with Kira behind a feature or isolated crate.
-- Add renderer extraction APIs that avoid large world clones.
+- Verify each `RendererFrame` field's extraction timing against the vanilla
+  tick->render order (fields currently read at their historical sequence
+  points, documented on the struct).
 
 ### Long Term
 

@@ -104,6 +104,29 @@ When an agent does any of the following, update this file in the same slice:
   - The final criterion:
     - every supported decoded packet stays aligned
 
+### Renderer Frame Extraction Timing
+
+- Owner: `bbb-native`
+- Status: `partial`
+- Next action:
+  - Verify each `RendererFrame` field's extraction point against the vanilla
+    tick -> render frame order, one field per slice. The pump binds every
+    world -> renderer value at the sequence point the removed `renderer.set_*`
+    call historically occupied, so current behavior is preserved but not yet
+    vanilla-verified per field. Known interleaves to check first: the
+    lightmap/clear/fog/sky/cloud environments are read before
+    `advance_sky_flash_time`, and the HUD values are read after
+    `advance_player_input` / use-item advances.
+  - A verified field either keeps its position with a vanilla citation on the
+    binding, or its `let` moves across the relevant tick advance with the same
+    citation.
+- Evidence / boundary:
+  - `bbb-native/src/runtime/render_extract.rs` owns `RendererFrame` and
+    `apply_renderer_frame`; the struct doc records the deliberate
+    read-before-advance interleaves.
+  - The renderer receives the whole frame in one commit, so reorders are pure
+    extraction-timing questions and cannot introduce partial-frame states.
+
 ### Native-Owned Business Snapshots
 
 - Owner: `bbb-world` + `bbb-native` + `bbb-control`
