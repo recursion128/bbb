@@ -262,8 +262,8 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
       - remaining deferred work is component-driven item stack material
-        selection, biome-aware per-spawn terrain tint, the full map-color
-        catalog, collision/roll coupling, and broader firework presentation
+        selection, biome-aware per-spawn terrain tint, collision/roll coupling,
+        and broader firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -325,7 +325,12 @@ When an agent does any of the following, update this file in the same slice:
       families, fire/cocoa/creaking heart static families, glowstone/enchanting/
       beacon static families, produce/fungus static families, plus ore/deepslate/nether,
       snow/ice/clay/sandstone/suspicious block, and resource block
-      mineral/natural static colors.
+      mineral/natural static colors, plus mycelium, packed mud, nether brick
+      fence, nether portal default `MapColor.NONE`, stripped pale oak wood, and
+      all copper lantern weathering/waxed variants. The
+      `falling_dust_colors_cover_all_accepted_vanilla_block_states` test now
+      enumerates every vanilla 26.1 block state accepted by the provider and
+      asserts a resolved tint or mapColor.
       Renderer
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
@@ -345,8 +350,8 @@ When an agent does any of the following, update this file in the same slice:
       commands. Generic `minecraft:item` particles with an empty component patch
       now resolve the default GROUND item particle material active-layer sprite
       ids and let the renderer randomly select one; full component-driven stack
-      material selection, biome-aware per-spawn BlockColors, full map-color
-      catalog coverage, and on-ground roll reset remain follow-up work. Native spawn
+      material selection, biome-aware per-spawn BlockColors, and on-ground roll
+      reset remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -411,10 +416,11 @@ When an agent does any of the following, update this file in the same slice:
       fire/cocoa/creaking heart static families, glowstone/enchanting/beacon
       static families, and
       ore/deepslate/nether plus
-      mineral/natural static block families.
+      mineral/natural static block families, plus the final accepted vanilla
+      static states covered by the registry-wide falling-dust color test.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
-      BlockColors, the full map-color catalog, and the broader firework
-      `Starter` child-particle presentation path.
+      BlockColors and the broader firework `Starter` child-particle
+      presentation path.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6503,10 +6509,13 @@ When an agent does any of the following, update this file in the same slice:
         water plant/egg static families, flower/tall flower static families,
         fire/cocoa/creaking heart static families, glowstone/enchanting/beacon
         static families,
-        ore/deepslate/nether colors, and mineral/natural static block families.
-        Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
-        on-ground roll reset remain deferred until particle ticking can query
-        world block/collision state.
+        ore/deepslate/nether colors, mineral/natural static block families, and
+        the final accepted vanilla static states (mycelium, packed mud, nether
+        brick fence, nether portal default NONE, stripped pale oak wood, and
+        copper lantern weathering/waxed variants). Full mapColor catalog
+        coverage is now pinned by the registry-wide falling-dust color test;
+        biome-aware per-spawn BlockColors and on-ground roll reset remain
+        deferred until particle ticking can query world block/collision state.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
         `minecraft:block_crumble` submissions: air, `moving_piston`, and

@@ -2715,6 +2715,17 @@ fn copper_weathering_base_suffix(name: &str) -> bool {
     )
 }
 
+fn copper_lantern_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let name = name.strip_prefix("waxed_").unwrap_or(name);
+    let name = name
+        .strip_prefix("exposed_")
+        .or_else(|| name.strip_prefix("weathered_"))
+        .or_else(|| name.strip_prefix("oxidized_"))
+        .unwrap_or(name);
+    (name == "copper_lantern").then_some(MAP_COLOR_METAL)
+}
+
 fn wooden_stairs_and_slabs_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     let family = name
@@ -2806,7 +2817,7 @@ fn default_none_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     matches!(
         name,
-        "air" | "cave_air" | "void_air" | "test_instance_block"
+        "air" | "cave_air" | "void_air" | "nether_portal" | "test_instance_block"
     )
     .then_some(MAP_COLOR_NONE)
 }
@@ -2886,6 +2897,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = copper_weathering_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = copper_lantern_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = wooden_stairs_and_slabs_static_map_color(name) {
@@ -3118,6 +3132,7 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:cherry_wood" => Some(MAP_COLOR_TERRACOTTA_GRAY),
         "minecraft:stripped_cherry_wood" => Some(MAP_COLOR_TERRACOTTA_PINK),
         "minecraft:dark_oak_wood" | "minecraft:stripped_dark_oak_wood" => Some(MAP_COLOR_BROWN),
+        "minecraft:stripped_pale_oak_wood" => Some(MAP_COLOR_QUARTZ),
         "minecraft:mangrove_wood"
         | "minecraft:stripped_mangrove_wood"
         | "minecraft:stripped_mangrove_log" => Some(MAP_COLOR_RED),
@@ -3250,6 +3265,7 @@ fn construction_static_map_color(name: &str) -> Option<u32> {
         | "smooth_red_sandstone"
         | "smooth_red_sandstone_stairs"
         | "smooth_red_sandstone_slab" => MAP_COLOR_ORANGE,
+        "packed_mud" => MAP_COLOR_DIRT,
         "bricks" | "brick_stairs" | "brick_slab" | "brick_wall" => MAP_COLOR_RED,
         "mud_bricks" | "mud_brick_stairs" | "mud_brick_slab" | "mud_brick_wall" => {
             MAP_COLOR_TERRACOTTA_LIGHT_GRAY
@@ -3257,6 +3273,7 @@ fn construction_static_map_color(name: &str) -> Option<u32> {
         "nether_brick_stairs"
         | "nether_brick_slab"
         | "nether_brick_wall"
+        | "nether_brick_fence"
         | "red_nether_brick_stairs"
         | "red_nether_brick_slab"
         | "red_nether_brick_wall" => MAP_COLOR_NETHER,
@@ -3370,6 +3387,7 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         "dead_bush" => MAP_COLOR_WOOD,
         "bamboo_sapling" => MAP_COLOR_WOOD,
         "turtle_egg" => MAP_COLOR_SAND,
+        "mycelium" => MAP_COLOR_PURPLE,
         "short_dry_grass" | "tall_dry_grass" => MAP_COLOR_YELLOW,
         "pointed_dripstone" | "dripstone_block" => MAP_COLOR_TERRACOTTA_BROWN,
         "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
@@ -7113,6 +7131,10 @@ mod tests {
                 "minecraft:void_air",
             ),
             (
+                test_block_state_id("minecraft:nether_portal", [("axis", "x")]),
+                "minecraft:nether_portal",
+            ),
+            (
                 test_block_state_id("minecraft:test_instance_block", []),
                 "minecraft:test_instance_block",
             ),
@@ -7129,6 +7151,125 @@ mod tests {
                 "{block_name}"
             );
         }
+    }
+
+    #[test]
+    fn falling_dust_uses_final_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        let fence = [
+            ("east", "true"),
+            ("north", "false"),
+            ("south", "false"),
+            ("waterlogged", "false"),
+            ("west", "true"),
+        ];
+        let lantern = [("hanging", "false"), ("waterlogged", "false")];
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:mycelium", [("snowy", "false")]),
+                "minecraft:mycelium",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:packed_mud", []),
+                "minecraft:packed_mud",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id("minecraft:nether_brick_fence", fence),
+                "minecraft:nether_brick_fence",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:stripped_pale_oak_wood", [("axis", "z")]),
+                "minecraft:stripped_pale_oak_wood",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:copper_lantern", lantern),
+                "minecraft:copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:exposed_copper_lantern", lantern),
+                "minecraft:exposed_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:weathered_copper_lantern", lantern),
+                "minecraft:weathered_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:oxidized_copper_lantern", lantern),
+                "minecraft:oxidized_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:waxed_copper_lantern", lantern),
+                "minecraft:waxed_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:waxed_exposed_copper_lantern", lantern),
+                "minecraft:waxed_exposed_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:waxed_weathered_copper_lantern", lantern),
+                "minecraft:waxed_weathered_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:waxed_oxidized_copper_lantern", lantern),
+                "minecraft:waxed_oxidized_copper_lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_colors_cover_all_accepted_vanilla_block_states() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+        let mut missing = std::collections::BTreeSet::new();
+
+        for block_state in bbb_world::BlockStateRegistry::vanilla_26_1().iter() {
+            if !falling_dust_provider_accepts_block_state(block_state.id) {
+                continue;
+            }
+
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state.id);
+            let batch = resolver.resolve_level_particles(&packet);
+            if batch
+                .commands
+                .first()
+                .is_none_or(|command| command.option_color.is_none())
+            {
+                missing.insert(block_state.name.clone());
+            }
+        }
+
+        assert!(
+            missing.is_empty(),
+            "missing falling_dust colors: {missing:#?}"
+        );
     }
 
     #[test]

@@ -1832,6 +1832,17 @@
     COLOR_LIGHT_BLUE, cocoa PLANT, and creaking heart COLOR_ORANGE. Tests pin
     representative fire adjacency/age, soul fire empty, cocoa age/facing, and
     creaking heart axis/state/natural states.
+  - [x] `falling_dust` full static mapColor catalog closeout：native now covers
+    the final accepted vanilla 26.1 block states that were not handled by
+    FallingBlock dust colors or `BlockColors.createDefault()` layer-0 tint:
+    mycelium, packed mud, nether brick fence, nether portal default
+    `MapColor.NONE`, stripped pale oak wood, and copper lantern weathering /
+    waxed variants. The new
+    `falling_dust_colors_cover_all_accepted_vanilla_block_states` test
+    enumerates every provider-accepted vanilla block state and asserts that the
+    native command resolves either a BlockColors tint or static mapColor.
+    Remaining color work is biome-aware per-spawn BlockColors; on-ground roll
+    reset remains collision-coupled particle ticking work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
