@@ -1593,6 +1593,11 @@
     `spruce_wall_hanging_sign` `WOOD` override. Full mapColor catalog coverage,
     biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
     work.
+  - [x] `falling_dust` wooden shelf static mapColor expansion：native now mirrors
+    vanilla `ShelfBlock` mapColor registrations for oak/spruce/birch/jungle/
+    acacia/cherry/dark oak/pale oak/mangrove/bamboo/crimson/warped shelves.
+    Tests pin representative facing/powered/side-chain/waterlogged states for
+    every shelf family.
   - [x] `falling_dust` banner static mapColor expansion：native now mirrors
     vanilla `BannerBlock` and `WallBannerBlock` registration where every
     `DyeColor` banner variant still uses `MapColor.WOOD` for

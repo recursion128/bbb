@@ -2820,6 +2820,12 @@ fn wooden_sign_static_map_color(name: &str) -> Option<u32> {
     wooden_plank_family_map_color(family)
 }
 
+fn wooden_shelf_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let family = name.strip_suffix("_shelf")?;
+    wooden_plank_family_map_color(family)
+}
+
 fn hanging_sign_family_map_color(family: &str) -> Option<u32> {
     if family == "cherry" {
         return Some(MAP_COLOR_TERRACOTTA_PINK);
@@ -2883,6 +2889,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = wooden_sign_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = wooden_shelf_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = button_static_map_color(name) {
@@ -5075,6 +5084,49 @@ mod tests {
                     "{block_name}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_wooden_shelf_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (family, expected_color) in [
+            ("oak", rgb_option(0x8f, 0x77, 0x48)),
+            ("spruce", rgb_option(0x81, 0x56, 0x31)),
+            ("birch", rgb_option(0xf7, 0xe9, 0xa3)),
+            ("jungle", rgb_option(0x97, 0x6d, 0x4d)),
+            ("acacia", rgb_option(0xd8, 0x7f, 0x33)),
+            ("cherry", rgb_option(0xd1, 0xb1, 0xa1)),
+            ("dark_oak", rgb_option(0x66, 0x4c, 0x33)),
+            ("pale_oak", rgb_option(0xff, 0xfc, 0xf5)),
+            ("mangrove", rgb_option(0x99, 0x33, 0x33)),
+            ("bamboo", rgb_option(0xe5, 0xe5, 0x33)),
+            ("crimson", rgb_option(0x94, 0x3f, 0x61)),
+            ("warped", rgb_option(0x3a, 0x8e, 0x8c)),
+        ] {
+            let block_name = format!("minecraft:{family}_shelf");
+            let block_state_id = test_block_state_id(
+                &block_name,
+                [
+                    ("facing", "north"),
+                    ("powered", "true"),
+                    ("side_chain", "unconnected"),
+                    ("waterlogged", "true"),
+                ],
+            );
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
         }
     }
 

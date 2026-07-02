@@ -301,7 +301,7 @@ When an agent does any of the following, update this file in the same slice:
       applies vanilla static mapColor fallback for foundational non-tinted
       stone/dirt/planks, wood/log/bamboo axis states, crimson/warped stem/hyphae
       static colors, wooden stairs/slabs/pressure plates/doors/trapdoors/fences/
-      fence gates/signs/hanging signs, banner/wall banner `WOOD`, button,
+      fence gates/signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
       ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
       potted, and cake default `MapColor.NONE` groups, DyeColor and colored
       terracotta families, decorative
@@ -383,7 +383,7 @@ When an agent does any of the following, update this file in the same slice:
       sources; the `falling_dust` mapColor fallback now covers foundational
       static block colors for stone/dirt/planks, wood/log/bamboo axis states,
       wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
-      signs/hanging signs, banner/wall banner `WOOD`, button,
+      signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
       ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
       potted, and cake default `MapColor.NONE` groups, crimson/warped
       stem/hyphae colors, DyeColor / colored terracotta families,
@@ -6471,7 +6471,7 @@ When an agent does any of the following, update this file in the same slice:
         world-color sources. Vanilla static mapColor fallback now covers
         foundational non-tinted stone/dirt/planks, wood/log/bamboo axis states,
         wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
-        signs/hanging signs, banner/wall banner `WOOD`, button,
+        signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
         ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
         potted, and cake default-NONE groups, crimson/warped stem/hyphae colors,
         DyeColor / colored terracotta families, bed/candle/shulker decorative
