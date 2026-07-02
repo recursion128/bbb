@@ -1583,6 +1583,16 @@
     vanilla button variants. Full mapColor catalog coverage, biome-aware
     per-spawn BlockColors, signs, and on-ground roll reset remain follow-up
     work.
+  - [x] `falling_dust` wooden signs static mapColor expansion：native now
+    mirrors vanilla `StandingSignBlock`, `WallSignBlock`,
+    `CeilingHangingSignBlock`, and `WallHangingSignBlock` mapColor
+    registrations for oak/spruce/birch/jungle/acacia/cherry/dark oak/pale oak/
+    mangrove/bamboo/crimson/warped signs. Tests pin ordinary sign and wall-sign
+    states plus ceiling and wall hanging-sign states, including vanilla's
+    `cherry_*_hanging_sign` `TERRACOTTA_PINK` color and
+    `spruce_wall_hanging_sign` `WOOD` override. Full mapColor catalog coverage,
+    biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
+    work.
   - [x] `falling_dust` colored-family static mapColor expansion：native now
     resolves vanilla `DyeColor.getMapColor()` families for wool, carpets,
     concrete, stained glass, and glazed terracotta, while using the separate
