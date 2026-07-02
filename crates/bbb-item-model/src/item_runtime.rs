@@ -10868,6 +10868,27 @@ mod tests {
         );
         assert_eq!(selected(3), uv("utc_offset_clock_fallback"));
 
+        // `uuuu-DDD-G` exercises the proleptic-year, day-of-year, and era fields:
+        // 2026-12-25 UTC formats to "2026-359-AD" (2026 is not a leap year).
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2026, 12, 25, 0, 0, 0)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(4), uv("date_field_clock_match"));
+
+        // A different day-of-year ("2027-001-AD") falls back.
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(4), uv("date_field_clock_fallback"));
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -16468,6 +16489,7 @@ mod tests {
                 "precise_clock",
                 "tokyo_clock",
                 "utc_offset_clock",
+                "date_field_clock",
             ],
         );
         write_json(
@@ -16542,6 +16564,24 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("date_field_clock.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "uuuu-DDD-G",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "2026-359-AD",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/date_field_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/date_field_clock_fallback" }
+                }
+            }"#,
+        );
         write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
         write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
         write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -16550,6 +16590,8 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "tokyo_clock_fallback", &[40, 40, 80, 255]);
         write_flat_item_model_and_texture(&assets, "utc_offset_clock_match", &[120, 180, 40, 255]);
         write_flat_item_model_and_texture(&assets, "utc_offset_clock_fallback", &[30, 30, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "date_field_clock_match", &[200, 160, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "date_field_clock_fallback", &[40, 20, 60, 255]);
     }
 
     fn write_component_select_fixture(root: &Path) {

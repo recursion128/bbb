@@ -6249,8 +6249,11 @@ When an agent does any of the following, update this file in the same slice:
       gains a real living owner but is not routed through the current
       owner-backed generated held-item path
     - remaining `minecraft:local_time` coverage beyond the supported
-      root/en-locale ICU numeric/date-time / timezone-offset subset: full
-      localized symbols and long-tail ICU pattern fields
+      root/en-locale ICU numeric/date-time / timezone-offset subset (which now
+      includes `u` proleptic year, `G` era, and `D` day-of-year): full
+      localized symbols and long-tail ICU pattern fields (locale week fields
+      `w`/`W`/`e`/`c`/`F`, quarter `Q`/`q`, and zone-name fields
+      `z`/`v`/`V`/`O`)
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -6588,14 +6591,16 @@ When an agent does any of the following, update this file in the same slice:
       follow-up.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector plus a
-      root/en-locale ICU `SimpleDateFormat` subset (`y`/`M`/`d`,
+      root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era
+      text, `M`/`L` month, `d` day, `D` day-of-year,
       24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, `Z`/`X`/`x`
       offset fields, and quoted literals). Explicit `GMT`/UTC offset and IANA
       `time_zone` IDs use that zone; absent `time_zone` uses the system local
       timezone like vanilla. Tests pin GMT `12-25` selecting the Christmas
       branch, `12-27` selecting the fallback, cross-midnight `UTC+02:30` plus
-      `Asia/Tokyo` date-time / weekday / AM-PM branches, and UTC `X`/`x`
-      zero-offset formatting.
+      `Asia/Tokyo` date-time / weekday / AM-PM branches, UTC `X`/`x`
+      zero-offset formatting, and a `uuuu-DDD-G` proleptic-year / day-of-year /
+      era pattern selecting `2026-359-AD`.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla
@@ -6697,9 +6702,10 @@ When an agent does any of the following, update this file in the same slice:
     advances per-property `source=random` state instead of falling back.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector and common root/en-locale ICU date-time patterns from wall-clock
-    time, including fixed-offset / IANA `time_zone` IDs and `Z`/`X`/`x`
-    offset fields; full localized symbols and long-tail ICU pattern fields
-    remain follow-up.
+    time, including `y`/`u` year, `G` era, `D` day-of-year, fixed-offset /
+    IANA `time_zone` IDs, and `Z`/`X`/`x` offset fields; full localized
+    symbols and long-tail ICU pattern fields (locale week fields, quarter, and
+    zone-name symbols) remain follow-up.
     GUI/HUD use-tick properties are wired for the local active stack,
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick

@@ -769,7 +769,9 @@ pub(super) enum SelectProperty {
     /// against the owner entity type resource key.
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
-    /// wall-clock date/time pattern.
+    /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
+    /// `G` era, `M`/`L` month, `d` day, `D` day-of-year, `H`/`k`/`K`/`h`
+    /// hour, `m`/`s`/`S`, `E` weekday, `a`, and `Z`/`X`/`x` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1358,6 +1360,7 @@ struct LocalTimeFields {
     year: i32,
     month: u32,
     day: u32,
+    day_of_year: u32,
     hour: u32,
     minute: u32,
     second: u32,
@@ -1372,6 +1375,7 @@ impl LocalTimeFields {
             year: date.year(),
             month: date.month(),
             day: date.day(),
+            day_of_year: date.ordinal(),
             hour: date.hour(),
             minute: date.minute(),
             second: date.second(),
@@ -1433,12 +1437,44 @@ fn format_local_time_field(
     locale: &str,
 ) -> Option<String> {
     match field {
-        'y' => {
+        // `y` is year-of-era and `u` is the proleptic year; they are identical
+        // for every CE date (proleptic year >= 1), which covers every epoch-millis
+        // timestamp, so both letters format the stored proleptic year here.
+        'y' | 'u' => {
             if count == 2 {
                 Some(padded_u32(fields.year.rem_euclid(100) as u32, 2))
             } else {
                 Some(padded_i32(fields.year, count))
             }
+        }
+        // Era text (`IsoChronology`: proleptic year >= 1 is CE, otherwise BCE).
+        // `G`..`GGG` short, `GGGG` full, `GGGGG` narrow.
+        'G' => {
+            let ce = fields.year >= 1;
+            let text = match count {
+                4 => {
+                    if ce {
+                        "Anno Domini"
+                    } else {
+                        "Before Christ"
+                    }
+                }
+                5 => {
+                    if ce {
+                        "A"
+                    } else {
+                        "B"
+                    }
+                }
+                _ => {
+                    if ce {
+                        "AD"
+                    } else {
+                        "BC"
+                    }
+                }
+            };
+            english_text(locale, text)
         }
         'M' | 'L' => match count {
             1 => Some(fields.month.to_string()),
@@ -1447,6 +1483,7 @@ fn format_local_time_field(
             _ => english_text(locale, long_month_name(fields.month)),
         },
         'd' => Some(padded_u32(fields.day, count)),
+        'D' => Some(padded_u32(fields.day_of_year, count)),
         'H' => Some(padded_u32(fields.hour, count)),
         'k' => {
             let hour = if fields.hour == 0 { 24 } else { fields.hour };
