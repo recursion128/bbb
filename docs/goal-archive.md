@@ -1562,6 +1562,12 @@
     `SoundSource.PLAYERS`, volume `1.0`, and pitch `1.0`. Non-brushable
     event-data block states keep the vanilla no-sound branch while destroy-block
     particles still run.
+  - [x] honeycomb wax-on LevelEvent sound ordering：event `3003` now mirrors
+    vanilla `LevelEventHandler` by emitting the six-face `minecraft:wax_on`
+    particle random sequence before recording/playing
+    `minecraft:item.honeycomb.wax_on`; audio-only dispatch advances the same
+    `UniformInt.of(3,5)` block-face particle random stream before drawing the
+    positioned sound seed.
   - [x] vault activate/deactivate LevelEvent sounds：events `3015` and `3016`
     now mirror vanilla `LevelEventHandler` sound ordering by consuming the local
     vault particle random sequence before drawing

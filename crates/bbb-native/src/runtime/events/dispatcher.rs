@@ -29,6 +29,7 @@ const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
+const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
@@ -373,7 +374,25 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 {
                     emit_local_sound(&mut audio_events, &state);
                 }
-                if event.event_type == PLANT_GROWTH_LEVEL_EVENT {
+                if event.event_type == WAX_ON_LEVEL_EVENT {
+                    let particles_consumed_random = emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        level_event_particle_context(world, &event),
+                        level_event_sound_random,
+                    );
+                    if !particles_consumed_random {
+                        advance_wax_on_level_event_particle_randoms(level_event_sound_random);
+                    }
+                    if let Some(state) = world.level_event_sound(event) {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else if event.event_type == PLANT_GROWTH_LEVEL_EVENT {
                     let context = level_event_particle_context(world, &event);
                     let particles_consumed_random = emit_level_event_particles(
                         &mut particle_events,
@@ -1233,6 +1252,19 @@ pub(super) fn advance_growth_level_event_particle_randoms(
         LevelEventGrowthParticleMode::WideNoFloating { .. } => event.data.wrapping_mul(3),
     };
     advance_particle_utils_spawn_particles_randoms(count, random);
+}
+
+pub(super) fn advance_wax_on_level_event_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..6 {
+        let particle_count = random.next_int_bound(3) + 3;
+        for _ in 0..particle_count {
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+        }
+    }
 }
 
 fn advance_particle_utils_spawn_particles_randoms(

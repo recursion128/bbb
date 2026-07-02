@@ -336,7 +336,9 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:explosion_emitter` particle
       - event `3002`: vanilla axis or block-face
         `minecraft:electric_spark` particles
-      - event `3003`: vanilla block-face `minecraft:wax_on` particles
+      - event `3003`: vanilla block-face `minecraft:wax_on` particles,
+        followed by `minecraft:item.honeycomb.wax_on` after the six-face
+        `UniformInt.of(3,5)` particle RNG sequence
       - event `3004`: vanilla block-face `minecraft:wax_off` particles
       - event `3005`: vanilla block-face `minecraft:scrape` particles
       - event `3006`: the charged `count = data >> 6`, `count > 0`
@@ -6036,7 +6038,8 @@ When an agent does any of the following, update this file in the same slice:
       - end portal frame fill
       - bone meal use for event `1505`, emitted after
         `BoneMealItem.addGrowthParticles` random consumption
-      - honeycomb wax on
+      - honeycomb wax on for event `3003`, emitted after the vanilla
+        block-face `minecraft:wax_on` particle random sequence
       - brush-block-complete event `3008` for suspicious sand/gravel, using
         the event-data `BrushableBlock.getBrushCompletedSound()` mapping and
         `SoundSource.PLAYERS`

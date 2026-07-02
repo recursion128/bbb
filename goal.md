@@ -281,6 +281,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `3008` brush-block-complete sound 已按 vanilla 的 event-data
     `BrushableBlock.getBrushCompletedSound()` 覆盖 suspicious sand/gravel 的
     `SoundSource.PLAYERS` completion sound；非 brushable block-state 仍不发声。
+  - `3003` honeycomb wax-on sound 已按 vanilla 在 block-face `wax_on`
+    particles 后播放，audio-only path 会推进 `UniformInt.of(3,5)` 六面粒子
+    RNG 后再抽取 positioned sound seed。
   - `1505` bone-meal use sound 已按 vanilla 在
     `BoneMealItem.addGrowthParticles` 后播放，audio-only probe 也会推进同一段
     growth particle RNG 后再抽取 positioned sound seed。

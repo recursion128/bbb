@@ -4488,6 +4488,9 @@ fn wax_on_level_event_emits_vanilla_sound_and_particles() {
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
     let mut particles = RecordingParticleSink::default();
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    advance_wax_on_level_event_particle_randoms(&mut expected_random);
+    let expected_seed = expected_random.next_long();
 
     assert_eq!(
         drain_net_events_with_sinks(
@@ -4513,9 +4516,63 @@ fn wax_on_level_event_emits_vanilla_sound_and_particles() {
     assert_eq!(command.position, [-2.5, 72.5, 5.5]);
     assert_close(command.packet_volume, 1.0);
     assert_close(command.packet_pitch, 1.0);
-    assert_eq!(command.seed, -4_962_768_465_676_381_896);
+    assert_eq!(command.seed, expected_seed);
     assert_eq!(particles.level_events, vec![event]);
     assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:item.honeycomb.wax_on")
+    );
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn wax_on_level_event_audio_only_advances_particles_before_sound_seed() {
+    let event = LevelEvent {
+        event_type: 3003,
+        pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    advance_wax_on_level_event_particle_randoms(&mut expected_random);
+    let expected_seed = expected_random.next_long();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.honeycomb.wax_on");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [1.5, 64.5, -1.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
     assert_eq!(world.counters().level_events_received, 1);
     assert_eq!(world.counters().level_events_tracked, 1);
 }
@@ -6209,6 +6266,8 @@ impl ParticleEventSink for RecordingParticleSink {
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);
+        } else if event.event_type == 3003 {
+            advance_wax_on_level_event_particle_randoms(random);
         } else if event.event_type == 1505 {
             advance_growth_level_event_particle_randoms(event, context, random);
         } else if event.event_type == 3015 && context.vault_block_entity_at_event_pos {
