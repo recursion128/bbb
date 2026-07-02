@@ -4325,6 +4325,69 @@ fn dragon_fireball_level_event_plays_sound_after_particles() {
     assert_eq!(world.counters().level_events_tracked, 1);
 }
 
+fn advance_expected_trial_spawner_level_event_particle_randoms(
+    event_type: i32,
+    data: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    match event_type {
+        3012 | 3021 => advance_expected_trial_spawner_spawn_particle_randoms(random),
+        3013 | 3019 => advance_expected_trial_spawner_detect_player_particle_randoms(data, random),
+        3014 => advance_expected_trial_spawner_eject_item_particle_randoms(random),
+        3020 => {
+            advance_expected_trial_spawner_detect_player_particle_randoms(0, random);
+            advance_expected_trial_spawner_become_ominous_particle_randoms(random);
+        }
+        _ => unreachable!("unexpected trial spawner level event type {event_type}"),
+    }
+}
+
+fn advance_expected_trial_spawner_spawn_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+    }
+}
+
+fn advance_expected_trial_spawner_detect_player_particle_randoms(
+    data: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let count = 30_i64 + i64::from(data.min(10)) * 5;
+    for _ in 0..count.max(0) {
+        let _ = random.next_float();
+        let _ = random.next_float();
+        let _ = random.next_float();
+    }
+}
+
+fn advance_expected_trial_spawner_eject_item_particle_randoms(
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+    }
+}
+
+fn advance_expected_trial_spawner_become_ominous_particle_randoms(
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+    }
+}
+
 #[test]
 fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
     let (tx, mut rx) = mpsc::channel(2);
@@ -4347,6 +4410,7 @@ fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
     let expected_spawn_pitch =
         1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
     let expected_spawn_seed = expected_random.next_long();
+    advance_expected_trial_spawner_level_event_particle_randoms(3012, 0, &mut expected_random);
     let expected_ominous_pitch =
         1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
     let expected_ominous_seed = expected_random.next_long();
@@ -4403,6 +4467,98 @@ fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
     assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 2);
     assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn trial_spawner_audio_only_events_advance_post_sound_particle_randoms() {
+    let cases = [
+        (3012, 1, "minecraft:block.trial_spawner.spawn_mob"),
+        (3013, 2, "minecraft:block.trial_spawner.detect_player"),
+        (3014, 0, "minecraft:block.trial_spawner.eject_item"),
+        (3019, 10, "minecraft:block.trial_spawner.detect_player"),
+        (3020, 3, "minecraft:block.trial_spawner.ominous_activate"),
+        (3021, 1, "minecraft:block.trial_spawner.spawn_item"),
+    ];
+
+    for (event_type, data, expected_sound) in cases {
+        let event = LevelEvent {
+            event_type,
+            pos: ProtocolBlockPos {
+                x: event_type - 3000,
+                y: 65,
+                z: -6,
+            },
+            data,
+            global: false,
+        };
+        let followup = LevelEvent {
+            event_type: 1004,
+            pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+            data: 0,
+            global: false,
+        };
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch =
+            1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+        let expected_seed = expected_random.next_long();
+        advance_expected_trial_spawner_level_event_particle_randoms(
+            event_type,
+            data,
+            &mut expected_random,
+        );
+        let expected_followup_seed = expected_random.next_long();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut audio =
+            RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+        let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+        assert_eq!(
+            drain_net_events_with_sinks(
+                &mut rx,
+                &mut world,
+                &mut counters,
+                &None,
+                Some(&mut audio),
+                None,
+                None,
+                &mut level_event_sound_random,
+            ),
+            2
+        );
+
+        assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+        assert_eq!(audio.commands.len(), 2);
+        let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+            panic!(
+                "expected positioned trial spawner sound, got {:?}",
+                audio.commands[0]
+            );
+        };
+        assert_eq!(sound.sound.event_id, expected_sound);
+        assert_close(sound.packet_pitch, expected_pitch);
+        assert_eq!(sound.seed, expected_seed);
+        assert!(sound.distance_delay);
+
+        let AudioCommand::PlayPositionedSound(followup_sound) = &audio.commands[1] else {
+            panic!(
+                "expected positioned followup sound, got {:?}",
+                audio.commands[1]
+            );
+        };
+        assert_eq!(
+            followup_sound.sound.event_id,
+            "minecraft:entity.firework_rocket.shoot"
+        );
+        assert_eq!(followup_sound.seed, expected_followup_seed);
+        assert_eq!(world.counters().level_events_received, 2);
+        assert_eq!(world.counters().level_events_tracked, 2);
+    }
 }
 
 #[test]

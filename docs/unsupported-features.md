@@ -6057,7 +6057,10 @@ When an agent does any of the following, update this file in the same slice:
       - dragon fireball explode sound for event `2006` when `data == 1`,
         emitted after the 200 dragon-breath particle random draws
       - distance-delayed trial spawner sounds for events `3012`, `3013`,
-        `3014`, `3019`, `3020`, and `3021`
+        `3014`, `3019`, `3020`, and `3021`; audio-only dispatch advances the
+        vanilla post-sound spawn / detect-player / eject-item /
+        become-ominous particle random streams before later LevelEvent sound
+        seeds
       - distance-delayed vault activate/deactivate sounds for events `3015`
         and `3016`, emitted after the local vault particle random sequence;
         `3015` is gated on a loaded vault block entity at the event position

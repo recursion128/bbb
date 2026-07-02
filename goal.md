@@ -299,6 +299,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     audio-only path 会在 lava extinguish、redstone torch burnout、end portal
     frame fill 声音记录后推进 vanilla 烟雾粒子随机流，再抽取后续
     LevelEvent 声音 seed。
+  - `3012` / `3013` / `3014` / `3019` / `3020` / `3021`
+    trial-spawner post-sound particle RNG 已覆盖：audio-only path 会在
+    distance-delayed sound 后推进 spawn / detect / eject / ominous activation
+    粒子随机流，再抽取后续 LevelEvent 声音 seed。
 
 完成标准：
 

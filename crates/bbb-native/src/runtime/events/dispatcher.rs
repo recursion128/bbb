@@ -32,6 +32,12 @@ const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
+const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
+const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
+const TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT: i32 = 3014;
+const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
+const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
+const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
@@ -556,7 +562,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     );
                     if !particles_consumed_random {
                         advance_post_sound_level_event_particle_randoms(
-                            event.event_type,
+                            &event,
                             level_event_sound_random,
                         );
                     }
@@ -1297,10 +1303,10 @@ fn advance_vault_level_event_particle_randoms(
 }
 
 fn advance_post_sound_level_event_particle_randoms(
-    event_type: i32,
+    event: &bbb_protocol::packets::LevelEvent,
     random: &mut LevelEventSoundRandomState,
 ) {
-    match event_type {
+    match event.event_type {
         LAVA_EXTINGUISH_LEVEL_EVENT => {
             for _ in 0..8 {
                 let _ = random.next_double();
@@ -1320,7 +1326,63 @@ fn advance_post_sound_level_event_particle_randoms(
                 let _ = random.next_double();
             }
         }
+        TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
+            advance_trial_spawner_spawn_particle_randoms(random);
+        }
+        TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT
+        | TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT => {
+            advance_trial_spawner_detect_player_particle_randoms(event.data, random);
+        }
+        TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT => {
+            advance_trial_spawner_eject_item_particle_randoms(random);
+        }
+        TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT => {
+            advance_trial_spawner_detect_player_particle_randoms(0, random);
+            advance_trial_spawner_become_ominous_particle_randoms(random);
+        }
         _ => {}
+    }
+}
+
+fn advance_trial_spawner_spawn_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+    }
+}
+
+fn advance_trial_spawner_detect_player_particle_randoms(
+    data: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let count = 30_i64 + i64::from(data.min(10)) * 5;
+    for _ in 0..count.max(0) {
+        let _ = random.next_float();
+        let _ = random.next_float();
+        let _ = random.next_float();
+    }
+}
+
+fn advance_trial_spawner_eject_item_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+    }
+}
+
+fn advance_trial_spawner_become_ominous_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
     }
 }
 

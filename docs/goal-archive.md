@@ -1647,3 +1647,9 @@
     dispatch by recording/playing the lava extinguish, redstone torch burnout,
     or end portal frame fill sound first, then advancing the smoke particle
     random draws before later LevelEvent sounds draw their seeds.
+  - [x] trial-spawner post-sound LevelEvent random stream：events `3012`,
+    `3013`, `3014`, `3019`, `3020`, and `3021` now preserve vanilla
+    `LevelEventHandler` ordering in audio-only dispatch by recording/playing
+    the distance-delayed trial-spawner sound first, then advancing the spawn,
+    detect-player, eject-item, or become-ominous particle random draws before
+    later LevelEvent sounds draw their seeds.
