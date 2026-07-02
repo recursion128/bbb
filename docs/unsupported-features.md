@@ -113,8 +113,8 @@ When an agent does any of the following, update this file in the same slice:
     tick -> render frame order, one field per slice. The pump binds every
     world -> renderer value at the sequence point the removed `renderer.set_*`
     call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next: weather,
-    cloud-frame, and particle-light projections.
+    vanilla-verified per field. Known interleaves to check next: weather and
+    particle-light projections.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
     citation.
@@ -152,6 +152,11 @@ When an agent does any of the following, update this file in the same slice:
     `LevelRenderer.extractBlockOutline` then reads `hitResult` plus the current
     camera, so bbb extracts these outline fields after input/use-item/entity
     tick advancement and after the frame camera pose is bound.
+  - `cloud_frame` now has a source-order test and binding comment: vanilla
+    `LevelRenderer.renderLevel` samples `level.getGameTime()`, the frame
+    partial tick, and `cameraRenderState.pos` for `addCloudsPass`, so bbb
+    extracts `cloud_frame` after `advance_client_time`, after computing
+    `entity_partial_tick`, and after binding the frame camera pose.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 

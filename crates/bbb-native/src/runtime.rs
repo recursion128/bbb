@@ -1568,6 +1568,8 @@ pub(crate) fn pump_network_and_terrain(
     let item_frame_map_decoration_surfaces = item_frame_models.map_decoration_surfaces;
     let item_frame_map_text_surfaces = item_frame_models.map_text_surfaces;
     let camera_pose = camera_pose_from_world(world);
+    // Vanilla `LevelRenderer.renderLevel` samples `level.getGameTime()`, camera position, and the
+    // frame partial tick for the cloud pass after the client tick has advanced the level clock.
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
     let weather_render_state =
         weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);

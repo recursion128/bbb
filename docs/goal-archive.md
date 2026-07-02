@@ -270,6 +270,10 @@
     之后读取同一帧 camera pose；vanilla 依据是 `Minecraft.renderFrame` 先调用
     `pick(partialTicks)`，随后 `GameRenderer.extract` / `LevelRenderer.extractBlockOutline`
     读取 `hitResult` 和 camera state。
+  - [x] cloud-frame field：`cloud_frame` 现在有源码顺序测试与绑定注释，固定为
+    client-time、partial tick 和 frame camera pose 之后读取；vanilla 依据是
+    `LevelRenderer.renderLevel` 为 `addCloudsPass` 读取 `level.getGameTime()`、
+    `deltaPartialTick` 和 `cameraRenderState.pos`。
 
 ## P1-2：实体专用 Renderer 行为
 
