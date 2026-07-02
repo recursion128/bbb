@@ -300,7 +300,8 @@ When an agent does any of the following, update this file in the same slice:
       dragon_egg, and concrete_powder into the renderer visual tint, and now
       applies vanilla static mapColor fallback for foundational non-tinted
       stone/dirt/planks, wood/log/bamboo axis states, and crimson/warped
-      stem/hyphae static colors. Renderer
+      stem/hyphae static colors, plus DyeColor and colored terracotta families.
+      Renderer
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
@@ -361,7 +362,8 @@ When an agent does any of the following, update this file in the same slice:
       default-colormap, redstone power, stem age, and lily pad world-color
       sources; the `falling_dust` mapColor fallback now covers foundational
       static block colors for stone/dirt/planks, wood/log/bamboo axis states,
-      and crimson/warped stem/hyphae colors.
+      crimson/warped stem/hyphae colors, and DyeColor / colored terracotta
+      families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
       `Starter` child-particle presentation path.
@@ -6429,7 +6431,8 @@ When an agent does any of the following, update this file in the same slice:
         constant, default-colormap, redstone power, stem age, and lily pad
         world-color sources. Vanilla static mapColor fallback now covers
         foundational non-tinted stone/dirt/planks, wood/log/bamboo axis states,
-        and crimson/warped stem/hyphae colors.
+        crimson/warped stem/hyphae colors, and DyeColor / colored terracotta
+        families.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.

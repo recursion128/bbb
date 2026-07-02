@@ -2517,6 +2517,10 @@ fn concrete_powder_map_color(name: &str) -> Option<u32> {
     let color = name
         .strip_prefix("minecraft:")?
         .strip_suffix("_concrete_powder")?;
+    dye_color_map_color(color)
+}
+
+fn dye_color_map_color(color: &str) -> Option<u32> {
     Some(match color {
         "white" => MAP_COLOR_SNOW,
         "orange" => MAP_COLOR_ORANGE,
@@ -2538,10 +2542,55 @@ fn concrete_powder_map_color(name: &str) -> Option<u32> {
     })
 }
 
+fn terracotta_map_color(color: &str) -> Option<u32> {
+    Some(match color {
+        "white" => MAP_COLOR_TERRACOTTA_WHITE,
+        "orange" => MAP_COLOR_TERRACOTTA_ORANGE,
+        "magenta" => MAP_COLOR_TERRACOTTA_MAGENTA,
+        "light_blue" => MAP_COLOR_TERRACOTTA_LIGHT_BLUE,
+        "yellow" => MAP_COLOR_TERRACOTTA_YELLOW,
+        "lime" => MAP_COLOR_TERRACOTTA_LIGHT_GREEN,
+        "pink" => MAP_COLOR_TERRACOTTA_PINK,
+        "gray" => MAP_COLOR_TERRACOTTA_GRAY,
+        "light_gray" => MAP_COLOR_TERRACOTTA_LIGHT_GRAY,
+        "cyan" => MAP_COLOR_TERRACOTTA_CYAN,
+        "purple" => MAP_COLOR_TERRACOTTA_PURPLE,
+        "blue" => MAP_COLOR_TERRACOTTA_BLUE,
+        "brown" => MAP_COLOR_TERRACOTTA_BROWN,
+        "green" => MAP_COLOR_TERRACOTTA_GREEN,
+        "red" => MAP_COLOR_TERRACOTTA_RED,
+        "black" => MAP_COLOR_TERRACOTTA_BLACK,
+        _ => return None,
+    })
+}
+
+fn colored_family_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    for suffix in [
+        "_wool",
+        "_carpet",
+        "_concrete",
+        "_stained_glass",
+        "_stained_glass_pane",
+        "_glazed_terracotta",
+    ] {
+        if let Some(color) = name.strip_suffix(suffix) {
+            return dye_color_map_color(color);
+        }
+    }
+    if let Some(color) = name.strip_suffix("_terracotta") {
+        return terracotta_map_color(color);
+    }
+    None
+}
+
 fn vanilla_static_map_color_for_block_state(
     name: &str,
     properties: &std::collections::BTreeMap<String, String>,
 ) -> Option<u32> {
+    if let Some(color) = colored_family_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
@@ -2564,7 +2613,7 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:spruce_wood"
         | "minecraft:stripped_spruce_wood" => Some(MAP_COLOR_PODZOL),
         "minecraft:birch_planks" => Some(MAP_COLOR_SAND),
-        "minecraft:acacia_planks" => Some(MAP_COLOR_ORANGE),
+        "minecraft:acacia_planks" | "minecraft:terracotta" => Some(MAP_COLOR_ORANGE),
         "minecraft:cherry_planks" => Some(MAP_COLOR_TERRACOTTA_WHITE),
         "minecraft:dark_oak_planks" => Some(MAP_COLOR_BROWN),
         "minecraft:mangrove_planks" => Some(MAP_COLOR_RED),
@@ -3088,8 +3137,21 @@ const MAP_COLOR_GREEN: u32 = 6_717_235;
 const MAP_COLOR_RED: u32 = 10_040_115;
 const MAP_COLOR_BLACK: u32 = 1_644_825;
 const MAP_COLOR_TERRACOTTA_WHITE: u32 = 13_742_497;
+const MAP_COLOR_TERRACOTTA_ORANGE: u32 = 10_441_252;
+const MAP_COLOR_TERRACOTTA_MAGENTA: u32 = 9_787_244;
+const MAP_COLOR_TERRACOTTA_LIGHT_BLUE: u32 = 7_367_818;
+const MAP_COLOR_TERRACOTTA_YELLOW: u32 = 12_223_780;
+const MAP_COLOR_TERRACOTTA_LIGHT_GREEN: u32 = 6_780_213;
 const MAP_COLOR_TERRACOTTA_GRAY: u32 = 3_746_083;
 const MAP_COLOR_TERRACOTTA_PINK: u32 = 10_505_550;
+const MAP_COLOR_TERRACOTTA_LIGHT_GRAY: u32 = 8_874_850;
+const MAP_COLOR_TERRACOTTA_CYAN: u32 = 5_725_276;
+const MAP_COLOR_TERRACOTTA_PURPLE: u32 = 8_014_168;
+const MAP_COLOR_TERRACOTTA_BLUE: u32 = 4_996_700;
+const MAP_COLOR_TERRACOTTA_BROWN: u32 = 4_993_571;
+const MAP_COLOR_TERRACOTTA_GREEN: u32 = 5_001_770;
+const MAP_COLOR_TERRACOTTA_RED: u32 = 9_321_518;
+const MAP_COLOR_TERRACOTTA_BLACK: u32 = 2_430_480;
 const MAP_COLOR_PODZOL: u32 = 8_476_209;
 const MAP_COLOR_CRIMSON_STEM: u32 = 9_715_553;
 const MAP_COLOR_CRIMSON_HYPHAE: u32 = 6_035_741;
@@ -3865,6 +3927,82 @@ mod tests {
                 test_block_state_id("minecraft:warped_hyphae", [("axis", "y")]),
                 "minecraft:warped_hyphae",
                 rgb_option(0x56, 0x2c, 0x3e),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_colored_family_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:white_wool", []),
+                "minecraft:white_wool",
+                rgb_option(0xff, 0xff, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:lime_wool", []),
+                "minecraft:lime_wool",
+                rgb_option(0x7f, 0xcc, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:blue_carpet", []),
+                "minecraft:blue_carpet",
+                rgb_option(0x33, 0x4c, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:cyan_stained_glass", []),
+                "minecraft:cyan_stained_glass",
+                rgb_option(0x4c, 0x7f, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:purple_glazed_terracotta", [("facing", "north")]),
+                "minecraft:purple_glazed_terracotta",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:orange_concrete", []),
+                "minecraft:orange_concrete",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:black_concrete", []),
+                "minecraft:black_concrete",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:terracotta", []),
+                "minecraft:terracotta",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:white_terracotta", []),
+                "minecraft:white_terracotta",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                test_block_state_id("minecraft:light_blue_terracotta", []),
+                "minecraft:light_blue_terracotta",
+                rgb_option(0x70, 0x6c, 0x8a),
+            ),
+            (
+                test_block_state_id("minecraft:red_terracotta", []),
+                "minecraft:red_terracotta",
+                rgb_option(0x8e, 0x3c, 0x2e),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

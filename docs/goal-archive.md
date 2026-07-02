@@ -1557,6 +1557,14 @@
     Tests pin representative top-vs-side axis splits and static stem/hyphae
     RGBs. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
     and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` colored-family static mapColor expansion：native now
+    resolves vanilla `DyeColor.getMapColor()` families for wool, carpets,
+    concrete, stained glass, and glazed terracotta, while using the separate
+    `MapColor.TERRACOTTA_*` palette for colored terracotta and keeping plain
+    terracotta on `MapColor.COLOR_ORANGE`. Tests pin representative DyeColor
+    and terracotta RGBs, including the white DyeColor-vs-terracotta split.
+    Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
+    on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
