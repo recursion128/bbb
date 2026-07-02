@@ -1801,6 +1801,11 @@
     vanilla mapColor registrations for sunflower, lilac, rose bush, and peony as
     PLANT. Tests pin representative upper/lower half states while leaving
     BlockColors-tinted tall grass and large fern out of the static fallback.
+  - [x] `falling_dust` fire/cocoa/creaking heart static mapColor expansion：
+    native now mirrors vanilla mapColor registrations for fire FIRE, soul fire
+    COLOR_LIGHT_BLUE, cocoa PLANT, and creaking heart COLOR_ORANGE. Tests pin
+    representative fire adjacency/age, soul fire empty, cocoa age/facing, and
+    creaking heart axis/state/natural states.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

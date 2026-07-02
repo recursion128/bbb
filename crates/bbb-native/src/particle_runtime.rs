@@ -3314,6 +3314,7 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         | "small_dripleaf"
         | "bamboo"
         | "sweet_berry_bush"
+        | "cocoa"
         | "dandelion"
         | "golden_dandelion"
         | "torchflower"
@@ -3410,6 +3411,9 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         "campfire" | "soul_campfire" => MAP_COLOR_PODZOL,
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
+        "fire" => MAP_COLOR_FIRE,
+        "soul_fire" => MAP_COLOR_LIGHT_BLUE,
+        "creaking_heart" => MAP_COLOR_ORANGE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
         "honey_block" | "honeycomb_block" => MAP_COLOR_ORANGE,
         "redstone_lamp" => MAP_COLOR_TERRACOTTA_ORANGE,
@@ -6882,6 +6886,64 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(rgb_option(0x00, 0x7c, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_fire_cocoa_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:fire",
+                    [
+                        ("age", "0"),
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("up", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:fire",
+                rgb_option(0xff, 0x00, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:soul_fire", []),
+                "minecraft:soul_fire",
+                rgb_option(0x66, 0x99, 0xd8),
+            ),
+            (
+                test_block_state_id("minecraft:cocoa", [("age", "0"), ("facing", "north")]),
+                "minecraft:cocoa",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:creaking_heart",
+                    [
+                        ("axis", "x"),
+                        ("creaking_heart_state", "uprooted"),
+                        ("natural", "true"),
+                    ],
+                ),
+                "minecraft:creaking_heart",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
                 "{block_name}"
             );
         }
