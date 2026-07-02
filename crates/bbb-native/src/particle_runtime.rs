@@ -3328,7 +3328,11 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         | "oxeye_daisy"
         | "cornflower"
         | "wither_rose"
-        | "lily_of_the_valley" => MAP_COLOR_PLANT,
+        | "lily_of_the_valley"
+        | "sunflower"
+        | "lilac"
+        | "rose_bush"
+        | "peony" => MAP_COLOR_PLANT,
         "seagrass" | "tall_seagrass" | "kelp" | "kelp_plant" | "frogspawn" => MAP_COLOR_WATER,
         "cherry_sapling" | "cherry_leaves" => MAP_COLOR_PINK,
         "pale_oak_sapling" | "pale_oak_leaves" => MAP_COLOR_METAL,
@@ -6842,6 +6846,33 @@ mod tests {
         ] {
             let block_name = format!("minecraft:{flower}");
             let block_state_id = test_block_state_id(&block_name, []);
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x7c, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_tall_flower_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (flower, half) in [
+            ("sunflower", "upper"),
+            ("lilac", "lower"),
+            ("rose_bush", "upper"),
+            ("peony", "lower"),
+        ] {
+            let block_name = format!("minecraft:{flower}");
+            let block_state_id = test_block_state_id(&block_name, [("half", half)]);
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 

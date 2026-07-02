@@ -1797,6 +1797,10 @@
     poppy, blue orchid, allium, azure bluet, tulips, oxeye daisy, cornflower,
     wither rose, and lily of the valley as PLANT. Tests pin every plain flower
     block state while keeping potted variants in the existing default-NONE path.
+  - [x] `falling_dust` tall flower static mapColor expansion：native now mirrors
+    vanilla mapColor registrations for sunflower, lilac, rose bush, and peony as
+    PLANT. Tests pin representative upper/lower half states while leaving
+    BlockColors-tinted tall grass and large fern out of the static fallback.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
