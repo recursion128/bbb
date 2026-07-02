@@ -221,6 +221,9 @@ When an agent does any of the following, update this file in the same slice:
       `-0.14`; actual block/item atlas sprite lookup, terrain tint,
       invisible-block spawn rejection, on-ground roll reset, terrain/items atlas
       GPU binding, and transparent terrain/item splitting remain follow-up work.
+      Renderer tests enumerate every id registered by vanilla 26.1
+      `ParticleResources.registerProviders()` and assert it maps to an explicit
+      vanilla provider descriptor rather than the generic `Particle` fallback.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6112,6 +6115,11 @@ When an agent does any of the following, update this file in the same slice:
         it to `-0.14`. Block-state tint, invisible-block rejection, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.
+      - renderer descriptor tests now cover the full vanilla 26.1
+        `ParticleResources.registerProviders()` id list and reject any entry
+        that falls back to generic `Particle`; remaining particle gaps are
+        terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
+        branches, atlas animation, or special-group drawing.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent
