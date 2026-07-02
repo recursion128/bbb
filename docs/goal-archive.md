@@ -1582,6 +1582,13 @@
     exceptions plus representative foot-bed, base candle, and uncolored shulker
     colors. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
     and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` cave/emissive static mapColor expansion：native extends
+    the same final provider fallback through amethyst blocks/buds, the tuff
+    family, calcite, tinted glass, powder snow, sculk sensor/sculk families, and
+    all three froglight colors. Tests pin representative amethyst, tuff,
+    calcite, tinted-glass, powder-snow, sculk sensor, sculk/shrieker, and
+    froglight RGBs. Full mapColor catalog coverage, biome-aware per-spawn
+    BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

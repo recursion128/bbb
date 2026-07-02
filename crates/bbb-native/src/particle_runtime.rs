@@ -2743,6 +2743,37 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:cracked_nether_bricks" => Some(MAP_COLOR_NETHER),
         "minecraft:soul_sand" | "minecraft:soul_soil" => Some(MAP_COLOR_BROWN),
         "minecraft:glow_lichen" => Some(MAP_COLOR_GLOW_LICHEN),
+        "minecraft:amethyst_block"
+        | "minecraft:budding_amethyst"
+        | "minecraft:amethyst_cluster"
+        | "minecraft:large_amethyst_bud"
+        | "minecraft:medium_amethyst_bud"
+        | "minecraft:small_amethyst_bud" => Some(MAP_COLOR_PURPLE),
+        "minecraft:tuff"
+        | "minecraft:tuff_slab"
+        | "minecraft:tuff_stairs"
+        | "minecraft:tuff_wall"
+        | "minecraft:polished_tuff"
+        | "minecraft:polished_tuff_slab"
+        | "minecraft:polished_tuff_stairs"
+        | "minecraft:polished_tuff_wall"
+        | "minecraft:chiseled_tuff"
+        | "minecraft:tuff_bricks"
+        | "minecraft:tuff_brick_slab"
+        | "minecraft:tuff_brick_stairs"
+        | "minecraft:tuff_brick_wall"
+        | "minecraft:chiseled_tuff_bricks" => Some(MAP_COLOR_TERRACOTTA_GRAY),
+        "minecraft:calcite" => Some(MAP_COLOR_TERRACOTTA_WHITE),
+        "minecraft:tinted_glass" => Some(MAP_COLOR_GRAY),
+        "minecraft:powder_snow" => Some(MAP_COLOR_SNOW),
+        "minecraft:sculk_sensor" | "minecraft:calibrated_sculk_sensor" => Some(MAP_COLOR_CYAN),
+        "minecraft:sculk"
+        | "minecraft:sculk_vein"
+        | "minecraft:sculk_catalyst"
+        | "minecraft:sculk_shrieker" => Some(MAP_COLOR_BLACK),
+        "minecraft:ochre_froglight" => Some(MAP_COLOR_SAND),
+        "minecraft:verdant_froglight" => Some(MAP_COLOR_GLOW_LICHEN),
+        "minecraft:pearlescent_froglight" => Some(MAP_COLOR_PINK),
         "minecraft:crimson_planks" => Some(MAP_COLOR_CRIMSON_STEM),
         "minecraft:warped_planks" => Some(MAP_COLOR_WARPED_STEM),
         "minecraft:oak_wood" | "minecraft:stripped_oak_wood" => Some(MAP_COLOR_WOOD),
@@ -4334,6 +4365,104 @@ mod tests {
                 test_block_state_id("minecraft:purple_shulker_box", [("facing", "down")]),
                 "minecraft:purple_shulker_box",
                 rgb_option(0x7a, 0x49, 0x58),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_cave_and_emissive_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:amethyst_block", []),
+                "minecraft:amethyst_block",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:small_amethyst_bud",
+                    [("facing", "down"), ("waterlogged", "false")],
+                ),
+                "minecraft:small_amethyst_bud",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:tuff_bricks", []),
+                "minecraft:tuff_bricks",
+                rgb_option(0x39, 0x29, 0x23),
+            ),
+            (
+                test_block_state_id("minecraft:calcite", []),
+                "minecraft:calcite",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                test_block_state_id("minecraft:tinted_glass", []),
+                "minecraft:tinted_glass",
+                rgb_option(0x4c, 0x4c, 0x4c),
+            ),
+            (
+                test_block_state_id("minecraft:powder_snow", []),
+                "minecraft:powder_snow",
+                rgb_option(0xff, 0xff, 0xff),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:sculk_sensor",
+                    [
+                        ("power", "3"),
+                        ("sculk_sensor_phase", "active"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:sculk_sensor",
+                rgb_option(0x4c, 0x7f, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:sculk", []),
+                "minecraft:sculk",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:sculk_shrieker",
+                    [
+                        ("can_summon", "false"),
+                        ("shrieking", "false"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:sculk_shrieker",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:ochre_froglight", [("axis", "x")]),
+                "minecraft:ochre_froglight",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:verdant_froglight", [("axis", "y")]),
+                "minecraft:verdant_froglight",
+                rgb_option(0x7f, 0xa7, 0x96),
+            ),
+            (
+                test_block_state_id("minecraft:pearlescent_froglight", [("axis", "z")]),
+                "minecraft:pearlescent_froglight",
+                rgb_option(0xf2, 0x7f, 0xa5),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
