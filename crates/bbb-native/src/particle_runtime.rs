@@ -1059,24 +1059,27 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        for _ in 0..POTION_BREAK_ITEM_PARTICLE_COUNT {
-            random.next_gaussian();
-            random.next_double();
-            random.next_gaussian();
-        }
+        let mut batch = ParticleSpawnBatch::default();
+        self.append_item_break_particles(
+            &mut batch,
+            VANILLA_SPLASH_POTION_ITEM_ID,
+            Vec3d {
+                x: f64::from(event.pos.x) + 0.5,
+                y: f64::from(event.pos.y),
+                z: f64::from(event.pos.z) + 0.5,
+            },
+            random,
+        );
 
         let particle_type_id = if event.event_type == INSTANT_POTION_BREAK_LEVEL_EVENT {
             INSTANT_EFFECT_PARTICLE_TYPE_ID
         } else {
             EFFECT_PARTICLE_TYPE_ID
         };
-        let template = match self.simple_particle_template(particle_type_id) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
-        let mut batch = ParticleSpawnBatch {
-            missing_sprite_count: template.missing_sprite_count,
-            ..ParticleSpawnBatch::default()
+        let Some(template) = self
+            .append_template_result(&mut batch, self.simple_particle_template(particle_type_id))
+        else {
+            return batch;
         };
 
         let red = ((event.data >> 16) & 0xFF) as f32 / 255.0;
@@ -1130,24 +1133,27 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        for _ in 0..ITEM_BREAK_PARTICLE_COUNT {
-            random.next_gaussian();
-            random.next_double();
-            random.next_gaussian();
-        }
-
-        let template = match self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
-        let mut batch = ParticleSpawnBatch {
-            missing_sprite_count: template.missing_sprite_count,
-            ..ParticleSpawnBatch::default()
-        };
-
         let center_x = f64::from(event.pos.x) + 0.5;
         let y = f64::from(event.pos.y);
         let center_z = f64::from(event.pos.z) + 0.5;
+        let mut batch = ParticleSpawnBatch::default();
+        self.append_item_break_particles(
+            &mut batch,
+            VANILLA_ENDER_EYE_ITEM_ID,
+            Vec3d {
+                x: center_x,
+                y,
+                z: center_z,
+            },
+            random,
+        );
+        let Some(template) = self.append_template_result(
+            &mut batch,
+            self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID),
+        ) else {
+            return batch;
+        };
+
         let mut angle = 0.0_f64;
         while angle < std::f64::consts::TAU {
             let angle_cos = angle.cos();
@@ -1181,6 +1187,47 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn append_item_break_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        item_id: i32,
+        position: Vec3d,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let Some(template) = self
+            .append_template_result(batch, self.simple_particle_template(ITEM_PARTICLE_TYPE_ID))
+        else {
+            return;
+        };
+        let raw_options_len = item_particle_raw_options_len(item_id, 1);
+        let option_state = ParticleOptionRenderState {
+            item: Some(ParticleItemOptionState {
+                item_id,
+                count: 1,
+                component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+            }),
+            ..ParticleOptionRenderState::default()
+        };
+
+        for _ in 0..ITEM_BREAK_PARTICLE_COUNT {
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                position,
+                Vec3d {
+                    x: random.next_gaussian() * ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE,
+                    y: random.next_double() * ITEM_BREAK_VERTICAL_VELOCITY_SCALE,
+                    z: random.next_gaussian() * ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE,
+                },
+                template.particle_type.override_limiter,
+                false,
+                raw_options_len,
+                0,
+                option_state,
+            ));
+        }
     }
 
     fn trial_eject_item_particle_batch(
@@ -1759,6 +1806,23 @@ fn definitionless_particle_type(particle_type_id: i32) -> bool {
     )
 }
 
+fn item_particle_raw_options_len(item_id: i32, count: i32) -> usize {
+    positive_var_i32_len(item_id)
+        + positive_var_i32_len(count)
+        + EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN
+}
+
+fn positive_var_i32_len(value: i32) -> usize {
+    debug_assert!(value >= 0);
+    let mut value = value as u32;
+    let mut len = 1;
+    while value & !0x7f != 0 {
+        value >>= 7;
+        len += 1;
+    }
+    len
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 struct ParticleOptionRenderState {
     color: Option<[f32; 4]>,
@@ -2266,6 +2330,12 @@ const EGG_CRACK_PARTICLE_MAX: i32 = 6;
 const ITEM_BREAK_PARTICLE_COUNT: i32 = 8;
 const POTION_BREAK_ITEM_PARTICLE_COUNT: i32 = ITEM_BREAK_PARTICLE_COUNT;
 const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
+// Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
+const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
+const VANILLA_SPLASH_POTION_ITEM_ID: i32 = 1292;
+const EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN: usize = 2;
+const ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE: f64 = 0.15;
+const ITEM_BREAK_VERTICAL_VELOCITY_SCALE: f64 = 0.2;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
@@ -3281,19 +3351,31 @@ mod tests {
             },
             &mut potion_random,
         );
-        assert_eq!(potion.len(), 100);
+        assert_eq!(potion.len(), 108);
+        assert_item_break_particle_command(
+            &potion.commands[0],
+            VANILLA_SPLASH_POTION_ITEM_ID,
+            [10.5, 64.0, -2.5],
+            first_item_break_particle_velocity(0),
+        );
         let (expected_position, expected_velocity, expected_color, expected_power) =
             first_potion_break_spell_particle(0x0033_66cc);
         assert_particle_command(
-            &potion.commands[0],
+            &potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize],
             EFFECT_PARTICLE_TYPE_ID,
             "minecraft:effect",
             expected_position,
             expected_velocity,
             false,
         );
-        assert_eq!(potion.commands[0].option_color, Some(expected_color));
-        assert_eq!(potion.commands[0].option_power, Some(expected_power));
+        assert_eq!(
+            potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].option_color,
+            Some(expected_color)
+        );
+        assert_eq!(
+            potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].option_power,
+            Some(expected_power)
+        );
 
         let mut instant_potion_random = LevelEventSoundRandomState::with_seed(0);
         let instant_potion = resolver.resolve_level_event_particles(
@@ -3304,17 +3386,23 @@ mod tests {
             },
             &mut instant_potion_random,
         );
-        assert_eq!(instant_potion.len(), 100);
+        assert_eq!(instant_potion.len(), 108);
+        assert_item_break_particle_command(
+            &instant_potion.commands[0],
+            VANILLA_SPLASH_POTION_ITEM_ID,
+            [10.5, 64.0, -2.5],
+            first_item_break_particle_velocity(0),
+        );
         assert_eq!(
-            instant_potion.commands[0].particle_type_id,
+            instant_potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].particle_type_id,
             INSTANT_EFFECT_PARTICLE_TYPE_ID
         );
         assert_eq!(
-            instant_potion.commands[0].particle_id,
+            instant_potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].particle_id,
             "minecraft:instant_effect"
         );
         assert_eq!(
-            instant_potion.commands[0].option_power,
+            instant_potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].option_power,
             Some(first_potion_break_spell_particle(0x00aa_bbcc).3)
         );
 
@@ -3326,9 +3414,16 @@ mod tests {
             },
             &mut ender_eye_random,
         );
-        assert_eq!(ender_eye.len(), 80);
+        assert_eq!(ender_eye.len(), 88);
+        assert_item_break_particle_command(
+            &ender_eye.commands[0],
+            VANILLA_ENDER_EYE_ITEM_ID,
+            [10.5, 64.0, -2.5],
+            first_item_break_particle_velocity(0),
+        );
+        let first_portal_index = ITEM_BREAK_PARTICLE_COUNT as usize;
         assert_eq!(
-            ender_eye.commands[0].sprite_ids,
+            ender_eye.commands[first_portal_index].sprite_ids,
             vec![
                 "minecraft:generic_0".to_string(),
                 "minecraft:generic_1".to_string(),
@@ -3341,7 +3436,7 @@ mod tests {
             ]
         );
         assert_particle_command(
-            &ender_eye.commands[0],
+            &ender_eye.commands[first_portal_index],
             60,
             "minecraft:portal",
             [15.5, 63.6, -2.5],
@@ -3349,7 +3444,7 @@ mod tests {
             false,
         );
         assert_particle_command(
-            &ender_eye.commands[1],
+            &ender_eye.commands[first_portal_index + 1],
             60,
             "minecraft:portal",
             [15.5, 63.6, -2.5],
@@ -3357,7 +3452,7 @@ mod tests {
             false,
         );
         assert_particle_command(
-            &ender_eye.commands[20],
+            &ender_eye.commands[first_portal_index + 20],
             60,
             "minecraft:portal",
             [10.5, 63.6, 2.5],
@@ -4690,6 +4785,15 @@ mod tests {
         )
     }
 
+    fn first_item_break_particle_velocity(seed: i64) -> [f64; 3] {
+        let mut random = LevelEventSoundRandomState::with_seed(seed);
+        [
+            random.next_gaussian() * ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE,
+            random.next_double() * ITEM_BREAK_VERTICAL_VELOCITY_SCALE,
+            random.next_gaussian() * ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE,
+        ]
+    }
+
     fn first_vault_deactivation_particle() -> ([f64; 3], [f64; 3]) {
         let mut random = LevelEventSoundRandomState::with_seed(0);
         (
@@ -4948,6 +5052,38 @@ mod tests {
             true,
         );
         assert_eq!(command.option_roll, None);
+    }
+
+    fn assert_item_break_particle_command(
+        command: &ParticleSpawnCommand,
+        item_id: i32,
+        position: [f64; 3],
+        velocity: [f64; 3],
+    ) {
+        assert_eq!(command.particle_type_id, ITEM_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:item");
+        assert!(command.sprite_ids.is_empty());
+        for (actual, expected) in command.position.iter().zip(position) {
+            assert_close(*actual, expected);
+        }
+        for (actual, expected) in command.velocity.iter().zip(velocity) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.override_limiter, false);
+        assert_eq!(command.always_show, false);
+        assert_eq!(
+            command.raw_options_len,
+            item_particle_raw_options_len(item_id, 1)
+        );
+        assert_eq!(command.initial_delay_ticks, 0);
+        assert_eq!(
+            command.option_item,
+            Some(ParticleItemOptionState {
+                item_id,
+                count: 1,
+                component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+            })
+        );
     }
 
     fn assert_particle_command(

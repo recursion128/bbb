@@ -192,7 +192,7 @@ When an agent does any of the following, update this file in the same slice:
         terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner/happy-villager side effects
+      trial-spawner/happy-villager/item-break side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -271,10 +271,12 @@ When an agent does any of the following, update this file in the same slice:
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
-      - events `2002` / `2007`: after preserving the eight splash-potion item
-        particle random draws, 100 vanilla-positioned `minecraft:effect` /
-        `minecraft:instant_effect` spell particles with event-data RGB,
-        random brightness, and `SpellParticleOption` power
+      - events `2002` / `2007`: eight `minecraft:item` splash-potion break
+        particles with vanilla `ItemParticleOption(Items.SPLASH_POTION)`,
+        center position, and gaussian/upward velocity, followed by 100
+        vanilla-positioned `minecraft:effect` / `minecraft:instant_effect`
+        spell particles with event-data RGB, random brightness, and
+        `SpellParticleOption` power
       - events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
         (`PARTICLES_TURTLE_EGG_PLACEMENT`): vanilla
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
@@ -285,9 +287,9 @@ When an agent does any of the following, update this file in the same slice:
         event `data` for the two float-bounded loop counts, event-position
         block state as `BlockParticleOption(ParticleTypes.DUST_PILLAR, state)`,
         and air state `0` when native has no loaded block context
-      - event `2003`: the vanilla portal ring portion of ender-eye break,
-        preserving the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
-        random draws for future item-particle support
+      - event `2003`: eight `minecraft:item` ender-eye break particles with
+        vanilla `ItemParticleOption(Items.ENDER_EYE)`, center position, and
+        gaussian/upward velocity, followed by the vanilla portal ring
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
       - event `2006`: 200 vanilla-positioned `minecraft:dragon_breath`
@@ -330,10 +332,11 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:trial_omen`, and `minecraft:soul_fire_flame` particles
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
-    - Remaining world-state / item-option LevelEvent branches, including event
-      `2003`'s ender-eye item particles and events `2002` / `2007`
-      splash-potion item particles, stay deferred with terrain/item particle
-      atlas rendering rather than being approximated as simple atlas particles.
+    - LevelEvent item-particle branches now submit definition-less
+      `minecraft:item` commands with item-template option metadata; resolving
+      their item atlas sprites and binding the terrain/items particle atlas in
+      the GPU path stays deferred with broader terrain/item particle atlas
+      rendering.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

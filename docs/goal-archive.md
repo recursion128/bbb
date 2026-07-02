@@ -1473,6 +1473,16 @@
     spread height. Missing/unloaded context still uses the vanilla air/default
     `1.0` height; the remaining `2002` / `2003` / `2007` item-particle portions
     stay deferred to terrain/item particle atlas rendering.
+  - [x] LevelEvent item-break particles：events `2002` / `2007` now submit the
+    eight preceding `minecraft:item` splash-potion break particles with
+    vanilla `ItemParticleOption(Items.SPLASH_POTION)`, center position, and
+    gaussian/upward velocity before the 100 spell particles; event `2003` now
+    submits the eight `minecraft:item` ender-eye break particles with
+    `ItemParticleOption(Items.ENDER_EYE)` before the double portal ring. The
+    item commands remain definition-less item-atlas submissions carrying raw
+    option length plus item id/count/component-patch metadata; actual item
+    sprite lookup and terrain/items particle atlas GPU binding stay with the
+    broader terrain/item particle rendering backlog.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs
