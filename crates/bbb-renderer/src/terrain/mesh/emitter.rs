@@ -264,11 +264,26 @@ pub(super) fn emit_box(
             vertex_lights,
             ambient_occlusion,
         );
-        if is_fluid
-            && matches!(face.face, TerrainFace::Up)
-            && fluid
-                .is_some_and(|fluid| fluid_should_render_backward_up_face(x, y, z, fluid, lookup))
-        {
+        // Vanilla `FluidRenderer.tesselate` renders fluid faces double-sided via
+        // `addFace(..., addBackFace)`, which re-emits the four vertices in reverse
+        // (`v3, v2, v1, v0`) to form a back face for the inside-fluid view:
+        //   - top:    `addBackFace = shouldRenderBackwardUpFace(level, pos.above())`
+        //   - sides:  `addBackFace = !isOverlay` (always true without the deferred
+        //             `water_overlay` texture path against HalfTransparent/Leaves)
+        //   - bottom: `addBackFace = false`
+        // The terrain pipeline uses back-face culling, so the reversed quad is what
+        // keeps the fluid surface visible when the camera is submerged.
+        let emit_backward_face = is_fluid
+            && match face.face {
+                TerrainFace::Up => fluid.is_some_and(|fluid| {
+                    fluid_should_render_backward_up_face(x, y, z, fluid, lookup)
+                }),
+                TerrainFace::North | TerrainFace::South | TerrainFace::West | TerrainFace::East => {
+                    fluid.is_some()
+                }
+                TerrainFace::Down => false,
+            };
+        if emit_backward_face {
             emit_custom_quad_with_uvs(
                 mesh,
                 x,

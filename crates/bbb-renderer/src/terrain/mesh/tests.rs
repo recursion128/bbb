@@ -68,7 +68,11 @@ fn keeps_faces_between_different_fluid_kinds() {
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
 
-    assert_eq!(layers.translucent[0].translucent_faces, 14);
+    // Each fluid box exposes all six faces (the shared face keeps rendering because
+    // the neighbor is a different fluid kind); vanilla `FluidRenderer` also emits a
+    // reversed back face for the open top and every horizontal side, so each box is
+    // 6 + 1 (top-backward) + 4 (side-backward) = 11 faces.
+    assert_eq!(layers.translucent[0].translucent_faces, 22);
     assert_eq!(layers.translucent[0].culled_faces, 0);
 }
 
@@ -251,7 +255,10 @@ fn fluid_top_emits_backward_face_when_above_is_open() {
     let top = face_vertices(mesh, 86, [0.0, 1.0, 0.0]);
 
     assert_eq!(top.len(), 8);
-    assert_eq!(mesh.translucent_faces, 7);
+    // Six culled-out box faces plus the reversed top back face and one reversed back
+    // face per horizontal side (vanilla `FluidRenderer.addFace(..., !isOverlay)`):
+    // 6 + 1 + 4 = 11.
+    assert_eq!(mesh.translucent_faces, 11);
     assert_eq!(
         top.iter()
             .filter(|vertex| vertex.position[0] == 1.0)
@@ -263,6 +270,43 @@ fn fluid_top_emits_backward_face_when_above_is_open() {
             .filter(|vertex| vertex.position[0] == 2.0)
             .count(),
         4
+    );
+}
+
+#[test]
+fn fluid_side_face_emits_reversed_back_face_for_submerged_view() {
+    // Vanilla `FluidRenderer.tesselate` draws horizontal fluid side faces with
+    // `addFace(..., !isOverlay)`, which re-emits the four vertices in reverse to
+    // form a back face. The terrain pipeline culls back faces, so this reversed
+    // quad is what keeps the water wall visible from inside the fluid.
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let north = face_vertices(&layers.translucent[0], 86, [0.0, 0.0, -1.0]);
+
+    // Front quad (emitted first) followed by its reversed back quad.
+    assert_eq!(north.len(), 8);
+    let front = &north[0..4];
+    let back = &north[4..8];
+    for corner in 0..4 {
+        assert_eq!(
+            back[corner].position,
+            front[3 - corner].position,
+            "back face vertex {corner} mirrors front vertex {}",
+            3 - corner
+        );
+    }
+
+    // The reversed winding flips the geometric facing so the pipeline draws one
+    // quad toward the air neighbor and the other toward the fluid interior.
+    let front_normal_z = triangle_winding_z(front[0], front[1], front[2]);
+    let back_normal_z = triangle_winding_z(back[0], back[1], back[2]);
+    assert!(front_normal_z.abs() > 1e-6 && back_normal_z.abs() > 1e-6);
+    assert!(
+        front_normal_z.signum() != back_normal_z.signum(),
+        "front/back fluid side faces must wind in opposite directions"
     );
 }
 
@@ -1172,7 +1216,9 @@ fn waterlogged_block_emits_block_and_fluid_layers() {
 
     assert_eq!(layers.opaque[0].opaque_faces, 6);
     assert_eq!(layers.cutout[0].vertices.len(), 0);
-    assert_eq!(layers.translucent[0].translucent_faces, 7);
+    // The waterlogged fluid overlay is a full box (6 faces) with vanilla-shaped
+    // reversed back faces on the open top and each horizontal side: 6 + 1 + 4 = 11.
+    assert_eq!(layers.translucent[0].translucent_faces, 11);
     assert!(layers.translucent[0]
         .vertices
         .iter()
@@ -1194,7 +1240,10 @@ fn adjacent_waterlogged_blocks_cull_internal_fluid_faces() {
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
 
-    assert_eq!(layers.translucent[0].translucent_faces, 12);
+    // The shared fluid face is culled on both blocks (2 culled). Each block then has
+    // five front faces plus the reversed top back face and one reversed back face per
+    // exposed horizontal side (3 of 4 sides remain): 5 + 1 + 3 = 9 per block = 18.
+    assert_eq!(layers.translucent[0].translucent_faces, 18);
     assert_eq!(layers.translucent[0].culled_faces, 2);
 }
 
@@ -1332,6 +1381,14 @@ fn assert_float_eq(actual: f32, expected: f32) {
         (actual - expected).abs() < 0.0001,
         "expected {expected}, got {actual}"
     );
+}
+
+/// Z component of the `(b - a) x (c - a)` triangle normal, used to compare the
+/// winding direction of a fluid side face against its reversed back face.
+fn triangle_winding_z(a: TerrainVertex, b: TerrainVertex, c: TerrainVertex) -> f32 {
+    let ab = [b.position[0] - a.position[0], b.position[1] - a.position[1]];
+    let ac = [c.position[0] - a.position[0], c.position[1] - a.position[1]];
+    ab[0] * ac[1] - ab[1] * ac[0]
 }
 
 fn assert_uv_eq(actual: [f32; 2], expected: [f32; 2]) {

@@ -853,6 +853,17 @@ When an agent does any of the following, update this file in the same slice:
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.
+    Fluid boxes now emit vanilla `FluidRenderer.tesselate` double-sided faces:
+    the horizontal side faces (`N/S/W/E`) and the open top each emit a reversed
+    back face (`addFace(..., !isOverlay)` for sides and
+    `addFace(..., shouldRenderBackwardUpFace(level, pos.above()))` for the top,
+    both re-emitting the four vertices as `v3, v2, v1, v0`), while the bottom face
+    stays single-sided (`addFace(..., false)`); the terrain pipeline's back-face
+    cull keeps the reversed quad visible when the camera is submerged. Still
+    deferred here: selecting the `water_overlay` sprite for side faces against
+    `HalfTransparentBlock` / `LeavesBlock` neighbors (which also suppresses that
+    side's back face), and the constant-ambient-light `cardinalLighting.up() *
+    side` fluid side shade for the Nether/End `CardinalLighting.NETHER` profile.
     Existing blended entity-model buckets (`entityTranslucent`, dynamic-player
     translucent skins, `eyes`, `breezeWind`, and `energySwirl`) now draw in a
     main-target translucent feature pass after the vanilla-shaped
