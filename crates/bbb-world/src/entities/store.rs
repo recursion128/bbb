@@ -2681,9 +2681,11 @@ impl EntityStore {
     }
 
     pub(crate) fn for_each_mount_mut(&mut self, mut update: impl FnMut(i32, &mut EntityMount)) {
-        let ids = self.order.clone();
-        for id in ids {
-            let _ = self.with_mount_mut(id, |mount| update(id, mount));
+        // Every entity spawns with an `EntityMount`, so iterating the ecs directly visits the same
+        // set as `self.order` without cloning it. All callers apply an order-independent per-entity
+        // mutation, so the archetype iteration order is not observable.
+        for (_, (identity, mount)) in self.ecs.query_mut::<(&EntityIdentity, &mut EntityMount)>() {
+            update(identity.id, mount);
         }
     }
 
