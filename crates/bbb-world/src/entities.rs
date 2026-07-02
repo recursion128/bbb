@@ -460,6 +460,17 @@ pub struct MinecartDisplayBlockState {
 /// struct body and the byte-for-byte serde forwarding is obvious; `macro_rules!`
 /// forwards the attributes but cannot itself synthesize the field names, so each
 /// field is spelled out once.
+///
+/// # Adding a projected entity field
+/// A field that flows world -> native -> renderer needs one declaration per crate
+/// layer, because bbb-world and bbb-renderer are independent and bbb-native depends
+/// on both, so no single shared declaration is possible:
+/// 1. world: add one `pub <name>: <ty>` line to this macro invocation.
+/// 2. native: add one `with_<name> <name>` line to the pure list in
+///    `entity_render_state_passthrough!` in `bbb-native/src/entity_scene.rs`
+///    (or a hand-written builder line if the value is derived).
+/// 3. renderer: add one `(with_<name>) <name>: <ty> = <default>` line to the
+///    `entity_render_state!` macro in `bbb-renderer/src/entity_models/instances.rs`.
 macro_rules! entity_model_source_state {
     (
         $(
