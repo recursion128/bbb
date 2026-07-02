@@ -3667,6 +3667,61 @@ fn level_event_2001_emits_vanilla_block_break_sound() {
 }
 
 #[test]
+fn level_event_3008_emits_brushable_completion_sound_and_particles() {
+    let suspicious_sand = vanilla_block_state_id("minecraft:suspicious_sand", [("dusted", "2")]);
+    let event = LevelEvent {
+        event_type: 3008,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
+        data: suspicious_sand,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.brush.brushing.sand");
+    assert_eq!(command.category, AudioCategory::Players);
+    assert_eq!(command.position, [4.5, 65.5, -5.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:item.brush.brushing.sand")
+    );
+    assert_eq!(world.last_sound().unwrap().source, "player");
+    assert_eq!(world.counters().sound_packets, 0);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn fixed_level_event_emits_vanilla_positioned_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -6035,6 +6090,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.honeycomb.wax_on": {
                 "sounds": ["item/honeycomb/wax_on"]
+            },
+            "item.brush.brushing.sand": {
+                "sounds": ["item/brush/brushing/sand"]
+            },
+            "item.brush.brushing.gravel": {
+                "sounds": ["item/brush/brushing/gravel"]
             },
             "block.sculk.charge": {
                 "sounds": ["block/sculk/charge"]

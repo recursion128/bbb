@@ -1549,6 +1549,14 @@
     branch, using `SculkShriekerBlock.TOP_Y`, volume `2.0`,
     `0.6 + random.nextFloat() * 0.4` pitch, and the loaded block state's
     `waterlogged=true` gate.
+  - [x] brush-block-complete LevelEvent sound：event `3008` now mirrors
+    vanilla `LevelEventHandler` by resolving the event-data block state through
+    `BrushableBlock.getBrushCompletedSound()` for suspicious sand/gravel and
+    recording/playing the matching `minecraft:item.brush.brushing.sand` /
+    `minecraft:item.brush.brushing.gravel` positioned sound with
+    `SoundSource.PLAYERS`, volume `1.0`, and pitch `1.0`. Non-brushable
+    event-data block states keep the vanilla no-sound branch while destroy-block
+    particles still run.
   - [x] solid item enchantment glint：`ItemStackSummary::has_foil()` now
     centralizes the decoded `enchantment_glint_override` / enchantments
     fallback, native projects foiled dropped / held / item-frame / HUD 3D block

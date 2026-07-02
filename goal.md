@@ -278,6 +278,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - LevelEvent audio side effects：
   - `3007` sculk-shrieker shriek sound 已按 vanilla 的
     `waterlogged` gate、`SculkShriekerBlock.TOP_Y` 位置和随机 pitch 覆盖。
+  - `3008` brush-block-complete sound 已按 vanilla 的 event-data
+    `BrushableBlock.getBrushCompletedSound()` 覆盖 suspicious sand/gravel 的
+    `SoundSource.PLAYERS` completion sound；非 brushable block-state 仍不发声。
 
 完成标准：
 

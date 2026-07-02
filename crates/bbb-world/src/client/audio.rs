@@ -16,6 +16,7 @@ use crate::WorldStore;
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
+const BRUSH_BLOCK_COMPLETE_LEVEL_EVENT: i32 = 3008;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -372,6 +373,9 @@ impl WorldStore {
         if let Some(state) = self.level_event_block_break_sound_state(event) {
             return Some(state);
         }
+        if let Some(state) = self.level_event_brush_complete_sound_state(event) {
+            return Some(state);
+        }
         let sound = fixed_level_event_sound(event.event_type)?;
         Some(block_sound_state(
             crate::protocol_block_pos(event.pos),
@@ -530,6 +534,30 @@ impl WorldStore {
             (profile.volume + 1.0) / 2.0,
             profile.pitch * 0.8,
             "block",
+        ))
+    }
+
+    fn level_event_brush_complete_sound_state(
+        &self,
+        event: ProtocolLevelEvent,
+    ) -> Option<SoundEventState> {
+        if event.event_type != BRUSH_BLOCK_COMPLETE_LEVEL_EVENT {
+            return None;
+        }
+        let block_state = self.registries.block_state(event.data)?;
+        let sound = match block_state.name.as_str() {
+            // Vanilla 26.1 Blocks.SUSPICIOUS_* constructs BrushableBlock with the
+            // same brush sound for regular and completed brush events.
+            "minecraft:suspicious_sand" => "minecraft:item.brush.brushing.sand",
+            "minecraft:suspicious_gravel" => "minecraft:item.brush.brushing.gravel",
+            _ => return None,
+        };
+        Some(block_sound_state(
+            crate::protocol_block_pos(event.pos),
+            sound,
+            1.0,
+            1.0,
+            "player",
         ))
     }
 }
@@ -1233,6 +1261,57 @@ mod tests {
     }
 
     #[test]
+    fn level_event_3008_maps_brushable_block_state_to_completion_sound() {
+        let store = WorldStore::new();
+        let suspicious_sand =
+            vanilla_block_state_id("minecraft:suspicious_sand", [("dusted", "0")]);
+        let suspicious_gravel =
+            vanilla_block_state_id("minecraft:suspicious_gravel", [("dusted", "3")]);
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+
+        let sand_sound = store
+            .level_event_sound(LevelEvent {
+                event_type: 3008,
+                pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: suspicious_sand,
+                global: false,
+            })
+            .unwrap();
+        assert_eq!(
+            sand_sound.sound.location.as_deref(),
+            Some("minecraft:item.brush.brushing.sand")
+        );
+        assert_eq!(sand_sound.source, "player");
+        assert_eq!(sand_sound.position, vec3(2.5, 3.5, -3.5));
+        assert_close(sand_sound.volume, 1.0);
+        assert_close(sand_sound.pitch, 1.0);
+
+        let gravel_sound = store
+            .level_event_sound(LevelEvent {
+                event_type: 3008,
+                pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                data: suspicious_gravel,
+                global: false,
+            })
+            .unwrap();
+        assert_eq!(
+            gravel_sound.sound.location.as_deref(),
+            Some("minecraft:item.brush.brushing.gravel")
+        );
+        assert_eq!(gravel_sound.source, "player");
+        assert_eq!(gravel_sound.position, vec3(-0.5, 70.5, 4.5));
+
+        assert!(store
+            .level_event_sound(LevelEvent {
+                event_type: 3008,
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                data: stone,
+                global: false,
+            })
+            .is_none());
+    }
+
+    #[test]
     fn level_event_sound_maps_fixed_vanilla_level_event_audio() {
         let store = WorldStore::new();
 
@@ -1814,6 +1893,17 @@ mod tests {
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
         ProtocolVec3d { x, y, z }
+    }
+
+    fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+        let properties = props
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect();
+        crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties(name, &properties)
+            .unwrap()
+            .id
     }
 
     fn random_level_event_sound(

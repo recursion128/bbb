@@ -298,8 +298,11 @@ When an agent does any of the following, update this file in the same slice:
         `BlockParticleOption` metadata and skipping air plus
         `shouldSpawnTerrainParticles=false` block states; unlike
         `TerrainParticle.Provider`, vanilla `addDestroyBlockEffect` does not
-        reject `moving_piston`. Terrain tint and terrain-atlas GPU binding
-        remain with broader terrain/block particle work
+        reject `moving_piston`. Event `3008` also records/plays the vanilla
+        brushable completion sound for suspicious sand/gravel using
+        `SoundSource.PLAYERS`, volume `1.0`, and pitch `1.0`; non-brushable
+        event-data states do not emit a sound. Terrain tint and terrain-atlas
+        GPU binding remain with broader terrain/block particle work
       - events `2002` / `2007`: eight `minecraft:item` splash-potion break
         particles with vanilla `ItemParticleOption(Items.SPLASH_POTION)`,
         center position, and gaussian/upward velocity, followed by 100
@@ -6027,6 +6030,9 @@ When an agent does any of the following, update this file in the same slice:
       - end portal frame fill
       - bone meal use
       - honeycomb wax on
+      - brush-block-complete event `3008` for suspicious sand/gravel, using
+        the event-data `BrushableBlock.getBrushCompletedSound()` mapping and
+        `SoundSource.PLAYERS`
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish
