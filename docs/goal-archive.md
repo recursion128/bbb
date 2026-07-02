@@ -1483,6 +1483,15 @@
     option length plus item id/count/component-patch metadata; actual item
     sprite lookup and terrain/items particle atlas GPU binding stay with the
     broader terrain/item particle rendering backlog.
+  - [x] LevelEvent block-destroy particles：events `2001`
+    (`PARTICLES_DESTROY_BLOCK`) and `3008`
+    (`PARTICLES_AND_SOUND_BRUSH_BLOCK_COMPLETE`) now submit vanilla
+    `ClientLevel.addDestroyBlockEffect`-shaped full-cube `0.25` density grids:
+    64 definition-less `minecraft:block` commands using the event `data`
+    block-state id as `BlockParticleOption` metadata, with air state `0`
+    skipped. Non-full voxel shapes, `shouldSpawnTerrainParticles` /
+    moving-piston rejection, terrain tint, and terrain-atlas GPU binding remain
+    with broader block/terrain particle work.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs

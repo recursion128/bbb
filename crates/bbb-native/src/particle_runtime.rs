@@ -455,6 +455,9 @@ impl ParticleCommandResolver {
             DISPENSER_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
             }
+            DESTROY_BLOCK_PARTICLES_LEVEL_EVENT | BRUSH_BLOCK_COMPLETE_LEVEL_EVENT => {
+                self.destroy_block_particle_batch(event)
+            }
             BLAZE_SMOKE_LEVEL_EVENT => {
                 let mut batch = ParticleSpawnBatch::default();
                 let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
@@ -620,6 +623,61 @@ impl ParticleCommandResolver {
             }
             _ => ParticleSpawnBatch::default(),
         }
+    }
+
+    fn destroy_block_particle_batch(&self, event: &LevelEvent) -> ParticleSpawnBatch {
+        let block_state_id = event.data;
+        if block_state_id <= AIR_BLOCK_STATE_ID {
+            return ParticleSpawnBatch::default();
+        }
+        let template = match self.simple_particle_template(BLOCK_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let count_x = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
+        let count_y = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
+        let count_z = destroy_block_axis_count(DESTROY_BLOCK_FULL_BOX_WIDTH);
+        let mut batch = ParticleSpawnBatch {
+            commands: Vec::with_capacity(count_x * count_y * count_z),
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let option_state = ParticleOptionRenderState {
+            block: Some(ParticleBlockOptionState { block_state_id }),
+            ..ParticleOptionRenderState::default()
+        };
+        let raw_options_len = positive_var_i32_len(block_state_id);
+
+        for xx in 0..count_x {
+            for yy in 0..count_y {
+                for zz in 0..count_z {
+                    let rel_x = (xx as f64 + 0.5) / count_x as f64;
+                    let rel_y = (yy as f64 + 0.5) / count_y as f64;
+                    let rel_z = (zz as f64 + 0.5) / count_z as f64;
+                    batch.commands.push(self.command_for_type(
+                        template.particle_type,
+                        &template.sprite_ids,
+                        Vec3d {
+                            x: f64::from(event.pos.x) + rel_x,
+                            y: f64::from(event.pos.y) + rel_y,
+                            z: f64::from(event.pos.z) + rel_z,
+                        },
+                        Vec3d {
+                            x: rel_x - 0.5,
+                            y: rel_y - 0.5,
+                            z: rel_z - 0.5,
+                        },
+                        template.particle_type.override_limiter,
+                        false,
+                        raw_options_len,
+                        0,
+                        option_state,
+                    ));
+                }
+            }
+        }
+
+        batch
     }
 
     fn smash_attack_particle_batch(
@@ -2075,6 +2133,10 @@ fn direction_normal_from_3d_data_value(data: i32) -> (i32, i32, i32) {
     }
 }
 
+fn destroy_block_axis_count(width: f64) -> usize {
+    ((width / DESTROY_BLOCK_PARTICLE_DENSITY).ceil() as usize).max(2)
+}
+
 fn block_face_particle(
     event: &LevelEvent,
     (step_x, step_y, step_z): (i32, i32, i32),
@@ -2225,6 +2287,7 @@ const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
+const DESTROY_BLOCK_PARTICLES_LEVEL_EVENT: i32 = 2001;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
 const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
@@ -2243,6 +2306,7 @@ const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
 const SCULK_SHRIEK_PARTICLES_LEVEL_EVENT: i32 = 3007;
+const BRUSH_BLOCK_COMPLETE_LEVEL_EVENT: i32 = 3008;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
 const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
 const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
@@ -2336,6 +2400,8 @@ const VANILLA_SPLASH_POTION_ITEM_ID: i32 = 1292;
 const EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN: usize = 2;
 const ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE: f64 = 0.15;
 const ITEM_BREAK_VERTICAL_VELOCITY_SCALE: f64 = 0.2;
+const DESTROY_BLOCK_PARTICLE_DENSITY: f64 = 0.25;
+const DESTROY_BLOCK_FULL_BOX_WIDTH: f64 = 1.0;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
@@ -4140,6 +4206,63 @@ mod tests {
     }
 
     #[test]
+    fn level_event_destroy_block_particles_use_block_particle_options() {
+        let resolver = test_resolver(0);
+        let event = LevelEvent {
+            event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+            data: 321,
+            ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+        };
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        let batch = resolver.resolve_level_event_particles(&event, &mut random);
+
+        assert_eq!(batch.len(), 64);
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_block_destroy_particle_command(
+            &batch.commands[0],
+            321,
+            [10.125, 64.125, -2.875],
+            [-0.375, -0.375, -0.375],
+        );
+        assert_block_destroy_particle_command(
+            &batch.commands[63],
+            321,
+            [10.875, 64.875, -2.125],
+            [0.375, 0.375, 0.375],
+        );
+
+        let mut brush_random = LevelEventSoundRandomState::with_seed(0);
+        let brush = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: BRUSH_BLOCK_COMPLETE_LEVEL_EVENT,
+                data: 222,
+                ..level_event_packet(BRUSH_BLOCK_COMPLETE_LEVEL_EVENT)
+            },
+            &mut brush_random,
+        );
+        assert_eq!(brush.len(), 64);
+        assert_block_destroy_particle_command(
+            &brush.commands[0],
+            222,
+            [10.125, 64.125, -2.875],
+            [-0.375, -0.375, -0.375],
+        );
+
+        let mut air_random = LevelEventSoundRandomState::with_seed(0);
+        let air = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+                data: AIR_BLOCK_STATE_ID,
+                ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+            },
+            &mut air_random,
+        );
+        assert!(air.is_empty());
+    }
+
+    #[test]
     fn level_event_smash_attack_particles_use_vanilla_dust_pillar_context() {
         let resolver = test_resolver(0);
         let event = LevelEvent {
@@ -5084,6 +5207,35 @@ mod tests {
                 component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
             })
         );
+    }
+
+    fn assert_block_destroy_particle_command(
+        command: &ParticleSpawnCommand,
+        block_state_id: i32,
+        position: [f64; 3],
+        velocity: [f64; 3],
+    ) {
+        assert_eq!(command.particle_type_id, BLOCK_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:block");
+        assert!(command.sprite_ids.is_empty());
+        for (actual, expected) in command.position.iter().zip(position) {
+            assert_close(*actual, expected);
+        }
+        for (actual, expected) in command.velocity.iter().zip(velocity) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.override_limiter, false);
+        assert_eq!(command.always_show, false);
+        assert_eq!(
+            command.raw_options_len,
+            block_particle_options(block_state_id).len()
+        );
+        assert_eq!(command.initial_delay_ticks, 0);
+        assert_eq!(
+            command.option_block,
+            Some(ParticleBlockOptionState { block_state_id })
+        );
+        assert_eq!(command.option_item, None);
     }
 
     fn assert_particle_command(
