@@ -302,9 +302,9 @@ When an agent does any of the following, update this file in the same slice:
       stone/dirt/planks, wood/log/bamboo axis states, crimson/warped stem/hyphae
       static colors, wooden stairs/slabs/pressure plates/doors/trapdoors/fences/
       fence gates/signs/hanging signs, banner/wall banner `WOOD`, button,
-      ladder/torch/end rod, rail/redstone fixture, and skull/head default
-      `MapColor.NONE` groups, DyeColor and colored terracotta families,
-      decorative
+      ladder/torch/end rod, rail/redstone fixture, skull/head, and non-tinted
+      potted default `MapColor.NONE` groups, DyeColor and colored terracotta
+      families, decorative
       bed/candle/shulker families, cave/emissive
       amethyst/tuff/calcite/sculk/froglight families, copper weathering
       families, nether flora / blackstone
@@ -380,9 +380,9 @@ When an agent does any of the following, update this file in the same slice:
       static block colors for stone/dirt/planks, wood/log/bamboo axis states,
       wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
       signs/hanging signs, banner/wall banner `WOOD`, button,
-      ladder/torch/end rod, rail/redstone fixture, and skull/head default
-      `MapColor.NONE` groups, crimson/warped stem/hyphae colors, DyeColor /
-      colored terracotta families,
+      ladder/torch/end rod, rail/redstone fixture, skull/head, and non-tinted
+      potted default `MapColor.NONE` groups, crimson/warped stem/hyphae colors,
+      DyeColor / colored terracotta families,
       bed/candle/shulker decorative
       families,
       cave/emissive block families,
@@ -6464,9 +6464,9 @@ When an agent does any of the following, update this file in the same slice:
         foundational non-tinted stone/dirt/planks, wood/log/bamboo axis states,
         wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
         signs/hanging signs, banner/wall banner `WOOD`, button,
-        ladder/torch/end rod, rail/redstone fixture, and skull/head default-NONE
-        groups, crimson/warped stem/hyphae colors, DyeColor / colored terracotta
-        families, bed/candle/shulker decorative
+        ladder/torch/end rod, rail/redstone fixture, skull/head, and non-tinted
+        potted default-NONE groups, crimson/warped stem/hyphae colors, DyeColor
+        / colored terracotta families, bed/candle/shulker decorative
         families, cave/emissive block families, copper weathering families,
         nether flora / blackstone static families, quartz/prismarine/End static families, construction
         stone/brick static families, deepslate construction variants,

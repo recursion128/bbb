@@ -2748,6 +2748,51 @@ fn button_static_map_color(name: &str) -> Option<u32> {
     wooden_plank_family_map_color(family).map(|_| MAP_COLOR_NONE)
 }
 
+fn potted_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "flower_pot"
+        | "potted_torchflower"
+        | "potted_oak_sapling"
+        | "potted_spruce_sapling"
+        | "potted_birch_sapling"
+        | "potted_jungle_sapling"
+        | "potted_acacia_sapling"
+        | "potted_cherry_sapling"
+        | "potted_dark_oak_sapling"
+        | "potted_pale_oak_sapling"
+        | "potted_mangrove_propagule"
+        | "potted_dandelion"
+        | "potted_golden_dandelion"
+        | "potted_poppy"
+        | "potted_blue_orchid"
+        | "potted_allium"
+        | "potted_azure_bluet"
+        | "potted_red_tulip"
+        | "potted_orange_tulip"
+        | "potted_white_tulip"
+        | "potted_pink_tulip"
+        | "potted_oxeye_daisy"
+        | "potted_cornflower"
+        | "potted_lily_of_the_valley"
+        | "potted_wither_rose"
+        | "potted_red_mushroom"
+        | "potted_brown_mushroom"
+        | "potted_dead_bush"
+        | "potted_cactus"
+        | "potted_bamboo"
+        | "potted_crimson_fungus"
+        | "potted_warped_fungus"
+        | "potted_crimson_roots"
+        | "potted_warped_roots"
+        | "potted_azalea_bush"
+        | "potted_flowering_azalea_bush"
+        | "potted_open_eyeblossom"
+        | "potted_closed_eyeblossom" => MAP_COLOR_NONE,
+        _ => return None,
+    })
+}
+
 fn wooden_sign_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     if let Some(family) = name.strip_suffix("_wall_hanging_sign") {
@@ -2832,6 +2877,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = button_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = potted_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -5068,6 +5116,66 @@ mod tests {
                 block_name,
                 [("face", "floor"), ("facing", "north"), ("powered", "true")],
             );
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_potted_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for block_name in [
+            "minecraft:flower_pot",
+            "minecraft:potted_torchflower",
+            "minecraft:potted_oak_sapling",
+            "minecraft:potted_spruce_sapling",
+            "minecraft:potted_birch_sapling",
+            "minecraft:potted_jungle_sapling",
+            "minecraft:potted_acacia_sapling",
+            "minecraft:potted_cherry_sapling",
+            "minecraft:potted_dark_oak_sapling",
+            "minecraft:potted_pale_oak_sapling",
+            "minecraft:potted_mangrove_propagule",
+            "minecraft:potted_dandelion",
+            "minecraft:potted_golden_dandelion",
+            "minecraft:potted_poppy",
+            "minecraft:potted_blue_orchid",
+            "minecraft:potted_allium",
+            "minecraft:potted_azure_bluet",
+            "minecraft:potted_red_tulip",
+            "minecraft:potted_orange_tulip",
+            "minecraft:potted_white_tulip",
+            "minecraft:potted_pink_tulip",
+            "minecraft:potted_oxeye_daisy",
+            "minecraft:potted_cornflower",
+            "minecraft:potted_lily_of_the_valley",
+            "minecraft:potted_wither_rose",
+            "minecraft:potted_red_mushroom",
+            "minecraft:potted_brown_mushroom",
+            "minecraft:potted_dead_bush",
+            "minecraft:potted_cactus",
+            "minecraft:potted_bamboo",
+            "minecraft:potted_crimson_fungus",
+            "minecraft:potted_warped_fungus",
+            "minecraft:potted_crimson_roots",
+            "minecraft:potted_warped_roots",
+            "minecraft:potted_azalea_bush",
+            "minecraft:potted_flowering_azalea_bush",
+            "minecraft:potted_open_eyeblossom",
+            "minecraft:potted_closed_eyeblossom",
+        ] {
+            let block_state_id = test_block_state_id(block_name, []);
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
