@@ -1468,6 +1468,7 @@ fn particle_billboard_vertices<'a>(
         let Some(uv) = sprite_uvs.get(sprite_id).copied() else {
             continue;
         };
+        let uv = particle_uv_rect_for_instance(instance, uv);
         append_particle_instance_vertices(&mut vertices, instance, uv, axes);
     }
     vertices
@@ -1517,6 +1518,27 @@ fn particle_axes_for_instance(
             right: axes.right,
             up: Vec3::Y,
         },
+    }
+}
+
+fn particle_uv_rect_for_instance(
+    instance: &ParticleInstance,
+    uv: ParticleUvRect,
+) -> ParticleUvRect {
+    let Some(sub_rect) = instance.atlas_uv_sub_rect else {
+        return uv;
+    };
+    let u_span = uv.max[0] - uv.min[0];
+    let v_span = uv.max[1] - uv.min[1];
+    ParticleUvRect {
+        min: [
+            uv.min[0] + u_span * ((sub_rect.u_offset + 1.0) / 4.0),
+            uv.min[1] + v_span * (sub_rect.v_offset / 4.0),
+        ],
+        max: [
+            uv.min[0] + u_span * (sub_rect.u_offset / 4.0),
+            uv.min[1] + v_span * ((sub_rect.v_offset + 1.0) / 4.0),
+        ],
     }
 }
 
@@ -5838,6 +5860,41 @@ mod tests {
         assert_eq!(vertices[5].uv, [0.25, 0.125]);
         assert_eq!(vertices[5].color, [0.25, 0.5, 0.75, 0.8]);
         assert_eq!(vertices[5].light, [0.4, 0.8]);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_apply_vanilla_atlas_sub_rect_uvs() {
+        let mut instance = test_instance_with_lifetime("minecraft:block", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:block/oak_planks".to_string());
+        instance.base_quad_size = 0.4;
+        instance.atlas_uv_sub_rect = Some(ParticleAtlasUvSubRect {
+            u_offset: 1.0,
+            v_offset: 2.0,
+        });
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:block/oak_planks".to_string(),
+            ParticleUvRect {
+                min: [0.2, 0.4],
+                max: [1.0, 0.8],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Opaque),
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices[0].uv, [0.6, 0.700_000_05]);
+        assert_eq!(vertices[1].uv, [0.4, 0.700_000_05]);
+        assert_eq!(vertices[2].uv, [0.4, 0.6]);
+        assert_eq!(vertices[5].uv, [0.6, 0.6]);
     }
 
     #[test]

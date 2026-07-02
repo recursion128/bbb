@@ -1507,7 +1507,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ItemParticleOption` `ItemStackTemplate` item id / count plus raw component
     patch byte length for `item`; renderer `ParticleSpawnCommand` and
     `ParticleInstance` preserve that metadata beside the terrain/item layer.
-  - [x] terrain/item atlas provider-shape and sub-rect metadata baseline：
+  - [x] terrain/item atlas provider-shape, sub-rect metadata, and UV emission
+    baseline：
     renderer descriptors now map `TerrainParticle.Provider`,
     `TerrainParticle.DustPillarProvider`,
     `TerrainParticle.CrumblingProvider`, `BlockMarker.Provider`, and
@@ -1516,10 +1517,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     item-white metadata; `ParticleInstance` records the vanilla random
     `uo`/`vo` 4x4 sub-rect offsets for `TerrainParticle` /
     `BreakingItemParticle` paths while leaving `block_marker` and
-    `falling_dust` unmarked.
+    `falling_dust` unmarked. Billboard vertex emission now converts those
+    offsets into vanilla-shaped atlas sub-rect UVs, including the
+    `TerrainParticle` / `BreakingItemParticle` horizontal `u0`/`u1` flip, when a
+    concrete sprite UV is available.
   - terrain/item particle atlas rendering：resolving block/item atlas sprites,
-    applying terrain tint, converting recorded sub-rect metadata into real atlas
-    UV emission, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
+    applying terrain tint, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
     `TRANSLUCENT_ITEMS`, and transparent terrain/items vertex emission remain
     follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime

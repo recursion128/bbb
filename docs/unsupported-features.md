@@ -179,10 +179,11 @@ When an agent does any of the following, update this file in the same slice:
       - renderer now records vanilla TerrainParticle / BreakingItemParticle /
         BlockMarker provider shape plus random 4x4 UV sub-rect offsets for the
         TerrainParticle / BreakingItemParticle paths
-      - resolving block/item atlas sprites, terrain tint, converting the
-        recorded sub-rect offsets into real atlas UV emission,
-        sprite-transparency-driven terrain/item layer selection, and
-        transparent terrain/items vertex emission remain deferred
+      - billboard vertex emission converts recorded sub-rect offsets into
+        vanilla-shaped atlas UVs when a concrete sprite UV is available
+      - resolving block/item atlas sprites, terrain tint,
+        sprite-transparency-driven terrain/item layer selection, and transparent
+        terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
       trial-spawner/happy-villager side effects
@@ -203,9 +204,11 @@ When an agent does any of the following, update this file in the same slice:
       submission commands, record terrain/item layer metadata, preserve decoded
       block-state / item-template option metadata, and record vanilla provider
       shape plus TerrainParticle / BreakingItemParticle random 4x4 sub-rect
-      offsets, but actual block/item atlas sprite lookup, terrain tint,
-      sub-rect atlas UV emission, and transparent terrain/item splitting remain
-      follow-up work.
+      offsets. Billboard vertex emission converts those offsets into
+      vanilla-shaped atlas sub-rect UVs when a sprite UV is available, including
+      the TerrainParticle / BreakingItemParticle horizontal `u0`/`u1` flip; actual
+      block/item atlas sprite lookup, terrain tint, and transparent
+      terrain/item splitting remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
