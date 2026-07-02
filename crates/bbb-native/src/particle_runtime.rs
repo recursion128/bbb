@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
@@ -150,6 +151,10 @@ impl NativeParticleRuntime {
         self.resolver.set_terrain_particle_sprite_ids(textures);
     }
 
+    pub(crate) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
+        self.resolver.set_default_item_particle_sprite_ids(items);
+    }
+
     pub(crate) fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
         if !self.atlas.has_animation() {
             return;
@@ -214,6 +219,7 @@ struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
     terrain_particle_sprite_ids: HashMap<i32, String>,
+    default_item_particle_sprite_ids: HashMap<i32, String>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
     particle_status: ClientParticleStatus,
@@ -346,6 +352,7 @@ impl ParticleCommandResolver {
             definitions,
             sprites,
             terrain_particle_sprite_ids: HashMap::new(),
+            default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
             particle_status,
@@ -364,6 +371,13 @@ impl ParticleCommandResolver {
             .collect();
     }
 
+    fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
+        self.default_item_particle_sprite_ids = items
+            .default_item_particle_sprite_ids_by_protocol_id()
+            .into_iter()
+            .collect();
+    }
+
     #[cfg(test)]
     fn with_seed_and_particle_status(
         definitions: ParticleDefinitionCatalog,
@@ -375,6 +389,7 @@ impl ParticleCommandResolver {
             definitions,
             sprites,
             terrain_particle_sprite_ids: HashMap::new(),
+            default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),
             particle_status,
@@ -1508,6 +1523,7 @@ impl ParticleCommandResolver {
                 count: 1,
                 component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
             }),
+            item_component_patch_empty: true,
             ..ParticleOptionRenderState::default()
         };
 
@@ -2121,6 +2137,16 @@ impl ParticleCommandResolver {
                 return vec![sprite_id.clone()];
             }
         }
+        if particle_type_id == ITEM_PARTICLE_TYPE_ID {
+            if option_state.item_component_patch_empty {
+                if let Some(sprite_id) = option_state
+                    .item
+                    .and_then(|item| self.default_item_particle_sprite_ids.get(&item.item_id))
+                {
+                    return vec![sprite_id.clone()];
+                }
+            }
+        }
         sprite_ids.to_vec()
     }
 
@@ -2206,6 +2232,7 @@ struct ParticleOptionRenderState {
     roll: Option<f32>,
     block: Option<ParticleBlockOptionState>,
     item: Option<ParticleItemOptionState>,
+    item_component_patch_empty: bool,
 }
 
 fn particle_option_render_state(
@@ -2245,12 +2272,14 @@ fn particle_option_render_state(
             if item_id < 0 || count <= 0 {
                 return ParticleOptionRenderState::default();
             }
+            let component_patch_empty = decoder.remaining() == [0, 0];
             ParticleOptionRenderState {
                 item: Some(ParticleItemOptionState {
                     item_id,
                     count,
                     component_patch_len: decoder.remaining_len(),
                 }),
+                item_component_patch_empty: component_patch_empty,
                 ..ParticleOptionRenderState::default()
             }
         }
@@ -3171,6 +3200,47 @@ mod tests {
                 "{particle_id}"
             );
         }
+    }
+
+    #[test]
+    fn generic_item_particle_uses_installed_default_item_sprite_for_empty_component_patch() {
+        let mut resolver = test_resolver(0);
+        resolver
+            .default_item_particle_sprite_ids
+            .insert(5, "minecraft:item/apple".to_string());
+
+        let mut empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+        empty_patch.particle.raw_options = item_particle_options(5, 6, 0);
+        let empty_batch = resolver.resolve_level_particles(&empty_patch);
+
+        assert_eq!(empty_batch.len(), 1);
+        assert_eq!(
+            empty_batch.commands[0].sprite_ids,
+            vec!["minecraft:item/apple".to_string()]
+        );
+        assert_eq!(
+            empty_batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 5,
+                count: 6,
+                component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+            })
+        );
+
+        let mut non_empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+        non_empty_patch.particle.raw_options = item_particle_options(5, 6, 1);
+        let non_empty_batch = resolver.resolve_level_particles(&non_empty_patch);
+
+        assert_eq!(non_empty_batch.len(), 1);
+        assert!(non_empty_batch.commands[0].sprite_ids.is_empty());
+        assert_eq!(
+            non_empty_batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 5,
+                count: 6,
+                component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+            })
+        );
     }
 
     #[test]

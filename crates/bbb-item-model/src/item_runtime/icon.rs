@@ -280,6 +280,14 @@ impl ItemTextureState {
             .unwrap_or(self.fallback_index)
     }
 
+    pub(super) fn texture_id(&self, texture_index: u32) -> Option<&str> {
+        self.atlas
+            .layout
+            .sprites
+            .get(texture_index as usize)
+            .map(|sprite| sprite.id.as_str())
+    }
+
     pub(super) fn texture_uv_rect(&self, texture_index: u32) -> Option<ItemAtlasUvRect> {
         let sprite = self.atlas.layout.sprites.get(texture_index as usize)?;
         Some(item_uv_rect(&self.atlas.layout, sprite))
@@ -572,6 +580,17 @@ pub(super) fn firework_explosion_tint_color(colors: &[i32]) -> Option<i32> {
 impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_texture_index_for_protocol_id(&self, protocol_id: i32) -> Option<u32> {
+        self.icon_texture_index_for_protocol_id_with_context(
+            protocol_id,
+            BlockModelDisplayContext::Gui,
+        )
+    }
+
+    fn icon_texture_index_for_protocol_id_with_context(
+        &self,
+        protocol_id: i32,
+        display_context: BlockModelDisplayContext,
+    ) -> Option<u32> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         let default_max_stack_size_for_item =
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
@@ -587,71 +606,95 @@ impl NativeItemRuntime {
             self.item_icon_models
                 .get(item_id)
                 .and_then(|model| {
-                    model
-                        .icon_layers(IconResolveContext {
-                            component_patch: None,
-                            stack_count: 1,
-                            default_max_stack_size: self
-                                .registry
-                                .as_ref()
-                                .and_then(|registry| registry.max_stack_size(item_id)),
-                            default_max_damage: None,
-                            bundle_selected_item_index: None,
-                            selected_item: false,
-                            carried_item: false,
-                            view_entity: false,
-                            shift_down: false,
-                            keybind_context: ItemModelKeybindContext::default(),
-                            fishing_rod_cast: false,
-                            using_item: false,
-                            use_context: ItemModelUseContext::inactive(),
-                            cooldown_progress: 0.0,
-                            crossbow_charge: CrossbowChargeType::None,
-                            display_context: item_display_context_name(
-                                BlockModelDisplayContext::Gui,
-                            ),
-                            item_model_seed: 0,
-                            default_item_model_id: item_id,
-                            default_item_name_translation_key: &default_item_name_translation_key,
-                            main_hand_left: None,
-                            context_dimension: None,
-                            context_entity_type: None,
-                            local_time_epoch_millis: self.local_time_epoch_millis(),
-                            time_context: None,
-                            stateful_model_id: item_id,
-                            time_wobbler: None,
-                            time_random: None,
-                            compass_context: None,
-                            compass_wobbler: None,
-                            compass_no_target_rotation: None,
-                            default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
-                            default_max_damage_for_item: Some(&default_max_damage_for_item),
-                            default_attribute_modifiers: &default_attribute_modifiers,
-                            default_attribute_modifiers_for_item: Some(
-                                &default_attribute_modifiers_for_item,
-                            ),
-                            item_resource_ids: self
-                                .registry
-                                .as_ref()
-                                .map(ItemRegistryCatalog::resource_ids),
-                            item_tags: self.item_tags.as_ref(),
-                            enchantment_tags: self.enchantment_tags.as_ref(),
-                            trim_material_tags: self.trim_material_tags.as_ref(),
-                            trim_pattern_tags: self.trim_pattern_tags.as_ref(),
-                            jukebox_song_tags: self.jukebox_song_tags.as_ref(),
-                            potion_tags: self.potion_tags.as_ref(),
-                            attribute_tags: self.attribute_tags.as_ref(),
-                            villager_type_tags: self.villager_type_tags.as_ref(),
-                            trim_material_keys: None,
-                            enchantment_keys: None,
-                            attribute_keys: None,
-                        })
+                    let context = IconResolveContext {
+                        component_patch: None,
+                        stack_count: 1,
+                        default_max_stack_size: self
+                            .registry
+                            .as_ref()
+                            .and_then(|registry| registry.max_stack_size(item_id)),
+                        default_max_damage: None,
+                        bundle_selected_item_index: None,
+                        selected_item: false,
+                        carried_item: false,
+                        view_entity: false,
+                        shift_down: false,
+                        keybind_context: ItemModelKeybindContext::default(),
+                        fishing_rod_cast: false,
+                        using_item: false,
+                        use_context: ItemModelUseContext::inactive(),
+                        cooldown_progress: 0.0,
+                        crossbow_charge: CrossbowChargeType::None,
+                        display_context: item_display_context_name(display_context),
+                        item_model_seed: 0,
+                        default_item_model_id: item_id,
+                        default_item_name_translation_key: &default_item_name_translation_key,
+                        main_hand_left: None,
+                        context_dimension: None,
+                        context_entity_type: None,
+                        local_time_epoch_millis: self.local_time_epoch_millis(),
+                        time_context: None,
+                        stateful_model_id: item_id,
+                        time_wobbler: None,
+                        time_random: None,
+                        compass_context: None,
+                        compass_wobbler: None,
+                        compass_no_target_rotation: None,
+                        default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
+                        default_max_damage_for_item: Some(&default_max_damage_for_item),
+                        default_attribute_modifiers: &default_attribute_modifiers,
+                        default_attribute_modifiers_for_item: Some(
+                            &default_attribute_modifiers_for_item,
+                        ),
+                        item_resource_ids: self
+                            .registry
+                            .as_ref()
+                            .map(ItemRegistryCatalog::resource_ids),
+                        item_tags: self.item_tags.as_ref(),
+                        enchantment_tags: self.enchantment_tags.as_ref(),
+                        trim_material_tags: self.trim_material_tags.as_ref(),
+                        trim_pattern_tags: self.trim_pattern_tags.as_ref(),
+                        jukebox_song_tags: self.jukebox_song_tags.as_ref(),
+                        potion_tags: self.potion_tags.as_ref(),
+                        attribute_tags: self.attribute_tags.as_ref(),
+                        villager_type_tags: self.villager_type_tags.as_ref(),
+                        trim_material_keys: None,
+                        enchantment_keys: None,
+                        attribute_keys: None,
+                    };
+                    self.icon_layers_for_model(model, context, 0)
                         .into_iter()
                         .next()
                 })
                 .map(|layer| layer.texture_index)
                 .unwrap_or(self.textures.fallback_index()),
         )
+    }
+
+    /// Default, empty-component `BreakingItemParticle.Provider` sprite ids for vanilla
+    /// `ItemDisplayContext.GROUND`. Vanilla resolves a stack into an `ItemStackRenderState` and samples
+    /// its layer particle material; this static map covers the common no-component stack path used by
+    /// packet and level-event item particles until the native particle option path owns full component
+    /// patch decoding.
+    pub fn default_item_particle_sprite_ids_by_protocol_id(&self) -> BTreeMap<i32, String> {
+        let Some(registry) = &self.registry else {
+            return BTreeMap::new();
+        };
+        registry
+            .resource_ids()
+            .iter()
+            .enumerate()
+            .filter_map(|(protocol_id, _)| {
+                let protocol_id = i32::try_from(protocol_id).ok()?;
+                let texture_index = self.icon_texture_index_for_protocol_id_with_context(
+                    protocol_id,
+                    BlockModelDisplayContext::Ground,
+                )?;
+                self.textures
+                    .texture_id(texture_index)
+                    .map(|sprite_id| (protocol_id, sprite_id.to_string()))
+            })
+            .collect()
     }
 
     #[cfg(test)]

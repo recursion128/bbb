@@ -260,6 +260,9 @@ fn main() -> Result<()> {
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
+        if let Some(items) = &item_runtime {
+            particles.set_default_item_particle_sprite_ids(items);
+        }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
     load_entity_model_textures(&mut renderer, pack_roots.as_ref());

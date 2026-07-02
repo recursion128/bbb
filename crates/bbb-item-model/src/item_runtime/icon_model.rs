@@ -1741,12 +1741,6 @@ fn lodestone_target_for_patch(
 }
 
 impl ItemIconModel {
-    #[cfg(test)]
-    pub(super) fn icon_layers(&self, ctx: IconResolveContext<'_>) -> Vec<ItemIconTextureLayer> {
-        let mut no_bundle_selected_item = || Vec::new();
-        self.icon_layers_with_bundle_resolver(ctx, &mut no_bundle_selected_item)
-    }
-
     pub(super) fn icon_layers_with_bundle_resolver(
         &self,
         ctx: IconResolveContext<'_>,

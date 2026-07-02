@@ -309,7 +309,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:block`, `minecraft:block_marker`, `minecraft:dust_pillar`,
       and `minecraft:block_crumble` block-state particle material sprite ids
       through the terrain block-model catalog and upload those ids in spawn
-      commands. Generic `minecraft:item` stack material lookup,
+      commands. Generic `minecraft:item` particles with an empty component patch
+      now resolve the default GROUND item particle material sprite id; full
+      component-driven stack material selection, random active-layer sampling,
       non-FallingBlock BlockColors / map-color fallback, on-ground roll reset,
       and transparent terrain/item splitting remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
@@ -6428,7 +6430,10 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:item_slime` -> `minecraft:item/slime_ball`,
         `minecraft:item_cobweb` -> `minecraft:block/cobweb`, and
         `minecraft:item_snowball` -> `minecraft:item/snowball`. The generic
-        `minecraft:item` provider still defers full ItemStack material selection.
+        `minecraft:item` provider now resolves default empty-component stacks
+        through the native item runtime's GROUND particle material sprite id;
+        full component patch decoding and vanilla random active-layer sampling
+        remain deferred.
       - renderer descriptor tests now cover the full vanilla 26.1
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are
