@@ -11,7 +11,7 @@ use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
-use bbb_world::LevelEventSoundRandomState;
+use bbb_world::{block_name_has_invisible_render_shape, LevelEventSoundRandomState};
 
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
@@ -277,6 +277,8 @@ impl ParticleCommandResolver {
         let raw_options_len = packet.particle.raw_options.len();
         let option_state =
             particle_option_render_state(particle_type.id, &packet.particle.raw_options);
+        let provider_accepts_spawn =
+            particle_provider_accepts_spawn(particle_type.id, option_state);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
             particle_type.id,
             &packet.particle.raw_options,
@@ -300,7 +302,8 @@ impl ParticleCommandResolver {
                 packet.always_show,
                 position,
                 context.camera_position,
-            ) {
+            ) && provider_accepts_spawn
+            {
                 commands.push(self.command(
                     packet,
                     particle_type,
@@ -330,7 +333,8 @@ impl ParticleCommandResolver {
                     packet.always_show,
                     position,
                     context.camera_position,
-                ) {
+                ) && provider_accepts_spawn
+                {
                     commands.push(self.command(
                         packet,
                         particle_type,
@@ -2188,6 +2192,30 @@ fn particle_option_render_state(
     }
 }
 
+fn particle_provider_accepts_spawn(
+    particle_type_id: i32,
+    option_state: ParticleOptionRenderState,
+) -> bool {
+    if particle_type_id != FALLING_DUST_PARTICLE_TYPE_ID {
+        return true;
+    }
+    let Some(block) = option_state.block else {
+        return true;
+    };
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let Some(block_state) = block_states.by_id(block.block_state_id) else {
+        return true;
+    };
+    !falling_dust_provider_rejects_block_name(&block_state.name)
+}
+
+fn falling_dust_provider_rejects_block_name(name: &str) -> bool {
+    !matches!(
+        name,
+        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+    ) && block_name_has_invisible_render_shape(name)
+}
+
 fn decode_vibration_position_source_target(
     decoder: &mut Decoder<'_>,
 ) -> bbb_protocol::codec::Result<Option<[f64; 3]>> {
@@ -2862,6 +2890,71 @@ mod tests {
         );
         assert_eq!(command.option_item, None);
         assert_eq!(command.raw_options_len, block_particle_options(321).len());
+    }
+
+    #[test]
+    fn falling_dust_rejects_non_air_invisible_render_shape_blocks() {
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let water_id = test_block_state_id("minecraft:water", [("level", "0")]);
+        let air_id = test_block_state_id("minecraft:air", []);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+
+        for (block_state_id, block_name, expected_commands) in [
+            (barrier_id, "minecraft:barrier", 0),
+            (water_id, "minecraft:water", 0),
+            (air_id, "minecraft:air", 1),
+            (stone_id, "minecraft:stone", 1),
+        ] {
+            let mut resolver = test_resolver(0);
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), expected_commands, "{block_name}");
+            assert_eq!(batch.missing_definition_count, 0, "{block_name}");
+            assert_eq!(batch.unknown_particle_type_count, 0, "{block_name}");
+            if expected_commands == 1 {
+                assert_eq!(
+                    batch.commands[0].option_block,
+                    Some(ParticleBlockOptionState { block_state_id }),
+                    "{block_name}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn falling_dust_provider_rejection_preserves_packet_random_sequence() {
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+        let mut rejected_resolver = test_resolver(42);
+        let mut accepted_resolver = test_resolver(42);
+        let mut rejected = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 2);
+        rejected.particle.raw_options = block_particle_options(barrier_id);
+        let mut accepted = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 2);
+        accepted.particle.raw_options = block_particle_options(stone_id);
+
+        let rejected_batch = rejected_resolver.resolve_level_particles(&rejected);
+        let accepted_batch = accepted_resolver.resolve_level_particles(&accepted);
+        assert_eq!(rejected_batch.len(), 0);
+        assert_eq!(accepted_batch.len(), 2);
+
+        let next_rejected = rejected_resolver
+            .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        let next_accepted = accepted_resolver
+            .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+
+        assert_eq!(next_rejected.len(), 1);
+        assert_eq!(next_accepted.len(), 1);
+        assert_eq!(
+            next_rejected.commands[0].position,
+            next_accepted.commands[0].position
+        );
+        assert_eq!(
+            next_rejected.commands[0].velocity,
+            next_accepted.commands[0].velocity
+        );
     }
 
     #[test]

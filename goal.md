@@ -237,6 +237,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 已完成项见 docs/goal-archive.md#p1-5透明排序粒子与-level-events。
 
 - 粒子 provider-specific behavior：
+  - `falling_dust` 的非 air `RenderShape.INVISIBLE` provider spawn rejection 已
+    对齐 vanilla；block-state tint 与 on-ground roll reset 仍随 terrain/collision
+    查询推进。
   - 初速度。**已收敛**：smoke 系、ash / white_ash、dust_plume、trial_spawner_detection /
     _ominous 的 base-spread×dir 初速度均已对齐 vanilla（见 goal-archive P1-5）。剩余
     仍用纯 `Command` 初速度的 provider（fishing、bubble_pop、squid_ink、glow_squid_ink、

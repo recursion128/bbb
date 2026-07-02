@@ -146,7 +146,7 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
             TerrainMaterialClass::Empty
         }
         "minecraft:water" | "minecraft:lava" => TerrainMaterialClass::Fluid,
-        name if is_invisible_render_block_name(name) => TerrainMaterialClass::Invisible,
+        name if block_name_has_invisible_render_shape(name) => TerrainMaterialClass::Invisible,
         name if is_cutout_block_name(name) => TerrainMaterialClass::Cutout,
         name if is_translucent_block_name(name) => TerrainMaterialClass::Translucent,
         _ => TerrainMaterialClass::Opaque,
@@ -215,10 +215,15 @@ fn is_copper_grate_block_name(name: &str) -> bool {
     )
 }
 
-fn is_invisible_render_block_name(name: &str) -> bool {
+pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
     matches!(
         name,
-        "minecraft:barrier"
+        "minecraft:air"
+            | "minecraft:cave_air"
+            | "minecraft:void_air"
+            | "minecraft:water"
+            | "minecraft:lava"
+            | "minecraft:barrier"
             | "minecraft:bubble_column"
             | "minecraft:structure_void"
             | "minecraft:end_gateway"
@@ -956,6 +961,35 @@ mod tests {
             classify_terrain_material(Some("minecraft:moving_piston")),
             TerrainMaterialClass::Invisible
         );
+    }
+
+    #[test]
+    fn identifies_vanilla_invisible_render_shape_block_names() {
+        for name in [
+            "minecraft:air",
+            "minecraft:cave_air",
+            "minecraft:void_air",
+            "minecraft:water",
+            "minecraft:lava",
+            "minecraft:barrier",
+            "minecraft:bubble_column",
+            "minecraft:structure_void",
+            "minecraft:end_gateway",
+            "minecraft:end_portal",
+            "minecraft:light",
+            "minecraft:moving_piston",
+        ] {
+            assert!(block_name_has_invisible_render_shape(name), "{name}");
+        }
+
+        for name in [
+            "minecraft:stone",
+            "minecraft:short_grass",
+            "minecraft:glass",
+            "minecraft:nether_portal",
+        ] {
+            assert!(!block_name_has_invisible_render_shape(name), "{name}");
+        }
     }
 
     #[test]

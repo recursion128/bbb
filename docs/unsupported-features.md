@@ -185,7 +185,8 @@ When an agent does any of the following, update this file in the same slice:
         particle / terrain / item atlas layers
       - renderer maps `FallingDustParticle.Provider` as an ordinary particle
         atlas `OPAQUE` provider with vanilla lifetime, age-sprite, size curve,
-        roll-speed, and clamped falling motion metadata
+        roll-speed, clamped falling motion metadata, and native spawn rejection
+        for non-air block states whose vanilla render shape is `INVISIBLE`
       - resolving block/item atlas sprites, terrain tint,
         sprite-transparency-driven terrain/item layer selection, binding
         terrain/items atlas textures in the particle GPU path, and transparent
@@ -6201,9 +6202,12 @@ When an agent does any of the following, update this file in the same slice:
         friction, zero gravity, physics metadata, ordinary opaque particle
         atlas layer, sampled roll / rotSpeed, and tick motion that rotates,
         moves by current velocity, subtracts `0.003` from Y velocity, and clamps
-        it to `-0.14`. Block-state tint, invisible-block rejection, and
-        on-ground roll reset remain deferred until particle ticking can query
-        world block/collision state.
+        it to `-0.14`. Native spawn resolution now mirrors the provider's
+        `!state.isAir() && state.getRenderShape() == RenderShape.INVISIBLE`
+        rejection while preserving packet sample RNG consumption before the
+        rejected provider result. Block-state tint and on-ground roll reset
+        remain deferred until particle ticking can query world block/collision
+        state.
       - renderer descriptor tests now cover the full vanilla 26.1
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are

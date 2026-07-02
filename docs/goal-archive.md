@@ -1398,6 +1398,13 @@
     per-instance roll / rotSpeed runtime motion with Y velocity clamped to
     `-0.14`. Block-state dust tint, invisible-block spawn rejection, and
     on-ground roll reset stay in world-coupled particle follow-up work.
+  - [x] `falling_dust` invisible render-shape spawn rejection：native
+    `LevelParticles` resolution now mirrors
+    `FallingDustParticle.Provider` by rejecting non-air `BlockParticleOption`
+    states whose vanilla render shape is `INVISIBLE`, including barrier and
+    liquid block states, while still allowing air and preserving packet sample
+    RNG consumption before the provider-null result. Block-state dust tint and
+    on-ground roll reset remain world/collision-coupled follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
