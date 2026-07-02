@@ -1593,6 +1593,13 @@
     `spruce_wall_hanging_sign` `WOOD` override. Full mapColor catalog coverage,
     biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
     work.
+  - [x] `falling_dust` banner static mapColor expansion：native now mirrors
+    vanilla `BannerBlock` and `WallBannerBlock` registration where every
+    `DyeColor` banner variant still uses `MapColor.WOOD` for
+    `blockState.getMapColor(...).col`. Tests pin all 16 standing banners and
+    all 16 wall banners to the WOOD RGB. Full mapColor catalog coverage,
+    biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
+    work.
   - [x] `falling_dust` colored-family static mapColor expansion：native now
     resolves vanilla `DyeColor.getMapColor()` families for wool, carpets,
     concrete, stained glass, and glazed terracotta, while using the separate

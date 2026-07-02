@@ -2584,6 +2584,14 @@ fn colored_family_map_color(name: &str) -> Option<u32> {
     None
 }
 
+fn banner_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let color = name
+        .strip_suffix("_wall_banner")
+        .or_else(|| name.strip_suffix("_banner"))?;
+    dye_color_map_color(color).map(|_| MAP_COLOR_WOOD)
+}
+
 fn candle_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     if name == "candle" {
@@ -2788,6 +2796,9 @@ fn vanilla_static_map_color_for_block_state(
     properties: &std::collections::BTreeMap<String, String>,
 ) -> Option<u32> {
     if let Some(color) = colored_family_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = banner_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = candle_map_color(name) {
@@ -5105,6 +5116,51 @@ mod tests {
                 Some(expected_color),
                 "{block_name}"
             );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_banner_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for color in [
+            "white",
+            "orange",
+            "magenta",
+            "light_blue",
+            "yellow",
+            "lime",
+            "pink",
+            "gray",
+            "light_gray",
+            "cyan",
+            "purple",
+            "blue",
+            "brown",
+            "green",
+            "red",
+            "black",
+        ] {
+            for kind in ["banner", "wall_banner"] {
+                let block_name = format!("minecraft:{color}_{kind}");
+                let block_state_id = match kind {
+                    "banner" => test_block_state_id(&block_name, [("rotation", "0")]),
+                    "wall_banner" => test_block_state_id(&block_name, [("facing", "north")]),
+                    _ => unreachable!("covered test kinds"),
+                };
+                let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+                packet.particle.raw_options = block_particle_options(block_state_id);
+
+                let batch = resolver.resolve_level_particles(&packet);
+
+                assert_eq!(batch.len(), 1, "{block_name}");
+                assert_eq!(
+                    batch.commands[0].option_color,
+                    Some(rgb_option(0x8f, 0x77, 0x48)),
+                    "{block_name}"
+                );
+            }
         }
     }
 
