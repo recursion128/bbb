@@ -303,8 +303,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `falling_dust` 的非 air `RenderShape.INVISIBLE` provider spawn rejection 已
     对齐 vanilla；`FallingBlock#getDustColor` 分支的 sand/red_sand/gravel、
     anvil、dragon_egg、concrete_powder RGB 已投影进 native spawn command 并由
-    renderer visual color 消费。非 FallingBlock 的 BlockColors / map-color fallback
-    与 on-ground roll reset 仍随 terrain/collision 查询推进。
+    renderer visual color 消费；非 FallingBlock 的 vanilla `BlockColors`
+    layer-0 tint 已覆盖常量、默认 colormap、redstone power、stem age 和 lily pad
+    world-color 分支。map-color fallback、biome-aware per-spawn BlockColors 与
+    on-ground roll reset 仍随 terrain/collision 查询推进。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
@@ -319,15 +321,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     spark 初始 `0.99` fade、firework flash extract-time overlay alpha、shriek
     extract-time linear fade、vault connection `LifetimeAlpha`、firefly
     `getFadeAmount`、EndRod fade color、dust transition lerp，以及 option /
-    random / fixed provider tints。terrain BlockColors / map-color fallback 和
+    random / fixed provider tints，以及 terrain particle 的 vanilla `BlockColors`
+    layer-0 tint。map-color fallback、biome-aware per-spawn BlockColors 和
     firework `Starter` 子粒子的 fade-color 仍归属 terrain/firework 宽面，不再作为
     provider alpha/color curve 小项跟踪。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：component-driven `minecraft:item`
-    stack material selection, terrain particle tint, sprite-transparency-driven
-    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, and transparent terrain/items
-    vertex emission remain follow-up work.
+    stack material selection, biome-aware terrain particle tint / map-color
+    fallback, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
+    `TRANSLUCENT_ITEMS`, and transparent terrain/items vertex emission remain
+    follow-up work.
     Renderer GPU draw ranges now bind particle / terrain / item atlas textures
     once concrete sprite UVs are available; native terrain atlas upload supplies
     block sprite UVs and native item atlas upload supplies item sprite UVs to

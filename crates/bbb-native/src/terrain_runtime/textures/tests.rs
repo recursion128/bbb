@@ -945,11 +945,71 @@ fn biome_climate_changes_colormap_sample() {
     );
 }
 
+#[test]
+fn particle_tint_uses_vanilla_block_colors_layer_zero() {
+    let textures = TerrainTextureState::default();
+    let grass_block = block_state_id("minecraft:grass_block", [("snowy", "false")]);
+    let redstone = block_state_id(
+        "minecraft:redstone_wire",
+        [
+            ("east", "up"),
+            ("north", "up"),
+            ("power", "15"),
+            ("south", "up"),
+            ("west", "up"),
+        ],
+    );
+    let stem = block_state_id("minecraft:melon_stem", [("age", "7")]);
+    let lily_pad = block_state_id("minecraft:lily_pad", []);
+
+    assert_eq!(
+        textures.terrain_particle_tint_color_for_block_state(grass_block),
+        Some(rgb_06(255, 255, 255))
+    );
+    assert_eq!(
+        textures.terrain_particle_tint_color_for_block_state(redstone),
+        Some(rgb_06(255, 50, 0))
+    );
+    assert_eq!(
+        textures.terrain_particle_tint_color_for_block_state(stem),
+        Some(rgb_06(224, 199, 28))
+    );
+    assert_eq!(
+        textures.terrain_particle_tint_color_for_block_state(lily_pad),
+        Some(rgb_06(0x20, 0x80, 0x30))
+    );
+    assert_eq!(
+        textures.falling_dust_block_tint_color_for_block_state(lily_pad),
+        Some(rgb(0x20, 0x80, 0x30))
+    );
+}
+
 fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
     entries
         .into_iter()
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect()
+}
+
+fn block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+    let properties = properties(props);
+    bbb_world::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties(name, &properties)
+        .unwrap_or_else(|| panic!("missing vanilla block state {name} {properties:?}"))
+        .id
+}
+
+fn rgb(r: u8, g: u8, b: u8) -> [f32; 4] {
+    [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0]
+}
+
+fn rgb_06(r: u8, g: u8, b: u8) -> [f32; 4] {
+    [
+        r as f32 / 255.0 * 0.6,
+        g as f32 / 255.0 * 0.6,
+        b as f32 / 255.0 * 0.6,
+        1.0,
+    ]
 }
 
 fn sprite(id: &str) -> bbb_pack::SpriteImage {

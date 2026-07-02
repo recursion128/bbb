@@ -312,8 +312,8 @@ When an agent does any of the following, update this file in the same slice:
       commands. Generic `minecraft:item` particles with an empty component patch
       now resolve the default GROUND item particle material active-layer sprite
       ids and let the renderer randomly select one; full component-driven stack
-      material selection,
-      non-FallingBlock BlockColors / map-color fallback, on-ground roll reset,
+      material selection, biome-aware per-spawn BlockColors, map-color fallback,
+      on-ground roll reset,
       and transparent terrain/item splitting remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
@@ -348,9 +348,14 @@ When an agent does any of the following, update this file in the same slice:
       flash `OverlayParticle.extract` alpha, shriek extract-time fade,
       vault-connection `LifetimeAlpha`, firefly `getFadeAmount`, EndRod
       half-lifetime fade-color blending, dust color-transition lerp, and
-      decoded option / random / fixed provider tints. Remaining color work is
-      tied to deferred owners: terrain BlockColors / map-color fallback and the
-      broader firework `Starter` child-particle presentation path.
+      decoded option / random / fixed provider tints. Native terrain particle
+      colors now install vanilla `BlockColors.createDefault()` layer-0 tint for
+      terrain particle providers (`0.6 * colorAsTerrainParticle`) and
+      non-FallingBlock `falling_dust` (`colorAsTerrainParticle`) for constant,
+      default-colormap, redstone power, stem age, and lily pad world-color
+      sources. Remaining color work is tied to deferred owners: biome-aware
+      per-spawn BlockColors, map-color fallback, and the broader firework
+      `Starter` child-particle presentation path.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6411,8 +6416,11 @@ When an agent does any of the following, update this file in the same slice:
         rejected provider result. Its `FallingBlock#getDustColor` branch is
         projected into `ParticleSpawnCommand.option_color` for sand/red_sand,
         gravel, dragon_egg, anvils, and concrete_powder states; non-FallingBlock
-        BlockColors / map-color fallback and on-ground roll reset remain
-        deferred until particle ticking can query world block/collision state.
+        vanilla `BlockColors.createDefault()` layer-0 tint is also installed for
+        constant, default-colormap, redstone power, stem age, and lily pad
+        world-color sources. map-color fallback, biome-aware per-spawn
+        BlockColors, and on-ground roll reset remain deferred until particle
+        ticking can query world block/collision state.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
         `minecraft:block_crumble` submissions: air, `moving_piston`, and
@@ -6421,6 +6429,10 @@ When an agent does any of the following, update this file in the same slice:
         carry the block state's terrain particle material sprite id, matching
         vanilla `TerrainParticle` construction through
         `BlockStateModelSet.getParticleMaterial(blockState).sprite()`.
+        The same providers also carry `0.6 *
+        BlockTintSource.colorAsTerrainParticle` for vanilla layer-0 block color
+        sources; `minecraft:block_marker` remains sprite-only, matching vanilla
+        `BlockMarker`.
         `minecraft:block_marker` remains unfiltered, matching vanilla
         `BlockMarker.Provider`, and its spawn commands now carry the same
         block-state terrain particle material sprite id because vanilla

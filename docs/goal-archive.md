@@ -1525,8 +1525,15 @@
     gravel, dragon_egg, anvils, and concrete_powder states by projecting the
     resolved RGB into `ParticleSpawnCommand.option_color`; renderer
     `FallingDustParticle.Provider` instances consume that option color as their
-    visual tint. Non-FallingBlock `BlockColors` / map-color fallback and
+    visual tint. map-color fallback, biome-aware per-spawn BlockColors, and
     on-ground roll reset remain terrain/collision-coupled follow-up work.
+  - [x] terrain particle BlockColors layer-0 tint：native installs vanilla
+    `BlockColors.createDefault()` layer-0 `colorAsTerrainParticle` output for
+    terrain particles and non-FallingBlock `falling_dust`, covering constants,
+    default colormap tint, redstone power, stem age, lily pad world color, and
+    the `grass_block` particle-white special case. `TerrainParticle` providers
+    upload `0.6 * tint`, while `falling_dust` uses the raw tint; `block_marker`
+    remains sprite-only like vanilla.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
@@ -1802,10 +1809,10 @@
     `OverlayParticle.extract` alpha, shriek extract-time fade,
     vault-connection `LifetimeAlpha`, firefly `getFadeAmount`, EndRod
     half-lifetime fade-color blending, dust color-transition lerp, and decoded
-    option / random / fixed provider tints. Terrain BlockColors / map-color
-    fallback and the wider firework `Starter` child-particle presentation stay
-    with their owning follow-up items rather than the provider alpha/color
-    curve checklist.
+    option / random / fixed provider tints and terrain particle BlockColors
+    layer-0 tint. map-color fallback, biome-aware per-spawn BlockColors, and
+    the wider firework `Starter` child-particle presentation stay with their
+    owning follow-up items rather than the provider alpha/color curve checklist.
   - [x] LevelEvent audio side-effect closeout：the P1-5 audit rechecked local
     vanilla 26.1 `LevelEventHandler` and confirmed current world/native paths
     cover LevelEvent-derived fixed and randomized local sounds, positioned

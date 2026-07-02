@@ -219,6 +219,8 @@ struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
     terrain_particle_sprite_ids: HashMap<i32, String>,
+    terrain_particle_tint_colors: HashMap<i32, [f32; 4]>,
+    falling_dust_block_tint_colors: HashMap<i32, [f32; 4]>,
     default_item_particle_sprite_ids: HashMap<i32, Vec<String>>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
@@ -352,6 +354,8 @@ impl ParticleCommandResolver {
             definitions,
             sprites,
             terrain_particle_sprite_ids: HashMap::new(),
+            terrain_particle_tint_colors: HashMap::new(),
+            falling_dust_block_tint_colors: HashMap::new(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
@@ -367,6 +371,22 @@ impl ParticleCommandResolver {
                 textures
                     .particle_sprite_id_for_block_state(block_state.id)
                     .map(|sprite_id| (block_state.id, sprite_id))
+            })
+            .collect();
+        self.terrain_particle_tint_colors = block_states
+            .iter()
+            .filter_map(|block_state| {
+                textures
+                    .terrain_particle_tint_color_for_block_state(block_state.id)
+                    .map(|color| (block_state.id, color))
+            })
+            .collect();
+        self.falling_dust_block_tint_colors = block_states
+            .iter()
+            .filter_map(|block_state| {
+                textures
+                    .falling_dust_block_tint_color_for_block_state(block_state.id)
+                    .map(|color| (block_state.id, color))
             })
             .collect();
     }
@@ -389,6 +409,8 @@ impl ParticleCommandResolver {
             definitions,
             sprites,
             terrain_particle_sprite_ids: HashMap::new(),
+            terrain_particle_tint_colors: HashMap::new(),
+            falling_dust_block_tint_colors: HashMap::new(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),
@@ -2094,6 +2116,9 @@ impl ParticleCommandResolver {
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
         let sprite_ids = self.sprite_ids_for_command(particle_type.id, sprite_ids, option_state);
+        let option_color = option_state
+            .color
+            .or_else(|| self.tint_color_for_command(particle_type.id, option_state));
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
             particle_id: particle_type.name.to_string(),
@@ -2105,7 +2130,7 @@ impl ParticleCommandResolver {
             raw_options_len,
             initial_delay_ticks,
             child_spawn_templates,
-            option_color: option_state.color,
+            option_color,
             option_color_to: option_state.color_to,
             option_scale: option_state.scale,
             option_power: option_state.power,
@@ -2148,6 +2173,27 @@ impl ParticleCommandResolver {
             }
         }
         sprite_ids.to_vec()
+    }
+
+    fn tint_color_for_command(
+        &self,
+        particle_type_id: i32,
+        option_state: ParticleOptionRenderState,
+    ) -> Option<[f32; 4]> {
+        let block_state_id = option_state.block?.block_state_id;
+        match particle_type_id {
+            BLOCK_PARTICLE_TYPE_ID
+            | DUST_PILLAR_PARTICLE_TYPE_ID
+            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => self
+                .terrain_particle_tint_colors
+                .get(&block_state_id)
+                .copied(),
+            FALLING_DUST_PARTICLE_TYPE_ID => self
+                .falling_dust_block_tint_colors
+                .get(&block_state_id)
+                .copied(),
+            _ => None,
+        }
     }
 
     fn child_spawn_templates_for_type(
@@ -3203,6 +3249,45 @@ mod tests {
     }
 
     #[test]
+    fn terrain_particle_commands_use_installed_block_tint_colors() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+        let redstone_id = test_block_state_id(
+            "minecraft:redstone_wire",
+            [
+                ("east", "up"),
+                ("north", "up"),
+                ("power", "15"),
+                ("south", "up"),
+                ("west", "up"),
+            ],
+        );
+
+        for (particle_type_id, particle_id) in [
+            (BLOCK_PARTICLE_TYPE_ID, "minecraft:block"),
+            (DUST_PILLAR_PARTICLE_TYPE_ID, "minecraft:dust_pillar"),
+            (BLOCK_CRUMBLE_PARTICLE_TYPE_ID, "minecraft:block_crumble"),
+        ] {
+            let mut packet = level_particles_packet(particle_type_id, 0);
+            packet.particle.raw_options = block_particle_options(redstone_id);
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{particle_id}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option_06(255, 50, 0)),
+                "{particle_id}"
+            );
+        }
+
+        let mut marker = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
+        marker.particle.raw_options = block_particle_options(redstone_id);
+        let marker_batch = resolver.resolve_level_particles(&marker);
+        assert_eq!(marker_batch.len(), 1);
+        assert_eq!(marker_batch.commands[0].option_color, None);
+    }
+
+    #[test]
     fn generic_item_particle_uses_installed_default_item_sprite_for_empty_component_patch() {
         let mut resolver = test_resolver(0);
         resolver.default_item_particle_sprite_ids.insert(
@@ -3428,6 +3513,23 @@ mod tests {
                 "{block_name}"
             );
         }
+    }
+
+    #[test]
+    fn falling_dust_uses_installed_block_tint_for_non_falling_block_colors() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+        let lily_pad_id = test_block_state_id("minecraft:lily_pad", []);
+        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = block_particle_options(lily_pad_id);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(
+            batch.commands[0].option_color,
+            Some(rgb_option(0x20, 0x80, 0x30))
+        );
     }
 
     #[test]
@@ -6419,6 +6521,15 @@ mod tests {
             f32::from(r) / 255.0,
             f32::from(g) / 255.0,
             f32::from(b) / 255.0,
+            1.0,
+        ]
+    }
+
+    fn rgb_option_06(r: u8, g: u8, b: u8) -> [f32; 4] {
+        [
+            f32::from(r) / 255.0 * 0.6,
+            f32::from(g) / 255.0 * 0.6,
+            f32::from(b) / 255.0 * 0.6,
             1.0,
         ]
     }

@@ -245,6 +245,26 @@ impl TerrainTextureState {
         }
     }
 
+    pub(crate) fn terrain_particle_tint_color_for_block_state(
+        &self,
+        block_state_id: i32,
+    ) -> Option<[f32; 4]> {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        let block_state = block_states.by_id(block_state_id)?;
+        self.block_colors_layer0_terrain_particle_tint(&block_state.name, &block_state.properties)
+            .map(terrain_particle_rgb_06)
+    }
+
+    pub(crate) fn falling_dust_block_tint_color_for_block_state(
+        &self,
+        block_state_id: i32,
+    ) -> Option<[f32; 4]> {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        let block_state = block_states.by_id(block_state_id)?;
+        self.block_colors_layer0_terrain_particle_tint(&block_state.name, &block_state.properties)
+            .map(terrain_tint_particle_rgb)
+    }
+
     pub(crate) fn destroy_stage_uv_rect(&self, stage: u8) -> Option<TerrainUvRect> {
         let texture_id = format!("minecraft:block/destroy_stage_{}", stage.min(9));
         let index = *self.indices.get(&texture_id)?;
@@ -1029,6 +1049,55 @@ impl TerrainTextureState {
         TerrainTint::WHITE
     }
 
+    fn block_colors_layer0_terrain_particle_tint(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<TerrainTint> {
+        match block_name {
+            // Vanilla `BlockTintSources.grassBlock().colorAsTerrainParticle` returns -1.
+            "minecraft:grass_block" | "minecraft:pink_petals" | "minecraft:wildflowers" => {
+                Some(TerrainTint::WHITE)
+            }
+            "minecraft:large_fern"
+            | "minecraft:tall_grass"
+            | "minecraft:fern"
+            | "minecraft:short_grass"
+            | "minecraft:potted_fern"
+            | "minecraft:bush"
+            | "minecraft:sugar_cane" => Some(self.grass_tint(None, None)),
+            "minecraft:spruce_leaves" => Some(TerrainTint::from_rgb_u8(0x61, 0x99, 0x61)),
+            "minecraft:birch_leaves" => Some(TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55)),
+            "minecraft:oak_leaves"
+            | "minecraft:jungle_leaves"
+            | "minecraft:acacia_leaves"
+            | "minecraft:dark_oak_leaves"
+            | "minecraft:vine"
+            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(None)),
+            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(None)),
+            "minecraft:water_cauldron" | "minecraft:water" | "minecraft:bubble_column" => {
+                Some(self.water_tint(None))
+            }
+            "minecraft:redstone_wire" => Some(redstone_wire_tint(
+                properties
+                    .get("power")
+                    .and_then(|value| value.parse::<i32>().ok())
+                    .unwrap_or(0),
+            )),
+            "minecraft:attached_melon_stem" | "minecraft:attached_pumpkin_stem" => {
+                Some(TerrainTint::from_rgb_u8(0xe0, 0xc7, 0x1c))
+            }
+            "minecraft:melon_stem" | "minecraft:pumpkin_stem" => Some(stem_tint(
+                properties
+                    .get("age")
+                    .and_then(|value| value.parse::<i32>().ok())
+                    .unwrap_or(0),
+            )),
+            "minecraft:lily_pad" => Some(TerrainTint::from_rgb_u8(0x20, 0x80, 0x30)),
+            _ => None,
+        }
+    }
+
     fn grass_tint(
         &self,
         biome_id: Option<i32>,
@@ -1098,6 +1167,49 @@ impl TerrainTextureState {
     fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {
         self.biome_colors.as_ref()?.profile(biome_id?)
     }
+}
+
+fn terrain_particle_rgb_06(tint: TerrainTint) -> [f32; 4] {
+    [
+        tint.r as f32 / 255.0 * 0.6,
+        tint.g as f32 / 255.0 * 0.6,
+        tint.b as f32 / 255.0 * 0.6,
+        1.0,
+    ]
+}
+
+fn terrain_tint_particle_rgb(tint: TerrainTint) -> [f32; 4] {
+    [
+        tint.r as f32 / 255.0,
+        tint.g as f32 / 255.0,
+        tint.b as f32 / 255.0,
+        1.0,
+    ]
+}
+
+fn redstone_wire_tint(power: i32) -> TerrainTint {
+    let power = power.clamp(0, 15) as f32 / 15.0;
+    let red = power * 0.6 + if power > 0.0 { 0.4 } else { 0.3 };
+    let green = (power * power * 0.7 - 0.5).clamp(0.0, 1.0);
+    let blue = (power * power * 0.6 - 0.7).clamp(0.0, 1.0);
+    TerrainTint::from_rgb_u8(
+        as_vanilla_argb_channel(red),
+        as_vanilla_argb_channel(green),
+        as_vanilla_argb_channel(blue),
+    )
+}
+
+fn stem_tint(age: i32) -> TerrainTint {
+    let age = age.clamp(0, 7);
+    TerrainTint::from_rgb_u8(
+        (age * 32).clamp(0, 255) as u8,
+        (255 - age * 8).clamp(0, 255) as u8,
+        (age * 4).clamp(0, 255) as u8,
+    )
+}
+
+fn as_vanilla_argb_channel(value: f32) -> u8 {
+    (value * 255.0).floor().clamp(0.0, 255.0) as u8
 }
 
 pub(crate) fn load_terrain_textures(
