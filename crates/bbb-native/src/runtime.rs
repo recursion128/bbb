@@ -1451,6 +1451,8 @@ pub(crate) fn pump_network_and_terrain(
         advanced_ticks,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
+    // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
+    // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
     let hud_health = local_player.health.map(|health| health.health);
     let hud_food = local_player.health.map(|health| health.food);

@@ -410,6 +410,52 @@ fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
 }
 
 #[test]
+fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
+    let source = include_str!("../runtime.rs");
+    let input_advance = source
+        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .expect("pump should advance player input before HUD extraction");
+    let destroy_advance = source
+        .find("advance_destroying_block_at_partial_tick(")
+        .expect("pump should advance destroy input before HUD extraction");
+    let use_advance = source
+        .find("advance_using_item_at_partial_tick(")
+        .expect("pump should advance use-item input before HUD extraction");
+    let using_item_tick = source
+        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .expect("pump should advance local use-item ticks before HUD extraction");
+    let hud_extract = source
+        .find("let local_player = world.local_player();")
+        .expect("pump should extract HUD state from the local player");
+    let selected_slot_extract = source
+        .find("let hud_selected_slot = local_player.selected_hotbar_slot;")
+        .expect("pump should extract the selected hotbar slot");
+    let hotbar_icons_extract = source
+        .find("let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(")
+        .expect("pump should extract hotbar item icons");
+    let inventory_screen_extract = source
+        .find("let hud_inventory_screen = hud_inventory_screen_with_local_state(")
+        .expect("pump should extract inventory screen HUD state");
+
+    for advance in [input_advance, destroy_advance, use_advance, using_item_tick] {
+        assert!(
+            advance < hud_extract,
+            "vanilla `Minecraft.tick` handles keybinds before `GameRenderer.extractGui`"
+        );
+    }
+    for extraction in [
+        selected_slot_extract,
+        hotbar_icons_extract,
+        inventory_screen_extract,
+    ] {
+        assert!(
+            hud_extract < extraction,
+            "HUD frame fields should read one post-input local player snapshot"
+        );
+    }
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

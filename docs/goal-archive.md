@@ -247,6 +247,13 @@
     `ClientLevel.tick` 先递减 `skyFlashTime`，render extract 再读取
     `EnvironmentAttributes` / lightmap state。测试固定 pump 源码顺序，并证明
     `skyFlashTime == 1` 推进一 tick 后不会让下一帧环境继续应用闪光。
+  - [x] HUD local-player / hotbar / inventory-screen fields：
+    `hud_health`、`hud_food`、`hud_experience_progress`、`hud_selected_slot`、
+    hotbar icons 和 inventory screen projection 现在有源码顺序测试与绑定注释，
+    固定为 `advance_player_input`、destroy/use input advancement 和
+    `advance_local_using_item_ticks` 之后读取；vanilla 依据是
+    `Minecraft.tick` 先处理 gameplay keybinds，随后 `GameRenderer.extractGui`
+    调用 `Gui.extractRenderState` / `Gui.extractItemHotbar`。
 
 ## P1-2：实体专用 Renderer 行为
 
