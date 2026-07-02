@@ -1568,6 +1568,11 @@
     `minecraft:item.honeycomb.wax_on`; audio-only dispatch advances the same
     `UniformInt.of(3,5)` block-face particle random stream before drawing the
     positioned sound seed.
+  - [x] dragon fireball LevelEvent sound ordering：event `2006` now mirrors
+    vanilla `LevelEventHandler` by consuming the 200
+    `minecraft:dragon_breath` particle random draws before recording/playing
+    `minecraft:entity.dragon_fireball.explode` when `data == 1`; `data != 1`
+    remains particle-only.
   - [x] vault activate/deactivate LevelEvent sounds：events `3015` and `3016`
     now mirror vanilla `LevelEventHandler` sound ordering by consuming the local
     vault particle random sequence before drawing

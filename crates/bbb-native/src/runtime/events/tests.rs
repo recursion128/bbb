@@ -4039,6 +4039,7 @@ fn potion_and_dragon_fireball_level_events_emit_vanilla_sounds() {
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     let expected_potion_pitch = 0.9 + expected_random.next_float().clamp(0.0, 1.0) * 0.1;
     let expected_potion_seed = expected_random.next_long();
+    advance_dragon_fireball_explode_level_event_particle_randoms(&mut expected_random);
     let expected_dragon_pitch = 0.9 + expected_random.next_float().clamp(0.0, 1.0) * 0.1;
     let expected_dragon_seed = expected_random.next_long();
 
@@ -4091,6 +4092,65 @@ fn potion_and_dragon_fireball_level_events_emit_vanilla_sounds() {
     assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 2);
     assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn dragon_fireball_level_event_plays_sound_after_particles() {
+    let event = LevelEvent {
+        event_type: 2006,
+        pos: ProtocolBlockPos { x: -2, y: 70, z: 4 },
+        data: 1,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    advance_dragon_fireball_explode_level_event_particle_randoms(&mut expected_random);
+    let expected_pitch = 0.9 + expected_random.next_float().clamp(0.0, 1.0) * 0.1;
+    let expected_seed = expected_random.next_long();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert_eq!(particles.level_events, vec![event]);
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(
+        command.sound.event_id,
+        "minecraft:entity.dragon_fireball.explode"
+    );
+    assert_eq!(command.category, AudioCategory::Hostile);
+    assert_eq!(command.position, [-1.5, 70.5, 4.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, expected_pitch);
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:entity.dragon_fireball.explode")
+    );
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
 }
 
 #[test]
@@ -6266,6 +6326,8 @@ impl ParticleEventSink for RecordingParticleSink {
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);
+        } else if event.event_type == 2006 {
+            advance_dragon_fireball_explode_level_event_particle_randoms(random);
         } else if event.event_type == 3003 {
             advance_wax_on_level_event_particle_randoms(random);
         } else if event.event_type == 1505 {

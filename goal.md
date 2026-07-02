@@ -284,6 +284,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `3003` honeycomb wax-on sound 已按 vanilla 在 block-face `wax_on`
     particles 后播放，audio-only path 会推进 `UniformInt.of(3,5)` 六面粒子
     RNG 后再抽取 positioned sound seed。
+  - `2006` dragon fireball explode sound 已按 vanilla 在 200 个
+    `dragon_breath` 粒子 RNG 后播放；`data != 1` 仍只发粒子不发声。
   - `1505` bone-meal use sound 已按 vanilla 在
     `BoneMealItem.addGrowthParticles` 后播放，audio-only probe 也会推进同一段
     growth particle RNG 后再抽取 positioned sound seed。

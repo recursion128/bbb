@@ -8,6 +8,7 @@ pub(super) use dispatcher::drain_net_events_with_sinks;
 use dispatcher::level_event_particle_context;
 #[cfg(test)]
 use dispatcher::{
+    advance_dragon_fireball_explode_level_event_particle_randoms,
     advance_growth_level_event_particle_randoms, advance_wax_on_level_event_particle_randoms,
 };
 #[cfg(test)]

@@ -329,7 +329,9 @@ When an agent does any of the following, update this file in the same slice:
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
       - event `2006`: 200 vanilla-positioned `minecraft:dragon_breath`
-        particles with `PowerParticleOption`-shaped velocities
+        particles with `PowerParticleOption`-shaped velocities, followed by
+        `minecraft:entity.dragon_fireball.explode` after the particle RNG
+        sequence when `data == 1`
       - event `2008`: one centered `minecraft:explosion` particle
       - event `2009`: eight `minecraft:cloud` particles above the block
       - event `3000`: one always-visible centered
@@ -6050,7 +6052,8 @@ When an agent does any of the following, update this file in the same slice:
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
       - splash/instant-effect potion break sounds for events `2002` and `2007`
-      - dragon fireball explode sound for event `2006` when `data == 1`
+      - dragon fireball explode sound for event `2006` when `data == 1`,
+        emitted after the 200 dragon-breath particle random draws
       - distance-delayed trial spawner sounds for events `3012`, `3013`,
         `3014`, `3019`, `3020`, and `3021`
       - distance-delayed vault activate/deactivate sounds for events `3015`
