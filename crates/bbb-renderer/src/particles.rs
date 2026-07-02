@@ -875,6 +875,9 @@ impl ParticleInstance {
             ParticleQuadSizeCurve::Flame => {
                 self.base_quad_size * (1.0 - progress * progress * 0.5).max(0.0)
             }
+            ParticleQuadSizeCurve::Lava => {
+                self.base_quad_size * (1.0 - progress * progress).max(0.0)
+            }
             ParticleQuadSizeCurve::FlashOverlay => {
                 7.1 * ((age - 1.0) * 0.25 * std::f32::consts::PI).sin()
             }
@@ -3479,7 +3482,7 @@ mod tests {
         assert_eq!(lava.sprite_selection, ParticleSpriteSelection::Random);
         assert_range_f32(lava.base_quad_size, 0.02, 0.44);
         assert_eq!(lava.color, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Flame);
+        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Lava);
         assert!((16..=80).contains(&lava.lifetime_ticks));
         assert_range_f64(lava.velocity[0], -0.15, 0.15);
         assert_range_f64(lava.velocity[1], 0.05, 0.45);
@@ -5839,6 +5842,13 @@ mod tests {
 
     #[test]
     fn particle_quad_size_curves_follow_vanilla_shapes() {
+        let mut constant = test_instance_with_lifetime("minecraft:squid_ink", 20);
+        constant.base_quad_size = 0.5;
+        constant.quad_size_curve = ParticleQuadSizeCurve::Constant;
+        assert_close_f32(constant.quad_size_at_partial_tick(0.0), 0.5);
+        constant.age_ticks = 20;
+        assert_close_f32(constant.quad_size_at_partial_tick(0.0), 0.5);
+
         let mut cloud = test_instance_with_lifetime("minecraft:cloud", 64);
         cloud.base_quad_size = 0.4;
         cloud.quad_size_curve = ParticleQuadSizeCurve::GrowToBase;
@@ -5853,6 +5863,15 @@ mod tests {
         assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.2);
         flame.age_ticks = 20;
         assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.1);
+
+        let mut lava = test_instance_with_lifetime("minecraft:lava", 20);
+        lava.base_quad_size = 0.2;
+        lava.quad_size_curve = ParticleQuadSizeCurve::Lava;
+        assert_close_f32(lava.quad_size_at_partial_tick(0.0), 0.2);
+        lava.age_ticks = 10;
+        assert_close_f32(lava.quad_size_at_partial_tick(0.0), 0.15);
+        lava.age_ticks = 20;
+        assert_close_f32(lava.quad_size_at_partial_tick(0.0), 0.0);
 
         let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
         portal.base_quad_size = 0.06;

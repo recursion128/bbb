@@ -260,6 +260,7 @@ pub(crate) enum ParticleQuadSizeCurve {
     Constant,
     GrowToBase,
     Flame,
+    Lava,
     FlashOverlay,
     Portal,
     ReversePortal,
@@ -1270,7 +1271,7 @@ impl ParticleDescriptor {
                     min_scale: 0.2,
                     max_scale: 2.2,
                     color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
-                    quad_size_curve: ParticleQuadSizeCurve::Flame,
+                    quad_size_curve: ParticleQuadSizeCurve::Lava,
                 },
                 initial_velocity: ParticleInitialVelocityDescriptor::Lava,
                 friction: 0.999,
@@ -4491,7 +4492,7 @@ mod tests {
                 min_scale: 0.2,
                 max_scale: 2.2,
                 color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
-                quad_size_curve: ParticleQuadSizeCurve::Flame,
+                quad_size_curve: ParticleQuadSizeCurve::Lava,
             },
             0.999,
             0.75,
@@ -5362,12 +5363,12 @@ mod tests {
             min_scale: 0.2,
             max_scale: 2.2,
             color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
-            quad_size_curve: ParticleQuadSizeCurve::Flame,
+            quad_size_curve: ParticleQuadSizeCurve::Lava,
         }
         .sample_for_command(&mut lava_random, [0.0, 0.0, 0.0]);
         assert_range_f32(lava.base_quad_size, 0.02, 0.44);
         assert_eq!(lava.color, WHITE_PARTICLE_COLOR);
-        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Flame);
+        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Lava);
 
         let mut snowflake_random = ParticleRandom::new(45);
         let snowflake =

@@ -1741,3 +1741,10 @@
     ash-smoke, crit/random divisor, command-option, portal/reverse-portal,
     falling-dust, dust-scale, and inclusive-tick lifetimes. The P1-5 provider
     checklist no longer tracks lifetime as an open slice.
+  - [x] particle quad-size curve coverage：renderer now distinguishes vanilla
+    `FlameParticle.getQuadSize` (`1 - progress^2 * 0.5`) from
+    `LavaParticle.getQuadSize` (`1 - progress^2`) instead of sharing the flame
+    half-shrink curve. Runtime tests cover every modeled quad-size curve:
+    constant, grow-to-base, flame, lava, flash overlay, portal, reverse portal,
+    and shriek. The P1-5 provider checklist no longer tracks size curve as an
+    open slice.

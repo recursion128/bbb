@@ -324,6 +324,10 @@ When an agent does any of the following, update this file in the same slice:
       particles, cloud scaling, ash smoke scaling/division, crit/random divisor
       formulas, command-option lifetimes, portal/reverse-portal ranges, falling
       dust, dust scale, and inclusive tick seed particles.
+      Renderer quad-size curve tests cover every modeled vanilla shape:
+      constant, grow-to-base, flame half-shrink, lava full-shrink, flash
+      overlay sine size, portal grow curve, reverse-portal shrink curve, and
+      shriek growth.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -507,10 +511,11 @@ When an agent does any of the following, update this file in the same slice:
         friction, and blocked-y speed-up metadata
       - `LavaParticle.Provider` random sprite selection, constructor-random
         horizontal velocity damped by `0.8`, random upward velocity
-        `0.05..0.45`, `0.2..2.2` quad-size scaling, shrinking size curve,
-        `16 / (random * 0.8 + 0.2)` lifetime, `0.999` friction, `0.75`
-        gravity, physics metadata, full-bright block light, and child smoke
-        emission. Lava spawn commands carry the pack-backed smoke child
+        `0.05..0.45`, `0.2..2.2` quad-size scaling, vanilla
+        `1 - progress^2` shrinking size curve, `16 / (random * 0.8 + 0.2)`
+        lifetime, `0.999` friction, `0.75` gravity, physics metadata,
+        full-bright block light, and child smoke emission. Lava spawn commands
+        carry the pack-backed smoke child
         SpriteSet, and runtime emits smoke after lava ticks when
         `random.nextFloat() > age / lifetime`
       - `CampfireSmokeParticle.CosyProvider` and `SignalProvider` use random
@@ -6328,9 +6333,10 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `LavaParticle.Provider` to random sprite
         selection, constructor-random horizontal velocity damped by `0.8`,
         random upward velocity `0.05..0.45`, `0.2..2.2` quad-size scaling,
-        shrinking size curve, `16/(random*.8+.2)` lifetime, friction `0.999`,
-        gravity `0.75`, physics metadata, full-bright block light, and child
-        smoke emission using the command-carried smoke SpriteSet and vanilla
+        vanilla `1 - progress^2` shrinking size curve,
+        `16/(random*.8+.2)` lifetime, friction `0.999`, gravity `0.75`,
+        physics metadata, full-bright block light, and child smoke emission
+        using the command-carried smoke SpriteSet and vanilla
         `random.nextFloat() > age / lifetime` post-tick odds.
       - particle descriptors map `CampfireSmokeParticle.CosyProvider` and
         `SignalProvider` to random sprites, constructor `scale(3.0)`, alpha
