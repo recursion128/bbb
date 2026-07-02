@@ -2192,7 +2192,8 @@ impl ParticleCommandResolver {
             FALLING_DUST_PARTICLE_TYPE_ID => self
                 .falling_dust_block_tint_colors
                 .get(&block_state_id)
-                .copied(),
+                .copied()
+                .or_else(|| falling_dust_map_color_for_block_state_id(block_state_id)),
             _ => None,
         }
     }
@@ -2491,6 +2492,13 @@ fn falling_dust_color_for_block_state_id(block_state_id: i32) -> Option<[f32; 4]
     falling_dust_color_for_block_name(&block_state.name).map(rgb_particle_color_u32)
 }
 
+fn falling_dust_map_color_for_block_state_id(block_state_id: i32) -> Option<[f32; 4]> {
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let block_state = block_states.by_id(block_state_id)?;
+    vanilla_static_map_color_for_block_state(&block_state.name, &block_state.properties)
+        .map(rgb_particle_color_u32)
+}
+
 fn falling_dust_color_for_block_name(name: &str) -> Option<u32> {
     match name {
         // Vanilla FallingDustParticle.Provider uses FallingBlock#getDustColor first.
@@ -2528,6 +2536,52 @@ fn concrete_powder_map_color(name: &str) -> Option<u32> {
         "black" => MAP_COLOR_BLACK,
         _ => return None,
     })
+}
+
+fn vanilla_static_map_color_for_block_state(
+    name: &str,
+    properties: &std::collections::BTreeMap<String, String>,
+) -> Option<u32> {
+    match name {
+        "minecraft:stone"
+        | "minecraft:andesite"
+        | "minecraft:polished_andesite"
+        | "minecraft:cobblestone" => Some(MAP_COLOR_STONE),
+        "minecraft:granite"
+        | "minecraft:polished_granite"
+        | "minecraft:dirt"
+        | "minecraft:coarse_dirt"
+        | "minecraft:jungle_planks" => Some(MAP_COLOR_DIRT),
+        "minecraft:diorite" | "minecraft:polished_diorite" | "minecraft:pale_oak_planks" => {
+            Some(MAP_COLOR_QUARTZ)
+        }
+        "minecraft:oak_planks" => Some(MAP_COLOR_WOOD),
+        "minecraft:spruce_planks" | "minecraft:podzol" => Some(MAP_COLOR_PODZOL),
+        "minecraft:birch_planks" => Some(MAP_COLOR_SAND),
+        "minecraft:acacia_planks" => Some(MAP_COLOR_ORANGE),
+        "minecraft:cherry_planks" => Some(MAP_COLOR_TERRACOTTA_WHITE),
+        "minecraft:dark_oak_planks" => Some(MAP_COLOR_BROWN),
+        "minecraft:mangrove_planks" => Some(MAP_COLOR_RED),
+        "minecraft:bamboo_planks" | "minecraft:bamboo_mosaic" => Some(MAP_COLOR_YELLOW),
+        "minecraft:oak_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_WOOD,
+            MAP_COLOR_PODZOL,
+        )),
+        _ => None,
+    }
+}
+
+fn rotated_pillar_map_color(
+    properties: &std::collections::BTreeMap<String, String>,
+    top_color: u32,
+    side_color: u32,
+) -> u32 {
+    if properties.get("axis").is_some_and(|axis| axis == "y") {
+        top_color
+    } else {
+        side_color
+    }
 }
 
 fn terrain_particle_provider_accepts_block_state(block_state_id: i32) -> bool {
@@ -2927,8 +2981,13 @@ const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
+const MAP_COLOR_SAND: u32 = 16_247_203;
 const MAP_COLOR_SNOW: u32 = 16_777_215;
 const MAP_COLOR_METAL: u32 = 10_987_431;
+const MAP_COLOR_DIRT: u32 = 9_923_917;
+const MAP_COLOR_STONE: u32 = 7_368_816;
+const MAP_COLOR_WOOD: u32 = 9_402_184;
+const MAP_COLOR_QUARTZ: u32 = 16_776_437;
 const MAP_COLOR_ORANGE: u32 = 14_188_339;
 const MAP_COLOR_MAGENTA: u32 = 11_685_080;
 const MAP_COLOR_LIGHT_BLUE: u32 = 6_724_056;
@@ -2944,6 +3003,8 @@ const MAP_COLOR_BROWN: u32 = 6_704_179;
 const MAP_COLOR_GREEN: u32 = 6_717_235;
 const MAP_COLOR_RED: u32 = 10_040_115;
 const MAP_COLOR_BLACK: u32 = 1_644_825;
+const MAP_COLOR_TERRACOTTA_WHITE: u32 = 13_742_497;
+const MAP_COLOR_PODZOL: u32 = 8_476_209;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
@@ -3531,6 +3592,77 @@ mod tests {
             batch.commands[0].option_color,
             Some(rgb_option(0x20, 0x80, 0x30))
         );
+    }
+
+    #[test]
+    fn falling_dust_uses_map_color_fallback_for_non_tinted_blocks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:stone", []),
+                "minecraft:stone",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:dirt", []),
+                "minecraft:dirt",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id("minecraft:oak_planks", []),
+                "minecraft:oak_planks",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:birch_planks", []),
+                "minecraft:birch_planks",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:acacia_planks", []),
+                "minecraft:acacia_planks",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:cherry_planks", []),
+                "minecraft:cherry_planks",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                test_block_state_id("minecraft:dark_oak_planks", []),
+                "minecraft:dark_oak_planks",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:bamboo_mosaic", []),
+                "minecraft:bamboo_mosaic",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:oak_log", [("axis", "y")]),
+                "minecraft:oak_log axis=y",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:oak_log", [("axis", "x")]),
+                "minecraft:oak_log axis=x",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
     }
 
     #[test]

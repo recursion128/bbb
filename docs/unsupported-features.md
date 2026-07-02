@@ -262,8 +262,8 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
       - remaining deferred work is component-driven item stack material
-        selection, biome-aware per-spawn terrain tint, map-color fallback,
-        collision/roll coupling, and broader firework presentation
+        selection, biome-aware per-spawn terrain tint, the full map-color
+        catalog, collision/roll coupling, and broader firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -297,7 +297,9 @@ When an agent does any of the following, update this file in the same slice:
       size curve, roll / rotSpeed runtime state, and Y velocity clamped to
       `-0.14`; native spawn resolution now projects the provider's
       `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
-      dragon_egg, and concrete_powder into the renderer visual tint. Renderer
+      dragon_egg, and concrete_powder into the renderer visual tint, and now
+      applies vanilla static mapColor fallback for foundational non-tinted
+      stone/dirt/planks plus oak_log axis states. Renderer
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
@@ -316,8 +318,8 @@ When an agent does any of the following, update this file in the same slice:
       commands. Generic `minecraft:item` particles with an empty component patch
       now resolve the default GROUND item particle material active-layer sprite
       ids and let the renderer randomly select one; full component-driven stack
-      material selection, biome-aware per-spawn BlockColors, map-color fallback,
-      and on-ground roll reset remain follow-up work. Native spawn
+      material selection, biome-aware per-spawn BlockColors, full map-color
+      catalog coverage, and on-ground roll reset remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -356,8 +358,10 @@ When an agent does any of the following, update this file in the same slice:
       terrain particle providers (`0.6 * colorAsTerrainParticle`) and
       non-FallingBlock `falling_dust` (`colorAsTerrainParticle`) for constant,
       default-colormap, redstone power, stem age, and lily pad world-color
-      sources. Remaining color work is tied to deferred owners: biome-aware
-      per-spawn BlockColors, map-color fallback, and the broader firework
+      sources; the `falling_dust` mapColor fallback now covers foundational
+      static block colors for stone/dirt/planks and oak_log axis states.
+      Remaining color work is tied to deferred owners: biome-aware per-spawn
+      BlockColors, the full map-color catalog, and the broader firework
       `Starter` child-particle presentation path.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
@@ -6421,9 +6425,11 @@ When an agent does any of the following, update this file in the same slice:
         gravel, dragon_egg, anvils, and concrete_powder states; non-FallingBlock
         vanilla `BlockColors.createDefault()` layer-0 tint is also installed for
         constant, default-colormap, redstone power, stem age, and lily pad
-        world-color sources. map-color fallback, biome-aware per-spawn
-        BlockColors, and on-ground roll reset remain deferred until particle
-        ticking can query world block/collision state.
+        world-color sources. Vanilla static mapColor fallback now covers
+        foundational non-tinted stone/dirt/planks plus oak_log axis states.
+        Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
+        on-ground roll reset remain deferred until particle ticking can query
+        world block/collision state.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
         `minecraft:block_crumble` submissions: air, `moving_piston`, and

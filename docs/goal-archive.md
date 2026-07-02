@@ -1542,6 +1542,13 @@
     the `grass_block` particle-white special case. `TerrainParticle` providers
     upload `0.6 * tint`, while `falling_dust` uses the raw tint; `block_marker`
     remains sprite-only like vanilla.
+  - [x] `falling_dust` foundational static mapColor fallback：native now mirrors
+    the provider's final `blockState.getMapColor(level, pos).col` fallback for
+    foundational non-tinted static map colors: stone, dirt, base plank colors,
+    and `oak_log`'s vanilla `logProperties` axis split. The resolver keeps the
+    vanilla branch order (`FallingBlock#getDustColor`, then BlockColors tint,
+    then mapColor fallback). Full mapColor catalog coverage, biome-aware
+    per-spawn BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
