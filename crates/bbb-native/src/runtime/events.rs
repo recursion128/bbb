@@ -3,6 +3,8 @@ mod control_state;
 mod dispatcher;
 
 pub(crate) use bbb_world::LevelEventSoundRandomState;
+#[cfg(test)]
+use dispatcher::advance_growth_level_event_particle_randoms;
 pub(super) use dispatcher::drain_net_events_with_sinks;
 #[cfg(test)]
 use dispatcher::level_event_particle_context;

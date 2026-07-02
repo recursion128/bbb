@@ -287,7 +287,9 @@ When an agent does any of the following, update this file in the same slice:
         mangrove-leaves below-position grower particles using loaded
         block-state shape max-Y spread height, water and neighbor-spreader wide
         spread (`count * 3`, `spreadWidth=3.0`, `spreadHeight=1.0`), and the
-        `allowFloatingParticles=false` 7x7 support-layer non-air filter
+        `allowFloatingParticles=false` 7x7 support-layer non-air filter,
+        followed by the vanilla `minecraft:item.bone_meal.use` sound after the
+        growth particle RNG sequence
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
@@ -6032,7 +6034,8 @@ When an agent does any of the following, update this file in the same slice:
       - brewing stand brew
       - crafter craft/fail
       - end portal frame fill
-      - bone meal use
+      - bone meal use for event `1505`, emitted after
+        `BoneMealItem.addGrowthParticles` random consumption
       - honeycomb wax on
       - brush-block-complete event `3008` for suspicious sand/gravel, using
         the event-data `BrushableBlock.getBrushCompletedSound()` mapping and

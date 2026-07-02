@@ -1505,6 +1505,11 @@
     filter across the sampled 7x7 below layer. Shape-sensitive
     `spawnParticleInBlock` heights remain follow-up with the broader block-shape
     particle work.
+  - [x] plant-growth LevelEvent sound ordering：event `1505` now records and
+    plays the vanilla `minecraft:item.bone_meal.use` positioned sound only after
+    the `BoneMealItem.addGrowthParticles` random sequence, including the
+    audio-only fallback path where no particle sink is attached, so the sound
+    seed matches the post-particle client random state.
   - [x] shape-sensitive in-block LevelEvent particles：events `2011` /
     `2012` and the grower branch of event `1505` now thread loaded block-state
     outline shape max-Y into vanilla `ParticleUtils.spawnParticleInBlock`

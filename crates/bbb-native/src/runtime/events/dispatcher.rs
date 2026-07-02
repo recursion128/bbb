@@ -373,7 +373,30 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 {
                     emit_local_sound(&mut audio_events, &state);
                 }
-                if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
+                if event.event_type == PLANT_GROWTH_LEVEL_EVENT {
+                    let context = level_event_particle_context(world, &event);
+                    let particles_consumed_random = emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        context,
+                        level_event_sound_random,
+                    );
+                    if !particles_consumed_random {
+                        advance_growth_level_event_particle_randoms(
+                            &event,
+                            context,
+                            level_event_sound_random,
+                        );
+                    }
+                    if let Some(state) = world.level_event_sound(event) {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
                     let particles_consumed_random = emit_level_event_particles(
                         &mut particle_events,
                         &mut particle_renderer,
@@ -1194,6 +1217,35 @@ fn advance_vault_level_event_particle_randoms(
         VAULT_ACTIVATE_LEVEL_EVENT => advance_vault_activation_particle_randoms(random),
         VAULT_DEACTIVATE_LEVEL_EVENT => advance_vault_deactivation_particle_randoms(random),
         _ => {}
+    }
+}
+
+pub(super) fn advance_growth_level_event_particle_randoms(
+    event: &bbb_protocol::packets::LevelEvent,
+    context: LevelEventParticleContext,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let Some(growth) = context.growth_particles else {
+        return;
+    };
+    let count = match growth.mode {
+        LevelEventGrowthParticleMode::InBlock { .. } => event.data,
+        LevelEventGrowthParticleMode::WideNoFloating { .. } => event.data.wrapping_mul(3),
+    };
+    advance_particle_utils_spawn_particles_randoms(count, random);
+}
+
+fn advance_particle_utils_spawn_particles_randoms(
+    count: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..count.max(0) {
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
     }
 }
 

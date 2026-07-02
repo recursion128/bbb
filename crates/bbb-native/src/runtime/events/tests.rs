@@ -3803,6 +3803,115 @@ fn level_event_3008_emits_brushable_completion_sound_and_particles() {
 }
 
 #[test]
+fn plant_growth_level_event_plays_bone_meal_sound_after_particles() {
+    let short_grass_id = vanilla_block_state_id("minecraft:short_grass", []);
+    let event = level_event_at_with_data(1505, 20, -63, -32, 4);
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut world, block_pos(20, -63, -32), short_grass_id);
+    let context = level_event_particle_context(&world, &event);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    advance_growth_level_event_particle_randoms(&event, context, &mut expected_random);
+    let expected_seed = expected_random.next_long();
+
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.level_event_contexts, vec![context]);
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.bone_meal.use");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [20.5, -62.5, -31.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, expected_seed);
+    let sound = world.last_sound().unwrap();
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:item.bone_meal.use")
+    );
+    assert_eq!(sound.source, "block");
+    assert_eq!(sound.seed, expected_seed);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn plant_growth_level_event_audio_only_advances_particle_randoms_before_sound_seed() {
+    let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+    let stone_id = vanilla_block_state_id("minecraft:stone", []);
+    let event = level_event_at_with_data(1505, 16, -63, -32, 3);
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut world, block_pos(16, -63, -32), water_id);
+    set_test_block(&mut world, block_pos(16, -64, -32), stone_id);
+    let context = level_event_particle_context(&world, &event);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    advance_growth_level_event_particle_randoms(&event, context, &mut expected_random);
+    let expected_seed = expected_random.next_long();
+
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.bone_meal.use");
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn fixed_level_event_emits_vanilla_positioned_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -6100,6 +6209,8 @@ impl ParticleEventSink for RecordingParticleSink {
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);
+        } else if event.event_type == 1505 {
+            advance_growth_level_event_particle_randoms(event, context, random);
         } else if event.event_type == 3015 && context.vault_block_entity_at_event_pos {
             bbb_world::advance_vault_activation_particle_randoms(random);
         } else if event.event_type == 3016 {
@@ -6130,6 +6241,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.grass.break": {
                 "sounds": ["dig/grass1"]
+            },
+            "item.bone_meal.use": {
+                "sounds": ["item/bone_meal/use"]
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]
