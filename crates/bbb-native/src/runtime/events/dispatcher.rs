@@ -27,6 +27,8 @@ const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
+const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
+const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
 const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
@@ -46,7 +48,9 @@ const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
+const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
+const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -1354,6 +1358,19 @@ fn advance_level_event_particle_randoms_without_sink(
                 let _ = random.next_double();
             }
         }
+        ELECTRIC_SPARK_LEVEL_EVENT => {
+            if matches!(event.data, 0..=2) {
+                advance_axis_particles_randoms(10, 19, random);
+            } else {
+                advance_block_face_particle_randoms(3, 5, random);
+            }
+        }
+        WAX_OFF_LEVEL_EVENT | SCRAPE_LEVEL_EVENT => {
+            advance_block_face_particle_randoms(3, 5, random);
+        }
+        EGG_CRACK_LEVEL_EVENT => {
+            advance_block_face_particle_randoms(3, 6, random);
+        }
         TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
             advance_trial_spawner_spawn_particle_randoms(random);
         }
@@ -1392,6 +1409,39 @@ fn advance_item_break_particle_randoms(random: &mut LevelEventSoundRandomState) 
         let _ = random.next_gaussian();
         let _ = random.next_double();
         let _ = random.next_gaussian();
+    }
+}
+
+fn advance_block_face_particle_randoms(
+    min_particles_per_face: i32,
+    max_particles_per_face: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..6 {
+        let particle_count = random
+            .next_int_bound(max_particles_per_face - min_particles_per_face + 1)
+            + min_particles_per_face;
+        for _ in 0..particle_count {
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+        }
+    }
+}
+
+fn advance_axis_particles_randoms(
+    min_particles: i32,
+    max_particles: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let particle_count = random.next_int_bound(max_particles - min_particles + 1) + min_particles;
+    for _ in 0..particle_count {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
     }
 }
 

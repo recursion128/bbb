@@ -1665,3 +1665,7 @@
     ender-eye item-break, blaze smoke/flame, splash cloud, or white-smoke
     particle random draws in audio-only dispatch before later LevelEvent sounds
     draw their seeds.
+  - [x] block-face / axis particle-only LevelEvent random stream：events
+    `3002`, `3004`, `3005`, and `3009` now advance their vanilla electric-spark
+    axis or block-face, wax-off, scrape, and egg-crack random draws in
+    audio-only dispatch before later LevelEvent sounds draw their seeds.

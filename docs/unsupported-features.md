@@ -6093,6 +6093,10 @@ When an agent does any of the following, update this file in the same slice:
         advance their vanilla smoke / ender-eye item-break / blaze smoke /
         cloud / white-smoke random streams in audio-only dispatch before later
         LevelEvent sound seeds
+      - particle-only block-face / axis events `3002`, `3004`, `3005`, and
+        `3009` advance their vanilla electric-spark, wax-off, scrape, and
+        egg-crack random streams in audio-only dispatch before later LevelEvent
+        sound seeds
       - cobweb place event `3018` consumes the vanilla poof-particle random
         sequence before recording/playing:
         - `minecraft:block.cobweb.place`

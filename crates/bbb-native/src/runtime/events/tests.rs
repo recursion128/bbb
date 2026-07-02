@@ -3136,6 +3136,53 @@ fn advance_expected_item_break_particle_randoms(random: &mut LevelEventSoundRand
     }
 }
 
+fn advance_expected_block_face_axis_level_event_randoms(
+    event_type: i32,
+    data: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    match event_type {
+        3002 if matches!(data, 0..=2) => advance_expected_axis_particles_randoms(10, 19, random),
+        3002 => advance_expected_block_face_particle_randoms(3, 5, random),
+        3004 | 3005 => advance_expected_block_face_particle_randoms(3, 5, random),
+        3009 => advance_expected_block_face_particle_randoms(3, 6, random),
+        _ => unreachable!("unexpected block-face/axis event type {event_type}"),
+    }
+}
+
+fn advance_expected_block_face_particle_randoms(
+    min_particles_per_face: i32,
+    max_particles_per_face: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..6 {
+        let particle_count = random
+            .next_int_bound(max_particles_per_face - min_particles_per_face + 1)
+            + min_particles_per_face;
+        for _ in 0..particle_count {
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+        }
+    }
+}
+
+fn advance_expected_axis_particles_randoms(
+    min_particles: i32,
+    max_particles: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let particle_count = random.next_int_bound(max_particles - min_particles + 1) + min_particles;
+    for _ in 0..particle_count {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+    }
+}
+
 #[test]
 fn particle_only_level_events_advance_randoms_without_particle_sink_before_followup_sound() {
     for event_type in [2000, 2003, 2004, 2009, 2010] {
@@ -3161,6 +3208,75 @@ fn particle_only_level_events_advance_randoms_without_particle_sink_before_follo
 
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         advance_expected_simple_particle_only_level_event_randoms(event_type, &mut expected_random);
+        let expected_followup_seed = expected_random.next_long();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut audio =
+            RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+        let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+        assert_eq!(
+            drain_net_events_with_sinks(
+                &mut rx,
+                &mut world,
+                &mut counters,
+                &None,
+                Some(&mut audio),
+                None,
+                None,
+                &mut level_event_sound_random,
+            ),
+            2
+        );
+
+        assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+        assert_eq!(audio.commands.len(), 1);
+        let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+            panic!(
+                "expected positioned followup sound, got {:?}",
+                audio.commands[0]
+            );
+        };
+        assert_eq!(
+            sound.sound.event_id,
+            "minecraft:entity.firework_rocket.shoot"
+        );
+        assert_eq!(sound.seed, expected_followup_seed);
+        assert_eq!(world.counters().level_events_received, 2);
+        assert_eq!(world.counters().level_events_tracked, 2);
+    }
+}
+
+#[test]
+fn block_face_axis_level_events_advance_randoms_without_particle_sink_before_followup_sound() {
+    for (event_type, data) in [(3002, 1), (3002, 99), (3004, 0), (3005, 0), (3009, 0)] {
+        let event = LevelEvent {
+            event_type,
+            pos: ProtocolBlockPos {
+                x: event_type - 3000,
+                y: 64,
+                z: -3,
+            },
+            data,
+            global: false,
+        };
+        let followup = LevelEvent {
+            event_type: 1004,
+            pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+            data: 0,
+            global: false,
+        };
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        advance_expected_block_face_axis_level_event_randoms(
+            event_type,
+            data,
+            &mut expected_random,
+        );
         let expected_followup_seed = expected_random.next_long();
 
         let mut world = WorldStore::new();

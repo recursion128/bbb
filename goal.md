@@ -310,6 +310,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `2000` / `2003` / `2004` / `2009` / `2010` particle-only RNG 已覆盖：
     audio-only path 会推进 dispenser smoke / ender-eye break / blaze smoke /
     splash cloud / white-smoke 粒子随机流，再抽取后续 LevelEvent 声音 seed。
+  - `3002` / `3004` / `3005` / `3009` block-face / axis particle-only RNG
+    已覆盖：audio-only path 会推进 electric-spark axis 或 block-face、
+    wax-off、scrape、egg-crack 粒子随机流，再抽取后续 LevelEvent 声音 seed。
 
 完成标准：
 
