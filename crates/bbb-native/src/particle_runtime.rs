@@ -3276,13 +3276,18 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "lava_cauldron"
         | "powder_snow_cauldron"
         | "hopper"
+        | "smoker"
+        | "blast_furnace"
         | "stonecutter" => MAP_COLOR_STONE,
-        "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" => {
-            MAP_COLOR_WOOD
-        }
+        "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" | "loom"
+        | "barrel" | "cartography_table" | "fletching_table" | "lectern" | "smithing_table"
+        | "composter" | "beehive" => MAP_COLOR_WOOD,
+        "scaffolding" => MAP_COLOR_SAND,
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
+        "target" => MAP_COLOR_QUARTZ,
+        "bee_nest" => MAP_COLOR_YELLOW,
         "light_weighted_pressure_plate" | "bell" => MAP_COLOR_GOLD,
         "heavy_weighted_pressure_plate"
         | "iron_door"
@@ -3290,6 +3295,7 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "brewing_stand"
         | "lantern"
         | "soul_lantern"
+        | "grindstone"
         | "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
@@ -5921,6 +5927,123 @@ mod tests {
                 test_block_state_id("minecraft:heavy_core", [("waterlogged", "false")]),
                 "minecraft:heavy_core",
                 rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_functional_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:scaffolding",
+                    [
+                        ("bottom", "true"),
+                        ("distance", "0"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:scaffolding",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:loom", [("facing", "north")]),
+                "minecraft:loom",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:barrel", [("facing", "north"), ("open", "true")]),
+                "minecraft:barrel",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:smoker", [("facing", "north"), ("lit", "true")]),
+                "minecraft:smoker",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:blast_furnace",
+                    [("facing", "north"), ("lit", "true")],
+                ),
+                "minecraft:blast_furnace",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:cartography_table", []),
+                "minecraft:cartography_table",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:fletching_table", []),
+                "minecraft:fletching_table",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:grindstone",
+                    [("face", "floor"), ("facing", "north")],
+                ),
+                "minecraft:grindstone",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:lectern",
+                    [
+                        ("facing", "north"),
+                        ("has_book", "true"),
+                        ("powered", "true"),
+                    ],
+                ),
+                "minecraft:lectern",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:smithing_table", []),
+                "minecraft:smithing_table",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:composter", [("level", "0")]),
+                "minecraft:composter",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:target", [("power", "0")]),
+                "minecraft:target",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:bee_nest",
+                    [("facing", "north"), ("honey_level", "0")],
+                ),
+                "minecraft:bee_nest",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:beehive",
+                    [("facing", "north"), ("honey_level", "0")],
+                ),
+                "minecraft:beehive",
+                rgb_option(0x8f, 0x77, 0x48),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

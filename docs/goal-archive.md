@@ -1731,6 +1731,14 @@
     stone/weighted pressure plates, metal/stone fixtures, and waterlogged
     utility blocks. Full mapColor catalog coverage, biome-aware per-spawn
     BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` functional static mapColor expansion：native now mirrors
+    vanilla mapColor registrations for scaffolding SAND, loom/barrel/
+    cartography table/fletching table/lectern/smithing table/composter/beehive
+    WOOD, smoker/blast furnace STONE, grindstone METAL, bee nest YELLOW, and
+    target QUARTZ. Tests pin representative facing/lit/open/book/honey/
+    scaffolding states plus target power `0`. Full mapColor catalog coverage,
+    biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
+    work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
