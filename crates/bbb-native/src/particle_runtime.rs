@@ -2720,6 +2720,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = copper_weathering_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = construction_static_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
@@ -2961,6 +2964,76 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:stripped_oak_log" => Some(MAP_COLOR_WOOD),
         _ => None,
     }
+}
+
+fn construction_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "mossy_cobblestone"
+        | "cobblestone_stairs"
+        | "cobblestone_slab"
+        | "cobblestone_wall"
+        | "mossy_cobblestone_stairs"
+        | "mossy_cobblestone_slab"
+        | "mossy_cobblestone_wall"
+        | "stone_bricks"
+        | "mossy_stone_bricks"
+        | "cracked_stone_bricks"
+        | "chiseled_stone_bricks"
+        | "stone_brick_stairs"
+        | "stone_brick_slab"
+        | "stone_brick_wall"
+        | "mossy_stone_brick_stairs"
+        | "mossy_stone_brick_slab"
+        | "mossy_stone_brick_wall"
+        | "stone_stairs"
+        | "stone_slab"
+        | "smooth_stone"
+        | "smooth_stone_slab"
+        | "andesite_stairs"
+        | "andesite_slab"
+        | "andesite_wall"
+        | "polished_andesite_stairs"
+        | "polished_andesite_slab" => MAP_COLOR_STONE,
+        "granite_stairs"
+        | "granite_slab"
+        | "granite_wall"
+        | "polished_granite_stairs"
+        | "polished_granite_slab" => MAP_COLOR_DIRT,
+        "diorite_stairs"
+        | "diorite_slab"
+        | "diorite_wall"
+        | "polished_diorite_stairs"
+        | "polished_diorite_slab" => MAP_COLOR_QUARTZ,
+        "sandstone_stairs"
+        | "sandstone_slab"
+        | "sandstone_wall"
+        | "cut_sandstone_slab"
+        | "smooth_sandstone"
+        | "smooth_sandstone_stairs"
+        | "smooth_sandstone_slab" => MAP_COLOR_SAND,
+        "red_sandstone"
+        | "chiseled_red_sandstone"
+        | "cut_red_sandstone"
+        | "red_sandstone_stairs"
+        | "red_sandstone_slab"
+        | "red_sandstone_wall"
+        | "cut_red_sandstone_slab"
+        | "smooth_red_sandstone"
+        | "smooth_red_sandstone_stairs"
+        | "smooth_red_sandstone_slab" => MAP_COLOR_ORANGE,
+        "bricks" | "brick_stairs" | "brick_slab" | "brick_wall" => MAP_COLOR_RED,
+        "mud_bricks" | "mud_brick_stairs" | "mud_brick_slab" | "mud_brick_wall" => {
+            MAP_COLOR_TERRACOTTA_LIGHT_GRAY
+        }
+        "nether_brick_stairs"
+        | "nether_brick_slab"
+        | "nether_brick_wall"
+        | "red_nether_brick_stairs"
+        | "red_nether_brick_slab"
+        | "red_nether_brick_wall" => MAP_COLOR_NETHER,
+        _ => return None,
+    })
 }
 
 fn rotated_pillar_map_color(
@@ -4919,6 +4992,116 @@ mod tests {
                 test_block_state_id("minecraft:chorus_flower", [("age", "5")]),
                 "minecraft:chorus_flower",
                 rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_construction_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        let wall = [
+            ("east", "low"),
+            ("north", "none"),
+            ("south", "none"),
+            ("up", "true"),
+            ("waterlogged", "false"),
+            ("west", "none"),
+        ];
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:stone_stairs",
+                    [
+                        ("facing", "east"),
+                        ("half", "bottom"),
+                        ("shape", "straight"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:stone_stairs",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:mossy_cobblestone_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:mossy_cobblestone_slab",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:granite_wall", wall),
+                "minecraft:granite_wall",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:diorite_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:diorite_slab",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:smooth_sandstone_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "inner_left"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:smooth_sandstone_stairs",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:red_sandstone_wall", wall),
+                "minecraft:red_sandstone_wall",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:bricks", []),
+                "minecraft:bricks",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:brick_wall", wall),
+                "minecraft:brick_wall",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:mud_bricks", []),
+                "minecraft:mud_bricks",
+                rgb_option(0x87, 0x6b, 0x62),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:nether_brick_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:nether_brick_slab",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:red_nether_brick_wall", wall),
+                "minecraft:red_nether_brick_wall",
+                rgb_option(0x70, 0x02, 0x00),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

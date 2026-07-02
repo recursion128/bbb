@@ -1614,6 +1614,15 @@
     pillar/slab, and chorus flower RGBs. Full mapColor catalog coverage,
     biome-aware per-spawn BlockColors, and on-ground roll reset remain
     follow-up work.
+  - [x] `falling_dust` construction stone/brick static mapColor expansion：
+    native extends the same final provider fallback through vanilla
+    cobblestone/mossy-cobblestone, stone brick, stone/smooth-stone, andesite,
+    granite, diorite, sandstone/red-sandstone, brick, mud brick, and nether
+    brick stairs/slab/wall construction variants. Tests pin representative
+    stone, mossy cobblestone, granite, diorite, smooth sandstone, red
+    sandstone, brick, mud brick, nether brick, and red nether brick RGBs. Full
+    mapColor catalog coverage, biome-aware per-spawn BlockColors, and on-ground
+    roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
