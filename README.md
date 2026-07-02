@@ -13,5 +13,6 @@ Current native crates:
 - `bbb-pack`
 - `bbb-renderer`
 - `bbb-control`
+- `bbb-item-model`
 
 The native graph is intended to stay free of Bevy and Azalea dependencies.

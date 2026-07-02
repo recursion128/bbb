@@ -160,6 +160,18 @@ Owns runtime orchestration.
 - Runs systems or forwards derived commands to renderer/audio/control.
 - Does not duplicate world-owned canonical state.
 
+### `bbb-item-model`
+
+Owns value-aware item-model resolution.
+
+- Icon selection, item model definition consumption, and display transforms,
+  plus the profile/skin download runtimes that feed player item and entity
+  rendering.
+- Exposes `NativeItemRuntime` and its context/result types; consumed by the
+  `bbb-native` runtime, scene, and HUD paths.
+- Depends on `bbb-pack`, `bbb-protocol`, `bbb-renderer`, `bbb-world`, and
+  `bbb-audio`; holds no runtime orchestration or canonical world state.
+
 ### `bbb-platform`
 
 Owns OS/window/input integration primitives. It should expose narrow runtime
