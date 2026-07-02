@@ -267,6 +267,11 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
         particles for the current air/default spread-height path, using event
         `data` as count and gaussian `0.02` velocity
+      - event `2013`: vanilla
+        `ParticleUtils.spawnSmashAttackParticles` dust-pillar submissions using
+        event `data` for the two float-bounded loop counts, event-position
+        block state as `BlockParticleOption(ParticleTypes.DUST_PILLAR, state)`,
+        and air state `0` when native has no loaded block context
       - event `2003`: the vanilla portal ring portion of ender-eye break,
         preserving the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
         random draws for future item-particle support
@@ -312,10 +317,11 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:trial_omen`, and `minecraft:soul_fire_flame` particles
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
-    - Remaining item/block option LevelEvent branches, including event `2003`'s
-      ender-eye item particles and events `2002` / `2007` splash-potion item
-      particles, stay deferred with terrain/item particle atlas rendering
-      rather than being approximated as simple atlas particles. Event `1505`
+    - Remaining world-state / item-option LevelEvent branches, including event
+      `1504` pointed-dripstone drip particles, event `2003`'s ender-eye item
+      particles, and events `2002` / `2007` splash-potion item particles, stay
+      deferred with terrain/item particle atlas rendering rather than being
+      approximated as simple atlas particles. Event `1505`
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
       `BonemealableBlock` type or water state before choosing the particle

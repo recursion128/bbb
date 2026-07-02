@@ -758,7 +758,20 @@ fn level_event_particle_context(
 ) -> LevelEventParticleContext {
     LevelEventParticleContext {
         sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
+        block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
     }
+}
+
+fn event_pos_block_state_id_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<i32> {
+    let pos = bbb_world::BlockPos {
+        x: event.pos.x,
+        y: event.pos.y,
+        z: event.pos.z,
+    };
+    world.probe_block(pos).map(|probe| probe.block_state_id)
 }
 
 fn sculk_charge_pop_full_block_context(

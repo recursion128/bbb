@@ -37,6 +37,7 @@ pub(crate) struct LevelParticleSpawnContext {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
+    pub(crate) block_state_id_at_event_pos: Option<i32>,
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -551,11 +552,92 @@ impl ParticleCommandResolver {
                     event.data,
                     random,
                 ),
+            SMASH_ATTACK_PARTICLES_LEVEL_EVENT => {
+                self.smash_attack_particle_batch(event, context, random)
+            }
             DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, WHITE_SMOKE_PARTICLE_TYPE_ID, random)
             }
             _ => ParticleSpawnBatch::default(),
         }
+    }
+
+    fn smash_attack_particle_batch(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(DUST_PILLAR_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let particle_count = smash_attack_particle_loop_count(event.data, 3.0)
+            + smash_attack_particle_loop_count(event.data, 1.5);
+        let mut batch = ParticleSpawnBatch {
+            commands: Vec::with_capacity(particle_count),
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let block_state_id = context
+            .block_state_id_at_event_pos
+            .unwrap_or(AIR_BLOCK_STATE_ID);
+        let option_state = ParticleOptionRenderState {
+            block: Some(ParticleBlockOptionState { block_state_id }),
+            ..ParticleOptionRenderState::default()
+        };
+        let center = Vec3d {
+            x: f64::from(event.pos.x) + 0.5,
+            y: f64::from(event.pos.y) + 1.0,
+            z: f64::from(event.pos.z) + 0.5,
+        };
+
+        for _ in 0..smash_attack_particle_loop_count(event.data, 3.0) {
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: center.x + random.next_gaussian() / 2.0,
+                    y: center.y,
+                    z: center.z + random.next_gaussian() / 2.0,
+                },
+                Vec3d {
+                    x: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                    y: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                    z: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                },
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state,
+            ));
+        }
+
+        for i in 0..smash_attack_particle_loop_count(event.data, 1.5) {
+            let angle = i as f64;
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: center.x + 3.5 * angle.cos() + random.next_gaussian() / 2.0,
+                    y: center.y,
+                    z: center.z + 3.5 * angle.sin() + random.next_gaussian() / 2.0,
+                },
+                Vec3d {
+                    x: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                    y: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                    z: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                },
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state,
+            ));
+        }
+
+        batch
     }
 
     fn sculk_charge_particle_batch(
@@ -1861,6 +1943,7 @@ const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
+const SMASH_ATTACK_PARTICLES_LEVEL_EVENT: i32 = 2013;
 const END_GATEWAY_SPAWN_LEVEL_EVENT: i32 = 3000;
 const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
@@ -1956,6 +2039,18 @@ const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
+const AIR_BLOCK_STATE_ID: i32 = 0;
+const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
+const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
+
+fn smash_attack_particle_loop_count(count: i32, divisor: f32) -> usize {
+    let limit = count as f32 / divisor;
+    let mut loop_count = 0;
+    while (loop_count as f32) < limit {
+        loop_count += 1;
+    }
+    loop_count
+}
 
 fn default_particle_seed() -> i64 {
     SystemTime::now()
@@ -3141,6 +3236,7 @@ mod tests {
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(true),
+                ..LevelEventParticleContext::default()
             },
             &mut sculk_charge_pop_full_random,
         );
@@ -3553,6 +3649,67 @@ mod tests {
                 -0.156_466_460_104_410_3,
             ],
             false,
+        );
+    }
+
+    #[test]
+    fn level_event_smash_attack_particles_use_vanilla_dust_pillar_context() {
+        let resolver = test_resolver(0);
+        let event = LevelEvent {
+            event_type: SMASH_ATTACK_PARTICLES_LEVEL_EVENT,
+            data: 6,
+            ..level_event_packet(SMASH_ATTACK_PARTICLES_LEVEL_EVENT)
+        };
+        let context = LevelEventParticleContext {
+            block_state_id_at_event_pos: Some(9),
+            ..LevelEventParticleContext::default()
+        };
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        let batch =
+            resolver.resolve_level_event_particles_with_context(&event, context, &mut random);
+
+        let expected = expected_smash_attack_particles(event.data);
+        assert_eq!(batch.len(), 6);
+        assert_eq!(batch.len(), expected.len());
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_particle_command(
+            &batch.commands[0],
+            DUST_PILLAR_PARTICLE_TYPE_ID,
+            "minecraft:dust_pillar",
+            expected[0].0,
+            expected[0].1,
+            false,
+        );
+        assert_eq!(batch.commands[0].sprite_ids, Vec::<String>::new());
+        assert_particle_command(
+            &batch.commands[2],
+            DUST_PILLAR_PARTICLE_TYPE_ID,
+            "minecraft:dust_pillar",
+            expected[2].0,
+            expected[2].1,
+            false,
+        );
+        for command in &batch.commands {
+            assert_eq!(
+                command.option_block,
+                Some(ParticleBlockOptionState { block_state_id: 9 })
+            );
+            assert_eq!(command.option_item, None);
+        }
+
+        let mut fallback_random = LevelEventSoundRandomState::with_seed(0);
+        let fallback = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent { data: 1, ..event },
+            LevelEventParticleContext::default(),
+            &mut fallback_random,
+        );
+        assert_eq!(fallback.len(), 2);
+        assert_eq!(
+            fallback.commands[0]
+                .option_block
+                .map(|option| option.block_state_id),
+            Some(AIR_BLOCK_STATE_ID)
         );
     }
 
@@ -4137,6 +4294,45 @@ mod tests {
                 random.next_gaussian() * 0.02,
             ],
         )
+    }
+
+    fn expected_smash_attack_particles(count: i32) -> Vec<([f64; 3], [f64; 3])> {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let center = [10.5, 65.0, -2.5];
+        let mut particles = Vec::new();
+
+        for _ in 0..smash_attack_particle_loop_count(count, 3.0) {
+            particles.push((
+                [
+                    center[0] + random.next_gaussian() / 2.0,
+                    center[1],
+                    center[2] + random.next_gaussian() / 2.0,
+                ],
+                [
+                    random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                    random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                    random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                ],
+            ));
+        }
+
+        for i in 0..smash_attack_particle_loop_count(count, 1.5) {
+            let angle = i as f64;
+            particles.push((
+                [
+                    center[0] + 3.5 * angle.cos() + random.next_gaussian() / 2.0,
+                    center[1],
+                    center[2] + 3.5 * angle.sin() + random.next_gaussian() / 2.0,
+                ],
+                [
+                    random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                    random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                    random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                ],
+            ));
+        }
+
+        particles
     }
 
     #[derive(Debug)]

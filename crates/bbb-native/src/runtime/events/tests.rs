@@ -3053,9 +3053,11 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
         vec![
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(true),
+                block_state_id_at_event_pos: Some(1),
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
+                block_state_id_at_event_pos: Some(0),
             },
         ]
     );
