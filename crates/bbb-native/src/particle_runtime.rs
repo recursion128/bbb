@@ -3311,10 +3311,13 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         | "flowering_azalea"
         | "big_dripleaf"
         | "big_dripleaf_stem"
-        | "small_dripleaf" => MAP_COLOR_PLANT,
+        | "small_dripleaf"
+        | "bamboo"
+        | "sweet_berry_bush" => MAP_COLOR_PLANT,
         "cherry_sapling" | "cherry_leaves" => MAP_COLOR_PINK,
         "pale_oak_sapling" | "pale_oak_leaves" => MAP_COLOR_METAL,
         "dead_bush" => MAP_COLOR_WOOD,
+        "bamboo_sapling" => MAP_COLOR_WOOD,
         "short_dry_grass" | "tall_dry_grass" => MAP_COLOR_YELLOW,
         "pointed_dripstone" | "dripstone_block" => MAP_COLOR_TERRACOTTA_BROWN,
         "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
@@ -3381,9 +3384,11 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "barrel" | "cartography_table" | "fletching_table" | "lectern" | "smithing_table"
         | "composter" | "beehive" | "trapped_chest" | "daylight_detector" => MAP_COLOR_WOOD,
         "scaffolding" => MAP_COLOR_SAND,
+        "campfire" | "soul_campfire" => MAP_COLOR_PODZOL,
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
+        "honey_block" | "honeycomb_block" => MAP_COLOR_ORANGE,
         "redstone_lamp" => MAP_COLOR_TERRACOTTA_ORANGE,
         "target" => MAP_COLOR_QUARTZ,
         "bee_nest" => MAP_COLOR_YELLOW,
@@ -3432,6 +3437,7 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "lantern"
         | "soul_lantern"
         | "grindstone"
+        | "lodestone"
         | "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
@@ -6628,6 +6634,86 @@ mod tests {
                 test_block_state_id("minecraft:conduit", [("waterlogged", "true")]),
                 "minecraft:conduit",
                 rgb_option(0x5c, 0xdb, 0xd5),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_bamboo_honey_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:bamboo_sapling", []),
+                "minecraft:bamboo_sapling",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:bamboo",
+                    [("age", "1"), ("leaves", "large"), ("stage", "1")],
+                ),
+                "minecraft:bamboo",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:sweet_berry_bush", [("age", "3")]),
+                "minecraft:sweet_berry_bush",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:campfire",
+                    [
+                        ("facing", "east"),
+                        ("lit", "false"),
+                        ("signal_fire", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:campfire",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:soul_campfire",
+                    [
+                        ("facing", "south"),
+                        ("lit", "true"),
+                        ("signal_fire", "false"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:soul_campfire",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                test_block_state_id("minecraft:honey_block", []),
+                "minecraft:honey_block",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:honeycomb_block", []),
+                "minecraft:honeycomb_block",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:lodestone", []),
+                "minecraft:lodestone",
+                rgb_option(0xa7, 0xa7, 0xa7),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

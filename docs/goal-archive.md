@@ -1780,6 +1780,12 @@
     YELLOW, dead coral GRAY, sea pickle GREEN, and conduit DIAMOND. Tests pin
     representative coral block/plant/fan/wall-fan states plus waterlogged,
     facing, pickles, and conduit states.
+  - [x] `falling_dust` bamboo/honey/campfire utility static mapColor expansion：
+    native now mirrors vanilla mapColor registrations for bamboo sapling WOOD,
+    bamboo and sweet berry bush PLANT, campfire/soul campfire PODZOL,
+    honey/honeycomb blocks ORANGE, and lodestone METAL. Tests pin representative
+    bamboo age/leaves/stage, sweet berry age, campfire facing/lit/signal_fire/
+    waterlogged, and simple honey/lodestone states.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

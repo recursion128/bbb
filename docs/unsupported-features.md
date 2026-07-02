@@ -315,8 +315,8 @@ When an agent does any of the following, update this file in the same slice:
       static families, crop/succulent static families, utility/mechanical static
       families including stone/weighted pressure plates, utility fixtures,
       functional blocks, and redstone utility/control blocks,
-      aquatic/coral static families, produce/fungus static families, plus
-      ore/deepslate/nether,
+      aquatic/coral static families, bamboo/honey/campfire utility static
+      families, produce/fungus static families, plus ore/deepslate/nether,
       snow/ice/clay/sandstone/suspicious block, and resource block
       mineral/natural static colors.
       Renderer
@@ -396,8 +396,8 @@ When an agent does any of the following, update this file in the same slice:
       families, produce/fungus static families, utility/mechanical static
       families including stone/weighted pressure plates, utility fixtures,
       functional blocks, and redstone utility/control blocks, aquatic/coral
-      static families, and ore/deepslate/nether plus mineral/natural static
-      block families.
+      static families, bamboo/honey/campfire utility static families, and
+      ore/deepslate/nether plus mineral/natural static block families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
       `Starter` child-particle presentation path.
@@ -6479,8 +6479,8 @@ When an agent does any of the following, update this file in the same slice:
         produce/fungus static families, utility/mechanical static families
         including stone/weighted pressure plates, utility fixtures, functional
         blocks, and redstone utility/control blocks, aquatic/coral static
-        families, ore/deepslate/nether colors, and mineral/natural static block
-        families.
+        families, bamboo/honey/campfire utility static families,
+        ore/deepslate/nether colors, and mineral/natural static block families.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.
