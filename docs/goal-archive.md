@@ -1792,6 +1792,11 @@
     dried ghast GRAY. Tests pin representative tall-seagrass half, kelp age,
     turtle/sniffer hatch, dried-ghast facing/hydration/waterlogged states, and
     the new WATER map color constant.
+  - [x] `falling_dust` flower static mapColor expansion：native now mirrors
+    vanilla mapColor registrations for dandelion, golden dandelion, torchflower,
+    poppy, blue orchid, allium, azure bluet, tulips, oxeye daisy, cornflower,
+    wither rose, and lily of the valley as PLANT. Tests pin every plain flower
+    block state while keeping potted variants in the existing default-NONE path.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

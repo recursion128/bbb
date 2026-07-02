@@ -316,8 +316,8 @@ When an agent does any of the following, update this file in the same slice:
       families including stone/weighted pressure plates, utility fixtures,
       functional blocks, and redstone utility/control blocks,
       aquatic/coral static families, bamboo/honey/campfire utility static
-      families, water plant/egg static families, produce/fungus static
-      families, plus ore/deepslate/nether,
+      families, water plant/egg static families, flower static families,
+      produce/fungus static families, plus ore/deepslate/nether,
       snow/ice/clay/sandstone/suspicious block, and resource block
       mineral/natural static colors.
       Renderer
@@ -398,7 +398,8 @@ When an agent does any of the following, update this file in the same slice:
       families including stone/weighted pressure plates, utility fixtures,
       functional blocks, and redstone utility/control blocks, aquatic/coral
       static families, bamboo/honey/campfire utility static families, and
-      water plant/egg static families, and ore/deepslate/nether plus
+      water plant/egg static families, flower static families, and
+      ore/deepslate/nether plus
       mineral/natural static block families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
@@ -6482,8 +6483,8 @@ When an agent does any of the following, update this file in the same slice:
         including stone/weighted pressure plates, utility fixtures, functional
         blocks, and redstone utility/control blocks, aquatic/coral static
         families, bamboo/honey/campfire utility static families,
-        water plant/egg static families, ore/deepslate/nether colors, and
-        mineral/natural static block families.
+        water plant/egg static families, flower static families,
+        ore/deepslate/nether colors, and mineral/natural static block families.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.

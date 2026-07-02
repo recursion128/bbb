@@ -3313,7 +3313,22 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         | "big_dripleaf_stem"
         | "small_dripleaf"
         | "bamboo"
-        | "sweet_berry_bush" => MAP_COLOR_PLANT,
+        | "sweet_berry_bush"
+        | "dandelion"
+        | "golden_dandelion"
+        | "torchflower"
+        | "poppy"
+        | "blue_orchid"
+        | "allium"
+        | "azure_bluet"
+        | "red_tulip"
+        | "orange_tulip"
+        | "white_tulip"
+        | "pink_tulip"
+        | "oxeye_daisy"
+        | "cornflower"
+        | "wither_rose"
+        | "lily_of_the_valley" => MAP_COLOR_PLANT,
         "seagrass" | "tall_seagrass" | "kelp" | "kelp_plant" | "frogspawn" => MAP_COLOR_WATER,
         "cherry_sapling" | "cherry_leaves" => MAP_COLOR_PINK,
         "pale_oak_sapling" | "pale_oak_leaves" => MAP_COLOR_METAL,
@@ -6798,6 +6813,44 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_flower_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for flower in [
+            "dandelion",
+            "golden_dandelion",
+            "torchflower",
+            "poppy",
+            "blue_orchid",
+            "allium",
+            "azure_bluet",
+            "red_tulip",
+            "orange_tulip",
+            "white_tulip",
+            "pink_tulip",
+            "oxeye_daisy",
+            "cornflower",
+            "wither_rose",
+            "lily_of_the_valley",
+        ] {
+            let block_name = format!("minecraft:{flower}");
+            let block_state_id = test_block_state_id(&block_name, []);
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x7c, 0x00)),
                 "{block_name}"
             );
         }
