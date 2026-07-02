@@ -1752,6 +1752,11 @@
     tint layers. Tests pin powered and waterlogged rail shapes, lever face,
     repeater delay/lock, comparator mode, and tripwire attachment/direction
     state combinations to black `option_color`.
+  - [x] `falling_dust` skull/head default-NONE static mapColor expansion：native
+    now mirrors vanilla default `MapColor.NONE` for standing and wall skeleton,
+    wither skeleton, zombie, player, creeper, dragon, and piglin skull/head
+    blocks. Tests pin powered standing rotations and wall-facing states to black
+    `option_color`.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

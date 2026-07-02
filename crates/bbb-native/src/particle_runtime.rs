@@ -3306,7 +3306,21 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "tripwire_hook"
         | "tripwire"
         | "comparator"
-        | "activator_rail" => MAP_COLOR_NONE,
+        | "activator_rail"
+        | "skeleton_skull"
+        | "skeleton_wall_skull"
+        | "wither_skeleton_skull"
+        | "wither_skeleton_wall_skull"
+        | "zombie_head"
+        | "zombie_wall_head"
+        | "player_head"
+        | "player_wall_head"
+        | "creeper_head"
+        | "creeper_wall_head"
+        | "dragon_head"
+        | "dragon_wall_head"
+        | "piglin_head"
+        | "piglin_wall_head" => MAP_COLOR_NONE,
         "light_weighted_pressure_plate" | "bell" => MAP_COLOR_GOLD,
         "heavy_weighted_pressure_plate"
         | "iron_door"
@@ -5957,6 +5971,125 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_skull_and_head_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id(
+                    "minecraft:skeleton_skull",
+                    [("powered", "true"), ("rotation", "15")],
+                ),
+                "minecraft:skeleton_skull",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:skeleton_wall_skull",
+                    [("facing", "east"), ("powered", "false")],
+                ),
+                "minecraft:skeleton_wall_skull",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:wither_skeleton_skull",
+                    [("powered", "false"), ("rotation", "0")],
+                ),
+                "minecraft:wither_skeleton_skull",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:wither_skeleton_wall_skull",
+                    [("facing", "north"), ("powered", "true")],
+                ),
+                "minecraft:wither_skeleton_wall_skull",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:zombie_head",
+                    [("powered", "true"), ("rotation", "7")],
+                ),
+                "minecraft:zombie_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:zombie_wall_head",
+                    [("facing", "west"), ("powered", "false")],
+                ),
+                "minecraft:zombie_wall_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:player_head",
+                    [("powered", "false"), ("rotation", "12")],
+                ),
+                "minecraft:player_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:player_wall_head",
+                    [("facing", "south"), ("powered", "true")],
+                ),
+                "minecraft:player_wall_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:creeper_head",
+                    [("powered", "true"), ("rotation", "2")],
+                ),
+                "minecraft:creeper_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:creeper_wall_head",
+                    [("facing", "east"), ("powered", "true")],
+                ),
+                "minecraft:creeper_wall_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dragon_head",
+                    [("powered", "false"), ("rotation", "10")],
+                ),
+                "minecraft:dragon_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dragon_wall_head",
+                    [("facing", "north"), ("powered", "false")],
+                ),
+                "minecraft:dragon_wall_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:piglin_head",
+                    [("powered", "true"), ("rotation", "5")],
+                ),
+                "minecraft:piglin_head",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:piglin_wall_head",
+                    [("facing", "west"), ("powered", "true")],
+                ),
+                "minecraft:piglin_wall_head",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
                 "{block_name}"
             );
         }
