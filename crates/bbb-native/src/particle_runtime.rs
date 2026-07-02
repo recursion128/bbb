@@ -3417,6 +3417,7 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "barrel" | "cartography_table" | "fletching_table" | "lectern" | "smithing_table"
         | "composter" | "beehive" | "trapped_chest" | "daylight_detector" => MAP_COLOR_WOOD,
         "scaffolding" => MAP_COLOR_SAND,
+        "glowstone" => MAP_COLOR_SAND,
         "campfire" | "soul_campfire" => MAP_COLOR_PODZOL,
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
@@ -3427,7 +3428,9 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         "honey_block" | "honeycomb_block" => MAP_COLOR_ORANGE,
         "redstone_lamp" => MAP_COLOR_TERRACOTTA_ORANGE,
         "target" => MAP_COLOR_QUARTZ,
+        "enchanting_table" => MAP_COLOR_RED,
         "bee_nest" => MAP_COLOR_YELLOW,
+        "beacon" => MAP_COLOR_DIAMOND,
         "command_block" => MAP_COLOR_BROWN,
         "repeating_command_block" => MAP_COLOR_PURPLE,
         "chain_command_block" => MAP_COLOR_GREEN,
@@ -7169,6 +7172,42 @@ mod tests {
                 ),
                 "minecraft:beehive",
                 rgb_option(0x8f, 0x77, 0x48),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_magic_utility_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:glowstone", []),
+                "minecraft:glowstone",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:enchanting_table", []),
+                "minecraft:enchanting_table",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:beacon", []),
+                "minecraft:beacon",
+                rgb_option(0x5c, 0xdb, 0xd5),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

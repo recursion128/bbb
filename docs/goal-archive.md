@@ -1744,6 +1744,10 @@
     scaffolding states plus target power `0`. Full mapColor catalog coverage,
     biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
     work.
+  - [x] `falling_dust` glowstone/enchanting/beacon static mapColor expansion：
+    native now mirrors vanilla mapColor registrations for glowstone SAND,
+    enchanting table COLOR_RED, and beacon DIAMOND. Tests pin each simple state
+    to the expected raw mapColor RGB.
   - [x] `falling_dust` default-NONE fixture static mapColor expansion：native now
     mirrors vanilla `BlockBehaviour.Properties` default `MapColor.NONE` for
     visible fixture blocks that register without explicit mapColor and no
