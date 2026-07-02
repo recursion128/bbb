@@ -6101,15 +6101,20 @@ mod tests {
 
     #[test]
     fn particle_descriptors_map_vanilla_light_emission_overrides() {
+        // Mirrors vanilla 26.1 `getLightCoords` overrides in
+        // `net.minecraft.client.particle`.
         for particle_id in [
             "minecraft:sweep_attack",
+            "minecraft:totem_of_undying",
             "minecraft:squid_ink",
             "minecraft:glow_squid_ink",
             "minecraft:end_rod",
+            "minecraft:firework",
             "minecraft:explosion",
             "minecraft:sonic_boom",
             "minecraft:gust",
             "minecraft:small_gust",
+            "minecraft:trail",
         ] {
             assert_eq!(
                 ParticleDescriptor::for_particle(particle_id).light_emission(),
@@ -6128,6 +6133,10 @@ mod tests {
             "minecraft:landing_obsidian_tear",
             "minecraft:shriek",
             "minecraft:vault_connection",
+            "minecraft:vibration",
+            "minecraft:trial_spawner_detection",
+            "minecraft:trial_spawner_detection_ominous",
+            "minecraft:ominous_spawning",
         ] {
             assert_eq!(
                 ParticleDescriptor::for_particle(particle_id).light_emission(),
@@ -6154,10 +6163,33 @@ mod tests {
             );
         }
 
-        assert_eq!(
-            ParticleDescriptor::for_particle("minecraft:cloud").light_emission(),
-            ParticleLightEmissionDescriptor::World
-        );
+        for particle_id in [
+            "minecraft:enchant",
+            "minecraft:nautilus",
+            "minecraft:portal",
+            "minecraft:reverse_portal",
+        ] {
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).light_emission(),
+                ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic,
+                "{particle_id}"
+            );
+        }
+
+        for particle_id in [
+            "minecraft:cloud",
+            "minecraft:dragon_breath",
+            "minecraft:flash",
+            "minecraft:infested",
+            "minecraft:soul",
+        ] {
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).light_emission(),
+                ParticleLightEmissionDescriptor::World,
+                "{particle_id}"
+            );
+        }
+
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:firefly").light_emission(),
             ParticleLightEmissionDescriptor::Firefly

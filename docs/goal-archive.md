@@ -1728,3 +1728,10 @@
     with no missing definition / sprite diagnostics. The remaining LevelEvent
     backlog is audio ordering / world-context refinement, not unmapped particle
     event cases.
+  - [x] particle light-curve coverage：renderer descriptor tests now enumerate
+    the vanilla 26.1 `getLightCoords` override families from
+    `net.minecraft.client.particle`: full-bright particles, forced block-light
+    particles, age-based smooth block emission, portal/enchant quartic emission,
+    `FireflyParticle` light fade, and world-sampled counterexamples. The
+    unsupported-features particle runtime ledger no longer tracks light curves
+    as an open renderer slice.

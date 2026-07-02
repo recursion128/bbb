@@ -231,7 +231,6 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Implement remaining renderer slices for:
     - provider-specific behavior
-    - light curves
     - remaining non-particle-atlas terrain/item particle layer sorting:
       - native preserves submission commands and `raw_options_len` for
         definition-less block/item atlas particle types
@@ -315,6 +314,11 @@ When an agent does any of the following, update this file in the same slice:
       Renderer tests enumerate every id registered by vanilla 26.1
       `ParticleResources.registerProviders()` and assert it maps to an explicit
       vanilla provider descriptor rather than the generic `Particle` fallback.
+      Renderer light-descriptor tests also enumerate the vanilla 26.1
+      `getLightCoords` override families: full-bright particles, forced
+      block-light particles, age-based smooth block emission, portal/enchant
+      quartic emission, the `FireflyParticle` light fade, and world-sampled
+      counterexamples.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -1675,7 +1679,8 @@ When an agent does any of the following, update this file in the same slice:
     passing shader-space `[block, sky]` into the particle shader. The particle
     shader now samples the renderer-owned dynamic LightTexture; current modeled
     provider-specific overrides cover smooth glow/flame block emission,
-    full-block emission, and full-bright emission.
+    portal/enchant quartic block emission, forced full-block emission,
+    full-bright emission, and `FireflyParticle` fade-shaped light emission.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
