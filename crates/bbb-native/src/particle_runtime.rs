@@ -2721,6 +2721,25 @@ fn wooden_pressure_plate_static_map_color(name: &str) -> Option<u32> {
     wooden_plank_family_map_color(family)
 }
 
+fn wooden_door_trapdoor_fence_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let family = name
+        .strip_suffix("_fence_gate")
+        .or_else(|| name.strip_suffix("_trapdoor"))
+        .or_else(|| name.strip_suffix("_door"))
+        .or_else(|| name.strip_suffix("_fence"))?;
+    wooden_plank_family_map_color(family)
+}
+
+fn button_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if matches!(name, "stone_button" | "polished_blackstone_button") {
+        return Some(MAP_COLOR_NONE);
+    }
+    let family = name.strip_suffix("_button")?;
+    wooden_plank_family_map_color(family).map(|_| MAP_COLOR_NONE)
+}
+
 fn wooden_plank_family_map_color(family: &str) -> Option<u32> {
     Some(match family {
         "oak" => MAP_COLOR_WOOD,
@@ -2768,6 +2787,12 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = wooden_pressure_plate_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = wooden_door_trapdoor_fence_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = button_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -3640,6 +3665,7 @@ const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
+const MAP_COLOR_NONE: u32 = 0;
 const MAP_COLOR_SAND: u32 = 16_247_203;
 const MAP_COLOR_WOOL: u32 = 13_092_807;
 const MAP_COLOR_FIRE: u32 = 16_711_680;
@@ -4707,6 +4733,123 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_wooden_door_trapdoor_fence_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (family, expected_color) in [
+            ("oak", rgb_option(0x8f, 0x77, 0x48)),
+            ("spruce", rgb_option(0x81, 0x56, 0x31)),
+            ("birch", rgb_option(0xf7, 0xe9, 0xa3)),
+            ("jungle", rgb_option(0x97, 0x6d, 0x4d)),
+            ("acacia", rgb_option(0xd8, 0x7f, 0x33)),
+            ("cherry", rgb_option(0xd1, 0xb1, 0xa1)),
+            ("dark_oak", rgb_option(0x66, 0x4c, 0x33)),
+            ("pale_oak", rgb_option(0xff, 0xfc, 0xf5)),
+            ("mangrove", rgb_option(0x99, 0x33, 0x33)),
+            ("bamboo", rgb_option(0xe5, 0xe5, 0x33)),
+            ("crimson", rgb_option(0x94, 0x3f, 0x61)),
+            ("warped", rgb_option(0x3a, 0x8e, 0x8c)),
+        ] {
+            for kind in ["door", "trapdoor", "fence", "fence_gate"] {
+                let block_name = format!("minecraft:{family}_{kind}");
+                let block_state_id = match kind {
+                    "door" => test_block_state_id(
+                        &block_name,
+                        [
+                            ("facing", "north"),
+                            ("half", "upper"),
+                            ("hinge", "left"),
+                            ("open", "true"),
+                            ("powered", "true"),
+                        ],
+                    ),
+                    "trapdoor" => test_block_state_id(
+                        &block_name,
+                        [
+                            ("facing", "north"),
+                            ("half", "top"),
+                            ("open", "true"),
+                            ("powered", "true"),
+                            ("waterlogged", "true"),
+                        ],
+                    ),
+                    "fence" => test_block_state_id(
+                        &block_name,
+                        [
+                            ("east", "true"),
+                            ("north", "true"),
+                            ("south", "true"),
+                            ("waterlogged", "true"),
+                            ("west", "true"),
+                        ],
+                    ),
+                    "fence_gate" => test_block_state_id(
+                        &block_name,
+                        [
+                            ("facing", "north"),
+                            ("in_wall", "true"),
+                            ("open", "true"),
+                            ("powered", "true"),
+                        ],
+                    ),
+                    _ => unreachable!("covered test kinds"),
+                };
+                let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+                packet.particle.raw_options = block_particle_options(block_state_id);
+
+                let batch = resolver.resolve_level_particles(&packet);
+
+                assert_eq!(batch.len(), 1, "{block_name}");
+                assert_eq!(
+                    batch.commands[0].option_color,
+                    Some(expected_color),
+                    "{block_name}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_button_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for block_name in [
+            "minecraft:stone_button",
+            "minecraft:oak_button",
+            "minecraft:spruce_button",
+            "minecraft:birch_button",
+            "minecraft:jungle_button",
+            "minecraft:acacia_button",
+            "minecraft:cherry_button",
+            "minecraft:dark_oak_button",
+            "minecraft:pale_oak_button",
+            "minecraft:mangrove_button",
+            "minecraft:bamboo_button",
+            "minecraft:crimson_button",
+            "minecraft:warped_button",
+            "minecraft:polished_blackstone_button",
+        ] {
+            let block_state_id = test_block_state_id(
+                block_name,
+                [("face", "floor"), ("facing", "north"), ("powered", "true")],
+            );
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
                 "{block_name}"
             );
         }

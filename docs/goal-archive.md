@@ -1573,6 +1573,16 @@
     wooden door/trapdoor/fence/sign families to later slices. Full mapColor
     catalog coverage, biome-aware per-spawn BlockColors, and on-ground roll
     reset remain follow-up work.
+  - [x] `falling_dust` wooden fixtures static mapColor expansion：native now
+    mirrors vanilla plank mapColor inheritance for oak/spruce/birch/jungle/
+    acacia/cherry/dark oak/pale oak/mangrove/bamboo/crimson/warped doors,
+    trapdoors, fences, and fence gates. It also mirrors vanilla
+    `buttonProperties()` leaving all stone, polished blackstone, and wooden
+    buttons on `MapColor.NONE.col == 0`. Tests pin representative open /
+    waterlogged / connected states for each wooden fixture family plus all
+    vanilla button variants. Full mapColor catalog coverage, biome-aware
+    per-spawn BlockColors, signs, and on-ground roll reset remain follow-up
+    work.
   - [x] `falling_dust` colored-family static mapColor expansion：native now
     resolves vanilla `DyeColor.getMapColor()` families for wool, carpets,
     concrete, stained glass, and glazed terracotta, while using the separate
