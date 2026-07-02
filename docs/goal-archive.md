@@ -1817,3 +1817,12 @@
     and jukebox start/stop. Remaining adjacent work stays with terrain/item
     atlas rendering, block-entity client-effect presentation, or broader audio
     runtime parity rather than an open P1-5 LevelEvent audio checklist.
+  - [x] block-marker terrain particle sprite selection：native block-particle
+    spawn commands now resolve `minecraft:block_marker` through the same
+    terrain block-state particle material sprite table as `minecraft:block`,
+    `minecraft:dust_pillar`, and `minecraft:block_crumble`. This matches
+    vanilla 26.1 `BlockMarker`, whose constructor passes
+    `BlockStateModelSet.getParticleMaterial(state).sprite()` to
+    `SingleQuadParticle`, while keeping the separate vanilla behavior that
+    `BlockMarker.Provider` does not run `TerrainParticle.createTerrainParticle`
+    air / moving-piston / `shouldSpawnTerrainParticles` rejection.

@@ -2109,7 +2109,10 @@ impl ParticleCommandResolver {
     ) -> Vec<String> {
         if matches!(
             particle_type_id,
-            BLOCK_PARTICLE_TYPE_ID | DUST_PILLAR_PARTICLE_TYPE_ID | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
+            BLOCK_PARTICLE_TYPE_ID
+                | BLOCK_MARKER_PARTICLE_TYPE_ID
+                | DUST_PILLAR_PARTICLE_TYPE_ID
+                | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
         ) {
             if let Some(sprite_id) = option_state
                 .block
@@ -3153,6 +3156,7 @@ mod tests {
 
         for (particle_type_id, particle_id) in [
             (BLOCK_PARTICLE_TYPE_ID, "minecraft:block"),
+            (BLOCK_MARKER_PARTICLE_TYPE_ID, "minecraft:block_marker"),
             (DUST_PILLAR_PARTICLE_TYPE_ID, "minecraft:dust_pillar"),
             (BLOCK_CRUMBLE_PARTICLE_TYPE_ID, "minecraft:block_crumble"),
         ] {
@@ -3167,12 +3171,6 @@ mod tests {
                 "{particle_id}"
             );
         }
-
-        let mut marker = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
-        marker.particle.raw_options = block_particle_options(stone_id);
-        let batch = resolver.resolve_level_particles(&marker);
-        assert_eq!(batch.len(), 1);
-        assert!(batch.commands[0].sprite_ids.is_empty());
     }
 
     #[test]

@@ -306,10 +306,10 @@ When an agent does any of the following, update this file in the same slice:
       `BreakingItemParticle` providers now resolve `minecraft:item_slime`,
       `minecraft:item_cobweb`, and `minecraft:item_snowball` to their vanilla
       item atlas sprite ids. `TerrainParticle` providers now resolve
-      `minecraft:block`, `minecraft:dust_pillar`, and `minecraft:block_crumble`
-      block-state particle material sprite ids through the terrain block-model
-      catalog and upload those ids in spawn commands. Generic `minecraft:item`
-      stack material lookup, `minecraft:block_marker` sprite selection,
+      `minecraft:block`, `minecraft:block_marker`, `minecraft:dust_pillar`,
+      and `minecraft:block_crumble` block-state particle material sprite ids
+      through the terrain block-model catalog and upload those ids in spawn
+      commands. Generic `minecraft:item` stack material lookup,
       non-FallingBlock BlockColors / map-color fallback, on-ground roll reset,
       and transparent terrain/item splitting remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
@@ -6419,7 +6419,10 @@ When an agent does any of the following, update this file in the same slice:
         vanilla `TerrainParticle` construction through
         `BlockStateModelSet.getParticleMaterial(blockState).sprite()`.
         `minecraft:block_marker` remains unfiltered, matching vanilla
-        `BlockMarker.Provider`, and its sprite selection stays deferred.
+        `BlockMarker.Provider`, and its spawn commands now carry the same
+        block-state terrain particle material sprite id because vanilla
+        `BlockMarker` also constructs with
+        `BlockStateModelSet.getParticleMaterial(blockState).sprite()`.
       - renderer fixed `BreakingItemParticle` providers resolve their vanilla
         `ItemStackTemplate` sprite ids from local 26.1 assets:
         `minecraft:item_slime` -> `minecraft:item/slime_ball`,
