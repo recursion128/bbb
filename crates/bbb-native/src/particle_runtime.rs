@@ -3288,6 +3288,16 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
         "target" => MAP_COLOR_QUARTZ,
         "bee_nest" => MAP_COLOR_YELLOW,
+        "ladder"
+        | "torch"
+        | "wall_torch"
+        | "redstone_torch"
+        | "redstone_wall_torch"
+        | "soul_torch"
+        | "soul_wall_torch"
+        | "copper_torch"
+        | "copper_wall_torch"
+        | "end_rod" => MAP_COLOR_NONE,
         "light_weighted_pressure_plate" | "bell" => MAP_COLOR_GOLD,
         "heavy_weighted_pressure_plate"
         | "iron_door"
@@ -5938,6 +5948,73 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_default_none_fixture_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id(
+                    "minecraft:ladder",
+                    [("facing", "north"), ("waterlogged", "true")],
+                ),
+                "minecraft:ladder",
+            ),
+            (
+                test_block_state_id("minecraft:torch", []),
+                "minecraft:torch",
+            ),
+            (
+                test_block_state_id("minecraft:wall_torch", [("facing", "north")]),
+                "minecraft:wall_torch",
+            ),
+            (
+                test_block_state_id("minecraft:redstone_torch", [("lit", "false")]),
+                "minecraft:redstone_torch",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:redstone_wall_torch",
+                    [("facing", "north"), ("lit", "true")],
+                ),
+                "minecraft:redstone_wall_torch",
+            ),
+            (
+                test_block_state_id("minecraft:soul_torch", []),
+                "minecraft:soul_torch",
+            ),
+            (
+                test_block_state_id("minecraft:soul_wall_torch", [("facing", "north")]),
+                "minecraft:soul_wall_torch",
+            ),
+            (
+                test_block_state_id("minecraft:copper_torch", []),
+                "minecraft:copper_torch",
+            ),
+            (
+                test_block_state_id("minecraft:copper_wall_torch", [("facing", "north")]),
+                "minecraft:copper_wall_torch",
+            ),
+            (
+                test_block_state_id("minecraft:end_rod", [("facing", "up")]),
+                "minecraft:end_rod",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
                 "{block_name}"
             );
         }

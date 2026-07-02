@@ -1739,6 +1739,12 @@
     scaffolding states plus target power `0`. Full mapColor catalog coverage,
     biome-aware per-spawn BlockColors, and on-ground roll reset remain follow-up
     work.
+  - [x] `falling_dust` default-NONE fixture static mapColor expansion：native now
+    mirrors vanilla `BlockBehaviour.Properties` default `MapColor.NONE` for
+    visible fixture blocks that register without explicit mapColor and no
+    BlockColors layer: ladder, floor/wall torch variants including redstone,
+    soul, and copper torches, plus end rod. Tests pin facing, waterlogged, lit,
+    wall, and vertical rod states to black `option_color`.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
