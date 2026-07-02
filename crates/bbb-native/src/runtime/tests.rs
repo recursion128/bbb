@@ -543,6 +543,52 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
 }
 
 #[test]
+fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
+    let source = include_str!("../runtime.rs");
+    let input_advance = source
+        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .expect("pump should advance player input before outline extraction");
+    let using_item_tick = source
+        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .expect("pump should advance local use-item ticks before outline extraction");
+    let entity_tick = source
+        .find("let advanced_ticks = advance_entity_client_animations(")
+        .expect("pump should advance entity client animations before outline extraction");
+    let partial_tick = source
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .expect("pump should compute partial tick before outline extraction");
+    let camera_pose = source
+        .find("let camera_pose = camera_pose_from_world(world);")
+        .expect("pump should extract camera pose before outlines");
+    let selection_outline = source
+        .find("let selection_outline = selection_outline_from_camera(")
+        .expect("pump should extract selection outline");
+    let entity_scene_outline = source
+        .find("let entity_scene_outline =")
+        .expect("pump should extract entity scene outline");
+    let entity_target_outline = source
+        .find("let entity_target_outline =")
+        .expect("pump should extract entity target outline");
+
+    for advance in [input_advance, using_item_tick, entity_tick, partial_tick] {
+        assert!(
+            advance < camera_pose,
+            "vanilla picks and outlines use post-input camera/entity state before render extract"
+        );
+    }
+    for outline in [
+        selection_outline,
+        entity_scene_outline,
+        entity_target_outline,
+    ] {
+        assert!(
+            camera_pose < outline,
+            "outline RendererFrame fields should read one camera pose snapshot"
+        );
+    }
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

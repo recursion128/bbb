@@ -265,6 +265,11 @@
     测试与绑定注释，固定为 `advance_block_destruction_render_ticks` 之后读取；
     vanilla 依据是 `LevelRenderer.extractBlockDestroyAnimation` 在 client tick 后的
     render extract 中读取 block-breaking state。
+  - [x] outline fields：selection outline、entity-scene outline 和 entity-target
+    outline 现在有源码顺序测试与绑定注释，固定为 input / use-item / entity tick
+    之后读取同一帧 camera pose；vanilla 依据是 `Minecraft.renderFrame` 先调用
+    `pick(partialTicks)`，随后 `GameRenderer.extract` / `LevelRenderer.extractBlockOutline`
+    读取 `hitResult` 和 camera state。
 
 ## P1-2：实体专用 Renderer 行为
 

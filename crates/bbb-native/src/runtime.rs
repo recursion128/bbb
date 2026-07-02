@@ -1571,6 +1571,8 @@ pub(crate) fn pump_network_and_terrain(
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
     let weather_render_state =
         weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);
+    // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
+    // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
     let selection_outline = selection_outline_from_camera(world, camera_pose);
     let entity_scene_outline =
         entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick);

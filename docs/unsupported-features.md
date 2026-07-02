@@ -113,8 +113,8 @@ When an agent does any of the following, update this file in the same slice:
     tick -> render frame order, one field per slice. The pump binds every
     world -> renderer value at the sequence point the removed `renderer.set_*`
     call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next:
-    selection/outline, weather, cloud-frame, and particle-light projections.
+    vanilla-verified per field. Known interleaves to check next: weather,
+    cloud-frame, and particle-light projections.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
     citation.
@@ -146,6 +146,12 @@ When an agent does any of the following, update this file in the same slice:
     vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking
     render state during render extract, after the client tick, so bbb reads
     `block_destroy_overlays` after `advance_block_destruction_render_ticks`.
+  - Selection outline, entity-scene outline, and entity-target outline now have
+    a source-order test and binding comment: vanilla `Minecraft.renderFrame`
+    calls `pick(partialTicks)` before `GameRenderer.extract`, and
+    `LevelRenderer.extractBlockOutline` then reads `hitResult` plus the current
+    camera, so bbb extracts these outline fields after input/use-item/entity
+    tick advancement and after the frame camera pose is bound.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 
