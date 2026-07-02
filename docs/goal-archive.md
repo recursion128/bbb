@@ -1768,6 +1768,13 @@
     colored candle cakes copying the cake properties rather than candle
     mapColor. Tests pin cake bite state and every candle-cake lit variant to
     black `option_color`.
+  - [x] `falling_dust` redstone utility/control static mapColor expansion：
+    native now mirrors vanilla mapColor registrations for redstone lamp
+    TERRACOTTA_ORANGE, ender chest and observer STONE, trapped chest and
+    daylight detector WOOD, command block BROWN, repeating command block
+    PURPLE, chain command block GREEN, and structure/jigsaw/test block
+    LIGHT_GRAY. Tests pin representative lit, facing, waterlogged, powered,
+    conditional, mode, and orientation states.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

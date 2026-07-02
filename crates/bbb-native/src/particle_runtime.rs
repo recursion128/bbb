@@ -3338,16 +3338,23 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "hopper"
         | "smoker"
         | "blast_furnace"
+        | "ender_chest"
+        | "observer"
         | "stonecutter" => MAP_COLOR_STONE,
         "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" | "loom"
         | "barrel" | "cartography_table" | "fletching_table" | "lectern" | "smithing_table"
-        | "composter" | "beehive" => MAP_COLOR_WOOD,
+        | "composter" | "beehive" | "trapped_chest" | "daylight_detector" => MAP_COLOR_WOOD,
         "scaffolding" => MAP_COLOR_SAND,
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
+        "redstone_lamp" => MAP_COLOR_TERRACOTTA_ORANGE,
         "target" => MAP_COLOR_QUARTZ,
         "bee_nest" => MAP_COLOR_YELLOW,
+        "command_block" => MAP_COLOR_BROWN,
+        "repeating_command_block" => MAP_COLOR_PURPLE,
+        "chain_command_block" => MAP_COLOR_GREEN,
+        "structure_block" | "jigsaw" | "test_block" => MAP_COLOR_LIGHT_GRAY,
         "ladder"
         | "torch"
         | "wall_torch"
@@ -6420,6 +6427,107 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_redstone_utility_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:redstone_lamp", [("lit", "true")]),
+                "minecraft:redstone_lamp",
+                rgb_option(0x9f, 0x52, 0x24),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:ender_chest",
+                    [("facing", "north"), ("waterlogged", "true")],
+                ),
+                "minecraft:ender_chest",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:observer",
+                    [("facing", "up"), ("powered", "true")],
+                ),
+                "minecraft:observer",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:trapped_chest",
+                    [
+                        ("facing", "east"),
+                        ("type", "right"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:trapped_chest",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:daylight_detector",
+                    [("inverted", "true"), ("power", "15")],
+                ),
+                "minecraft:daylight_detector",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:command_block",
+                    [("conditional", "true"), ("facing", "up")],
+                ),
+                "minecraft:command_block",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:repeating_command_block",
+                    [("conditional", "false"), ("facing", "down")],
+                ),
+                "minecraft:repeating_command_block",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:chain_command_block",
+                    [("conditional", "true"), ("facing", "east")],
+                ),
+                "minecraft:chain_command_block",
+                rgb_option(0x66, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:structure_block", [("mode", "data")]),
+                "minecraft:structure_block",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:jigsaw", [("orientation", "up_north")]),
+                "minecraft:jigsaw",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:test_block", [("mode", "fail")]),
+                "minecraft:test_block",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
                 "{block_name}"
             );
         }
