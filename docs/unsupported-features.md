@@ -113,7 +113,7 @@ When an agent does any of the following, update this file in the same slice:
     tick -> render frame order, one field per slice. The pump binds every
     world -> renderer value at the sequence point the removed `renderer.set_*`
     call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next: block destroy,
+    vanilla-verified per field. Known interleaves to check next:
     selection/outline, weather, cloud-frame, and particle-light projections.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
@@ -142,6 +142,10 @@ When an agent does any of the following, update this file in the same slice:
     `GameRenderer.extract` calls `LevelRenderer.extractLevel` /
     `extractVisibleEntities`, so bbb reads these fields after entity animation,
     client-time, item-cooldown, input, and local use-item tick advancement.
+  - Block-destroy overlays now have a source-order test and binding comment:
+    vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking
+    render state during render extract, after the client tick, so bbb reads
+    `block_destroy_overlays` after `advance_block_destruction_render_ticks`.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 

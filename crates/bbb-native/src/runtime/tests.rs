@@ -527,6 +527,22 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
 }
 
 #[test]
+fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
+    let source = include_str!("../runtime.rs");
+    let destroy_tick = source
+        .find("advance_block_destruction_render_ticks(world, running_ticks);")
+        .expect("pump should advance block-destroy render ticks");
+    let block_destroy_extract = source
+        .find("let block_destroy_overlays = block_destroy_overlays_from_world(")
+        .expect("pump should extract block-destroy overlays");
+
+    assert!(
+        destroy_tick < block_destroy_extract,
+        "vanilla `LevelRenderer.extractBlockDestroyAnimation` reads post-client-tick block-breaking state"
+    );
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

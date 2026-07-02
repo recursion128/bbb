@@ -1576,6 +1576,8 @@ pub(crate) fn pump_network_and_terrain(
         entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
+    // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
+    // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
     apply_renderer_frame(
         renderer,

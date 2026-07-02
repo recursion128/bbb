@@ -261,6 +261,10 @@
     依据是 `Minecraft.tick` 先推进 keybinds / `gameRenderer.tick` /
     `level.tickEntities`，随后 `GameRenderer.extract` 调用
     `LevelRenderer.extractLevel` / `extractVisibleEntities`。
+  - [x] block-destroy overlay field：`block_destroy_overlays` 现在有源码顺序
+    测试与绑定注释，固定为 `advance_block_destruction_render_ticks` 之后读取；
+    vanilla 依据是 `LevelRenderer.extractBlockDestroyAnimation` 在 client tick 后的
+    render extract 中读取 block-breaking state。
 
 ## P1-2：实体专用 Renderer 行为
 
