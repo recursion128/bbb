@@ -2780,9 +2780,23 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:nether_bricks"
         | "minecraft:red_nether_bricks"
         | "minecraft:chiseled_nether_bricks"
-        | "minecraft:cracked_nether_bricks" => Some(MAP_COLOR_NETHER),
+        | "minecraft:cracked_nether_bricks"
+        | "minecraft:magma_block"
+        | "minecraft:crimson_fungus"
+        | "minecraft:weeping_vines"
+        | "minecraft:weeping_vines_plant"
+        | "minecraft:crimson_roots" => Some(MAP_COLOR_NETHER),
         "minecraft:soul_sand" | "minecraft:soul_soil" => Some(MAP_COLOR_BROWN),
         "minecraft:glow_lichen" => Some(MAP_COLOR_GLOW_LICHEN),
+        "minecraft:warped_nylium" => Some(MAP_COLOR_WARPED_NYLIUM),
+        "minecraft:crimson_nylium" => Some(MAP_COLOR_CRIMSON_NYLIUM),
+        "minecraft:warped_wart_block" => Some(MAP_COLOR_WARPED_WART_BLOCK),
+        "minecraft:nether_wart_block" | "minecraft:shroomlight" => Some(MAP_COLOR_RED),
+        "minecraft:warped_fungus"
+        | "minecraft:warped_roots"
+        | "minecraft:nether_sprouts"
+        | "minecraft:twisting_vines"
+        | "minecraft:twisting_vines_plant" => Some(MAP_COLOR_CYAN),
         "minecraft:amethyst_block"
         | "minecraft:budding_amethyst"
         | "minecraft:amethyst_cluster"
@@ -2810,7 +2824,25 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:sculk"
         | "minecraft:sculk_vein"
         | "minecraft:sculk_catalyst"
-        | "minecraft:sculk_shrieker" => Some(MAP_COLOR_BLACK),
+        | "minecraft:sculk_shrieker"
+        | "minecraft:smooth_basalt"
+        | "minecraft:respawn_anchor"
+        | "minecraft:blackstone"
+        | "minecraft:blackstone_stairs"
+        | "minecraft:blackstone_wall"
+        | "minecraft:blackstone_slab"
+        | "minecraft:polished_blackstone"
+        | "minecraft:polished_blackstone_stairs"
+        | "minecraft:polished_blackstone_slab"
+        | "minecraft:polished_blackstone_wall"
+        | "minecraft:polished_blackstone_pressure_plate"
+        | "minecraft:polished_blackstone_bricks"
+        | "minecraft:polished_blackstone_brick_slab"
+        | "minecraft:polished_blackstone_brick_stairs"
+        | "minecraft:polished_blackstone_brick_wall"
+        | "minecraft:cracked_polished_blackstone_bricks"
+        | "minecraft:chiseled_polished_blackstone"
+        | "minecraft:gilded_blackstone" => Some(MAP_COLOR_BLACK),
         "minecraft:ochre_froglight" => Some(MAP_COLOR_SAND),
         "minecraft:verdant_froglight" => Some(MAP_COLOR_GLOW_LICHEN),
         "minecraft:pearlescent_froglight" => Some(MAP_COLOR_PINK),
@@ -3357,11 +3389,13 @@ const MAP_COLOR_TERRACOTTA_RED: u32 = 9_321_518;
 const MAP_COLOR_TERRACOTTA_BLACK: u32 = 2_430_480;
 const MAP_COLOR_PODZOL: u32 = 8_476_209;
 const MAP_COLOR_NETHER: u32 = 7_340_544;
+const MAP_COLOR_CRIMSON_NYLIUM: u32 = 12_398_641;
 const MAP_COLOR_CRIMSON_STEM: u32 = 9_715_553;
 const MAP_COLOR_CRIMSON_HYPHAE: u32 = 6_035_741;
 const MAP_COLOR_WARPED_NYLIUM: u32 = 1_474_182;
 const MAP_COLOR_WARPED_STEM: u32 = 3_837_580;
 const MAP_COLOR_WARPED_HYPHAE: u32 = 5_647_422;
+const MAP_COLOR_WARPED_WART_BLOCK: u32 = 1_356_933;
 const MAP_COLOR_DEEPSLATE: u32 = 6_579_300;
 const MAP_COLOR_RAW_IRON: u32 = 14_200_723;
 const MAP_COLOR_GLOW_LICHEN: u32 = 8_365_974;
@@ -4624,6 +4658,100 @@ mod tests {
                 ),
                 "minecraft:weathered_lightning_rod",
                 rgb_option(0x3a, 0x8e, 0x8c),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_nether_flora_and_blackstone_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:crimson_nylium", []),
+                "minecraft:crimson_nylium",
+                rgb_option(0xbd, 0x30, 0x31),
+            ),
+            (
+                test_block_state_id("minecraft:warped_nylium", []),
+                "minecraft:warped_nylium",
+                rgb_option(0x16, 0x7e, 0x86),
+            ),
+            (
+                test_block_state_id("minecraft:warped_wart_block", []),
+                "minecraft:warped_wart_block",
+                rgb_option(0x14, 0xb4, 0x85),
+            ),
+            (
+                test_block_state_id("minecraft:nether_wart_block", []),
+                "minecraft:nether_wart_block",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:warped_fungus", []),
+                "minecraft:warped_fungus",
+                rgb_option(0x4c, 0x7f, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:crimson_fungus", []),
+                "minecraft:crimson_fungus",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:shroomlight", []),
+                "minecraft:shroomlight",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:weeping_vines", [("age", "13")]),
+                "minecraft:weeping_vines",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:twisting_vines", [("age", "13")]),
+                "minecraft:twisting_vines",
+                rgb_option(0x4c, 0x7f, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:magma_block", []),
+                "minecraft:magma_block",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:respawn_anchor", [("charges", "4")]),
+                "minecraft:respawn_anchor",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:smooth_basalt", []),
+                "minecraft:smooth_basalt",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:blackstone", []),
+                "minecraft:blackstone",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:polished_blackstone_pressure_plate",
+                    [("powered", "false")],
+                ),
+                "minecraft:polished_blackstone_pressure_plate",
+                rgb_option(0x19, 0x19, 0x19),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

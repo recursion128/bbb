@@ -1597,6 +1597,14 @@
     waxed-stage preservation, raw copper, and representative multi-property
     block states. Full mapColor catalog coverage, biome-aware per-spawn
     BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` nether flora/blackstone static mapColor expansion：
+    native extends the same final provider fallback through vanilla nether
+    vegetation, magma, nether wart/shroomlight, respawn anchor, smooth basalt,
+    and blackstone/polished-blackstone families. Tests pin crimson/warped
+    nylium, warped wart, nether wart, warped/crimson fungi, vines, magma,
+    respawn anchor, smooth basalt, blackstone, and polished blackstone pressure
+    plate RGBs. Full mapColor catalog coverage, biome-aware per-spawn
+    BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
