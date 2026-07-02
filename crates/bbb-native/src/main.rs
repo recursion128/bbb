@@ -52,9 +52,9 @@ use input::{
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
-    publish_snapshot, pump_network_and_terrain, request_net_disconnect, snapshot_is_running,
-    take_control_screenshot, ClientAnimationTickState, LevelEventSoundRandomState,
-    LightmapTickState,
+    control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
+    snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
+    LevelEventSoundRandomState, LightmapTickState,
 };
 use skin_runtime::default_player_skin_cache_dir;
 use sky_assets::load_sky_textures;
@@ -597,7 +597,7 @@ fn main() -> Result<()> {
                         .unwrap_or_else(|| audio_status.clone());
                     if !publish_snapshot(
                         &snapshot,
-                        renderer.counters(),
+                        control_renderer_counters(renderer.counters()),
                         &net_counters,
                         &audio_counters,
                         &world,

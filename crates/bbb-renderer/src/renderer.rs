@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use bbb_control::RendererCounters;
 use glam::Mat4;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -22,6 +21,7 @@ use crate::{
         create_cloud_uniform_buffer, write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu,
         CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
+    counters::RendererCounters,
     entity_models::{
         create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
         create_entity_model_armor_translucent_pipeline,

@@ -1,6 +1,7 @@
 mod block_destroy;
 mod camera;
 mod clouds;
+mod counters;
 mod entity_models;
 mod exports;
 mod generated_item;

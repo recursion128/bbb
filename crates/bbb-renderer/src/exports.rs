@@ -11,6 +11,7 @@ pub use crate::clouds::{
     CloudEnvironment, CloudFrame, CloudShape, CloudTextureImage, VANILLA_DEFAULT_CLOUD_COLOR,
     VANILLA_DEFAULT_CLOUD_HEIGHT,
 };
+pub use crate::counters::RendererCounters;
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,
     arrow_entity_texture_refs, axolotl_entity_texture_refs, bat_entity_texture_refs,

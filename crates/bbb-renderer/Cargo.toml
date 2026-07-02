@@ -8,7 +8,6 @@ publish.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-bbb-control = { path = "../bbb-control" }
 bytemuck = { workspace = true }
 glam = { workspace = true }
 image = { workspace = true }

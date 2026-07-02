@@ -1690,7 +1690,7 @@ pub(crate) fn pump_network_and_terrain(
         .unwrap_or_else(|| audio_status.clone());
     publish_snapshot(
         snapshot,
-        renderer.counters(),
+        control_renderer_counters(renderer.counters()),
         net_counters,
         &audio_counters,
         world,
@@ -6448,6 +6448,76 @@ fn audio_listener_state_from_world(world: &WorldStore) -> Option<AudioListenerSt
         y_rot: pose.y_rot,
         x_rot: pose.x_rot,
     })
+}
+
+/// Project the renderer-owned counter block into the control/snapshot mirror.
+///
+/// The renderer owns the authoritative `bbb_renderer::RendererCounters`; the
+/// control crate keeps a serialization-facing mirror so it never has to depend
+/// on the renderer. This field-by-field copy is the boundary crossing, matching
+/// the repo's established projection philosophy (as with `NetCounters`).
+pub(crate) fn control_renderer_counters(
+    counters: bbb_renderer::RendererCounters,
+) -> RendererCounters {
+    RendererCounters {
+        frame_index: counters.frame_index,
+        width: counters.width,
+        height: counters.height,
+        draw_calls: counters.draw_calls,
+        opaque_draw_calls: counters.opaque_draw_calls,
+        cutout_draw_calls: counters.cutout_draw_calls,
+        translucent_draw_calls: counters.translucent_draw_calls,
+        block_destroy_overlay_draw_calls: counters.block_destroy_overlay_draw_calls,
+        sky_draw_calls: counters.sky_draw_calls,
+        particle_draw_calls: counters.particle_draw_calls,
+        weather_draw_calls: counters.weather_draw_calls,
+        item_entity_draw_calls: counters.item_entity_draw_calls,
+        selection_draw_calls: counters.selection_draw_calls,
+        entity_scene_draw_calls: counters.entity_scene_draw_calls,
+        entity_target_draw_calls: counters.entity_target_draw_calls,
+        entity_scene_boxes: counters.entity_scene_boxes,
+        item_entity_billboards: counters.item_entity_billboards,
+        hud_draw_calls: counters.hud_draw_calls,
+        pipeline_switches: counters.pipeline_switches,
+        screenshots_written: counters.screenshots_written,
+        queued_sections: counters.queued_sections,
+        meshed_sections: counters.meshed_sections,
+        uploaded_sections: counters.uploaded_sections,
+        visible_sections: counters.visible_sections,
+        upload_bytes: counters.upload_bytes,
+        resident_bytes: counters.resident_bytes,
+        atlas_pages: counters.atlas_pages,
+        atlas_reallocations: counters.atlas_reallocations,
+        atlas_width: counters.atlas_width,
+        atlas_height: counters.atlas_height,
+        hud_crosshair_width: counters.hud_crosshair_width,
+        hud_crosshair_height: counters.hud_crosshair_height,
+        terrain_vertices: counters.terrain_vertices,
+        terrain_indices: counters.terrain_indices,
+        opaque_faces: counters.opaque_faces,
+        cutout_faces: counters.cutout_faces,
+        translucent_faces: counters.translucent_faces,
+        culled_faces: counters.culled_faces,
+        particle_spawn_batches: counters.particle_spawn_batches,
+        particle_spawn_commands: counters.particle_spawn_commands,
+        particle_missing_definitions: counters.particle_missing_definitions,
+        particle_missing_sprites: counters.particle_missing_sprites,
+        particle_unknown_types: counters.particle_unknown_types,
+        last_particle_spawn_count: counters.last_particle_spawn_count,
+        pending_particle_spawns: counters.pending_particle_spawns,
+        dropped_particle_spawns: counters.dropped_particle_spawns,
+        active_particle_instances: counters.active_particle_instances,
+        last_particle_intake_count: counters.last_particle_intake_count,
+        last_particle_tick_count: counters.last_particle_tick_count,
+        last_particle_expired_count: counters.last_particle_expired_count,
+        last_particle_active_drop_count: counters.last_particle_active_drop_count,
+        last_particle_limited_drop_count: counters.last_particle_limited_drop_count,
+        particle_runtime_ticks: counters.particle_runtime_ticks,
+        particle_instances_created: counters.particle_instances_created,
+        particle_instances_expired: counters.particle_instances_expired,
+        dropped_active_particle_instances: counters.dropped_active_particle_instances,
+        dropped_limited_particle_instances: counters.dropped_limited_particle_instances,
+    }
 }
 
 pub(crate) fn publish_snapshot(
