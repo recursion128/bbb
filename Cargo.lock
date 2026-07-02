@@ -228,12 +228,8 @@ name = "bbb-audio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bbb-pack",
- "bbb-protocol",
- "bbb-world",
  "kira",
  "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]
