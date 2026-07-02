@@ -1124,9 +1124,9 @@ When an agent does any of the following, update this file in the same slice:
     `CardinalLighting.NETHER` (`down`/`up` = `0.9`; the `N/S/W/E` sides are
     identical to `DEFAULT`), and every other built-in dimension (overworld / end
     / caves) uses `CardinalLighting.DEFAULT` (`down 0.5`, `up 1.0`, sides
-    `0.8/0.6`). Still deferred here: selecting the `water_overlay` sprite for
-    side faces against `HalfTransparentBlock` / `LeavesBlock` neighbors (which
-    also suppresses that side's back face), and datapack dimension types that
+    `0.8/0.6`). Water side faces now also select the vanilla `water_overlay`
+    sprite against `HalfTransparentBlock` / `LeavesBlock` neighbors and suppress
+    that side's back face. Still deferred here: datapack dimension types that
     override the `cardinal_light` field (not decoded; they fall back to
     `DEFAULT`).
     Existing blended entity-model buckets (`entityTranslucent`, dynamic-player

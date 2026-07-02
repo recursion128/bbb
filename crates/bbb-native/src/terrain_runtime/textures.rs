@@ -328,6 +328,13 @@ impl TerrainTextureState {
         (texture_indices, tint)
     }
 
+    pub(super) fn fluid_overlay_texture_index(&self, kind: TerrainFluidKind) -> Option<u32> {
+        match kind {
+            TerrainFluidKind::Water => Some(self.texture_index("minecraft:block/water_overlay")),
+            TerrainFluidKind::Lava => None,
+        }
+    }
+
     pub(crate) fn biome_sky_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
         self.biome_profile(biome_id)?.sky_color
     }

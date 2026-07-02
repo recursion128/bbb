@@ -222,10 +222,14 @@ fn convert_terrain_snapshot(
             let (fluid_texture_indices, fluid_tint) = fluid
                 .map(|fluid| textures.fluid_render_data(fluid.kind, cell.biome_id, Some(position)))
                 .unwrap_or(([0; 6], [TerrainTint::WHITE; 6]));
+            let fluid_overlay_texture_index =
+                fluid.and_then(|fluid| textures.fluid_overlay_texture_index(fluid.kind));
             TerrainCell {
                 block_state_id: cell.block_state_id,
                 fluid,
                 fluid_texture_indices,
+                fluid_overlay_texture_index,
+                fluid_overlay_neighbor: block_uses_fluid_water_overlay(cell.block_name.as_deref()),
                 fluid_tint,
                 texture_indices,
                 render_shape,
@@ -267,6 +271,25 @@ fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
     TerrainFluid::new(kind, fluid.amount, fluid.falling)
 }
 
+fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
+    let Some(block_name) = block_name.and_then(|name| name.strip_prefix("minecraft:")) else {
+        return false;
+    };
+
+    matches!(
+        block_name,
+        "glass"
+            | "tinted_glass"
+            | "ice"
+            | "frosted_ice"
+            | "blue_ice"
+            | "slime_block"
+            | "honey_block"
+    ) || block_name.ends_with("_stained_glass")
+        || block_name.ends_with("copper_grate")
+        || block_name.ends_with("_leaves")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -291,6 +314,44 @@ mod tests {
             )),
             TerrainFluid::new(TerrainFluidKind::Lava, 8, true)
         );
+    }
+
+    #[test]
+    fn fluid_water_overlay_neighbors_follow_vanilla_half_transparent_and_leaves_blocks() {
+        for block_name in [
+            "minecraft:glass",
+            "minecraft:tinted_glass",
+            "minecraft:white_stained_glass",
+            "minecraft:ice",
+            "minecraft:frosted_ice",
+            "minecraft:blue_ice",
+            "minecraft:slime_block",
+            "minecraft:honey_block",
+            "minecraft:copper_grate",
+            "minecraft:weathered_copper_grate",
+            "minecraft:waxed_oxidized_copper_grate",
+            "minecraft:oak_leaves",
+            "minecraft:flowering_azalea_leaves",
+        ] {
+            assert!(
+                block_uses_fluid_water_overlay(Some(block_name)),
+                "{block_name} should use water overlay"
+            );
+        }
+
+        for block_name in [
+            None,
+            Some("stone"),
+            Some("minecraft:stone"),
+            Some("minecraft:packed_ice"),
+            Some("minecraft:glass_pane"),
+            Some("minecraft:white_stained_glass_pane"),
+        ] {
+            assert!(
+                !block_uses_fluid_water_overlay(block_name),
+                "{block_name:?} should not use water overlay"
+            );
+        }
     }
 
     #[test]

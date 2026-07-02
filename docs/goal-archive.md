@@ -2142,3 +2142,15 @@
     through `ItemModelResolver.updateForTopItem(..., GROUND, ...)` before
     reading `ItemStackRenderState.pickParticleMaterial(random)`. Full component
     patch decoding remains with the wider item-particle material follow-up.
+
+## P2：Terrain / Block Render Presentation
+
+- [x] fluid water overlay side texture：renderer terrain cells now carry the
+  water overlay sprite index and a native-projected overlay-neighbor flag.
+  Water side faces use `minecraft:block/water_overlay` and suppress the
+  reversed side back face when the adjacent vanilla block is a
+  `HalfTransparentBlock` or `LeavesBlock`, matching
+  `FluidRenderer.tesselate` / `FluidStateModelSet.WATER_MODEL`. Native marks
+  glass, tinted/stained glass, ice/frosted ice/blue ice, slime, honey,
+  copper grates, and `_leaves` blocks while leaving panes, packed ice, stone,
+  and lava outside the overlay path.

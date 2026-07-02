@@ -1,7 +1,7 @@
 use super::super::{
-    TerrainCardinalLighting, TerrainFace, TerrainFluid, TerrainLight, TerrainMaterialClass,
-    TerrainMesh, TerrainQuad, TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
-    TerrainVertex,
+    TerrainCardinalLighting, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight,
+    TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainTextureAtlas, TerrainTint,
+    TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::{
     culls_face_between_cells,
@@ -113,6 +113,7 @@ pub(super) fn emit_box(
     light: TerrainLight,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
+    fluid_overlay_texture_index: Option<u32>,
     atlas: &TerrainTextureAtlas,
     from: [u8; 3],
     to: [u8; 3],
@@ -211,8 +212,22 @@ pub(super) fn emit_box(
             fluid_corner_heights(x, y, z, max[1], fluid.map(|fluid| fluid.kind), lookup)
                 .with_top_offset(fluid_top_offset)
         });
-        let texture_index =
-            fluid_face_texture_index(face.face, texture_indices, fluid_flow.is_some());
+        let fluid_side_overlay_texture_index = is_fluid
+            .then(|| {
+                fluid_side_overlay_texture_index(
+                    face.face,
+                    fluid,
+                    fluid_overlay_texture_index,
+                    x,
+                    y,
+                    z,
+                    lookup,
+                )
+            })
+            .flatten();
+        let texture_index = fluid_side_overlay_texture_index.unwrap_or_else(|| {
+            fluid_face_texture_index(face.face, texture_indices, fluid_flow.is_some())
+        });
         let ambient_occlusion = if is_fluid {
             [1.0; 4]
         } else {
@@ -272,8 +287,8 @@ pub(super) fn emit_box(
         // `addFace(..., addBackFace)`, which re-emits the four vertices in reverse
         // (`v3, v2, v1, v0`) to form a back face for the inside-fluid view:
         //   - top:    `addBackFace = shouldRenderBackwardUpFace(level, pos.above())`
-        //   - sides:  `addBackFace = !isOverlay` (always true without the deferred
-        //             `water_overlay` texture path against HalfTransparent/Leaves)
+        //   - sides:  `addBackFace = !isOverlay`, where water uses `water_overlay`
+        //             against HalfTransparentBlock/LeavesBlock neighbors
         //   - bottom: `addBackFace = false`
         // The terrain pipeline uses back-face culling, so the reversed quad is what
         // keeps the fluid surface visible when the camera is submerged.
@@ -283,7 +298,7 @@ pub(super) fn emit_box(
                     fluid_should_render_backward_up_face(x, y, z, fluid, lookup)
                 }),
                 TerrainFace::North | TerrainFace::South | TerrainFace::West | TerrainFace::East => {
-                    fluid.is_some()
+                    fluid.is_some() && fluid_side_overlay_texture_index.is_none()
                 }
                 TerrainFace::Down => false,
             };
@@ -316,6 +331,31 @@ pub(super) fn emit_box(
             );
         }
     }
+}
+
+fn fluid_side_overlay_texture_index(
+    face: TerrainFace,
+    fluid: Option<TerrainFluid>,
+    overlay_texture_index: Option<u32>,
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<u32> {
+    if !matches!(
+        face,
+        TerrainFace::North | TerrainFace::South | TerrainFace::West | TerrainFace::East
+    ) || !matches!(fluid.map(|fluid| fluid.kind), Some(TerrainFluidKind::Water))
+    {
+        return None;
+    }
+
+    let overlay_texture_index = overlay_texture_index?;
+    let (dx, dy, dz) = cull_offset(face);
+    lookup
+        .cell(x + dx, y + dy, z + dz)
+        .is_some_and(|neighbor| neighbor.fluid_overlay_neighbor)
+        .then_some(overlay_texture_index)
 }
 
 fn box_face_will_render(

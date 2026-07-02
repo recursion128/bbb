@@ -47,6 +47,7 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     let images = vec![
         sprite("minecraft:block/water_still"),
         sprite("minecraft:block/water_flow"),
+        sprite("minecraft:block/water_overlay"),
         sprite("minecraft:block/lava_still"),
         sprite("minecraft:block/lava_flow"),
     ];
@@ -65,12 +66,17 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     );
     let water_still = textures.texture_index("minecraft:block/water_still");
     let water_flow = textures.texture_index("minecraft:block/water_flow");
+    let water_overlay = textures.texture_index("minecraft:block/water_overlay");
     assert_eq!(water[0], water_still);
     assert_eq!(water[1], water_still);
     assert_eq!(water[2..], [water_flow; 4]);
     let (water_layer, water_tint) = textures.fluid_render_data(TerrainFluidKind::Water, None, None);
     assert_eq!(water_layer, water);
     assert_eq!(water_tint, [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6]);
+    assert_eq!(
+        textures.fluid_overlay_texture_index(TerrainFluidKind::Water),
+        Some(water_overlay)
+    );
 
     let (lava, _, _, _, _) = textures.block_render_data(
         Some("minecraft:lava"),
@@ -87,6 +93,10 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     let (lava_layer, lava_tint) = textures.fluid_render_data(TerrainFluidKind::Lava, None, None);
     assert_eq!(lava_layer, lava);
     assert_eq!(lava_tint, [TerrainTint::WHITE; 6]);
+    assert_eq!(
+        textures.fluid_overlay_texture_index(TerrainFluidKind::Lava),
+        None
+    );
 }
 
 #[test]

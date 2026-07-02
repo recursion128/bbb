@@ -130,6 +130,8 @@ pub struct TerrainCell {
     pub material: TerrainMaterialClass,
     pub fluid: Option<TerrainFluid>,
     pub fluid_texture_indices: [u32; 6],
+    pub fluid_overlay_texture_index: Option<u32>,
+    pub fluid_overlay_neighbor: bool,
     pub fluid_tint: [TerrainTint; 6],
     pub texture_indices: [u32; 6],
     pub render_shape: TerrainRenderShape,
@@ -214,6 +216,8 @@ impl TerrainCell {
         material: TerrainMaterialClass::Empty,
         fluid: None,
         fluid_texture_indices: [0; 6],
+        fluid_overlay_texture_index: None,
+        fluid_overlay_neighbor: false,
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         render_shape: TerrainRenderShape::Cube,
@@ -233,6 +237,8 @@ impl TerrainCell {
             material,
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
+            fluid_overlay_texture_index: None,
+            fluid_overlay_neighbor: false,
             fluid_tint: [TerrainTint::WHITE; 6],
             texture_indices: [texture_index; 6],
             render_shape: TerrainRenderShape::Cube,
@@ -254,6 +260,8 @@ impl TerrainCell {
             material,
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
+            fluid_overlay_texture_index: None,
+            fluid_overlay_neighbor: false,
             fluid_tint: [TerrainTint::WHITE; 6],
             texture_indices: [texture_index; 6],
             render_shape,
@@ -285,6 +293,16 @@ impl TerrainCell {
         self.fluid = Some(fluid);
         self.fluid_texture_indices = texture_indices;
         self.fluid_tint = tint;
+        self
+    }
+
+    pub fn with_fluid_overlay_texture(mut self, texture_index: u32) -> Self {
+        self.fluid_overlay_texture_index = Some(texture_index);
+        self
+    }
+
+    pub fn with_fluid_overlay_neighbor(mut self) -> Self {
+        self.fluid_overlay_neighbor = true;
         self
     }
 

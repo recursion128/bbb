@@ -311,6 +311,39 @@ fn fluid_side_face_emits_reversed_back_face_for_submerged_view() {
 }
 
 #[test]
+fn water_side_overlay_neighbor_uses_overlay_texture_without_reversed_back_face() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8).with_fluid_overlay_texture(3);
+    cells[cell_index(1, 0, 1, 1)] = TerrainCell::EMPTY.with_fluid_overlay_neighbor();
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let atlas = TerrainTextureAtlas {
+        rects: vec![
+            TerrainUvRect::UNIT,
+            TerrainUvRect::UNIT,
+            TerrainUvRect {
+                min: [0.0, 0.0],
+                max: [0.25, 0.25],
+            },
+            TerrainUvRect {
+                min: [0.5, 0.5],
+                max: [1.0, 1.0],
+            },
+        ],
+        fallback_index: 0,
+    };
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &atlas);
+    let mesh = &layers.translucent[0];
+    let north = face_vertices(mesh, 86, [0.0, 0.0, -1.0]);
+
+    assert_eq!(north.len(), 4);
+    assert!(north
+        .iter()
+        .all(|vertex| vertex.uv[0] >= 0.5 && vertex.uv[1] >= 0.5));
+    assert_eq!(mesh.translucent_faces, 10);
+}
+
+#[test]
 fn fluid_flowing_top_uses_flowing_texture_and_rotated_uvs() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
@@ -558,6 +591,8 @@ fn cross_layers_preserve_emissive_light() {
         material: TerrainMaterialClass::Cutout,
         fluid: None,
         fluid_texture_indices: [0; 6],
+        fluid_overlay_texture_index: None,
+        fluid_overlay_neighbor: false,
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
@@ -733,6 +768,8 @@ fn multi_box_model_skips_absent_faces() {
         material: TerrainMaterialClass::Opaque,
         fluid: None,
         fluid_texture_indices: [0; 6],
+        fluid_overlay_texture_index: None,
+        fluid_overlay_neighbor: false,
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
@@ -805,6 +842,8 @@ fn boxes_use_per_box_texture_and_tint() {
         material: TerrainMaterialClass::Opaque,
         fluid: None,
         fluid_texture_indices: [0; 6],
+        fluid_overlay_texture_index: None,
+        fluid_overlay_neighbor: false,
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
