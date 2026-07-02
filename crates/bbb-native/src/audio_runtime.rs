@@ -2,12 +2,9 @@ mod random;
 pub(crate) mod resolver;
 
 use anyhow::{Context, Result};
-use bbb_audio::{
-    AudioCommand, JukeboxSongRegistry, KiraAudioRuntime, SoundEventRegistry,
-    TickEntitySoundPositionsCommand,
-};
+use bbb_audio::{AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand};
 use bbb_control::AudioCounters;
-use bbb_pack::{PackRoots, SoundCatalog};
+use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
 use bbb_world::{
     JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
     StopSoundEventState,

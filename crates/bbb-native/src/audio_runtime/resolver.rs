@@ -1,11 +1,14 @@
 use std::sync::OnceLock;
 
 use bbb_audio::{
-    AudioCategory, AudioCommand, AudioVolumeSettings, JukeboxSongRegistry, PlayEntitySoundCommand,
+    AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
     PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
-    SoundEventRegistry, StopJukeboxSongCommand, StopSoundCommand,
+    StopJukeboxSongCommand, StopSoundCommand,
 };
-use bbb_pack::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
+use bbb_pack::{
+    JukeboxSongRegistry, SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition,
+    SoundEventRegistry,
+};
 use bbb_world::{
     JukeboxLevelEventAction, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
     SoundEventState, SoundHolderState, StopSoundEventState,

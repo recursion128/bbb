@@ -251,7 +251,6 @@ name = "bbb-item-model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bbb-audio",
  "bbb-pack",
  "bbb-protocol",
  "bbb-renderer",

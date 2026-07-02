@@ -679,9 +679,9 @@ mod tests {
             bbb_control::AudioCounters::default()
         }
 
-        fn set_sound_event_registry(&mut self, _registry: bbb_audio::SoundEventRegistry) {}
+        fn set_sound_event_registry(&mut self, _registry: bbb_pack::SoundEventRegistry) {}
 
-        fn set_jukebox_song_registry(&mut self, _registry: bbb_audio::JukeboxSongRegistry) {}
+        fn set_jukebox_song_registry(&mut self, _registry: bbb_pack::JukeboxSongRegistry) {}
 
         fn play_local_sound(&mut self, _state: &bbb_world::LocalSoundEventState) {}
 

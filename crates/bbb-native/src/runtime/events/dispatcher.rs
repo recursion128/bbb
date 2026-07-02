@@ -1,6 +1,6 @@
-use bbb_audio::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
+use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
     advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, WorldStore,

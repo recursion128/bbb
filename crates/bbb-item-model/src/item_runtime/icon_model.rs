@@ -3,10 +3,9 @@ use std::{
     sync::OnceLock,
 };
 
-use bbb_audio::SoundEventRegistry;
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, SelectCase, TagCatalog, TerrainColorMaps,
+    ItemTintSource, SelectCase, SoundEventRegistry, TagCatalog, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
