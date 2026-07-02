@@ -1457,6 +1457,16 @@
     the Nether), and submits the deterministic `offsetType(XZ)` drip position.
     Custom dimension `visual/default_dripstone_particle` attributes remain P3
     resource-registry follow-up.
+  - [x] plant-growth LevelEvent：event `1505`
+    (`PARTICLES_AND_SOUND_PLANT_GROWTH`) now mirrors vanilla
+    `BoneMealItem.addGrowthParticles` branch selection for loaded client block
+    state: BonemealableBlock grower/in-block happy-villager particles,
+    rooted-dirt and mangrove-leaves below-position grower particles, water and
+    neighbor-spreader wide spread (`count * 3`, `spreadWidth=3.0`,
+    `spreadHeight=1.0`), and the `allowFloatingParticles=false` non-air support
+    filter across the sampled 7x7 below layer. Shape-sensitive
+    `spawnParticleInBlock` heights remain follow-up with the broader block-shape
+    particle work.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs

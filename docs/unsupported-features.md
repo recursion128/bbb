@@ -261,6 +261,13 @@ When an agent does any of the following, update this file in the same slice:
         apply mud-as-water outside water-evaporating dimensions, fall back to
         the built-in dimension default (`water` outside the Nether, `lava` in
         the Nether), and submit the vanilla XZ-offset drip position
+      - event `1505`: plant-growth `minecraft:happy_villager` particles for
+        vanilla `BoneMealItem.addGrowthParticles` branches, including
+        BonemealableBlock grower/in-block emission, rooted-dirt and
+        mangrove-leaves below-position grower particles, water and
+        neighbor-spreader wide spread (`count * 3`, `spreadWidth=3.0`,
+        `spreadHeight=1.0`), and the `allowFloatingParticles=false` 7x7
+        support-layer non-air filter
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
@@ -327,13 +334,9 @@ When an agent does any of the following, update this file in the same slice:
       `2003`'s ender-eye item particles and events `2002` / `2007`
       splash-potion item particles, stay deferred with terrain/item particle
       atlas rendering rather than being approximated as simple atlas particles.
-      Event `1505`
-      (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
-      `BoneMealItem.addGrowthParticles` branches on the target block's
-      `BonemealableBlock` type or water state before choosing the particle
-      spread, and the water / neighbor-spreader path uses
-      `ParticleUtils.spawnParticles(..., allowFloatingParticles=false)`, which
-      queries the block below each sampled particle position before emitting.
+      Block-state shape-sensitive `ParticleUtils.spawnParticleInBlock`
+      spread-height remains deferred for in-block LevelEvent branches that
+      currently use the air/default one-block height.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

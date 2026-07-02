@@ -1,7 +1,8 @@
 use super::*;
 use crate::audio_runtime::resolver::{AudioCommandResolver, AudioResolveError};
 use crate::particle_runtime::{
-    LevelEventDripstoneDripParticle, LevelEventParticleContext, LevelParticleSpawnContext,
+    LevelEventDripstoneDripParticle, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
+    LevelEventGrowthParticleSupport, LevelEventParticleContext, LevelParticleSpawnContext,
     ParticleEventSink,
 };
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
@@ -3054,11 +3055,13 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 sculk_charge_pop_full_block: Some(true),
                 block_state_id_at_event_pos: Some(1),
                 dripstone_drip_particle: None,
+                growth_particles: None,
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
                 block_state_id_at_event_pos: Some(0),
                 dripstone_drip_particle: None,
+                growth_particles: None,
             },
         ]
     );
@@ -3141,6 +3144,66 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
         level_event_particle_context(&nether, &level_event_at(1504, 16, 0, -32))
             .dripstone_drip_particle,
         Some(LevelEventDripstoneDripParticle::Lava)
+    );
+}
+
+#[test]
+fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
+    let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+    let grass_id = vanilla_block_state_id("minecraft:grass_block", [("snowy", "false")]);
+    let rooted_dirt_id = vanilla_block_state_id("minecraft:rooted_dirt", []);
+    let stone_id = vanilla_block_state_id("minecraft:stone", []);
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+
+    set_test_block(&mut world, block_pos(16, -63, -32), water_id);
+    set_test_block(&mut world, block_pos(16, -64, -32), stone_id);
+    let mut water_support = LevelEventGrowthParticleSupport::empty();
+    water_support.insert(0, 0);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1505, 16, -63, -32, 15))
+            .growth_particles,
+        Some(LevelEventGrowthParticleContext {
+            pos: block_pos(16, -63, -32),
+            mode: LevelEventGrowthParticleMode::WideNoFloating {
+                support: water_support
+            },
+        })
+    );
+
+    set_test_block(&mut world, block_pos(17, -64, -32), grass_id);
+    let mut grass_support = LevelEventGrowthParticleSupport::empty();
+    grass_support.insert(-1, 0);
+    grass_support.insert(0, 0);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1505, 17, -64, -32, 15))
+            .growth_particles,
+        Some(LevelEventGrowthParticleContext {
+            pos: block_pos(17, -63, -32),
+            mode: LevelEventGrowthParticleMode::WideNoFloating {
+                support: grass_support
+            },
+        })
+    );
+
+    set_test_block(&mut world, block_pos(18, -63, -32), rooted_dirt_id);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1505, 18, -63, -32, 15))
+            .growth_particles,
+        Some(LevelEventGrowthParticleContext {
+            pos: block_pos(18, -64, -32),
+            mode: LevelEventGrowthParticleMode::InBlock,
+        })
+    );
+
+    set_test_block(&mut world, block_pos(19, -63, -32), stone_id);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1505, 19, -63, -32, 15))
+            .growth_particles,
+        None
     );
 }
 
@@ -5797,10 +5860,14 @@ fn protocol_update_mob_effect(
 }
 
 fn level_event_at(event_type: i32, x: i32, y: i32, z: i32) -> LevelEvent {
+    level_event_at_with_data(event_type, x, y, z, 0)
+}
+
+fn level_event_at_with_data(event_type: i32, x: i32, y: i32, z: i32, data: i32) -> LevelEvent {
     LevelEvent {
         event_type,
         pos: block_pos(x, y, z),
-        data: 0,
+        data,
         global: false,
     }
 }

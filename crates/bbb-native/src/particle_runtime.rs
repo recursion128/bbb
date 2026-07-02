@@ -6,7 +6,7 @@ use bbb_pack::{
     ParticleSpriteCatalog, SpriteImage,
 };
 use bbb_protocol::codec::Decoder;
-use bbb_protocol::packets::{ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
+use bbb_protocol::packets::{BlockPos, ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
@@ -39,12 +39,59 @@ pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
     pub(crate) block_state_id_at_event_pos: Option<i32>,
     pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
+    pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LevelEventDripstoneDripParticle {
     Water,
     Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct LevelEventGrowthParticleContext {
+    pub(crate) pos: BlockPos,
+    pub(crate) mode: LevelEventGrowthParticleMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LevelEventGrowthParticleMode {
+    InBlock,
+    WideNoFloating {
+        support: LevelEventGrowthParticleSupport,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct LevelEventGrowthParticleSupport {
+    bits: u64,
+}
+
+impl LevelEventGrowthParticleSupport {
+    pub(crate) fn empty() -> Self {
+        Self { bits: 0 }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn full() -> Self {
+        let mut support = Self::empty();
+        for dx in -GROWTH_PARTICLE_SUPPORT_RADIUS..=GROWTH_PARTICLE_SUPPORT_RADIUS {
+            for dz in -GROWTH_PARTICLE_SUPPORT_RADIUS..=GROWTH_PARTICLE_SUPPORT_RADIUS {
+                support.insert(dx, dz);
+            }
+        }
+        support
+    }
+
+    pub(crate) fn insert(&mut self, dx: i32, dz: i32) {
+        if let Some(bit) = growth_particle_support_bit(dx, dz) {
+            self.bits |= bit;
+        }
+    }
+
+    fn contains(self, dx: i32, dz: i32) -> bool {
+        growth_particle_support_bit(dx, dz).is_some_and(|bit| self.bits & bit != 0)
+    }
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -401,6 +448,7 @@ impl ParticleCommandResolver {
                 self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
             }
             DRIPSTONE_DRIP_LEVEL_EVENT => self.dripstone_drip_particle_batch(event, context),
+            PLANT_GROWTH_LEVEL_EVENT => self.growth_particle_batch(event, context, random),
             DISPENSER_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
             }
@@ -664,6 +712,35 @@ impl ParticleCommandResolver {
             particle_type_id,
             vec![(pointed_dripstone_drip_position(event), Vec3d::default())],
         )
+    }
+
+    fn growth_particle_batch(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        if event.data <= 0 {
+            return ParticleSpawnBatch::default();
+        }
+        let Some(growth) = context.growth_particles else {
+            return ParticleSpawnBatch::default();
+        };
+        match growth.mode {
+            LevelEventGrowthParticleMode::InBlock => self.particle_in_block_batch_at(
+                growth.pos,
+                HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                event.data,
+                random,
+            ),
+            LevelEventGrowthParticleMode::WideNoFloating { support } => self
+                .growth_wide_particle_batch(
+                    growth.pos,
+                    event.data.wrapping_mul(3),
+                    support,
+                    random,
+                ),
+        }
     }
 
     fn sculk_charge_particle_batch(
@@ -1300,6 +1377,16 @@ impl ParticleCommandResolver {
         count: i32,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
+        self.particle_in_block_batch_at(event.pos, particle_type_id, count, random)
+    }
+
+    fn particle_in_block_batch_at(
+        &self,
+        pos: BlockPos,
+        particle_type_id: i32,
+        count: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
         if count <= 0 {
             return ParticleSpawnBatch::default();
         }
@@ -1319,13 +1406,57 @@ impl ParticleCommandResolver {
                 z: random.next_gaussian() * 0.02,
             };
             let position = Vec3d {
-                x: f64::from(event.pos.x) + random.next_double(),
-                y: f64::from(event.pos.y) + random.next_double(),
-                z: f64::from(event.pos.z) + random.next_double(),
+                x: f64::from(pos.x) + random.next_double(),
+                y: f64::from(pos.y) + random.next_double(),
+                z: f64::from(pos.z) + random.next_double(),
             };
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
+        }
+
+        batch
+    }
+
+    fn growth_wide_particle_batch(
+        &self,
+        pos: BlockPos,
+        count: i32,
+        support: LevelEventGrowthParticleSupport,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        if count <= 0 {
+            return ParticleSpawnBatch::default();
+        }
+        let template = match self.simple_particle_template(HAPPY_VILLAGER_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..count {
+            let velocity = Vec3d {
+                x: random.next_gaussian() * 0.02,
+                y: random.next_gaussian() * 0.02,
+                z: random.next_gaussian() * 0.02,
+            };
+            let position = Vec3d {
+                x: f64::from(pos.x)
+                    + GROWTH_PARTICLE_WIDE_START_OFFSET
+                    + random.next_double() * GROWTH_PARTICLE_WIDE_SPREAD * 2.0,
+                y: f64::from(pos.y) + random.next_double() * GROWTH_PARTICLE_WIDE_HEIGHT,
+                z: f64::from(pos.z)
+                    + GROWTH_PARTICLE_WIDE_START_OFFSET
+                    + random.next_double() * GROWTH_PARTICLE_WIDE_SPREAD * 2.0,
+            };
+            if growth_particle_position_has_support(pos, position, support) {
+                batch
+                    .commands
+                    .push(self.command_from_template(&template, position, velocity, false));
+            }
         }
 
         batch
@@ -1955,6 +2086,35 @@ fn random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -
     random.next_double() * (max - min) + min
 }
 
+fn growth_particle_position_has_support(
+    pos: BlockPos,
+    position: Vec3d,
+    support: LevelEventGrowthParticleSupport,
+) -> bool {
+    let support_x = position.x.floor() as i32;
+    let Some(support_y) = (position.y.floor() as i32).checked_sub(1) else {
+        return false;
+    };
+    let support_z = position.z.floor() as i32;
+    let (Some(dx), Some(dz)) = (support_x.checked_sub(pos.x), support_z.checked_sub(pos.z)) else {
+        return false;
+    };
+    pos.y
+        .checked_sub(1)
+        .is_some_and(|below_y| support_y == below_y && support.contains(dx, dz))
+}
+
+fn growth_particle_support_bit(dx: i32, dz: i32) -> Option<u64> {
+    if !(-GROWTH_PARTICLE_SUPPORT_RADIUS..=GROWTH_PARTICLE_SUPPORT_RADIUS).contains(&dx)
+        || !(-GROWTH_PARTICLE_SUPPORT_RADIUS..=GROWTH_PARTICLE_SUPPORT_RADIUS).contains(&dz)
+    {
+        return None;
+    }
+    let index = (dz + GROWTH_PARTICLE_SUPPORT_RADIUS) * GROWTH_PARTICLE_SUPPORT_WIDTH
+        + (dx + GROWTH_PARTICLE_SUPPORT_RADIUS);
+    Some(1_u64 << index)
+}
+
 fn pointed_dripstone_drip_position(event: &LevelEvent) -> Vec3d {
     let (x_offset, z_offset) = pointed_dripstone_xz_offset(event.pos.x, event.pos.z);
     Vec3d {
@@ -1991,6 +2151,7 @@ const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
@@ -2105,6 +2266,11 @@ const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
 const POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET: f32 = 0.125;
+const GROWTH_PARTICLE_WIDE_SPREAD: f64 = 3.0;
+const GROWTH_PARTICLE_WIDE_HEIGHT: f64 = 1.0;
+const GROWTH_PARTICLE_WIDE_START_OFFSET: f64 = 0.5 - GROWTH_PARTICLE_WIDE_SPREAD;
+const GROWTH_PARTICLE_SUPPORT_RADIUS: i32 = 3;
+const GROWTH_PARTICLE_SUPPORT_WIDTH: i32 = GROWTH_PARTICLE_SUPPORT_RADIUS * 2 + 1;
 
 fn smash_attack_particle_loop_count(count: i32, divisor: f32) -> usize {
     let limit = count as f32 / divisor;
@@ -2936,6 +3102,83 @@ mod tests {
         let missing_context_drip =
             resolver.resolve_level_event_particles(&dripstone_event, &mut missing_context_random);
         assert!(missing_context_drip.commands.is_empty());
+
+        let growth_event = LevelEvent {
+            event_type: PLANT_GROWTH_LEVEL_EVENT,
+            data: 2,
+            ..level_event_packet(PLANT_GROWTH_LEVEL_EVENT)
+        };
+        let mut growth_in_block_random = LevelEventSoundRandomState::with_seed(0);
+        let growth_in_block = resolver.resolve_level_event_particles_with_context(
+            &growth_event,
+            LevelEventParticleContext {
+                growth_particles: Some(LevelEventGrowthParticleContext {
+                    pos: growth_event.pos,
+                    mode: LevelEventGrowthParticleMode::InBlock,
+                }),
+                ..LevelEventParticleContext::default()
+            },
+            &mut growth_in_block_random,
+        );
+        assert_eq!(growth_in_block.len(), 2);
+        assert_particle_command(
+            &growth_in_block.commands[0],
+            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            "minecraft:happy_villager",
+            [
+                10.597_545_277_797_202,
+                64.333_218_399_476_65,
+                -2.614_810_815_259_281_7,
+            ],
+            [
+                0.016_050_661_274_780_612,
+                -0.018_030_921_768_350_243,
+                0.041_618_415_808_563_26,
+            ],
+            false,
+        );
+
+        let mut growth_wide_random = LevelEventSoundRandomState::with_seed(0);
+        let growth_wide = resolver.resolve_level_event_particles_with_context(
+            &growth_event,
+            LevelEventParticleContext {
+                growth_particles: Some(LevelEventGrowthParticleContext {
+                    pos: growth_event.pos,
+                    mode: LevelEventGrowthParticleMode::WideNoFloating {
+                        support: LevelEventGrowthParticleSupport::full(),
+                    },
+                }),
+                ..LevelEventParticleContext::default()
+            },
+            &mut growth_wide_random,
+        );
+        let (growth_wide_position, growth_wide_velocity) =
+            first_growth_wide_particle(growth_event.pos);
+        assert_eq!(growth_wide.len(), 6);
+        assert_particle_command(
+            &growth_wide.commands[0],
+            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            "minecraft:happy_villager",
+            growth_wide_position,
+            growth_wide_velocity,
+            false,
+        );
+
+        let mut unsupported_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let unsupported_growth = resolver.resolve_level_event_particles_with_context(
+            &growth_event,
+            LevelEventParticleContext {
+                growth_particles: Some(LevelEventGrowthParticleContext {
+                    pos: growth_event.pos,
+                    mode: LevelEventGrowthParticleMode::WideNoFloating {
+                        support: LevelEventGrowthParticleSupport::empty(),
+                    },
+                }),
+                ..LevelEventParticleContext::default()
+            },
+            &mut unsupported_growth_random,
+        );
+        assert!(unsupported_growth.commands.is_empty());
 
         let mut shriek_random = LevelEventSoundRandomState::with_seed(0);
         let shriek = resolver.resolve_level_event_particles(
@@ -4422,6 +4665,25 @@ mod tests {
                 random.next_gaussian() * 0.02,
             ],
         )
+    }
+
+    fn first_growth_wide_particle(pos: BlockPos) -> ([f64; 3], [f64; 3]) {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let velocity = [
+            random.next_gaussian() * 0.02,
+            random.next_gaussian() * 0.02,
+            random.next_gaussian() * 0.02,
+        ];
+        let position = [
+            f64::from(pos.x)
+                + GROWTH_PARTICLE_WIDE_START_OFFSET
+                + random.next_double() * GROWTH_PARTICLE_WIDE_SPREAD * 2.0,
+            f64::from(pos.y) + random.next_double() * GROWTH_PARTICLE_WIDE_HEIGHT,
+            f64::from(pos.z)
+                + GROWTH_PARTICLE_WIDE_START_OFFSET
+                + random.next_double() * GROWTH_PARTICLE_WIDE_SPREAD * 2.0,
+        ];
+        (position, velocity)
     }
 
     fn expected_smash_attack_particles(count: i32) -> Vec<([f64; 3], [f64; 3])> {

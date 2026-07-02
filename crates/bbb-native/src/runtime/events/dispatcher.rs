@@ -1,7 +1,7 @@
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
-use bbb_protocol::packets::{RegistryData, Vec3d as ProtocolVec3d};
+use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
     advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, TerrainFluidKind,
     WorldStore,
@@ -11,7 +11,8 @@ use tokio::sync::mpsc;
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::{
-    LevelEventDripstoneDripParticle, LevelEventParticleContext, LevelParticleSpawnContext,
+    LevelEventDripstoneDripParticle, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
+    LevelEventGrowthParticleSupport, LevelEventParticleContext, LevelParticleSpawnContext,
     ParticleEventSink,
 };
 
@@ -20,6 +21,7 @@ use super::control_state::apply_control_projection_event;
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 
 #[cfg(test)]
@@ -764,6 +766,7 @@ pub(super) fn level_event_particle_context(
         sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
+        growth_particles: growth_particle_context(world, event),
     }
 }
 
@@ -794,6 +797,181 @@ fn sculk_charge_pop_full_block_context(
     world
         .probe_block(pos)
         .map(|probe| crate::block_outline::block_probe_has_full_block_shape(&probe))
+}
+
+fn growth_particle_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<LevelEventGrowthParticleContext> {
+    if event.event_type != PLANT_GROWTH_LEVEL_EVENT || event.data <= 0 {
+        return None;
+    }
+    let event_pos = protocol_to_world_block_pos(event.pos);
+    let probe = world.probe_block(event_pos)?;
+    let block_name = probe.block_name.as_deref()?;
+
+    if block_name == "minecraft:water" {
+        return Some(wide_growth_particle_context(world, event.pos));
+    }
+    if is_neighbor_spreader_bonemealable_block_name(block_name) {
+        return Some(wide_growth_particle_context(
+            world,
+            protocol_block_pos_relative_y(event.pos, 1)?,
+        ));
+    }
+    if is_below_particle_pos_bonemealable_block_name(block_name) {
+        return Some(LevelEventGrowthParticleContext {
+            pos: protocol_block_pos_relative_y(event.pos, -1)?,
+            mode: LevelEventGrowthParticleMode::InBlock,
+        });
+    }
+    if is_grower_bonemealable_block_name(block_name) {
+        return Some(LevelEventGrowthParticleContext {
+            pos: event.pos,
+            mode: LevelEventGrowthParticleMode::InBlock,
+        });
+    }
+    None
+}
+
+fn wide_growth_particle_context(
+    world: &WorldStore,
+    pos: ProtocolBlockPos,
+) -> LevelEventGrowthParticleContext {
+    LevelEventGrowthParticleContext {
+        pos,
+        mode: LevelEventGrowthParticleMode::WideNoFloating {
+            support: growth_particle_support(world, pos),
+        },
+    }
+}
+
+fn growth_particle_support(
+    world: &WorldStore,
+    pos: ProtocolBlockPos,
+) -> LevelEventGrowthParticleSupport {
+    let mut support = LevelEventGrowthParticleSupport::empty();
+    let Some(y) = pos.y.checked_sub(1) else {
+        return support;
+    };
+    for dx in -3..=3 {
+        for dz in -3..=3 {
+            let (Some(x), Some(z)) = (pos.x.checked_add(dx), pos.z.checked_add(dz)) else {
+                continue;
+            };
+            let probe = world.probe_block(bbb_world::BlockPos { x, y, z });
+            if probe
+                .as_ref()
+                .is_some_and(|probe| !block_probe_is_air(probe))
+            {
+                support.insert(dx, dz);
+            }
+        }
+    }
+    support
+}
+
+fn is_neighbor_spreader_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:grass_block"
+            | "minecraft:netherrack"
+            | "minecraft:warped_nylium"
+            | "minecraft:crimson_nylium"
+            | "minecraft:moss_block"
+            | "minecraft:pale_moss_block"
+    )
+}
+
+fn is_below_particle_pos_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:rooted_dirt" | "minecraft:mangrove_leaves"
+    )
+}
+
+fn is_grower_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:oak_sapling"
+            | "minecraft:spruce_sapling"
+            | "minecraft:birch_sapling"
+            | "minecraft:jungle_sapling"
+            | "minecraft:acacia_sapling"
+            | "minecraft:cherry_sapling"
+            | "minecraft:dark_oak_sapling"
+            | "minecraft:pale_oak_sapling"
+            | "minecraft:short_grass"
+            | "minecraft:fern"
+            | "minecraft:bush"
+            | "minecraft:short_dry_grass"
+            | "minecraft:tall_dry_grass"
+            | "minecraft:seagrass"
+            | "minecraft:sea_pickle"
+            | "minecraft:wheat"
+            | "minecraft:carrots"
+            | "minecraft:potatoes"
+            | "minecraft:beetroots"
+            | "minecraft:pumpkin_stem"
+            | "minecraft:melon_stem"
+            | "minecraft:cocoa"
+            | "minecraft:torchflower_crop"
+            | "minecraft:pitcher_crop"
+            | "minecraft:bamboo_sapling"
+            | "minecraft:bamboo"
+            | "minecraft:sweet_berry_bush"
+            | "minecraft:warped_fungus"
+            | "minecraft:crimson_fungus"
+            | "minecraft:azalea"
+            | "minecraft:flowering_azalea"
+            | "minecraft:pink_petals"
+            | "minecraft:wildflowers"
+            | "minecraft:big_dripleaf"
+            | "minecraft:big_dripleaf_stem"
+            | "minecraft:small_dripleaf"
+            | "minecraft:pale_moss_carpet"
+            | "minecraft:pale_hanging_moss"
+            | "minecraft:firefly_bush"
+            | "minecraft:hanging_moss"
+            | "minecraft:glow_lichen"
+            | "minecraft:sunflower"
+            | "minecraft:lilac"
+            | "minecraft:rose_bush"
+            | "minecraft:peony"
+            | "minecraft:brown_mushroom"
+            | "minecraft:red_mushroom"
+            | "minecraft:cave_vines"
+            | "minecraft:cave_vines_plant"
+            | "minecraft:weeping_vines"
+            | "minecraft:weeping_vines_plant"
+            | "minecraft:twisting_vines"
+            | "minecraft:twisting_vines_plant"
+            | "minecraft:kelp"
+            | "minecraft:kelp_plant"
+    )
+}
+
+fn block_probe_is_air(probe: &bbb_world::BlockProbe) -> bool {
+    matches!(
+        probe.block_name.as_deref(),
+        Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air")
+    )
+}
+
+fn protocol_to_world_block_pos(pos: ProtocolBlockPos) -> bbb_world::BlockPos {
+    bbb_world::BlockPos {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+    }
+}
+
+fn protocol_block_pos_relative_y(pos: ProtocolBlockPos, dy: i32) -> Option<ProtocolBlockPos> {
+    Some(ProtocolBlockPos {
+        x: pos.x,
+        y: pos.y.checked_add(dy)?,
+        z: pos.z,
+    })
 }
 
 fn dripstone_drip_particle_context(
