@@ -900,8 +900,15 @@
     samples `textures/misc/enchanted_glint_item.png` with vanilla
     `GLINT_TEXTURING` scale `8.0`, GLINT blend, GUI camera glint offsets, and
     the item-atlas layer alpha as a mask so transparent sprite pixels do not
-    glow. GUI transparent 3D icon splitting, clock/compass GUI flat SPECIAL
-    decal precision, and first-person special consumers remain follow-ups.
+    glow. GUI transparent 3D icon splitting and first-person special consumers
+    remain follow-ups.
+  - [x] GUI flat clock / compass SPECIAL foil decal UVs：
+    `HudItemIcon` now carries `HudItemFoil::{None, Standard, Special}` for flat
+    HUD / inventory sprites. Native maps foiled clocks and `ItemTags.COMPASSES`
+    stacks through `NativeItemRuntime::item_stack_uses_special_foil_texture`,
+    and the HUD glint vertices use vanilla GUI `SheetedDecalTextureGenerator`
+    scale (`0.5` pose scale with `1/128` texture scale) for SPECIAL UVs while
+    keeping the item-atlas alpha mask and HUD base -> glint -> decoration order.
   - [x] GUI 3D block-item translucent / glintTranslucent split：
     `collect_hud_block_item_mesh` now routes block-item GUI quads through the
     same `ItemModelMeshSet` solid/translucent and foil split as world item

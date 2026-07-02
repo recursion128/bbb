@@ -193,10 +193,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   item-model translucent quads now also have `RenderTypes.glintTranslucent()` mesh/draw buckets；
   clock / compass SPECIAL foil decal UVs are covered for current dropped / held / item-frame
   item-model consumers；flat HUD/inventory item sprites now draw an alpha-masked standard
-  glint overlay after sprite layers and before durability/cooldown/count decorations；GUI 3D
-  block-item icons now split translucent base quads and matching `glintTranslucent` inside
-  the GUI item pass. 剩余是 clock/compass GUI flat SPECIAL decal 精确投影、
-  first-person special consumers 与像素级视觉校验。
+  glint overlay after sprite layers and before durability/cooldown/count decorations, with
+  clock / `ItemTags.COMPASSES` GUI SPECIAL foil using the vanilla sheeted-decal UV scale；GUI
+  3D block-item icons now split translucent base quads and matching `glintTranslucent`
+  inside the GUI item pass. 剩余是 first-person special consumers 与像素级视觉校验。
 - First-person viewmodel：
   - hand transform。
   - use animation。

@@ -2803,7 +2803,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
             max: carried_uv.max,
         }
     );
-    assert!(!ordinary_icon.foil);
+    assert_eq!(ordinary_icon.foil, HudItemFoil::None);
 
     let mut foiled_stack = stack.clone();
     foiled_stack.component_patch.enchantment_glint_override = Some(true);
@@ -2822,7 +2822,42 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
         0.0,
     )
     .unwrap();
-    assert!(foiled_icon.foil);
+    assert_eq!(foiled_icon.foil, HudItemFoil::Standard);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hud_item_foil_for_stack_projects_special_clock_and_compass_glint() {
+    let root = unique_runtime_temp_dir("hud-special-foil");
+    write_runtime_special_foil_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let foiled_stack = |resource_id: &str| {
+        let mut stack = item_stack(item_runtime.item_protocol_id(resource_id).unwrap(), 1);
+        stack.component_patch.enchantment_glint_override = Some(true);
+        stack
+    };
+
+    assert_eq!(
+        hud_item_foil_for_stack(&item_runtime, &foiled_stack("minecraft:clock")),
+        HudItemFoil::Special
+    );
+    assert_eq!(
+        hud_item_foil_for_stack(&item_runtime, &foiled_stack("minecraft:compass")),
+        HudItemFoil::Special
+    );
+    assert_eq!(
+        hud_item_foil_for_stack(&item_runtime, &foiled_stack("minecraft:spyglass")),
+        HudItemFoil::Standard
+    );
+    assert_eq!(
+        hud_item_foil_for_stack(
+            &item_runtime,
+            &item_stack(item_runtime.item_protocol_id("minecraft:clock").unwrap(), 1),
+        ),
+        HudItemFoil::None
+    );
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -9029,6 +9064,69 @@ fn write_runtime_carried_condition_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item CARRIED_CONDITION = registerItem("carried_condition");
+        }"#,
+    );
+}
+
+fn write_runtime_special_foil_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    for item_id in ["clock", "compass", "spyglass"] {
+        write_runtime_json(
+            &assets.join("items").join(format!("{item_id}.json")),
+            &format!(
+                r#"{{
+                    "model": {{ "type": "minecraft:model", "model": "minecraft:item/{item_id}" }}
+                }}"#
+            ),
+        );
+        write_flat_runtime_item_model_and_texture(&assets, item_id, &[40, 80, 120, 255]);
+    }
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("data")
+            .join("minecraft")
+            .join("tags")
+            .join("item")
+            .join("compasses.json"),
+        r#"{
+            "replace": true,
+            "values": ["minecraft:compass"]
+        }"#,
+    );
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item CLOCK = registerItem("clock");
+            public static final Item COMPASS = registerItem("compass");
+            public static final Item SPYGLASS = registerItem("spyglass");
         }"#,
     );
 }

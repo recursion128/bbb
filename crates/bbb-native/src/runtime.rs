@@ -19,7 +19,7 @@ use bbb_renderer::{
     HudEntityPreviewRect, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
     WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
     HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
@@ -4772,7 +4772,7 @@ fn hud_item_icon_for_stack(
                 )
             })
             .collect(),
-        foil: item.has_foil(),
+        foil: hud_item_foil_for_stack(item_runtime, item),
         count_label: hud_item_count_label_for_stack(item),
         durability_bar: hud_item_durability_bar_for_stack(item),
         cooldown_progress: hud_item_cooldown_progress_for_stack(
@@ -4782,6 +4782,20 @@ fn hud_item_icon_for_stack(
             partial_tick,
         ),
     })
+}
+
+fn hud_item_foil_for_stack(
+    item_runtime: &NativeItemRuntime,
+    item: &bbb_protocol::packets::ItemStackSummary,
+) -> HudItemFoil {
+    if !item.has_foil() {
+        return HudItemFoil::None;
+    }
+    if item_runtime.item_stack_uses_special_foil_texture(item) {
+        HudItemFoil::Special
+    } else {
+        HudItemFoil::Standard
+    }
 }
 
 fn hud_item_count_label_for_stack(

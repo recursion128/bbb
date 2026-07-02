@@ -40,6 +40,8 @@ const HUD_ITEM_BAR_FOREGROUND_HEIGHT: u32 = 1;
 const HUD_ITEM_COOLDOWN_TINT: [f32; 4] = [1.0, 1.0, 1.0, 127.0 / 255.0];
 const HUD_TOOLTIP_BACKGROUND_TINT: [f32; 4] = [0.0625, 0.0, 0.0625, 0.94];
 const HUD_ASCII_REPLACEMENT_GLYPH: char = '?';
+const HUD_ITEM_SPECIAL_FOIL_GUI_SCALE: f32 = 0.5;
+const HUD_ITEM_SPECIAL_FOIL_TEXTURE_SCALE: f32 = 1.0 / 128.0;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudUvRect {
@@ -65,7 +67,7 @@ pub struct HudItemIcon {
     pub layers: Vec<HudIconLayer>,
     /// Vanilla item foil for flat HUD / inventory sprites. 3D block-item icons use
     /// [`HudBlockItemModel::foil`] in the GUI item pass instead.
-    pub foil: bool,
+    pub foil: HudItemFoil,
     pub count_label: Option<HudItemCountLabel>,
     pub durability_bar: Option<HudItemDurabilityBar>,
     pub cooldown_progress: Option<f32>,
@@ -76,11 +78,35 @@ impl HudItemIcon {
         Self {
             lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![HudIconLayer::new(uv, HUD_TINT_WHITE)],
-            foil: false,
+            foil: HudItemFoil::None,
             count_label: None,
             durability_bar: None,
             cooldown_progress: None,
         }
+    }
+}
+
+/// Vanilla `ItemStackRenderState.FoilType` for flat GUI item sprites.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudItemFoil {
+    None,
+    Standard,
+    /// Clocks and `ItemTags.COMPASSES` use `FoilType.SPECIAL`, projecting glint UVs through
+    /// `SheetedDecalTextureGenerator` with GUI's `0.5` decal-pose scale.
+    Special,
+}
+
+impl HudItemFoil {
+    pub fn from_has_foil(foil: bool) -> Self {
+        if foil {
+            Self::Standard
+        } else {
+            Self::None
+        }
+    }
+
+    pub fn has_foil(self) -> bool {
+        self != Self::None
     }
 }
 
@@ -2300,14 +2326,21 @@ fn push_hud_item_glint<'a>(
     surface_size: PhysicalSize<u32>,
     item_rect: HudRect,
     layer: &HudIconLayer,
+    foil: HudItemFoil,
 ) {
     let start = vertices.len() as u32;
-    vertices.extend_from_slice(&hud_quad_vertices(
+    let mut quad_vertices = hud_quad_vertices(
         surface_size,
         item_rect,
         layer.uv,
         [1.0, 1.0, 1.0, layer.tint[3]],
-    ));
+    );
+    if foil == HudItemFoil::Special {
+        for vertex in &mut quad_vertices {
+            vertex.local_uv = hud_item_special_foil_glint_uv(vertex.local_uv);
+        }
+    }
+    vertices.extend_from_slice(&quad_vertices);
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand::ItemGlint {
         mask: item_atlas,
@@ -2355,6 +2388,7 @@ fn push_hud_item_icon<'a>(
                     surface_size,
                     item_rect,
                     layer,
+                    icon.foil,
                 );
             }
         }
@@ -2394,7 +2428,7 @@ fn for_each_hud_item_icon_draw_step(
 ) {
     if draw_layers && !icon.layers.is_empty() {
         emit(HudItemIconDrawStep::Layers);
-        if icon.foil {
+        if icon.foil.has_foil() {
             emit(HudItemIconDrawStep::Glint);
         }
     }
@@ -2410,6 +2444,11 @@ fn for_each_hud_item_icon_draw_step(
     if icon.count_label.is_some() {
         emit(HudItemIconDrawStep::CountLabel);
     }
+}
+
+fn hud_item_special_foil_glint_uv(local_uv: [f32; 2]) -> [f32; 2] {
+    let scale = HUD_ITEM_SPECIAL_FOIL_TEXTURE_SCALE / HUD_ITEM_SPECIAL_FOIL_GUI_SCALE;
+    [local_uv[0] * scale, -local_uv[1] * scale]
 }
 
 fn push_hud_item_durability_bar<'a>(
@@ -3305,7 +3344,7 @@ mod tests {
                     },
                     HUD_TINT_WHITE,
                 )],
-                foil: false,
+                foil: HudItemFoil::None,
                 count_label: None,
                 durability_bar: None,
                 cooldown_progress: None,
@@ -3340,7 +3379,7 @@ mod tests {
         let icon = sanitize_hud_item_icon(HudItemIcon {
             lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![first, second],
-            foil: true,
+            foil: HudItemFoil::Standard,
             count_label: Some(HudItemCountLabel::new("64")),
             durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
             cooldown_progress: Some(1.5),
@@ -3348,7 +3387,7 @@ mod tests {
         .expect("valid icon layers should remain");
 
         assert_eq!(icon.layers.len(), 2);
-        assert!(icon.foil);
+        assert_eq!(icon.foil, HudItemFoil::Standard);
         assert_eq!(icon.count_label, Some(HudItemCountLabel::new("64")));
         assert_eq!(
             icon.durability_bar,
@@ -3377,7 +3416,7 @@ mod tests {
                 },
                 HUD_TINT_WHITE,
             )],
-            foil: true,
+            foil: HudItemFoil::Standard,
             count_label: Some(HudItemCountLabel::new("64")),
             durability_bar: Some(HudItemDurabilityBar::new(13, [1.0, 0.0, 0.0])),
             cooldown_progress: Some(0.5),
@@ -3409,6 +3448,21 @@ mod tests {
     }
 
     #[test]
+    fn hud_special_foil_glint_uv_uses_gui_sheeted_decal_scale() {
+        // Vanilla `ItemFeatureRenderer.computeFoilDecalPose` scales GUI SPECIAL foil poses by 0.5
+        // before `SheetedDecalTextureGenerator` applies its 1/128 texture scale.
+        assert_eq!(hud_item_special_foil_glint_uv([0.0, 0.0]), [0.0, -0.0]);
+        assert_eq!(
+            hud_item_special_foil_glint_uv([1.0, 0.0]),
+            [2.0 / 128.0, -0.0]
+        );
+        assert_eq!(
+            hud_item_special_foil_glint_uv([1.0, 1.0]),
+            [2.0 / 128.0, -2.0 / 128.0]
+        );
+    }
+
+    #[test]
     fn sanitize_hud_item_icon_discards_invalid_layers() {
         let icon = sanitize_hud_item_icon(HudItemIcon {
             lighting: GuiItemLightingEntry::ItemsFlat,
@@ -3435,7 +3489,7 @@ mod tests {
                     [1.0, 1.0, 1.0, 1.0],
                 ),
             ],
-            foil: true,
+            foil: HudItemFoil::Standard,
             count_label: Some(HudItemCountLabel::new("1x")),
             durability_bar: Some(HudItemDurabilityBar::new(10, [1.0, f32::NAN, 0.0])),
             cooldown_progress: Some(f32::NAN),
@@ -3443,7 +3497,7 @@ mod tests {
         .expect("one valid layer should remain");
 
         assert_eq!(icon.layers.len(), 1);
-        assert!(icon.foil);
+        assert_eq!(icon.foil, HudItemFoil::Standard);
         assert_eq!(icon.count_label, None);
         assert_eq!(icon.durability_bar, None);
         assert_eq!(icon.cooldown_progress, None);
@@ -3460,7 +3514,7 @@ mod tests {
                     },
                     [1.0, 1.0, 1.0, 1.0],
                 )],
-                foil: false,
+                foil: HudItemFoil::None,
                 count_label: None,
                 durability_bar: None,
                 cooldown_progress: None,
@@ -3478,7 +3532,7 @@ mod tests {
                     },
                     [1.0, 1.0, 1.0, 1.0],
                 )],
-                foil: false,
+                foil: HudItemFoil::None,
                 count_label: Some(HudItemCountLabel::new("64")),
                 durability_bar: None,
                 cooldown_progress: None,
@@ -3554,7 +3608,7 @@ mod tests {
                             },
                             [1.5, 0.25, -1.0, 1.0],
                         )],
-                        foil: true,
+                        foil: HudItemFoil::Standard,
                         count_label: Some(HudItemCountLabel::new("64")),
                         durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
                         cooldown_progress: Some(1.5),
@@ -3574,7 +3628,7 @@ mod tests {
                             },
                             [1.0, 1.0, 1.0, 1.0],
                         )],
-                        foil: true,
+                        foil: HudItemFoil::Standard,
                         count_label: Some(HudItemCountLabel::new("bad")),
                         durability_bar: None,
                         cooldown_progress: Some(f32::INFINITY),
@@ -3664,7 +3718,7 @@ mod tests {
                     },
                     [1.0, 0.25, 0.0, 1.0],
                 )],
-                foil: true,
+                foil: HudItemFoil::Standard,
                 count_label: Some(HudItemCountLabel::new("64")),
                 durability_bar: Some(HudItemDurabilityBar::new(13, [0.0, 0.5, 1.0])),
                 cooldown_progress: Some(1.0),
@@ -3732,7 +3786,7 @@ mod tests {
                             },
                             [1.25, 0.5, -1.0, 1.0],
                         )],
-                        foil: true,
+                        foil: HudItemFoil::Standard,
                         count_label: Some(HudItemCountLabel::new("12")),
                         durability_bar: Some(HudItemDurabilityBar::new(99, [0.25, 2.0, -1.0])),
                         cooldown_progress: Some(1.5),
@@ -3751,7 +3805,7 @@ mod tests {
                             },
                             [1.0, 1.0, 1.0, 1.0],
                         )],
-                        foil: true,
+                        foil: HudItemFoil::Standard,
                         count_label: Some(HudItemCountLabel::new("64")),
                         durability_bar: None,
                         cooldown_progress: None,
@@ -3779,7 +3833,7 @@ mod tests {
                     },
                     [1.0, 0.5, 0.0, 1.0],
                 )],
-                foil: true,
+                foil: HudItemFoil::Standard,
                 count_label: Some(HudItemCountLabel::new("12")),
                 durability_bar: Some(HudItemDurabilityBar::new(13, [0.25, 1.0, 0.0])),
                 cooldown_progress: Some(1.0),
