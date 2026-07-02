@@ -278,6 +278,11 @@
     client-time、partial tick 和 frame camera pose 之后读取；vanilla 依据是
     `LevelRenderer.extractLevel` 调用
     `WeatherEffectRenderer.extractRenderState(level, ticks, deltaPartialTick, cameraPos, ...)`。
+  - [x] particle light refresh：粒子 tick 已调整为 input / use-item advance
+    之后，particle light refresh 现在有源码顺序测试与绑定注释，固定为当前帧提取输入
+    绑定后、RendererFrame commit 前采样；vanilla 依据是 `Minecraft.tick` 先处理
+    gameplay input 再 `ParticleEngine.tick`，随后 `LevelRenderer.extractLevel` /
+    `ParticleEngine.extract` 调用 `SingleQuadParticle.getLightCoords(partialTicks)`。
 
 ## P1-2：实体专用 Renderer 行为
 

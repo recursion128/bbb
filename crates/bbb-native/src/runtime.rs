@@ -1427,8 +1427,6 @@ pub(crate) fn pump_network_and_terrain(
     let cloud_environment = cloud_environment_for_world(world);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
-    renderer.advance_particles(advanced_ticks);
-    renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
         .as_mut()
@@ -1451,6 +1449,9 @@ pub(crate) fn pump_network_and_terrain(
         advanced_ticks,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
+    // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
+    // extraction samples light from the particle positions advanced here.
+    renderer.advance_particles(advanced_ticks);
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
@@ -1585,6 +1586,10 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
+    // Vanilla `ParticleEngine.extract` calls `SingleQuadParticle.getLightCoords(partialTicks)`
+    // during level render extraction; sample world light for the current particle positions before
+    // the renderer later collects particle vertices.
+    renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
     apply_renderer_frame(
         renderer,
         RendererFrame {

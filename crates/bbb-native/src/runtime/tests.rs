@@ -651,6 +651,59 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
 }
 
 #[test]
+fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
+    let source = include_str!("../runtime.rs");
+    let input_advance = source
+        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .expect("pump should advance player input before particle tick");
+    let destroy_advance = source
+        .find("advance_destroying_block_at_partial_tick(")
+        .expect("pump should advance destroy input before particle tick");
+    let use_advance = source
+        .find("advance_using_item_at_partial_tick(")
+        .expect("pump should advance use-item input before particle tick");
+    let using_item_tick = source
+        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .expect("pump should advance local use-item ticks before particle tick");
+    let particle_tick = source
+        .find("renderer.advance_particles(advanced_ticks);")
+        .expect("pump should advance particles");
+    let camera_pose = source
+        .find("let camera_pose = camera_pose_from_world(world);")
+        .expect("pump should bind frame camera pose before particle light refresh");
+    let block_destroy_extract = source
+        .find("let block_destroy_overlays = block_destroy_overlays_from_world(")
+        .expect("pump should extract block-destroy overlays before particle light refresh");
+    let particle_light_refresh = source
+        .find("renderer.refresh_particle_lights(")
+        .expect("pump should refresh particle light");
+    let frame_commit = source
+        .find("apply_renderer_frame(")
+        .expect("pump should commit the extracted renderer frame");
+
+    for advance in [input_advance, destroy_advance, use_advance, using_item_tick] {
+        assert!(
+            advance < particle_tick,
+            "vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`"
+        );
+    }
+    assert!(
+        particle_tick < particle_light_refresh,
+        "particle lights should sample positions after particle tick"
+    );
+    for extraction in [camera_pose, block_destroy_extract] {
+        assert!(
+            extraction < particle_light_refresh,
+            "vanilla `ParticleEngine.extract` samples light during level render extraction"
+        );
+    }
+    assert!(
+        particle_light_refresh < frame_commit,
+        "particle light refresh should finish before the frame can be rendered"
+    );
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

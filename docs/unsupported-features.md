@@ -107,14 +107,12 @@ When an agent does any of the following, update this file in the same slice:
 ### Renderer Frame Extraction Timing
 
 - Owner: `bbb-native`
-- Status: `partial`
+- Status: `current field list audited`
 - Next action:
-  - Verify each `RendererFrame` field's extraction point against the vanilla
-    tick -> render frame order, one field per slice. The pump binds every
-    world -> renderer value at the sequence point the removed `renderer.set_*`
-    call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next:
-    particle-light projections.
+  - No known RendererFrame / adjacent renderer-state extraction interleaves
+    remain in the current audit. When adding a new world -> renderer field or
+    state update, verify its extraction point against the vanilla tick -> render
+    frame order in the same slice.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
     citation.
@@ -164,6 +162,14 @@ When an agent does any of the following, update this file in the same slice:
     ticks, terrain light, and precipitation around the camera, so bbb extracts
     weather after `advance_client_time`, after computing `entity_partial_tick`,
     and after binding the frame camera pose.
+  - Particle light refresh now has a source-order test and binding comment:
+    vanilla `Minecraft.tick` handles gameplay input before
+    `ParticleEngine.tick`, then `LevelRenderer.extractLevel` calls
+    `ParticleEngine.extract`; `SingleQuadParticle.extractRotatedQuad` samples
+    `getLightCoords(partialTicks)` from the particle's current `BlockPos`.
+    bbb now advances particles after input/use-item advancement and refreshes
+    particle light after frame extraction inputs are bound, before the renderer
+    can collect particle vertices.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 
