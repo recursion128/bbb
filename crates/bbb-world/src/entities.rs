@@ -1834,93 +1834,131 @@ impl WorldStore {
         targets
             .iter()
             .copied()
-            .filter(|target| {
-                let Some(identity) = self.entities.identity(target.entity_id) else {
-                    return true;
-                };
-                identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
-                    || !self
-                        .player_info_entry(identity.uuid)
-                        .is_some_and(|info| info.is_spectator())
-            })
-            .filter_map(|target| {
-                let mut source = self.entities.model_source(
-                    target.entity_id,
-                    target.position,
-                    partial_ticks,
-                    &self.registries,
-                    &self.default_item_max_damage,
-                    &self.default_item_armor_materials,
-                    &self.default_item_equipment_slots,
-                    &self.default_llama_body_decor_colors,
-                    &self.default_nautilus_body_armor_materials,
-                    &self.default_horse_body_armor_materials,
-                    &self.default_wolf_body_armor_materials,
-                )?;
-                source.light = self
-                    .sample_block_light(entity_light_block_pos(target.position))
-                    .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
-                if source.invisible_to_player
-                    && vanilla_living_entity_type(source.entity_type_id)
-                    && (self.local_player_is_spectator()
-                        || self.local_player_can_see_friendly_invisible(&source))
-                {
-                    // Vanilla `Entity.isInvisibleTo(player)`: spectator viewers and same-team
-                    // viewers whose team enables `canSeeFriendlyInvisibles` can see invisible
-                    // living entities, so the renderer takes the force-transparent branch instead
-                    // of the hidden branch.
-                    source.invisible_to_player = false;
-                }
-                // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: project
-                // the `wasTouchingWater` overlap from the entity's interpolated world AABB
-                // (`position + EntityDimensions`) against the chunk fluid state.
-                let aabb_min = [
-                    target.position.x + f64::from(target.bounds.min[0]),
-                    target.position.y + f64::from(target.bounds.min[1]),
-                    target.position.z + f64::from(target.bounds.min[2]),
-                ];
-                let aabb_max = [
-                    target.position.x + f64::from(target.bounds.max[0]),
-                    target.position.y + f64::from(target.bounds.max[1]),
-                    target.position.z + f64::from(target.bounds.max[2]),
-                ];
-                source.in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
-                if is_vanilla_boat_type(source.entity_type_id) {
-                    // Vanilla `AbstractBoatRenderer.extractRenderState`: `state.isUnderWater`
-                    // comes from `AbstractBoat.isUnderWater()`, which is a top-slice water
-                    // surface test, not the broader `Entity.isInWater()` overlap above.
-                    source.boat_underwater =
-                        crate::fluid::world_aabb_boat_underwater(self, aabb_min, aabb_max);
-                }
-                if is_vanilla_minecart_type(source.entity_type_id) && !source.minecart_new_render {
-                    if let Some(rail) = self.old_minecart_rail_render_state(source.position) {
-                        source.minecart_pos_on_rail = Some(rail.pos_on_rail);
-                        source.minecart_front_pos = Some(rail.front_pos);
-                        source.minecart_back_pos = Some(rail.back_pos);
-                    }
-                }
-                if source.entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID {
-                    // Vanilla `LevelEventHandler.playJukeboxSong` notifies nearby living entities,
-                    // and `Parrot.aiStep` keeps PARTY only while its jukebox block position is within
-                    // `BlockPos.closerToCenterThan(entity.position(), 3.46)`.
-                    source.parrot_party = self.parrot_party_near_playing_jukebox(target.position);
-                }
-                if source.is_sleeping {
-                    if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
-                        source.sleeping_bed_yaw = Some(yaw);
-                        source.sleeping_bed_offset = offset;
-                    }
-                }
-                source.feline_is_lying_on_top_of_sleeping_player =
-                    self.cat_is_lying_on_top_of_sleeping_player(&source, target, &targets);
-                if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
-                    source.is_upside_down = true;
-                }
-                source.outline_color = self.entity_outline_color(&source);
-                source.show_extra_ears = self.resolve_player_extra_ears(target.entity_id);
-                Some(source)
-            })
+            .filter(|target| self.entity_passes_spectator_filter(target.entity_id))
+            .filter_map(|target| self.project_entity_model_source(target, partial_ticks, &targets))
             .collect()
+    }
+
+    /// Whether an entity should appear in the rendered model-source set. Vanilla hides spectator
+    /// players from the entity render list; every non-player and every non-spectator player is kept.
+    fn entity_passes_spectator_filter(&self, entity_id: i32) -> bool {
+        let Some(identity) = self.entities.identity(entity_id) else {
+            return true;
+        };
+        identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+            || !self
+                .player_info_entry(identity.uuid)
+                .is_some_and(|info| info.is_spectator())
+    }
+
+    /// Narrow single-entity variant of [`Self::entity_model_sources_at_partial_tick`]. Reuses the
+    /// same target list, spectator filter, and per-entity projection helper as the list path, so the
+    /// returned state is identical to the list entry for `entity_id` (or `None` when it is filtered
+    /// out or absent). Avoids building the full projected `Vec` when only one entity is needed.
+    pub fn entity_model_source_at_partial_tick(
+        &self,
+        entity_id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityModelSourceState> {
+        let targets = self
+            .entities
+            .model_targets_at_partial_tick(partial_ticks, &self.registries);
+        let target = targets
+            .iter()
+            .copied()
+            .find(|target| target.entity_id == entity_id)?;
+        if !self.entity_passes_spectator_filter(target.entity_id) {
+            return None;
+        }
+        self.project_entity_model_source(target, partial_ticks, &targets)
+    }
+
+    /// Per-entity projection shared by [`Self::entity_model_sources_at_partial_tick`] and
+    /// [`Self::entity_model_source_at_partial_tick`]. Turns one model target into a fully populated
+    /// [`EntityModelSourceState`], sampling light, water overlap, and the
+    /// boat/minecart/parrot/sleeping/cat specials. `targets` is the full (unfiltered) target list,
+    /// needed by the cat "lying on a sleeping player" search.
+    fn project_entity_model_source(
+        &self,
+        target: EntityModelTargetState,
+        partial_ticks: f32,
+        targets: &[EntityModelTargetState],
+    ) -> Option<EntityModelSourceState> {
+        let mut source = self.entities.model_source(
+            target.entity_id,
+            target.position,
+            partial_ticks,
+            &self.registries,
+            &self.default_item_max_damage,
+            &self.default_item_armor_materials,
+            &self.default_item_equipment_slots,
+            &self.default_llama_body_decor_colors,
+            &self.default_nautilus_body_armor_materials,
+            &self.default_horse_body_armor_materials,
+            &self.default_wolf_body_armor_materials,
+        )?;
+        source.light = self
+            .sample_block_light(entity_light_block_pos(target.position))
+            .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        if source.invisible_to_player
+            && vanilla_living_entity_type(source.entity_type_id)
+            && (self.local_player_is_spectator()
+                || self.local_player_can_see_friendly_invisible(&source))
+        {
+            // Vanilla `Entity.isInvisibleTo(player)`: spectator viewers and same-team
+            // viewers whose team enables `canSeeFriendlyInvisibles` can see invisible
+            // living entities, so the renderer takes the force-transparent branch instead
+            // of the hidden branch.
+            source.invisible_to_player = false;
+        }
+        // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: project
+        // the `wasTouchingWater` overlap from the entity's interpolated world AABB
+        // (`position + EntityDimensions`) against the chunk fluid state.
+        let aabb_min = [
+            target.position.x + f64::from(target.bounds.min[0]),
+            target.position.y + f64::from(target.bounds.min[1]),
+            target.position.z + f64::from(target.bounds.min[2]),
+        ];
+        let aabb_max = [
+            target.position.x + f64::from(target.bounds.max[0]),
+            target.position.y + f64::from(target.bounds.max[1]),
+            target.position.z + f64::from(target.bounds.max[2]),
+        ];
+        source.in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
+        if is_vanilla_boat_type(source.entity_type_id) {
+            // Vanilla `AbstractBoatRenderer.extractRenderState`: `state.isUnderWater`
+            // comes from `AbstractBoat.isUnderWater()`, which is a top-slice water
+            // surface test, not the broader `Entity.isInWater()` overlap above.
+            source.boat_underwater =
+                crate::fluid::world_aabb_boat_underwater(self, aabb_min, aabb_max);
+        }
+        if is_vanilla_minecart_type(source.entity_type_id) && !source.minecart_new_render {
+            if let Some(rail) = self.old_minecart_rail_render_state(source.position) {
+                source.minecart_pos_on_rail = Some(rail.pos_on_rail);
+                source.minecart_front_pos = Some(rail.front_pos);
+                source.minecart_back_pos = Some(rail.back_pos);
+            }
+        }
+        if source.entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID {
+            // Vanilla `LevelEventHandler.playJukeboxSong` notifies nearby living entities,
+            // and `Parrot.aiStep` keeps PARTY only while its jukebox block position is within
+            // `BlockPos.closerToCenterThan(entity.position(), 3.46)`.
+            source.parrot_party = self.parrot_party_near_playing_jukebox(target.position);
+        }
+        if source.is_sleeping {
+            if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
+                source.sleeping_bed_yaw = Some(yaw);
+                source.sleeping_bed_offset = offset;
+            }
+        }
+        source.feline_is_lying_on_top_of_sleeping_player =
+            self.cat_is_lying_on_top_of_sleeping_player(&source, target, targets);
+        if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
+            source.is_upside_down = true;
+        }
+        source.outline_color = self.entity_outline_color(&source);
+        source.show_extra_ears = self.resolve_player_extra_ears(target.entity_id);
+        Some(source)
     }
 
     fn old_minecart_rail_render_state(

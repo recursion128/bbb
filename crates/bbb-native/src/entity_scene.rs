@@ -517,10 +517,7 @@ pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
     entity_partial_tick: f32,
 ) -> Option<EntityModelInstance> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
-    let source = world
-        .entity_model_sources_at_partial_tick(entity_partial_tick)
-        .into_iter()
-        .find(|source| source.entity_id == entity_id)?;
+    let source = world.entity_model_source_at_partial_tick(entity_id, entity_partial_tick)?;
     let chicken_variants = world.registry_content("minecraft:chicken_variant");
     let cow_variants = world.registry_content("minecraft:cow_variant");
     let pig_variants = world.registry_content("minecraft:pig_variant");

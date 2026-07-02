@@ -978,6 +978,48 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
 }
 
 #[test]
+fn entity_model_source_single_entity_matches_list_entry() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        35,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        135.0,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 35,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.advance_entity_client_animations(3);
+
+    let partial_tick = 0.5;
+    let list = store.entity_model_sources_at_partial_tick(partial_tick);
+    assert_eq!(list.len(), 2);
+
+    // The narrow single-entity API must return exactly the list entry for the same id, so the two
+    // code paths cannot drift.
+    for entry in &list {
+        let single = store
+            .entity_model_source_at_partial_tick(entry.entity_id, partial_tick)
+            .expect("single-entity source present for a listed entity");
+        assert_eq!(&single, entry);
+    }
+
+    // An id that was never spawned has no list entry, so the single API resolves to None.
+    assert_eq!(
+        store.entity_model_source_at_partial_tick(404, partial_tick),
+        None
+    );
+}
+
+#[test]
 fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() {
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
