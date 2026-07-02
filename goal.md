@@ -1521,10 +1521,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     offsets into vanilla-shaped atlas sub-rect UVs, including the
     `TerrainParticle` / `BreakingItemParticle` horizontal `u0`/`u1` flip, when a
     concrete sprite UV is available.
+  - [x] particle texture-atlas ownership metadata baseline：`ParticleInstance`
+    now carries explicit `ParticleTextureAtlasKind` derived from vanilla
+    `SingleQuadParticle.Layer` intent: ordinary particle layers use
+    `Particles`, block / block_marker / dust_pillar / block_crumble layers use
+    `Terrain`, and item / slime / cobweb / snowball layers use `Items`.
   - terrain/item particle atlas rendering：resolving block/item atlas sprites,
     applying terrain tint, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
-    `TRANSLUCENT_ITEMS`, and transparent terrain/items vertex emission remain
-    follow-up work.
+    `TRANSLUCENT_ITEMS`, binding terrain/items particle atlas textures in the
+    GPU path, and transparent terrain/items vertex emission remain follow-up
+    work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

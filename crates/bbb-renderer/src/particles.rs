@@ -184,6 +184,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) render_layer: ParticleRenderLayer,
     #[serde(default)]
+    pub(crate) texture_atlas: ParticleTextureAtlasKind,
+    #[serde(default)]
     pub(crate) facing_camera_mode: ParticleFacingCameraMode,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
@@ -249,6 +251,14 @@ pub(crate) enum ParticleRenderLayer {
     Translucent,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleTextureAtlasKind {
+    #[default]
+    Particles,
+    Terrain,
+    Items,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 struct FallingLeavesRuntimeState {
     rot_speed: f32,
@@ -290,6 +300,14 @@ impl ParticleRenderLayer {
             Self::TranslucentTerrain | Self::TranslucentItems | Self::Translucent => {
                 ParticlePipelineKind::Translucent
             }
+        }
+    }
+
+    fn texture_atlas_kind(self) -> ParticleTextureAtlasKind {
+        match self {
+            Self::OpaqueTerrain | Self::TranslucentTerrain => ParticleTextureAtlasKind::Terrain,
+            Self::OpaqueItems | Self::TranslucentItems => ParticleTextureAtlasKind::Items,
+            Self::Opaque | Self::Translucent => ParticleTextureAtlasKind::Particles,
         }
     }
 }
@@ -665,6 +683,7 @@ impl ParticleInstance {
             particle_render_group_for_particle(&command.particle_id)
         };
         let render_layer = particle_render_layer_for_particle(&command.particle_id);
+        let texture_atlas = render_layer.texture_atlas_kind();
         let mut position = descriptor.initial_position(command.position, random);
         let mut velocity = descriptor.initial_velocity.sample(command.velocity, random);
         if descriptor.provider == "SpellParticle.InstantProvider" {
@@ -801,6 +820,7 @@ impl ParticleInstance {
             provider: descriptor.provider.to_string(),
             render_group,
             render_layer,
+            texture_atlas,
             facing_camera_mode: descriptor.facing_camera_mode(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
@@ -5243,6 +5263,31 @@ mod tests {
         assert_eq!(item_cobweb.render_layer, ParticleRenderLayer::OpaqueItems);
         assert_eq!(item_snowball.render_layer, ParticleRenderLayer::OpaqueItems);
         assert_eq!(falling_dust.render_layer, ParticleRenderLayer::Opaque);
+        for particle in [
+            &opaque,
+            &cloud,
+            &squid_ink,
+            &sculk,
+            &glow,
+            &current_down,
+            &enchant,
+            &nautilus,
+            &totem,
+            &vault,
+            &ominous_spawn,
+            &vibration,
+            &unresolved_vibration,
+            &elder_guardian,
+            &falling_dust,
+        ] {
+            assert_eq!(particle.texture_atlas, ParticleTextureAtlasKind::Particles);
+        }
+        for particle in [&terrain, &block_marker, &dust_pillar, &block_crumble] {
+            assert_eq!(particle.texture_atlas, ParticleTextureAtlasKind::Terrain);
+        }
+        for particle in [&item, &item_slime, &item_cobweb, &item_snowball] {
+            assert_eq!(particle.texture_atlas, ParticleTextureAtlasKind::Items);
+        }
     }
 
     #[test]
@@ -6237,6 +6282,7 @@ mod tests {
             provider: descriptor.provider.to_string(),
             render_group: particle_render_group_for_particle(particle_id),
             render_layer: particle_render_layer_for_particle(particle_id),
+            texture_atlas: particle_render_layer_for_particle(particle_id).texture_atlas_kind(),
             facing_camera_mode: descriptor.facing_camera_mode(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,

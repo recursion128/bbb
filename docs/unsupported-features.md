@@ -181,8 +181,11 @@ When an agent does any of the following, update this file in the same slice:
         TerrainParticle / BreakingItemParticle paths
       - billboard vertex emission converts recorded sub-rect offsets into
         vanilla-shaped atlas UVs when a concrete sprite UV is available
+      - renderer now records explicit texture-atlas ownership metadata for
+        particle / terrain / item atlas layers
       - resolving block/item atlas sprites, terrain tint,
-        sprite-transparency-driven terrain/item layer selection, and transparent
+        sprite-transparency-driven terrain/item layer selection, binding
+        terrain/items atlas textures in the particle GPU path, and transparent
         terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
@@ -206,8 +209,10 @@ When an agent does any of the following, update this file in the same slice:
       shape plus TerrainParticle / BreakingItemParticle random 4x4 sub-rect
       offsets. Billboard vertex emission converts those offsets into
       vanilla-shaped atlas sub-rect UVs when a sprite UV is available, including
-      the TerrainParticle / BreakingItemParticle horizontal `u0`/`u1` flip; actual
-      block/item atlas sprite lookup, terrain tint, and transparent
+      the TerrainParticle / BreakingItemParticle horizontal `u0`/`u1` flip.
+      `ParticleInstance` now also carries explicit particle / terrain / item
+      texture-atlas ownership metadata; actual block/item atlas sprite lookup,
+      terrain tint, terrain/items atlas GPU binding, and transparent
       terrain/item splitting remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
