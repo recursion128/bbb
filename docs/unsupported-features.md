@@ -192,8 +192,8 @@ When an agent does any of the following, update this file in the same slice:
         terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner/happy-villager/item-break/full-cube block-destroy side
-      effects
+      trial-spawner/happy-villager/item-break/composter/full-cube block-destroy
+      side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -250,6 +250,10 @@ When an agent does any of the following, update this file in the same slice:
       `1.0` friction, no-physics metadata, and opaque particle layer.
     - Emits renderer spawn batches for simple vanilla `LevelEventHandler`
       side effects:
+      - event `1500`: ten `minecraft:composter` particles using vanilla
+        `ComposterBlock.handleFill` position/velocity formulas, including the
+        loaded block shape's center-column max-Y for composter fill height and a
+        vanilla full-block/unknown fallback
       - event `1501`: eight `minecraft:large_smoke` particles above lava
         extinguish
       - event `1502`: five `minecraft:smoke` particles inside redstone torch

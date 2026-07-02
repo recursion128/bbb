@@ -1492,6 +1492,12 @@
     skipped. Non-full voxel shapes, `shouldSpawnTerrainParticles` /
     moving-piston rejection, terrain tint, and terrain-atlas GPU binding remain
     with broader block/terrain particle work.
+  - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
+    `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
+    including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z
+    spread, and Y from the loaded block shape's center-column max-Y plus
+    `0.03125`; missing/unloaded context falls back to vanilla full-block/unknown
+    height.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs

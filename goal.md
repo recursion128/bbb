@@ -258,7 +258,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     remains follow-up work.
 - LevelEvent particle side effects：
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
-    portal ring/happy-villager/item-break/full-cube block-destroy 之外的剩余事件。
+    portal ring/happy-villager/item-break/composter/full-cube block-destroy
+    之外的剩余事件。
 
 完成标准：
 

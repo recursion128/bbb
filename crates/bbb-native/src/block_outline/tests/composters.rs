@@ -26,6 +26,15 @@ fn outline_shape_uses_vanilla_composter_level_shapes() {
 }
 
 #[test]
+fn composter_center_max_y_uses_inner_fill_height() {
+    let outline = outline_shape_for_block(Some("minecraft:composter"), &composter_properties(6))
+        .expect("composter outline");
+
+    assert_eq!(outline.max_y(), 1.0);
+    assert_eq!(outline.max_y_at_xz(0.5, 0.5), 13.0 / 16.0);
+}
+
+#[test]
 fn outline_shape_rejects_invalid_composter_properties() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:composter"), &BTreeMap::new()),

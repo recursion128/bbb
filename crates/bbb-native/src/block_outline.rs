@@ -77,6 +77,11 @@ pub(crate) fn block_probe_shape_max_y(probe: &BlockProbe) -> Option<f64> {
         .map(|outline| outline.max_y())
 }
 
+pub(crate) fn block_probe_shape_center_max_y(probe: &BlockProbe) -> Option<f64> {
+    outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .map(|outline| outline.max_y_at_xz(0.5, 0.5))
+}
+
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
     selection_outline_for_box(pos, BlockOutlineBox::FULL)
 }

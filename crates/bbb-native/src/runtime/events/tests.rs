@@ -3057,6 +3057,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
+                composter_fill_center_shape_max_y: None,
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
@@ -3064,6 +3065,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
+                composter_fill_center_shape_max_y: None,
             },
         ]
     );
@@ -3159,6 +3161,7 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
         "minecraft:oak_slab",
         [("type", "bottom"), ("waterlogged", "false")],
     );
+    let composter_6_id = vanilla_block_state_id("minecraft:composter", [("level", "6")]);
     let stone_id = vanilla_block_state_id("minecraft:stone", []);
 
     let mut world = WorldStore::new();
@@ -3230,6 +3233,18 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
         level_event_particle_context(&world, &level_event_at_with_data(2011, 21, -63, -32, 3))
             .in_block_particle_spread_height,
         Some(0.5)
+    );
+
+    set_test_block(&mut world, block_pos(22, -63, -32), composter_6_id);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1500, 22, -63, -32, 1))
+            .composter_fill_center_shape_max_y,
+        Some(13.0 / 16.0)
+    );
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1500, 23, -63, -32, 1))
+            .composter_fill_center_shape_max_y,
+        Some(1.0)
     );
 }
 

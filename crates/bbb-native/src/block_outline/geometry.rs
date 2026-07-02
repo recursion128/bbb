@@ -59,6 +59,14 @@ impl BlockOutlineShape {
             .map(|outline| outline.max[1])
             .fold(0.0, f64::max)
     }
+
+    pub(super) fn max_y_at_xz(&self, x: f64, z: f64) -> f64 {
+        self.boxes()
+            .iter()
+            .filter(|outline| outline.contains_xz(x, z))
+            .map(|outline| outline.max[1])
+            .fold(0.0, f64::max)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -455,6 +463,10 @@ impl BlockOutlineBox {
             min: [min[0] / 16.0, min[1] / 16.0, min[2] / 16.0],
             max: [max[0] / 16.0, max[1] / 16.0, max[2] / 16.0],
         }
+    }
+
+    fn contains_xz(self, x: f64, z: f64) -> bool {
+        x >= self.min[0] && x <= self.max[0] && z >= self.min[2] && z <= self.max[2]
     }
 
     fn clip(

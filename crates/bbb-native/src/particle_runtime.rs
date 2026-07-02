@@ -41,6 +41,7 @@ pub(crate) struct LevelEventParticleContext {
     pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
     pub(crate) in_block_particle_spread_height: Option<f64>,
+    pub(crate) composter_fill_center_shape_max_y: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -408,6 +409,9 @@ impl ParticleCommandResolver {
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         match event.event_type {
+            COMPOSTER_FILL_LEVEL_EVENT => {
+                self.composter_fill_particle_batch(event, context, random)
+            }
             LAVA_EXTINGUISH_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(8);
                 for _ in 0..8 {
@@ -623,6 +627,49 @@ impl ParticleCommandResolver {
             }
             _ => ParticleSpawnBatch::default(),
         }
+    }
+
+    fn composter_fill_particle_batch(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(COMPOSTER_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let center_height = context.composter_fill_center_shape_max_y.unwrap_or(1.0)
+            + COMPOSTER_FILL_CENTER_HEIGHT_OFFSET;
+        let mut batch = ParticleSpawnBatch {
+            commands: Vec::with_capacity(COMPOSTER_FILL_PARTICLE_COUNT),
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..COMPOSTER_FILL_PARTICLE_COUNT {
+            let velocity = Vec3d {
+                x: random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+                y: random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+                z: random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+            };
+            let position = Vec3d {
+                x: f64::from(event.pos.x)
+                    + COMPOSTER_FILL_SIDE_OFFSET
+                    + COMPOSTER_FILL_WIDTH * f64::from(random.next_float()),
+                y: f64::from(event.pos.y)
+                    + center_height
+                    + f64::from(random.next_float()) * (1.0 - center_height),
+                z: f64::from(event.pos.z)
+                    + COMPOSTER_FILL_SIDE_OFFSET
+                    + COMPOSTER_FILL_WIDTH * f64::from(random.next_float()),
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+
+        batch
     }
 
     fn destroy_block_particle_batch(&self, event: &LevelEvent) -> ParticleSpawnBatch {
@@ -2281,6 +2328,7 @@ fn java_block_position_seed(x: i32, y: i32, z: i32) -> i64 {
         >> 16
 }
 
+const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
@@ -2340,6 +2388,7 @@ const SCULK_CHARGE_POP_PARTICLE_TYPE_ID: i32 = 39;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
+const COMPOSTER_PARTICLE_TYPE_ID: i32 = 44;
 const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
 const ITEM_PARTICLE_TYPE_ID: i32 = 47;
 const VIBRATION_PARTICLE_TYPE_ID: i32 = 48;
@@ -2402,6 +2451,11 @@ const ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE: f64 = 0.15;
 const ITEM_BREAK_VERTICAL_VELOCITY_SCALE: f64 = 0.2;
 const DESTROY_BLOCK_PARTICLE_DENSITY: f64 = 0.25;
 const DESTROY_BLOCK_FULL_BOX_WIDTH: f64 = 1.0;
+const COMPOSTER_FILL_PARTICLE_COUNT: usize = 10;
+const COMPOSTER_FILL_CENTER_HEIGHT_OFFSET: f64 = 0.03125;
+const COMPOSTER_FILL_SIDE_OFFSET: f64 = 0.1875;
+const COMPOSTER_FILL_WIDTH: f64 = 0.625;
+const COMPOSTER_FILL_VELOCITY_SCALE: f64 = 0.02;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
@@ -3144,6 +3198,45 @@ mod tests {
     #[test]
     fn level_event_particles_map_vanilla_simple_side_effects() {
         let resolver = test_resolver(0);
+
+        let mut composter_random = LevelEventSoundRandomState::with_seed(0);
+        let composter = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent {
+                event_type: COMPOSTER_FILL_LEVEL_EVENT,
+                ..level_event_packet(COMPOSTER_FILL_LEVEL_EVENT)
+            },
+            LevelEventParticleContext {
+                composter_fill_center_shape_max_y: Some(13.0 / 16.0),
+                ..LevelEventParticleContext::default()
+            },
+            &mut composter_random,
+        );
+        assert_eq!(composter.len(), 10);
+        let (expected_position, expected_velocity) = first_composter_fill_particle(13.0 / 16.0);
+        assert_particle_command(
+            &composter.commands[0],
+            COMPOSTER_PARTICLE_TYPE_ID,
+            "minecraft:composter",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+
+        let mut fallback_composter_random = LevelEventSoundRandomState::with_seed(0);
+        let fallback_composter = resolver.resolve_level_event_particles(
+            &level_event_packet(COMPOSTER_FILL_LEVEL_EVENT),
+            &mut fallback_composter_random,
+        );
+        assert_eq!(fallback_composter.len(), 10);
+        let (expected_position, expected_velocity) = first_composter_fill_particle(1.0);
+        assert_particle_command(
+            &fallback_composter.commands[0],
+            COMPOSTER_PARTICLE_TYPE_ID,
+            "minecraft:composter",
+            expected_position,
+            expected_velocity,
+            false,
+        );
 
         let mut lava_random = LevelEventSoundRandomState::with_seed(0);
         let lava =
@@ -4405,6 +4498,7 @@ mod tests {
                 "dripping_dripstone_water",
                 "poof_0",
                 "happy_villager_0",
+                "composter_0",
                 "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
@@ -4658,6 +4752,14 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("composter.json"),
+            r#"{
+              "textures": [
+                "minecraft:composter_0"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("small_flame.json"),
             r#"{
               "textures": [
@@ -4875,6 +4977,24 @@ mod tests {
             data: 0,
             global: false,
         }
+    }
+
+    fn first_composter_fill_particle(center_shape_max_y: f64) -> ([f64; 3], [f64; 3]) {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let center_height = center_shape_max_y + COMPOSTER_FILL_CENTER_HEIGHT_OFFSET;
+        let velocity = [
+            random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+            random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+            random.next_gaussian() * COMPOSTER_FILL_VELOCITY_SCALE,
+        ];
+        let position = [
+            10.0 + COMPOSTER_FILL_SIDE_OFFSET
+                + COMPOSTER_FILL_WIDTH * f64::from(random.next_float()),
+            64.0 + center_height + f64::from(random.next_float()) * (1.0 - center_height),
+            -3.0 + COMPOSTER_FILL_SIDE_OFFSET
+                + COMPOSTER_FILL_WIDTH * f64::from(random.next_float()),
+        ];
+        (position, velocity)
     }
 
     fn first_potion_break_spell_particle(data: i32) -> ([f64; 3], [f64; 3], [f32; 4], f32) {

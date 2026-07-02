@@ -20,6 +20,7 @@ use super::client_state::*;
 use super::control_state::apply_control_projection_event;
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
@@ -770,6 +771,7 @@ pub(super) fn level_event_particle_context(
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
         growth_particles: growth_particle_context(world, event),
         in_block_particle_spread_height: in_block_particle_spread_height_context(world, event),
+        composter_fill_center_shape_max_y: composter_fill_center_shape_max_y_context(world, event),
     }
 }
 
@@ -819,6 +821,21 @@ fn in_block_particle_spread_height(world: &WorldStore, pos: ProtocolBlockPos) ->
         .probe_block(protocol_to_world_block_pos(pos))
         .and_then(|probe| crate::block_outline::block_probe_shape_max_y(&probe))
         .unwrap_or(1.0)
+}
+
+fn composter_fill_center_shape_max_y_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<f64> {
+    if event.event_type != COMPOSTER_FILL_LEVEL_EVENT {
+        return None;
+    }
+    Some(
+        world
+            .probe_block(protocol_to_world_block_pos(event.pos))
+            .and_then(|probe| crate::block_outline::block_probe_shape_center_max_y(&probe))
+            .unwrap_or(1.0),
+    )
 }
 
 fn growth_particle_context(
