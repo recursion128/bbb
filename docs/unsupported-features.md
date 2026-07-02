@@ -306,8 +306,8 @@ When an agent does any of the following, update this file in the same slice:
       static families, quartz/prismarine/End static families, construction
       stone/brick static families, deepslate construction variants, infested
       stone CLAY variants, resin/pale garden static families,
-      plant/dripstone/moss/root/mud natural static families,
-      utility/mechanical static families, plus ore/deepslate/nether,
+      plant/dripstone/moss/root/mud natural static families, non-tinted foliage
+      static families, utility/mechanical static families, plus ore/deepslate/nether,
       snow/ice/clay/sandstone/suspicious block, and resource block
       mineral/natural static colors.
       Renderer
@@ -377,7 +377,8 @@ When an agent does any of the following, update this file in the same slice:
       quartz/prismarine/End static families, construction stone/brick static
       families, deepslate construction variants, infested stone CLAY variants,
       resin/pale garden static families, plant/dripstone/moss/root/mud natural
-      static families, utility/mechanical static families, and
+      static families, non-tinted foliage static families,
+      utility/mechanical static families, and
       ore/deepslate/nether plus mineral/natural static block families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
@@ -6452,9 +6453,9 @@ When an agent does any of the following, update this file in the same slice:
         families, quartz/prismarine/End static families, construction
         stone/brick static families, deepslate construction variants,
         infested stone CLAY variants, resin/pale garden static families,
-        plant/dripstone/moss/root/mud natural static families,
-        utility/mechanical static families, ore/deepslate/nether colors, and
-        mineral/natural static block families.
+        plant/dripstone/moss/root/mud natural static families, non-tinted
+        foliage static families, utility/mechanical static families,
+        ore/deepslate/nether colors, and mineral/natural static block families.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.

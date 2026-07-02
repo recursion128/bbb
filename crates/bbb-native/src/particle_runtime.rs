@@ -3084,12 +3084,25 @@ fn resin_and_pale_garden_static_map_color(name: &str) -> Option<u32> {
 fn natural_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     Some(match name {
-        "oak_sapling" | "spruce_sapling" | "birch_sapling" | "jungle_sapling"
-        | "acacia_sapling" | "dark_oak_sapling" | "mangrove_propagule" | "cave_vines"
-        | "cave_vines_plant" | "spore_blossom" | "azalea" | "flowering_azalea" | "big_dripleaf"
-        | "big_dripleaf_stem" | "small_dripleaf" => MAP_COLOR_PLANT,
-        "cherry_sapling" => MAP_COLOR_PINK,
-        "pale_oak_sapling" => MAP_COLOR_METAL,
+        "oak_sapling"
+        | "spruce_sapling"
+        | "birch_sapling"
+        | "jungle_sapling"
+        | "acacia_sapling"
+        | "dark_oak_sapling"
+        | "mangrove_propagule"
+        | "azalea_leaves"
+        | "flowering_azalea_leaves"
+        | "cave_vines"
+        | "cave_vines_plant"
+        | "spore_blossom"
+        | "azalea"
+        | "flowering_azalea"
+        | "big_dripleaf"
+        | "big_dripleaf_stem"
+        | "small_dripleaf" => MAP_COLOR_PLANT,
+        "cherry_sapling" | "cherry_leaves" => MAP_COLOR_PINK,
+        "pale_oak_sapling" | "pale_oak_leaves" => MAP_COLOR_METAL,
         "dead_bush" => MAP_COLOR_WOOD,
         "short_dry_grass" | "tall_dry_grass" => MAP_COLOR_YELLOW,
         "pointed_dripstone" | "dripstone_block" => MAP_COLOR_TERRACOTTA_BROWN,
@@ -4720,6 +4733,75 @@ mod tests {
                 test_block_state_id("minecraft:mud", []),
                 "minecraft:mud",
                 rgb_option(0x57, 0x5c, 0x5c),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_static_foliage_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:cherry_leaves",
+                    [
+                        ("distance", "1"),
+                        ("persistent", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:cherry_leaves",
+                rgb_option(0xf2, 0x7f, 0xa5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:pale_oak_leaves",
+                    [
+                        ("distance", "1"),
+                        ("persistent", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:pale_oak_leaves",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:azalea_leaves",
+                    [
+                        ("distance", "1"),
+                        ("persistent", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:azalea_leaves",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:flowering_azalea_leaves",
+                    [
+                        ("distance", "1"),
+                        ("persistent", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:flowering_azalea_leaves",
+                rgb_option(0x00, 0x7c, 0x00),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

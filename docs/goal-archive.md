@@ -1653,6 +1653,14 @@
     petals, wildflowers, and leaf litter to the BlockColors path. Full
     mapColor catalog coverage, biome-aware per-spawn BlockColors, and
     on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` static foliage mapColor expansion：native now mirrors
+    vanilla static mapColor fallback for non-tinted cherry leaves, pale oak
+    leaves, azalea leaves, and flowering azalea leaves. Tests pin representative
+    leaf `distance` / `persistent` / `waterlogged` states for COLOR_PINK,
+    METAL, and PLANT RGBs while leaving oak/spruce/birch/jungle/acacia/dark
+    oak/mangrove leaves and leaf litter on the BlockColors/tint path. Full
+    mapColor catalog coverage, biome-aware per-spawn BlockColors, and
+    on-ground roll reset remain follow-up work.
   - [x] `falling_dust` utility/mechanical static mapColor expansion：native now
     mirrors vanilla static mapColor fallback for bedrock/pistons/spawner/
     crafter/trial spawner/vault STONE blocks, note/bookshelf/chest/crafting
