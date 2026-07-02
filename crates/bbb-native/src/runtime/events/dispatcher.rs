@@ -24,7 +24,9 @@ const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
+const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
@@ -375,7 +377,30 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 {
                     emit_local_sound(&mut audio_events, &state);
                 }
-                if event.event_type == DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT {
+                if matches!(
+                    event.event_type,
+                    POTION_BREAK_LEVEL_EVENT | INSTANT_POTION_BREAK_LEVEL_EVENT
+                ) {
+                    let particles_consumed_random = emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        level_event_particle_context(world, &event),
+                        level_event_sound_random,
+                    );
+                    if !particles_consumed_random {
+                        advance_potion_break_level_event_particle_randoms(level_event_sound_random);
+                    }
+                    if let Some(state) = world.level_event_sound_with_random(event, || {
+                        level_event_sound_random.next_float()
+                    }) {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else if event.event_type == DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT {
                     let particles_consumed_random = emit_level_event_particles(
                         &mut particle_events,
                         &mut particle_renderer,
@@ -1297,6 +1322,22 @@ pub(super) fn advance_dragon_fireball_explode_level_event_particle_randoms(
         let _ = random.next_float();
         let _ = random.next_float();
         let _ = random.next_double();
+    }
+}
+
+pub(super) fn advance_potion_break_level_event_particle_randoms(
+    random: &mut LevelEventSoundRandomState,
+) {
+    for _ in 0..8 {
+        let _ = random.next_gaussian();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+    }
+    for _ in 0..100 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_float();
     }
 }
 

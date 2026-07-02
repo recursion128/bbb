@@ -1573,6 +1573,11 @@
     `minecraft:dragon_breath` particle random draws before recording/playing
     `minecraft:entity.dragon_fireball.explode` when `data == 1`; `data != 1`
     remains particle-only.
+  - [x] potion break LevelEvent sound ordering：events `2002` / `2007` now
+    mirror vanilla `LevelEventHandler` by consuming the eight
+    `ItemParticleOption(Items.SPLASH_POTION)` break particles and 100
+    `minecraft:effect` / `minecraft:instant_effect` spell-particle random draws
+    before recording/playing `minecraft:entity.splash_potion.break`.
   - [x] vault activate/deactivate LevelEvent sounds：events `3015` and `3016`
     now mirror vanilla `LevelEventHandler` sound ordering by consuming the local
     vault particle random sequence before drawing

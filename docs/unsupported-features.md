@@ -310,7 +310,8 @@ When an agent does any of the following, update this file in the same slice:
         center position, and gaussian/upward velocity, followed by 100
         vanilla-positioned `minecraft:effect` / `minecraft:instant_effect`
         spell particles with event-data RGB, random brightness, and
-        `SpellParticleOption` power
+        `SpellParticleOption` power, then
+        `minecraft:entity.splash_potion.break` after the particle RNG sequence
       - events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
         (`PARTICLES_TURTLE_EGG_PLACEMENT`): vanilla
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
@@ -6051,7 +6052,8 @@ When an agent does any of the following, update this file in the same slice:
       - ghast/blaze/dragon/wither/zombie/skeleton/phantom hostile effects
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
-      - splash/instant-effect potion break sounds for events `2002` and `2007`
+      - splash/instant-effect potion break sounds for events `2002` and
+        `2007`, emitted after the item-break and spell-particle random draws
       - dragon fireball explode sound for event `2006` when `data == 1`,
         emitted after the 200 dragon-breath particle random draws
       - distance-delayed trial spawner sounds for events `3012`, `3013`,

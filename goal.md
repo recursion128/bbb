@@ -284,6 +284,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `3003` honeycomb wax-on sound 已按 vanilla 在 block-face `wax_on`
     particles 后播放，audio-only path 会推进 `UniformInt.of(3,5)` 六面粒子
     RNG 后再抽取 positioned sound seed。
+  - `2002` / `2007` potion break sound 已按 vanilla 在 8 个 splash-potion item
+    break 粒子和 100 个 spell / instant-effect 粒子 RNG 后播放。
   - `2006` dragon fireball explode sound 已按 vanilla 在 200 个
     `dragon_breath` 粒子 RNG 后播放；`data != 1` 仍只发粒子不发声。
   - `1505` bone-meal use sound 已按 vanilla 在
