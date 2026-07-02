@@ -303,6 +303,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     trial-spawner post-sound particle RNG 已覆盖：audio-only path 会在
     distance-delayed sound 后推进 spawn / detect / eject / ominous activation
     粒子随机流，再抽取后续 LevelEvent 声音 seed。
+  - `3006` sculk charge post-sound particle RNG 已覆盖：audio-only path 会在
+    charged sound chance / volume / pitch 或 fixed pop sound 后推进
+    block-face / pop 粒子随机流；pop 分支会使用同一个 full-block context 决定
+    20/40 粒子数量。
 
 完成标准：
 

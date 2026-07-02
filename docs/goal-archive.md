@@ -1653,3 +1653,10 @@
     the distance-delayed trial-spawner sound first, then advancing the spawn,
     detect-player, eject-item, or become-ominous particle random draws before
     later LevelEvent sounds draw their seeds.
+  - [x] sculk charge post-sound LevelEvent random stream：event `3006` now
+    preserves vanilla `LevelEventHandler` ordering in audio-only dispatch for
+    both charged and fixed-pop branches by recording/playing the sculk charge
+    sound first, then advancing charged block-face or pop-particle random draws
+    before later LevelEvent sounds draw their seeds. The pop branch threads the
+    same full-block context used by visible particles, so full blocks advance
+    the 40-particle stream while partial/unknown blocks advance 20.

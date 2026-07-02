@@ -4618,6 +4618,40 @@ fn trial_spawner_level_event_emits_sound_and_particle_side_effects() {
     assert_eq!(world.counters().level_events_tracked, 1);
 }
 
+fn advance_expected_sculk_charge_level_event_particle_randoms(
+    data: i32,
+    full_block_pop: bool,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let count = data >> 6;
+    if count <= 0 {
+        let particle_count = if full_block_pop { 40 } else { 20 };
+        for _ in 0..particle_count {
+            let _ = random.next_float();
+            let _ = random.next_float();
+            let _ = random.next_float();
+        }
+        return;
+    }
+
+    let particle_data = data & 63;
+    let face_count = if particle_data == 0 {
+        6
+    } else {
+        particle_data.count_ones()
+    };
+    for _ in 0..face_count {
+        let particle_count = random.next_int_bound(count + 1);
+        for _ in 0..particle_count {
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+        }
+    }
+}
+
 #[test]
 fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     let (tx, mut rx) = mpsc::channel(1);
@@ -4650,6 +4684,164 @@ fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     assert_close(command.packet_pitch, 0.760_804_6);
     assert_eq!(command.seed, -7_261_648_964_369_397_258);
     assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn sculk_charge_audio_only_charged_event_advances_particle_randoms() {
+    let data = (5 << 6) | 0b001011;
+    let event = LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos { x: -2, y: 68, z: 3 },
+        data,
+        global: false,
+    };
+    let followup = LevelEvent {
+        event_type: 1004,
+        pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let count = (data >> 6) as f32;
+    assert!(expected_random.next_float() < 0.3 + count * 0.1);
+    let expected_volume = 0.15 + 0.02 * count * count * expected_random.next_float();
+    let expected_pitch = 0.4 + 0.3 * count * expected_random.next_float();
+    let expected_seed = expected_random.next_long();
+    advance_expected_sculk_charge_level_event_particle_randoms(data, false, &mut expected_random);
+    let expected_followup_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(sculk) = &audio.commands[0] else {
+        panic!(
+            "expected positioned sculk sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(sculk.sound.event_id, "minecraft:block.sculk.charge");
+    assert_close(sculk.packet_volume, expected_volume);
+    assert_close(sculk.packet_pitch, expected_pitch);
+    assert_eq!(sculk.seed, expected_seed);
+
+    let AudioCommand::PlayPositionedSound(followup_sound) = &audio.commands[1] else {
+        panic!(
+            "expected positioned followup sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        followup_sound.sound.event_id,
+        "minecraft:entity.firework_rocket.shoot"
+    );
+    assert_eq!(followup_sound.seed, expected_followup_seed);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn sculk_charge_audio_only_pop_event_uses_full_block_particle_context() {
+    let event = LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let followup = LevelEvent {
+        event_type: 1004,
+        pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: event.pos,
+        block_state_id: 1,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_seed = expected_random.next_long();
+    advance_expected_sculk_charge_level_event_particle_randoms(0, true, &mut expected_random);
+    let expected_followup_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(sculk) = &audio.commands[0] else {
+        panic!(
+            "expected positioned sculk sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(sculk.sound.event_id, "minecraft:block.sculk.charge");
+    assert_close(sculk.packet_volume, 1.0);
+    assert_close(sculk.packet_pitch, 1.0);
+    assert_eq!(sculk.seed, expected_seed);
+
+    let AudioCommand::PlayPositionedSound(followup_sound) = &audio.commands[1] else {
+        panic!(
+            "expected positioned followup sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        followup_sound.sound.event_id,
+        "minecraft:entity.firework_rocket.shoot"
+    );
+    assert_eq!(followup_sound.seed, expected_followup_seed);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
 }
 
 #[test]

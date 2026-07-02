@@ -40,6 +40,7 @@ const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
+const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
@@ -553,16 +554,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         ));
                         emit_positioned_sound(&mut audio_events, &state);
                     }
+                    let context = level_event_particle_context(world, &event);
                     let particles_consumed_random = emit_level_event_particles(
                         &mut particle_events,
                         &mut particle_renderer,
                         &event,
-                        level_event_particle_context(world, &event),
+                        context,
                         level_event_sound_random,
                     );
                     if !particles_consumed_random {
                         advance_post_sound_level_event_particle_randoms(
                             &event,
+                            context,
                             level_event_sound_random,
                         );
                     }
@@ -1304,6 +1307,7 @@ fn advance_vault_level_event_particle_randoms(
 
 fn advance_post_sound_level_event_particle_randoms(
     event: &bbb_protocol::packets::LevelEvent,
+    context: LevelEventParticleContext,
     random: &mut LevelEventSoundRandomState,
 ) {
     match event.event_type {
@@ -1340,7 +1344,48 @@ fn advance_post_sound_level_event_particle_randoms(
             advance_trial_spawner_detect_player_particle_randoms(0, random);
             advance_trial_spawner_become_ominous_particle_randoms(random);
         }
+        SCULK_CHARGE_LEVEL_EVENT => {
+            advance_sculk_charge_level_event_particle_randoms(event, context, random);
+        }
         _ => {}
+    }
+}
+
+fn advance_sculk_charge_level_event_particle_randoms(
+    event: &bbb_protocol::packets::LevelEvent,
+    context: LevelEventParticleContext,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let count = event.data >> 6;
+    if count <= 0 {
+        let particle_count = if context.sculk_charge_pop_full_block.unwrap_or(false) {
+            40
+        } else {
+            20
+        };
+        for _ in 0..particle_count {
+            let _ = random.next_float();
+            let _ = random.next_float();
+            let _ = random.next_float();
+        }
+        return;
+    }
+
+    let particle_data = event.data & 63;
+    let face_count = if particle_data == 0 {
+        6
+    } else {
+        particle_data.count_ones()
+    };
+    for _ in 0..face_count {
+        let particle_count = random.next_int_bound(count + 1);
+        for _ in 0..particle_count {
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+            let _ = random.next_double();
+        }
     }
 }
 

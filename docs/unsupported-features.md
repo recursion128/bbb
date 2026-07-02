@@ -6066,7 +6066,10 @@ When an agent does any of the following, update this file in the same slice:
         `3015` is gated on a loaded vault block entity at the event position
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
-        and the randomized charged branch
+        and the randomized charged branch; audio-only dispatch advances the
+        post-sound charged block-face or pop-particle random stream before
+        later LevelEvent sound seeds, including the full-block-context 40-pop
+        branch
       - sculk-shrieker sound for event `3007`, gated off when the loaded event
         block state has `waterlogged=true`, using
         `SculkShriekerBlock.TOP_Y`, volume `2.0`, and
