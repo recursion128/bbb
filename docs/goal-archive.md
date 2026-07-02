@@ -1786,6 +1786,12 @@
     honey/honeycomb blocks ORANGE, and lodestone METAL. Tests pin representative
     bamboo age/leaves/stage, sweet berry age, campfire facing/lit/signal_fire/
     waterlogged, and simple honey/lodestone states.
+  - [x] `falling_dust` water plant/egg static mapColor expansion：native now
+    mirrors vanilla mapColor registrations for seagrass, tall seagrass, kelp,
+    kelp plant, and frogspawn WATER; turtle egg SAND; sniffer egg RED; and
+    dried ghast GRAY. Tests pin representative tall-seagrass half, kelp age,
+    turtle/sniffer hatch, dried-ghast facing/hydration/waterlogged states, and
+    the new WATER map color constant.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

@@ -3314,15 +3314,19 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         | "small_dripleaf"
         | "bamboo"
         | "sweet_berry_bush" => MAP_COLOR_PLANT,
+        "seagrass" | "tall_seagrass" | "kelp" | "kelp_plant" | "frogspawn" => MAP_COLOR_WATER,
         "cherry_sapling" | "cherry_leaves" => MAP_COLOR_PINK,
         "pale_oak_sapling" | "pale_oak_leaves" => MAP_COLOR_METAL,
         "dead_bush" => MAP_COLOR_WOOD,
         "bamboo_sapling" => MAP_COLOR_WOOD,
+        "turtle_egg" => MAP_COLOR_SAND,
         "short_dry_grass" | "tall_dry_grass" => MAP_COLOR_YELLOW,
         "pointed_dripstone" | "dripstone_block" => MAP_COLOR_TERRACOTTA_BROWN,
         "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
         "hanging_roots" | "rooted_dirt" => MAP_COLOR_DIRT,
         "mud" => MAP_COLOR_TERRACOTTA_CYAN,
+        "sniffer_egg" => MAP_COLOR_RED,
+        "dried_ghast" => MAP_COLOR_GRAY,
         _ => return None,
     })
 }
@@ -3863,6 +3867,7 @@ const MAP_COLOR_PLANT: u32 = 31_744;
 const MAP_COLOR_CLAY: u32 = 10_791_096;
 const MAP_COLOR_DIRT: u32 = 9_923_917;
 const MAP_COLOR_STONE: u32 = 7_368_816;
+const MAP_COLOR_WATER: u32 = 4_210_943;
 const MAP_COLOR_WOOD: u32 = 9_402_184;
 const MAP_COLOR_QUARTZ: u32 = 16_776_437;
 const MAP_COLOR_ORANGE: u32 = 14_188_339;
@@ -6714,6 +6719,74 @@ mod tests {
                 test_block_state_id("minecraft:lodestone", []),
                 "minecraft:lodestone",
                 rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_water_plant_and_egg_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:seagrass", []),
+                "minecraft:seagrass",
+                rgb_option(0x40, 0x40, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:tall_seagrass", [("half", "upper")]),
+                "minecraft:tall_seagrass",
+                rgb_option(0x40, 0x40, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:kelp", [("age", "25")]),
+                "minecraft:kelp",
+                rgb_option(0x40, 0x40, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:kelp_plant", []),
+                "minecraft:kelp_plant",
+                rgb_option(0x40, 0x40, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:frogspawn", []),
+                "minecraft:frogspawn",
+                rgb_option(0x40, 0x40, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:turtle_egg", [("eggs", "4"), ("hatch", "2")]),
+                "minecraft:turtle_egg",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:sniffer_egg", [("hatch", "2")]),
+                "minecraft:sniffer_egg",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dried_ghast",
+                    [
+                        ("facing", "east"),
+                        ("hydration", "3"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:dried_ghast",
+                rgb_option(0x4c, 0x4c, 0x4c),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
