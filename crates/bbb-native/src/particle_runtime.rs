@@ -2793,6 +2793,15 @@ fn potted_static_map_color(name: &str) -> Option<u32> {
     })
 }
 
+fn cake_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if matches!(name, "cake" | "candle_cake") {
+        return Some(MAP_COLOR_NONE);
+    }
+    let color = name.strip_suffix("_candle_cake")?;
+    dye_color_map_color(color).map(|_| MAP_COLOR_NONE)
+}
+
 fn wooden_sign_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     if let Some(family) = name.strip_suffix("_wall_hanging_sign") {
@@ -2880,6 +2889,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = potted_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = cake_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -5176,6 +5188,99 @@ mod tests {
             "minecraft:potted_closed_eyeblossom",
         ] {
             let block_state_id = test_block_state_id(block_name, []);
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_cake_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id("minecraft:cake", [("bites", "6")]),
+                "minecraft:cake",
+            ),
+            (
+                test_block_state_id("minecraft:candle_cake", [("lit", "true")]),
+                "minecraft:candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:white_candle_cake", [("lit", "false")]),
+                "minecraft:white_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:orange_candle_cake", [("lit", "true")]),
+                "minecraft:orange_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:magenta_candle_cake", [("lit", "false")]),
+                "minecraft:magenta_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:light_blue_candle_cake", [("lit", "true")]),
+                "minecraft:light_blue_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:yellow_candle_cake", [("lit", "false")]),
+                "minecraft:yellow_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:lime_candle_cake", [("lit", "true")]),
+                "minecraft:lime_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:pink_candle_cake", [("lit", "false")]),
+                "minecraft:pink_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:gray_candle_cake", [("lit", "true")]),
+                "minecraft:gray_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:light_gray_candle_cake", [("lit", "false")]),
+                "minecraft:light_gray_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:cyan_candle_cake", [("lit", "true")]),
+                "minecraft:cyan_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:purple_candle_cake", [("lit", "false")]),
+                "minecraft:purple_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:blue_candle_cake", [("lit", "true")]),
+                "minecraft:blue_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:brown_candle_cake", [("lit", "false")]),
+                "minecraft:brown_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:green_candle_cake", [("lit", "true")]),
+                "minecraft:green_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:red_candle_cake", [("lit", "false")]),
+                "minecraft:red_candle_cake",
+            ),
+            (
+                test_block_state_id("minecraft:black_candle_cake", [("lit", "true")]),
+                "minecraft:black_candle_cake",
+            ),
+        ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 

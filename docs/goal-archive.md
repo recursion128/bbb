@@ -1763,6 +1763,11 @@
     roots/azalea/eyeblossom blocks. `potted_fern` stays on the existing
     BlockColors grass-tint path. Tests pin every covered potted block's empty
     state to black `option_color`.
+  - [x] `falling_dust` cake default-NONE static mapColor expansion：native now
+    mirrors vanilla `CAKE` default `MapColor.NONE` and `CANDLE_CAKE` /
+    colored candle cakes copying the cake properties rather than candle
+    mapColor. Tests pin cake bite state and every candle-cake lit variant to
+    black `option_color`.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
