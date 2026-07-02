@@ -1754,6 +1754,10 @@
     BlockColors layer: ladder, floor/wall torch variants including redstone,
     soul, and copper torches, plus end rod. Tests pin facing, waterlogged, lit,
     wall, and vertical rod states to black `option_color`.
+  - [x] `falling_dust` glass/bars default-NONE static mapColor expansion：
+    native now mirrors vanilla default `MapColor.NONE` for plain glass, glass
+    pane, and iron bars. Tests pin the plain glass state and fully connected
+    waterlogged pane/bars states to black `option_color`.
   - [x] `falling_dust` redstone/rail default-NONE static mapColor expansion：
     native now mirrors vanilla default `MapColor.NONE` for powered/detector/
     activator/ordinary rails, lever, repeater, comparator, tripwire hook, and

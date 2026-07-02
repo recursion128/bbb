@@ -3435,7 +3435,10 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         "repeating_command_block" => MAP_COLOR_PURPLE,
         "chain_command_block" => MAP_COLOR_GREEN,
         "structure_block" | "jigsaw" | "test_block" => MAP_COLOR_LIGHT_GRAY,
-        "ladder"
+        "glass"
+        | "glass_pane"
+        | "iron_bars"
+        | "ladder"
         | "torch"
         | "wall_torch"
         | "redstone_torch"
@@ -7055,6 +7058,57 @@ mod tests {
             (
                 test_block_state_id("minecraft:end_rod", [("facing", "up")]),
                 "minecraft:end_rod",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_default_none_pane_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id("minecraft:glass", []),
+                "minecraft:glass",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:glass_pane",
+                    [
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("waterlogged", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:glass_pane",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:iron_bars",
+                    [
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("waterlogged", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:iron_bars",
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
