@@ -1337,24 +1337,22 @@ impl Renderer {
         // (the world camera's pass already finished, so reusing the depth target with a clear is safe).
         {
             let gui_item_meshes = self.collect_hud_block_item_mesh();
-            if !gui_item_meshes.solid.indices.is_empty() {
-                let vertex_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-hud-block-item-vertices"),
-                            contents: bytemuck::cast_slice(&gui_item_meshes.solid.vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
-                let index_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-hud-block-item-indices"),
-                            contents: bytemuck::cast_slice(&gui_item_meshes.solid.indices),
-                            usage: wgpu::BufferUsages::INDEX,
-                        });
+            if !gui_item_meshes.is_empty() {
+                let solid_buffers = self.create_item_model_frame_buffers(
+                    &gui_item_meshes.solid.vertices,
+                    &gui_item_meshes.solid.indices,
+                );
                 let glint_buffers = self.create_item_model_frame_buffers(
                     &gui_item_meshes.glint.vertices,
                     &gui_item_meshes.glint.indices,
+                );
+                let translucent_buffers = self.create_item_model_frame_buffers(
+                    &gui_item_meshes.translucent.vertices,
+                    &gui_item_meshes.translucent.indices,
+                );
+                let glint_translucent_buffers = self.create_item_model_frame_buffers(
+                    &gui_item_meshes.glint_translucent.vertices,
+                    &gui_item_meshes.glint_translucent.indices,
                 );
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-item-pass"),
@@ -1377,15 +1375,38 @@ impl Renderer {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&self.item_model_pipeline);
-                pass.set_bind_group(0, &self.gui_item_bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..gui_item_meshes.solid.indices.len() as u32, 0, 0..1);
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                if let Some(buffers) = &solid_buffers {
+                    self.draw_item_model_frame_buffers(
+                        &mut pass,
+                        &self.item_model_pipeline,
+                        buffers,
+                        &self.gui_item_bind_group,
+                    );
+                    pipeline_switches += 1;
+                    item_model_draw_calls += 1;
+                }
                 if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
+                    self.draw_item_model_glint_frame_buffers(
+                        &mut pass,
+                        buffers,
+                        &glint.gui_bind_group,
+                    );
+                    pipeline_switches += 1;
+                    item_model_draw_calls += 1;
+                }
+                if let Some(buffers) = &translucent_buffers {
+                    self.draw_item_model_frame_buffers(
+                        &mut pass,
+                        &self.item_model_translucent_pipeline,
+                        buffers,
+                        &self.gui_item_bind_group,
+                    );
+                    pipeline_switches += 1;
+                    item_model_draw_calls += 1;
+                }
+                if let (Some(glint), Some(buffers)) =
+                    (&self.item_glint_texture, &glint_translucent_buffers)
+                {
                     self.draw_item_model_glint_frame_buffers(
                         &mut pass,
                         buffers,
@@ -3845,6 +3866,55 @@ mod tests {
                 && hud_item_pass < post_commands
                 && post_commands < hud_overlay_pass,
             "GUI 3D item models draw after base HUD/slot backgrounds and before decorations/front overlays"
+        );
+    }
+
+    #[test]
+    fn hud_gui_3d_items_draw_translucent_base_and_glint_in_gui_item_pass() {
+        let source = include_str!("render.rs");
+        let gui_items = source
+            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
+            .expect("GUI 3D item mesh is collected");
+        let translucent_buffers = source[gui_items..]
+            .find("&gui_item_meshes.translucent.vertices")
+            .map(|index| gui_items + index)
+            .expect("GUI 3D item translucent buffers are created");
+        let glint_translucent_buffers = source[translucent_buffers..]
+            .find("&gui_item_meshes.glint_translucent.vertices")
+            .map(|index| translucent_buffers + index)
+            .expect("GUI 3D item glintTranslucent buffers are created");
+        let hud_item_pass = source[glint_translucent_buffers..]
+            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .map(|index| glint_translucent_buffers + index)
+            .expect("GUI 3D item pass label is used");
+        let solid_draw = source[hud_item_pass..]
+            .find("&self.item_model_pipeline")
+            .map(|index| hud_item_pass + index)
+            .expect("solid GUI 3D item base draws first");
+        let solid_glint = source[solid_draw..]
+            .find("self.draw_item_model_glint_frame_buffers(")
+            .map(|index| solid_draw + index)
+            .expect("solid GUI 3D item glint follows solid base");
+        let translucent_draw = source[solid_glint..]
+            .find("&self.item_model_translucent_pipeline")
+            .map(|index| solid_glint + index)
+            .expect("translucent GUI 3D item base follows solid glint");
+        let translucent_glint = source[translucent_draw..]
+            .find("self.draw_item_model_glint_frame_buffers(")
+            .map(|index| translucent_draw + index)
+            .expect("GUI 3D item glintTranslucent follows translucent base");
+        let post_commands = source[translucent_glint..]
+            .find("&hud_draws.commands[hud_draws.post_gui_item_start..]")
+            .map(|index| translucent_glint + index)
+            .expect("post-GUI HUD commands follow GUI item pass");
+
+        assert!(
+            hud_item_pass < solid_draw
+                && solid_draw < solid_glint
+                && solid_glint < translucent_draw
+                && translucent_draw < translucent_glint
+                && translucent_glint < post_commands,
+            "GUI 3D item translucent base and glintTranslucent stay inside the GUI item pass"
         );
     }
 

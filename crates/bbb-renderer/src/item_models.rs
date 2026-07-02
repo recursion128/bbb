@@ -85,7 +85,8 @@ pub struct HudBlockItemModel {
     pub gui_display: Mat4,
     pub lighting: GuiItemLightingEntry,
     /// Vanilla `ItemStack.hasFoil()` projected by the native layer for the stack occupying this GUI
-    /// slot. When true, solid quads also submit through vanilla `RenderTypes.glint()`.
+    /// slot. When true, solid and translucent quads also submit through the matching vanilla item
+    /// glint render type.
     pub foil: bool,
 }
 

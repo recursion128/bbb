@@ -812,10 +812,11 @@ When an agent does any of the following, update this file in the same slice:
     Clock / compass SPECIAL foil decal UVs are also covered for current dropped,
     held, and item-frame item-model consumers. Flat HUD/inventory item sprites
     now carry `ItemStackSummary::has_foil()` into a standard alpha-masked glint
-    overlay that draws after sprite layers and before decorations. GUI
-    transparent 3D icon parity, clock/compass GUI flat SPECIAL decal precision,
-    and first-person special consumers remain item presentation follow-ups;
-    standalone
+    overlay that draws after sprite layers and before decorations. GUI 3D
+    block-item icons now also split translucent base quads and matching
+    `glintTranslucent` inside the GUI item pass. Clock/compass GUI flat SPECIAL
+    decal precision and first-person special consumers remain item presentation
+    follow-ups; standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2588,12 +2589,13 @@ When an agent does any of the following, update this file in the same slice:
         into the same solid item `RenderTypes.glint()` pass as world items; flat
         HUD / inventory item sprites now carry the same foil flag into a
         standard alpha-masked HUD glint overlay after sprite layers and before
-        durability / cooldown / count decorations. Transparent GUI 3D icon
-        base/glint splitting remains a later GUI parity slice rather than part
-        of the world/itemEntity-target `glintTranslucent` path. Clock / compass
-        SPECIAL foil decal UVs are covered in the current dropped / held /
-        item-frame item-model path; GUI flat SPECIAL decal precision and
-        first-person consumers remain deferred with their presentation surfaces.
+        durability / cooldown / count decorations. GUI 3D block-item stacks now
+        also split translucent base quads and matching `glintTranslucent` into
+        the same depth-isolated GUI item pass after the solid base/glint draw.
+        Clock / compass SPECIAL foil decal UVs are covered in the current
+        dropped / held / item-frame item-model path; GUI flat SPECIAL decal
+        precision and first-person consumers remain deferred with their
+        presentation surfaces.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.

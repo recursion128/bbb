@@ -902,6 +902,13 @@
     the item-atlas layer alpha as a mask so transparent sprite pixels do not
     glow. GUI transparent 3D icon splitting, clock/compass GUI flat SPECIAL
     decal precision, and first-person special consumers remain follow-ups.
+  - [x] GUI 3D block-item translucent / glintTranslucent split：
+    `collect_hud_block_item_mesh` now routes block-item GUI quads through the
+    same `ItemModelMeshSet` solid/translucent and foil split as world item
+    consumers. The GUI item pass draws solid base, solid glint, translucent
+    base, and matching `glintTranslucent` inside the same depth-isolated
+    `bbb-native-hud-item-pass`, preserving HUD base -> GUI item -> HUD overlay
+    ordering while covering translucent 3D inventory icons.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

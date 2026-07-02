@@ -2,7 +2,10 @@ use anyhow::Result;
 use winit::dpi::PhysicalSize;
 
 use crate::entity_models::{EntityModelInstance, ENTITY_FULL_BRIGHT_LIGHT_COORDS};
-use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel, ITEM_MODEL_NO_OVERLAY};
+use crate::item_models::{
+    GuiItemLightingEntry, HudBlockItemModel, ItemModelFoil, ItemModelMeshSet,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+};
 use crate::Renderer;
 
 mod gpu;
@@ -1592,19 +1595,15 @@ impl Renderer {
         )
     }
 
-    /// Bakes this frame's hotbar 3D block items into one item-model mesh (in GUI pixel space): each slot's
-    /// block quads under its slot placement (`translate(slot_center)·scale(slot_px,-slot_px,slot_px)`)
-    /// composed with the item's `gui` display transform. The GUI ortho camera projects it in the GUI item
-    /// pass. Empty when no hotbar slot holds a 3D block item.
-    pub(crate) fn collect_hud_block_item_mesh(&self) -> crate::item_models::ItemModelMeshSet {
+    /// Bakes this frame's hotbar 3D block items into GUI pixel space: each slot's block quads under its
+    /// slot placement (`translate(slot_center)·scale(slot_px,-slot_px,slot_px)`) composed with the item's
+    /// `gui` display transform. The returned set is split into vanilla solid/translucent item phases plus
+    /// matching glint buckets for the GUI item pass.
+    pub(crate) fn collect_hud_block_item_mesh(&self) -> ItemModelMeshSet {
         let surface_size = self.surface_size();
-        let mut meshes = crate::item_models::ItemModelMeshSet::default();
+        let mut meshes = ItemModelMeshSet::default();
         let mut append_model = |model: &HudBlockItemModel, placement: glam::Mat4| {
-            let transform = placement * model.gui_display;
-            meshes.solid.append_quads(&model.quads, transform);
-            if model.foil {
-                meshes.glint.append_quads(&model.quads, transform);
-            }
+            append_hud_block_item_model_mesh(&mut meshes, model, placement);
         };
         for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
             if let Some(model) = model {
@@ -2222,6 +2221,21 @@ impl Renderer {
             }
         }
     }
+}
+
+fn append_hud_block_item_model_mesh(
+    meshes: &mut ItemModelMeshSet,
+    model: &HudBlockItemModel,
+    placement: glam::Mat4,
+) {
+    let transform = placement * model.gui_display;
+    meshes.append_quads_with_light_and_overlay_and_foil(
+        &model.quads,
+        transform,
+        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        ITEM_MODEL_NO_OVERLAY,
+        ItemModelFoil::from_has_foil(model.foil),
+    );
 }
 
 fn push_hud_draw<'a>(
@@ -2968,6 +2982,47 @@ fn sanitize_hud_item_cooldown_progress(progress: Option<f32>) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hud_block_item_mesh_splits_translucent_quads_and_matching_glint_buckets() {
+        let solid = crate::item_models::ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 8.0],
+                [16.0, 0.0, 8.0],
+                [16.0, 16.0, 8.0],
+                [0.0, 16.0, 8.0],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let mut translucent = solid.clone();
+        translucent.translucent = true;
+        let model = HudBlockItemModel {
+            quads: vec![solid, translucent],
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: true,
+        };
+
+        let mut meshes = ItemModelMeshSet::default();
+        append_hud_block_item_model_mesh(&mut meshes, &model, glam::Mat4::IDENTITY);
+
+        assert_eq!(meshes.solid.indices.len(), 6);
+        assert_eq!(meshes.translucent.indices.len(), 6);
+        assert_eq!(meshes.glint.indices.len(), 6);
+        assert_eq!(meshes.glint_translucent.indices.len(), 6);
+        assert!(meshes
+            .solid
+            .vertices
+            .iter()
+            .chain(&meshes.translucent.vertices)
+            .chain(&meshes.glint.vertices)
+            .chain(&meshes.glint_translucent.vertices)
+            .all(|vertex| vertex.light == ITEM_MODEL_FULL_BRIGHT_LIGHT));
+    }
 
     /// End-to-end GPU proof of the HUD 3D block-item consumer: bakes a block item's quad at hotbar slot
     /// 4's pixel rect (via the real [`gui_item_slot_placement`]), renders it through the actual item-model
