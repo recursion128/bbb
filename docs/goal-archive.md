@@ -1775,6 +1775,11 @@
     PURPLE, chain command block GREEN, and structure/jigsaw/test block
     LIGHT_GRAY. Tests pin representative lit, facing, waterlogged, powered,
     conditional, mode, and orientation states.
+  - [x] `falling_dust` aquatic/coral static mapColor expansion：native now
+    mirrors vanilla mapColor registrations for live coral BLUE/PINK/PURPLE/RED/
+    YELLOW, dead coral GRAY, sea pickle GREEN, and conduit DIAMOND. Tests pin
+    representative coral block/plant/fan/wall-fan states plus waterlogged,
+    facing, pickles, and conduit states.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

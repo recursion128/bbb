@@ -2909,6 +2909,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = natural_static_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = aquatic_static_map_color(name) {
+        return Some(color);
+    }
     if let Some(color) = utility_static_map_color(name) {
         return Some(color);
     }
@@ -3317,6 +3320,39 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
         "hanging_roots" | "rooted_dirt" => MAP_COLOR_DIRT,
         "mud" => MAP_COLOR_TERRACOTTA_CYAN,
+        _ => return None,
+    })
+}
+
+fn aquatic_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "sea_pickle" => MAP_COLOR_GREEN,
+        "conduit" => MAP_COLOR_DIAMOND,
+        _ => coral_static_map_color(name)?,
+    })
+}
+
+fn coral_static_map_color(name: &str) -> Option<u32> {
+    let (dead, name) = name
+        .strip_prefix("dead_")
+        .map(|name| (true, name))
+        .unwrap_or((false, name));
+    let family = name
+        .strip_suffix("_coral_wall_fan")
+        .or_else(|| name.strip_suffix("_coral_fan"))
+        .or_else(|| name.strip_suffix("_coral_block"))
+        .or_else(|| name.strip_suffix("_coral"))?;
+    if dead {
+        return matches!(family, "tube" | "brain" | "bubble" | "fire" | "horn")
+            .then_some(MAP_COLOR_GRAY);
+    }
+    Some(match family {
+        "tube" => MAP_COLOR_BLUE,
+        "brain" => MAP_COLOR_PINK,
+        "bubble" => MAP_COLOR_PURPLE,
+        "fire" => MAP_COLOR_RED,
+        "horn" => MAP_COLOR_YELLOW,
         _ => return None,
     })
 }
@@ -6517,6 +6553,81 @@ mod tests {
                 test_block_state_id("minecraft:test_block", [("mode", "fail")]),
                 "minecraft:test_block",
                 rgb_option(0x99, 0x99, 0x99),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_aquatic_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:tube_coral_block", []),
+                "minecraft:tube_coral_block",
+                rgb_option(0x33, 0x4c, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:brain_coral", [("waterlogged", "true")]),
+                "minecraft:brain_coral",
+                rgb_option(0xf2, 0x7f, 0xa5),
+            ),
+            (
+                test_block_state_id("minecraft:bubble_coral_fan", [("waterlogged", "false")]),
+                "minecraft:bubble_coral_fan",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:fire_coral_wall_fan",
+                    [("facing", "east"), ("waterlogged", "true")],
+                ),
+                "minecraft:fire_coral_wall_fan",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:horn_coral_block", []),
+                "minecraft:horn_coral_block",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:dead_tube_coral", [("waterlogged", "false")]),
+                "minecraft:dead_tube_coral",
+                rgb_option(0x4c, 0x4c, 0x4c),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dead_horn_coral_wall_fan",
+                    [("facing", "south"), ("waterlogged", "true")],
+                ),
+                "minecraft:dead_horn_coral_wall_fan",
+                rgb_option(0x4c, 0x4c, 0x4c),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:sea_pickle",
+                    [("pickles", "4"), ("waterlogged", "false")],
+                ),
+                "minecraft:sea_pickle",
+                rgb_option(0x66, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:conduit", [("waterlogged", "true")]),
+                "minecraft:conduit",
+                rgb_option(0x5c, 0xdb, 0xd5),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
