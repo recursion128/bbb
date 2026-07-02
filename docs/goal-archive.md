@@ -1324,6 +1324,22 @@
     `spread + command_velocity` with `+0.15` on y, resolving the ash/white_ash
     dust_plume follow-up above. The per-tick `gravity *= 0.88` / `friction *= 0.92`
     decay was already implemented as `ParticleTickMotionDescriptor::DustPlume`.
+  - [x] trial_spawner_detection / _ominous initial velocity：the shared
+    descriptor arm now uses `BaseAshSmokeSpread { dir: [0.0, 0.9, 0.0],
+    provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.0 } }`
+    instead of flat `Command`, matching vanilla `TrialSpawnerDetectionParticle`
+    (`super(..., 0.0, 0.0, 0.0, ...)` normalized base spread, then
+    `xd *= 0.0; yd *= 0.9; zd *= 0.0` and the command velocity added straight
+    through — `TrialSpawnerDetectionParticle.Provider` passes `xAux/yAux/zAux`
+    with no offset and draws no RNG). x/z drop the base spread (command passes
+    through) while the upward y drift is scaled by `0.9`; flat `Command` had
+    dropped that y drift. A deterministic seed=51 witness reconstructs the
+    dir-scaled base spread from the vanilla source and pins x/z passthrough plus
+    the `0.9`-scaled y drift. A vanilla-provider audit of the remaining
+    flat-`Command` particles found the rest (fishing, bubble_pop, squid_ink,
+    glow_squid_ink, enchant, nautilus, totem_of_undying, end_rod, sculk_charge,
+    firework, portal, reverse_portal, etc.) genuinely pass their aux velocity
+    straight to the base `Particle` ctor, so flat `Command` is correct there.
 - 粒子 sorting：
   - [x] single-quad particle render group / layer order：renderer
     `ParticleInstance` now records vanilla `ParticleRenderType.SINGLE_QUADS`

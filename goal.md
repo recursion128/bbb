@@ -237,13 +237,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 已完成项见 docs/goal-archive.md#p1-5透明排序粒子与-level-events。
 
 - 粒子 provider-specific behavior：
-  - 初速度。smoke / large_smoke / white_smoke 已对齐 vanilla base-particle 随机扩散；
-    ash / white_ash 的 per-axis-dir 速度变体（非均匀 `dir=(0.1, -0.1, 0.1)` +
-    WhiteAsh provider 随机偏移）以及 `dust_plume`（`dir=(0.7, 0.6, 0.7)` +
-    `CommandWithYOffset { y_offset: 0.15 }`）的 base-spread×dir 初速度均已完成
-    （见 goal-archive P1-5）。下一个具体项：审计其余仍用纯 `Command` /
-    `CommandWithYOffset` 初速度的 provider（例如 campfire/soul smoke 系、其余
-    BaseAshSmoke 派生），逐个对齐 vanilla ctor 的 dir-scaled base spread。
+  - 初速度。**已收敛**：smoke 系、ash / white_ash、dust_plume、trial_spawner_detection /
+    _ominous 的 base-spread×dir 初速度均已对齐 vanilla（见 goal-archive P1-5）。剩余
+    仍用纯 `Command` 初速度的 provider（fishing、bubble_pop、squid_ink、glow_squid_ink、
+    enchant、nautilus、totem_of_undying、end_rod、sculk_charge、firework、portal、
+    reverse_portal 等）经逐个 vanilla-provider 审计确认本就是把 aux 速度直传 base
+    `Particle` ctor，flat `Command` 正确，无 gap。初速度这一档不再有可执行小 slice。
   - lifetime。
   - size curve。
   - alpha/color curve。
