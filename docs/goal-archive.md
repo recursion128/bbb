@@ -832,13 +832,18 @@
     and removed item-model component behavior.
   - [x] `minecraft:local_time` item-model select now resolves from wall-clock
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
-    root/en-locale ICU `SimpleDateFormat` subset (`y`/`M`/`d`, 24/12-hour
-    `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, `Z`/`X`/`x` offset fields, and
-    quoted literals), using fixed `GMT`/UTC offset and IANA `time_zone` IDs
-    when present or the system local zone otherwise. Tests pin GMT Christmas
-    selection plus cross-midnight `UTC+02:30`, `Asia/Tokyo`, and UTC date-time
-    / weekday / AM-PM / offset branches from vanilla `LocalTime.get`. Full ICU
-    localized symbols and long-tail pattern fields remain follow-up.
+    root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era,
+    `M`/`L`, `d`, `D` day-of-year, 24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`,
+    `E`, `a`, `Z`/`X`/`x` offset fields, and quoted literals), using fixed
+    `GMT`/UTC offset and IANA `time_zone` IDs when present or the system local
+    zone otherwise. `G`/`u`/`D` follow Java `DateTimeFormatter`/`IsoChronology`
+    (`u` = proleptic year, identical to `y` for every CE epoch-millis date;
+    era text gated on root/en locale; day-of-year zero-padded by pattern count).
+    Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
+    `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
+    `uuuu-DDD-G` proleptic-year / day-of-year / era branch from vanilla
+    `LocalTime.get`. Localized week (`w`/`W`/`e`/`c`/`F`), quarter (`Q`/`q`),
+    zone-name (`z`/`v`/`V`/`O`) fields and non-English locales remain follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,
     matching vanilla `Time.get` target values from `EnvironmentAttributes` and
@@ -1275,6 +1280,18 @@
     terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
     branches, atlas animation, or special-group drawing rather than silent
     provider fallback.
+  - [x] smoke-family initial velocity (`minecraft:smoke` / `large_smoke` /
+    `white_smoke`)：renderer descriptors now use
+    `ParticleConstructorZeroScaledPlusCommand { scale: 0.1 }` instead of a
+    pure command velocity, matching vanilla `SmokeParticle` /
+    `WhiteSmokeParticle` (`super(..., 0.1F, 0.1F, 0.1F, xa, ya, za, ...)`) and
+    `BaseAshSmokeParticle` base-`Particle` normalized random spread — the same
+    velocity shape already reused by `PlayerCloudParticle`. Deterministic
+    seed=0 tests pin the intake velocity to `descriptor.sample` (and lava sub
+    smoke now correctly layers base spread over the lava command velocity).
+    `ash` / `white_ash` keep pure command velocity as follow-up because their
+    non-uniform `dir=(0.1, -0.1, 0.1)` (plus `WhiteAsh` provider random offset)
+    needs a per-axis-dir velocity variant.
 - 粒子 sorting：
   - [x] single-quad particle render group / layer order：renderer
     `ParticleInstance` now records vanilla `ParticleRenderType.SINGLE_QUADS`
