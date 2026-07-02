@@ -2741,6 +2741,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = crop_static_map_color(name, properties) {
         return Some(color);
     }
+    if let Some(color) = produce_and_fungus_static_map_color(name) {
+        return Some(color);
+    }
     if let Some(color) = natural_static_map_color(name) {
         return Some(color);
     }
@@ -3105,6 +3108,21 @@ fn crop_static_map_color(
         | "pitcher_plant" | "cactus" => MAP_COLOR_PLANT,
         "cactus_flower" => MAP_COLOR_PINK,
         "nether_wart" => MAP_COLOR_RED,
+        _ => return None,
+    })
+}
+
+fn produce_and_fungus_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "brown_mushroom" => MAP_COLOR_BROWN,
+        "red_mushroom" | "red_mushroom_block" => MAP_COLOR_RED,
+        "brown_mushroom_block" => MAP_COLOR_DIRT,
+        "mushroom_stem" => MAP_COLOR_WOOL,
+        "pumpkin" | "carved_pumpkin" | "jack_o_lantern" => MAP_COLOR_ORANGE,
+        "melon" => MAP_COLOR_LIGHT_GREEN,
+        "hay_block" => MAP_COLOR_YELLOW,
+        "dried_kelp_block" => MAP_COLOR_GREEN,
         _ => return None,
     })
 }
@@ -4837,6 +4855,112 @@ mod tests {
                 test_block_state_id("minecraft:cactus_flower", []),
                 "minecraft:cactus_flower",
                 rgb_option(0xf2, 0x7f, 0xa5),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_produce_and_fungus_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:brown_mushroom", []),
+                "minecraft:brown_mushroom",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:red_mushroom", []),
+                "minecraft:red_mushroom",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:brown_mushroom_block",
+                    [
+                        ("down", "true"),
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("up", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:brown_mushroom_block",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:red_mushroom_block",
+                    [
+                        ("down", "true"),
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("up", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:red_mushroom_block",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:mushroom_stem",
+                    [
+                        ("down", "true"),
+                        ("east", "true"),
+                        ("north", "true"),
+                        ("south", "true"),
+                        ("up", "true"),
+                        ("west", "true"),
+                    ],
+                ),
+                "minecraft:mushroom_stem",
+                rgb_option(0xc7, 0xc7, 0xc7),
+            ),
+            (
+                test_block_state_id("minecraft:pumpkin", []),
+                "minecraft:pumpkin",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:carved_pumpkin", [("facing", "north")]),
+                "minecraft:carved_pumpkin",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:jack_o_lantern", [("facing", "north")]),
+                "minecraft:jack_o_lantern",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:melon", []),
+                "minecraft:melon",
+                rgb_option(0x7f, 0xcc, 0x19),
+            ),
+            (
+                test_block_state_id("minecraft:hay_block", [("axis", "x")]),
+                "minecraft:hay_block",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:dried_kelp_block", []),
+                "minecraft:dried_kelp_block",
+                rgb_option(0x66, 0x7f, 0x33),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

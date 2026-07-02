@@ -1669,6 +1669,13 @@
     leaving sugar cane and melon/pumpkin stems on the BlockColors/tint path.
     Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
     on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` produce/fungus static mapColor expansion：native now
+    mirrors vanilla static mapColor fallback for brown/red mushrooms, huge
+    mushroom blocks/stems, pumpkin/carved pumpkin/jack o'lantern, melon, hay
+    block, and dried kelp block. Tests pin representative mushroom side
+    properties, facing pumpkins, the hay axis state, and produce/storage block
+    RGBs. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
+    and on-ground roll reset remain follow-up work.
   - [x] `falling_dust` utility/mechanical static mapColor expansion：native now
     mirrors vanilla static mapColor fallback for bedrock/pistons/spawner/
     crafter/trial spawner/vault STONE blocks, note/bookshelf/chest/crafting
