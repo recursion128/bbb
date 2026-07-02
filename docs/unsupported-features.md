@@ -303,7 +303,8 @@ When an agent does any of the following, update this file in the same slice:
       static colors, wooden stairs/slabs/pressure plates/doors/trapdoors/fences/
       fence gates/signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
       glass/glass pane/iron bars/iron chain/copper bars/copper chains,
-      ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
+      redstone/slime/bone/frosted-ice/dirt-path/petrified-slab misc static
+      blocks, ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
       potted, and cake default `MapColor.NONE` groups, DyeColor and colored
       terracotta families, decorative
       bed/candle/shulker families, cave/emissive
@@ -386,7 +387,8 @@ When an agent does any of the following, update this file in the same slice:
       wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
       signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
       glass/glass pane/iron bars/iron chain/copper bars/copper chains,
-      ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
+      redstone/slime/bone/frosted-ice/dirt-path/petrified-slab misc static
+      blocks, ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
       potted, and cake default `MapColor.NONE` groups, crimson/warped
       stem/hyphae colors, DyeColor / colored terracotta families,
       bed/candle/shulker decorative
@@ -6476,7 +6478,8 @@ When an agent does any of the following, update this file in the same slice:
         wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence gates/
         signs/hanging signs/shelves, banner/wall banner `WOOD`, button,
         glass/glass pane/iron bars/iron chain/copper bars/copper chains,
-        ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
+        redstone/slime/bone/frosted-ice/dirt-path/petrified-slab misc static
+        blocks, ladder/torch/end rod, rail/redstone fixture, skull/head, non-tinted
         potted, and cake default-NONE groups, crimson/warped stem/hyphae colors,
         DyeColor / colored terracotta families, bed/candle/shulker decorative
         families, cave/emissive block families, copper weathering families,

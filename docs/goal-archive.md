@@ -1762,6 +1762,11 @@
     native now mirrors vanilla default `MapColor.NONE` for iron chain plus
     copper bars and copper chain weathering/waxed variants. Tests pin fully
     connected waterlogged copper bars and axis/waterlogged chain states.
+  - [x] `falling_dust` misc static mapColor expansion：native now mirrors
+    vanilla static map colors for redstone block, slime block, petrified oak
+    slab, dirt path, frosted ice, and bone block. Tests pin no-property blocks
+    plus slab `type`/`waterlogged`, frosted-ice `age`, and bone-block `axis`
+    states.
   - [x] `falling_dust` redstone/rail default-NONE static mapColor expansion：
     native now mirrors vanilla default `MapColor.NONE` for powered/detector/
     activator/ordinary rails, lever, repeater, comparator, tripwire hook, and

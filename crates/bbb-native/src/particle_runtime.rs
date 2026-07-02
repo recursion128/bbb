@@ -2939,6 +2939,7 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:polished_granite"
         | "minecraft:dirt"
         | "minecraft:coarse_dirt"
+        | "minecraft:dirt_path"
         | "minecraft:jungle_planks"
         | "minecraft:farmland"
         | "minecraft:jukebox" => Some(MAP_COLOR_DIRT),
@@ -2977,10 +2978,14 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:end_stone_bricks"
         | "minecraft:end_stone_brick_stairs"
         | "minecraft:end_stone_brick_slab"
-        | "minecraft:end_stone_brick_wall" => Some(MAP_COLOR_SAND),
+        | "minecraft:end_stone_brick_wall"
+        | "minecraft:bone_block" => Some(MAP_COLOR_SAND),
         "minecraft:sponge" | "minecraft:wet_sponge" => Some(MAP_COLOR_YELLOW),
         "minecraft:snow" | "minecraft:snow_block" => Some(MAP_COLOR_SNOW),
-        "minecraft:ice" | "minecraft:packed_ice" | "minecraft:blue_ice" => Some(MAP_COLOR_ICE),
+        "minecraft:ice"
+        | "minecraft:packed_ice"
+        | "minecraft:blue_ice"
+        | "minecraft:frosted_ice" => Some(MAP_COLOR_ICE),
         "minecraft:clay" => Some(MAP_COLOR_CLAY),
         "minecraft:infested_stone"
         | "minecraft:infested_cobblestone"
@@ -3026,6 +3031,8 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:warped_nylium" => Some(MAP_COLOR_WARPED_NYLIUM),
         "minecraft:crimson_nylium" => Some(MAP_COLOR_CRIMSON_NYLIUM),
         "minecraft:warped_wart_block" => Some(MAP_COLOR_WARPED_WART_BLOCK),
+        "minecraft:redstone_block" => Some(MAP_COLOR_FIRE),
+        "minecraft:slime_block" => Some(MAP_COLOR_GRASS),
         "minecraft:nether_wart_block" | "minecraft:shroomlight" => Some(MAP_COLOR_RED),
         "minecraft:warped_fungus"
         | "minecraft:warped_roots"
@@ -3089,7 +3096,9 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:pearlescent_froglight" => Some(MAP_COLOR_PINK),
         "minecraft:crimson_planks" => Some(MAP_COLOR_CRIMSON_STEM),
         "minecraft:warped_planks" => Some(MAP_COLOR_WARPED_STEM),
-        "minecraft:oak_wood" | "minecraft:stripped_oak_wood" => Some(MAP_COLOR_WOOD),
+        "minecraft:oak_wood" | "minecraft:stripped_oak_wood" | "minecraft:petrified_oak_slab" => {
+            Some(MAP_COLOR_WOOD)
+        }
         "minecraft:birch_wood" | "minecraft:stripped_birch_wood" => Some(MAP_COLOR_SAND),
         "minecraft:jungle_wood" | "minecraft:stripped_jungle_wood" => Some(MAP_COLOR_DIRT),
         "minecraft:acacia_wood" => Some(MAP_COLOR_GRAY),
@@ -3909,6 +3918,7 @@ const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const MAP_COLOR_NONE: u32 = 0;
+const MAP_COLOR_GRASS: u32 = 8_368_696;
 const MAP_COLOR_SAND: u32 = 16_247_203;
 const MAP_COLOR_WOOL: u32 = 13_092_807;
 const MAP_COLOR_FIRE: u32 = 16_711_680;
@@ -4613,6 +4623,60 @@ mod tests {
                 test_block_state_id("minecraft:oak_log", [("axis", "x")]),
                 "minecraft:oak_log axis=x",
                 rgb_option(0x81, 0x56, 0x31),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_misc_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:redstone_block", []),
+                "minecraft:redstone_block",
+                rgb_option(0xff, 0x00, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:slime_block", []),
+                "minecraft:slime_block",
+                rgb_option(0x7f, 0xb2, 0x38),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:petrified_oak_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:petrified_oak_slab",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:dirt_path", []),
+                "minecraft:dirt_path",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id("minecraft:frosted_ice", [("age", "0")]),
+                "minecraft:frosted_ice",
+                rgb_option(0xa0, 0xa0, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:bone_block", [("axis", "x")]),
+                "minecraft:bone_block",
+                rgb_option(0xf7, 0xe9, 0xa3),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
