@@ -1483,6 +1483,15 @@
     sprite UVs once per-stack `BreakingItemParticle` sprite selection is
     resolved; concrete item sprite selection and translucent item splitting
     remain broader terrain/item particle rendering follow-up work.
+  - [x] fixed item particle sprite lookup：renderer `BreakingItemParticle`
+    instances now resolve the three fixed vanilla item providers to concrete
+    item atlas sprite ids from local 26.1 assets:
+    `minecraft:item_slime` -> `minecraft:item/slime_ball`,
+    `minecraft:item_cobweb` -> `minecraft:block/cobweb`, and
+    `minecraft:item_snowball` -> `minecraft:item/snowball`. Renderer tests
+    cover both provider state and item-atlas draw-range emission when the item
+    sprite UV catalog contains the fixed sprite. The generic `minecraft:item`
+    provider still waits for full ItemStack material selection.
   - [x] `falling_dust` provider-specific particle-atlas behavior：
     renderer now maps `FallingDustParticle.Provider` as ordinary
     particle-atlas `OPAQUE`, keeps zero constructor velocity, age sprite

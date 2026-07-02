@@ -304,10 +304,13 @@ When an agent does any of the following, update this file in the same slice:
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
       block atlas sprite UVs to the particle renderer, and native item atlas
-      upload supplies item atlas sprite UVs to the same path. Actual block/item
-      atlas sprite lookup, non-FallingBlock BlockColors / map-color fallback,
-      on-ground roll reset, and transparent terrain/item splitting remain
-      follow-up work. Native spawn
+      upload supplies item atlas sprite UVs to the same path. Fixed
+      `BreakingItemParticle` providers now resolve `minecraft:item_slime`,
+      `minecraft:item_cobweb`, and `minecraft:item_snowball` to their vanilla
+      item atlas sprite ids. Actual block atlas sprite lookup, generic
+      `minecraft:item` stack material lookup, non-FallingBlock BlockColors /
+      map-color fallback, on-ground roll reset, and transparent terrain/item
+      splitting remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -6407,6 +6410,12 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states return no particle
         while preserving packet sample RNG consumption. `minecraft:block_marker`
         remains unfiltered, matching vanilla `BlockMarker.Provider`.
+      - renderer fixed `BreakingItemParticle` providers resolve their vanilla
+        `ItemStackTemplate` sprite ids from local 26.1 assets:
+        `minecraft:item_slime` -> `minecraft:item/slime_ball`,
+        `minecraft:item_cobweb` -> `minecraft:block/cobweb`, and
+        `minecraft:item_snowball` -> `minecraft:item/snowball`. The generic
+        `minecraft:item` provider still defers full ItemStack material selection.
       - renderer descriptor tests now cover the full vanilla 26.1
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are

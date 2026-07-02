@@ -732,7 +732,11 @@ impl ParticleInstance {
             position
         };
         let (current_sprite_index, current_sprite_id) =
-            select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
+            if let Some(sprite_id) = fixed_item_particle_sprite_id(&command.particle_id) {
+                (None, Some(sprite_id.to_string()))
+            } else {
+                select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random)
+            };
         let falling_leaves = descriptor.falling_leaves();
         let mut falling_leaves_motion = falling_leaves
             .map(|settings| FallingLeavesRuntimeState::sample_angles(settings, random));
@@ -2031,6 +2035,15 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:trial_omen"
         | "minecraft:witch" => ParticleRenderLayer::Translucent,
         _ => ParticleRenderLayer::Opaque,
+    }
+}
+
+fn fixed_item_particle_sprite_id(particle_id: &str) -> Option<&'static str> {
+    match particle_id {
+        "minecraft:item_slime" => Some("minecraft:item/slime_ball"),
+        "minecraft:item_cobweb" => Some("minecraft:block/cobweb"),
+        "minecraft:item_snowball" => Some("minecraft:item/snowball"),
+        _ => None,
     }
 }
 
@@ -5761,11 +5774,27 @@ mod tests {
             assert_atlas_sub_rect(item_particle);
         }
         assert_eq!(item.provider, "BreakingItemParticle.Provider");
+        assert_eq!(
+            item.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
         assert_eq!(item_slime.provider, "BreakingItemParticle.SlimeProvider");
+        assert_eq!(
+            item_slime.current_sprite_id.as_deref(),
+            Some("minecraft:item/slime_ball")
+        );
         assert_eq!(item_cobweb.provider, "BreakingItemParticle.CobwebProvider");
+        assert_eq!(
+            item_cobweb.current_sprite_id.as_deref(),
+            Some("minecraft:block/cobweb")
+        );
         assert_eq!(
             item_snowball.provider,
             "BreakingItemParticle.SnowballProvider"
+        );
+        assert_eq!(
+            item_snowball.current_sprite_id.as_deref(),
+            Some("minecraft:item/snowball")
         );
 
         assert_eq!(falling_dust.provider, "FallingDustParticle.Provider");
@@ -6041,6 +6070,47 @@ mod tests {
         assert_eq!(batch.vertices[0].uv, [0.1, 0.2]);
         assert_eq!(batch.vertices[6].uv, [0.3, 0.4]);
         assert_eq!(batch.vertices[12].uv, [0.0, 1.0]);
+    }
+
+    #[test]
+    fn fixed_item_particles_emit_with_item_atlas_sprite_uvs() {
+        let mut random = ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED);
+        let mut command = spawn_command("minecraft:item_slime", 0.0);
+        command.sprite_ids.clear();
+        let mut item_slime = ParticleInstance::from_spawn_command(command, &mut random);
+        item_slime.position = [10.0, 0.0, 0.0];
+        let item_sprite_uvs = BTreeMap::from([(
+            "minecraft:item/slime_ball".to_string(),
+            ParticleUvRect {
+                min: [0.2, 0.2],
+                max: [0.8, 0.8],
+            },
+        )]);
+
+        let batch = particle_pipeline_vertex_batch(
+            [&item_slime],
+            ParticleAtlasUvSets {
+                particles: None,
+                terrain: None,
+                items: Some(&item_sprite_uvs),
+            },
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            ParticlePipelineKind::Opaque,
+        );
+
+        assert_eq!(batch.vertices.len(), 6);
+        assert_eq!(
+            batch.draws,
+            vec![ParticleAtlasDrawRange {
+                texture_atlas: ParticleTextureAtlasKind::Items,
+                vertex_start: 0,
+                vertex_count: 6,
+            }]
+        );
+        assert!(batch.vertices[0].position[0] < 10.0);
     }
 
     #[test]
