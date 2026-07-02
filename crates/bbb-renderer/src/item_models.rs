@@ -595,9 +595,9 @@ impl Renderer {
         self.item_model_glint_translucent_meshes = meshes;
     }
 
-    /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item-model foil draws. The same
-    /// texture is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
-    /// is used in both scene item features and 3D inventory icons.
+    /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item foil draws. The same texture
+    /// is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
+    /// is used in scene item features, 3D inventory icons, and flat HUD/inventory sprite overlays.
     pub fn upload_item_glint_texture(
         &mut self,
         width: u32,

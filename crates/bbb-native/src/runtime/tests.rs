@@ -2803,6 +2803,26 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
             max: carried_uv.max,
         }
     );
+    assert!(!ordinary_icon.foil);
+
+    let mut foiled_stack = stack.clone();
+    foiled_stack.component_patch.enchantment_glint_override = Some(true);
+    let foiled_icon = hud_item_icon_for_stack(
+        &world,
+        Some(&item_runtime),
+        &foiled_stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+        0.0,
+    )
+    .unwrap();
+    assert!(foiled_icon.foil);
 
     std::fs::remove_dir_all(root).unwrap();
 }

@@ -430,31 +430,37 @@ pub(super) fn hud_quad_vertices(
             position: [left, top],
             uv: uv.min,
             tint,
+            local_uv: [0.0, 0.0],
         },
         HudVertex {
             position: [right, top],
             uv: [uv.max[0], uv.min[1]],
             tint,
+            local_uv: [1.0, 0.0],
         },
         HudVertex {
             position: [right, bottom],
             uv: uv.max,
             tint,
+            local_uv: [1.0, 1.0],
         },
         HudVertex {
             position: [left, top],
             uv: uv.min,
             tint,
+            local_uv: [0.0, 0.0],
         },
         HudVertex {
             position: [right, bottom],
             uv: uv.max,
             tint,
+            local_uv: [1.0, 1.0],
         },
         HudVertex {
             position: [left, bottom],
             uv: [uv.min[0], uv.max[1]],
             tint,
+            local_uv: [0.0, 1.0],
         },
     ]
 }
@@ -496,6 +502,10 @@ mod tests {
         assert_eq!(vertices[1].uv, [0.75, 0.5]);
         assert_eq!(vertices[2].uv, [0.75, 0.875]);
         assert_eq!(vertices[5].uv, [0.25, 0.875]);
+        assert_eq!(vertices[0].local_uv, [0.0, 0.0]);
+        assert_eq!(vertices[1].local_uv, [1.0, 0.0]);
+        assert_eq!(vertices[2].local_uv, [1.0, 1.0]);
+        assert_eq!(vertices[5].local_uv, [0.0, 1.0]);
     }
 
     #[test]

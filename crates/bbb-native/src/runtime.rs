@@ -4772,6 +4772,7 @@ fn hud_item_icon_for_stack(
                 )
             })
             .collect(),
+        foil: item.has_foil(),
         count_label: hud_item_count_label_for_stack(item),
         durability_bar: hud_item_durability_bar_for_stack(item),
         cooldown_progress: hud_item_cooldown_progress_for_stack(

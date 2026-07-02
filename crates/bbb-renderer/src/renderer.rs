@@ -45,9 +45,9 @@ use crate::{
         write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
     },
     hud::{
-        create_hud_bind_group_layout, create_hud_pipeline, create_hud_sprite_gpu, HudAsciiGlyph,
-        HudDigitGlyph, HudInventoryScreen, HudItemIcon, HudSpriteGpu, HUD_ASCII_GLYPH_COUNT,
-        HUD_HOTBAR_SLOTS,
+        create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
+        create_hud_sprite_gpu, HudAsciiGlyph, HudDigitGlyph, HudInventoryScreen, HudItemIcon,
+        HudSpriteGpu, HUD_ASCII_GLYPH_COUNT, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -152,6 +152,7 @@ pub struct Renderer {
     pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
+    pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
@@ -732,6 +733,12 @@ impl Renderer {
         );
         let item_model_glint_pipeline =
             create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let hud_item_glint_pipeline = create_hud_item_glint_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &hud_bind_group_layout,
+        );
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
@@ -914,6 +921,7 @@ impl Renderer {
             item_model_z_offset_forward_pipeline,
             item_model_translucent_pipeline,
             item_model_glint_pipeline,
+            hud_item_glint_pipeline,
             selection_pipeline,
             lightmap_pipeline,
             lightmap,

@@ -192,8 +192,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   scale `8.0` shader、GLINT blend、depth-equal、no-lightmap draw；world/itemEntity-target
   item-model translucent quads now also have `RenderTypes.glintTranslucent()` mesh/draw buckets；
   clock / compass SPECIAL foil decal UVs are covered for current dropped / held / item-frame
-  item-model consumers. 剩余是 GUI 透明 3D icon parity、2D HUD/inventory sprite glint、
-  first-person special consumers 与像素级视觉校验。
+  item-model consumers；flat HUD/inventory item sprites now draw an alpha-masked standard
+  glint overlay after sprite layers and before durability/cooldown/count decorations. 剩余是
+  GUI 透明 3D icon parity、clock/compass GUI flat SPECIAL decal 精确投影、first-person
+  special consumers 与像素级视觉校验。
 - First-person viewmodel：
   - hand transform。
   - use animation。

@@ -21,6 +21,12 @@ enum TerrainOpaqueGroupLayer {
     Cutout,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HudActivePipeline {
+    Sprite,
+    ItemGlint,
+}
+
 const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
     TerrainOpaqueGroupLayer::Solid,
     TerrainOpaqueGroupLayer::Cutout,
@@ -1317,14 +1323,10 @@ impl Renderer {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&self.hud_pipeline);
                 pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
-                pipeline_switches += 1;
-                for command in hud_commands {
-                    pass.set_bind_group(0, &command.sprite.bind_group, &[]);
-                    pass.draw(command.start..command.end, 0..1);
-                }
-                hud_draw_calls = hud_commands.len() as u64;
+                let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
+                hud_draw_calls = draw_calls;
+                pipeline_switches += switches;
             }
         }
 
@@ -1412,14 +1414,10 @@ impl Renderer {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&self.hud_pipeline);
                 pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
-                pipeline_switches += 1;
-                for command in hud_commands {
-                    pass.set_bind_group(0, &command.sprite.bind_group, &[]);
-                    pass.draw(command.start..command.end, 0..1);
-                }
-                hud_draw_calls += hud_commands.len() as u64;
+                let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
+                hud_draw_calls += draw_calls;
+                pipeline_switches += switches;
             }
         }
 
@@ -1620,6 +1618,45 @@ impl Renderer {
         pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
         pass.set_index_buffer(buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..buffers.index_count, 0, 0..1);
+    }
+
+    fn draw_hud_commands<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        commands: &'a [crate::hud::HudDrawCommand<'a>],
+    ) -> (u64, u64) {
+        let mut active_pipeline = None;
+        let mut draw_calls = 0;
+        let mut pipeline_switches = 0;
+        for command in commands {
+            match command {
+                crate::hud::HudDrawCommand::Sprite { sprite, start, end } => {
+                    if active_pipeline != Some(HudActivePipeline::Sprite) {
+                        pass.set_pipeline(&self.hud_pipeline);
+                        active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, &sprite.bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
+                crate::hud::HudDrawCommand::ItemGlint { mask, start, end } => {
+                    let Some(glint) = &self.item_glint_texture else {
+                        continue;
+                    };
+                    if active_pipeline != Some(HudActivePipeline::ItemGlint) {
+                        pass.set_pipeline(&self.hud_item_glint_pipeline);
+                        pass.set_bind_group(0, &glint.gui_bind_group, &[]);
+                        active_pipeline = Some(HudActivePipeline::ItemGlint);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(1, &mask.bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
+            }
+        }
+        (draw_calls, pipeline_switches)
     }
 
     fn has_entity_translucent_features(&self) -> bool {
@@ -2461,6 +2498,40 @@ mod tests {
         assert!(
             !source[glint_draw..item_billboard].contains("lightmap.sample_bind_group"),
             "vanilla core/glint does not bind LightTexture for glintTranslucent"
+        );
+    }
+
+    #[test]
+    fn hud_flat_item_glint_uses_gui_glint_bind_group_and_item_atlas_mask() {
+        let source = include_str!("render.rs");
+        let helper = source
+            .find("fn draw_hud_commands")
+            .expect("HUD command draw helper exists");
+        let glint_arm = source[helper..]
+            .find("HudDrawCommand::ItemGlint")
+            .map(|index| helper + index)
+            .expect("HUD item glint commands are handled");
+        let pipeline = source[glint_arm..]
+            .find("pass.set_pipeline(&self.hud_item_glint_pipeline)")
+            .map(|index| glint_arm + index)
+            .expect("HUD item glint uses its dedicated pipeline");
+        let glint_bind = source[pipeline..]
+            .find("pass.set_bind_group(0, &glint.gui_bind_group, &[])")
+            .map(|index| pipeline + index)
+            .expect("HUD item glint uses the GUI camera glint bind group");
+        let mask_bind = source[glint_bind..]
+            .find("pass.set_bind_group(1, &mask.bind_group, &[])")
+            .map(|index| glint_bind + index)
+            .expect("HUD item glint binds the item atlas as an alpha mask");
+        let draw = source[mask_bind..]
+            .find("pass.draw(*start..*end, 0..1)")
+            .map(|index| mask_bind + index)
+            .expect("HUD item glint draws after binding glint and mask textures");
+
+        assert!(pipeline < glint_bind && glint_bind < mask_bind && mask_bind < draw);
+        assert!(
+            !source[glint_arm..draw].contains("lightmap.sample_bind_group"),
+            "vanilla core/glint does not bind LightTexture for GUI item glint"
         );
     }
 

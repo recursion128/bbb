@@ -893,6 +893,15 @@
     HUD base -> GUI 3D item depth-clear pass -> HUD overlay 的 pass 顺序。
     剩余 HUD/inventory parity 继续限定为字体、count/durability/cooldown/
     tooltip 的视觉细节和更宽 screen behavior。
+  - [x] flat HUD/inventory item sprite glint：`HudItemIcon` now carries
+    `ItemStackSummary::has_foil()` for flat item icons, and the renderer emits
+    a standard `RenderTypes.glint()`-shaped HUD overlay after item sprite layers
+    and before durability / cooldown / count decorations. The HUD glint shader
+    samples `textures/misc/enchanted_glint_item.png` with vanilla
+    `GLINT_TEXTURING` scale `8.0`, GLINT blend, GUI camera glint offsets, and
+    the item-atlas layer alpha as a mask so transparent sprite pixels do not
+    glow. GUI transparent 3D icon splitting, clock/compass GUI flat SPECIAL
+    decal precision, and first-person special consumers remain follow-ups.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
