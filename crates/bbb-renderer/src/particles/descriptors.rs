@@ -2916,7 +2916,7 @@ fn breaking_item_particle_descriptor(
     ParticleDescriptor {
         provider,
         lifetime: ParticleLifetimeDescriptor::BaseParticle,
-        sprite_selection: ParticleSpriteSelection::First,
+        sprite_selection: ParticleSpriteSelection::Random,
         visual: ParticleVisualDescriptor::SingleQuadScaled {
             scale: 0.5,
             color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
@@ -5260,7 +5260,7 @@ mod tests {
                 particle_id,
                 provider,
                 ParticleLifetimeDescriptor::BaseParticle,
-                ParticleSpriteSelection::First,
+                ParticleSpriteSelection::Random,
                 item_visual,
                 0.98,
                 1.0,

@@ -219,7 +219,7 @@ struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
     terrain_particle_sprite_ids: HashMap<i32, String>,
-    default_item_particle_sprite_ids: HashMap<i32, String>,
+    default_item_particle_sprite_ids: HashMap<i32, Vec<String>>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
     particle_status: ClientParticleStatus,
@@ -2139,11 +2139,11 @@ impl ParticleCommandResolver {
         }
         if particle_type_id == ITEM_PARTICLE_TYPE_ID {
             if option_state.item_component_patch_empty {
-                if let Some(sprite_id) = option_state
+                if let Some(sprite_ids) = option_state
                     .item
                     .and_then(|item| self.default_item_particle_sprite_ids.get(&item.item_id))
                 {
-                    return vec![sprite_id.clone()];
+                    return sprite_ids.clone();
                 }
             }
         }
@@ -3205,9 +3205,13 @@ mod tests {
     #[test]
     fn generic_item_particle_uses_installed_default_item_sprite_for_empty_component_patch() {
         let mut resolver = test_resolver(0);
-        resolver
-            .default_item_particle_sprite_ids
-            .insert(5, "minecraft:item/apple".to_string());
+        resolver.default_item_particle_sprite_ids.insert(
+            5,
+            vec![
+                "minecraft:item/apple".to_string(),
+                "minecraft:item/apple_overlay".to_string(),
+            ],
+        );
 
         let mut empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
         empty_patch.particle.raw_options = item_particle_options(5, 6, 0);
@@ -3216,7 +3220,10 @@ mod tests {
         assert_eq!(empty_batch.len(), 1);
         assert_eq!(
             empty_batch.commands[0].sprite_ids,
-            vec!["minecraft:item/apple".to_string()]
+            vec![
+                "minecraft:item/apple".to_string(),
+                "minecraft:item/apple_overlay".to_string()
+            ]
         );
         assert_eq!(
             empty_batch.commands[0].option_item,

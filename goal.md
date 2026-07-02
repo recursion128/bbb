@@ -325,10 +325,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：component-driven `minecraft:item`
-    stack material selection / random active-layer sampling, terrain particle
-    tint, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
-    `TRANSLUCENT_ITEMS`, and transparent terrain/items vertex emission remain
-    follow-up work.
+    stack material selection, terrain particle tint, sprite-transparency-driven
+    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, and transparent terrain/items
+    vertex emission remain follow-up work.
     Renderer GPU draw ranges now bind particle / terrain / item atlas textures
     once concrete sprite UVs are available; native terrain atlas upload supplies
     block sprite UVs and native item atlas upload supplies item sprite UVs to
@@ -339,7 +338,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:item_slime`, `minecraft:item_cobweb`, and
     `minecraft:item_snowball` to their vanilla item atlas sprite ids. Generic
     `minecraft:item` particles with an empty component patch now resolve the
-    default GROUND item particle material sprite id.
+    default GROUND item particle material active-layer sprite ids and let the
+    renderer randomly select one.
 
 完成标准：
 

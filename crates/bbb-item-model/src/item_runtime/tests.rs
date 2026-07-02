@@ -243,7 +243,13 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     );
     assert_eq!(
         runtime.default_item_particle_sprite_ids_by_protocol_id(),
-        BTreeMap::from([(0, "minecraft:item/test_sword".to_string())])
+        BTreeMap::from([(
+            0,
+            vec![
+                "minecraft:item/test_sword".to_string(),
+                MISSING_TEXTURE_ID.to_string(),
+            ],
+        )])
     );
     assert_eq!(runtime.icon_texture_index_for_protocol_id(1), None);
     let icon = runtime.icon_for_protocol_id(0).unwrap();

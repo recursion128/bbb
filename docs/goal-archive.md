@@ -1828,11 +1828,12 @@
     air / moving-piston / `shouldSpawnTerrainParticles` rejection.
   - [x] generic item particle default material sprite：native item runtime now
     exports default empty-component `ItemDisplayContext.GROUND` particle
-    material sprite ids by item protocol id, and native `minecraft:item`
-    particle spawn commands use that item atlas sprite when the raw
-    `ItemParticleOption` component patch is exactly empty. This follows vanilla
-    26.1 `BreakingItemParticle.ItemParticleProvider`, which resolves the stack
+    material active-layer sprite ids by item protocol id, native
+    `minecraft:item` particle spawn commands use those item atlas sprites when
+    the raw `ItemParticleOption` component patch is exactly empty, and renderer
+    `BreakingItemParticle` descriptors randomly select among the provided
+    active-layer ids. This follows vanilla 26.1
+    `BreakingItemParticle.ItemParticleProvider`, which resolves the stack
     through `ItemModelResolver.updateForTopItem(..., GROUND, ...)` before
     reading `ItemStackRenderState.pickParticleMaterial(random)`. Full component
-    patch decoding and random active-layer sampling remain with the wider
-    item-particle material follow-up.
+    patch decoding remains with the wider item-particle material follow-up.
