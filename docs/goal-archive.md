@@ -1748,3 +1748,14 @@
     constant, grow-to-base, flame, lava, flash overlay, portal, reverse portal,
     and shriek. The P1-5 provider checklist no longer tracks size curve as an
     open slice.
+  - [x] particle alpha/color curve coverage：renderer now keeps vanilla-shaped
+    alpha/color changes on explicit descriptors and runtime tests:
+    `SimpleAnimatedParticle` half-lifetime fade, firework spark's initial
+    `0.99` alpha plus half-lifetime fade, firework flash
+    `OverlayParticle.extract` alpha, shriek extract-time fade,
+    vault-connection `LifetimeAlpha`, firefly `getFadeAmount`, EndRod
+    half-lifetime fade-color blending, dust color-transition lerp, and decoded
+    option / random / fixed provider tints. Terrain BlockColors / map-color
+    fallback and the wider firework `Starter` child-particle presentation stay
+    with their owning follow-up items rather than the provider alpha/color
+    curve checklist.

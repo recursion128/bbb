@@ -1183,6 +1183,7 @@ impl ParticleInstance {
             ParticleAlphaCurve::SimpleAnimatedFade => {
                 self.color[3] = simple_animated_alpha(self.age_ticks, self.lifetime_ticks);
             }
+            ParticleAlphaCurve::FlashOverlayFade => {}
             ParticleAlphaCurve::FireworkSparkFade => {
                 self.color[3] = firework_spark_alpha(self.age_ticks, self.lifetime_ticks);
             }
@@ -1719,6 +1720,10 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
     match instance.alpha_curve {
         ParticleAlphaCurve::Constant => {}
         ParticleAlphaCurve::SimpleAnimatedFade => {}
+        ParticleAlphaCurve::FlashOverlayFade => {
+            color[3] =
+                flash_overlay_alpha(instance.age_ticks, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
+        }
         ParticleAlphaCurve::FireworkSparkFade => {}
         ParticleAlphaCurve::ShriekFade => {
             let lifetime = instance.lifetime_ticks.max(1) as f32;
@@ -1738,9 +1743,6 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
                 / instance.lifetime_ticks.max(1) as f32;
             color[3] = firefly_fade_amount(progress, 0.3, 0.5);
         }
-    }
-    if instance.quad_size_curve == ParticleQuadSizeCurve::FlashOverlay {
-        color[3] = flash_overlay_alpha(instance.age_ticks, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
     }
     color
 }
@@ -4491,6 +4493,7 @@ mod tests {
         assert_eq!(flash.lifetime_ticks, 4);
         assert_eq!(flash.color, [0.1, 0.2, 0.3, 0.4]);
         assert_eq!(flash.quad_size_curve, ParticleQuadSizeCurve::FlashOverlay);
+        assert_eq!(flash.alpha_curve, ParticleAlphaCurve::FlashOverlayFade);
         assert_eq!(flash.velocity, [0.0, 0.0, 0.0]);
         assert_eq!(flash.render_layer, ParticleRenderLayer::Translucent);
 

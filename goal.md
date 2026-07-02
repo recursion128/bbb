@@ -314,7 +314,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     enchant、nautilus、totem_of_undying、end_rod、sculk_charge、firework、portal、
     reverse_portal 等）经逐个 vanilla-provider 审计确认本就是把 aux 速度直传 base
     `Particle` ctor，flat `Command` 正确，无 gap。初速度这一档不再有可执行小 slice。
-  - alpha/color curve。
+  - alpha/color curve。**已收敛**：renderer 现在用显式 alpha/color
+    descriptors 覆盖 `SimpleAnimatedParticle` 半生命周期 fade、firework
+    spark 初始 `0.99` fade、firework flash extract-time overlay alpha、shriek
+    extract-time linear fade、vault connection `LifetimeAlpha`、firefly
+    `getFadeAmount`、EndRod fade color、dust transition lerp，以及 option /
+    random / fixed provider tints。terrain BlockColors / map-color fallback 和
+    firework `Starter` 子粒子的 fade-color 仍归属 terrain/firework 宽面，不再作为
+    provider alpha/color curve 小项跟踪。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：resolving block/item atlas sprites,

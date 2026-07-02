@@ -75,6 +75,7 @@ pub(crate) enum ParticleAlphaCurve {
     #[default]
     Constant,
     SimpleAnimatedFade,
+    FlashOverlayFade,
     FireworkSparkFade,
     ShriekFade,
     VaultConnectionFade,
@@ -2091,6 +2092,7 @@ impl ParticleDescriptor {
             | "SquidInkParticle.Provider"
             | "SquidInkParticle.GlowInkProvider"
             | "EndRodParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            "FireworkParticles.FlashProvider" => ParticleAlphaCurve::FlashOverlayFade,
             "FireworkParticles.SparkProvider" => ParticleAlphaCurve::FireworkSparkFade,
             "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
             "FlyTowardsPositionParticle.VaultConnectionProvider" => {
@@ -3072,6 +3074,10 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:flash").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:flash").alpha_curve(),
+            ParticleAlphaCurve::FlashOverlayFade
         );
 
         assert_descriptor(

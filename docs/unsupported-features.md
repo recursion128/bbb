@@ -328,6 +328,15 @@ When an agent does any of the following, update this file in the same slice:
       constant, grow-to-base, flame half-shrink, lava full-shrink, flash
       overlay sine size, portal grow curve, reverse-portal shrink curve, and
       shriek growth.
+      Renderer alpha/color coverage now keeps each vanilla-shaped curve on an
+      explicit descriptor: `SimpleAnimatedParticle` half-lifetime fade,
+      firework spark's initial `0.99` alpha plus half-lifetime fade, firework
+      flash `OverlayParticle.extract` alpha, shriek extract-time fade,
+      vault-connection `LifetimeAlpha`, firefly `getFadeAmount`, EndRod
+      half-lifetime fade-color blending, dust color-transition lerp, and
+      decoded option / random / fixed provider tints. Remaining color work is
+      tied to deferred owners: terrain BlockColors / map-color fallback and the
+      broader firework `Starter` child-particle presentation path.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
