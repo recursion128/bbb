@@ -11646,6 +11646,28 @@ fn move_vehicle_small_delta_acks_without_snap() {
 }
 
 #[test]
+fn minecart_lerp_component_only_attached_to_minecart_entities() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    // `protocol_add_entity` spawns a non-minecart type.
+    store.apply_add_entity(protocol_add_entity(20));
+
+    // Only the minecart carries the lerp component; the plain entity does not.
+    assert!(store.entities.minecart_lerp(10).is_some());
+    assert!(store.entities.minecart_lerp(20).is_none());
+
+    // The non-minecart still projects fully (project_entity must not require the component),
+    // reporting the empty lerp defaults.
+    let bystander = store.probe_entity(20).expect("non-minecart projects");
+    assert!(bystander.minecart_lerp_steps.is_empty());
+    assert_eq!(bystander.minecart_lerp_old_step, None);
+    assert_eq!(bystander.minecart_lerp_delay, 0);
+}
+
+#[test]
 fn minecart_along_track_updates_entity_from_latest_step() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

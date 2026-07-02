@@ -385,8 +385,15 @@ impl EntityStore {
             EntityMobEffects::from(&state),
             EntityClientAnimations::from(&state),
             EntityDamage::from(&state),
-            EntityMinecartLerp::from(&state),
         ));
+        // Only vanilla minecart types run the new-behavior lerp, so attach `EntityMinecartLerp`
+        // conditionally. This keeps the per-client-tick `query_mut::<&mut EntityMinecartLerp>` scan
+        // and the lerp-step accounting limited to actual minecarts instead of every entity.
+        if is_vanilla_minecart_type(state.entity_type_id) {
+            let _ = self
+                .ecs
+                .insert_one(entity, EntityMinecartLerp::from(&state));
+        }
         if let Some(projectile) =
             entity_hurting_projectile_from_state(state.entity_type_id, state.hurting_projectile)
         {
@@ -2785,8 +2792,23 @@ impl EntityStore {
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::from(state);
         }
-        if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
-            *lerp = EntityMinecartLerp::from(state);
+        // Keep `EntityMinecartLerp` attached only while the entity is a vanilla minecart. A re-add
+        // packet can in principle change an existing id's type, so mirror
+        // `sync_hurting_projectile_from_state` and insert / update / remove the component to match.
+        if is_vanilla_minecart_type(state.entity_type_id) {
+            let updated = {
+                if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
+                    *lerp = EntityMinecartLerp::from(state);
+                    true
+                } else {
+                    false
+                }
+            };
+            if !updated {
+                let _ = self.ecs.insert_one(entity, EntityMinecartLerp::from(state));
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityMinecartLerp>(entity);
         }
         self.sync_hurting_projectile_from_state(entity, state);
     }
@@ -2823,7 +2845,7 @@ impl EntityStore {
         let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
-        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok()?;
+        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
 
         let mut state = EntityState {
@@ -2865,7 +2887,9 @@ impl EntityStore {
         (*effects).clone().write_to_state(&mut state);
         (*client_animations).write_to_state(&mut state);
         (*damage).write_to_state(&mut state);
-        (*minecart_lerp).clone().write_to_state(&mut state);
+        if let Some(minecart_lerp) = minecart_lerp {
+            (*minecart_lerp).clone().write_to_state(&mut state);
+        }
         if let Some(projectile) = hurting_projectile {
             (*projectile).write_to_state(&mut state);
         }
