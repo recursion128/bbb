@@ -266,10 +266,12 @@ When an agent does any of the following, update this file in the same slice:
         sprite-transparency-driven terrain/item layer selection, binding
         terrain/items atlas textures in the particle GPU path, and transparent
         terrain/items vertex emission remain deferred
-    - LevelEvent particle side effects are now covered for every vanilla 26.1
-      `LevelEventHandler` case that emits particles; the remaining LevelEvent
-      work is audio ordering / world-context refinements, not unmapped particle
-      cases
+    - LevelEvent particle and audio side effects are now covered for the
+      vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
+      positioned sounds, local ambience, global sounds, or jukebox start/stop.
+      Remaining related work belongs to deferred owners such as terrain/item
+      atlas rendering, block-entity client-effect presentation, and broader
+      audio-device/runtime parity rather than a P1-5 LevelEvent mapping gap.
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -6123,8 +6125,8 @@ When an agent does any of the following, update this file in the same slice:
     - source/category mapping
     - spatial/entity-following sounds
     - stop semantics
-    - remaining level-event audio that is still coupled to unimplemented
-      particle/provider side effects
+    - future level-event audio changes when vanilla sources or supported side
+      effects expand
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
@@ -6450,6 +6452,15 @@ When an agent does any of the following, update this file in the same slice:
         and the jukebox block center
       - stop commands target the matching jukebox block position without
         stopping all record sounds
+    - The 2026-07-02 LevelEvent audio audit rechecked the local vanilla
+      `LevelEventHandler` switch against current world/native tests and
+      confirmed the covered set includes fixed-pitch local sounds, randomized
+      local sounds, particle-before-sound ordering for potion break, dragon
+      fireball, wax-on, bone-meal, vault, sculk-shrieker, and cobweb place,
+      post-sound particle random-stream advancement for smoke, trial-spawner,
+      sculk, simple particle-only, and block-face events, camera-relative
+      `globalLevelEvent` sounds, portal-travel local ambience, and jukebox
+      start/stop. P1-5 no longer tracks a LevelEvent-audio-specific open item.
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

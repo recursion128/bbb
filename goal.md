@@ -332,44 +332,6 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - atlas mip / animation：
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.
-- LevelEvent audio side effects：
-  - `3007` sculk-shrieker shriek sound 已按 vanilla 的
-    `waterlogged` gate、`SculkShriekerBlock.TOP_Y` 位置和随机 pitch 覆盖。
-  - `3008` brush-block-complete sound 已按 vanilla 的 event-data
-    `BrushableBlock.getBrushCompletedSound()` 覆盖 suspicious sand/gravel 的
-    `SoundSource.PLAYERS` completion sound；非 brushable block-state 仍不发声。
-  - `3003` honeycomb wax-on sound 已按 vanilla 在 block-face `wax_on`
-    particles 后播放，audio-only path 会推进 `UniformInt.of(3,5)` 六面粒子
-    RNG 后再抽取 positioned sound seed。
-  - `2002` / `2007` potion break sound 已按 vanilla 在 8 个 splash-potion item
-    break 粒子和 100 个 spell / instant-effect 粒子 RNG 后播放。
-  - `2006` dragon fireball explode sound 已按 vanilla 在 200 个
-    `dragon_breath` 粒子 RNG 后播放；`data != 1` 仍只发粒子不发声。
-  - `1505` bone-meal use sound 已按 vanilla 在
-    `BoneMealItem.addGrowthParticles` 后播放，audio-only probe 也会推进同一段
-    growth particle RNG 后再抽取 positioned sound seed。
-  - `3015` / `3016` vault activate/deactivate sounds 已按 vanilla 的本地
-    vault particle RNG 之后抽取 `(nextFloat - nextFloat) * 0.2 + 1.0`
-    pitch，保留 distance-delay；`3015` 仍 gate 在 event 位置已加载 vault
-    block entity。
-  - `1501` / `1502` / `1503` post-sound smoke particle RNG 已覆盖：
-    audio-only path 会在 lava extinguish、redstone torch burnout、end portal
-    frame fill 声音记录后推进 vanilla 烟雾粒子随机流，再抽取后续
-    LevelEvent 声音 seed。
-  - `3012` / `3013` / `3014` / `3019` / `3020` / `3021`
-    trial-spawner post-sound particle RNG 已覆盖：audio-only path 会在
-    distance-delayed sound 后推进 spawn / detect / eject / ominous activation
-    粒子随机流，再抽取后续 LevelEvent 声音 seed。
-  - `3006` sculk charge post-sound particle RNG 已覆盖：audio-only path 会在
-    charged sound chance / volume / pitch 或 fixed pop sound 后推进
-    block-face / pop 粒子随机流；pop 分支会使用同一个 full-block context 决定
-    20/40 粒子数量。
-  - `2000` / `2003` / `2004` / `2009` / `2010` particle-only RNG 已覆盖：
-    audio-only path 会推进 dispenser smoke / ender-eye break / blaze smoke /
-    splash cloud / white-smoke 粒子随机流，再抽取后续 LevelEvent 声音 seed。
-  - `3002` / `3004` / `3005` / `3009` block-face / axis particle-only RNG
-    已覆盖：audio-only path 会推进 electric-spark axis 或 block-face、
-    wax-off、scrape、egg-crack 粒子随机流，再抽取后续 LevelEvent 声音 seed。
 
 完成标准：
 

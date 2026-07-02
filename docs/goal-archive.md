@@ -1759,3 +1759,14 @@
     fallback and the wider firework `Starter` child-particle presentation stay
     with their owning follow-up items rather than the provider alpha/color
     curve checklist.
+  - [x] LevelEvent audio side-effect closeout：the P1-5 audit rechecked local
+    vanilla 26.1 `LevelEventHandler` and confirmed current world/native paths
+    cover LevelEvent-derived fixed and randomized local sounds, positioned
+    sound recording/playback, particle-before-sound ordering for potion break,
+    dragon fireball, wax-on, bone-meal, vault, sculk-shrieker, and cobweb
+    place, post-sound particle random-stream advancement for smoke,
+    trial-spawner, sculk, simple particle-only, and block-face events,
+    camera-relative `globalLevelEvent` sounds, portal-travel local ambience,
+    and jukebox start/stop. Remaining adjacent work stays with terrain/item
+    atlas rendering, block-entity client-effect presentation, or broader audio
+    runtime parity rather than an open P1-5 LevelEvent audio checklist.
