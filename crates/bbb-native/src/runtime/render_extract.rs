@@ -5,6 +5,13 @@
 //! colors, cloud frames, weather and lightning render state. No side
 //! effects; everything GPU-facing stays in bbb-renderer.
 
+use bbb_renderer::{
+    BlockDestroyOverlay, EntityModelInstance, HudBlockItemModel, HudInventoryScreen,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
+    SelectionOutline,
+};
+
 use super::*;
 
 pub(crate) fn lightmap_environment_for_world(
@@ -586,4 +593,88 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
             )
         }
     }
+}
+
+/// One frame's worth of world->renderer state.
+///
+/// `pump_network_and_terrain` extracts each field at the same client-tick
+/// sequence point the individual `renderer.set_*` call used to occupy (some
+/// values deliberately read the world before later tick advances, e.g. the
+/// sky environment before `advance_sky_flash_time`), then commits the whole
+/// frame to the renderer in one `apply_renderer_frame` call.
+pub(crate) struct RendererFrame {
+    pub(crate) lightmap_environment: LightmapEnvironment,
+    pub(crate) clear_color: ClearColor,
+    pub(crate) fog_environment: FogEnvironment,
+    pub(crate) sky_environment: SkyEnvironment,
+    pub(crate) cloud_environment: CloudEnvironment,
+    pub(crate) hud_health: Option<f32>,
+    pub(crate) hud_food: Option<i32>,
+    pub(crate) hud_experience_progress: Option<f32>,
+    pub(crate) hud_selected_slot: u8,
+    pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
+    pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
+    pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
+    pub(crate) block_item_model_meshes: Vec<ItemModelMesh>,
+    pub(crate) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
+    pub(crate) block_item_model_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) flat_item_model_meshes: Vec<ItemModelMesh>,
+    pub(crate) flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_model_glint_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_frame_map_textures: Vec<ItemFrameMapTexture>,
+    pub(crate) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
+    pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub(crate) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    pub(crate) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
+    pub(crate) entity_model_instances: Vec<EntityModelInstance>,
+    pub(crate) camera_pose: Option<CameraPose>,
+    pub(crate) cloud_frame: CloudFrame,
+    pub(crate) weather_render_state: WeatherRenderState,
+    pub(crate) selection_outline: Option<SelectionOutline>,
+    pub(crate) entity_scene_outline: Option<SelectionOutline>,
+    pub(crate) entity_target_outline: Option<SelectionOutline>,
+    pub(crate) block_destroy_overlays: Vec<BlockDestroyOverlay>,
+}
+
+/// Commits one extracted frame to the renderer in a single call.
+pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame) {
+    renderer.set_lightmap_environment(frame.lightmap_environment);
+    renderer.set_clear_color(frame.clear_color);
+    renderer.set_fog_environment(frame.fog_environment);
+    renderer.set_sky_environment(frame.sky_environment);
+    renderer.set_cloud_environment(frame.cloud_environment);
+    renderer.set_hud_health(frame.hud_health);
+    renderer.set_hud_food(frame.hud_food);
+    renderer.set_hud_experience_progress(frame.hud_experience_progress);
+    renderer.set_hud_selected_slot(frame.hud_selected_slot);
+    renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
+    renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);
+    renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
+    renderer.set_item_entity_billboards(frame.item_entity_billboards);
+    renderer.set_block_item_model_meshes(frame.block_item_model_meshes);
+    renderer.set_block_item_model_z_offset_forward_meshes(
+        frame.block_item_model_z_offset_forward_meshes,
+    );
+    renderer.set_block_item_model_translucent_meshes(frame.block_item_model_translucent_meshes);
+    renderer.set_flat_item_model_meshes(frame.flat_item_model_meshes);
+    renderer.set_flat_item_model_translucent_meshes(frame.flat_item_model_translucent_meshes);
+    renderer.set_item_model_glint_meshes(frame.item_model_glint_meshes);
+    renderer.set_item_model_glint_translucent_meshes(frame.item_model_glint_translucent_meshes);
+    renderer
+        .set_item_frame_map_surfaces(frame.item_frame_map_textures, frame.item_frame_map_surfaces);
+    renderer.set_item_frame_map_decoration_surfaces(
+        frame.item_frame_map_decoration_textures,
+        frame.item_frame_map_decoration_surfaces,
+    );
+    renderer.set_item_frame_map_text_surfaces(frame.item_frame_map_text_surfaces);
+    renderer.set_entity_model_instances(frame.entity_model_instances);
+    renderer.set_camera_pose(frame.camera_pose);
+    renderer.set_cloud_frame(frame.cloud_frame);
+    renderer.set_weather_render_state(frame.weather_render_state);
+    renderer.set_selection_outline(frame.selection_outline);
+    renderer.set_entity_scene_outline(frame.entity_scene_outline);
+    renderer.set_entity_target_outline(frame.entity_target_outline);
+    renderer.set_block_destroy_overlays(frame.block_destroy_overlays);
 }

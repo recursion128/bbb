@@ -1396,16 +1396,16 @@ pub(crate) fn pump_network_and_terrain(
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
     let rain_fog_multiplier = lightmap_ticks.rain_fog_multiplier();
-    renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
-    renderer.set_clear_color(clear_color_for_world_at_camera_with_water_vision(
+    let lightmap_environment = lightmap_ticks.environment_for_world(world);
+    let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
         terrain_textures,
         camera_pose_from_world(world),
         render_distance_chunks,
         water_vision,
         hide_lightning_flash,
-    ));
-    renderer.set_fog_environment(fog_environment_for_world_at_camera(
+    );
+    let fog_environment = fog_environment_for_world_at_camera(
         world,
         terrain_textures,
         camera_pose_from_world(world),
@@ -1413,14 +1413,14 @@ pub(crate) fn pump_network_and_terrain(
         water_vision,
         rain_fog_multiplier,
         hide_lightning_flash,
-    ));
-    renderer.set_sky_environment(sky_environment_for_world_at_camera(
+    );
+    let sky_environment = sky_environment_for_world_at_camera(
         world,
         terrain_textures,
         camera_pose_from_world(world),
         hide_lightning_flash,
-    ));
-    renderer.set_cloud_environment(cloud_environment_for_world(world));
+    );
+    let cloud_environment = cloud_environment_for_world(world);
     world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
@@ -1449,31 +1449,26 @@ pub(crate) fn pump_network_and_terrain(
     );
     world.advance_local_using_item_ticks(advanced_ticks);
     let local_player = world.local_player();
-    renderer.set_hud_health(local_player.health.map(|health| health.health));
-    renderer.set_hud_food(local_player.health.map(|health| health.food));
-    renderer.set_hud_experience_progress(
-        local_player
-            .experience
-            .map(|experience| experience.progress),
-    );
-    renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
+    let hud_health = local_player.health.map(|health| health.health);
+    let hud_food = local_player.health.map(|health| health.food);
+    let hud_experience_progress = local_player
+        .experience
+        .map(|experience| experience.progress);
+    let hud_selected_slot = local_player.selected_hotbar_slot;
     let item_model_keybind_context = input.item_model_keybind_context();
-    renderer.set_hud_hotbar_item_icons(hotbar_item_icons_with_input_context(
+    let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
         world,
         item_runtime,
         entity_partial_tick,
         input.shift_down(),
         item_model_keybind_context,
-    ));
-    renderer.set_hud_hotbar_block_item_models(hotbar_block_item_models(
-        world,
-        item_runtime,
-        terrain_textures,
-    ));
+    );
+    let hud_hotbar_block_item_models =
+        hotbar_block_item_models(world, item_runtime, terrain_textures);
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
-    renderer.set_hud_inventory_screen(hud_inventory_screen_with_local_state(
+    let hud_inventory_screen = hud_inventory_screen_with_local_state(
         world,
         item_runtime,
         terrain_textures,
@@ -1491,7 +1486,7 @@ pub(crate) fn pump_network_and_terrain(
             keybind_context: item_model_keybind_context,
         },
         entity_partial_tick,
-    ));
+    );
     // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
     // clock is the world game time plus the partial tick.
     let item_model_age_ticks = world
@@ -1511,11 +1506,11 @@ pub(crate) fn pump_network_and_terrain(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
-    renderer.set_item_entity_billboards(item_entity_billboards_from_world(
+    let item_entity_billboards = item_entity_billboards_from_world(
         world,
         item_runtime,
         &dropped_item_models.handled_entity_ids,
-    ));
+    );
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws).
     let entity_instances =
@@ -1560,47 +1555,59 @@ pub(crate) fn pump_network_and_terrain(
     item_model_glint_translucent_meshes.extend(dropped_item_models.flat_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(held_item_models.flat_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(item_frame_models.flat_glint_translucent_meshes);
-    renderer.set_block_item_model_meshes(block_item_meshes);
-    renderer.set_block_item_model_z_offset_forward_meshes(block_item_z_offset_forward_meshes);
-    renderer.set_block_item_model_translucent_meshes(block_item_translucent_meshes);
-    renderer.set_flat_item_model_meshes(flat_item_meshes);
-    renderer.set_flat_item_model_translucent_meshes(flat_item_translucent_meshes);
-    renderer.set_item_model_glint_meshes(item_model_glint_meshes);
-    renderer.set_item_model_glint_translucent_meshes(item_model_glint_translucent_meshes);
-    renderer.set_item_frame_map_surfaces(
-        item_frame_models.map_textures,
-        item_frame_models.map_surfaces,
-    );
-    renderer.set_item_frame_map_decoration_surfaces(
-        item_frame_models.map_decoration_textures,
-        item_frame_models.map_decoration_surfaces,
-    );
-    renderer.set_item_frame_map_text_surfaces(item_frame_models.map_text_surfaces);
-    renderer.set_entity_model_instances(entity_instances);
+    let item_frame_map_textures = item_frame_models.map_textures;
+    let item_frame_map_surfaces = item_frame_models.map_surfaces;
+    let item_frame_map_decoration_textures = item_frame_models.map_decoration_textures;
+    let item_frame_map_decoration_surfaces = item_frame_models.map_decoration_surfaces;
+    let item_frame_map_text_surfaces = item_frame_models.map_text_surfaces;
     let camera_pose = camera_pose_from_world(world);
-    renderer.set_camera_pose(camera_pose);
-    renderer.set_cloud_frame(cloud_frame_for_world(
-        world,
-        camera_pose,
-        entity_partial_tick,
-    ));
-    renderer.set_weather_render_state(weather_render_state_for_world(
-        world,
-        terrain_textures,
-        camera_pose,
-        entity_partial_tick,
-    ));
-    renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
-    renderer.set_entity_scene_outline(entity_scene_outline_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
-    renderer.set_entity_target_outline(entity_target_outline_from_camera_at_partial_tick(
-        world,
-        camera_pose,
-        entity_partial_tick,
-    ));
-    renderer.set_block_destroy_overlays(block_destroy_overlays_from_world(world, terrain_textures));
+    let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
+    let weather_render_state =
+        weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);
+    let selection_outline = selection_outline_from_camera(world, camera_pose);
+    let entity_scene_outline =
+        entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick);
+    let entity_target_outline =
+        entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
+    let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
+    apply_renderer_frame(
+        renderer,
+        RendererFrame {
+            lightmap_environment,
+            clear_color,
+            fog_environment,
+            sky_environment,
+            cloud_environment,
+            hud_health,
+            hud_food,
+            hud_experience_progress,
+            hud_selected_slot,
+            hud_hotbar_item_icons,
+            hud_hotbar_block_item_models,
+            hud_inventory_screen,
+            item_entity_billboards,
+            block_item_model_meshes: block_item_meshes,
+            block_item_model_z_offset_forward_meshes: block_item_z_offset_forward_meshes,
+            block_item_model_translucent_meshes: block_item_translucent_meshes,
+            flat_item_model_meshes: flat_item_meshes,
+            flat_item_model_translucent_meshes: flat_item_translucent_meshes,
+            item_model_glint_meshes,
+            item_model_glint_translucent_meshes,
+            item_frame_map_textures,
+            item_frame_map_surfaces,
+            item_frame_map_decoration_textures,
+            item_frame_map_decoration_surfaces,
+            item_frame_map_text_surfaces,
+            entity_model_instances: entity_instances,
+            camera_pose,
+            cloud_frame,
+            weather_render_state,
+            selection_outline,
+            entity_scene_outline,
+            entity_target_outline,
+            block_destroy_overlays,
+        },
+    );
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {
