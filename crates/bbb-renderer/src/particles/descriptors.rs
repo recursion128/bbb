@@ -49,6 +49,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     ReversePortal,
     Firefly,
     FallingLeaves,
+    FallingDust,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,6 +146,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     InclusiveTick {
         vanilla_lifetime: u32,
     },
+    FallingDust,
     CommandOption {
         fallback: u32,
     },
@@ -1837,6 +1839,21 @@ impl ParticleDescriptor {
                 ParticleLifetimeDescriptor::RandomInclusive { min: 1, max: 10 },
                 ParticleInitialVelocityDescriptor::Zero,
             ),
+            "minecraft:falling_dust" => Self {
+                provider: "FallingDustParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::FallingDust,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.674_999_95,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:item" => breaking_item_particle_descriptor(
                 "BreakingItemParticle.Provider",
                 ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
@@ -1949,6 +1966,7 @@ impl ParticleDescriptor {
             | "FallingLeavesParticle.TintedLeavesProvider" => {
                 ParticleTickMotionDescriptor::FallingLeaves
             }
+            "FallingDustParticle.Provider" => ParticleTickMotionDescriptor::FallingDust,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }
@@ -2615,6 +2633,10 @@ impl ParticleLifetimeDescriptor {
                 min + random.next_index(span as usize).unwrap_or(0) as u32
             }
             Self::InclusiveTick { vanilla_lifetime } => vanilla_lifetime.saturating_add(1),
+            Self::FallingDust => {
+                let base_lifetime = (32.0 / (random.next_f32() * 0.8 + 0.2)) as u32;
+                ((base_lifetime as f32 * 0.9).max(1.0)) as u32
+            }
             Self::CommandOption { fallback } => fallback,
             Self::DustScale { fallback_scale } => dust_lifetime(random, fallback_scale as f32),
             Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
@@ -5137,9 +5159,29 @@ mod tests {
             );
         }
 
+        assert_descriptor(
+            "minecraft:falling_dust",
+            "FallingDustParticle.Provider",
+            ParticleLifetimeDescriptor::FallingDust,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.674_999_95,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        let falling_dust = ParticleDescriptor::for_particle("minecraft:falling_dust");
         assert_eq!(
-            ParticleDescriptor::for_particle("minecraft:falling_dust").provider,
-            "Particle"
+            falling_dust.initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            falling_dust.tick_motion(),
+            ParticleTickMotionDescriptor::FallingDust
         );
     }
 

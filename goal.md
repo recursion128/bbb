@@ -1526,6 +1526,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SingleQuadParticle.Layer` intent: ordinary particle layers use
     `Particles`, block / block_marker / dust_pillar / block_crumble layers use
     `Terrain`, and item / slime / cobweb / snowball layers use `Items`.
+  - [x] `falling_dust` provider-specific particle-atlas behavior：
+    renderer now maps `FallingDustParticle.Provider` as ordinary
+    particle-atlas `OPAQUE`, keeps zero constructor velocity, age sprite
+    selection, vanilla `32/(random*0.8+0.2)*0.9` lifetime shape,
+    `0.67499995` quad-size multiplier with grow-to-base render curve, and
+    per-instance roll / rotSpeed runtime motion with Y velocity clamped to
+    `-0.14`. Block-state dust tint, invisible-block spawn rejection, and
+    on-ground roll reset stay in world-coupled particle follow-up work.
   - terrain/item particle atlas rendering：resolving block/item atlas sprites,
     applying terrain tint, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
     `TRANSLUCENT_ITEMS`, binding terrain/items particle atlas textures in the

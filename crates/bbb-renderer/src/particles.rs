@@ -155,6 +155,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) roll: f32,
     #[serde(default)]
+    pub(crate) roll_speed: f32,
+    #[serde(default)]
     pub(crate) previous_yaw: f32,
     #[serde(default)]
     pub(crate) yaw: f32,
@@ -771,11 +773,17 @@ impl ParticleInstance {
                 _ => descriptor.lifetime.sample(random),
             }
         };
-        let (previous_roll, roll) = if descriptor.provider == "SculkChargeParticle.Provider" {
-            let roll = command.option_roll.unwrap_or(0.0);
-            (roll, roll)
-        } else {
-            (0.0, 0.0)
+        let (previous_roll, roll, roll_speed) = match descriptor.provider {
+            "SculkChargeParticle.Provider" => {
+                let roll = command.option_roll.unwrap_or(0.0);
+                (roll, roll, 0.0)
+            }
+            "FallingDustParticle.Provider" => {
+                let roll_speed = (random.next_f32() - 0.5) * 0.1;
+                let roll = random.next_f32() * std::f32::consts::PI * 2.0;
+                (roll, roll, roll_speed)
+            }
+            _ => (0.0, 0.0, 0.0),
         };
         let (previous_yaw, yaw, previous_pitch, pitch) =
             if descriptor.provider == "VibrationSignalParticle.Provider" {
@@ -805,6 +813,7 @@ impl ParticleInstance {
             lifetime_ticks,
             previous_roll,
             roll,
+            roll_speed,
             previous_yaw,
             yaw,
             previous_pitch,
@@ -1101,6 +1110,14 @@ impl ParticleInstance {
             }
             ParticleTickMotionDescriptor::FallingLeaves => {
                 self.tick_falling_leaves_without_collision();
+            }
+            ParticleTickMotionDescriptor::FallingDust => {
+                self.previous_roll = self.roll;
+                self.roll += std::f32::consts::PI * self.roll_speed * 2.0;
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                self.velocity[1] = (self.velocity[1] - 0.003).max(-0.14);
             }
         }
     }
@@ -2194,6 +2211,31 @@ mod tests {
         assert_close_f32(instance.friction, 0.8832);
         assert_close3(instance.position, [1.2, 2.2824, 2.6]);
         assert_close3(instance.velocity, [0.17664, 0.249_415_68, -0.35328]);
+    }
+
+    #[test]
+    fn particle_runtime_falling_dust_rotates_and_clamps_downward_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_dust", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.139, -0.4];
+        instance.roll = 0.3;
+        instance.previous_roll = 0.2;
+        instance.roll_speed = 0.02;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.2, 1.861, 2.6]);
+        assert_close3(instance.velocity, [0.2, -0.14, -0.4]);
+        assert_close_f32(instance.previous_roll, 0.3);
+        assert_close_f32(instance.roll, 0.3 + std::f32::consts::PI * 0.02 * 2.0);
     }
 
     #[test]
@@ -5406,8 +5448,29 @@ mod tests {
             "BreakingItemParticle.SnowballProvider"
         );
 
-        assert_eq!(falling_dust.provider, "Particle");
+        assert_eq!(falling_dust.provider, "FallingDustParticle.Provider");
         assert_eq!(falling_dust.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(
+            falling_dust.texture_atlas,
+            ParticleTextureAtlasKind::Particles
+        );
+        assert_eq!(falling_dust.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(falling_dust.current_sprite_index, Some(0));
+        assert_range_f32(falling_dust.lifetime_ticks as f32, 28.0, 144.0);
+        assert_range_f32(falling_dust.base_quad_size, 0.067_499_995, 0.135);
+        assert_eq!(
+            falling_dust.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+        assert_eq!(falling_dust.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(falling_dust.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(
+            falling_dust.tick_motion,
+            ParticleTickMotionDescriptor::FallingDust
+        );
+        assert_range_f32(falling_dust.roll_speed, -0.05, 0.05);
+        assert_range_f32(falling_dust.roll, 0.0, std::f32::consts::PI * 2.0);
+        assert_close_f32(falling_dust.previous_roll, falling_dust.roll);
         assert_eq!(falling_dust.atlas_uv_sub_rect, None);
     }
 
@@ -6267,6 +6330,7 @@ mod tests {
             lifetime_ticks,
             previous_roll: 0.0,
             roll: 0.0,
+            roll_speed: 0.0,
             previous_yaw: 0.0,
             yaw: 0.0,
             previous_pitch: 0.0,

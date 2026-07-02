@@ -183,6 +183,9 @@ When an agent does any of the following, update this file in the same slice:
         vanilla-shaped atlas UVs when a concrete sprite UV is available
       - renderer now records explicit texture-atlas ownership metadata for
         particle / terrain / item atlas layers
+      - renderer maps `FallingDustParticle.Provider` as an ordinary particle
+        atlas `OPAQUE` provider with vanilla lifetime, age-sprite, size curve,
+        roll-speed, and clamped falling motion metadata
       - resolving block/item atlas sprites, terrain tint,
         sprite-transparency-driven terrain/item layer selection, binding
         terrain/items atlas textures in the particle GPU path, and transparent
@@ -211,9 +214,13 @@ When an agent does any of the following, update this file in the same slice:
       vanilla-shaped atlas sub-rect UVs when a sprite UV is available, including
       the TerrainParticle / BreakingItemParticle horizontal `u0`/`u1` flip.
       `ParticleInstance` now also carries explicit particle / terrain / item
-      texture-atlas ownership metadata; actual block/item atlas sprite lookup,
-      terrain tint, terrain/items atlas GPU binding, and transparent
-      terrain/item splitting remain follow-up work.
+      texture-atlas ownership metadata. `FallingDustParticle.Provider` is
+      represented as an ordinary particle-atlas `OPAQUE` provider with zero
+      constructor velocity, age sprite selection, vanilla lifetime, grow-to-base
+      size curve, roll / rotSpeed runtime state, and Y velocity clamped to
+      `-0.14`; actual block/item atlas sprite lookup, terrain tint,
+      invisible-block spawn rejection, on-ground roll reset, terrain/items atlas
+      GPU binding, and transparent terrain/item splitting remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6095,6 +6102,16 @@ When an agent does any of the following, update this file in the same slice:
         quad-size scaling, fixed lifetime `8`, command velocity with
         `-0.03` / `+0.03` y offset, default `0.98` friction, zero gravity, and
         physics metadata plus vanilla opaque particle layer.
+      - particle descriptors map `FallingDustParticle.Provider` for
+        `minecraft:falling_dust` to age sprites, zero constructor velocity,
+        vanilla `32/(random*.8+.2)` lifetime scaled by `0.9`, `0.67499995`
+        quad-size multiplier, grow-to-base size curve, default `0.98`
+        friction, zero gravity, physics metadata, ordinary opaque particle
+        atlas layer, sampled roll / rotSpeed, and tick motion that rotates,
+        moves by current velocity, subtracts `0.003` from Y velocity, and clamps
+        it to `-0.14`. Block-state tint, invisible-block rejection, and
+        on-ground roll reset remain deferred until particle ticking can query
+        world block/collision state.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent
