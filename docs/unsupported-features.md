@@ -296,7 +296,9 @@ When an agent does any of the following, update this file in the same slice:
       constructor velocity, age sprite selection, vanilla lifetime, grow-to-base
       size curve, roll / rotSpeed runtime state, and Y velocity clamped to
       `-0.14`; native spawn resolution now projects the provider's
-      `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
+      non-air `RenderShape.INVISIBLE` rejection for water/lava, bubble column,
+      barrier, structure void, end portal/gateway, light, and moving piston,
+      and the `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
       dragon_egg, and concrete_powder into the renderer visual tint, and now
       applies vanilla static mapColor fallback for foundational non-tinted
       stone/dirt/planks, wood/log/bamboo axis states, crimson/warped stem/hyphae
@@ -6467,8 +6469,10 @@ When an agent does any of the following, update this file in the same slice:
         moves by current velocity, subtracts `0.003` from Y velocity, and clamps
         it to `-0.14`. Native spawn resolution now mirrors the provider's
         `!state.isAir() && state.getRenderShape() == RenderShape.INVISIBLE`
-        rejection while preserving packet sample RNG consumption before the
-        rejected provider result. Its `FallingBlock#getDustColor` branch is
+        rejection for water/lava, bubble column, barrier, structure void, end
+        portal/gateway, light, and moving piston while preserving packet sample
+        RNG consumption before the rejected provider result. Its
+        `FallingBlock#getDustColor` branch is
         projected into `ParticleSpawnCommand.option_color` for sand/red_sand,
         gravel, dragon_egg, anvils, and concrete_powder states; non-FallingBlock
         vanilla `BlockColors.createDefault()` layer-0 tint is also installed for

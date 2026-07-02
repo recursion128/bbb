@@ -8165,16 +8165,71 @@ mod tests {
 
     #[test]
     fn falling_dust_rejects_non_air_invisible_render_shape_blocks() {
-        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
-        let water_id = test_block_state_id("minecraft:water", [("level", "0")]);
-        let air_id = test_block_state_id("minecraft:air", []);
-        let stone_id = test_block_state_id("minecraft:stone", []);
-
         for (block_state_id, block_name, expected_commands) in [
-            (barrier_id, "minecraft:barrier", 0),
-            (water_id, "minecraft:water", 0),
-            (air_id, "minecraft:air", 1),
-            (stone_id, "minecraft:stone", 1),
+            (
+                test_block_state_id("minecraft:barrier", [("waterlogged", "false")]),
+                "minecraft:barrier",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:water", [("level", "0")]),
+                "minecraft:water",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:lava", [("level", "0")]),
+                "minecraft:lava",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:bubble_column", [("drag", "true")]),
+                "minecraft:bubble_column",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:structure_void", []),
+                "minecraft:structure_void",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:end_gateway", []),
+                "minecraft:end_gateway",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:end_portal", []),
+                "minecraft:end_portal",
+                0,
+            ),
+            (
+                test_block_state_id("minecraft:light", [("level", "0"), ("waterlogged", "true")]),
+                "minecraft:light",
+                0,
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:moving_piston",
+                    [("facing", "north"), ("type", "normal")],
+                ),
+                "minecraft:moving_piston",
+                0,
+            ),
+            (test_block_state_id("minecraft:air", []), "minecraft:air", 1),
+            (
+                test_block_state_id("minecraft:cave_air", []),
+                "minecraft:cave_air",
+                1,
+            ),
+            (
+                test_block_state_id("minecraft:void_air", []),
+                "minecraft:void_air",
+                1,
+            ),
+            (
+                test_block_state_id("minecraft:stone", []),
+                "minecraft:stone",
+                1,
+            ),
         ] {
             let mut resolver = test_resolver(0);
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

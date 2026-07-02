@@ -1767,6 +1767,10 @@
     slab, dirt path, frosted ice, and bone block. Tests pin no-property blocks
     plus slab `type`/`waterlogged`, frosted-ice `age`, and bone-block `axis`
     states.
+  - [x] `falling_dust` invisible render-shape rejection coverage：tests now pin
+    vanilla `!isAir && RenderShape.INVISIBLE` provider null behavior for
+    water/lava, bubble column, barrier, structure void, end portal/gateway,
+    light, and moving piston while preserving air/cave_air/void_air acceptance.
   - [x] `falling_dust` redstone/rail default-NONE static mapColor expansion：
     native now mirrors vanilla default `MapColor.NONE` for powered/detector/
     activator/ordinary rails, lever, repeater, comparator, tripwire hook, and
