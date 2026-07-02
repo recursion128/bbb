@@ -3200,15 +3200,22 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
 fn utility_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     Some(match name {
-        "bedrock" | "sticky_piston" | "piston" | "spawner" | "crafter" | "trial_spawner"
-        | "vault" => MAP_COLOR_STONE,
+        "bedrock"
+        | "sticky_piston"
+        | "piston"
+        | "spawner"
+        | "crafter"
+        | "trial_spawner"
+        | "vault"
+        | "stone_pressure_plate" => MAP_COLOR_STONE,
         "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" => {
             MAP_COLOR_WOOD
         }
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
-        "heavy_core" => MAP_COLOR_METAL,
+        "light_weighted_pressure_plate" => MAP_COLOR_GOLD,
+        "heavy_weighted_pressure_plate" | "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
 }
@@ -5323,6 +5330,11 @@ mod tests {
                 rgb_option(0x70, 0x70, 0x70),
             ),
             (
+                test_block_state_id("minecraft:stone_pressure_plate", [("powered", "true")]),
+                "minecraft:stone_pressure_plate",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
                 test_block_state_id(
                     "minecraft:sticky_piston",
                     [("extended", "true"), ("facing", "north")],
@@ -5375,6 +5387,16 @@ mod tests {
                 test_block_state_id("minecraft:tnt", [("unstable", "false")]),
                 "minecraft:tnt",
                 rgb_option(0xff, 0x00, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:light_weighted_pressure_plate", [("power", "0")]),
+                "minecraft:light_weighted_pressure_plate",
+                rgb_option(0xfa, 0xee, 0x4d),
+            ),
+            (
+                test_block_state_id("minecraft:heavy_weighted_pressure_plate", [("power", "0")]),
+                "minecraft:heavy_weighted_pressure_plate",
+                rgb_option(0xa7, 0xa7, 0xa7),
             ),
             (
                 test_block_state_id(
