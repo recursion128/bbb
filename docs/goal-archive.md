@@ -1605,6 +1605,15 @@
     respawn anchor, smooth basalt, blackstone, and polished blackstone pressure
     plate RGBs. Full mapColor catalog coverage, biome-aware per-spawn
     BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` quartz/prismarine/End static mapColor expansion：
+    native extends the same final provider fallback through vanilla quartz and
+    sea-lantern blocks, prismarine variants, End stone brick variants, purpur,
+    chorus, and end portal frame static colors. Tests pin quartz block/pillar/
+    stairs/bricks, sea lantern, prismarine wall, dark prismarine slab,
+    prismarine brick stairs, End stone/wall, end portal frame, purpur
+    pillar/slab, and chorus flower RGBs. Full mapColor catalog coverage,
+    biome-aware per-spawn BlockColors, and on-ground roll reset remain
+    follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

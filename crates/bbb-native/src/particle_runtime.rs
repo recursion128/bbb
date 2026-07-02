@@ -2741,6 +2741,16 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:diorite" | "minecraft:polished_diorite" | "minecraft:pale_oak_planks" => {
             Some(MAP_COLOR_QUARTZ)
         }
+        "minecraft:quartz_block"
+        | "minecraft:chiseled_quartz_block"
+        | "minecraft:quartz_pillar"
+        | "minecraft:quartz_stairs"
+        | "minecraft:quartz_slab"
+        | "minecraft:smooth_quartz"
+        | "minecraft:smooth_quartz_stairs"
+        | "minecraft:smooth_quartz_slab"
+        | "minecraft:quartz_bricks"
+        | "minecraft:sea_lantern" => Some(MAP_COLOR_QUARTZ),
         "minecraft:pale_oak_wood" => Some(MAP_COLOR_STONE),
         "minecraft:oak_planks" => Some(MAP_COLOR_WOOD),
         "minecraft:spruce_planks"
@@ -2758,7 +2768,12 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:suspicious_sand"
         | "minecraft:sandstone"
         | "minecraft:chiseled_sandstone"
-        | "minecraft:cut_sandstone" => Some(MAP_COLOR_SAND),
+        | "minecraft:cut_sandstone"
+        | "minecraft:end_stone"
+        | "minecraft:end_stone_bricks"
+        | "minecraft:end_stone_brick_stairs"
+        | "minecraft:end_stone_brick_slab"
+        | "minecraft:end_stone_brick_wall" => Some(MAP_COLOR_SAND),
         "minecraft:sponge" | "minecraft:wet_sponge" => Some(MAP_COLOR_YELLOW),
         "minecraft:snow" | "minecraft:snow_block" => Some(MAP_COLOR_SNOW),
         "minecraft:ice" | "minecraft:packed_ice" | "minecraft:blue_ice" => Some(MAP_COLOR_ICE),
@@ -2788,6 +2803,16 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:crimson_roots" => Some(MAP_COLOR_NETHER),
         "minecraft:soul_sand" | "minecraft:soul_soil" => Some(MAP_COLOR_BROWN),
         "minecraft:glow_lichen" => Some(MAP_COLOR_GLOW_LICHEN),
+        "minecraft:prismarine"
+        | "minecraft:prismarine_stairs"
+        | "minecraft:prismarine_slab"
+        | "minecraft:prismarine_wall" => Some(MAP_COLOR_CYAN),
+        "minecraft:prismarine_bricks"
+        | "minecraft:prismarine_brick_stairs"
+        | "minecraft:prismarine_brick_slab"
+        | "minecraft:dark_prismarine"
+        | "minecraft:dark_prismarine_stairs"
+        | "minecraft:dark_prismarine_slab" => Some(MAP_COLOR_DIAMOND),
         "minecraft:warped_nylium" => Some(MAP_COLOR_WARPED_NYLIUM),
         "minecraft:crimson_nylium" => Some(MAP_COLOR_CRIMSON_NYLIUM),
         "minecraft:warped_wart_block" => Some(MAP_COLOR_WARPED_WART_BLOCK),
@@ -2803,6 +2828,12 @@ fn vanilla_static_map_color_for_block_state(
         | "minecraft:large_amethyst_bud"
         | "minecraft:medium_amethyst_bud"
         | "minecraft:small_amethyst_bud" => Some(MAP_COLOR_PURPLE),
+        "minecraft:chorus_plant" | "minecraft:chorus_flower" => Some(MAP_COLOR_PURPLE),
+        "minecraft:purpur_block"
+        | "minecraft:purpur_pillar"
+        | "minecraft:purpur_stairs"
+        | "minecraft:purpur_slab" => Some(MAP_COLOR_MAGENTA),
+        "minecraft:end_portal_frame" => Some(MAP_COLOR_GREEN),
         "minecraft:tuff"
         | "minecraft:tuff_slab"
         | "minecraft:tuff_stairs"
@@ -4752,6 +4783,142 @@ mod tests {
                 ),
                 "minecraft:polished_blackstone_pressure_plate",
                 rgb_option(0x19, 0x19, 0x19),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_quartz_prismarine_and_end_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:quartz_block", []),
+                "minecraft:quartz_block",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:quartz_pillar", [("axis", "x")]),
+                "minecraft:quartz_pillar",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:smooth_quartz_stairs",
+                    [
+                        ("facing", "east"),
+                        ("half", "bottom"),
+                        ("shape", "straight"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:smooth_quartz_stairs",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:quartz_bricks", []),
+                "minecraft:quartz_bricks",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:sea_lantern", []),
+                "minecraft:sea_lantern",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:prismarine_wall",
+                    [
+                        ("east", "low"),
+                        ("north", "none"),
+                        ("south", "none"),
+                        ("up", "true"),
+                        ("waterlogged", "false"),
+                        ("west", "none"),
+                    ],
+                ),
+                "minecraft:prismarine_wall",
+                rgb_option(0x4c, 0x7f, 0x99),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dark_prismarine_slab",
+                    [("type", "top"), ("waterlogged", "false")],
+                ),
+                "minecraft:dark_prismarine_slab",
+                rgb_option(0x5c, 0xdb, 0xd5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:prismarine_brick_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "inner_left"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:prismarine_brick_stairs",
+                rgb_option(0x5c, 0xdb, 0xd5),
+            ),
+            (
+                test_block_state_id("minecraft:end_stone", []),
+                "minecraft:end_stone",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:end_stone_brick_wall",
+                    [
+                        ("east", "low"),
+                        ("north", "none"),
+                        ("south", "none"),
+                        ("up", "true"),
+                        ("waterlogged", "false"),
+                        ("west", "none"),
+                    ],
+                ),
+                "minecraft:end_stone_brick_wall",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:end_portal_frame",
+                    [("eye", "true"), ("facing", "north")],
+                ),
+                "minecraft:end_portal_frame",
+                rgb_option(0x66, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:purpur_pillar", [("axis", "z")]),
+                "minecraft:purpur_pillar",
+                rgb_option(0xb2, 0x4c, 0xd8),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:purpur_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:purpur_slab",
+                rgb_option(0xb2, 0x4c, 0xd8),
+            ),
+            (
+                test_block_state_id("minecraft:chorus_flower", [("age", "5")]),
+                "minecraft:chorus_flower",
+                rgb_option(0x7f, 0x3f, 0xb2),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
