@@ -264,10 +264,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `1505`: plant-growth `minecraft:happy_villager` particles for
         vanilla `BoneMealItem.addGrowthParticles` branches, including
         BonemealableBlock grower/in-block emission, rooted-dirt and
-        mangrove-leaves below-position grower particles, water and
-        neighbor-spreader wide spread (`count * 3`, `spreadWidth=3.0`,
-        `spreadHeight=1.0`), and the `allowFloatingParticles=false` 7x7
-        support-layer non-air filter
+        mangrove-leaves below-position grower particles using loaded
+        block-state shape max-Y spread height, water and neighbor-spreader wide
+        spread (`count * 3`, `spreadWidth=3.0`, `spreadHeight=1.0`), and the
+        `allowFloatingParticles=false` 7x7 support-layer non-air filter
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
@@ -278,8 +278,8 @@ When an agent does any of the following, update this file in the same slice:
       - events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
         (`PARTICLES_TURTLE_EGG_PLACEMENT`): vanilla
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
-        particles for the current air/default spread-height path, using event
-        `data` as count and gaussian `0.02` velocity
+        particles, using loaded block-state shape max-Y for spread height, event
+        `data` as count, and gaussian `0.02` velocity
       - event `2013`: vanilla
         `ParticleUtils.spawnSmashAttackParticles` dust-pillar submissions using
         event `data` for the two float-bounded loop counts, event-position
@@ -334,9 +334,6 @@ When an agent does any of the following, update this file in the same slice:
       `2003`'s ender-eye item particles and events `2002` / `2007`
       splash-potion item particles, stay deferred with terrain/item particle
       atlas rendering rather than being approximated as simple atlas particles.
-      Block-state shape-sensitive `ParticleUtils.spawnParticleInBlock`
-      spread-height remains deferred for in-block LevelEvent branches that
-      currently use the air/default one-block height.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

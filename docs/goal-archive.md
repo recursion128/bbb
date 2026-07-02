@@ -1467,6 +1467,12 @@
     filter across the sampled 7x7 below layer. Shape-sensitive
     `spawnParticleInBlock` heights remain follow-up with the broader block-shape
     particle work.
+  - [x] shape-sensitive in-block LevelEvent particles：events `2011` /
+    `2012` and the grower branch of event `1505` now thread loaded block-state
+    outline shape max-Y into vanilla `ParticleUtils.spawnParticleInBlock`
+    spread height. Missing/unloaded context still uses the vanilla air/default
+    `1.0` height; the remaining `2002` / `2003` / `2007` item-particle portions
+    stay deferred to terrain/item particle atlas rendering.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs

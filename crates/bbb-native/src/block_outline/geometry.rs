@@ -52,6 +52,13 @@ impl BlockOutlineShape {
     pub(super) fn is_full_block(&self) -> bool {
         matches!(self, Self::Single(outline) if *outline == BlockOutlineBox::FULL)
     }
+
+    pub(super) fn max_y(&self) -> f64 {
+        self.boxes()
+            .iter()
+            .map(|outline| outline.max[1])
+            .fold(0.0, f64::max)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

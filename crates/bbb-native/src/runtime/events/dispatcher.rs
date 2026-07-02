@@ -22,6 +22,8 @@ use super::control_state::apply_control_projection_event;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
+const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
+const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 
 #[cfg(test)]
@@ -767,6 +769,7 @@ pub(super) fn level_event_particle_context(
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
         growth_particles: growth_particle_context(world, event),
+        in_block_particle_spread_height: in_block_particle_spread_height_context(world, event),
     }
 }
 
@@ -799,6 +802,25 @@ fn sculk_charge_pop_full_block_context(
         .map(|probe| crate::block_outline::block_probe_has_full_block_shape(&probe))
 }
 
+fn in_block_particle_spread_height_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<f64> {
+    match event.event_type {
+        BEE_GROWTH_PARTICLES_LEVEL_EVENT | TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT => {
+            Some(in_block_particle_spread_height(world, event.pos))
+        }
+        _ => None,
+    }
+}
+
+fn in_block_particle_spread_height(world: &WorldStore, pos: ProtocolBlockPos) -> f64 {
+    world
+        .probe_block(protocol_to_world_block_pos(pos))
+        .and_then(|probe| crate::block_outline::block_probe_shape_max_y(&probe))
+        .unwrap_or(1.0)
+}
+
 fn growth_particle_context(
     world: &WorldStore,
     event: &bbb_protocol::packets::LevelEvent,
@@ -820,15 +842,20 @@ fn growth_particle_context(
         ));
     }
     if is_below_particle_pos_bonemealable_block_name(block_name) {
+        let pos = protocol_block_pos_relative_y(event.pos, -1)?;
         return Some(LevelEventGrowthParticleContext {
-            pos: protocol_block_pos_relative_y(event.pos, -1)?,
-            mode: LevelEventGrowthParticleMode::InBlock,
+            pos,
+            mode: LevelEventGrowthParticleMode::InBlock {
+                spread_height: in_block_particle_spread_height(world, pos),
+            },
         });
     }
     if is_grower_bonemealable_block_name(block_name) {
         return Some(LevelEventGrowthParticleContext {
             pos: event.pos,
-            mode: LevelEventGrowthParticleMode::InBlock,
+            mode: LevelEventGrowthParticleMode::InBlock {
+                spread_height: in_block_particle_spread_height(world, event.pos),
+            },
         });
     }
     None

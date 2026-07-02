@@ -257,8 +257,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.
 - LevelEvent particle side effects：
-  - block-state shape-sensitive `spawnParticleInBlock` heights and the
-    still-deferred `2002` / `2003` / `2007` item-particle portions remain
+  - still-deferred `2002` / `2003` / `2007` item-particle portions remain
     follow-up work.
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
     portal ring/happy-villager 之外的剩余事件。

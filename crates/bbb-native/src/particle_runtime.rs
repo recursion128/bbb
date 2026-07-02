@@ -34,12 +34,13 @@ pub(crate) struct LevelParticleSpawnContext {
     pub(crate) camera_position: Option<[f64; 3]>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
     pub(crate) block_state_id_at_event_pos: Option<i32>,
     pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
+    pub(crate) in_block_particle_spread_height: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,15 +49,17 @@ pub(crate) enum LevelEventDripstoneDripParticle {
     Lava,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct LevelEventGrowthParticleContext {
     pub(crate) pos: BlockPos,
     pub(crate) mode: LevelEventGrowthParticleMode,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum LevelEventGrowthParticleMode {
-    InBlock,
+    InBlock {
+        spread_height: f64,
+    },
     WideNoFloating {
         support: LevelEventGrowthParticleSupport,
     },
@@ -606,6 +609,7 @@ impl ParticleCommandResolver {
                     event,
                     HAPPY_VILLAGER_PARTICLE_TYPE_ID,
                     event.data,
+                    context.in_block_particle_spread_height.unwrap_or(1.0),
                     random,
                 ),
             SMASH_ATTACK_PARTICLES_LEVEL_EVENT => {
@@ -727,12 +731,14 @@ impl ParticleCommandResolver {
             return ParticleSpawnBatch::default();
         };
         match growth.mode {
-            LevelEventGrowthParticleMode::InBlock => self.particle_in_block_batch_at(
-                growth.pos,
-                HAPPY_VILLAGER_PARTICLE_TYPE_ID,
-                event.data,
-                random,
-            ),
+            LevelEventGrowthParticleMode::InBlock { spread_height } => self
+                .particle_in_block_batch_at(
+                    growth.pos,
+                    HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                    event.data,
+                    spread_height,
+                    random,
+                ),
             LevelEventGrowthParticleMode::WideNoFloating { support } => self
                 .growth_wide_particle_batch(
                     growth.pos,
@@ -1367,7 +1373,7 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        self.particle_in_block_batch(event, POOF_PARTICLE_TYPE_ID, 10, random)
+        self.particle_in_block_batch(event, POOF_PARTICLE_TYPE_ID, 10, 1.0, random)
     }
 
     fn particle_in_block_batch(
@@ -1375,9 +1381,10 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         particle_type_id: i32,
         count: i32,
+        spread_height: f64,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        self.particle_in_block_batch_at(event.pos, particle_type_id, count, random)
+        self.particle_in_block_batch_at(event.pos, particle_type_id, count, spread_height, random)
     }
 
     fn particle_in_block_batch_at(
@@ -1385,6 +1392,7 @@ impl ParticleCommandResolver {
         pos: BlockPos,
         particle_type_id: i32,
         count: i32,
+        spread_height: f64,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         if count <= 0 {
@@ -1407,7 +1415,7 @@ impl ParticleCommandResolver {
             };
             let position = Vec3d {
                 x: f64::from(pos.x) + random.next_double(),
-                y: f64::from(pos.y) + random.next_double(),
+                y: f64::from(pos.y) + random.next_double() * spread_height,
                 z: f64::from(pos.z) + random.next_double(),
             };
             batch
@@ -3114,7 +3122,7 @@ mod tests {
             LevelEventParticleContext {
                 growth_particles: Some(LevelEventGrowthParticleContext {
                     pos: growth_event.pos,
-                    mode: LevelEventGrowthParticleMode::InBlock,
+                    mode: LevelEventGrowthParticleMode::InBlock { spread_height: 1.0 },
                 }),
                 ..LevelEventParticleContext::default()
             },
@@ -3164,8 +3172,8 @@ mod tests {
             false,
         );
 
-        let mut unsupported_growth_random = LevelEventSoundRandomState::with_seed(0);
-        let unsupported_growth = resolver.resolve_level_event_particles_with_context(
+        let mut empty_support_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let empty_support_growth = resolver.resolve_level_event_particles_with_context(
             &growth_event,
             LevelEventParticleContext {
                 growth_particles: Some(LevelEventGrowthParticleContext {
@@ -3176,9 +3184,9 @@ mod tests {
                 }),
                 ..LevelEventParticleContext::default()
             },
-            &mut unsupported_growth_random,
+            &mut empty_support_growth_random,
         );
-        assert!(unsupported_growth.commands.is_empty());
+        assert!(empty_support_growth.commands.is_empty());
 
         let mut shriek_random = LevelEventSoundRandomState::with_seed(0);
         let shriek = resolver.resolve_level_event_particles(
@@ -3843,6 +3851,37 @@ mod tests {
             [
                 10.597_545_277_797_202,
                 64.333_218_399_476_65,
+                -2.614_810_815_259_281_7,
+            ],
+            [
+                0.016_050_661_274_780_612,
+                -0.018_030_921_768_350_243,
+                0.041_618_415_808_563_26,
+            ],
+            false,
+        );
+
+        let mut bee_growth_half_height_random = LevelEventSoundRandomState::with_seed(0);
+        let bee_growth_half_height = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent {
+                event_type: 2011,
+                data: 3,
+                ..level_event_packet(2011)
+            },
+            LevelEventParticleContext {
+                in_block_particle_spread_height: Some(0.5),
+                ..LevelEventParticleContext::default()
+            },
+            &mut bee_growth_half_height_random,
+        );
+        assert_eq!(bee_growth_half_height.len(), 3);
+        assert_particle_command(
+            &bee_growth_half_height.commands[0],
+            43,
+            "minecraft:happy_villager",
+            [
+                10.597_545_277_797_202,
+                64.166_609_199_738_33,
                 -2.614_810_815_259_281_7,
             ],
             [

@@ -69,6 +69,14 @@ pub(crate) fn block_probe_has_full_block_shape(probe: &BlockProbe) -> bool {
         .is_some_and(|outline| outline.is_full_block())
 }
 
+pub(crate) fn block_probe_shape_max_y(probe: &BlockProbe) -> Option<f64> {
+    if matches!(probe.material, TerrainMaterialClass::Empty) {
+        return Some(1.0);
+    }
+    outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .map(|outline| outline.max_y())
+}
+
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
     selection_outline_for_box(pos, BlockOutlineBox::FULL)
 }

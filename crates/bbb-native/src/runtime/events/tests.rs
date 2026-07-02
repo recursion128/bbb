@@ -3056,12 +3056,14 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 block_state_id_at_event_pos: Some(1),
                 dripstone_drip_particle: None,
                 growth_particles: None,
+                in_block_particle_spread_height: None,
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
                 block_state_id_at_event_pos: Some(0),
                 dripstone_drip_particle: None,
                 growth_particles: None,
+                in_block_particle_spread_height: None,
             },
         ]
     );
@@ -3152,6 +3154,11 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
     let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
     let grass_id = vanilla_block_state_id("minecraft:grass_block", [("snowy", "false")]);
     let rooted_dirt_id = vanilla_block_state_id("minecraft:rooted_dirt", []);
+    let short_grass_id = vanilla_block_state_id("minecraft:short_grass", []);
+    let bottom_slab_id = vanilla_block_state_id(
+        "minecraft:oak_slab",
+        [("type", "bottom"), ("waterlogged", "false")],
+    );
     let stone_id = vanilla_block_state_id("minecraft:stone", []);
 
     let mut world = WorldStore::new();
@@ -3195,7 +3202,7 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
             .growth_particles,
         Some(LevelEventGrowthParticleContext {
             pos: block_pos(18, -64, -32),
-            mode: LevelEventGrowthParticleMode::InBlock,
+            mode: LevelEventGrowthParticleMode::InBlock { spread_height: 1.0 },
         })
     );
 
@@ -3204,6 +3211,25 @@ fn plant_growth_level_event_context_uses_bonemeal_particle_branches() {
         level_event_particle_context(&world, &level_event_at_with_data(1505, 19, -63, -32, 15))
             .growth_particles,
         None
+    );
+
+    set_test_block(&mut world, block_pos(20, -63, -32), short_grass_id);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(1505, 20, -63, -32, 15))
+            .growth_particles,
+        Some(LevelEventGrowthParticleContext {
+            pos: block_pos(20, -63, -32),
+            mode: LevelEventGrowthParticleMode::InBlock {
+                spread_height: 13.0 / 16.0
+            },
+        })
+    );
+
+    set_test_block(&mut world, block_pos(21, -63, -32), bottom_slab_id);
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at_with_data(2011, 21, -63, -32, 3))
+            .in_block_particle_spread_height,
+        Some(0.5)
     );
 }
 
