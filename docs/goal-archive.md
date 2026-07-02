@@ -1500,6 +1500,19 @@
     state `0` is skipped. True `shouldSpawnTerrainParticles` / moving-piston
     rejection, terrain tint, and terrain-atlas GPU binding remain with broader
     block/terrain particle work.
+  - [x] `TerrainParticle.createTerrainParticle` provider rejection：native
+    `LevelParticles` resolution now drops definition-less `minecraft:block`,
+    `minecraft:dust_pillar`, and `minecraft:block_crumble` submissions for air,
+    `moving_piston`, and `shouldSpawnTerrainParticles=false` block states after
+    packet sample RNG is consumed. `minecraft:block_marker` remains unfiltered
+    like vanilla `BlockMarker.Provider`.
+  - [x] LevelEvent terrain-particle rejection filters：events `2001` / `3008`
+    now follow `ClientLevel.addDestroyBlockEffect` by skipping air and
+    `shouldSpawnTerrainParticles=false` states while still allowing
+    `moving_piston`; event `2013` now keeps the vanilla
+    `TerrainParticle.DustPillarProvider` rejection for air, `moving_piston`, and
+    no-terrain-particle states, preserving the event random draws before the
+    rejected provider result.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

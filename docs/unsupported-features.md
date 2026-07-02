@@ -187,6 +187,11 @@ When an agent does any of the following, update this file in the same slice:
         atlas `OPAQUE` provider with vanilla lifetime, age-sprite, size curve,
         roll-speed, clamped falling motion metadata, and native spawn rejection
         for non-air block states whose vanilla render shape is `INVISIBLE`
+      - native spawn resolution mirrors
+        `TerrainParticle.createTerrainParticle` for `block`, `dust_pillar`,
+        and `block_crumble`: air, `moving_piston`, and
+        `shouldSpawnTerrainParticles=false` block states are rejected after
+        packet sample RNG is consumed; `block_marker` does not use this filter
       - resolving block/item atlas sprites, terrain tint,
         sprite-transparency-driven terrain/item layer selection, binding
         terrain/items atlas textures in the particle GPU path, and transparent
@@ -221,8 +226,14 @@ When an agent does any of the following, update this file in the same slice:
       constructor velocity, age sprite selection, vanilla lifetime, grow-to-base
       size curve, roll / rotSpeed runtime state, and Y velocity clamped to
       `-0.14`; actual block/item atlas sprite lookup, terrain tint,
-      invisible-block spawn rejection, on-ground roll reset, terrain/items atlas
-      GPU binding, and transparent terrain/item splitting remain follow-up work.
+      on-ground roll reset, terrain/items atlas GPU binding, and transparent
+      terrain/item splitting remain follow-up work. Native spawn resolution
+      also mirrors `TerrainParticle.createTerrainParticle` for definition-less
+      `minecraft:block`, `minecraft:dust_pillar`, and
+      `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
+      `shouldSpawnTerrainParticles=false` block states after packet sample RNG
+      is consumed; `minecraft:block_marker` remains unfiltered like vanilla
+      `BlockMarker.Provider`.
       Renderer tests enumerate every id registered by vanilla 26.1
       `ParticleResources.registerProviders()` and assert it maps to an explicit
       vanilla provider descriptor rather than the generic `Particle` fallback.
@@ -281,10 +292,11 @@ When an agent does any of the following, update this file in the same slice:
         density grid submissions for event-data block-state ids, using native
         block-outline boxes when the state shape is known and full-cube fallback
         otherwise, with definition-less `minecraft:block` commands carrying
-        `BlockParticleOption` metadata and skipping air state `0`; true
-        `shouldSpawnTerrainParticles` / moving-piston rejection, terrain tint,
-        and terrain-atlas GPU binding remain with broader terrain/block particle
-        work
+        `BlockParticleOption` metadata and skipping air plus
+        `shouldSpawnTerrainParticles=false` block states; unlike
+        `TerrainParticle.Provider`, vanilla `addDestroyBlockEffect` does not
+        reject `moving_piston`. Terrain tint and terrain-atlas GPU binding
+        remain with broader terrain/block particle work
       - events `2002` / `2007`: eight `minecraft:item` splash-potion break
         particles with vanilla `ItemParticleOption(Items.SPLASH_POTION)`,
         center position, and gaussian/upward velocity, followed by 100
@@ -300,7 +312,9 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleUtils.spawnSmashAttackParticles` dust-pillar submissions using
         event `data` for the two float-bounded loop counts, event-position
         block state as `BlockParticleOption(ParticleTypes.DUST_PILLAR, state)`,
-        and air state `0` when native has no loaded block context
+        and `TerrainParticle.DustPillarProvider` rejection for air,
+        `moving_piston`, and `shouldSpawnTerrainParticles=false` states after
+        the position/velocity random draws are consumed
       - event `2003`: eight `minecraft:item` ender-eye break particles with
         vanilla `ItemParticleOption(Items.ENDER_EYE)`, center position, and
         gaussian/upward velocity, followed by the vanilla portal ring
@@ -6208,6 +6222,12 @@ When an agent does any of the following, update this file in the same slice:
         rejected provider result. Block-state tint and on-ground roll reset
         remain deferred until particle ticking can query world block/collision
         state.
+      - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
+        for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
+        `minecraft:block_crumble` submissions: air, `moving_piston`, and
+        `shouldSpawnTerrainParticles=false` block states return no particle
+        while preserving packet sample RNG consumption. `minecraft:block_marker`
+        remains unfiltered, matching vanilla `BlockMarker.Provider`.
       - renderer descriptor tests now cover the full vanilla 26.1
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are

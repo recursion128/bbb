@@ -11,7 +11,10 @@ use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
-use bbb_world::{block_name_has_invisible_render_shape, LevelEventSoundRandomState};
+use bbb_world::{
+    block_name_has_invisible_render_shape, block_name_is_air,
+    block_name_should_spawn_terrain_particles, LevelEventSoundRandomState,
+};
 
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
@@ -685,6 +688,9 @@ impl ParticleCommandResolver {
         if block_state_id <= AIR_BLOCK_STATE_ID {
             return ParticleSpawnBatch::default();
         }
+        if !destroy_block_effect_accepts_block_state(block_state_id) {
+            return ParticleSpawnBatch::default();
+        }
         let template = match self.simple_particle_template(BLOCK_PARTICLE_TYPE_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
@@ -787,6 +793,7 @@ impl ParticleCommandResolver {
         let block_state_id = context
             .block_state_id_at_event_pos
             .unwrap_or(AIR_BLOCK_STATE_ID);
+        let provider_accepts_spawn = terrain_particle_provider_accepts_block_state(block_state_id);
         let option_state = ParticleOptionRenderState {
             block: Some(ParticleBlockOptionState { block_state_id }),
             ..ParticleOptionRenderState::default()
@@ -798,48 +805,56 @@ impl ParticleCommandResolver {
         };
 
         for _ in 0..smash_attack_particle_loop_count(event.data, 3.0) {
-            batch.commands.push(self.command_for_type(
-                template.particle_type,
-                &template.sprite_ids,
-                Vec3d {
-                    x: center.x + random.next_gaussian() / 2.0,
-                    y: center.y,
-                    z: center.z + random.next_gaussian() / 2.0,
-                },
-                Vec3d {
-                    x: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
-                    y: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
-                    z: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
-                },
-                template.particle_type.override_limiter,
-                false,
-                0,
-                0,
-                option_state,
-            ));
+            let position = Vec3d {
+                x: center.x + random.next_gaussian() / 2.0,
+                y: center.y,
+                z: center.z + random.next_gaussian() / 2.0,
+            };
+            let velocity = Vec3d {
+                x: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                y: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+                z: random.next_gaussian() * SMASH_ATTACK_CENTER_SPEED_SCALE,
+            };
+            if provider_accepts_spawn {
+                batch.commands.push(self.command_for_type(
+                    template.particle_type,
+                    &template.sprite_ids,
+                    position,
+                    velocity,
+                    template.particle_type.override_limiter,
+                    false,
+                    0,
+                    0,
+                    option_state,
+                ));
+            }
         }
 
         for i in 0..smash_attack_particle_loop_count(event.data, 1.5) {
             let angle = i as f64;
-            batch.commands.push(self.command_for_type(
-                template.particle_type,
-                &template.sprite_ids,
-                Vec3d {
-                    x: center.x + 3.5 * angle.cos() + random.next_gaussian() / 2.0,
-                    y: center.y,
-                    z: center.z + 3.5 * angle.sin() + random.next_gaussian() / 2.0,
-                },
-                Vec3d {
-                    x: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
-                    y: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
-                    z: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
-                },
-                template.particle_type.override_limiter,
-                false,
-                0,
-                0,
-                option_state,
-            ));
+            let position = Vec3d {
+                x: center.x + 3.5 * angle.cos() + random.next_gaussian() / 2.0,
+                y: center.y,
+                z: center.z + 3.5 * angle.sin() + random.next_gaussian() / 2.0,
+            };
+            let velocity = Vec3d {
+                x: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                y: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+                z: random.next_gaussian() * SMASH_ATTACK_RING_SPEED_SCALE,
+            };
+            if provider_accepts_spawn {
+                batch.commands.push(self.command_for_type(
+                    template.particle_type,
+                    &template.sprite_ids,
+                    position,
+                    velocity,
+                    template.particle_type.override_limiter,
+                    false,
+                    0,
+                    0,
+                    option_state,
+                ));
+            }
         }
 
         batch
@@ -2196,14 +2211,23 @@ fn particle_provider_accepts_spawn(
     particle_type_id: i32,
     option_state: ParticleOptionRenderState,
 ) -> bool {
-    if particle_type_id != FALLING_DUST_PARTICLE_TYPE_ID {
-        return true;
-    }
     let Some(block) = option_state.block else {
         return true;
     };
+    match particle_type_id {
+        FALLING_DUST_PARTICLE_TYPE_ID => {
+            falling_dust_provider_accepts_block_state(block.block_state_id)
+        }
+        BLOCK_PARTICLE_TYPE_ID | DUST_PILLAR_PARTICLE_TYPE_ID | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
+            terrain_particle_provider_accepts_block_state(block.block_state_id)
+        }
+        _ => true,
+    }
+}
+
+fn falling_dust_provider_accepts_block_state(block_state_id: i32) -> bool {
     let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
-    let Some(block_state) = block_states.by_id(block.block_state_id) else {
+    let Some(block_state) = block_states.by_id(block_state_id) else {
         return true;
     };
     !falling_dust_provider_rejects_block_name(&block_state.name)
@@ -2214,6 +2238,25 @@ fn falling_dust_provider_rejects_block_name(name: &str) -> bool {
         name,
         "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
     ) && block_name_has_invisible_render_shape(name)
+}
+
+fn terrain_particle_provider_accepts_block_state(block_state_id: i32) -> bool {
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let Some(block_state) = block_states.by_id(block_state_id) else {
+        return true;
+    };
+    !block_name_is_air(&block_state.name)
+        && block_state.name != "minecraft:moving_piston"
+        && block_name_should_spawn_terrain_particles(&block_state.name)
+}
+
+fn destroy_block_effect_accepts_block_state(block_state_id: i32) -> bool {
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let Some(block_state) = block_states.by_id(block_state_id) else {
+        return true;
+    };
+    !block_name_is_air(&block_state.name)
+        && block_name_should_spawn_terrain_particles(&block_state.name)
 }
 
 fn decode_vibration_position_source_target(
@@ -2866,6 +2909,102 @@ mod tests {
             );
             assert_eq!(command.option_item, item, "{particle_id}");
         }
+    }
+
+    #[test]
+    fn terrain_particle_providers_reject_vanilla_filtered_block_states() {
+        let air_id = test_block_state_id("minecraft:air", []);
+        let moving_piston_id = test_block_state_id(
+            "minecraft:moving_piston",
+            [("facing", "north"), ("type", "normal")],
+        );
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let structure_void_id = test_block_state_id("minecraft:structure_void", []);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+
+        for particle_type_id in [
+            BLOCK_PARTICLE_TYPE_ID,
+            DUST_PILLAR_PARTICLE_TYPE_ID,
+            BLOCK_CRUMBLE_PARTICLE_TYPE_ID,
+        ] {
+            for block_state_id in [air_id, moving_piston_id, barrier_id, structure_void_id] {
+                let mut resolver = test_resolver(0);
+                let mut packet = level_particles_packet(particle_type_id, 0);
+                packet.particle.raw_options = block_particle_options(block_state_id);
+
+                let batch = resolver.resolve_level_particles(&packet);
+
+                assert_eq!(batch.len(), 0, "{particle_type_id} {block_state_id}");
+                assert_eq!(batch.missing_definition_count, 0);
+                assert_eq!(batch.unknown_particle_type_count, 0);
+            }
+
+            let mut resolver = test_resolver(0);
+            let mut packet = level_particles_packet(particle_type_id, 0);
+            packet.particle.raw_options = block_particle_options(stone_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{particle_type_id}");
+            assert_eq!(
+                batch.commands[0].option_block,
+                Some(ParticleBlockOptionState {
+                    block_state_id: stone_id
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn block_marker_provider_keeps_invisible_and_no_terrain_particle_states() {
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = block_particle_options(barrier_id);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.commands[0].particle_id, "minecraft:block_marker");
+        assert_eq!(
+            batch.commands[0].option_block,
+            Some(ParticleBlockOptionState {
+                block_state_id: barrier_id
+            })
+        );
+    }
+
+    #[test]
+    fn terrain_particle_provider_rejection_preserves_packet_random_sequence() {
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+        let mut rejected_resolver = test_resolver(42);
+        let mut accepted_resolver = test_resolver(42);
+        let mut rejected = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 2);
+        rejected.particle.raw_options = block_particle_options(barrier_id);
+        let mut accepted = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 2);
+        accepted.particle.raw_options = block_particle_options(stone_id);
+
+        let rejected_batch = rejected_resolver.resolve_level_particles(&rejected);
+        let accepted_batch = accepted_resolver.resolve_level_particles(&accepted);
+        assert_eq!(rejected_batch.len(), 0);
+        assert_eq!(accepted_batch.len(), 2);
+
+        let next_rejected = rejected_resolver
+            .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        let next_accepted = accepted_resolver
+            .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+
+        assert_eq!(next_rejected.len(), 1);
+        assert_eq!(next_accepted.len(), 1);
+        assert_eq!(
+            next_rejected.commands[0].position,
+            next_accepted.commands[0].position
+        );
+        assert_eq!(
+            next_rejected.commands[0].velocity,
+            next_accepted.commands[0].velocity
+        );
     }
 
     #[test]
@@ -4568,6 +4707,12 @@ mod tests {
             "minecraft:oak_slab",
             [("type", "bottom"), ("waterlogged", "false")],
         );
+        let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
+        let structure_void_id = test_block_state_id("minecraft:structure_void", []);
+        let moving_piston_id = test_block_state_id(
+            "minecraft:moving_piston",
+            [("facing", "north"), ("type", "normal")],
+        );
         let event = LevelEvent {
             event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
             data: stone_id,
@@ -4643,6 +4788,36 @@ mod tests {
             &mut air_random,
         );
         assert!(air.is_empty());
+
+        for block_state_id in [barrier_id, structure_void_id] {
+            let mut random = LevelEventSoundRandomState::with_seed(0);
+            let batch = resolver.resolve_level_event_particles(
+                &LevelEvent {
+                    event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+                    data: block_state_id,
+                    ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+                },
+                &mut random,
+            );
+            assert!(batch.is_empty(), "{block_state_id}");
+        }
+
+        let mut moving_piston_random = LevelEventSoundRandomState::with_seed(0);
+        let moving_piston = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+                data: moving_piston_id,
+                ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+            },
+            &mut moving_piston_random,
+        );
+        assert_eq!(moving_piston.len(), 64);
+        assert_block_destroy_particle_command(
+            &moving_piston.commands[0],
+            moving_piston_id,
+            [10.125, 64.125, -2.875],
+            [-0.375, -0.375, -0.375],
+        );
     }
 
     #[test]
@@ -4691,18 +4866,39 @@ mod tests {
             assert_eq!(command.option_item, None);
         }
 
-        let mut fallback_random = LevelEventSoundRandomState::with_seed(0);
-        let fallback = resolver.resolve_level_event_particles_with_context(
+        let mut rejected_random = LevelEventSoundRandomState::with_seed(0);
+        let rejected = resolver.resolve_level_event_particles_with_context(
             &LevelEvent { data: 1, ..event },
             LevelEventParticleContext::default(),
-            &mut fallback_random,
+            &mut rejected_random,
         );
-        assert_eq!(fallback.len(), 2);
+        assert!(rejected.is_empty());
+
+        let mut accepted_random = LevelEventSoundRandomState::with_seed(0);
+        let accepted = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent { data: 1, ..event },
+            context,
+            &mut accepted_random,
+        );
+        assert_eq!(accepted.len(), 2);
+
+        let cloud_event = LevelEvent {
+            event_type: SPLASH_CLOUD_LEVEL_EVENT,
+            ..level_event_packet(SPLASH_CLOUD_LEVEL_EVENT)
+        };
+        let rejected_cloud =
+            resolver.resolve_level_event_particles(&cloud_event, &mut rejected_random);
+        let accepted_cloud =
+            resolver.resolve_level_event_particles(&cloud_event, &mut accepted_random);
+        assert_eq!(rejected_cloud.len(), 8);
+        assert_eq!(accepted_cloud.len(), 8);
         assert_eq!(
-            fallback.commands[0]
-                .option_block
-                .map(|option| option.block_state_id),
-            Some(AIR_BLOCK_STATE_ID)
+            rejected_cloud.commands[0].position,
+            accepted_cloud.commands[0].position
+        );
+        assert_eq!(
+            rejected_cloud.commands[0].velocity,
+            accepted_cloud.commands[0].velocity
         );
     }
 

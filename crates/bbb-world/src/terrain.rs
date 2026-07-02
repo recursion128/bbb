@@ -142,15 +142,24 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
         return TerrainMaterialClass::Opaque;
     };
     match name {
-        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air" => {
-            TerrainMaterialClass::Empty
-        }
+        name if block_name_is_air(name) => TerrainMaterialClass::Empty,
         "minecraft:water" | "minecraft:lava" => TerrainMaterialClass::Fluid,
         name if block_name_has_invisible_render_shape(name) => TerrainMaterialClass::Invisible,
         name if is_cutout_block_name(name) => TerrainMaterialClass::Cutout,
         name if is_translucent_block_name(name) => TerrainMaterialClass::Translucent,
         _ => TerrainMaterialClass::Opaque,
     }
+}
+
+pub fn block_name_is_air(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+    )
+}
+
+pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
+    !matches!(name, "minecraft:barrier" | "minecraft:structure_void")
 }
 
 pub(crate) fn terrain_fluid_state(
@@ -989,6 +998,22 @@ mod tests {
             "minecraft:nether_portal",
         ] {
             assert!(!block_name_has_invisible_render_shape(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn identifies_vanilla_terrain_particle_spawn_block_names() {
+        for name in ["minecraft:barrier", "minecraft:structure_void"] {
+            assert!(!block_name_should_spawn_terrain_particles(name), "{name}");
+        }
+
+        for name in [
+            "minecraft:stone",
+            "minecraft:air",
+            "minecraft:water",
+            "minecraft:moving_piston",
+        ] {
+            assert!(block_name_should_spawn_terrain_particles(name), "{name}");
         }
     }
 
