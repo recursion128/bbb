@@ -161,11 +161,21 @@ When an agent does any of the following, update this file in the same slice:
   - Implement remaining renderer slices for:
     - provider-specific behavior
     - light curves
-    - remaining non-particle-atlas terrain/item particle layer sorting
+    - remaining non-particle-atlas terrain/item particle layer sorting:
+      - native preserves submission commands and `raw_options_len` for
+        definition-less block/item atlas particle types
+      - renderer records `OPAQUE_TERRAIN` / `OPAQUE_ITEMS` layer metadata
+      - sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
+        `TRANSLUCENT_ITEMS` selection remains deferred
     - collision/player-coupled physics
     - atlas mip-level animation beyond covered age-based `SpriteSet` frame
       selection
-    - terrain/item particle option rendering
+    - terrain/item particle option rendering:
+      - native preserves commands and raw option length for definition-less
+        block/item atlas particle types
+      - decoding `BlockParticleOption` / `ItemParticleOption`, resolving
+        block/item atlas sprites, terrain tint, random 4x4 UV sub-rects, and
+        transparent terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
       trial-spawner/happy-villager side effects
@@ -182,7 +192,10 @@ When an agent does any of the following, update this file in the same slice:
       billboards split opaque and translucent vertex batches and draw them
       through vanilla-shaped `RenderPipelines.OPAQUE_PARTICLE` (no blend) and
       `RenderPipelines.TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`)
-      GPU pipelines. Terrain/item particle layers remain follow-up work.
+      GPU pipelines. Definition-less block/item atlas particle types now keep
+      submission commands and record terrain/item layer metadata, but actual
+      block/item atlas sprite lookup and transparent terrain/item splitting
+      remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing

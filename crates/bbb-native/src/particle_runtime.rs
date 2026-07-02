@@ -1495,10 +1495,18 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
 fn definitionless_particle_type(particle_type_id: i32) -> bool {
     matches!(
         particle_type_id,
-        ELDER_GUARDIAN_PARTICLE_TYPE_ID
+        BLOCK_PARTICLE_TYPE_ID
+            | BLOCK_MARKER_PARTICLE_TYPE_ID
+            | ITEM_PARTICLE_TYPE_ID
+            | ITEM_SLIME_PARTICLE_TYPE_ID
+            | ITEM_COBWEB_PARTICLE_TYPE_ID
+            | ITEM_SNOWBALL_PARTICLE_TYPE_ID
+            | ELDER_GUARDIAN_PARTICLE_TYPE_ID
             | EXPLOSION_EMITTER_PARTICLE_TYPE_ID
             | GUST_EMITTER_LARGE_PARTICLE_TYPE_ID
             | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
+            | DUST_PILLAR_PARTICLE_TYPE_ID
+            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
     )
 }
 
@@ -1832,6 +1840,8 @@ const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
 const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
+const BLOCK_PARTICLE_TYPE_ID: i32 = 1;
+const BLOCK_MARKER_PARTICLE_TYPE_ID: i32 = 2;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
 const DUST_PARTICLE_TYPE_ID: i32 = 14;
@@ -1852,8 +1862,12 @@ const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
+const ITEM_PARTICLE_TYPE_ID: i32 = 47;
 const VIBRATION_PARTICLE_TYPE_ID: i32 = 48;
 const TRAIL_PARTICLE_TYPE_ID: i32 = 49;
+const ITEM_SLIME_PARTICLE_TYPE_ID: i32 = 52;
+const ITEM_COBWEB_PARTICLE_TYPE_ID: i32 = 53;
+const ITEM_SNOWBALL_PARTICLE_TYPE_ID: i32 = 54;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const LAVA_PARTICLE_TYPE_ID: i32 = 56;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
@@ -1869,7 +1883,9 @@ const SHRIEK_PARTICLE_TYPE_ID: i32 = 105;
 const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
 const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
 const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
+const DUST_PILLAR_PARTICLE_TYPE_ID: i32 = 111;
 const TRIAL_OMEN_PARTICLE_TYPE_ID: i32 = 114;
+const BLOCK_CRUMBLE_PARTICLE_TYPE_ID: i32 = 115;
 const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
     (0, -1, 0),
     (0, 1, 0),
@@ -2071,6 +2087,58 @@ mod tests {
         assert_eq!(command.particle_id, "minecraft:elder_guardian");
         assert!(command.sprite_ids.is_empty());
         assert!(command.child_spawn_templates.is_empty());
+    }
+
+    #[test]
+    fn terrain_and_item_atlas_particles_are_definitionless_submission_inputs() {
+        let mut resolver = test_resolver(0);
+        for (particle_type_id, particle_id, raw_options) in [
+            (BLOCK_PARTICLE_TYPE_ID, "minecraft:block", vec![0x81, 0x01]),
+            (
+                BLOCK_MARKER_PARTICLE_TYPE_ID,
+                "minecraft:block_marker",
+                vec![0x02],
+            ),
+            (
+                DUST_PILLAR_PARTICLE_TYPE_ID,
+                "minecraft:dust_pillar",
+                vec![0x03],
+            ),
+            (
+                BLOCK_CRUMBLE_PARTICLE_TYPE_ID,
+                "minecraft:block_crumble",
+                vec![0x04],
+            ),
+            (ITEM_PARTICLE_TYPE_ID, "minecraft:item", vec![0x05, 0x06]),
+            (
+                ITEM_SLIME_PARTICLE_TYPE_ID,
+                "minecraft:item_slime",
+                Vec::new(),
+            ),
+            (
+                ITEM_COBWEB_PARTICLE_TYPE_ID,
+                "minecraft:item_cobweb",
+                Vec::new(),
+            ),
+            (
+                ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+                "minecraft:item_snowball",
+                Vec::new(),
+            ),
+        ] {
+            let mut packet = level_particles_packet(particle_type_id, 0);
+            packet.particle.raw_options = raw_options.clone();
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{particle_id}");
+            assert_eq!(batch.missing_definition_count, 0, "{particle_id}");
+            assert_eq!(batch.unknown_particle_type_count, 0, "{particle_id}");
+            let command = &batch.commands[0];
+            assert_eq!(command.particle_type_id, particle_type_id, "{particle_id}");
+            assert_eq!(command.particle_id, particle_id, "{particle_id}");
+            assert!(command.sprite_ids.is_empty(), "{particle_id}");
+            assert_eq!(command.raw_options_len, raw_options.len(), "{particle_id}");
+        }
     }
 
     #[test]
@@ -2365,7 +2433,7 @@ mod tests {
     #[test]
     fn missing_definition_records_diagnostic_without_spawn_commands() {
         let mut resolver = test_resolver(0);
-        let batch = resolver.resolve_level_particles(&level_particles_packet(47, 1));
+        let batch = resolver.resolve_level_particles(&level_particles_packet(18, 1));
 
         assert!(batch.commands.is_empty());
         assert_eq!(batch.missing_definition_count, 1);

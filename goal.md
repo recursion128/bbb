@@ -1491,10 +1491,21 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     draw them through vanilla-shaped `OPAQUE_PARTICLE` (no blend) and
     `TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`) pipelines, preserving
     the existing group/layer order and renderer-owned LightTexture sampling.
-  - non-particle-atlas terrain/item layers (`OPAQUE_TERRAIN` /
-    `TRANSLUCENT_TERRAIN`, `OPAQUE_ITEMS` / `TRANSLUCENT_ITEMS`) remain
-    follow-up work.
-  - terrain/item particle option rendering。
+  - [x] non-particle-atlas terrain/item layer metadata baseline：
+    definition-less vanilla block/item atlas particles (`block`, `block_marker`,
+    `dust_pillar`, `block_crumble`, `item`, `item_slime`, `item_cobweb`,
+    `item_snowball`) now reach renderer submission as commands without
+    particle JSON definitions, preserve `raw_options_len`, and record
+    terrain/item layer order metadata (`OPAQUE_TERRAIN` / `OPAQUE_ITEMS`)
+    instead of falling into generic `OPAQUE`; `falling_dust` remains ordinary
+    particle-atlas `OPAQUE` per vanilla. Sprite-transparency-driven
+    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS` selection and actual block/item
+    atlas UV/tint resolution remain follow-up work.
+  - terrain/item particle option rendering：native now preserves the command and
+    raw option length for definition-less block/item atlas particle types, but
+    decoding `BlockParticleOption` / `ItemParticleOption`, resolving block/item
+    atlas sprites, terrain tint, random 4x4 UV sub-rects, and transparent
+    terrain/items vertex emission remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

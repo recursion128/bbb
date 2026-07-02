@@ -1769,6 +1769,14 @@ fn particle_render_group_for_particle(particle_id: &str) -> ParticleRenderGroup 
 
 fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer {
     match particle_id {
+        "minecraft:block"
+        | "minecraft:block_marker"
+        | "minecraft:dust_pillar"
+        | "minecraft:block_crumble" => ParticleRenderLayer::OpaqueTerrain,
+        "minecraft:item"
+        | "minecraft:item_slime"
+        | "minecraft:item_cobweb"
+        | "minecraft:item_snowball" => ParticleRenderLayer::OpaqueItems,
         "minecraft:cloud"
         | "minecraft:campfire_cosy_smoke"
         | "minecraft:campfire_signal_smoke"
@@ -5064,6 +5072,42 @@ mod tests {
             spawn_command("minecraft:elder_guardian", 14.0),
             &mut random,
         );
+        let terrain = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block", 15.0),
+            &mut random,
+        );
+        let block_marker = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block_marker", 16.0),
+            &mut random,
+        );
+        let dust_pillar = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dust_pillar", 17.0),
+            &mut random,
+        );
+        let block_crumble = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block_crumble", 18.0),
+            &mut random,
+        );
+        let item = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item", 19.0),
+            &mut random,
+        );
+        let item_slime = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_slime", 20.0),
+            &mut random,
+        );
+        let item_cobweb = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_cobweb", 21.0),
+            &mut random,
+        );
+        let item_snowball = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_snowball", 22.0),
+            &mut random,
+        );
+        let falling_dust = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_dust", 23.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -5103,6 +5147,21 @@ mod tests {
             elder_guardian.render_layer,
             ParticleRenderLayer::Translucent
         );
+        assert_eq!(terrain.render_layer, ParticleRenderLayer::OpaqueTerrain);
+        assert_eq!(
+            block_marker.render_layer,
+            ParticleRenderLayer::OpaqueTerrain
+        );
+        assert_eq!(dust_pillar.render_layer, ParticleRenderLayer::OpaqueTerrain);
+        assert_eq!(
+            block_crumble.render_layer,
+            ParticleRenderLayer::OpaqueTerrain
+        );
+        assert_eq!(item.render_layer, ParticleRenderLayer::OpaqueItems);
+        assert_eq!(item_slime.render_layer, ParticleRenderLayer::OpaqueItems);
+        assert_eq!(item_cobweb.render_layer, ParticleRenderLayer::OpaqueItems);
+        assert_eq!(item_snowball.render_layer, ParticleRenderLayer::OpaqueItems);
+        assert_eq!(falling_dust.render_layer, ParticleRenderLayer::Opaque);
     }
 
     #[test]
@@ -5151,9 +5210,15 @@ mod tests {
         let mut cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         cloud.position = [10.0, 0.0, 0.0];
         cloud.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut block = test_instance_with_lifetime("minecraft:block", 20);
+        block.position = [15.0, 0.0, 0.0];
+        block.current_sprite_id = Some("minecraft:generic_0".to_string());
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.position = [20.0, 0.0, 0.0];
         flame.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut item = test_instance_with_lifetime("minecraft:item", 20);
+        item.position = [25.0, 0.0, 0.0];
+        item.current_sprite_id = Some("minecraft:generic_0".to_string());
         let mut soul = test_instance_with_lifetime("minecraft:soul", 20);
         soul.position = [30.0, 0.0, 0.0];
         soul.current_sprite_id = Some("minecraft:generic_0".to_string());
@@ -5166,7 +5231,7 @@ mod tests {
         )]);
 
         let vertices = particle_billboard_vertices(
-            [&cloud, &flame, &soul],
+            [&cloud, &block, &flame, &item, &soul],
             &sprite_uvs,
             ParticleBillboardAxes {
                 right: Vec3::X,
@@ -5175,10 +5240,12 @@ mod tests {
             None,
         );
 
-        assert_eq!(vertices.len(), 18);
-        assert_close_f32(vertices[0].position[0], 19.9);
-        assert_close_f32(vertices[6].position[0], 9.9);
-        assert_close_f32(vertices[12].position[0], 29.9);
+        assert_eq!(vertices.len(), 30);
+        assert_close_f32(vertices[0].position[0], 14.9);
+        assert_close_f32(vertices[6].position[0], 24.9);
+        assert_close_f32(vertices[12].position[0], 19.9);
+        assert_close_f32(vertices[18].position[0], 9.9);
+        assert_close_f32(vertices[24].position[0], 29.9);
     }
 
     #[test]
