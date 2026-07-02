@@ -1589,6 +1589,14 @@
     calcite, tinted-glass, powder-snow, sculk sensor, sculk/shrieker, and
     froglight RGBs. Full mapColor catalog coverage, biome-aware per-spawn
     BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` copper weathering static mapColor expansion：native
+    extends the same final provider fallback through vanilla copper weathering
+    blocks, including waxed variants, cut/chiseled copper, slabs/stairs,
+    doors/trapdoors, grates, bulbs, chests, copper golem statues, lightning
+    rods, and raw copper block. Tests pin the four weathering-stage RGBs,
+    waxed-stage preservation, raw copper, and representative multi-property
+    block states. Full mapColor catalog coverage, biome-aware per-spawn
+    BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

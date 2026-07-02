@@ -2658,6 +2658,43 @@ fn deepslate_family_map_color(name: &str) -> Option<u32> {
     None
 }
 
+fn copper_weathering_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if name == "raw_copper_block" {
+        return Some(MAP_COLOR_ORANGE);
+    }
+    let name = name.strip_prefix("waxed_").unwrap_or(name);
+    if let Some(rest) = name.strip_prefix("exposed_") {
+        return copper_weathering_base_suffix(rest).then_some(MAP_COLOR_TERRACOTTA_LIGHT_GRAY);
+    }
+    if let Some(rest) = name.strip_prefix("weathered_") {
+        return copper_weathering_base_suffix(rest).then_some(MAP_COLOR_WARPED_STEM);
+    }
+    if let Some(rest) = name.strip_prefix("oxidized_") {
+        return copper_weathering_base_suffix(rest).then_some(MAP_COLOR_WARPED_NYLIUM);
+    }
+    copper_weathering_base_suffix(name).then_some(MAP_COLOR_ORANGE)
+}
+
+fn copper_weathering_base_suffix(name: &str) -> bool {
+    matches!(
+        name,
+        "copper"
+            | "copper_block"
+            | "cut_copper"
+            | "cut_copper_stairs"
+            | "cut_copper_slab"
+            | "chiseled_copper"
+            | "copper_door"
+            | "copper_trapdoor"
+            | "copper_grate"
+            | "copper_bulb"
+            | "copper_chest"
+            | "copper_golem_statue"
+            | "lightning_rod"
+    )
+}
+
 fn vanilla_static_map_color_for_block_state(
     name: &str,
     properties: &std::collections::BTreeMap<String, String>,
@@ -2678,6 +2715,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = deepslate_family_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = copper_weathering_map_color(name) {
         return Some(color);
     }
     match name {
@@ -3319,6 +3359,7 @@ const MAP_COLOR_PODZOL: u32 = 8_476_209;
 const MAP_COLOR_NETHER: u32 = 7_340_544;
 const MAP_COLOR_CRIMSON_STEM: u32 = 9_715_553;
 const MAP_COLOR_CRIMSON_HYPHAE: u32 = 6_035_741;
+const MAP_COLOR_WARPED_NYLIUM: u32 = 1_474_182;
 const MAP_COLOR_WARPED_STEM: u32 = 3_837_580;
 const MAP_COLOR_WARPED_HYPHAE: u32 = 5_647_422;
 const MAP_COLOR_DEEPSLATE: u32 = 6_579_300;
@@ -4463,6 +4504,126 @@ mod tests {
                 test_block_state_id("minecraft:pearlescent_froglight", [("axis", "z")]),
                 "minecraft:pearlescent_froglight",
                 rgb_option(0xf2, 0x7f, 0xa5),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_copper_weathering_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:copper_block", []),
+                "minecraft:copper_block",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:exposed_copper", []),
+                "minecraft:exposed_copper",
+                rgb_option(0x87, 0x6b, 0x62),
+            ),
+            (
+                test_block_state_id("minecraft:weathered_copper", []),
+                "minecraft:weathered_copper",
+                rgb_option(0x3a, 0x8e, 0x8c),
+            ),
+            (
+                test_block_state_id("minecraft:oxidized_copper", []),
+                "minecraft:oxidized_copper",
+                rgb_option(0x16, 0x7e, 0x86),
+            ),
+            (
+                test_block_state_id("minecraft:raw_copper_block", []),
+                "minecraft:raw_copper_block",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:waxed_oxidized_cut_copper_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                "minecraft:waxed_oxidized_cut_copper_slab",
+                rgb_option(0x16, 0x7e, 0x86),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:copper_door",
+                    [
+                        ("facing", "east"),
+                        ("half", "lower"),
+                        ("hinge", "right"),
+                        ("open", "false"),
+                        ("powered", "false"),
+                    ],
+                ),
+                "minecraft:copper_door",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:waxed_weathered_copper_bulb",
+                    [("lit", "false"), ("powered", "true")],
+                ),
+                "minecraft:waxed_weathered_copper_bulb",
+                rgb_option(0x3a, 0x8e, 0x8c),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:waxed_exposed_copper_grate",
+                    [("waterlogged", "false")],
+                ),
+                "minecraft:waxed_exposed_copper_grate",
+                rgb_option(0x87, 0x6b, 0x62),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:oxidized_copper_chest",
+                    [
+                        ("facing", "east"),
+                        ("type", "single"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:oxidized_copper_chest",
+                rgb_option(0x16, 0x7e, 0x86),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:waxed_oxidized_copper_golem_statue",
+                    [
+                        ("copper_golem_pose", "sitting"),
+                        ("facing", "west"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:waxed_oxidized_copper_golem_statue",
+                rgb_option(0x16, 0x7e, 0x86),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:weathered_lightning_rod",
+                    [
+                        ("facing", "up"),
+                        ("powered", "false"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:weathered_lightning_rod",
+                rgb_option(0x3a, 0x8e, 0x8c),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
