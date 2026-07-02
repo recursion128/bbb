@@ -1,8 +1,6 @@
 mod command;
 mod jukebox;
-mod random;
 mod registry;
-mod resolver;
 
 #[cfg(feature = "kira")]
 mod runtime;
@@ -15,7 +13,6 @@ pub use command::{
 };
 pub use jukebox::JukeboxSongRegistry;
 pub use registry::SoundEventRegistry;
-pub use resolver::{AudioCommandResolver, AudioResolveError};
 
 #[cfg(feature = "kira")]
 pub use runtime::KiraAudioRuntime;

@@ -1,7 +1,10 @@
+mod random;
+pub(crate) mod resolver;
+
 use anyhow::{Context, Result};
 use bbb_audio::{
-    AudioCommand, AudioCommandResolver, AudioResolveError, JukeboxSongRegistry, KiraAudioRuntime,
-    SoundEventRegistry, TickEntitySoundPositionsCommand,
+    AudioCommand, JukeboxSongRegistry, KiraAudioRuntime, SoundEventRegistry,
+    TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{PackRoots, SoundCatalog};
@@ -9,6 +12,8 @@ use bbb_world::{
     JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
     StopSoundEventState,
 };
+
+use resolver::{AudioCommandResolver, AudioResolveError};
 
 pub(crate) trait AudioEventSink {
     fn counters(&self) -> AudioCounters;

@@ -1,5 +1,10 @@
 use std::sync::OnceLock;
 
+use bbb_audio::{
+    AudioCategory, AudioCommand, AudioVolumeSettings, JukeboxSongRegistry, PlayEntitySoundCommand,
+    PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
+    SoundEventRegistry, StopJukeboxSongCommand, StopSoundCommand,
+};
 use bbb_pack::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 use bbb_world::{
     JukeboxLevelEventAction, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
@@ -7,15 +12,7 @@ use bbb_world::{
 };
 use thiserror::Error;
 
-use crate::{
-    command::{
-        AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
-        PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
-        StopJukeboxSongCommand, StopSoundCommand,
-    },
-    random::LegacyRandom,
-    JukeboxSongRegistry, SoundEventRegistry,
-};
+use super::random::LegacyRandom;
 
 const MAX_SOUND_EVENT_DEPTH: usize = 32;
 static VANILLA_JUKEBOX_REGISTRY: OnceLock<JukeboxSongRegistry> = OnceLock::new();
