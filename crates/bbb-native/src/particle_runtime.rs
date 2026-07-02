@@ -2741,6 +2741,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = natural_static_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = utility_static_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
@@ -3093,6 +3096,22 @@ fn natural_static_map_color(name: &str) -> Option<u32> {
         "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
         "hanging_roots" | "rooted_dirt" => MAP_COLOR_DIRT,
         "mud" => MAP_COLOR_TERRACOTTA_CYAN,
+        _ => return None,
+    })
+}
+
+fn utility_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "bedrock" | "sticky_piston" | "piston" | "spawner" | "crafter" | "trial_spawner"
+        | "vault" => MAP_COLOR_STONE,
+        "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" => {
+            MAP_COLOR_WOOD
+        }
+        "cobweb" => MAP_COLOR_WOOL,
+        "tnt" => MAP_COLOR_FIRE,
+        "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
+        "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
 }
@@ -3508,6 +3527,7 @@ const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const MAP_COLOR_SAND: u32 = 16_247_203;
 const MAP_COLOR_WOOL: u32 = 13_092_807;
+const MAP_COLOR_FIRE: u32 = 16_711_680;
 const MAP_COLOR_ICE: u32 = 10_526_975;
 const MAP_COLOR_SNOW: u32 = 16_777_215;
 const MAP_COLOR_METAL: u32 = 10_987_431;
@@ -4700,6 +4720,127 @@ mod tests {
                 test_block_state_id("minecraft:mud", []),
                 "minecraft:mud",
                 rgb_option(0x57, 0x5c, 0x5c),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_utility_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:bedrock", []),
+                "minecraft:bedrock",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:sticky_piston",
+                    [("extended", "true"), ("facing", "north")],
+                ),
+                "minecraft:sticky_piston",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:note_block",
+                    [("instrument", "harp"), ("note", "0"), ("powered", "false")],
+                ),
+                "minecraft:note_block",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:chiseled_bookshelf",
+                    [
+                        ("facing", "north"),
+                        ("slot_0_occupied", "false"),
+                        ("slot_1_occupied", "false"),
+                        ("slot_2_occupied", "false"),
+                        ("slot_3_occupied", "false"),
+                        ("slot_4_occupied", "false"),
+                        ("slot_5_occupied", "false"),
+                    ],
+                ),
+                "minecraft:chiseled_bookshelf",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:chest",
+                    [
+                        ("facing", "north"),
+                        ("type", "single"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:chest",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id("minecraft:cobweb", []),
+                "minecraft:cobweb",
+                rgb_option(0xc7, 0xc7, 0xc7),
+            ),
+            (
+                test_block_state_id("minecraft:tnt", [("unstable", "false")]),
+                "minecraft:tnt",
+                rgb_option(0xff, 0x00, 0x00),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:decorated_pot",
+                    [
+                        ("cracked", "false"),
+                        ("facing", "north"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:decorated_pot",
+                rgb_option(0x8e, 0x3c, 0x2e),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:crafter",
+                    [
+                        ("crafting", "false"),
+                        ("orientation", "down_east"),
+                        ("triggered", "false"),
+                    ],
+                ),
+                "minecraft:crafter",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:vault",
+                    [
+                        ("facing", "north"),
+                        ("ominous", "false"),
+                        ("vault_state", "inactive"),
+                    ],
+                ),
+                "minecraft:vault",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:heavy_core", [("waterlogged", "false")]),
+                "minecraft:heavy_core",
+                rgb_option(0xa7, 0xa7, 0xa7),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
