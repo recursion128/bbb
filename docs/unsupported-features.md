@@ -555,8 +555,11 @@ When an agent does any of the following, update this file in the same slice:
         per-instance facing mode whose vertex transform keeps world-Y up.
         `dust_plume` now maps to `DustPlumeParticle.Provider` with age
         sprites, `BaseAshSmokeParticle` `0.75` quad-size scale,
-        `7 / (random * 0.8 + 0.2)` lifetime, command velocity plus `0.15`
-        y offset, opaque layer, no-physics metadata, `0.5` initial gravity,
+        `7 / (random * 0.8 + 0.2)` lifetime, the `BaseAshSmokeParticle`
+        initial velocity (`super(..., 0.7F, 0.6F, 0.7F, xa, ya + 0.15F, za,
+        ...)`): the `Particle` 7-arg normalized base spread scaled per axis
+        by `(0.7, 0.6, 0.7)` plus the command velocity with a `0.15` y
+        offset, opaque layer, no-physics metadata, `0.5` initial gravity,
         `0.96` friction, `ARGB(0xBAB1C2) - random * 0.2` tint,
         grow-to-base size curve, and the provider tick override that decays
         gravity by `0.88` and friction by `0.92` before default motion.

@@ -326,6 +326,10 @@ pub(crate) enum BaseAshSmokeOffset {
     /// `WhiteAshParticle.Provider.createParticle` ignores the command velocity
     /// and draws its own negative-biased `xa/ya/za`.
     WhiteAsh,
+    /// `DustPlumeParticle.Provider.createParticle` passes the command velocity as
+    /// `xa/ya/za` and `DustPlumeParticle` adds `y_offset` to `ya`
+    /// (`super(..., xa, ya + 0.15F, za, ...)`). Draws no RNG.
+    CommandWithYOffset { y_offset: f64 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1695,8 +1699,9 @@ impl ParticleDescriptor {
                         max_subtract: 0.2,
                     },
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::CommandWithYOffset {
-                    y_offset: 0.15,
+                initial_velocity: ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                    dir: [0.7, 0.6, 0.7],
+                    provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.15 },
                 },
                 friction: 0.96,
                 gravity: 0.5,
@@ -2577,6 +2582,13 @@ impl ParticleInitialVelocityDescriptor {
                             * 0.1
                             * 5.0,
                         f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+                    ],
+                    // DustPlumeParticle.Provider passes the command velocity as
+                    // xa/ya/za and the ctor adds y_offset to ya. Draws no RNG.
+                    BaseAshSmokeOffset::CommandWithYOffset { y_offset } => [
+                        command_velocity[0],
+                        command_velocity[1] + y_offset,
+                        command_velocity[2],
                     ],
                 };
                 [
@@ -4940,7 +4952,10 @@ mod tests {
         let dust_plume_descriptor = ParticleDescriptor::for_particle("minecraft:dust_plume");
         assert_eq!(
             dust_plume_descriptor.initial_velocity,
-            ParticleInitialVelocityDescriptor::CommandWithYOffset { y_offset: 0.15 }
+            ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                dir: [0.7, 0.6, 0.7],
+                provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.15 },
+            }
         );
         assert_eq!(
             dust_plume_descriptor.tick_motion(),
@@ -5869,6 +5884,34 @@ mod tests {
         assert_range_f64(lava_velocity[0], -0.15, 0.15);
         assert_range_f64(lava_velocity[1], 0.05, 0.45);
         assert_range_f64(lava_velocity[2], -0.15, 0.15);
+    }
+
+    #[test]
+    fn base_ash_smoke_command_offset_threads_command_velocity_with_y_offset() {
+        // DustPlumeParticle.Provider passes the command velocity as xa/ya/za and
+        // DustPlumeParticle calls super(..., xa, ya + 0.15F, za, ...), unlike
+        // AshParticle.Provider which forces (0, 0, 0). Sampling both offsets at the
+        // same seed shares the per-axis dir-scaled base spread, so the only
+        // difference is the threaded provider velocity (and the offset draws no
+        // RNG of its own).
+        let dir = [0.7, 0.6, 0.7];
+        let command = [0.25, 0.5, -0.75];
+
+        let zero_offset = ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+            dir,
+            provider_offset: BaseAshSmokeOffset::Zero,
+        }
+        .sample(command, &mut ParticleRandom::new(86));
+
+        let command_offset = ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+            dir,
+            provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.15 },
+        }
+        .sample(command, &mut ParticleRandom::new(86));
+
+        assert_close_f64(command_offset[0], zero_offset[0] + 0.25);
+        assert_close_f64(command_offset[1], zero_offset[1] + 0.5 + 0.15);
+        assert_close_f64(command_offset[2], zero_offset[2] - 0.75);
     }
 
     #[test]

@@ -3237,6 +3237,30 @@ mod tests {
     }
 
     #[test]
+    fn dust_plume_provider_adds_command_velocity_and_y_offset_to_per_axis_base_spread() {
+        // DustPlumeParticle.Provider passes the command velocity xAux/yAux/zAux as
+        // xa/ya/za; DustPlumeParticle calls
+        // super(..., 0.7F, 0.6F, 0.7F, xa, ya + 0.15F, za, ...), so the Particle
+        // base spread is scaled per axis by (0.7, 0.6, 0.7) and the command
+        // velocity (with +0.15 on y) is added on top.
+        let mut command = spawn_command("minecraft:dust_plume", 1.0);
+        command.velocity = [0.25, 0.5, -0.75];
+        let mut random = ParticleRandom::new(86);
+
+        let dust_plume = ParticleInstance::from_spawn_command(command, &mut random);
+
+        let dir = [0.7, 0.6, 0.7];
+        let spread = expected_base_ash_smoke_velocity(86, dir, false);
+        assert_close_f64(dust_plume.velocity[0], spread[0] + 0.25);
+        assert_close_f64(dust_plume.velocity[1], spread[1] + 0.5 + 0.15);
+        assert_close_f64(dust_plume.velocity[2], spread[2] - 0.75);
+
+        // Unlike the old CommandWithYOffset path, the per-axis base spread is now
+        // applied, so the result is not exactly command velocity + 0.15 on y.
+        assert_ne!(dust_plume.velocity, [0.25, 0.65, -0.75]);
+    }
+
+    #[test]
     fn firework_spark_provider_uses_vanilla_simple_animated_state() {
         let mut random = ParticleRandom::new(71);
         let mut command = spawn_command("minecraft:firework", 1.0);
@@ -5223,7 +5247,12 @@ mod tests {
             ParticleQuadSizeCurve::GrowToBase
         );
         assert!((7..=35).contains(&dust_plume.lifetime_ticks));
-        assert_eq!(dust_plume.velocity, [0.25, 0.65, -0.75]);
+        // DustPlumeParticle scales the base spread per axis by (0.7, 0.6, 0.7) and
+        // adds the command velocity with +0.15 on y.
+        let dust_plume_spread = expected_base_ash_smoke_velocity(86, [0.7, 0.6, 0.7], false);
+        assert_close_f64(dust_plume.velocity[0], dust_plume_spread[0] + 0.25);
+        assert_close_f64(dust_plume.velocity[1], dust_plume_spread[1] + 0.65);
+        assert_close_f64(dust_plume.velocity[2], dust_plume_spread[2] - 0.75);
         assert_eq!(dust_plume.friction, 0.96);
         assert_eq!(dust_plume.gravity, 0.5);
         assert!(!dust_plume.has_physics);
