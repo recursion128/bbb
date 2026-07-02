@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bbb_protocol::packets::{PlayerModelTypeSummary, ResolvableProfileSummary};
-use bbb_renderer::{
+use bbb_render_types::{
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityPlayerSkin, EntityPlayerSkinModel,
 };

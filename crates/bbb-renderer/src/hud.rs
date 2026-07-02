@@ -26,11 +26,12 @@ use self::layout::{
     HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
+pub use bbb_render_types::{
+    HudAsciiGlyph, HudDigitGlyph, HudUvRect, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT,
+    HUD_ASCII_LAST_GLYPH,
+};
+
 pub const HUD_HOTBAR_SLOTS: usize = 9;
-pub const HUD_ASCII_FIRST_GLYPH: u8 = b' ';
-pub const HUD_ASCII_LAST_GLYPH: u8 = b'~';
-pub const HUD_ASCII_GLYPH_COUNT: usize =
-    (HUD_ASCII_LAST_GLYPH - HUD_ASCII_FIRST_GLYPH + 1) as usize;
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
 const HUD_ITEM_BAR_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -42,12 +43,6 @@ const HUD_TOOLTIP_BACKGROUND_TINT: [f32; 4] = [0.0625, 0.0, 0.0625, 0.94];
 const HUD_ASCII_REPLACEMENT_GLYPH: char = '?';
 const HUD_ITEM_SPECIAL_FOIL_GUI_SCALE: f32 = 0.5;
 const HUD_ITEM_SPECIAL_FOIL_TEXTURE_SCALE: f32 = 1.0 / 128.0;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct HudUvRect {
-    pub min: [f32; 2],
-    pub max: [f32; 2],
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudIconLayer {
@@ -132,30 +127,6 @@ impl HudItemCountLabel {
         Self { text: text.into() }
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct HudDigitGlyph {
-    pub uv: HudUvRect,
-    pub width: u32,
-    pub height: u32,
-    pub advance: u32,
-}
-
-impl Default for HudDigitGlyph {
-    fn default() -> Self {
-        Self {
-            uv: HudUvRect {
-                min: [0.0, 0.0],
-                max: [1.0, 1.0],
-            },
-            width: 0,
-            height: 0,
-            advance: 0,
-        }
-    }
-}
-
-pub type HudAsciiGlyph = HudDigitGlyph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {

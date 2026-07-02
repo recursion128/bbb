@@ -10,6 +10,8 @@ use crate::{
 
 use super::{ItemModelMesh, ItemModelVertex};
 
+pub use bbb_render_types::ItemFrameMapDecorationTexture;
+
 const ITEM_FRAME_MAP_SIZE: u32 = 128;
 const ITEM_FRAME_MAP_RGBA_LEN: usize =
     ITEM_FRAME_MAP_SIZE as usize * ITEM_FRAME_MAP_SIZE as usize * 4;
@@ -70,14 +72,6 @@ pub struct ItemFrameMapDecorationType {
     pub type_id: i32,
     pub sprite_id: &'static str,
     pub render_on_frame: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ItemFrameMapDecorationTexture {
-    pub sprite_id: String,
-    pub width: u32,
-    pub height: u32,
-    pub rgba: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

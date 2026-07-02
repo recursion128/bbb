@@ -253,7 +253,7 @@ dependencies = [
  "anyhow",
  "bbb-pack",
  "bbb-protocol",
- "bbb-renderer",
+ "bbb-render-types",
  "bbb-world",
  "chrono",
  "chrono-tz",
@@ -344,10 +344,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbb-render-types"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image",
+]
+
+[[package]]
 name = "bbb-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bbb-render-types",
  "bytemuck",
  "glam 0.29.3",
  "image",

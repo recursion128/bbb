@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use bbb_renderer::{
+use bbb_render_types::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
     DynamicPlayerTextureImage,
 };

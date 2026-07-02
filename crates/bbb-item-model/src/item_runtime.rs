@@ -32,7 +32,7 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
-use bbb_renderer::{
+use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
@@ -42,7 +42,7 @@ use bbb_renderer::{
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
 #[cfg(any(test, feature = "test-support"))]
-use bbb_renderer::HudUvRect;
+use bbb_render_types::HudUvRect;
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,

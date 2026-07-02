@@ -9,6 +9,7 @@ members = [
     "crates/bbb-net",
     "crates/bbb-world",
     "crates/bbb-pack",
+    "crates/bbb-render-types",
     "crates/bbb-renderer",
     "crates/bbb-control",
 ]

@@ -10,63 +10,14 @@
 
 use crate::item_models::ItemModelQuad;
 
+pub use bbb_render_types::{ItemSpriteRect, SpriteAlphaMask};
+
 /// Vanilla `MIN_Z` / `MAX_Z`: the slab spans `7.5..=8.5` in model space (a `1/16` depth centered on the
 /// flat sprite plane).
 const MIN_Z: f32 = 7.5;
 const MAX_Z: f32 = 8.5;
 /// Vanilla `UV_SHRINK`: the side-face UVs inset by `0.1px` on each edge to avoid sampling neighbours.
 const UV_SHRINK: f32 = 0.1;
-
-/// Per-pixel alpha coverage of one sprite frame, row-major (`width * height`), `true` where the pixel is
-/// opaque enough to contribute geometry. The native layer derives this from the sprite's atlas pixels
-/// (vanilla `SpriteContents.isTransparent`: a pixel is transparent when its alpha is below the cutoff).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SpriteAlphaMask {
-    width: u32,
-    height: u32,
-    opaque: Vec<bool>,
-}
-
-impl SpriteAlphaMask {
-    /// `opaque` is row-major, `width * height` booleans (`true` = opaque). Panics if the length mismatches.
-    pub fn new(width: u32, height: u32, opaque: Vec<bool>) -> Self {
-        assert_eq!(
-            opaque.len(),
-            (width as usize) * (height as usize),
-            "sprite alpha mask length must be width * height"
-        );
-        Self {
-            width,
-            height,
-            opaque,
-        }
-    }
-
-    /// Vanilla `ItemModelGenerator.isTransparent`: out-of-bounds counts as transparent.
-    fn is_transparent(&self, x: i32, y: i32) -> bool {
-        if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
-            return true;
-        }
-        !self.opaque[(y as u32 * self.width + x as u32) as usize]
-    }
-}
-
-/// The atlas sub-rectangle (absolute UVs) a sprite occupies: its `min`/`max` corners. A sprite-local UV
-/// in `0..=1` maps linearly into this rect (vanilla `TextureAtlasSprite.getU`/`getV`).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ItemSpriteRect {
-    pub min: [f32; 2],
-    pub max: [f32; 2],
-}
-
-impl ItemSpriteRect {
-    fn map(&self, u: f32, v: f32) -> [f32; 2] {
-        [
-            self.min[0] + (self.max[0] - self.min[0]) * u,
-            self.min[1] + (self.max[1] - self.min[1]) * v,
-        ]
-    }
-}
 
 /// The six cuboid faces, with the `FaceInfo` vertex selection (which `from`/`to` extent each of the four
 /// vertices reads) and the directional shade (vanilla `Direction.getShade`, AO off).
@@ -229,8 +180,8 @@ fn bake_side_faces(
     rect: ItemSpriteRect,
     tint: [f32; 4],
 ) {
-    let x_scale = 16.0 / mask.width as f32;
-    let y_scale = 16.0 / mask.height as f32;
+    let x_scale = 16.0 / mask.width() as f32;
+    let y_scale = 16.0 / mask.height() as f32;
     for (side, px, py) in side_faces(mask) {
         let x = px as f32;
         let y = py as f32;
@@ -279,8 +230,8 @@ fn bake_side_faces(
 /// contributes a side face on that border. Uses frame 0 of the sprite.
 fn side_faces(mask: &SpriteAlphaMask) -> Vec<(SideDirection, i32, i32)> {
     let mut faces = Vec::new();
-    for y in 0..mask.height as i32 {
-        for x in 0..mask.width as i32 {
+    for y in 0..mask.height() as i32 {
+        for x in 0..mask.width() as i32 {
             if mask.is_transparent(x, y) {
                 continue;
             }
