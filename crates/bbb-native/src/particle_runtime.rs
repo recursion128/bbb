@@ -2712,6 +2712,16 @@ fn wooden_stairs_and_slabs_static_map_color(name: &str) -> Option<u32> {
     let family = name
         .strip_suffix("_stairs")
         .or_else(|| name.strip_suffix("_slab"))?;
+    wooden_plank_family_map_color(family)
+}
+
+fn wooden_pressure_plate_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let family = name.strip_suffix("_pressure_plate")?;
+    wooden_plank_family_map_color(family)
+}
+
+fn wooden_plank_family_map_color(family: &str) -> Option<u32> {
     Some(match family {
         "oak" => MAP_COLOR_WOOD,
         "spruce" => MAP_COLOR_PODZOL,
@@ -2755,6 +2765,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = wooden_stairs_and_slabs_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = wooden_pressure_plate_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -4600,6 +4613,73 @@ mod tests {
                 rgb_option(0x3a, 0x8e, 0x8c),
             ),
         ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_wooden_pressure_plate_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_name, expected_color) in [
+            ("minecraft:oak_pressure_plate", rgb_option(0x8f, 0x77, 0x48)),
+            (
+                "minecraft:spruce_pressure_plate",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                "minecraft:birch_pressure_plate",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                "minecraft:jungle_pressure_plate",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                "minecraft:acacia_pressure_plate",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                "minecraft:cherry_pressure_plate",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                "minecraft:dark_oak_pressure_plate",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                "minecraft:pale_oak_pressure_plate",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                "minecraft:mangrove_pressure_plate",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                "minecraft:bamboo_pressure_plate",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                "minecraft:crimson_pressure_plate",
+                rgb_option(0x94, 0x3f, 0x61),
+            ),
+            (
+                "minecraft:warped_pressure_plate",
+                rgb_option(0x3a, 0x8e, 0x8c),
+            ),
+        ] {
+            let block_state_id = test_block_state_id(block_name, [("powered", "true")]);
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 

@@ -1565,6 +1565,14 @@
     doors, trapdoors, fences, signs, buttons, and pressure plates to later
     wooden-derivative slices. Full mapColor catalog coverage, biome-aware
     per-spawn BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` wooden pressure plates static mapColor expansion：native
+    now mirrors vanilla plank mapColor inheritance for oak, spruce, birch,
+    jungle, acacia, cherry, dark oak, pale oak, mangrove, bamboo, crimson, and
+    warped pressure plates. Tests pin the `powered=true` state for each
+    inherited color while leaving buttons, stone/weighted plates, and the wider
+    wooden door/trapdoor/fence/sign families to later slices. Full mapColor
+    catalog coverage, biome-aware per-spawn BlockColors, and on-ground roll
+    reset remain follow-up work.
   - [x] `falling_dust` colored-family static mapColor expansion：native now
     resolves vanilla `DyeColor.getMapColor()` families for wool, carpets,
     concrete, stained glass, and glazed terracotta, while using the separate
