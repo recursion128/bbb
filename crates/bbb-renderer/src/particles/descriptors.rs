@@ -1574,7 +1574,10 @@ impl ParticleDescriptor {
                     scale: 2.5,
                     color: ParticleColorDescriptor::RandomGray { max: 0.3 },
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                        scale: 0.1,
+                    },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -1591,7 +1594,10 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::RandomGray { max: 0.3 },
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                        scale: 0.1,
+                    },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -1608,7 +1614,10 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                        scale: 0.1,
+                    },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -4767,6 +4776,12 @@ mod tests {
             true,
             true,
         );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:smoke").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1
+            }
+        );
         assert_descriptor(
             "minecraft:large_smoke",
             "LargeSmokeParticle.Provider",
@@ -4784,6 +4799,12 @@ mod tests {
             true,
             true,
         );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:large_smoke").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1
+            }
+        );
         assert_descriptor(
             "minecraft:white_smoke",
             "WhiteSmokeParticle.Provider",
@@ -4800,6 +4821,12 @@ mod tests {
             -0.1,
             true,
             true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:white_smoke").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1
+            }
         );
         assert_descriptor(
             "minecraft:ash",

@@ -2396,8 +2396,55 @@ mod tests {
             Some("minecraft:generic_7")
         );
         assert_close3(smoke.position, lava.position);
-        assert_close3(smoke.velocity, lava.velocity);
+        // The lava particle spawns a `minecraft:smoke` child with its post-tick
+        // velocity as the command velocity. Vanilla `SmokeParticle` (via
+        // `BaseAshSmokeParticle` -> the base `Particle` 6-arg constructor) then
+        // adds the constructor-random spread scaled by `0.1` on intake, so the
+        // child velocity is the lava velocity plus a small deterministic spread
+        // rather than an exact copy of it.
+        assert_close3(
+            smoke.velocity,
+            [0.10881595316538636, 0.17285028287621526, 0.3025607498781397],
+        );
+        assert!(smoke.velocity[0] > lava.velocity[0]);
+        assert!(smoke.velocity[1] > lava.velocity[1]);
+        assert!(smoke.velocity[2] > lava.velocity[2]);
         assert!(smoke.child_spawn_templates.is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_smoke_intake_applies_vanilla_base_particle_spread() {
+        // Vanilla `SmokeParticle` (via `BaseAshSmokeParticle` -> the base
+        // `Particle` 6-arg constructor) seeds a constructor-random velocity,
+        // scales it by `0.1`, then adds the command velocity, matching the
+        // player-cloud velocity model. The intake path must therefore offset
+        // the command velocity by the deterministic base spread instead of
+        // copying the command velocity verbatim.
+        let command_velocity = [0.3, 0.4, 0.5];
+        for particle_id in [
+            "minecraft:smoke",
+            "minecraft:large_smoke",
+            "minecraft:white_smoke",
+        ] {
+            let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+            let mut command = spawn_command(particle_id, 1.0);
+            command.velocity = command_velocity;
+            particles.submit_batch(ParticleSpawnBatch {
+                commands: vec![command],
+                ..ParticleSpawnBatch::default()
+            });
+            particles.advance(0);
+
+            let instance = &particles.active_instances()[0];
+            assert_eq!(instance.particle_id, particle_id);
+            let expected =
+                descriptors::ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                    scale: 0.1,
+                }
+                .sample(command_velocity, &mut ParticleRandom::new(0));
+            assert_close3(instance.velocity, expected);
+            assert_ne!(instance.velocity, command_velocity, "{particle_id}");
+        }
     }
 
     #[test]
