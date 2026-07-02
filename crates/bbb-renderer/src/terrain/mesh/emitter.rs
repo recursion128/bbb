@@ -1,6 +1,7 @@
 use super::super::{
-    TerrainFace, TerrainFluid, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad,
-    TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainCardinalLighting, TerrainFace, TerrainFluid, TerrainLight, TerrainMaterialClass,
+    TerrainMesh, TerrainQuad, TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
+    TerrainVertex,
 };
 use super::{
     culls_face_between_cells,
@@ -24,6 +25,7 @@ pub(super) fn emit_face(
     face: FaceDef,
     vertex_lights: [[f32; 2]; 4],
     ambient_occlusion: [f32; 4],
+    cardinal: TerrainCardinalLighting,
 ) {
     let base = mesh.vertices.len() as u32;
     let uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
@@ -44,7 +46,7 @@ pub(super) fn emit_face(
             uv: uv_rect.map(uv),
             light,
             tint: tint.as_shader_tint(),
-            shade: cardinal_shade(true, face.face),
+            shade: cardinal.shade(true, face.face),
             ambient_occlusion,
             block_state_id,
         });
@@ -76,6 +78,7 @@ pub(super) fn emit_cross(
     light_emission: u8,
     atlas: &TerrainTextureAtlas,
     mode: TerrainMeshMode,
+    cardinal: TerrainCardinalLighting,
 ) {
     for (face, normal, corners) in CROSS_FACES {
         let face_material = effective_face_material(material, face_transparency[face.index()]);
@@ -93,7 +96,7 @@ pub(super) fn emit_cross(
             atlas.rect(texture_indices[face.index()]),
             normal,
             corners,
-            cardinal_shade(shade, face),
+            cardinal.shade(shade, face),
             [shader_light_with_emission(light, light_emission); 4],
         );
     }
@@ -123,6 +126,7 @@ pub(super) fn emit_box(
     ambient_occlusion: bool,
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
+    cardinal: TerrainCardinalLighting,
 ) {
     let min = [
         from[0] as f32 / 16.0,
@@ -247,7 +251,7 @@ pub(super) fn emit_box(
                 face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
             });
         let uv_rect = atlas.rect(texture_index);
-        let shade = cardinal_shade(face_shade[face_index], face.face);
+        let shade = cardinal.shade(face_shade[face_index], face.face);
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -360,6 +364,7 @@ pub(super) fn emit_quads(
     ambient_occlusion: bool,
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
+    cardinal: TerrainCardinalLighting,
 ) {
     for quad in quads {
         let face_material = effective_face_material(material, quad.transparency);
@@ -415,7 +420,7 @@ pub(super) fn emit_quads(
             quad.corners
                 .map(|corner| [corner[0] / 16.0, corner[1] / 16.0, corner[2] / 16.0]),
             quad.uvs,
-            cardinal_shade(
+            cardinal.shade(
                 quad.shade,
                 quad.cull.unwrap_or_else(|| face_from_normal(quad.normal)),
             ),
@@ -676,16 +681,10 @@ fn max_light(left: TerrainLight, right: TerrainLight) -> TerrainLight {
     }
 }
 
+/// `DEFAULT` cardinal shade, for dimension-independent consumers such as the
+/// item-model baker (baked item/block models are never Nether-shaded).
 pub(super) fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
-    if !enabled {
-        return 1.0;
-    }
-    match face {
-        TerrainFace::Down => 0.5,
-        TerrainFace::Up => 1.0,
-        TerrainFace::North | TerrainFace::South => 0.8,
-        TerrainFace::West | TerrainFace::East => 0.6,
-    }
+    TerrainCardinalLighting::Default.shade(enabled, face)
 }
 
 pub(super) fn face_from_normal(normal: [f32; 3]) -> TerrainFace {

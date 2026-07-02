@@ -1,10 +1,11 @@
 use std::time::{Duration, Instant};
 
 use bbb_renderer::terrain::{
-    build_terrain_mesh_layers_with_atlas_and_camera, TerrainCell, TerrainChunkSnapshot,
-    TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainTint,
+    build_terrain_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting, TerrainCell,
+    TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
+    TerrainTint,
 };
-use bbb_world::{ChunkPos, WorldStore};
+use bbb_world::{ChunkPos, WorldCardinalLighting, WorldStore};
 
 use crate::camera_pose::camera_pose_from_world;
 
@@ -134,9 +135,10 @@ pub(crate) fn maybe_upload_decoded_terrain(
     }
 
     snapshots.sort_by_key(|snapshot| chunk_distance_key(snapshot.pos, center));
+    let cardinal_lighting = terrain_cardinal_lighting(world);
     let renderer_snapshots: Vec<_> = snapshots
         .into_iter()
-        .map(|snapshot| convert_terrain_snapshot(snapshot, textures))
+        .map(|snapshot| convert_terrain_snapshot(snapshot, textures, cardinal_lighting))
         .collect();
     let camera_position = camera_pose_from_world(world)
         .map(|pose| {
@@ -180,9 +182,17 @@ fn chunk_distance_key(pos: ChunkPos, center: ChunkPos) -> i64 {
     dx * dx + dz * dz
 }
 
+fn terrain_cardinal_lighting(world: &WorldStore) -> TerrainCardinalLighting {
+    match world.level_info().map(|level| level.cardinal_lighting()) {
+        Some(WorldCardinalLighting::Nether) => TerrainCardinalLighting::Nether,
+        _ => TerrainCardinalLighting::Default,
+    }
+}
+
 fn convert_terrain_snapshot(
     snapshot: bbb_world::TerrainChunkSnapshot,
     textures: &TerrainTextureState,
+    cardinal_lighting: TerrainCardinalLighting,
 ) -> TerrainChunkSnapshot {
     let chunk_origin_x = snapshot.pos.x * 16;
     let chunk_origin_z = snapshot.pos.z * 16;
@@ -246,6 +256,7 @@ fn convert_terrain_snapshot(
         snapshot.height,
         cells,
     )
+    .with_cardinal_lighting(cardinal_lighting)
 }
 
 fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {

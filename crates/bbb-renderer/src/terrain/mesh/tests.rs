@@ -1,9 +1,9 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
     build_terrain_mesh_layers_with_atlas, build_terrain_mesh_layers_with_atlas_and_camera,
-    build_terrain_meshes_with_atlas, TerrainBox, TerrainCross, TerrainFace, TerrainFluid,
-    TerrainFluidKind, TerrainLight, TerrainMesh, TerrainQuad, TerrainTint, TerrainTransparency,
-    TerrainUvRect, TerrainVertex,
+    build_terrain_meshes_with_atlas, TerrainBox, TerrainCardinalLighting, TerrainCross,
+    TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMesh, TerrainQuad,
+    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -961,6 +961,24 @@ fn cube_vertices_carry_vanilla_default_cardinal_shade() {
 
     assert_face_shade(&mesh, [0.0, -1.0, 0.0], 0.5);
     assert_face_shade(&mesh, [0.0, 1.0, 0.0], 1.0);
+    assert_face_shade(&mesh, [0.0, 0.0, -1.0], 0.8);
+    assert_face_shade(&mesh, [0.0, 0.0, 1.0], 0.8);
+    assert_face_shade(&mesh, [-1.0, 0.0, 0.0], 0.6);
+    assert_face_shade(&mesh, [1.0, 0.0, 0.0], 0.6);
+}
+
+#[test]
+fn nether_dimension_uses_vanilla_nether_cardinal_shade() {
+    // Vanilla `CardinalLighting.NETHER = (0.9, 0.9, 0.8, 0.8, 0.6, 0.6)`: only the
+    // down/up faces differ from `DEFAULT` (down 0.5 -> 0.9, up 1.0 -> 0.9); the
+    // north/south/west/east side shades are identical to `DEFAULT`.
+    let snapshot = single_block_snapshot(0, 0, 1, 0, 2)
+        .with_cardinal_lighting(TerrainCardinalLighting::Nether);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+
+    assert_face_shade(&mesh, [0.0, -1.0, 0.0], 0.9);
+    assert_face_shade(&mesh, [0.0, 1.0, 0.0], 0.9);
     assert_face_shade(&mesh, [0.0, 0.0, -1.0], 0.8);
     assert_face_shade(&mesh, [0.0, 0.0, 1.0], 0.8);
     assert_face_shade(&mesh, [-1.0, 0.0, 0.0], 0.6);

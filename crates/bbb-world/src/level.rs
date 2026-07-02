@@ -49,6 +49,31 @@ pub struct WorldLevelInfo {
     pub is_flat: bool,
 }
 
+/// Vanilla `net.minecraft.world.level.CardinalLighting.Type`, selected per
+/// dimension by `DimensionType.cardinalLightType`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum WorldCardinalLighting {
+    #[default]
+    Default,
+    Nether,
+}
+
+impl WorldLevelInfo {
+    /// The Nether dimension type uses `NETHER` cardinal lighting; every other
+    /// built-in dimension (overworld / end / caves) uses `DEFAULT`. Datapack
+    /// dimension types that override `cardinal_light` are not decoded and fall
+    /// back to `Default`.
+    pub fn cardinal_lighting(&self) -> WorldCardinalLighting {
+        if dimension_profile(self.dimension_type_id, &self.dimension).name
+            == Some("minecraft:the_nether")
+        {
+            WorldCardinalLighting::Nether
+        } else {
+            WorldCardinalLighting::Default
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldGlobalPos {
     pub dimension: String,
@@ -1267,5 +1292,46 @@ mod tests {
             y_head_rot: 30.0,
             data: 99,
         }
+    }
+
+    #[test]
+    fn cardinal_lighting_selects_nether_only_for_the_nether_dimension() {
+        let nether = WorldLevelInfo {
+            dimension: "minecraft:the_nether".to_string(),
+            dimension_type_id: 1,
+            dimension_type_name: Some("minecraft:the_nether".to_string()),
+            last_death_location: None,
+            sea_level: 32,
+            is_debug: false,
+            is_flat: false,
+        };
+        assert_eq!(nether.cardinal_lighting(), WorldCardinalLighting::Nether);
+
+        // Nether by dimension name even when the registry id is remapped.
+        let remapped_nether = WorldLevelInfo {
+            dimension_type_id: 7,
+            ..nether.clone()
+        };
+        assert_eq!(
+            remapped_nether.cardinal_lighting(),
+            WorldCardinalLighting::Nether
+        );
+
+        let overworld = WorldLevelInfo {
+            dimension: "minecraft:overworld".to_string(),
+            dimension_type_id: 0,
+            ..nether.clone()
+        };
+        assert_eq!(
+            overworld.cardinal_lighting(),
+            WorldCardinalLighting::Default
+        );
+
+        let end = WorldLevelInfo {
+            dimension: "minecraft:the_end".to_string(),
+            dimension_type_id: 2,
+            ..nether.clone()
+        };
+        assert_eq!(end.cardinal_lighting(), WorldCardinalLighting::Default);
     }
 }

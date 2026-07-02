@@ -304,6 +304,56 @@ impl TerrainCell {
     }
 }
 
+/// Per-dimension block/fluid face shading, mirroring vanilla
+/// `net.minecraft.world.level.CardinalLighting` selected by
+/// `DimensionType.cardinalLightType`. Only `DEFAULT` and `NETHER` exist in
+/// 26.1; every built-in dimension except the Nether (overworld / end / caves)
+/// uses `DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum TerrainCardinalLighting {
+    /// `CardinalLighting.DEFAULT = (0.5, 1.0, 0.8, 0.8, 0.6, 0.6)`.
+    #[default]
+    Default,
+    /// `CardinalLighting.NETHER = (0.9, 0.9, 0.8, 0.8, 0.6, 0.6)`.
+    Nether,
+}
+
+impl TerrainCardinalLighting {
+    /// `[down, up, north, south, west, east]` multipliers.
+    const fn values(self) -> [f32; 6] {
+        match self {
+            Self::Default => [0.5, 1.0, 0.8, 0.8, 0.6, 0.6],
+            Self::Nether => [0.9, 0.9, 0.8, 0.8, 0.6, 0.6],
+        }
+    }
+
+    fn by_face(self, face: TerrainFace) -> f32 {
+        let [down, up, north, south, west, east] = self.values();
+        match face {
+            TerrainFace::Down => down,
+            TerrainFace::Up => up,
+            TerrainFace::North => north,
+            TerrainFace::South => south,
+            TerrainFace::West => west,
+            TerrainFace::East => east,
+        }
+    }
+
+    fn up(self) -> f32 {
+        self.values()[1]
+    }
+
+    /// Vanilla `BlockModelLighter`: a shaded face uses `byFace(direction)`, an
+    /// unshaded face uses `up()`.
+    pub fn shade(self, enabled: bool, face: TerrainFace) -> f32 {
+        if enabled {
+            self.by_face(face)
+        } else {
+            self.up()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TerrainChunkSnapshot {
     pub chunk_x: i32,
@@ -311,6 +361,8 @@ pub struct TerrainChunkSnapshot {
     pub min_y: i32,
     pub height: usize,
     pub cells: Vec<TerrainCell>,
+    #[serde(default)]
+    pub cardinal_lighting: TerrainCardinalLighting,
 }
 
 impl TerrainChunkSnapshot {
@@ -328,7 +380,15 @@ impl TerrainChunkSnapshot {
             min_y,
             height,
             cells,
+            cardinal_lighting: TerrainCardinalLighting::Default,
         }
+    }
+
+    /// Selects the vanilla `CardinalLighting` for this chunk's dimension
+    /// (`DEFAULT` for every dimension except the Nether).
+    pub fn with_cardinal_lighting(mut self, cardinal_lighting: TerrainCardinalLighting) -> Self {
+        self.cardinal_lighting = cardinal_lighting;
+        self
     }
 
     pub fn cell(&self, x: i32, y: i32, z: i32) -> Option<&TerrainCell> {

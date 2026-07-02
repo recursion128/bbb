@@ -866,11 +866,20 @@ When an agent does any of the following, update this file in the same slice:
     `addFace(..., shouldRenderBackwardUpFace(level, pos.above()))` for the top,
     both re-emitting the four vertices as `v3, v2, v1, v0`), while the bottom face
     stays single-sided (`addFace(..., false)`); the terrain pipeline's back-face
-    cull keeps the reversed quad visible when the camera is submerged. Still
-    deferred here: selecting the `water_overlay` sprite for side faces against
-    `HalfTransparentBlock` / `LeavesBlock` neighbors (which also suppresses that
-    side's back face), and the constant-ambient-light `cardinalLighting.up() *
-    side` fluid side shade for the Nether/End `CardinalLighting.NETHER` profile.
+    cull keeps the reversed quad visible when the camera is submerged. Terrain
+    and fluid faces now shade through the chunk dimension's vanilla
+    `net.minecraft.world.level.CardinalLighting` (`BlockModelLighter`: a shaded
+    face uses `byFace(direction)`, an unshaded face uses `up()`), selected by
+    `DimensionType.cardinalLightType` and threaded from `WorldStore` into
+    `TerrainChunkSnapshot`: the Nether dimension type uses
+    `CardinalLighting.NETHER` (`down`/`up` = `0.9`; the `N/S/W/E` sides are
+    identical to `DEFAULT`), and every other built-in dimension (overworld / end
+    / caves) uses `CardinalLighting.DEFAULT` (`down 0.5`, `up 1.0`, sides
+    `0.8/0.6`). Still deferred here: selecting the `water_overlay` sprite for
+    side faces against `HalfTransparentBlock` / `LeavesBlock` neighbors (which
+    also suppresses that side's back face), and datapack dimension types that
+    override the `cardinal_light` field (not decoded; they fall back to
+    `DEFAULT`).
     Existing blended entity-model buckets (`entityTranslucent`, dynamic-player
     translucent skins, `eyes`, `breezeWind`, and `energySwirl`) now draw in a
     main-target translucent feature pass after the vanilla-shaped

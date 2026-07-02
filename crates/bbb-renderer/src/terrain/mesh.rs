@@ -61,6 +61,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
         source_sections: snapshot.height.div_ceil(16),
         ..TerrainMesh::default()
     };
+    let cardinal = snapshot.cardinal_lighting;
     for y in 0..snapshot.height as i32 {
         for z in 0..16 {
             for x in 0..16 {
@@ -79,7 +80,9 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let world_y = snapshot.min_y + y;
                 let world_z = snapshot.chunk_z * 16 + z;
                 if matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay {
-                    emit_fluid_overlay(&mut mesh, world_x, world_y, world_z, cell, lookup, atlas);
+                    emit_fluid_overlay(
+                        &mut mesh, world_x, world_y, world_z, cell, lookup, atlas, cardinal,
+                    );
                     if !mode.is_meshed(cell.material) && !has_texture_layer_overrides(cell) {
                         continue;
                     }
@@ -104,6 +107,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *light_emission,
                             atlas,
                             mode,
+                            cardinal,
                         );
                         continue;
                     }
@@ -124,6 +128,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_cross.light_emission,
                                 atlas,
                                 mode,
+                                cardinal,
                             );
                         }
                         continue;
@@ -163,6 +168,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.ambient_occlusion,
                             lookup,
                             mode,
+                            cardinal,
                         );
                         continue;
                     }
@@ -192,6 +198,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 cell.ambient_occlusion,
                                 lookup,
                                 mode,
+                                cardinal,
                             );
                         }
                         continue;
@@ -210,6 +217,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.ambient_occlusion,
                             lookup,
                             mode,
+                            cardinal,
                         );
                         continue;
                     }
@@ -266,6 +274,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             lookup,
                             mode,
                         ),
+                        cardinal,
                     );
                 }
             }
@@ -357,6 +366,7 @@ fn emit_fluid_overlay(
     cell: &TerrainCell,
     lookup: &TerrainChunkLookup<'_>,
     atlas: &TerrainTextureAtlas,
+    cardinal: super::TerrainCardinalLighting,
 ) {
     let face_cull = TerrainFace::ALL.map(Some);
     emit_box(
@@ -383,6 +393,7 @@ fn emit_fluid_overlay(
         false,
         lookup,
         TerrainMeshMode::TranslucentOnly,
+        cardinal,
     );
 }
 
