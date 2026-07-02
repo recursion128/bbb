@@ -3110,8 +3110,13 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
     tx.try_send(NetEvent::LevelEvent(non_vault_event)).unwrap();
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
     let mut particles = RecordingParticleSink::default();
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    bbb_world::advance_vault_activation_particle_randoms(&mut expected_random);
+    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+    let expected_seed = expected_random.next_long();
 
     assert_eq!(
         drain_net_events_with_sinks(
@@ -3119,7 +3124,7 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
             &mut world,
             &mut counters,
             &None,
-            None,
+            Some(&mut audio),
             Some(&mut particles),
             None,
             &mut level_event_sound_random,
@@ -3144,6 +3149,82 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
         particles.level_event_contexts[1].vault_block_entity_at_event_pos,
         false
     );
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.vault.activate");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [16.5, -63.5, -31.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, expected_pitch);
+    assert!(command.distance_delay);
+    assert_eq!(command.seed, expected_seed);
+    let sound = world.last_sound().unwrap();
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:block.vault.activate")
+    );
+    assert_eq!(sound.seed, expected_seed);
+    assert!(sound.distance_delay);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn vault_deactivation_level_event_emits_sound_after_particles() {
+    let event = LevelEvent {
+        event_type: 3016,
+        pos: ProtocolBlockPos { x: -3, y: 72, z: 5 },
+        data: 1,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    bbb_world::advance_vault_deactivation_particle_randoms(&mut expected_random);
+    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+    let expected_seed = expected_random.next_long();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert_eq!(particles.level_events, vec![event]);
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.vault.deactivate");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [-2.5, 72.5, 5.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, expected_pitch);
+    assert!(command.distance_delay);
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.vault.deactivate")
+    );
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
 }
 
 #[test]
@@ -6019,6 +6100,10 @@ impl ParticleEventSink for RecordingParticleSink {
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);
+        } else if event.event_type == 3015 && context.vault_block_entity_at_event_pos {
+            bbb_world::advance_vault_activation_particle_randoms(random);
+        } else if event.event_type == 3016 {
+            bbb_world::advance_vault_deactivation_particle_randoms(random);
         }
         self.level_events.push(*event);
         self.level_event_contexts.push(context);
@@ -6105,6 +6190,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.cobweb.place": {
                 "sounds": ["block/cobweb/place"]
+            },
+            "block.vault.activate": {
+                "sounds": ["block/vault/activate"]
+            },
+            "block.vault.deactivate": {
+                "sounds": ["block/vault/deactivate"]
             },
             "block.end_portal.spawn": {
                 "sounds": ["portal/endportal"]

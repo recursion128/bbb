@@ -1557,6 +1557,16 @@
     `SoundSource.PLAYERS`, volume `1.0`, and pitch `1.0`. Non-brushable
     event-data block states keep the vanilla no-sound branch while destroy-block
     particles still run.
+  - [x] vault activate/deactivate LevelEvent sounds：events `3015` and `3016`
+    now mirror vanilla `LevelEventHandler` sound ordering by consuming the local
+    vault particle random sequence before drawing
+    `(nextFloat - nextFloat) * 0.2 + 1.0` pitch, then recording/playing
+    distance-delayed `minecraft:block.vault.activate` /
+    `minecraft:block.vault.deactivate` positioned sounds with
+    `SoundSource.BLOCKS` and volume `1.0`. Event `3015` keeps the vanilla loaded
+    vault block-entity gate; event `3016` always emits the deactivation sound.
+    Player connection particles for activation remain broader block-entity
+    client-effects follow-up work.
   - [x] solid item enchantment glint：`ItemStackSummary::has_foil()` now
     centralizes the decoded `enchantment_glint_override` / enchantments
     fallback, native projects foiled dropped / held / item-frame / HUD 3D block

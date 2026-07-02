@@ -1,5 +1,6 @@
 pub use crate::client::audio::{
-    advance_cobweb_place_particle_randoms, ClientAudioState, JukeboxLevelEventAction,
+    advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
+    advance_vault_deactivation_particle_randoms, ClientAudioState, JukeboxLevelEventAction,
     JukeboxLevelEventState, JukeboxSongState, LevelEventSoundRandomState, LocalSoundEventState,
     SoundEntityEventState, SoundEventState, SoundHolderState, StopSoundEventState,
     WorldBlockSoundProfile,

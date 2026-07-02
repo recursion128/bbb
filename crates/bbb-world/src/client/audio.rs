@@ -18,7 +18,11 @@ const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
 const BRUSH_BLOCK_COMPLETE_LEVEL_EVENT: i32 = 3008;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
+const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
+const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+// Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
+const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
@@ -463,6 +467,31 @@ impl WorldStore {
             seed: 0,
             distance_delay: false,
         })
+    }
+
+    pub fn vault_level_event_sound_with_random(
+        &self,
+        event: ProtocolLevelEvent,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let sound = match event.event_type {
+            VAULT_ACTIVATE_LEVEL_EVENT
+                if self.block_entity_type_id_at(crate::protocol_block_pos(event.pos))
+                    == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID) =>
+            {
+                "minecraft:block.vault.activate"
+            }
+            VAULT_DEACTIVATE_LEVEL_EVENT => "minecraft:block.vault.deactivate",
+            _ => return None,
+        };
+        Some(block_sound_state_with_distance_delay(
+            crate::protocol_block_pos(event.pos),
+            sound,
+            1.0,
+            triangle_pitch(1.0, 0.2, &mut next_float),
+            "block",
+            true,
+        ))
     }
 
     pub fn global_level_event_sound(
@@ -995,6 +1024,25 @@ pub fn advance_cobweb_place_particle_randoms(random: &mut LevelEventSoundRandomS
         let _ = random.next_double();
         let _ = random.next_double();
         let _ = random.next_double();
+    }
+}
+
+pub fn advance_vault_activation_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+    }
+}
+
+pub fn advance_vault_deactivation_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..20 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
     }
 }
 
@@ -1762,6 +1810,46 @@ mod tests {
                     global: false,
                 },
                 || panic!("non-3007 should not sample random"),
+            )
+            .is_none());
+    }
+
+    #[test]
+    fn vault_level_event_sound_uses_distance_delay_and_block_entity_gate() {
+        let store = WorldStore::new();
+        let deactivate = store
+            .vault_level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 3016,
+                    pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                    data: 0,
+                    global: false,
+                },
+                {
+                    let mut samples = [0.75, 0.25].into_iter();
+                    move || samples.next().unwrap()
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            deactivate.sound.location.as_deref(),
+            Some("minecraft:block.vault.deactivate")
+        );
+        assert_eq!(deactivate.source, "block");
+        assert_eq!(deactivate.position, vec3(-0.5, 70.5, 4.5));
+        assert_close(deactivate.volume, 1.0);
+        assert_close(deactivate.pitch, 1.1);
+        assert!(deactivate.distance_delay);
+
+        assert!(store
+            .vault_level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 3015,
+                    pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                    data: 0,
+                    global: false,
+                },
+                || panic!("3015 without a vault block entity has no sound")
             )
             .is_none());
     }

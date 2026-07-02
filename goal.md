@@ -281,6 +281,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `3008` brush-block-complete sound 已按 vanilla 的 event-data
     `BrushableBlock.getBrushCompletedSound()` 覆盖 suspicious sand/gravel 的
     `SoundSource.PLAYERS` completion sound；非 brushable block-state 仍不发声。
+  - `3015` / `3016` vault activate/deactivate sounds 已按 vanilla 的本地
+    vault particle RNG 之后抽取 `(nextFloat - nextFloat) * 0.2 + 1.0`
+    pitch，保留 distance-delay；`3015` 仍 gate 在 event 位置已加载 vault
+    block entity。
 
 完成标准：
 

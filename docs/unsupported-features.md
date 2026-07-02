@@ -358,11 +358,15 @@ When an agent does any of the following, update this file in the same slice:
       - event `3015`: vault activation `minecraft:smoke` plus
         `minecraft:small_flame` / `minecraft:soul_fire_flame` particles from
         `randomPosInsideCage`, gated on a loaded vault block entity at the event
-        position; player connection particles remain deferred with broader
+        position, followed by the vanilla distance-delayed
+        `minecraft:block.vault.activate` sound using the post-particle random
+        pitch sequence; player connection particles remain deferred with broader
         block-entity client effects
       - event `3016`: vault deactivation `minecraft:small_flame` /
         `minecraft:soul_fire_flame` particles from `randomPosCenterOfCage`,
-        with gaussian `0.02` velocity
+        with gaussian `0.02` velocity, followed by the vanilla
+        distance-delayed `minecraft:block.vault.deactivate` sound using the
+        post-particle random pitch sequence
       - event `3017`: trial spawner eject-item `minecraft:small_flame` and
         `minecraft:smoke` particles
       - event `3018`: cobweb-place `minecraft:poof` particles
@@ -6043,6 +6047,9 @@ When an agent does any of the following, update this file in the same slice:
       - dragon fireball explode sound for event `2006` when `data == 1`
       - distance-delayed trial spawner sounds for events `3012`, `3013`,
         `3014`, `3019`, `3020`, and `3021`
+      - distance-delayed vault activate/deactivate sounds for events `3015`
+        and `3016`, emitted after the local vault particle random sequence;
+        `3015` is gated on a loaded vault block entity at the event position
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
         and the randomized charged branch

@@ -3,8 +3,9 @@ use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, TerrainFluidKind,
-    WorldStore,
+    advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
+    advance_vault_deactivation_particle_randoms, ChunkPos, LevelEventSoundRandomState,
+    TerrainFluidKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -26,6 +27,7 @@ const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
+const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -406,6 +408,36 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                             level_event_sound_random.next_float()
                         })
                     {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else if matches!(
+                    event.event_type,
+                    VAULT_ACTIVATE_LEVEL_EVENT | VAULT_DEACTIVATE_LEVEL_EVENT
+                ) {
+                    let context = level_event_particle_context(world, &event);
+                    let should_advance_particle_random = event.event_type
+                        == VAULT_DEACTIVATE_LEVEL_EVENT
+                        || context.vault_block_entity_at_event_pos;
+                    let particles_consumed_random = emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        context,
+                        level_event_sound_random,
+                    );
+                    if should_advance_particle_random && !particles_consumed_random {
+                        advance_vault_level_event_particle_randoms(
+                            event.event_type,
+                            level_event_sound_random,
+                        );
+                    }
+                    if let Some(state) = world.vault_level_event_sound_with_random(event, || {
+                        level_event_sound_random.next_float()
+                    }) {
                         let state = world.record_positioned_sound(with_level_event_sound_seed(
                             state,
                             level_event_sound_random,
@@ -1152,6 +1184,17 @@ fn with_level_event_sound_seed(
 ) -> bbb_world::SoundEventState {
     state.seed = random.next_long();
     state
+}
+
+fn advance_vault_level_event_particle_randoms(
+    event_type: i32,
+    random: &mut LevelEventSoundRandomState,
+) {
+    match event_type {
+        VAULT_ACTIVATE_LEVEL_EVENT => advance_vault_activation_particle_randoms(random),
+        VAULT_DEACTIVATE_LEVEL_EVENT => advance_vault_deactivation_particle_randoms(random),
+        _ => {}
+    }
 }
 
 fn audio_position(position: bbb_world::EntityVec3) -> [f64; 3] {
