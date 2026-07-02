@@ -226,6 +226,25 @@ impl TerrainTextureState {
             .unwrap_or(self.fallback_index)
     }
 
+    pub(crate) fn particle_sprite_id_for_block_state(&self, block_state_id: i32) -> Option<String> {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        let block_state = block_states.by_id(block_state_id)?;
+        let model_particle = self
+            .block_models
+            .as_ref()
+            .and_then(|models| {
+                models.block_render_model(&block_state.name, &block_state.properties)
+            })
+            .and_then(|model| model.particle_texture);
+        let sprite_id =
+            model_particle.unwrap_or_else(|| block_fallback_texture_id(&block_state.name));
+        if self.indices.contains_key(&sprite_id) {
+            Some(sprite_id)
+        } else {
+            Some(block_fallback_texture_id(&block_state.name))
+        }
+    }
+
     pub(crate) fn destroy_stage_uv_rect(&self, stage: u8) -> Option<TerrainUvRect> {
         let texture_id = format!("minecraft:block/destroy_stage_{}", stage.min(9));
         let index = *self.indices.get(&texture_id)?;

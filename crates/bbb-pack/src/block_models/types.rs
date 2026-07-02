@@ -231,6 +231,8 @@ impl Default for BlockModelShape {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockRenderModel {
     pub face_textures: BlockFaceTextures,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub particle_texture: Option<String>,
     pub shape: BlockModelShape,
     pub use_ambient_occlusion: bool,
     #[serde(default)]
@@ -243,6 +245,7 @@ impl BlockRenderModel {
     pub(crate) fn empty() -> Self {
         Self {
             face_textures: BlockFaceTextures::uniform("minecraft:block/stone"),
+            particle_texture: Some("minecraft:block/stone".to_string()),
             shape: BlockModelShape::Boxes(Vec::new()),
             use_ambient_occlusion: true,
             gui_light: BlockModelGuiLight::default(),

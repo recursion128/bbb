@@ -324,14 +324,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     provider alpha/color curve 小项跟踪。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
-  - terrain/item particle atlas rendering：resolving block atlas sprites and the
-    generic `minecraft:item` stack material sprite, applying terrain tint,
-    sprite-transparency-driven `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, and
-    transparent terrain/items vertex emission remain follow-up work. Renderer GPU draw
-    ranges now bind particle / terrain / item atlas textures once concrete
-    sprite UVs are available; native terrain atlas upload supplies block
-    sprite UVs and native item atlas upload supplies item sprite UVs to the
-    particle renderer path. Fixed item providers now resolve
+  - terrain/item particle atlas rendering：generic `minecraft:item` stack material
+    sprite, terrain particle tint, sprite-transparency-driven
+    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, block-marker sprite selection,
+    and transparent terrain/items vertex emission remain follow-up work.
+    Renderer GPU draw ranges now bind particle / terrain / item atlas textures
+    once concrete sprite UVs are available; native terrain atlas upload supplies
+    block sprite UVs and native item atlas upload supplies item sprite UVs to
+    the particle renderer path. `TerrainParticle` providers now resolve
+    block-state particle material sprite ids for `minecraft:block`,
+    `minecraft:dust_pillar`, and `minecraft:block_crumble`. Fixed item providers
+    now resolve
     `minecraft:item_slime`, `minecraft:item_cobweb`, and
     `minecraft:item_snowball` to their vanilla item atlas sprite ids.
 

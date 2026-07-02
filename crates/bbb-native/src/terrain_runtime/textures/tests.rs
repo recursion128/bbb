@@ -146,6 +146,58 @@ fn terrain_particle_sprite_uvs_use_block_atlas_content_rects() {
 }
 
 #[test]
+fn terrain_particle_sprite_id_uses_block_model_particle_texture() {
+    let root = unique_temp_dir("terrain-particle-sprite-id");
+    let asset_root = root
+        .join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("water.json"),
+        r##"{
+            "variants": {
+                "level=0": { "model": "minecraft:block/water" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root.join("models").join("block").join("water.json"),
+        r##"{
+            "textures": {
+                "particle": "minecraft:block/water_still"
+            }
+        }"##,
+    );
+    let images = vec![
+        sprite("minecraft:block/stone"),
+        sprite("minecraft:block/water_still"),
+    ];
+    let atlas = bbb_pack::AtlasPacker::new(64, 1)
+        .unwrap()
+        .stitch(&images)
+        .unwrap();
+    let block_models = bbb_pack::PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, Some(block_models), None, None);
+    let water_id = bbb_world::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:water", &properties([("level", "0")]))
+        .unwrap()
+        .id;
+
+    assert_eq!(
+        textures
+            .particle_sprite_id_for_block_state(water_id)
+            .as_deref(),
+        Some("minecraft:block/water_still")
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_seed_matches_vanilla_position_seed() {
     assert_eq!(
         block_model_seed(BlockRenderPosition { x: 0, y: 0, z: 0 }),

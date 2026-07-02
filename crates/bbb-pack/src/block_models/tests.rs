@@ -1219,6 +1219,10 @@ fn block_model_catalog_uses_particle_texture_for_elementless_models() {
 
     assert_eq!(render_model.shape, BlockModelShape::Custom);
     assert_eq!(
+        render_model.particle_texture.as_deref(),
+        Some("minecraft:block/water_still")
+    );
+    assert_eq!(
         render_model.face_textures.get(BlockModelFace::Up),
         "minecraft:block/water_still"
     );

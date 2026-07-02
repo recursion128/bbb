@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
@@ -16,7 +19,10 @@ use bbb_world::{
     block_name_should_spawn_terrain_particles, LevelEventSoundRandomState,
 };
 
-use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
+use crate::{
+    particle_registry::{vanilla_particle_type, ParticleTypeInfo},
+    terrain_runtime::TerrainTextureState,
+};
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 
@@ -140,6 +146,10 @@ impl NativeParticleRuntime {
         )
     }
 
+    pub(crate) fn set_terrain_particle_sprite_ids(&mut self, textures: &TerrainTextureState) {
+        self.resolver.set_terrain_particle_sprite_ids(textures);
+    }
+
     pub(crate) fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
         if !self.atlas.has_animation() {
             return;
@@ -203,6 +213,7 @@ impl ParticleEventSink for NativeParticleRuntime {
 struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
+    terrain_particle_sprite_ids: HashMap<i32, String>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
     particle_status: ClientParticleStatus,
@@ -334,10 +345,23 @@ impl ParticleCommandResolver {
         Self {
             definitions,
             sprites,
+            terrain_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
             particle_status,
         }
+    }
+
+    fn set_terrain_particle_sprite_ids(&mut self, textures: &TerrainTextureState) {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        self.terrain_particle_sprite_ids = block_states
+            .iter()
+            .filter_map(|block_state| {
+                textures
+                    .particle_sprite_id_for_block_state(block_state.id)
+                    .map(|sprite_id| (block_state.id, sprite_id))
+            })
+            .collect();
     }
 
     #[cfg(test)]
@@ -350,6 +374,7 @@ impl ParticleCommandResolver {
         Self {
             definitions,
             sprites,
+            terrain_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),
             particle_status,
@@ -2052,10 +2077,11 @@ impl ParticleCommandResolver {
         option_state: ParticleOptionRenderState,
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
+        let sprite_ids = self.sprite_ids_for_command(particle_type.id, sprite_ids, option_state);
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
             particle_id: particle_type.name.to_string(),
-            sprite_ids: sprite_ids.to_vec(),
+            sprite_ids,
             position: [position.x, position.y, position.z],
             velocity: [velocity.x, velocity.y, velocity.z],
             override_limiter,
@@ -2073,6 +2099,26 @@ impl ParticleCommandResolver {
             option_block: option_state.block,
             option_item: option_state.item,
         }
+    }
+
+    fn sprite_ids_for_command(
+        &self,
+        particle_type_id: i32,
+        sprite_ids: &[String],
+        option_state: ParticleOptionRenderState,
+    ) -> Vec<String> {
+        if matches!(
+            particle_type_id,
+            BLOCK_PARTICLE_TYPE_ID | DUST_PILLAR_PARTICLE_TYPE_ID | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
+        ) {
+            if let Some(sprite_id) = option_state
+                .block
+                .and_then(|block| self.terrain_particle_sprite_ids.get(&block.block_state_id))
+            {
+                return vec![sprite_id.clone()];
+            }
+        }
+        sprite_ids.to_vec()
     }
 
     fn child_spawn_templates_for_type(
@@ -3095,6 +3141,38 @@ mod tests {
             );
             assert_eq!(command.option_item, item, "{particle_id}");
         }
+    }
+
+    #[test]
+    fn terrain_particle_commands_use_installed_block_sprite_ids() {
+        let mut resolver = test_resolver(0);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+        resolver
+            .terrain_particle_sprite_ids
+            .insert(stone_id, "minecraft:block/stone".to_string());
+
+        for (particle_type_id, particle_id) in [
+            (BLOCK_PARTICLE_TYPE_ID, "minecraft:block"),
+            (DUST_PILLAR_PARTICLE_TYPE_ID, "minecraft:dust_pillar"),
+            (BLOCK_CRUMBLE_PARTICLE_TYPE_ID, "minecraft:block_crumble"),
+        ] {
+            let mut packet = level_particles_packet(particle_type_id, 0);
+            packet.particle.raw_options = block_particle_options(stone_id);
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{particle_id}");
+            assert_eq!(
+                batch.commands[0].sprite_ids,
+                vec!["minecraft:block/stone".to_string()],
+                "{particle_id}"
+            );
+        }
+
+        let mut marker = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
+        marker.particle.raw_options = block_particle_options(stone_id);
+        let batch = resolver.resolve_level_particles(&marker);
+        assert_eq!(batch.len(), 1);
+        assert!(batch.commands[0].sprite_ids.is_empty());
     }
 
     #[test]

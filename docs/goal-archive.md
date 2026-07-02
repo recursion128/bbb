@@ -1475,6 +1475,18 @@
     resolution, terrain tint, item sprite UV catalog upload, and
     sprite-transparency-driven transparent terrain/item emission remain with
     broader terrain/item particle rendering.
+  - [x] terrain particle block-state sprite lookup：native terrain texture state
+    now preserves the resolved block model `textures.particle` material, maps
+    vanilla block-state ids to terrain atlas sprite ids, and installs that map
+    into the particle resolver after terrain atlas upload. Definition-less
+    `minecraft:block`, `minecraft:dust_pillar`, and `minecraft:block_crumble`
+    spawn commands therefore carry the same particle material sprite id used by
+    vanilla `TerrainParticle` via
+    `BlockStateModelSet.getParticleMaterial(blockState).sprite()`. Tests cover
+    pack particle texture retention, terrain block-state sprite lookup, and
+    native command sprite-id emission. Block marker, terrain tint,
+    transparent terrain splitting, and generic item-stack sprite selection stay
+    with the remaining terrain/item particle rendering follow-up.
   - [x] item particle sprite UV catalog upload：`NativeItemRuntime` now exposes
     the stitched item atlas sprite-id to UV catalog using the same half-texel
     content rects as item icon resolution, and native startup forwards that

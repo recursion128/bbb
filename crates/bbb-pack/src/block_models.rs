@@ -104,6 +104,7 @@ impl BlockModelCatalog {
             RawBlockstateSelection::Empty => return Some(BlockRenderModel::empty()),
         };
         let mut face_textures = None;
+        let mut particle_texture = None;
         let mut use_ambient_occlusion = None;
         let mut gui_light = None;
         let mut display_transforms = None;
@@ -114,6 +115,13 @@ impl BlockModelCatalog {
             gui_light.get_or_insert_with(|| model.gui_light());
             display_transforms.get_or_insert_with(|| model.display_transforms());
             let local = model.face_textures()?;
+            particle_texture.get_or_insert_with(|| {
+                model
+                    .texture_slots()
+                    .get("particle")
+                    .map(|(texture_id, _force_translucent)| texture_id.clone())
+                    .unwrap_or_else(|| local.get(BlockModelFace::Down).to_string())
+            });
             face_textures.get_or_insert_with(|| {
                 apply_variant_rotation(local, variant.x, variant.y, variant.z)
             });
@@ -128,6 +136,7 @@ impl BlockModelCatalog {
 
         Some(BlockRenderModel {
             face_textures: face_textures?,
+            particle_texture,
             shape: combine_model_shapes(shapes),
             use_ambient_occlusion: use_ambient_occlusion.unwrap_or(true),
             gui_light: gui_light.unwrap_or_default(),

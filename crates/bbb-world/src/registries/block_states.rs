@@ -51,6 +51,10 @@ impl BlockStateRegistry {
             .find(|state| state.name == name && state.properties == *properties)
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &BlockStateInfo> {
+        self.states.iter().flatten()
+    }
+
     pub fn len(&self) -> usize {
         self.states.iter().filter(|state| state.is_some()).count()
     }
