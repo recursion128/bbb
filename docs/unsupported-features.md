@@ -113,8 +113,8 @@ When an agent does any of the following, update this file in the same slice:
     tick -> render frame order, one field per slice. The pump binds every
     world -> renderer value at the sequence point the removed `renderer.set_*`
     call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next: item/entity
-    projections that depend on animation, cooldown, or use-item tick advances.
+    vanilla-verified per field. Known interleaves to check next: block destroy,
+    selection/outline, weather, cloud-frame, and particle-light projections.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
     citation.
@@ -135,6 +135,13 @@ When an agent does any of the following, update this file in the same slice:
     `Gui.extractItemHotbar`, so bbb reads these fields after
     `advance_player_input`, destroy/use input advancement, and
     `advance_local_using_item_ticks`.
+  - Dropped item models, item entity billboards, entity model instances, held
+    item models, item-frame models, and entity block-item models now have a
+    source-order test and binding comment: vanilla `Minecraft.tick` advances
+    keybinds, `gameRenderer.tick`, and `level.tickEntities` before
+    `GameRenderer.extract` calls `LevelRenderer.extractLevel` /
+    `extractVisibleEntities`, so bbb reads these fields after entity animation,
+    client-time, item-cooldown, input, and local use-item tick advancement.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 

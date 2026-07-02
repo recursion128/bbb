@@ -1492,6 +1492,8 @@ pub(crate) fn pump_network_and_terrain(
         },
         entity_partial_tick,
     );
+    // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
+    // `gameRenderer.tick`, and `level.tickEntities`; these projections read the post-tick snapshot.
     // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
     // clock is the world game time plus the partial tick.
     let item_model_age_ticks = world

@@ -456,6 +456,77 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
 }
 
 #[test]
+fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
+    let source = include_str!("../runtime.rs");
+    let entity_tick = source
+        .find("let advanced_ticks = advance_entity_client_animations(")
+        .expect("pump should advance entity client animations before render extraction");
+    let partial_tick = source
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .expect("pump should compute the render partial tick");
+    let client_time = source
+        .find("world.advance_client_time(running_ticks);")
+        .expect("pump should advance client time before item model extraction");
+    let cooldown_tick = source
+        .find("world.advance_item_cooldowns(advanced_ticks);")
+        .expect("pump should advance item cooldowns before item model extraction");
+    let input_advance = source
+        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .expect("pump should advance input before held item extraction");
+    let using_item_tick = source
+        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .expect("pump should advance local use-item ticks before held item extraction");
+    let item_age_extract = source
+        .find("let item_model_age_ticks = world")
+        .expect("pump should compute dropped item model age");
+    let dropped_models = source
+        .find("let dropped_item_models = dropped_item_models(")
+        .expect("pump should extract dropped item models");
+    let billboards = source
+        .find("let item_entity_billboards = item_entity_billboards_from_world(")
+        .expect("pump should extract item entity billboards");
+    let entity_instances = source
+        .find("let entity_instances =\n        entity_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract entity model instances");
+    let held_models = source
+        .find("let held_item_models =")
+        .expect("pump should extract held item models");
+    let item_frame_models = source
+        .find("let item_frame_models = item_frame_models(")
+        .expect("pump should extract item frame models");
+    let entity_block_meshes = source
+        .find("let entity_block_meshes =")
+        .expect("pump should extract entity block item models");
+
+    for advance in [
+        entity_tick,
+        partial_tick,
+        client_time,
+        cooldown_tick,
+        input_advance,
+        using_item_tick,
+    ] {
+        assert!(
+            advance < item_age_extract,
+            "vanilla `Minecraft.tick` advances gameplay/entity state before `LevelRenderer.extractLevel`"
+        );
+    }
+    for extraction in [
+        dropped_models,
+        billboards,
+        entity_instances,
+        held_models,
+        item_frame_models,
+        entity_block_meshes,
+    ] {
+        assert!(
+            item_age_extract < extraction,
+            "item/entity RendererFrame fields should read the post-tick world snapshot"
+        );
+    }
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

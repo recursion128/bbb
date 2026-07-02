@@ -254,6 +254,13 @@
     `advance_local_using_item_ticks` 之后读取；vanilla 依据是
     `Minecraft.tick` 先处理 gameplay keybinds，随后 `GameRenderer.extractGui`
     调用 `Gui.extractRenderState` / `Gui.extractItemHotbar`。
+  - [x] item/entity projection fields：dropped item models、item entity
+    billboards、entity model instances、held item models、item-frame models 和
+    entity block-item models 现在有源码顺序测试与绑定注释，固定为 entity
+    animation、client-time、cooldown、input 和 use-item tick 之后读取；vanilla
+    依据是 `Minecraft.tick` 先推进 keybinds / `gameRenderer.tick` /
+    `level.tickEntities`，随后 `GameRenderer.extract` 调用
+    `LevelRenderer.extractLevel` / `extractVisibleEntities`。
 
 ## P1-2：实体专用 Renderer 行为
 
