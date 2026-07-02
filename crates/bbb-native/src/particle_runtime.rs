@@ -2738,6 +2738,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = resin_and_pale_garden_static_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = natural_static_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
@@ -3071,6 +3074,25 @@ fn resin_and_pale_garden_static_map_color(name: &str) -> Option<u32> {
         "open_eyeblossom" => MAP_COLOR_ORANGE,
         "closed_eyeblossom" => MAP_COLOR_METAL,
         "firefly_bush" => MAP_COLOR_PLANT,
+        _ => return None,
+    })
+}
+
+fn natural_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "oak_sapling" | "spruce_sapling" | "birch_sapling" | "jungle_sapling"
+        | "acacia_sapling" | "dark_oak_sapling" | "mangrove_propagule" | "cave_vines"
+        | "cave_vines_plant" | "spore_blossom" | "azalea" | "flowering_azalea" | "big_dripleaf"
+        | "big_dripleaf_stem" | "small_dripleaf" => MAP_COLOR_PLANT,
+        "cherry_sapling" => MAP_COLOR_PINK,
+        "pale_oak_sapling" => MAP_COLOR_METAL,
+        "dead_bush" => MAP_COLOR_WOOD,
+        "short_dry_grass" | "tall_dry_grass" => MAP_COLOR_YELLOW,
+        "pointed_dripstone" | "dripstone_block" => MAP_COLOR_TERRACOTTA_BROWN,
+        "moss_carpet" | "moss_block" => MAP_COLOR_GREEN,
+        "hanging_roots" | "rooted_dirt" => MAP_COLOR_DIRT,
+        "mud" => MAP_COLOR_TERRACOTTA_CYAN,
         _ => return None,
     })
 }
@@ -4605,6 +4627,79 @@ mod tests {
                 test_block_state_id("minecraft:infested_deepslate", [("axis", "y")]),
                 "minecraft:infested_deepslate",
                 rgb_option(0x64, 0x64, 0x64),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_natural_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:oak_sapling", [("stage", "0")]),
+                "minecraft:oak_sapling",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:cherry_sapling", [("stage", "1")]),
+                "minecraft:cherry_sapling",
+                rgb_option(0xf2, 0x7f, 0xa5),
+            ),
+            (
+                test_block_state_id("minecraft:pale_oak_sapling", [("stage", "0")]),
+                "minecraft:pale_oak_sapling",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:short_dry_grass", []),
+                "minecraft:short_dry_grass",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:pointed_dripstone",
+                    [
+                        ("thickness", "tip"),
+                        ("vertical_direction", "down"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:pointed_dripstone",
+                rgb_option(0x4c, 0x32, 0x23),
+            ),
+            (
+                test_block_state_id("minecraft:cave_vines", [("age", "25"), ("berries", "true")]),
+                "minecraft:cave_vines",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:moss_block", []),
+                "minecraft:moss_block",
+                rgb_option(0x66, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:hanging_roots", [("waterlogged", "false")]),
+                "minecraft:hanging_roots",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id("minecraft:mud", []),
+                "minecraft:mud",
+                rgb_option(0x57, 0x5c, 0x5c),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

@@ -1644,6 +1644,15 @@
     DEEPSLATE family fallback. Tests pin CLAY RGBs plus the infested deepslate
     axis state. Full mapColor catalog coverage, biome-aware per-spawn
     BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` natural static mapColor expansion：native now mirrors
+    vanilla static mapColor fallback for non-tinted saplings/dry grass,
+    pointed dripstone and dripstone blocks, cave vines, spore blossom, azalea,
+    dripleaf, green moss blocks, hanging/rooted dirt, and mud. Tests pin
+    representative PLANT, COLOR_PINK, METAL, COLOR_YELLOW, TERRACOTTA_BROWN,
+    COLOR_GREEN, DIRT, and TERRACOTTA_CYAN RGBs while leaving tint-sourced
+    petals, wildflowers, and leaf litter to the BlockColors path. Full
+    mapColor catalog coverage, biome-aware per-spawn BlockColors, and
+    on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
