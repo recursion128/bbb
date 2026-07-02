@@ -57,6 +57,31 @@ struct ItemModelFrameBuffers {
     index_count: u32,
 }
 
+/// Per-frame draw-call and pipeline-switch tallies, accumulated across the
+/// frame steps and folded into `RendererCounters` by `finish_frame`.
+#[derive(Default)]
+struct FrameDrawStats {
+    opaque_draw_calls: u64,
+    cutout_draw_calls: u64,
+    translucent_draw_calls: u64,
+    block_destroy_overlay_draw_calls: u64,
+    sky_draw_calls: u64,
+    entity_model_draw_calls: u64,
+    outline_composite_draw_calls: u64,
+    transparency_combine_draw_calls: u64,
+    transparency_blit_draw_calls: u64,
+    particle_draw_calls: u64,
+    weather_draw_calls: u64,
+    item_entity_draw_calls: u64,
+    item_model_draw_calls: u64,
+    selection_draw_calls: u64,
+    entity_scene_draw_calls: u64,
+    entity_target_draw_calls: u64,
+    hud_draw_calls: u64,
+    lightmap_draw_calls: u64,
+    pipeline_switches: u64,
+}
+
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
         let frame = match self.surface.get_current_texture() {
@@ -68,44 +93,37 @@ impl Renderer {
             Err(wgpu::SurfaceError::Timeout) => return Ok(()),
             Err(err) => return Err(err.into()),
         };
-        let surface_view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let main_view = &self.main_target.view;
-        let translucent_view = &self.translucent_target.view;
-        let item_entity_view = &self.item_entity_target.view;
-        let particle_view = &self.particle_target.view;
-        let weather_view = &self.weather_target.view;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("bbb-native-clear"),
             });
-
-        let mut opaque_draw_calls = 0;
-        let mut cutout_draw_calls = 0;
-        let mut translucent_draw_calls = 0;
-        let mut block_destroy_overlay_draw_calls = 0;
-        let mut sky_draw_calls = 0;
-        let mut entity_model_draw_calls = 0;
-        let mut outline_composite_draw_calls = 0;
-        let mut transparency_combine_draw_calls = 0;
-        let mut transparency_blit_draw_calls = 0;
-        let mut particle_draw_calls = 0;
-        let mut weather_draw_calls = 0;
-        let mut item_entity_draw_calls = 0;
-        let mut item_model_draw_calls = 0;
-        let mut selection_draw_calls = 0;
-        let mut entity_scene_draw_calls = 0;
-        let mut entity_target_draw_calls = 0;
-        let mut hud_draw_calls = 0;
-        let mut lightmap_draw_calls = 0;
-        let mut pipeline_switches = 0;
+        let mut stats = FrameDrawStats::default();
         write_lightmap_uniform(
             &self.queue,
             &self.lightmap.uniform_buffer,
             self.lightmap_environment,
         );
+        self.lightmap_pass(&mut encoder, &mut stats);
+        self.main_world_pass(&mut encoder, &mut stats);
+        self.copy_main_depth_to_feature_targets(&mut encoder);
+        self.entity_translucent_feature_pass(&mut encoder, &mut stats);
+        self.item_entity_target_pass(&mut encoder, &mut stats);
+        self.block_destroy_overlay_pass(&mut encoder, &mut stats);
+        self.entity_outline_target_pass(&mut encoder, &mut stats);
+        self.translucent_target_pass(&mut encoder, &mut stats);
+        self.item_entity_line_target_pass(&mut encoder, &mut stats);
+        self.particle_target_pass(&mut encoder, &mut stats);
+        self.entity_outline_post_chain(&mut encoder, &mut stats);
+        self.clouds_pass(&mut encoder, &mut stats);
+        self.weather_target_pass(&mut encoder, &mut stats);
+        self.transparency_combine_pass(&mut encoder, &mut stats);
+        self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
+        self.hud_passes(&frame, &mut encoder, &mut stats);
+        self.finish_frame(encoder, frame, screenshot, stats)
+    }
+
+    fn lightmap_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(LIGHTMAP_PASS_LABEL),
@@ -122,11 +140,15 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.lightmap_pipeline);
-            pipeline_switches += 1;
+            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.lightmap.bind_group, &[]);
             pass.draw(0..3, 0..1);
-            lightmap_draw_calls += 1;
+            stats.lightmap_draw_calls += 1;
         }
+    }
+
+    fn main_world_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        let main_view = &self.main_target.view;
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-terrain-opaque-group-pass"),
@@ -153,18 +175,18 @@ impl Renderer {
             if self.sky_environment.end_sky_visible() {
                 if let Some(end_sky_texture) = &self.end_sky_texture {
                     pass.set_pipeline(&self.end_sky_pipeline);
-                    pipeline_switches += 1;
+                    stats.pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &end_sky_texture.bind_group, &[]);
                     pass.set_bind_group(2, &self.end_sky_mesh.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, self.end_sky_mesh.vertex_buffer.slice(..));
                     pass.draw(0..self.end_sky_mesh.vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                 }
             } else if let Some(sky_disc) = &self.sky_disc {
                 if sky_disc.disc_vertex_count > 0 {
                     pass.set_pipeline(&self.sky_pipeline);
-                    pipeline_switches += 1;
+                    stats.pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &sky_disc.dynamic.bind_group, &[]);
                     let vertex_buffer = sky_disc
@@ -173,12 +195,12 @@ impl Renderer {
                         .expect("sky disc vertex buffer exists when count is non-zero");
                     pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                     pass.draw(0..sky_disc.disc_vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                 }
 
                 if sky_disc.sunrise_vertex_count > 0 {
                     pass.set_pipeline(&self.sunrise_sunset_pipeline);
-                    pipeline_switches += 1;
+                    stats.pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     let vertex_buffer = sky_disc
                         .sunrise_vertex_buffer
@@ -186,34 +208,34 @@ impl Renderer {
                         .expect("sunrise/sunset vertex buffer exists when count is non-zero");
                     pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                     pass.draw(0..sky_disc.sunrise_vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                 }
 
                 if let (Some(celestial_atlas), Some(celestials)) =
                     (&self.celestial_atlas, &self.sky_celestials)
                 {
                     pass.set_pipeline(&self.celestial_pipeline);
-                    pipeline_switches += 1;
+                    stats.pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &celestial_atlas.bind_group, &[]);
                     pass.set_bind_group(2, &celestials.sun.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, celestials.sun.vertex_buffer.slice(..));
                     pass.draw(0..celestials.sun.vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                     pass.set_bind_group(2, &celestials.moon.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, celestials.moon.vertex_buffer.slice(..));
                     pass.draw(0..celestials.moon.vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                 }
 
                 if let Some(stars) = &self.sky_stars {
                     pass.set_pipeline(&self.star_pipeline);
-                    pipeline_switches += 1;
+                    stats.pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &stars.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, stars.vertex_buffer.slice(..));
                     pass.draw(0..stars.vertex_count, 0..1);
-                    sky_draw_calls += 1;
+                    stats.sky_draw_calls += 1;
                 }
             }
 
@@ -224,7 +246,7 @@ impl Renderer {
                     TerrainOpaqueGroupLayer::Solid => {
                         if !self.terrain_opaque.is_empty() {
                             pass.set_pipeline(&self.terrain_pipeline);
-                            pipeline_switches += 1;
+                            stats.pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                             for mesh in &self.terrain_opaque {
@@ -234,14 +256,14 @@ impl Renderer {
                                     wgpu::IndexFormat::Uint32,
                                 );
                                 pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                                opaque_draw_calls += 1;
+                                stats.opaque_draw_calls += 1;
                             }
                         }
                     }
                     TerrainOpaqueGroupLayer::Cutout => {
                         if !self.terrain_cutout.is_empty() {
                             pass.set_pipeline(&self.terrain_pipeline);
-                            pipeline_switches += 1;
+                            stats.pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                             for mesh in &self.terrain_cutout {
@@ -251,7 +273,7 @@ impl Renderer {
                                     wgpu::IndexFormat::Uint32,
                                 );
                                 pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                                cutout_draw_calls += 1;
+                                stats.cutout_draw_calls += 1;
                             }
                         }
                     }
@@ -259,189 +281,189 @@ impl Renderer {
             }
             if let Some(mesh) = &self.entity_model_mesh {
                 pass.set_pipeline(&self.entity_model_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_textured_cull_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_textured_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_cutout_z_offset_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_armor_cutout_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_cull_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_z_offset_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_texture_cutout_cull_mesh,
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_texture_cutout_mesh,
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_texture_cutout_z_offset_mesh,
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_texture_armor_cutout_mesh,
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let Some(mesh) = &self.entity_model_water_mask_mesh {
                 pass.set_pipeline(&self.entity_model_water_mask_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_armor_entity_glint_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_entity_glint_mesh,
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
         }
 
@@ -452,41 +474,41 @@ impl Renderer {
         let (block_item_vertices, block_item_indices) = self.collect_block_item_model_geometry();
         if !block_item_indices.is_empty() {
             self.draw_item_model_geometry(
-                &mut encoder,
+                &mut *encoder,
                 main_view,
                 &block_item_vertices,
                 &block_item_indices,
                 &self.terrain_bind_group,
             );
-            pipeline_switches += 1;
-            item_model_draw_calls += 1;
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
         }
         let (block_item_z_offset_forward_vertices, block_item_z_offset_forward_indices) =
             self.collect_block_item_model_z_offset_forward_geometry();
         if !block_item_z_offset_forward_indices.is_empty() {
             self.draw_item_model_geometry_with_pipeline(
-                &mut encoder,
+                &mut *encoder,
                 main_view,
                 &block_item_z_offset_forward_vertices,
                 &block_item_z_offset_forward_indices,
                 &self.terrain_bind_group,
                 &self.item_model_z_offset_forward_pipeline,
             );
-            pipeline_switches += 1;
-            item_model_draw_calls += 1;
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
         }
         let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
         if !map_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_atlas {
                 self.draw_item_model_geometry(
-                    &mut encoder,
+                    &mut *encoder,
                     main_view,
                     &map_vertices,
                     &map_indices,
                     &atlas.bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
         }
         let (map_decoration_vertices, map_decoration_indices) =
@@ -494,28 +516,28 @@ impl Renderer {
         if !map_decoration_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_decoration_atlas {
                 self.draw_item_model_geometry(
-                    &mut encoder,
+                    &mut *encoder,
                     main_view,
                     &map_decoration_vertices,
                     &map_decoration_indices,
                     &atlas.bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
         }
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {
                 self.draw_item_model_geometry(
-                    &mut encoder,
+                    &mut *encoder,
                     main_view,
                     &flat_item_vertices,
                     &flat_item_indices,
                     &atlas.bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
         }
         let (item_model_glint_vertices, item_model_glint_indices) =
@@ -523,17 +545,19 @@ impl Renderer {
         if !item_model_glint_indices.is_empty() {
             if let Some(glint) = &self.item_glint_texture {
                 self.draw_item_model_glint_geometry(
-                    &mut encoder,
+                    &mut *encoder,
                     main_view,
                     &item_model_glint_vertices,
                     &item_model_glint_indices,
                     &glint.main_bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
         }
+    }
 
+    fn copy_main_depth_to_feature_targets(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -593,11 +617,14 @@ impl Renderer {
                 depth_or_array_layers: 1,
             },
         );
+    }
 
-        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
-            && (self.entity_model_outline_mesh.is_some()
-                || self.entity_model_outline_cull_mesh.is_some());
-
+    fn entity_translucent_feature_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let main_view = &self.main_target.view;
         if self.has_entity_translucent_features() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL),
@@ -622,8 +649,8 @@ impl Renderer {
             });
             self.draw_entity_translucent_features(
                 &mut pass,
-                &mut pipeline_switches,
-                &mut entity_model_draw_calls,
+                &mut stats.pipeline_switches,
+                &mut stats.entity_model_draw_calls,
             );
         }
 
@@ -635,17 +662,24 @@ impl Renderer {
         if !map_text_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_text_font_atlas {
                 self.draw_item_model_geometry(
-                    &mut encoder,
+                    &mut *encoder,
                     main_view,
                     &map_text_vertices,
                     &map_text_indices,
                     &atlas.bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
         }
+    }
 
+    fn item_entity_target_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let item_entity_view = &self.item_entity_target.view;
         let item_entity_vertices = self.collect_item_entity_vertices();
         let has_item_entity_vertices = self.item_entity_atlas.is_some()
             && self.frame_item_entity_vertices.upload(
@@ -696,8 +730,8 @@ impl Renderer {
             });
             self.draw_entity_item_entity_target_features(
                 &mut pass,
-                &mut pipeline_switches,
-                &mut entity_model_draw_calls,
+                &mut stats.pipeline_switches,
+                &mut stats.entity_model_draw_calls,
             );
             if let Some(buffers) = &block_item_translucent_buffers {
                 self.draw_item_model_frame_buffers(
@@ -706,8 +740,8 @@ impl Renderer {
                     buffers,
                     &self.terrain_bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
             if let (Some(atlas), Some(buffers)) =
                 (&self.item_entity_atlas, &flat_item_translucent_buffers)
@@ -718,8 +752,8 @@ impl Renderer {
                     buffers,
                     &atlas.bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
             if let (Some(glint), Some(buffers)) = (
                 &self.item_glint_texture,
@@ -730,21 +764,28 @@ impl Renderer {
                     buffers,
                     &glint.main_bind_group,
                 );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
             if let (Some(atlas), true) = (&self.item_entity_atlas, has_item_entity_vertices) {
                 let vertex_buffer = self.frame_item_entity_vertices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.item_entity_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..item_entity_vertices.len() as u32, 0..1);
-                item_entity_draw_calls += 1;
+                stats.item_entity_draw_calls += 1;
             }
         }
+    }
 
+    fn block_destroy_overlay_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let main_view = &self.main_target.view;
         if let Some(overlays) = &self.block_destroy_overlays {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-block-destroy-overlay-pass"),
@@ -768,14 +809,23 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.block_destroy_pipeline);
-            pipeline_switches += 1;
+            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
             pass.set_vertex_buffer(0, overlays.vertex_buffer.slice(..));
             pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..overlays.index_count, 0, 0..1);
-            block_destroy_overlay_draw_calls += 1;
+            stats.block_destroy_overlay_draw_calls += 1;
         }
+    }
 
+    fn entity_outline_target_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_outline_mesh.is_some()
+                || self.entity_model_outline_cull_mesh.is_some());
         if has_entity_outline_meshes {
             let atlas = self
                 .entity_model_texture_atlas
@@ -805,22 +855,29 @@ impl Renderer {
             pass.set_bind_group(0, &atlas.bind_group, &[]);
             if let Some(mesh) = &self.entity_model_outline_mesh {
                 pass.set_pipeline(&self.entity_model_outline_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
             if let Some(mesh) = &self.entity_model_outline_cull_mesh {
                 pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                stats.entity_model_draw_calls += 1;
             }
         }
+    }
 
+    fn translucent_target_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let translucent_view = &self.translucent_target.view;
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
@@ -845,18 +902,25 @@ impl Renderer {
             });
             if !self.terrain_translucent.is_empty() {
                 pass.set_pipeline(&self.terrain_translucent_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 for mesh in &self.terrain_translucent {
                     pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                    translucent_draw_calls += 1;
+                    stats.translucent_draw_calls += 1;
                 }
             }
         }
+    }
 
+    fn item_entity_line_target_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let item_entity_view = &self.item_entity_target.view;
         if self.selection_outline.is_some()
             || self.entity_scene_outline.is_some()
             || self.entity_target_outline.is_some()
@@ -883,25 +947,32 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.selection_pipeline);
-            pipeline_switches += 1;
+            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
             if let Some(outline) = &self.selection_outline {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                 pass.draw(0..outline.vertex_count, 0..1);
-                selection_draw_calls += 1;
+                stats.selection_draw_calls += 1;
             }
             if let Some(outline) = &self.entity_scene_outline {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                 pass.draw(0..outline.vertex_count, 0..1);
-                entity_scene_draw_calls += 1;
+                stats.entity_scene_draw_calls += 1;
             }
             if let Some(outline) = &self.entity_target_outline {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                 pass.draw(0..outline.vertex_count, 0..1);
-                entity_target_draw_calls += 1;
+                stats.entity_target_draw_calls += 1;
             }
         }
+    }
 
+    fn particle_target_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let particle_view = &self.particle_target.view;
         let particle_vertex_batches = self.collect_particle_vertex_batches();
         let has_opaque_particles = self.particle_atlas.is_some()
             && self.frame_opaque_particle_vertices.upload(
@@ -915,6 +986,222 @@ impl Renderer {
                 &self.queue,
                 bytemuck::cast_slice(&particle_vertex_batches.translucent),
             );
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(PARTICLE_TARGET_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: particle_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.particle_target.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            if let Some(atlas) = &self.particle_atlas {
+                if let Some(vertex_buffer) =
+                    has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
+                {
+                    pass.set_pipeline(&self.opaque_particle_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_bind_group(0, &atlas.bind_group, &[]);
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
+                    pass.draw(0..particle_vertex_batches.opaque.len() as u32, 0..1);
+                    stats.particle_draw_calls += 1;
+                }
+                if let Some(vertex_buffer) = has_translucent_particles
+                    .then(|| self.frame_translucent_particle_vertices.buffer())
+                {
+                    pass.set_pipeline(&self.translucent_particle_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_bind_group(0, &atlas.bind_group, &[]);
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
+                    pass.draw(0..particle_vertex_batches.translucent.len() as u32, 0..1);
+                    stats.particle_draw_calls += 1;
+                }
+            }
+        }
+    }
+
+    fn entity_outline_post_chain(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let main_view = &self.main_target.view;
+        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_outline_mesh.is_some()
+                || self.entity_model_outline_cull_mesh.is_some());
+        if has_entity_outline_meshes {
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.swap_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_sobel_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blur_horizontal_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.swap_linear_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.swap_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blur_vertical_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.linear_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLIT_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blit_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.swap_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.outline_composite_draw_calls += 1;
+            }
+
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.entity_outline_composite_pipeline);
+            stats.pipeline_switches += 1;
+            pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+            stats.outline_composite_draw_calls += 1;
+        }
+    }
+
+    fn clouds_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        if let Some(clouds) = &self.clouds {
+            if self.fog_environment.cloud_end > 0.0 {
+                {
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some(CLOUDS_PASS_LABEL),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &self.cloud_target.view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.cloud_target.depth.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                    let cloud_pipeline = match self.cloud_shape {
+                        CloudShape::Flat => &self.cloud_flat_pipeline,
+                        CloudShape::Fancy => &self.cloud_fancy_pipeline,
+                    };
+                    pass.set_pipeline(cloud_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &self.cloud_bind_group, &[]);
+                    pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
+                    pass.draw(0..clouds.vertex_count, 0..1);
+                    stats.sky_draw_calls += 1;
+                }
+            }
+        }
+    }
+
+    fn weather_target_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let weather_view = &self.weather_target.view;
         let weather_mesh = build_weather_mesh(&self.weather_render_state);
         let has_weather_buffers = weather_mesh
             .as_ref()
@@ -945,203 +1232,6 @@ impl Renderer {
                 bytemuck::cast_slice(&mesh.indices),
             )
         });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(PARTICLE_TARGET_PASS_LABEL),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: particle_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.particle_target.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            if let Some(atlas) = &self.particle_atlas {
-                if let Some(vertex_buffer) =
-                    has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
-                {
-                    pass.set_pipeline(&self.opaque_particle_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, &atlas.bind_group, &[]);
-                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
-                    pass.draw(0..particle_vertex_batches.opaque.len() as u32, 0..1);
-                    particle_draw_calls += 1;
-                }
-                if let Some(vertex_buffer) = has_translucent_particles
-                    .then(|| self.frame_translucent_particle_vertices.buffer())
-                {
-                    pass.set_pipeline(&self.translucent_particle_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, &atlas.bind_group, &[]);
-                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
-                    pass.draw(0..particle_vertex_batches.translucent.len() as u32, 0..1);
-                    particle_draw_calls += 1;
-                }
-            }
-        }
-
-        if has_entity_outline_meshes {
-            {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &self.entity_outline_target.swap_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.entity_outline_sobel_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
-                pass.draw(0..3, 0..1);
-                outline_composite_draw_calls += 1;
-            }
-
-            {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &self.entity_outline_target.view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.entity_outline_blur_horizontal_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.entity_outline_target.swap_linear_bind_group, &[]);
-                pass.draw(0..3, 0..1);
-                outline_composite_draw_calls += 1;
-            }
-
-            {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &self.entity_outline_target.swap_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.entity_outline_blur_vertical_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.entity_outline_target.linear_bind_group, &[]);
-                pass.draw(0..3, 0..1);
-                outline_composite_draw_calls += 1;
-            }
-
-            {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(ENTITY_OUTLINE_BLIT_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &self.entity_outline_target.view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.entity_outline_blit_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.entity_outline_target.swap_bind_group, &[]);
-                pass.draw(0..3, 0..1);
-                outline_composite_draw_calls += 1;
-            }
-
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.entity_outline_composite_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
-            pass.draw(0..3, 0..1);
-            outline_composite_draw_calls += 1;
-        }
-
-        if let Some(clouds) = &self.clouds {
-            if self.fog_environment.cloud_end > 0.0 {
-                {
-                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some(CLOUDS_PASS_LABEL),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: &self.cloud_target.view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.cloud_target.depth.view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
-                                store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
-                    let cloud_pipeline = match self.cloud_shape {
-                        CloudShape::Flat => &self.cloud_flat_pipeline,
-                        CloudShape::Fancy => &self.cloud_fancy_pipeline,
-                    };
-                    pass.set_pipeline(cloud_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                    pass.set_bind_group(1, &self.cloud_bind_group, &[]);
-                    pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
-                    pass.draw(0..clouds.vertex_count, 0..1);
-                    sky_draw_calls += 1;
-                }
-            }
-        }
-
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -1188,18 +1278,18 @@ impl Renderer {
                 let vertex_buffer = self.frame_lightning_vertices.buffer().expect("uploaded");
                 let index_buffer = self.frame_lightning_indices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.lightning_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
-                weather_draw_calls += 1;
+                stats.weather_draw_calls += 1;
             }
             if let (Some(mesh), true) = (&weather_mesh, has_weather_buffers) {
                 let vertex_buffer = self.frame_weather_vertices.buffer().expect("uploaded");
                 let index_buffer = self.frame_weather_indices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.weather_pipeline);
-                pipeline_switches += 1;
+                stats.pipeline_switches += 1;
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -1207,19 +1297,25 @@ impl Renderer {
                     if let Some(texture) = &self.weather_rain_texture {
                         pass.set_bind_group(0, &texture.bind_group, &[]);
                         pass.draw_indexed(mesh.rain_indices.clone(), 0, 0..1);
-                        weather_draw_calls += 1;
+                        stats.weather_draw_calls += 1;
                     }
                 }
                 if !mesh.snow_indices.is_empty() {
                     if let Some(texture) = &self.weather_snow_texture {
                         pass.set_bind_group(0, &texture.bind_group, &[]);
                         pass.draw_indexed(mesh.snow_indices.clone(), 0, 0..1);
-                        weather_draw_calls += 1;
+                        stats.weather_draw_calls += 1;
                     }
                 }
             }
         }
+    }
 
+    fn transparency_combine_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
@@ -1236,12 +1332,22 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.transparency_combine_pipeline);
-            pipeline_switches += 1;
+            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[]);
             pass.draw(0..3, 0..1);
-            transparency_combine_draw_calls += 1;
+            stats.transparency_combine_draw_calls += 1;
         }
+    }
 
+    fn transparency_blit_pass(
+        &self,
+        frame: &wgpu::SurfaceTexture,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let surface_view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_BLIT_PASS_LABEL),
@@ -1258,12 +1364,22 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&self.transparency_blit_pipeline);
-            pipeline_switches += 1;
+            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[]);
             pass.draw(0..3, 0..1);
-            transparency_blit_draw_calls += 1;
+            stats.transparency_blit_draw_calls += 1;
         }
+    }
 
+    fn hud_passes(
+        &mut self,
+        frame: &wgpu::SurfaceTexture,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let surface_view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         // `collect_hud_draws` borrows self for the lifetime of its commands, so
         // temporarily move the persistent buffer out to upload alongside them.
         let mut frame_hud_vertices = std::mem::replace(
@@ -1297,8 +1413,8 @@ impl Renderer {
                 });
                 pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                 let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
-                hud_draw_calls = draw_calls;
-                pipeline_switches += switches;
+                stats.hud_draw_calls = draw_calls;
+                stats.pipeline_switches += switches;
             }
         }
 
@@ -1354,8 +1470,8 @@ impl Renderer {
                         buffers,
                         &self.gui_item_bind_group,
                     );
-                    pipeline_switches += 1;
-                    item_model_draw_calls += 1;
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
                 }
                 if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
                     self.draw_item_model_glint_frame_buffers(
@@ -1363,8 +1479,8 @@ impl Renderer {
                         buffers,
                         &glint.gui_bind_group,
                     );
-                    pipeline_switches += 1;
-                    item_model_draw_calls += 1;
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
                 }
                 if let Some(buffers) = &translucent_buffers {
                     self.draw_item_model_frame_buffers(
@@ -1373,8 +1489,8 @@ impl Renderer {
                         buffers,
                         &self.gui_item_bind_group,
                     );
-                    pipeline_switches += 1;
-                    item_model_draw_calls += 1;
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
                 }
                 if let (Some(glint), Some(buffers)) =
                     (&self.item_glint_texture, &glint_translucent_buffers)
@@ -1384,8 +1500,8 @@ impl Renderer {
                         buffers,
                         &glint.gui_bind_group,
                     );
-                    pipeline_switches += 1;
-                    item_model_draw_calls += 1;
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
                 }
             }
         }
@@ -1410,13 +1526,21 @@ impl Renderer {
                 });
                 pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                 let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
-                hud_draw_calls += draw_calls;
-                pipeline_switches += switches;
+                stats.hud_draw_calls += draw_calls;
+                stats.pipeline_switches += switches;
             }
         }
         drop(hud_draws);
         self.frame_hud_vertices = frame_hud_vertices;
+    }
 
+    fn finish_frame(
+        &mut self,
+        mut encoder: wgpu::CommandEncoder,
+        frame: wgpu::SurfaceTexture,
+        screenshot: Option<&Path>,
+        stats: FrameDrawStats,
+    ) -> Result<()> {
         let readback = if let Some(path) = screenshot {
             Some(self.prepare_screenshot_copy(&mut encoder, &frame.texture, path)?)
         } else {
@@ -1432,37 +1556,38 @@ impl Renderer {
         }
 
         self.counters.frame_index += 1;
-        self.counters.opaque_draw_calls = opaque_draw_calls;
-        self.counters.cutout_draw_calls = cutout_draw_calls;
-        self.counters.translucent_draw_calls = translucent_draw_calls;
-        self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
-        self.counters.sky_draw_calls = sky_draw_calls;
-        self.counters.particle_draw_calls = particle_draw_calls;
-        self.counters.weather_draw_calls = weather_draw_calls;
-        self.counters.item_entity_draw_calls = item_entity_draw_calls;
-        self.counters.selection_draw_calls = selection_draw_calls;
-        self.counters.entity_scene_draw_calls = entity_scene_draw_calls + entity_model_draw_calls;
-        self.counters.entity_target_draw_calls = entity_target_draw_calls;
-        self.counters.hud_draw_calls = hud_draw_calls;
-        self.counters.draw_calls = opaque_draw_calls
-            + cutout_draw_calls
-            + translucent_draw_calls
-            + block_destroy_overlay_draw_calls
-            + sky_draw_calls
-            + entity_model_draw_calls
-            + outline_composite_draw_calls
-            + transparency_combine_draw_calls
-            + transparency_blit_draw_calls
-            + particle_draw_calls
-            + weather_draw_calls
-            + item_entity_draw_calls
-            + item_model_draw_calls
-            + selection_draw_calls
-            + entity_scene_draw_calls
-            + entity_target_draw_calls
-            + hud_draw_calls
-            + lightmap_draw_calls;
-        self.counters.pipeline_switches = pipeline_switches;
+        self.counters.opaque_draw_calls = stats.opaque_draw_calls;
+        self.counters.cutout_draw_calls = stats.cutout_draw_calls;
+        self.counters.translucent_draw_calls = stats.translucent_draw_calls;
+        self.counters.block_destroy_overlay_draw_calls = stats.block_destroy_overlay_draw_calls;
+        self.counters.sky_draw_calls = stats.sky_draw_calls;
+        self.counters.particle_draw_calls = stats.particle_draw_calls;
+        self.counters.weather_draw_calls = stats.weather_draw_calls;
+        self.counters.item_entity_draw_calls = stats.item_entity_draw_calls;
+        self.counters.selection_draw_calls = stats.selection_draw_calls;
+        self.counters.entity_scene_draw_calls =
+            stats.entity_scene_draw_calls + stats.entity_model_draw_calls;
+        self.counters.entity_target_draw_calls = stats.entity_target_draw_calls;
+        self.counters.hud_draw_calls = stats.hud_draw_calls;
+        self.counters.draw_calls = stats.opaque_draw_calls
+            + stats.cutout_draw_calls
+            + stats.translucent_draw_calls
+            + stats.block_destroy_overlay_draw_calls
+            + stats.sky_draw_calls
+            + stats.entity_model_draw_calls
+            + stats.outline_composite_draw_calls
+            + stats.transparency_combine_draw_calls
+            + stats.transparency_blit_draw_calls
+            + stats.particle_draw_calls
+            + stats.weather_draw_calls
+            + stats.item_entity_draw_calls
+            + stats.item_model_draw_calls
+            + stats.selection_draw_calls
+            + stats.entity_scene_draw_calls
+            + stats.entity_target_draw_calls
+            + stats.hud_draw_calls
+            + stats.lightmap_draw_calls;
+        self.counters.pipeline_switches = stats.pipeline_switches;
         Ok(())
     }
 
@@ -2182,6 +2307,86 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use super::{TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+
+    /// The frame's step sequence in submission order. `render()` calls exactly
+    /// these methods in exactly this order, and `render_steps_are_defined_in_frame_
+    /// execution_order` pins each step's definition to the same order, so source
+    /// position in this file tracks frame execution order.
+    const FRAME_STEPS: &[&str] = &[
+        "lightmap_pass",
+        "main_world_pass",
+        "copy_main_depth_to_feature_targets",
+        "entity_translucent_feature_pass",
+        "item_entity_target_pass",
+        "block_destroy_overlay_pass",
+        "entity_outline_target_pass",
+        "translucent_target_pass",
+        "item_entity_line_target_pass",
+        "particle_target_pass",
+        "entity_outline_post_chain",
+        "clouds_pass",
+        "weather_target_pass",
+        "transparency_combine_pass",
+        "transparency_blit_pass",
+        "hud_passes",
+        "finish_frame",
+    ];
+
+    #[test]
+    fn render_steps_are_defined_in_frame_execution_order() {
+        let source = include_str!("render.rs");
+        let render_start = source
+            .find("pub fn render(")
+            .expect("render entry point is present");
+        let render_end = render_start
+            + source[render_start..]
+                .find("\n    }")
+                .expect("render entry point ends");
+        let render_body = &source[render_start..render_end];
+
+        // render() encodes no GPU work directly; every pass, copy, and the
+        // submit/present tail live in the ordered step methods.
+        assert!(
+            !render_body.contains("begin_render_pass")
+                && !render_body.contains("copy_texture_to_texture")
+                && !render_body.contains("queue.submit"),
+            "render() stays a pure step orchestrator"
+        );
+
+        // Each step is called exactly once from render(), in FRAME_STEPS order.
+        let mut previous_call = 0;
+        for step in FRAME_STEPS {
+            let call = format!("self.{step}(");
+            let position = render_body
+                .find(&call)
+                .unwrap_or_else(|| panic!("{step} is called from render()"));
+            assert_eq!(
+                render_body.matches(&call).count(),
+                1,
+                "{step} is called exactly once per frame"
+            );
+            assert!(
+                position > previous_call,
+                "{step} is called in FRAME_STEPS order"
+            );
+            previous_call = position;
+        }
+
+        // Each step is defined after render(), in call order, so the source
+        // positions the other tests in this module compare reflect real frame
+        // execution order.
+        let mut previous_definition = render_end;
+        for step in FRAME_STEPS {
+            let definition = source
+                .find(&format!("fn {step}("))
+                .unwrap_or_else(|| panic!("{step} is defined in render.rs"));
+            assert!(
+                definition > previous_definition,
+                "{step} is defined in frame execution order"
+            );
+            previous_definition = definition;
+        }
+    }
 
     fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {
         let target_depth = source
