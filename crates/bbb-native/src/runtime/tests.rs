@@ -361,6 +361,55 @@ fn lightmap_environment_hides_client_sky_flash_when_option_is_enabled() {
 }
 
 #[test]
+fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
+    let source = include_str!("../runtime.rs");
+    let sky_flash_tick = source
+        .find("world.advance_sky_flash_time(advanced_ticks);")
+        .expect("pump should advance sky flash before extracting renderer environments");
+    let lightmap_extract = source
+        .find("let lightmap_environment = lightmap_ticks.environment_for_world(world);")
+        .expect("pump should extract the lightmap environment");
+    let clear_extract = source
+        .find("let clear_color = clear_color_for_world_at_camera_with_water_vision(")
+        .expect("pump should extract the clear color");
+    let fog_extract = source
+        .find("let fog_environment = fog_environment_for_world_at_camera(")
+        .expect("pump should extract the fog environment");
+    let sky_extract = source
+        .find("let sky_environment = sky_environment_for_world_at_camera(")
+        .expect("pump should extract the sky environment");
+    let cloud_extract = source
+        .find("let cloud_environment = cloud_environment_for_world(world);")
+        .expect("pump should extract the cloud environment");
+
+    for extraction in [
+        lightmap_extract,
+        clear_extract,
+        fog_extract,
+        sky_extract,
+        cloud_extract,
+    ] {
+        assert!(
+            sky_flash_tick < extraction,
+            "vanilla `Minecraft.tick` runs `ClientLevel.tick` before `GameRenderer.extract`"
+        );
+    }
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 18_000);
+    world.set_sky_flash_time(1);
+    world.advance_sky_flash_time(1);
+    let mut lightmap =
+        LightmapTickState::with_brightness_factor_and_hide_lightning_flash(0.5, false);
+    lightmap.advance_for_world(0, &world);
+
+    let baseline = lightmap_environment_for_world(&world, 0.5, 1.4);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert!((environment.sky_factor - baseline.sky_factor).abs() < 1e-6);
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

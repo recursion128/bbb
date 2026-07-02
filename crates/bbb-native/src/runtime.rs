@@ -1396,6 +1396,10 @@ pub(crate) fn pump_network_and_terrain(
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
     let rain_fog_multiplier = lightmap_ticks.rain_fog_multiplier();
+    // Vanilla `Minecraft.tick` runs `ClientLevel.tick` before `GameRenderer.extract`;
+    // `ClientLevel.tick` decrements `skyFlashTime`, and the render extract reads
+    // the resulting EnvironmentAttributes / lightmap state.
+    world.advance_sky_flash_time(advanced_ticks);
     let lightmap_environment = lightmap_ticks.environment_for_world(world);
     let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
@@ -1421,7 +1425,6 @@ pub(crate) fn pump_network_and_terrain(
         hide_lightning_flash,
     );
     let cloud_environment = cloud_environment_for_world(world);
-    world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);

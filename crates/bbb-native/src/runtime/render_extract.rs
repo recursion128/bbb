@@ -597,11 +597,10 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
 
 /// One frame's worth of world->renderer state.
 ///
-/// `pump_network_and_terrain` extracts each field at the same client-tick
-/// sequence point the individual `renderer.set_*` call used to occupy (some
-/// values deliberately read the world before later tick advances, e.g. the
-/// sky environment before `advance_sky_flash_time`), then commits the whole
-/// frame to the renderer in one `apply_renderer_frame` call.
+/// `pump_network_and_terrain` extracts each field at a vanilla-verified
+/// client-tick sequence point, then commits the whole frame to the renderer in
+/// one `apply_renderer_frame` call. Sky-flash-dependent environment fields read
+/// after the `ClientLevel.tick`-equivalent `advance_sky_flash_time`.
 pub(crate) struct RendererFrame {
     pub(crate) lightmap_environment: LightmapEnvironment,
     pub(crate) clear_color: ClearColor,

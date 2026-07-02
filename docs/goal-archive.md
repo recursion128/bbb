@@ -239,6 +239,14 @@
     item presentation，standalone texture mip/sampler 泛化归入 P3 resource
     parity，剩余 diffuse/fog/visual polish 归入后续 scoped visual slices；
     不再把泛化项作为阻塞 P1-2 的开放清单。
+- RendererFrame extraction timing：
+  - [x] sky-flash-dependent environment fields：`lightmap_environment`、
+    `clear_color`、`fog_environment`、`sky_environment`、`cloud_environment`
+    现在在 `advance_sky_flash_time` 之后提取，匹配 vanilla
+    `Minecraft.tick` -> `ClientLevel.tick` -> `GameRenderer.extract` 顺序：
+    `ClientLevel.tick` 先递减 `skyFlashTime`，render extract 再读取
+    `EnvironmentAttributes` / lightmap state。测试固定 pump 源码顺序，并证明
+    `skyFlashTime == 1` 推进一 tick 后不会让下一帧环境继续应用闪光。
 
 ## P1-2：实体专用 Renderer 行为
 
