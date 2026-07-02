@@ -1697,11 +1697,13 @@
     crafter/trial spawner/vault STONE blocks, stone pressure plate STONE,
     note/bookshelf/chest/crafting WOOD blocks, cobweb WOOL, TNT FIRE,
     decorated pot TERRACOTTA_RED, light weighted pressure plate GOLD, and heavy
-    weighted pressure plate/heavy core METAL. Tests pin representative complex
-    states for pistons, note blocks, chiseled bookshelf slots, chest, crafter,
-    vault, stone/weighted pressure plates, and waterlogged utility blocks. Full
-    mapColor catalog coverage, biome-aware per-spawn BlockColors, and on-ground
-    roll reset remain follow-up work.
+    weighted pressure plate/heavy core METAL, iron door/trapdoor, brewing
+    stand, lanterns, cauldron/lava cauldron/powder snow cauldron, hopper,
+    stonecutter, and bell. Tests pin representative complex states for pistons,
+    note blocks, chiseled bookshelf slots, chest, crafter, vault,
+    stone/weighted pressure plates, metal/stone fixtures, and waterlogged
+    utility blocks. Full mapColor catalog coverage, biome-aware per-spawn
+    BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

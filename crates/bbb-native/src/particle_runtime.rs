@@ -3207,15 +3207,26 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "crafter"
         | "trial_spawner"
         | "vault"
-        | "stone_pressure_plate" => MAP_COLOR_STONE,
+        | "stone_pressure_plate"
+        | "cauldron"
+        | "lava_cauldron"
+        | "powder_snow_cauldron"
+        | "hopper"
+        | "stonecutter" => MAP_COLOR_STONE,
         "note_block" | "bookshelf" | "chiseled_bookshelf" | "chest" | "crafting_table" => {
             MAP_COLOR_WOOD
         }
         "cobweb" => MAP_COLOR_WOOL,
         "tnt" => MAP_COLOR_FIRE,
         "decorated_pot" => MAP_COLOR_TERRACOTTA_RED,
-        "light_weighted_pressure_plate" => MAP_COLOR_GOLD,
-        "heavy_weighted_pressure_plate" | "heavy_core" => MAP_COLOR_METAL,
+        "light_weighted_pressure_plate" | "bell" => MAP_COLOR_GOLD,
+        "heavy_weighted_pressure_plate"
+        | "iron_door"
+        | "iron_trapdoor"
+        | "brewing_stand"
+        | "lantern"
+        | "soul_lantern"
+        | "heavy_core" => MAP_COLOR_METAL,
         _ => return None,
     })
 }
@@ -5396,6 +5407,102 @@ mod tests {
             (
                 test_block_state_id("minecraft:heavy_weighted_pressure_plate", [("power", "0")]),
                 "minecraft:heavy_weighted_pressure_plate",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:iron_door",
+                    [
+                        ("facing", "north"),
+                        ("half", "upper"),
+                        ("hinge", "left"),
+                        ("open", "true"),
+                        ("powered", "true"),
+                    ],
+                ),
+                "minecraft:iron_door",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:iron_trapdoor",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("open", "true"),
+                        ("powered", "true"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:iron_trapdoor",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:brewing_stand",
+                    [
+                        ("has_bottle_0", "true"),
+                        ("has_bottle_1", "true"),
+                        ("has_bottle_2", "true"),
+                    ],
+                ),
+                "minecraft:brewing_stand",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:cauldron", []),
+                "minecraft:cauldron",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:lava_cauldron", []),
+                "minecraft:lava_cauldron",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:powder_snow_cauldron", [("level", "1")]),
+                "minecraft:powder_snow_cauldron",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:hopper",
+                    [("enabled", "true"), ("facing", "down")],
+                ),
+                "minecraft:hopper",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:stonecutter", [("facing", "north")]),
+                "minecraft:stonecutter",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:bell",
+                    [
+                        ("attachment", "floor"),
+                        ("facing", "north"),
+                        ("powered", "true"),
+                    ],
+                ),
+                "minecraft:bell",
+                rgb_option(0xfa, 0xee, 0x4d),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:lantern",
+                    [("hanging", "true"), ("waterlogged", "true")],
+                ),
+                "minecraft:lantern",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:soul_lantern",
+                    [("hanging", "true"), ("waterlogged", "true")],
+                ),
+                "minecraft:soul_lantern",
                 rgb_option(0xa7, 0xa7, 0xa7),
             ),
             (
