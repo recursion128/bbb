@@ -777,18 +777,19 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+            let Ok(mut query) = self.ecs.query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                Option<&EntityClientAnimations>,
+            )>(entity) else {
                 continue;
             };
-            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+            let Some((identity, transform, client_animations)) = query.get() else {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-                let dragon_animation = self
-                    .ecs
-                    .get::<&EntityClientAnimations>(entity)
-                    .ok()
-                    .and_then(|animations| animations.animations.ender_dragon);
+                let dragon_animation =
+                    client_animations.and_then(|animations| animations.animations.ender_dragon);
                 targets.extend(ender_dragon_part_pick_targets_at_partial_tick(
                     identity.id,
                     *transform,
@@ -816,15 +817,18 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+            let Ok(mut query) = self
+                .ecs
+                .query_one::<(&EntityIdentity, &EntityTransform)>(entity)
+            else {
+                continue;
+            };
+            let Some((identity, transform)) = query.get() else {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
                 continue;
             }
-            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
-                continue;
-            };
             let Some(bounds) = self.model_source_bounds(identity.id, registries) else {
                 continue;
             };
@@ -839,19 +843,16 @@ impl EntityStore {
 
     pub(crate) fn refresh_client_position_from_entity_data(&mut self, id: i32) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?.clone();
-        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
-        let packet_position = {
-            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
-            transform.position_base
-        };
+        let (identity, metadata, transform) = self
+            .ecs
+            .query_one_mut::<(&EntityIdentity, &EntityMetadata, &mut EntityTransform)>(entity)
+            .ok()?;
         let position = vanilla_client_position_for_entity_data(
             identity.entity_type_id,
-            packet_position,
+            transform.position_base,
             identity.data,
             &metadata.data_values,
         )?;
-        let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
         transform.position = position;
         Some(())
     }
@@ -943,17 +944,36 @@ impl EntityStore {
         wolf_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
-        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
-        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
-        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
-        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
+        // Resolve the entity's storage location once and fetch every component this projection reads
+        // in a single `query_one`. The required components fail the query (yielding `None`) if any is
+        // missing; optional ones stay `Option<&_>` so a bare entity resolves them to `None`.
+        //
         // Vanilla `HumanoidArmorLayer` worn armor: resolve the item worn in each armor slot to its
         // equipment-asset material. The `EntityEquipment` component holds the synced `SetEquipment`
         // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
-        let equipment = self.ecs.get::<&EntityEquipment>(entity).ok();
-        let mount = self.ecs.get::<&EntityMount>(entity).ok();
+        let mut query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMetadata,
+                &EntityAttributes,
+                &EntityClientAnimations,
+                Option<&EntityEquipment>,
+                Option<&EntityMount>,
+                Option<&EntityMinecartLerp>,
+            )>(entity)
+            .ok()?;
+        let (
+            identity,
+            transform,
+            metadata,
+            attributes,
+            client_animations,
+            equipment,
+            mount,
+            minecart_lerp,
+        ) = query.get()?;
         let armor_item = |slot: ProtocolEquipmentSlot| -> Option<&ItemStackSummary> {
             equipment
                 .as_ref()?
