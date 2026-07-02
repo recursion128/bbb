@@ -114,6 +114,38 @@ fn destroy_stage_uv_rect_uses_block_atlas_stage_sprite() {
 }
 
 #[test]
+fn terrain_particle_sprite_uvs_use_block_atlas_content_rects() {
+    let images = vec![
+        sprite("minecraft:block/stone"),
+        sprite("minecraft:block/oak_planks"),
+    ];
+    let atlas = bbb_pack::AtlasPacker::new(64, 1)
+        .unwrap()
+        .stitch(&images)
+        .unwrap();
+    let particle_uvs = terrain_particle_sprite_uvs(&atlas.layout);
+    let oak_sprite = atlas
+        .layout
+        .sprites
+        .iter()
+        .find(|sprite| sprite.id == "minecraft:block/oak_planks")
+        .unwrap();
+    let terrain_uv = terrain_uv_rect(&atlas.layout, oak_sprite);
+    let oak_particle_uv = particle_uvs
+        .iter()
+        .find(|sprite| sprite.id == "minecraft:block/oak_planks")
+        .unwrap();
+
+    assert_eq!(
+        oak_particle_uv.uv,
+        ParticleUvRect {
+            min: terrain_uv.min,
+            max: terrain_uv.max,
+        }
+    );
+}
+
+#[test]
 fn block_model_seed_matches_vanilla_position_seed() {
     assert_eq!(
         block_model_seed(BlockRenderPosition { x: 0, y: 0, z: 0 }),

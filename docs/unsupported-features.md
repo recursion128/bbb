@@ -263,9 +263,9 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
       - resolving block/item atlas sprites, terrain tint,
-        sprite-transparency-driven terrain/item layer selection, binding
-        terrain/items atlas textures in the particle GPU path, and transparent
-        terrain/items vertex emission remain deferred
+        sprite-transparency-driven terrain/item layer selection, item sprite UV
+        catalog upload, and transparent terrain/items vertex emission remain
+        deferred
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -281,7 +281,7 @@ When an agent does any of the following, update this file in the same slice:
       `SingleQuadParticle.Layer.OPAQUE` / `TRANSLUCENT`, vanilla
       `ParticleEngine` group order (`SINGLE_QUADS`, `ITEM_PICKUP`,
       `ELDER_GUARDIANS`), and stable solid-before-translucent vertex
-      collection within the current particle-atlas path. The current atlas
+      collection within the atlas-backed single-quad path. Atlas-backed
       billboards split opaque and translucent vertex batches and draw them
       through vanilla-shaped `RenderPipelines.OPAQUE_PARTICLE` (no blend) and
       `RenderPipelines.TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`)
@@ -299,10 +299,14 @@ When an agent does any of the following, update this file in the same slice:
       size curve, roll / rotSpeed runtime state, and Y velocity clamped to
       `-0.14`; native spawn resolution now projects the provider's
       `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
-      dragon_egg, and concrete_powder into the renderer visual tint. Actual
-      block/item atlas sprite lookup, non-FallingBlock BlockColors / map-color
-      fallback, on-ground roll reset, terrain/items atlas GPU binding, and
-      transparent terrain/item splitting remain follow-up work. Native spawn
+      dragon_egg, and concrete_powder into the renderer visual tint. Renderer
+      particle draw batches now keep per-atlas draw ranges and bind the
+      particle / terrain / item atlas texture selected by
+      `SingleQuadParticle.Layer`; native terrain texture upload also supplies
+      block atlas sprite UVs to the particle renderer. Actual block/item atlas
+      sprite lookup, item sprite UV catalog upload, non-FallingBlock
+      BlockColors / map-color fallback, on-ground roll reset, and transparent
+      terrain/item splitting remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -483,9 +487,8 @@ When an agent does any of the following, update this file in the same slice:
         normal/ominous flame spawn particles
     - LevelEvent item-particle branches now submit definition-less
       `minecraft:item` commands with item-template option metadata; resolving
-      their item atlas sprites and binding the terrain/items particle atlas in
-      the GPU path stays deferred with broader terrain/item particle atlas
-      rendering.
+      their item atlas sprites and item sprite UV catalog upload stays deferred
+      with broader terrain/item particle atlas rendering.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

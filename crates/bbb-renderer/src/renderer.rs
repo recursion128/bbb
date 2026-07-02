@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{collections::BTreeMap, time::Instant};
 
 use anyhow::{anyhow, Result};
 use glam::Mat4;
@@ -70,6 +70,7 @@ use crate::{
     },
     particles::{
         create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind, ParticleRuntimeState,
+        ParticleUvRect,
     },
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     selection::{
@@ -265,6 +266,8 @@ pub struct Renderer {
     pub(super) entity_dynamic_player_texture_images: Vec<DynamicPlayerTextureImage>,
     pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
+    pub(super) terrain_particle_sprite_uvs: BTreeMap<String, ParticleUvRect>,
+    pub(super) item_particle_sprite_uvs: BTreeMap<String, ParticleUvRect>,
     pub(super) weather_rain_texture: Option<WeatherTextureGpu>,
     pub(super) weather_snow_texture: Option<WeatherTextureGpu>,
     pub(super) weather_render_state: WeatherRenderState,
@@ -1041,6 +1044,8 @@ impl Renderer {
             entity_dynamic_player_texture_images: Vec::new(),
             entity_model_instances: Vec::new(),
             particle_atlas: None,
+            terrain_particle_sprite_uvs: BTreeMap::new(),
+            item_particle_sprite_uvs: BTreeMap::new(),
             weather_rain_texture: None,
             weather_snow_texture: None,
             weather_render_state: WeatherRenderState::default(),

@@ -6,9 +6,12 @@ use bbb_pack::{
     BiomeTemperatureModifier, BlockFaceTextures, BlockModelCatalog, BlockModelFace,
     BlockModelShape, GrassColorModifier, PackRoots, SpriteImage, TerrainColorMaps,
 };
-use bbb_renderer::terrain::{
-    TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
-    TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
+use bbb_renderer::{
+    terrain::{
+        TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
+        TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
+    },
+    ParticleSpriteUv, ParticleUvRect,
 };
 
 use crate::biome_tint::{
@@ -1084,12 +1087,14 @@ pub(crate) fn load_terrain_textures(
 ) -> TerrainTextureState {
     let Some(roots) = roots else {
         tracing::warn!("falling back to default terrain texture atlas without pack roots");
+        renderer.set_terrain_particle_sprite_uvs(Vec::new());
         return TerrainTextureState::default();
     };
     match try_load_terrain_textures(renderer, roots) {
         Ok(textures) => textures,
         Err(err) => {
             tracing::warn!(?err, "falling back to default terrain texture atlas");
+            renderer.set_terrain_particle_sprite_uvs(Vec::new());
             TerrainTextureState::default()
         }
     }
@@ -1123,6 +1128,7 @@ fn try_load_terrain_textures(
         atlas.layout.height,
         &mip_rgba,
     )?;
+    renderer.set_terrain_particle_sprite_uvs(terrain_particle_sprite_uvs(&atlas.layout));
     let animated_sprites = images
         .iter()
         .filter(|image| image.animation.is_some())
@@ -1161,6 +1167,23 @@ fn terrain_uv_rect(layout: &AtlasLayout, sprite: &bbb_pack::AtlasSprite) -> Terr
         min: [(x0 + 0.5) / width, (y0 + 0.5) / height],
         max: [(x1 - 0.5) / width, (y1 - 0.5) / height],
     }
+}
+
+fn terrain_particle_sprite_uvs(layout: &AtlasLayout) -> Vec<ParticleSpriteUv> {
+    layout
+        .sprites
+        .iter()
+        .map(|sprite| {
+            let uv = terrain_uv_rect(layout, sprite);
+            ParticleSpriteUv {
+                id: sprite.id.clone(),
+                uv: ParticleUvRect {
+                    min: uv.min,
+                    max: uv.max,
+                },
+            }
+        })
+        .collect()
 }
 
 fn terrain_transparency(transparency: bbb_pack::SpriteTransparency) -> TerrainTransparency {

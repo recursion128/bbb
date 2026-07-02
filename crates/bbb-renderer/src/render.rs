@@ -12,6 +12,7 @@ use crate::{
         EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
     },
     lightmap::write_lightmap_uniform,
+    particles::{ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind},
     weather::{build_lightning_mesh, build_weather_mesh},
     Renderer,
 };
@@ -974,18 +975,16 @@ impl Renderer {
     ) {
         let particle_view = &self.particle_target.view;
         let particle_vertex_batches = self.collect_particle_vertex_batches();
-        let has_opaque_particles = self.particle_atlas.is_some()
-            && self.frame_opaque_particle_vertices.upload(
-                &self.device,
-                &self.queue,
-                bytemuck::cast_slice(&particle_vertex_batches.opaque),
-            );
-        let has_translucent_particles = self.particle_atlas.is_some()
-            && self.frame_translucent_particle_vertices.upload(
-                &self.device,
-                &self.queue,
-                bytemuck::cast_slice(&particle_vertex_batches.translucent),
-            );
+        let has_opaque_particles = self.frame_opaque_particle_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&particle_vertex_batches.opaque.vertices),
+        );
+        let has_translucent_particles = self.frame_translucent_particle_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&particle_vertex_batches.translucent.vertices),
+        );
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(PARTICLE_TARGET_PASS_LABEL),
@@ -1008,29 +1007,29 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if let Some(atlas) = &self.particle_atlas {
-                if let Some(vertex_buffer) =
-                    has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
-                {
-                    pass.set_pipeline(&self.opaque_particle_pipeline);
-                    stats.pipeline_switches += 1;
-                    pass.set_bind_group(0, &atlas.bind_group, &[]);
-                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
-                    pass.draw(0..particle_vertex_batches.opaque.len() as u32, 0..1);
-                    stats.particle_draw_calls += 1;
-                }
-                if let Some(vertex_buffer) = has_translucent_particles
-                    .then(|| self.frame_translucent_particle_vertices.buffer())
-                {
-                    pass.set_pipeline(&self.translucent_particle_pipeline);
-                    stats.pipeline_switches += 1;
-                    pass.set_bind_group(0, &atlas.bind_group, &[]);
-                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
-                    pass.draw(0..particle_vertex_batches.translucent.len() as u32, 0..1);
-                    stats.particle_draw_calls += 1;
-                }
+            if let Some(vertex_buffer) =
+                has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
+            {
+                pass.set_pipeline(&self.opaque_particle_pipeline);
+                stats.pipeline_switches += 1;
+                self.draw_particle_vertex_batch(
+                    &mut pass,
+                    vertex_buffer.expect("uploaded"),
+                    &particle_vertex_batches.opaque,
+                    stats,
+                );
+            }
+            if let Some(vertex_buffer) =
+                has_translucent_particles.then(|| self.frame_translucent_particle_vertices.buffer())
+            {
+                pass.set_pipeline(&self.translucent_particle_pipeline);
+                stats.pipeline_switches += 1;
+                self.draw_particle_vertex_batch(
+                    &mut pass,
+                    vertex_buffer.expect("uploaded"),
+                    &particle_vertex_batches.translucent,
+                    stats,
+                );
             }
         }
     }
@@ -1726,6 +1725,41 @@ impl Renderer {
         pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
         pass.set_index_buffer(buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..buffers.index_count, 0, 0..1);
+    }
+
+    fn draw_particle_vertex_batch<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        vertex_buffer: &'a wgpu::Buffer,
+        batch: &'a ParticlePipelineVertexBatch,
+        stats: &mut FrameDrawStats,
+    ) {
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        for draw in &batch.draws {
+            let Some(bind_group) = self.particle_texture_atlas_bind_group(*draw) else {
+                continue;
+            };
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.draw(draw.vertex_start..draw.vertex_end(), 0..1);
+            stats.particle_draw_calls += 1;
+        }
+    }
+
+    fn particle_texture_atlas_bind_group(
+        &self,
+        draw: ParticleAtlasDrawRange,
+    ) -> Option<&wgpu::BindGroup> {
+        match draw.texture_atlas {
+            ParticleTextureAtlasKind::Particles => {
+                self.particle_atlas.as_ref().map(|atlas| &atlas.bind_group)
+            }
+            ParticleTextureAtlasKind::Terrain => Some(&self.terrain_bind_group),
+            ParticleTextureAtlasKind::Items => self
+                .item_entity_atlas
+                .as_ref()
+                .map(|atlas| &atlas.bind_group),
+        }
     }
 
     fn draw_item_model_glint_frame_buffers<'a>(
@@ -3773,26 +3807,36 @@ mod tests {
             .find("pass.set_pipeline(&self.opaque_particle_pipeline)")
             .map(|index| target + index)
             .expect("opaque particle pipeline is drawn into the target");
-        let opaque_particle_atlas = source[opaque_particle_pipeline..]
-            .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
+        let opaque_particle_draw = source[opaque_particle_pipeline..]
+            .find("&particle_vertex_batches.opaque")
             .map(|index| opaque_particle_pipeline + index)
-            .expect("opaque particle atlas bind group is bound before draw");
-        let opaque_particle_lightmap = source[opaque_particle_atlas..]
-            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
-            .map(|index| opaque_particle_atlas + index)
-            .expect("opaque particle lightmap bind group is bound before draw");
-        let translucent_particle_pipeline = source[opaque_particle_lightmap..]
+            .expect("opaque particle vertex batch is drawn into the target");
+        let translucent_particle_pipeline = source[opaque_particle_draw..]
             .find("pass.set_pipeline(&self.translucent_particle_pipeline)")
-            .map(|index| opaque_particle_lightmap + index)
+            .map(|index| opaque_particle_draw + index)
             .expect("translucent particle pipeline is drawn into the target");
-        let translucent_particle_atlas = source[translucent_particle_pipeline..]
-            .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
+        let translucent_particle_draw = source[translucent_particle_pipeline..]
+            .find("&particle_vertex_batches.translucent")
             .map(|index| translucent_particle_pipeline + index)
-            .expect("translucent particle atlas bind group is bound before draw");
-        let translucent_particle_lightmap = source[translucent_particle_atlas..]
+            .expect("translucent particle vertex batch is drawn into the target");
+        let draw_helper = source
+            .find("fn draw_particle_vertex_batch")
+            .expect("particle draw helper is present");
+        let helper_atlas = source[draw_helper..]
+            .find("pass.set_bind_group(0, bind_group, &[])")
+            .map(|index| draw_helper + index)
+            .expect("particle atlas bind group is bound before draw");
+        let helper_lightmap = source[helper_atlas..]
             .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
-            .map(|index| translucent_particle_atlas + index)
-            .expect("translucent particle lightmap bind group is bound before draw");
+            .map(|index| helper_atlas + index)
+            .expect("particle lightmap bind group is bound before draw");
+        let helper_draw = source[helper_lightmap..]
+            .find("pass.draw(draw.vertex_start..draw.vertex_end(), 0..1)")
+            .map(|index| helper_lightmap + index)
+            .expect("particle draw range is issued after bind groups");
+        let bind_helper = source
+            .find("fn particle_texture_atlas_bind_group")
+            .expect("particle texture atlas bind helper is present");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -3801,16 +3845,25 @@ mod tests {
             copy_depth < entity_translucent_features
                 && entity_translucent_features < target
                 && target < opaque_particle_pipeline
+                && opaque_particle_pipeline < opaque_particle_draw
                 && opaque_particle_pipeline < translucent_particle_pipeline
-                && translucent_particle_lightmap < combine,
+                && translucent_particle_pipeline < translucent_particle_draw
+                && translucent_particle_draw < combine,
             "particle target copies main depth, clears transparent, draws opaque then translucent particles, then transparency combine consumes it"
         );
         assert!(
-            opaque_particle_pipeline < opaque_particle_atlas
-                && opaque_particle_atlas < opaque_particle_lightmap
-                && translucent_particle_pipeline < translucent_particle_atlas
-                && translucent_particle_atlas < translucent_particle_lightmap,
-            "both particle pipelines bind the renderer-owned LightTexture before drawing"
+            helper_atlas < helper_lightmap && helper_lightmap < helper_draw,
+            "particle draw ranges bind their selected atlas and the renderer-owned LightTexture before drawing"
+        );
+        assert!(
+            source[bind_helper..].contains("ParticleTextureAtlasKind::Particles")
+                && source[bind_helper..].contains("self.particle_atlas")
+                && source[bind_helper..].contains(
+                    "ParticleTextureAtlasKind::Terrain => Some(&self.terrain_bind_group)"
+                )
+                && source[bind_helper..].contains("ParticleTextureAtlasKind::Items")
+                && source[bind_helper..].contains("self.item_entity_atlas"),
+            "particle draw ranges can bind vanilla particles, blocks/terrain, and item atlases"
         );
         assert!(
             source[copy_depth..entity_translucent_features]

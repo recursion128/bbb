@@ -378,8 +378,27 @@ pub(crate) struct ParticleAdvanceSummary {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct ParticleVertexBatches {
-    pub(crate) opaque: Vec<ParticleVertex>,
-    pub(crate) translucent: Vec<ParticleVertex>,
+    pub(crate) opaque: ParticlePipelineVertexBatch,
+    pub(crate) translucent: ParticlePipelineVertexBatch,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct ParticlePipelineVertexBatch {
+    pub(crate) vertices: Vec<ParticleVertex>,
+    pub(crate) draws: Vec<ParticleAtlasDrawRange>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ParticleAtlasDrawRange {
+    pub(crate) texture_atlas: ParticleTextureAtlasKind,
+    pub(crate) vertex_start: u32,
+    pub(crate) vertex_count: u32,
+}
+
+impl ParticleAtlasDrawRange {
+    pub(crate) fn vertex_end(self) -> u32 {
+        self.vertex_start.saturating_add(self.vertex_count)
+    }
 }
 
 impl ParticleSpawnBatch {
@@ -1398,6 +1417,14 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn set_terrain_particle_sprite_uvs(&mut self, sprite_uvs: Vec<ParticleSpriteUv>) {
+        self.terrain_particle_sprite_uvs = particle_sprite_uv_map(sprite_uvs);
+    }
+
+    pub fn set_item_particle_sprite_uvs(&mut self, sprite_uvs: Vec<ParticleSpriteUv>) {
+        self.item_particle_sprite_uvs = particle_sprite_uv_map(sprite_uvs);
+    }
+
     pub fn submit_particle_spawns(&mut self, batch: ParticleSpawnBatch) {
         let is_empty = batch.is_empty();
         let summary = self.particles.submit_batch(batch);
@@ -1459,27 +1486,124 @@ impl Renderer {
         let Some(pose) = self.camera_pose else {
             return ParticleVertexBatches::default();
         };
-        let Some(atlas) = &self.particle_atlas else {
-            return ParticleVertexBatches::default();
+        let particle_sprite_uvs = self.particle_atlas.as_ref().map(|atlas| &atlas.sprite_uvs);
+        let item_sprite_uvs = self
+            .item_entity_atlas
+            .as_ref()
+            .map(|_| &self.item_particle_sprite_uvs);
+        let atlas_uvs = ParticleAtlasUvSets {
+            particles: particle_sprite_uvs,
+            terrain: Some(&self.terrain_particle_sprite_uvs),
+            items: item_sprite_uvs,
         };
         let axes = camera_billboard_axes(pose);
         ParticleVertexBatches {
-            opaque: particle_billboard_vertices(
+            opaque: particle_pipeline_vertex_batch(
                 self.particles.active_instances.iter(),
-                &atlas.sprite_uvs,
+                atlas_uvs,
                 axes,
-                Some(ParticlePipelineKind::Opaque),
+                ParticlePipelineKind::Opaque,
             ),
-            translucent: particle_billboard_vertices(
+            translucent: particle_pipeline_vertex_batch(
                 self.particles.active_instances.iter(),
-                &atlas.sprite_uvs,
+                atlas_uvs,
                 axes,
-                Some(ParticlePipelineKind::Translucent),
+                ParticlePipelineKind::Translucent,
             ),
         }
     }
 }
 
+fn particle_sprite_uv_map(sprite_uvs: Vec<ParticleSpriteUv>) -> BTreeMap<String, ParticleUvRect> {
+    sprite_uvs
+        .into_iter()
+        .map(|sprite| (sprite.id, sprite.uv))
+        .collect()
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ParticleAtlasUvSets<'a> {
+    particles: Option<&'a BTreeMap<String, ParticleUvRect>>,
+    terrain: Option<&'a BTreeMap<String, ParticleUvRect>>,
+    items: Option<&'a BTreeMap<String, ParticleUvRect>>,
+}
+
+impl<'a> ParticleAtlasUvSets<'a> {
+    fn for_texture_atlas(
+        self,
+        texture_atlas: ParticleTextureAtlasKind,
+    ) -> Option<&'a BTreeMap<String, ParticleUvRect>> {
+        match texture_atlas {
+            ParticleTextureAtlasKind::Particles => self.particles,
+            ParticleTextureAtlasKind::Terrain => self.terrain,
+            ParticleTextureAtlasKind::Items => self.items,
+        }
+    }
+}
+
+fn particle_pipeline_vertex_batch<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+    atlas_uvs: ParticleAtlasUvSets<'_>,
+    axes: ParticleBillboardAxes,
+    pipeline_kind: ParticlePipelineKind,
+) -> ParticlePipelineVertexBatch {
+    let mut batch = ParticlePipelineVertexBatch::default();
+    let mut current_draw_start = 0_u32;
+    let mut current_texture_atlas = None;
+    let mut instances: Vec<_> = instances
+        .into_iter()
+        .filter(|instance| instance.render_group == ParticleRenderGroup::SingleQuads)
+        .filter(|instance| instance.delay_ticks == 0)
+        .filter(|instance| instance.render_layer.pipeline_kind() == pipeline_kind)
+        .collect();
+    instances.sort_by_key(|instance| {
+        (
+            instance.render_group.vanilla_order(),
+            instance.render_layer.vanilla_solid_translucent_order(),
+        )
+    });
+    for instance in instances {
+        let Some(sprite_id) = instance.current_sprite_id.as_deref() else {
+            continue;
+        };
+        let Some(sprite_uvs) = atlas_uvs.for_texture_atlas(instance.texture_atlas) else {
+            continue;
+        };
+        let Some(uv) = sprite_uvs.get(sprite_id).copied() else {
+            continue;
+        };
+        if current_texture_atlas != Some(instance.texture_atlas) {
+            push_particle_atlas_draw_range(&mut batch, current_texture_atlas, current_draw_start);
+            current_texture_atlas = Some(instance.texture_atlas);
+            current_draw_start = batch.vertices.len() as u32;
+        }
+        let uv = particle_uv_rect_for_instance(instance, uv);
+        append_particle_instance_vertices(&mut batch.vertices, instance, uv, axes);
+    }
+    push_particle_atlas_draw_range(&mut batch, current_texture_atlas, current_draw_start);
+    batch
+}
+
+fn push_particle_atlas_draw_range(
+    batch: &mut ParticlePipelineVertexBatch,
+    texture_atlas: Option<ParticleTextureAtlasKind>,
+    vertex_start: u32,
+) {
+    let Some(texture_atlas) = texture_atlas else {
+        return;
+    };
+    let vertex_end = batch.vertices.len() as u32;
+    if vertex_end <= vertex_start {
+        return;
+    }
+    batch.draws.push(ParticleAtlasDrawRange {
+        texture_atlas,
+        vertex_start,
+        vertex_count: vertex_end - vertex_start,
+    });
+}
+
+#[cfg(test)]
 fn particle_billboard_vertices<'a>(
     instances: impl IntoIterator<Item = &'a ParticleInstance>,
     sprite_uvs: &BTreeMap<String, ParticleUvRect>,
@@ -5841,6 +5965,82 @@ mod tests {
         assert_eq!(translucent_vertices.len(), 12);
         assert_close_f32(translucent_vertices[0].position[0], 9.9);
         assert_close_f32(translucent_vertices[6].position[0], 29.9);
+    }
+
+    #[test]
+    fn particle_pipeline_vertex_batches_split_texture_atlases_in_vanilla_layer_order() {
+        let mut block = test_instance_with_lifetime("minecraft:block", 20);
+        block.position = [20.0, 0.0, 0.0];
+        block.current_sprite_id = Some("minecraft:block/oak_planks".to_string());
+        let mut item = test_instance_with_lifetime("minecraft:item", 20);
+        item.position = [30.0, 0.0, 0.0];
+        item.current_sprite_id = Some("minecraft:item/apple".to_string());
+        let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
+        flame.position = [40.0, 0.0, 0.0];
+        flame.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let particle_sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+        let terrain_sprite_uvs = BTreeMap::from([(
+            "minecraft:block/oak_planks".to_string(),
+            ParticleUvRect {
+                min: [0.1, 0.1],
+                max: [0.2, 0.2],
+            },
+        )]);
+        let item_sprite_uvs = BTreeMap::from([(
+            "minecraft:item/apple".to_string(),
+            ParticleUvRect {
+                min: [0.3, 0.3],
+                max: [0.4, 0.4],
+            },
+        )]);
+
+        let batch = particle_pipeline_vertex_batch(
+            [&flame, &item, &block],
+            ParticleAtlasUvSets {
+                particles: Some(&particle_sprite_uvs),
+                terrain: Some(&terrain_sprite_uvs),
+                items: Some(&item_sprite_uvs),
+            },
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            ParticlePipelineKind::Opaque,
+        );
+
+        assert_eq!(batch.vertices.len(), 18);
+        assert_eq!(
+            batch.draws,
+            vec![
+                ParticleAtlasDrawRange {
+                    texture_atlas: ParticleTextureAtlasKind::Terrain,
+                    vertex_start: 0,
+                    vertex_count: 6,
+                },
+                ParticleAtlasDrawRange {
+                    texture_atlas: ParticleTextureAtlasKind::Items,
+                    vertex_start: 6,
+                    vertex_count: 6,
+                },
+                ParticleAtlasDrawRange {
+                    texture_atlas: ParticleTextureAtlasKind::Particles,
+                    vertex_start: 12,
+                    vertex_count: 6,
+                },
+            ]
+        );
+        assert_close_f32(batch.vertices[0].position[0], 19.9);
+        assert_close_f32(batch.vertices[6].position[0], 29.9);
+        assert_close_f32(batch.vertices[12].position[0], 39.9);
+        assert_eq!(batch.vertices[0].uv, [0.1, 0.2]);
+        assert_eq!(batch.vertices[6].uv, [0.3, 0.4]);
+        assert_eq!(batch.vertices[12].uv, [0.0, 1.0]);
     }
 
     #[test]

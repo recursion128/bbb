@@ -326,9 +326,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：resolving block/item atlas sprites,
     applying terrain tint, sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
-    `TRANSLUCENT_ITEMS`, binding terrain/items particle atlas textures in the
-    GPU path, and transparent terrain/items vertex emission remain follow-up
-    work.
+    `TRANSLUCENT_ITEMS`, item sprite UV catalog upload, and transparent
+    terrain/items vertex emission remain follow-up work. Renderer GPU draw
+    ranges now bind particle / terrain / item atlas textures once concrete
+    sprite UVs are available, and native terrain atlas upload supplies block
+    sprite UVs to the particle renderer path.
 - atlas mip / animation：
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.

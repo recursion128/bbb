@@ -1466,6 +1466,15 @@
     `SingleQuadParticle.Layer` intent: ordinary particle layers use
     `Particles`, block / block_marker / dust_pillar / block_crumble layers use
     `Terrain`, and item / slime / cobweb / snowball layers use `Items`.
+  - [x] terrain/item particle atlas GPU bind-range baseline：renderer particle
+    vertex batches now store per-atlas draw ranges under the vanilla opaque /
+    translucent particle pipelines, so `SingleQuadParticle.Layer` selections
+    can bind particle, terrain, or item atlas textures before the shared
+    lightmap and draw call. Native terrain atlas upload also forwards block
+    atlas sprite UVs to the particle renderer path. Actual block/item sprite
+    resolution, terrain tint, item sprite UV catalog upload, and
+    sprite-transparency-driven transparent terrain/item emission remain with
+    broader terrain/item particle rendering.
   - [x] `falling_dust` provider-specific particle-atlas behavior：
     renderer now maps `FallingDustParticle.Provider` as ordinary
     particle-atlas `OPAQUE`, keeps zero constructor velocity, age sprite
