@@ -21,8 +21,8 @@ use bbb_world::{ItemFrameFacing, MapItemState, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::item_models::display_matrix;
-use crate::item_runtime::NativeItemRuntime;
 use crate::terrain_runtime::TerrainTextureState;
+use bbb_item_model::NativeItemRuntime;
 
 /// Vanilla `ItemFrameRenderer` pushes the framed item `0.4375` out of the visible frame surface toward
 /// the viewer before scaling and rotating it.

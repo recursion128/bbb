@@ -22,7 +22,7 @@ mod movement;
 mod text_edit;
 
 use crate::crosshair::protocol_block_pos_from_world;
-use crate::item_runtime::{ItemModelKeybindContext, NativeItemRuntime};
+use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{

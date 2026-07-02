@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/bbb-audio",
+    "crates/bbb-item-model",
     "crates/bbb-native",
     "crates/bbb-platform",
     "crates/bbb-protocol",

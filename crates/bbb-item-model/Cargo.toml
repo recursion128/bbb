@@ -1,41 +1,31 @@
 [package]
-name = "bbb-native"
+name = "bbb-item-model"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-[[bin]]
-name = "bbb-native"
-path = "src/main.rs"
+[features]
+# Exposes the `NativeItemRuntime` test constructors (`empty_for_test`,
+# `for_test_with_registry_and_equipment_assets`) to downstream crates' tests
+# without compiling them into production builds.
+test-support = []
 
 [dependencies]
 anyhow = { workspace = true }
-bbb-audio = { path = "../bbb-audio", features = ["device"] }
-bbb-control = { path = "../bbb-control" }
-bbb-item-model = { path = "../bbb-item-model" }
-bbb-net = { path = "../bbb-net" }
+bbb-audio = { path = "../bbb-audio" }
 bbb-pack = { path = "../bbb-pack" }
-bbb-platform = { path = "../bbb-platform" }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-renderer = { path = "../bbb-renderer" }
 bbb-world = { path = "../bbb-world" }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
-clap = { workspace = true }
-glam = { workspace = true }
-pollster = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
-winit = { workspace = true }
 
 [dev-dependencies]
-bbb-item-model = { path = "../bbb-item-model", features = ["test-support"] }
 image = { workspace = true }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
 
-use crate::ascii_font::{
+use bbb_item_model::ascii_font::{
     hud_ascii_atlas_from_image, hud_ascii_digit_atlas_from_image, load_ascii_font_texture,
 };
 

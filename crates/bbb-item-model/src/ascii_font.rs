@@ -10,22 +10,22 @@ const ASCII_DIGIT_ROW: u32 = 3;
 const HUD_DIGIT_COUNT: u32 = 10;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct HudDigitAtlasImage {
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-    pub(crate) rgba: Vec<u8>,
-    pub(crate) glyphs: [HudDigitGlyph; 10],
+pub struct HudDigitAtlasImage {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+    pub glyphs: [HudDigitGlyph; 10],
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct HudAsciiAtlasImage {
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-    pub(crate) rgba: Vec<u8>,
-    pub(crate) glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+pub struct HudAsciiAtlasImage {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+    pub glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
 }
 
-pub(crate) fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
+pub fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse("textures/font/ascii.png")?;
     let resource = roots
         .resource_stack()
@@ -34,7 +34,7 @@ pub(crate) fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> 
     SpriteImage::from_png_file("minecraft:textures/font/ascii", resource.path)
 }
 
-pub(crate) fn hud_ascii_digit_atlas_from_image(image: &SpriteImage) -> Result<HudDigitAtlasImage> {
+pub fn hud_ascii_digit_atlas_from_image(image: &SpriteImage) -> Result<HudDigitAtlasImage> {
     let glyph_width = image.width / ASCII_FONT_GRID_COLUMNS;
     let glyph_height = image.height / ASCII_FONT_GRID_ROWS;
     if glyph_width == 0 || glyph_height == 0 {
@@ -80,7 +80,7 @@ pub(crate) fn hud_ascii_digit_atlas_from_image(image: &SpriteImage) -> Result<Hu
     })
 }
 
-pub(crate) fn hud_ascii_atlas_from_image(image: &SpriteImage) -> Result<HudAsciiAtlasImage> {
+pub fn hud_ascii_atlas_from_image(image: &SpriteImage) -> Result<HudAsciiAtlasImage> {
     let glyph_width = image.width / ASCII_FONT_GRID_COLUMNS;
     let glyph_height = image.height / ASCII_FONT_GRID_ROWS;
     if glyph_width == 0 || glyph_height == 0 {

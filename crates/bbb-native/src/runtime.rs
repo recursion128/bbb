@@ -6,6 +6,7 @@ use std::{
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
+use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
@@ -56,7 +57,6 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
     item_models::{dropped_item_models, entity_block_models, held_item_models},
-    item_runtime::{ItemModelKeybindContext, NativeItemRuntime},
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
@@ -4678,28 +4678,29 @@ fn hud_item_icon_for_stack(
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     let time_context = world
         .world_time()
-        .map(|time| crate::item_runtime::ItemModelTimeContext {
+        .map(|time| bbb_item_model::ItemModelTimeContext {
             game_time: time.game_time,
             day_time: time.day_time,
         });
     let compass_spawn = world.local_player().default_spawn.as_ref().map(|spawn| {
-        crate::item_runtime::ItemModelCompassTarget {
+        bbb_item_model::ItemModelCompassTarget {
             dimension: spawn.dimension.as_str(),
             pos: [spawn.pos.x, spawn.pos.y, spawn.pos.z],
         }
     });
     let compass_recovery = world.level_info().and_then(|level| {
-        level.last_death_location.as_ref().map(|target| {
-            crate::item_runtime::ItemModelCompassTarget {
+        level
+            .last_death_location
+            .as_ref()
+            .map(|target| bbb_item_model::ItemModelCompassTarget {
                 dimension: target.dimension.as_str(),
                 pos: [target.pos.x, target.pos.y, target.pos.z],
-            }
-        })
+            })
     });
     let compass_context = context_dimension.and_then(|level_dimension| {
         world
             .local_player_pose()
-            .map(|pose| crate::item_runtime::ItemModelCompassContext {
+            .map(|pose| bbb_item_model::ItemModelCompassContext {
                 game_time: world.world_time().map(|time| time.game_time).unwrap_or(0),
                 level_dimension,
                 owner_position: [pose.position.x, pose.position.y, pose.position.z],
@@ -4720,7 +4721,7 @@ fn hud_item_icon_for_stack(
             enchantment_keys.as_deref(),
         )
     } else {
-        crate::item_runtime::ItemModelUseContext::inactive()
+        bbb_item_model::ItemModelUseContext::inactive()
     };
     let icon = item_runtime
         .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(

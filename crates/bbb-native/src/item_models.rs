@@ -29,8 +29,8 @@ use bbb_renderer::{
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
-use crate::item_runtime::{ItemModelUseContext, NativeItemRuntime};
 use crate::terrain_runtime::TerrainTextureState;
+use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
 
 /// Fallback GROUND display transform for a block item (`minecraft:block/block`): rotation `0`,
 /// translation `[0, 3, 0]`/16, scale `0.25`. Used only when the item's own `ground` transform was not

@@ -13,7 +13,6 @@ use winit::{
     window::{CursorGrabMode, Window},
 };
 
-mod ascii_font;
 mod audio_runtime;
 mod biome_tint;
 mod block_outline;
@@ -28,17 +27,16 @@ mod input;
 mod item_entities;
 mod item_frames;
 mod item_models;
-mod item_runtime;
 mod particle_registry;
 mod particle_runtime;
-mod profile_resolver;
 mod runtime;
-mod skin_runtime;
 mod sky_assets;
 mod startup;
 mod terrain_runtime;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
+use bbb_item_model::default_player_skin_cache_dir;
+use bbb_item_model::NativeItemRuntime;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayState;
 use entity_assets::load_entity_model_textures;
@@ -49,14 +47,12 @@ use input::{
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
     handle_text_input_with_item_runtime, release_active_input, ClientInputState,
 };
-use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
     LevelEventSoundRandomState, LightmapTickState,
 };
-use skin_runtime::default_player_skin_cache_dir;
 use sky_assets::load_sky_textures;
 use startup::{
     build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,

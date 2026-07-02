@@ -1,5 +1,5 @@
 use super::*;
-use crate::item_runtime::NativeItemRuntime;
+use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser, CommandNode,
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,

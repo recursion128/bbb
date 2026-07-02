@@ -18,7 +18,7 @@ pub(crate) trait SkinPngFetcher {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum DynamicPlayerTextureKind {
+pub enum DynamicPlayerTextureKind {
     Cape,
     Elytra,
 }
@@ -436,7 +436,7 @@ enum AsyncDynamicPlayerTextureEntry {
     Failed,
 }
 
-pub(crate) fn default_player_skin_cache_dir() -> PathBuf {
+pub fn default_player_skin_cache_dir() -> PathBuf {
     std::env::temp_dir().join("bbb-native-player-skins")
 }
 

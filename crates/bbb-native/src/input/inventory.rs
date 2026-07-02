@@ -27,7 +27,7 @@ use super::{
     },
     text_edit, AnvilRenameInputSignature, ClientInputState,
 };
-use crate::item_runtime::NativeItemRuntime;
+use bbb_item_model::NativeItemRuntime;
 
 mod layout;
 

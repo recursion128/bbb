@@ -31,7 +31,7 @@ use bbb_world::{
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
 };
 
-use crate::item_runtime::{default_player_skin_for_profile_id, NativeItemRuntime};
+use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
 const VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID: i32 = 1;

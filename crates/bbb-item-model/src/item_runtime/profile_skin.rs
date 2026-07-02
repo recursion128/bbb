@@ -105,7 +105,7 @@ pub(crate) fn profile_default_player_skin(
     default_player_skin_for_profile_id(profile_id)
 }
 
-pub(crate) fn default_player_skin_for_profile_id(profile_id: u128) -> EntityDefaultPlayerSkin {
+pub fn default_player_skin_for_profile_id(profile_id: u128) -> EntityDefaultPlayerSkin {
     EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
 }
 

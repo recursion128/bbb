@@ -20,20 +20,29 @@ use bbb_pack::{
     ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
-    MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
-    ResourceTextureSummary, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
+    AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary, ItemRaritySummary,
+    ItemStackSummary, ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
+};
+// These summary types are referenced only by this crate's tests; keep them out
+// of the non-test import set so the standalone library build stays warning-free.
+#[cfg(test)]
+use bbb_protocol::packets::{
+    FireworkExplosionShapeSummary, FireworkExplosionSummary, JukeboxSongSummary,
+    LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, HudAsciiGlyph, HudUvRect,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, HudAsciiGlyph,
     ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask, HUD_ASCII_GLYPH_COUNT,
 };
+// Referenced only by test builds and the `test-support` constructors; gate it so
+// the plain library build stays clean.
+#[cfg(any(test, feature = "test-support"))]
+use bbb_renderer::HudUvRect;
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -57,7 +66,7 @@ use icon_model::{
     item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
     ItemIconModel, ItemIconModelRef, TimeSource,
 };
-pub(crate) use profile_skin::default_player_skin_for_profile_id;
+pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
 use profile_skin::{entity_player_skin_model, profile_default_player_skin, profile_texture_handle};
 
@@ -104,7 +113,7 @@ fn load_map_text_glyphs(roots: &PackRoots) -> Result<[HudAsciiGlyph; HUD_ASCII_G
     Ok(hud_ascii_atlas_from_image(&ascii_font)?.glyphs)
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 fn test_map_text_glyphs() -> [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT] {
     let mut glyphs = [HudAsciiGlyph {
         uv: HudUvRect {
@@ -184,15 +193,15 @@ const RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS: &[&str] = &[
 ];
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct NativeItemTooltipLine {
-    pub(crate) text: String,
-    pub(crate) tint: [f32; 4],
+pub struct NativeItemTooltipLine {
+    pub text: String,
+    pub tint: [f32; 4],
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct NativeDynamicPlayerSkinDownload {
-    pub(crate) url: String,
-    pub(crate) skin: Option<DynamicPlayerSkinImage>,
+pub struct NativeDynamicPlayerSkinDownload {
+    pub url: String,
+    pub skin: Option<DynamicPlayerSkinImage>,
 }
 
 #[derive(Debug, Default)]
@@ -265,10 +274,10 @@ impl LocalDynamicPlayerSkinCache {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct NativeDynamicPlayerTextureDownload {
-    pub(crate) kind: DynamicPlayerTextureKind,
-    pub(crate) url: String,
-    pub(crate) texture: Option<DynamicPlayerTextureImage>,
+pub struct NativeDynamicPlayerTextureDownload {
+    pub kind: DynamicPlayerTextureKind,
+    pub url: String,
+    pub texture: Option<DynamicPlayerTextureImage>,
 }
 
 #[derive(Debug, Default)]
@@ -441,7 +450,7 @@ fn compass_seed_offset(seed: i32) -> f32 {
 }
 
 #[derive(Debug)]
-pub(crate) struct NativeItemRuntime {
+pub struct NativeItemRuntime {
     item_definition_count: usize,
     item_registry_count: usize,
     resolved_model_count: usize,
@@ -482,11 +491,11 @@ pub(crate) struct NativeItemRuntime {
 }
 
 impl NativeItemRuntime {
-    pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
+    pub fn load(roots: &PackRoots) -> Result<Self> {
         Self::load_with_locale(roots, DEFAULT_LANGUAGE_CODE)
     }
 
-    pub(crate) fn load_with_locale(roots: &PackRoots, language_code: &str) -> Result<Self> {
+    pub fn load_with_locale(roots: &PackRoots, language_code: &str) -> Result<Self> {
         let item_models = roots
             .load_item_model_catalog()
             .context("load item model catalog")?;
@@ -789,8 +798,8 @@ impl NativeItemRuntime {
         })
     }
 
-    #[cfg(test)]
-    pub(crate) fn empty_for_test() -> Self {
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn empty_for_test() -> Self {
         let missing = SpriteImage::new(MISSING_TEXTURE_ID, 1, 1, vec![0xff, 0x00, 0xff, 0xff])
             .expect("test missing texture image is valid");
         Self {
@@ -835,8 +844,8 @@ impl NativeItemRuntime {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn for_test_with_registry_and_equipment_assets(
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn for_test_with_registry_and_equipment_assets(
         registry: ItemRegistryCatalog,
         equipment_assets: EquipmentAssetCatalog,
     ) -> Self {
@@ -852,23 +861,23 @@ impl NativeItemRuntime {
             .set(Some(epoch_millis));
     }
 
-    pub(crate) fn item_definition_count(&self) -> usize {
+    pub fn item_definition_count(&self) -> usize {
         self.item_definition_count
     }
 
-    pub(crate) fn item_registry_count(&self) -> usize {
+    pub fn item_registry_count(&self) -> usize {
         self.item_registry_count
     }
 
-    pub(crate) fn map_decoration_textures(&self) -> &[ItemFrameMapDecorationTexture] {
+    pub fn map_decoration_textures(&self) -> &[ItemFrameMapDecorationTexture] {
         &self.map_decoration_textures
     }
 
-    pub(crate) fn map_text_glyphs(&self) -> Option<&[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
+    pub fn map_text_glyphs(&self) -> Option<&[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
         self.map_text_glyphs.as_ref()
     }
 
-    pub(crate) fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+    pub fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         let mut sizes = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return sizes;
@@ -882,7 +891,7 @@ impl NativeItemRuntime {
         sizes
     }
 
-    pub(crate) fn item_max_damage_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+    pub fn item_max_damage_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         let mut max_damage = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return max_damage;
@@ -896,34 +905,30 @@ impl NativeItemRuntime {
         max_damage
     }
 
-    pub(crate) fn item_max_damage_count(&self) -> usize {
+    pub fn item_max_damage_count(&self) -> usize {
         self.item_max_damage_by_protocol_id().len()
     }
 
-    pub(crate) fn item_crafting_remainders_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+    pub fn item_crafting_remainders_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         self.registry
             .as_ref()
             .map(ItemRegistryCatalog::crafting_remainders_by_protocol_id)
             .unwrap_or_default()
     }
 
-    pub(crate) fn item_crafting_remainder_count(&self) -> usize {
+    pub fn item_crafting_remainder_count(&self) -> usize {
         self.item_crafting_remainders_by_protocol_id().len()
     }
 
-    pub(crate) fn recipe_specific_crafting_remainder_item_ids_by_protocol_id(
-        &self,
-    ) -> BTreeSet<i32> {
+    pub fn recipe_specific_crafting_remainder_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.recipe_specific_crafting_remainder_item_ids.clone()
     }
 
-    pub(crate) fn recipe_specific_crafting_remainder_item_count(&self) -> usize {
+    pub fn recipe_specific_crafting_remainder_item_count(&self) -> usize {
         self.recipe_specific_crafting_remainder_item_ids.len()
     }
 
-    pub(crate) fn item_equipment_slots_by_protocol_id(
-        &self,
-    ) -> BTreeMap<i32, WorldItemEquipmentSlot> {
+    pub fn item_equipment_slots_by_protocol_id(&self) -> BTreeMap<i32, WorldItemEquipmentSlot> {
         let mut slots = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return slots;
@@ -936,7 +941,7 @@ impl NativeItemRuntime {
         slots
     }
 
-    pub(crate) fn item_equipment_slot(&self, protocol_id: i32) -> Option<WorldItemEquipmentSlot> {
+    pub fn item_equipment_slot(&self, protocol_id: i32) -> Option<WorldItemEquipmentSlot> {
         let registry = self.registry.as_ref()?;
         let resource_id = registry.resource_id(protocol_id)?;
         self.item_equipment_slot_for_resource_id(registry, resource_id)
@@ -952,15 +957,13 @@ impl NativeItemRuntime {
         ))
     }
 
-    pub(crate) fn item_equipment_slot_count(&self) -> usize {
+    pub fn item_equipment_slot_count(&self) -> usize {
         self.item_equipment_slots_by_protocol_id().len()
     }
 
     /// Item protocol id → humanoid armor material, for the `HumanoidArmorLayer` overlay: each armor
     /// item's `bbb_pack` equipment-asset name (`humanoid_armor_asset`) parsed into a world material.
-    pub(crate) fn item_armor_materials_by_protocol_id(
-        &self,
-    ) -> BTreeMap<i32, WorldArmorMaterialKind> {
+    pub fn item_armor_materials_by_protocol_id(&self) -> BTreeMap<i32, WorldArmorMaterialKind> {
         let mut materials = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return materials;
@@ -974,7 +977,7 @@ impl NativeItemRuntime {
         materials
     }
 
-    pub(crate) fn item_armor_material(&self, protocol_id: i32) -> Option<WorldArmorMaterialKind> {
+    pub fn item_armor_material(&self, protocol_id: i32) -> Option<WorldArmorMaterialKind> {
         let registry = self.registry.as_ref()?;
         let resource_id = registry.resource_id(protocol_id)?;
         self.item_armor_material_for_resource_id(registry, resource_id)
@@ -988,7 +991,7 @@ impl NativeItemRuntime {
         WorldArmorMaterialKind::from_equipment_asset(registry.humanoid_armor_asset(resource_id)?)
     }
 
-    pub(crate) fn item_has_humanoid_armor_asset(&self, protocol_id: i32) -> bool {
+    pub fn item_has_humanoid_armor_asset(&self, protocol_id: i32) -> bool {
         let Some(registry) = &self.registry else {
             return false;
         };
@@ -998,11 +1001,11 @@ impl NativeItemRuntime {
         registry.humanoid_armor_asset(resource_id).is_some()
     }
 
-    pub(crate) fn item_equipment_asset_has_wings_layer(&self, protocol_id: i32) -> bool {
+    pub fn item_equipment_asset_has_wings_layer(&self, protocol_id: i32) -> bool {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Wings)
     }
 
-    pub(crate) fn item_equipment_wings_layer(
+    pub fn item_equipment_wings_layer(
         &self,
         protocol_id: i32,
     ) -> Option<EntityEquipmentLayerTexture> {
@@ -1021,7 +1024,7 @@ impl NativeItemRuntime {
         })
     }
 
-    pub(crate) fn item_equipment_asset_has_humanoid_layer(&self, protocol_id: i32) -> bool {
+    pub fn item_equipment_asset_has_humanoid_layer(&self, protocol_id: i32) -> bool {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Humanoid)
     }
 
@@ -1046,7 +1049,7 @@ impl NativeItemRuntime {
         Some(asset.layers(layer_type))
     }
 
-    pub(crate) fn custom_head_skull_for_stack(
+    pub fn custom_head_skull_for_stack(
         &self,
         stack: &ItemStackSummary,
     ) -> Option<EntityCustomHeadSkull> {
@@ -1064,10 +1067,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn player_skin_for_profile(
-        &self,
-        profile: &ResolvableProfileSummary,
-    ) -> EntityPlayerSkin {
+    pub fn player_skin_for_profile(&self, profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
         let player_skin = player_skin_for_profile(
             profile,
             &self.profile_texture_resources,
@@ -1083,7 +1083,7 @@ impl NativeItemRuntime {
         player_skin
     }
 
-    pub(crate) fn player_profile_texture_for_profile(
+    pub fn player_profile_texture_for_profile(
         &self,
         profile: &ResolvableProfileSummary,
         kind: EntityDynamicPlayerTextureKind,
@@ -1108,7 +1108,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn enable_http_profile_resolution(&self) {
+    pub fn enable_http_profile_resolution(&self) {
         let mut profile_resolutions = self.profile_resolutions.borrow_mut();
         if profile_resolutions.is_some() {
             return;
@@ -1123,7 +1123,7 @@ impl NativeItemRuntime {
         }
     }
 
-    pub(crate) fn drain_profile_resolution_results(&self) -> usize {
+    pub fn drain_profile_resolution_results(&self) -> usize {
         self.profile_resolutions
             .borrow_mut()
             .as_mut()
@@ -1131,7 +1131,7 @@ impl NativeItemRuntime {
             .unwrap_or(0)
     }
 
-    pub(crate) fn enable_http_player_skin_downloads(&self, cache_dir: impl Into<PathBuf>) {
+    pub fn enable_http_player_skin_downloads(&self, cache_dir: impl Into<PathBuf>) {
         let cache_dir = cache_dir.into();
         let mut dynamic_skins = self.dynamic_skins.borrow_mut();
         if dynamic_skins.is_none() {
@@ -1166,7 +1166,7 @@ impl NativeItemRuntime {
         }
     }
 
-    pub(crate) fn drain_dynamic_player_skin_download_results(
+    pub fn drain_dynamic_player_skin_download_results(
         &self,
     ) -> Vec<NativeDynamicPlayerSkinDownload> {
         let mut local_results = self.local_dynamic_skins.borrow_mut().drain_results();
@@ -1192,7 +1192,7 @@ impl NativeItemRuntime {
         local_results
     }
 
-    pub(crate) fn drain_dynamic_player_texture_download_results(
+    pub fn drain_dynamic_player_texture_download_results(
         &self,
     ) -> Vec<NativeDynamicPlayerTextureDownload> {
         let mut results = self.local_dynamic_textures.borrow_mut().drain_results();
@@ -1240,19 +1240,17 @@ impl NativeItemRuntime {
             .unwrap_or(0)
     }
 
-    pub(crate) fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
+    pub fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
         self.profile_skins
             .borrow_mut()
             .mark_resolved(url, texture_handle);
     }
 
-    pub(crate) fn mark_profile_skin_failed(&self, url: &str) {
+    pub fn mark_profile_skin_failed(&self, url: &str) {
         self.profile_skins.borrow_mut().mark_failed(url);
     }
 
-    pub(crate) fn mount_body_armor_kinds_by_protocol_id(
-        &self,
-    ) -> BTreeMap<i32, WorldMountArmorSlotKind> {
+    pub fn mount_body_armor_kinds_by_protocol_id(&self) -> BTreeMap<i32, WorldMountArmorSlotKind> {
         self.registry
             .as_ref()
             .map(|registry| {
@@ -1265,11 +1263,11 @@ impl NativeItemRuntime {
             .unwrap_or_default()
     }
 
-    pub(crate) fn mount_body_armor_kind_count(&self) -> usize {
+    pub fn mount_body_armor_kind_count(&self) -> usize {
         self.mount_body_armor_kinds_by_protocol_id().len()
     }
 
-    pub(crate) fn llama_body_decor_colors_by_protocol_id(
+    pub fn llama_body_decor_colors_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldLlamaBodyDecorColor> {
         let mut colors = BTreeMap::new();
@@ -1294,7 +1292,7 @@ impl NativeItemRuntime {
         self.llama_body_decor_colors_by_protocol_id().len()
     }
 
-    pub(crate) fn nautilus_body_armor_materials_by_protocol_id(
+    pub fn nautilus_body_armor_materials_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldArmorMaterialKind> {
         let mut materials = BTreeMap::new();
@@ -1318,11 +1316,11 @@ impl NativeItemRuntime {
         materials
     }
 
-    pub(crate) fn nautilus_body_armor_material_count(&self) -> usize {
+    pub fn nautilus_body_armor_material_count(&self) -> usize {
         self.nautilus_body_armor_materials_by_protocol_id().len()
     }
 
-    pub(crate) fn horse_body_armor_materials_by_protocol_id(
+    pub fn horse_body_armor_materials_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldArmorMaterialKind> {
         let mut materials = BTreeMap::new();
@@ -1346,11 +1344,11 @@ impl NativeItemRuntime {
         materials
     }
 
-    pub(crate) fn horse_body_armor_material_count(&self) -> usize {
+    pub fn horse_body_armor_material_count(&self) -> usize {
         self.horse_body_armor_materials_by_protocol_id().len()
     }
 
-    pub(crate) fn wolf_body_armor_materials_by_protocol_id(
+    pub fn wolf_body_armor_materials_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldArmorMaterialKind> {
         let mut materials = BTreeMap::new();
@@ -1376,33 +1374,33 @@ impl NativeItemRuntime {
         materials
     }
 
-    pub(crate) fn wolf_body_armor_material_count(&self) -> usize {
+    pub fn wolf_body_armor_material_count(&self) -> usize {
         self.wolf_body_armor_materials_by_protocol_id().len()
     }
 
-    pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
             .map(ItemRegistryCatalog::default_piercing_weapon_protocol_ids)
             .unwrap_or_default()
     }
 
-    pub(crate) fn default_piercing_weapon_item_count(&self) -> usize {
+    pub fn default_piercing_weapon_item_count(&self) -> usize {
         self.default_piercing_weapon_item_ids_by_protocol_id().len()
     }
 
-    pub(crate) fn default_damageable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn default_damageable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
             .map(ItemRegistryCatalog::max_damage_protocol_ids)
             .unwrap_or_default()
     }
 
-    pub(crate) fn default_damageable_item_count(&self) -> usize {
+    pub fn default_damageable_item_count(&self) -> usize {
         self.default_damageable_item_ids_by_protocol_id().len()
     }
 
-    pub(crate) fn item_attack_ranges_by_protocol_id(&self) -> BTreeMap<i32, WorldItemAttackRange> {
+    pub fn item_attack_ranges_by_protocol_id(&self) -> BTreeMap<i32, WorldItemAttackRange> {
         let mut ranges = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return ranges;
@@ -1416,11 +1414,11 @@ impl NativeItemRuntime {
         ranges
     }
 
-    pub(crate) fn item_attack_range_count(&self) -> usize {
+    pub fn item_attack_range_count(&self) -> usize {
         self.item_attack_ranges_by_protocol_id().len()
     }
 
-    pub(crate) fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+    pub fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         let mut durations = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return durations;
@@ -1434,11 +1432,11 @@ impl NativeItemRuntime {
         durations
     }
 
-    pub(crate) fn item_swing_animation_duration_count(&self) -> usize {
+    pub fn item_swing_animation_duration_count(&self) -> usize {
         self.item_swing_animation_durations_by_protocol_id().len()
     }
 
-    pub(crate) fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {
+    pub fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {
         let mut use_effects = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return use_effects;
@@ -1452,13 +1450,11 @@ impl NativeItemRuntime {
         use_effects
     }
 
-    pub(crate) fn item_use_effect_count(&self) -> usize {
+    pub fn item_use_effect_count(&self) -> usize {
         self.item_use_effects_by_protocol_id().len()
     }
 
-    pub(crate) fn item_mining_profiles_by_protocol_id(
-        &self,
-    ) -> BTreeMap<i32, WorldItemMiningProfile> {
+    pub fn item_mining_profiles_by_protocol_id(&self) -> BTreeMap<i32, WorldItemMiningProfile> {
         let mut profiles = BTreeMap::new();
         let Some(registry) = &self.registry else {
             return profiles;
@@ -1472,41 +1468,41 @@ impl NativeItemRuntime {
         profiles
     }
 
-    pub(crate) fn item_mining_profile_count(&self) -> usize {
+    pub fn item_mining_profile_count(&self) -> usize {
         self.item_mining_profiles_by_protocol_id().len()
     }
 
-    pub(crate) fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.furnace_fuel_item_ids.clone()
     }
 
-    pub(crate) fn furnace_fuel_item_count(&self) -> usize {
+    pub fn furnace_fuel_item_count(&self) -> usize {
         self.furnace_fuel_item_ids.len()
     }
 
-    pub(crate) fn brewing_potion_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn brewing_potion_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
             .map(|registry| protocol_ids_for_resource_ids(registry, BREWING_POTION_ITEM_IDS))
             .unwrap_or_default()
     }
 
-    pub(crate) fn brewing_potion_item_count(&self) -> usize {
+    pub fn brewing_potion_item_count(&self) -> usize {
         self.brewing_potion_item_ids_by_protocol_id().len()
     }
 
-    pub(crate) fn brewing_ingredient_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn brewing_ingredient_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
             .map(|registry| protocol_ids_for_resource_ids(registry, BREWING_INGREDIENT_ITEM_IDS))
             .unwrap_or_default()
     }
 
-    pub(crate) fn brewing_ingredient_item_count(&self) -> usize {
+    pub fn brewing_ingredient_item_count(&self) -> usize {
         self.brewing_ingredient_item_ids_by_protocol_id().len()
     }
 
-    pub(crate) fn enchantment_lapis_lazuli_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn enchantment_lapis_lazuli_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
             .map(|registry| {
@@ -1515,12 +1511,12 @@ impl NativeItemRuntime {
             .unwrap_or_default()
     }
 
-    pub(crate) fn enchantment_lapis_lazuli_item_count(&self) -> usize {
+    pub fn enchantment_lapis_lazuli_item_count(&self) -> usize {
         self.enchantment_lapis_lazuli_item_ids_by_protocol_id()
             .len()
     }
 
-    pub(crate) fn cartography_additional_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn cartography_additional_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         let Some(registry) = &self.registry else {
             return BTreeSet::new();
         };
@@ -1532,55 +1528,55 @@ impl NativeItemRuntime {
         }
     }
 
-    pub(crate) fn cartography_additional_item_count(&self) -> usize {
+    pub fn cartography_additional_item_count(&self) -> usize {
         self.cartography_additional_item_ids_by_protocol_id().len()
     }
 
-    pub(crate) fn freeze_immune_wearable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn freeze_immune_wearable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.freeze_immune_wearable_item_ids.clone()
     }
 
-    pub(crate) fn freeze_immune_wearable_item_count(&self) -> usize {
+    pub fn freeze_immune_wearable_item_count(&self) -> usize {
         self.freeze_immune_wearable_item_ids.len()
     }
 
-    pub(crate) fn powder_snow_walkable_foot_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+    pub fn powder_snow_walkable_foot_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.powder_snow_walkable_foot_item_ids.clone()
     }
 
-    pub(crate) fn powder_snow_walkable_foot_item_count(&self) -> usize {
+    pub fn powder_snow_walkable_foot_item_count(&self) -> usize {
         self.powder_snow_walkable_foot_item_ids.len()
     }
 
-    pub(crate) fn resolved_model_count(&self) -> usize {
+    pub fn resolved_model_count(&self) -> usize {
         self.resolved_model_count
     }
 
-    pub(crate) fn missing_model_count(&self) -> usize {
+    pub fn missing_model_count(&self) -> usize {
         self.missing_model_ids.len()
     }
 
-    pub(crate) fn missing_texture_count(&self) -> usize {
+    pub fn missing_texture_count(&self) -> usize {
         self.missing_texture_ids.len()
     }
 
-    pub(crate) fn texture_count(&self) -> usize {
+    pub fn texture_count(&self) -> usize {
         self.textures.texture_count()
     }
 
-    pub(crate) fn icon_texture_count(&self) -> usize {
+    pub fn icon_texture_count(&self) -> usize {
         self.item_icon_models.len()
     }
 
-    pub(crate) fn atlas_size(&self) -> (u32, u32) {
+    pub fn atlas_size(&self) -> (u32, u32) {
         self.textures.atlas_size()
     }
 
-    pub(crate) fn atlas_rgba(&self) -> &[u8] {
+    pub fn atlas_rgba(&self) -> &[u8] {
         self.textures.atlas_rgba()
     }
 
-    pub(crate) fn texture_index(&self, texture_id: &str) -> u32 {
+    pub fn texture_index(&self, texture_id: &str) -> u32 {
         self.textures.texture_index(texture_id)
     }
 
@@ -1668,11 +1664,11 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn item_resource_id_for_protocol_id(&self, protocol_id: i32) -> Option<&str> {
+    pub fn item_resource_id_for_protocol_id(&self, protocol_id: i32) -> Option<&str> {
         self.registry.as_ref()?.resource_id(protocol_id)
     }
 
-    pub(crate) fn tooltip_lines_for_stack(
+    pub fn tooltip_lines_for_stack(
         &self,
         stack: &ItemStackSummary,
     ) -> Option<Vec<NativeItemTooltipLine>> {
@@ -1708,13 +1704,13 @@ impl NativeItemRuntime {
             .and_then(|icon| icon.layers.first().map(|layer| layer.uv))
     }
 
-    pub(crate) fn icon_for_stack(&self, stack: &ItemStackSummary) -> Option<ItemAtlasIcon> {
+    pub fn icon_for_stack(&self, stack: &ItemStackSummary) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_bundle_selected_item(stack, None)
     }
 
     /// The resource id (e.g. `minecraft:stone`) for an item protocol id, via the item registry. Used to
     /// map a dropped item to the block of the same id for 3D block-item rendering.
-    pub(crate) fn item_resource_id(&self, protocol_id: i32) -> Option<&str> {
+    pub fn item_resource_id(&self, protocol_id: i32) -> Option<&str> {
         self.registry.as_ref()?.resource_id(protocol_id)
     }
 
@@ -1735,7 +1731,7 @@ impl NativeItemRuntime {
     /// `ItemModelResolver.appendItemLayers` reads `DataComponents.ITEM_MODEL`
     /// before `ModelRenderProperties.applyToLayer` selects the transform for
     /// the current display context.
-    pub(crate) fn item_display_transform_for_stack(
+    pub fn item_display_transform_for_stack(
         &self,
         stack: &ItemStackSummary,
         context: BlockModelDisplayContext,
@@ -1768,7 +1764,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn generated_item_layers_for_stack_with_registry_context(
+    pub fn generated_item_layers_for_stack_with_registry_context(
         &self,
         stack: &ItemStackSummary,
         display_context: BlockModelDisplayContext,
@@ -1825,7 +1821,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn generated_item_layers_for_stack_with_owner_registry_context(
+    pub fn generated_item_layers_for_stack_with_owner_registry_context(
         &self,
         stack: &ItemStackSummary,
         display_context: BlockModelDisplayContext,
@@ -1917,7 +1913,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_bundle_selected_item_and_using_item(
+    pub fn icon_for_stack_with_bundle_selected_item_and_using_item(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -1940,7 +1936,7 @@ impl NativeItemRuntime {
     /// optional living-owner main arm / entity type for `minecraft:main_hand`
     /// / `minecraft:context_entity_type` plus the current dimension for
     /// `minecraft:context_dimension`.
-    pub(crate) fn icon_for_stack_with_context(
+    pub fn icon_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -1965,7 +1961,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_context_and_use_context(
+    pub fn icon_for_stack_with_context_and_use_context(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -1994,7 +1990,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_context_and_use_context_and_time_context(
+    pub fn icon_for_stack_with_context_and_use_context_and_time_context(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -2026,7 +2022,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_context_and_use_context_time_selected(
+    pub fn icon_for_stack_with_context_and_use_context_time_selected(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -2063,7 +2059,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_context_and_use_context_time_state(
+    pub fn icon_for_stack_with_context_and_use_context_time_state(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -2105,7 +2101,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+    pub fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -2152,7 +2148,7 @@ impl NativeItemRuntime {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+    pub fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
@@ -2201,7 +2197,7 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(crate) fn icon_for_stack_with_owner_main_hand(
+    pub fn icon_for_stack_with_owner_main_hand(
         &self,
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
@@ -2714,7 +2710,7 @@ impl NativeItemRuntime {
             .next_float()
     }
 
-    pub(crate) fn item_model_use_context_for_stack(
+    pub fn item_model_use_context_for_stack(
         &self,
         stack: &ItemStackSummary,
         elapsed_ticks: u32,
@@ -2722,7 +2718,7 @@ impl NativeItemRuntime {
         self.item_model_use_context_for_stack_with_enchantment_keys(stack, elapsed_ticks, None)
     }
 
-    pub(crate) fn item_model_use_context_for_stack_with_enchantment_keys(
+    pub fn item_model_use_context_for_stack_with_enchantment_keys(
         &self,
         stack: &ItemStackSummary,
         elapsed_ticks: u32,
@@ -3538,22 +3534,22 @@ fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMiningRule {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ItemAtlasIcon {
-    pub(crate) layers: Vec<ItemAtlasIconLayer>,
+pub struct ItemAtlasIcon {
+    pub layers: Vec<ItemAtlasIconLayer>,
 }
 
 /// Per-stack use-state values for vanilla item-model numeric properties. These
 /// are active only for the stack that vanilla would expose as
 /// `LivingEntity.getUseItem()`.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub(crate) struct ItemModelUseContext {
+pub struct ItemModelUseContext {
     pub(crate) elapsed_ticks: u32,
     pub(crate) remaining_ticks: Option<f32>,
     pub(crate) crossbow_charge_duration_ticks: Option<f32>,
 }
 
 impl ItemModelUseContext {
-    pub(crate) fn inactive() -> Self {
+    pub fn inactive() -> Self {
         Self::default()
     }
 
@@ -3572,39 +3568,39 @@ impl ItemModelUseContext {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct ItemModelKeybindContext {
-    pub(crate) forward: bool,
-    pub(crate) left: bool,
-    pub(crate) backward: bool,
-    pub(crate) right: bool,
-    pub(crate) jump: bool,
-    pub(crate) sneak: bool,
-    pub(crate) sprint: bool,
-    pub(crate) attack: bool,
-    pub(crate) use_item: bool,
-    pub(crate) pick_item: bool,
-    pub(crate) inventory: bool,
-    pub(crate) swap_offhand: bool,
-    pub(crate) drop: bool,
-    pub(crate) chat: bool,
-    pub(crate) command: bool,
-    pub(crate) player_list: bool,
-    pub(crate) social_interactions: bool,
-    pub(crate) screenshot: bool,
-    pub(crate) toggle_perspective: bool,
-    pub(crate) fullscreen: bool,
-    pub(crate) advancements: bool,
-    pub(crate) quick_actions: bool,
-    pub(crate) toggle_gui: bool,
-    pub(crate) toggle_spectator_shader_effects: bool,
-    pub(crate) save_toolbar_activator: bool,
-    pub(crate) load_toolbar_activator: bool,
-    pub(crate) spectator_hotbar: bool,
-    pub(crate) hotbar: [bool; 9],
+pub struct ItemModelKeybindContext {
+    pub forward: bool,
+    pub left: bool,
+    pub backward: bool,
+    pub right: bool,
+    pub jump: bool,
+    pub sneak: bool,
+    pub sprint: bool,
+    pub attack: bool,
+    pub use_item: bool,
+    pub pick_item: bool,
+    pub inventory: bool,
+    pub swap_offhand: bool,
+    pub drop: bool,
+    pub chat: bool,
+    pub command: bool,
+    pub player_list: bool,
+    pub social_interactions: bool,
+    pub screenshot: bool,
+    pub toggle_perspective: bool,
+    pub fullscreen: bool,
+    pub advancements: bool,
+    pub quick_actions: bool,
+    pub toggle_gui: bool,
+    pub toggle_spectator_shader_effects: bool,
+    pub save_toolbar_activator: bool,
+    pub load_toolbar_activator: bool,
+    pub spectator_hotbar: bool,
+    pub hotbar: [bool; 9],
 }
 
 impl ItemModelKeybindContext {
-    pub(crate) fn keybind_down(&self, keybind: &str) -> bool {
+    pub fn keybind_down(&self, keybind: &str) -> bool {
         match keybind {
             "key.forward" => self.forward,
             "key.left" => self.left,
@@ -3654,47 +3650,47 @@ impl ItemModelKeybindContext {
 /// World-clock values exposed to vanilla item-model numeric properties such as
 /// `minecraft:time`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ItemModelTimeContext {
-    pub(crate) game_time: i64,
-    pub(crate) day_time: i64,
+pub struct ItemModelTimeContext {
+    pub game_time: i64,
+    pub day_time: i64,
 }
 
 /// Owner and level values exposed to vanilla compass item-model numeric
 /// properties.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ItemModelCompassContext<'a> {
-    pub(crate) game_time: i64,
-    pub(crate) level_dimension: &'a str,
-    pub(crate) owner_position: [f64; 3],
-    pub(crate) owner_y_rot_degrees: f32,
-    pub(crate) spawn: Option<ItemModelCompassTarget<'a>>,
-    pub(crate) recovery: Option<ItemModelCompassTarget<'a>>,
+pub struct ItemModelCompassContext<'a> {
+    pub game_time: i64,
+    pub level_dimension: &'a str,
+    pub owner_position: [f64; 3],
+    pub owner_y_rot_degrees: f32,
+    pub spawn: Option<ItemModelCompassTarget<'a>>,
+    pub recovery: Option<ItemModelCompassTarget<'a>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ItemModelCompassTarget<'a> {
-    pub(crate) dimension: &'a str,
-    pub(crate) pos: [i32; 3],
+pub struct ItemModelCompassTarget<'a> {
+    pub dimension: &'a str,
+    pub pos: [i32; 3],
 }
 
 /// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
 /// atlas UV rect (item atlas), and the resolved layer tint.
-pub(crate) struct GeneratedItemLayer {
-    pub(crate) mask: SpriteAlphaMask,
-    pub(crate) rect: ItemSpriteRect,
-    pub(crate) tint: [f32; 4],
+pub struct GeneratedItemLayer {
+    pub mask: SpriteAlphaMask,
+    pub rect: ItemSpriteRect,
+    pub tint: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ItemAtlasIconLayer {
-    pub(crate) uv: ItemAtlasUvRect,
-    pub(crate) tint: [f32; 4],
+pub struct ItemAtlasIconLayer {
+    pub uv: ItemAtlasUvRect,
+    pub tint: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ItemAtlasUvRect {
-    pub(crate) min: [f32; 2],
-    pub(crate) max: [f32; 2],
+pub struct ItemAtlasUvRect {
+    pub min: [f32; 2],
+    pub max: [f32; 2],
 }
 
 #[derive(Debug, Clone, PartialEq)]

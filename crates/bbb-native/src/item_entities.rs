@@ -4,7 +4,7 @@ use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRe
 use bbb_world::{ItemEntityStackState, TerrainLight, WorldStore};
 
 use crate::entity_scene::THROWN_ITEM_PROJECTILE_BILLBOARDS;
-use crate::item_runtime::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
+use bbb_item_model::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
 
 /// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
 /// position; the thrown-item projectiles (`ThrownItemRenderer`) render centered on the entity, so they
