@@ -1052,6 +1052,15 @@
 
 ## P1-5：透明排序、粒子与 Level Events
 
+- probe 侧 LevelEvent 形状上下文：
+  - [x] 2026-07-02 包分发重构遗留的 probe/runtime parity 缺口已关闭：
+    sink-less `PlayApplyEffects` 默认回调现在用 `WorldStore::probe_block`
+    查询只读 chunk 上下文；sculk-charge pop 按 world collision shape 判断
+    `isCollisionShapeFullBlock`，plant-growth random mode 按 vanilla
+    `BoneMealItem.addGrowthParticles` 的 water / `BonemealableBlock.Type`
+    分支分类。`bbb-net` probe 测试覆盖加载 full block sculk pop 的 40 粒子
+    随机流，以及加载 water growth 的 wide random mode，均在后续声音 seed 前推进。
+
 - 粒子 provider-specific behavior：
   - [x] `PortalParticle.Provider`：renderer descriptor now mirrors vanilla
     random sprite selection, `0.1 * (random * 0.2 + 0.5)` quad size,

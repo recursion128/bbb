@@ -58,9 +58,10 @@ pub enum LevelEventGrowthRandomMode {
 
 /// Runtime side effects of applying a play packet.
 ///
-/// Every method has a no-op default so state-only callers (the offline probe,
-/// world tests) apply identical canonical mutations and consume the identical
-/// deterministic random stream as the online dispatcher.
+/// Methods default to no runtime sink plus world-owned read-only context
+/// callbacks, so state-only callers (the offline probe, world tests) apply
+/// identical canonical mutations and consume the identical deterministic random
+/// stream as the online dispatcher.
 pub trait PlayApplyEffects {
     fn positioned_sound(&mut self, _state: &SoundEventState) {}
     fn local_sound(&mut self, _state: &LocalSoundEventState) {}
@@ -91,19 +92,19 @@ pub trait PlayApplyEffects {
     /// `None` matches vanilla's missing-block-probe fallback.
     fn sculk_charge_pop_full_block(
         &mut self,
-        _world: &WorldStore,
-        _event: &ProtocolLevelEvent,
+        world: &WorldStore,
+        event: &ProtocolLevelEvent,
     ) -> Option<bool> {
-        None
+        sculk_charge_pop_full_block_context(world, event)
     }
     /// Plant-growth particle mode for sink-less random advancement. `None`
     /// matches vanilla's non-bonemealable/missing-block fallback.
     fn growth_particle_random_mode(
         &mut self,
-        _world: &WorldStore,
-        _event: &ProtocolLevelEvent,
+        world: &WorldStore,
+        event: &ProtocolLevelEvent,
     ) -> Option<LevelEventGrowthRandomMode> {
-        None
+        growth_particle_random_mode_context(world, event)
     }
 }
 
@@ -721,6 +722,134 @@ fn with_level_event_sound_seed(
 ) -> SoundEventState {
     state.seed = random.next_long();
     state
+}
+
+fn sculk_charge_pop_full_block_context(
+    world: &WorldStore,
+    event: &ProtocolLevelEvent,
+) -> Option<bool> {
+    if event.event_type != SCULK_CHARGE_LEVEL_EVENT || event.data >> 6 > 0 {
+        return None;
+    }
+    // Vanilla `LevelEventHandler` event 3006 pop branch calls
+    // `BlockState.isCollisionShapeFullBlock(level, pos)` before choosing
+    // the 20 vs 40 particle random stream.
+    let pos = protocol_to_world_block_pos(event.pos);
+    world
+        .probe_block(pos)
+        .map(|probe| crate::client::block_collision_shape_is_full_block(&probe, pos))
+}
+
+fn growth_particle_random_mode_context(
+    world: &WorldStore,
+    event: &ProtocolLevelEvent,
+) -> Option<LevelEventGrowthRandomMode> {
+    if event.event_type != PLANT_GROWTH_LEVEL_EVENT || event.data <= 0 {
+        return None;
+    }
+    let probe = world.probe_block(protocol_to_world_block_pos(event.pos))?;
+    let block_name = probe.block_name.as_deref()?;
+
+    // Vanilla `BoneMealItem.addGrowthParticles` branches on water or
+    // `BonemealableBlock.Type`; sink-less callers only need that mode to
+    // consume the same particle random count before the follow-up sound seed.
+    if block_name == "minecraft:water" || is_neighbor_spreader_bonemealable_block_name(block_name) {
+        return Some(LevelEventGrowthRandomMode::WideNoFloating);
+    }
+    if is_below_particle_pos_bonemealable_block_name(block_name)
+        || is_grower_bonemealable_block_name(block_name)
+    {
+        return Some(LevelEventGrowthRandomMode::InBlock);
+    }
+    None
+}
+
+fn protocol_to_world_block_pos(pos: bbb_protocol::packets::BlockPos) -> BlockPos {
+    BlockPos {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+    }
+}
+
+fn is_neighbor_spreader_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:grass_block"
+            | "minecraft:netherrack"
+            | "minecraft:warped_nylium"
+            | "minecraft:crimson_nylium"
+            | "minecraft:moss_block"
+            | "minecraft:pale_moss_block"
+    )
+}
+
+fn is_below_particle_pos_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:rooted_dirt" | "minecraft:mangrove_leaves"
+    )
+}
+
+fn is_grower_bonemealable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:oak_sapling"
+            | "minecraft:spruce_sapling"
+            | "minecraft:birch_sapling"
+            | "minecraft:jungle_sapling"
+            | "minecraft:acacia_sapling"
+            | "minecraft:cherry_sapling"
+            | "minecraft:dark_oak_sapling"
+            | "minecraft:pale_oak_sapling"
+            | "minecraft:short_grass"
+            | "minecraft:fern"
+            | "minecraft:bush"
+            | "minecraft:short_dry_grass"
+            | "minecraft:tall_dry_grass"
+            | "minecraft:seagrass"
+            | "minecraft:sea_pickle"
+            | "minecraft:wheat"
+            | "minecraft:carrots"
+            | "minecraft:potatoes"
+            | "minecraft:beetroots"
+            | "minecraft:pumpkin_stem"
+            | "minecraft:melon_stem"
+            | "minecraft:cocoa"
+            | "minecraft:torchflower_crop"
+            | "minecraft:pitcher_crop"
+            | "minecraft:bamboo_sapling"
+            | "minecraft:bamboo"
+            | "minecraft:sweet_berry_bush"
+            | "minecraft:warped_fungus"
+            | "minecraft:crimson_fungus"
+            | "minecraft:azalea"
+            | "minecraft:flowering_azalea"
+            | "minecraft:pink_petals"
+            | "minecraft:wildflowers"
+            | "minecraft:big_dripleaf"
+            | "minecraft:big_dripleaf_stem"
+            | "minecraft:small_dripleaf"
+            | "minecraft:pale_moss_carpet"
+            | "minecraft:pale_hanging_moss"
+            | "minecraft:firefly_bush"
+            | "minecraft:hanging_moss"
+            | "minecraft:glow_lichen"
+            | "minecraft:sunflower"
+            | "minecraft:lilac"
+            | "minecraft:rose_bush"
+            | "minecraft:peony"
+            | "minecraft:brown_mushroom"
+            | "minecraft:red_mushroom"
+            | "minecraft:cave_vines"
+            | "minecraft:cave_vines_plant"
+            | "minecraft:weeping_vines"
+            | "minecraft:weeping_vines_plant"
+            | "minecraft:twisting_vines"
+            | "minecraft:twisting_vines_plant"
+            | "minecraft:kelp"
+            | "minecraft:kelp_plant"
+    )
 }
 
 /// Advances the particle random stream exactly as the renderer particle sink

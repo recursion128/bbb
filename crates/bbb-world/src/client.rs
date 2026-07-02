@@ -21,3 +21,5 @@ mod stats;
 mod ui;
 mod waypoints;
 mod world_border;
+
+pub(crate) use local_player_collision::block_collision_shape_is_full_block;

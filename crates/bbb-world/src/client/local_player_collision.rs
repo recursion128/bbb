@@ -58,6 +58,10 @@ pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool 
     block_collision_shape(block, BlockPos { x: 0, y: 0, z: 0 }).is_none()
 }
 
+pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: BlockPos) -> bool {
+    block_collision_shape(block, pos).is_some_and(BlockCollisionShape::is_full_block)
+}
+
 impl WorldStore {
     pub(crate) fn local_player_pose_collides_with_block(
         &self,
@@ -1904,6 +1908,11 @@ impl BlockCollisionShape {
         self.boxes.into_iter().flatten()
     }
 
+    fn is_full_block(self) -> bool {
+        let mut boxes = self.boxes();
+        matches!(boxes.next(), Some(BlockCollisionBox::FULL)) && boxes.next().is_none()
+    }
+
     fn invert_y(self) -> Self {
         Self {
             boxes: self
@@ -1971,7 +1980,7 @@ impl BlockCollisionShapeBuilder {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct BlockCollisionBox {
     min_x: f64,
     min_y: f64,

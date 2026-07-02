@@ -208,7 +208,10 @@ mod tests {
         codec::{Decoder, Encoder},
         ids,
     };
-    use bbb_world::{BlockPos, ChunkPos, LocalPlayerPoseState};
+    use bbb_world::{
+        advance_growth_level_event_particle_randoms, BlockPos, ChunkPos,
+        LevelEventGrowthRandomMode, LevelEventSoundRandomState, LocalPlayerPoseState, RegistrySet,
+    };
     use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
@@ -3659,6 +3662,120 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_uses_loaded_sculk_charge_pop_shape_context_for_level_event_randoms() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let event_pos = ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        };
+        let stone_id = vanilla_block_state_id("minecraft:stone", []);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BlockUpdate(BlockUpdate {
+                pos: event_pos,
+                block_state_id: stone_id,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 3006,
+                pos: event_pos,
+                data: 0,
+                global: false,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1004,
+                pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+                data: 0,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let _sculk_sound_seed = expected_random.next_long();
+        for _ in 0..40 {
+            let _ = expected_random.next_float();
+            let _ = expected_random.next_float();
+            let _ = expected_random.next_float();
+        }
+        let expected_followup_seed = expected_random.next_long();
+
+        let report = probe.finish(4, ChunkPos { x: 1, z: -2 });
+        assert_eq!(report.world_counters.level_events_received, 2);
+        let sound = report.world.last_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.firework_rocket.shoot")
+        );
+        assert_eq!(sound.seed, expected_followup_seed);
+    }
+
+    #[tokio::test]
+    async fn probe_uses_loaded_growth_context_for_level_event_randoms() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let event_pos = ProtocolBlockPos {
+            x: 16,
+            y: -63,
+            z: -32,
+        };
+        let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BlockUpdate(BlockUpdate {
+                pos: event_pos,
+                block_state_id: water_id,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1505,
+                pos: event_pos,
+                data: 3,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        advance_growth_level_event_particle_randoms(
+            3,
+            LevelEventGrowthRandomMode::WideNoFloating,
+            &mut expected_random,
+        );
+        let expected_seed = expected_random.next_long();
+
+        let report = probe.finish(3, ChunkPos { x: 1, z: -2 });
+        assert_eq!(report.world_counters.level_events_received, 1);
+        let sound = report.world.last_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:item.bone_meal.use")
+        );
+        assert_eq!(sound.seed, expected_seed);
+    }
+
+    #[tokio::test]
     async fn probe_records_cobweb_place_sound_after_particle_randoms() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
@@ -4728,6 +4845,14 @@ mod tests {
                 block_updates: Vec::new(),
             },
         }
+    }
+
+    fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+        let properties =
+            BTreeMap::from(props.map(|(key, value)| (key.to_string(), value.to_string())));
+        RegistrySet::vanilla_26_1()
+            .block_state_id_by_name_and_properties(name, &properties)
+            .unwrap_or_else(|| panic!("missing vanilla block state {name} {properties:?}"))
     }
 
     fn single_biome_payload(biome_id: i32) -> Vec<u8> {

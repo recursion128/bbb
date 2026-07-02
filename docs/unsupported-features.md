@@ -78,13 +78,12 @@ When an agent does any of the following, update this file in the same slice:
 ### Offline Probe And Online Dispatcher Parity
 
 - Owner: `bbb-net` + `bbb-native` + `bbb-world`
-- Status: `partial`
+- Status: `covered`
 - Next action:
-  - Close the remaining sink-less level-event particle random context gap:
-    probe callers use the default `PlayApplyEffects` context callbacks, so
-    sculk-charge pop full-block and plant-growth mode contexts resolve to
-    `None` (vanilla missing-block fallback) instead of probing chunk shape
-    data the way the native runtime does.
+  - Preserve `WorldStore::apply_play_packet` as the single shared decoded
+    play-packet application path. When adding a new play-packet side effect,
+    keep sink-less `PlayApplyEffects` callers and native sink-driven callers on
+    the same deterministic random/context path.
 - Evidence / boundary:
   - `WorldStore::apply_play_packet` is the single shared clientbound
     play-packet -> canonical-world mapping. Both the offline probe
@@ -97,6 +96,13 @@ When an agent does any of the following, update this file in the same slice:
     identically for sink-less callers, including potion break, dragon
     fireball, wax-on, vault, trial spawner, and sculk charge events that the
     probe previously skipped.
+  - Sink-less LevelEvent random context now uses world-owned read-only chunk
+    probes: sculk-charge pop asks the existing world collision shape path
+    whether the event block is a full collision block, and plant-growth
+    randoms use the same vanilla `BoneMealItem.addGrowthParticles` mode
+    classification (`NEIGHBOR_SPREADER` / `GROWER` / water) before sound
+    seeds are drawn. Probe tests cover both a loaded full-block sculk pop
+    context and a loaded water growth context.
   - Connection-owned packets (keepalive/ping, chunk batch feedback, cookies,
     configuration handoff, resource-pack responses, movement responses,
     disconnects, unknown packets) are returned to the caller and stay

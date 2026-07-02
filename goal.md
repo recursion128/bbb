@@ -299,13 +299,6 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 
 已完成项见 docs/goal-archive.md#p1-5透明排序粒子与-level-events。
 
-- probe 侧 LevelEvent 形状上下文（2026-07-02 包分发重构遗留的唯一 parity 缺口）：
-  probe 走默认 `PlayApplyEffects` 上下文回调，sculk-charge pop full-block 和
-  plant-growth mode 解析为 `None`（vanilla missing-block fallback），而 native
-  runtime 会查 chunk 形状数据。收敛方向：把 block-outline/VoxelShape 查询做成
-  world 侧可选能力或给 probe 提供只读 chunk 形状回调。ledger 对应条目见
-  `docs/unsupported-features.md` 的 play-packet parity 节。
-
 - 粒子 provider-specific behavior：
   - `falling_dust` 的非 air `RenderShape.INVISIBLE` provider spawn rejection 已
     对齐 vanilla；`FallingBlock#getDustColor` 分支的 sand/red_sand/gravel、
