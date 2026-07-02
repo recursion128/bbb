@@ -71,6 +71,22 @@ pub struct ParticleSpawnCommand {
     pub option_duration_ticks: Option<u32>,
     #[serde(default)]
     pub option_roll: Option<f32>,
+    #[serde(default)]
+    pub option_block: Option<ParticleBlockOptionState>,
+    #[serde(default)]
+    pub option_item: Option<ParticleItemOptionState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticleBlockOptionState {
+    pub block_state_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticleItemOptionState {
+    pub item_id: i32,
+    pub count: i32,
+    pub component_patch_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -199,6 +215,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_duration_ticks: Option<u32>,
     #[serde(default)]
     pub(crate) option_roll: Option<f32>,
+    #[serde(default)]
+    pub(crate) option_block: Option<ParticleBlockOptionState>,
+    #[serde(default)]
+    pub(crate) option_item: Option<ParticleItemOptionState>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -794,6 +814,8 @@ impl ParticleInstance {
             option_target: command.option_target,
             option_duration_ticks: command.option_duration_ticks,
             option_roll: command.option_roll,
+            option_block: command.option_block,
+            option_item: command.option_item,
         }
     }
 
@@ -1192,6 +1214,8 @@ impl ParticleInstance {
             option_target: None,
             option_duration_ticks: None,
             option_roll: None,
+            option_block: None,
+            option_item: None,
         })
     }
 
@@ -1237,6 +1261,8 @@ impl ParticleInstance {
                     option_target: None,
                     option_duration_ticks: None,
                     option_roll: None,
+                    option_block: None,
+                    option_item: None,
                 }
             })
             .collect()
@@ -1291,6 +1317,8 @@ impl ParticleInstance {
                     option_target: None,
                     option_duration_ticks: None,
                     option_roll: None,
+                    option_block: None,
+                    option_item: None,
                 }
             })
             .collect()
@@ -5165,6 +5193,43 @@ mod tests {
     }
 
     #[test]
+    fn particle_instances_preserve_terrain_and_item_option_metadata() {
+        let mut random = ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED);
+        let mut block_command = spawn_command("minecraft:block", 0.0);
+        block_command.option_block = Some(ParticleBlockOptionState {
+            block_state_id: 321,
+        });
+        let mut item_command = spawn_command("minecraft:item", 1.0);
+        item_command.option_item = Some(ParticleItemOptionState {
+            item_id: 42,
+            count: 3,
+            component_patch_len: 2,
+        });
+
+        let block = ParticleInstance::from_spawn_command(block_command, &mut random);
+        let item = ParticleInstance::from_spawn_command(item_command, &mut random);
+
+        assert_eq!(block.render_layer, ParticleRenderLayer::OpaqueTerrain);
+        assert_eq!(
+            block.option_block,
+            Some(ParticleBlockOptionState {
+                block_state_id: 321
+            })
+        );
+        assert_eq!(block.option_item, None);
+        assert_eq!(item.render_layer, ParticleRenderLayer::OpaqueItems);
+        assert_eq!(
+            item.option_item,
+            Some(ParticleItemOptionState {
+                item_id: 42,
+                count: 3,
+                component_patch_len: 2,
+            })
+        );
+        assert_eq!(item.option_block, None);
+    }
+
+    #[test]
     fn particle_runtime_snowflake_applies_vanilla_post_tick_damping() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:snowflake", 20);
@@ -6023,6 +6088,8 @@ mod tests {
             option_target: None,
             option_duration_ticks: None,
             option_roll: None,
+            option_block: None,
+            option_item: None,
         }
     }
 
@@ -6045,6 +6112,8 @@ mod tests {
             option_target: None,
             option_duration_ticks: None,
             option_roll: None,
+            option_block: None,
+            option_item: None,
         }
     }
 

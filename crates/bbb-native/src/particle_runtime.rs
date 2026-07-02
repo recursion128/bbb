@@ -8,8 +8,8 @@ use bbb_pack::{
 use bbb_protocol::codec::Decoder;
 use bbb_protocol::packets::{ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
-    ParticleChildSpawnTemplate, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv,
-    ParticleUvRect, Renderer,
+    ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
+    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
 use bbb_world::LevelEventSoundRandomState;
 
@@ -1453,6 +1453,8 @@ impl ParticleCommandResolver {
             option_target: option_state.target,
             option_duration_ticks: option_state.duration_ticks,
             option_roll: option_state.roll,
+            option_block: option_state.block,
+            option_item: option_state.item,
         }
     }
 
@@ -1519,6 +1521,8 @@ struct ParticleOptionRenderState {
     target: Option<[f64; 3]>,
     duration_ticks: Option<u32>,
     roll: Option<f32>,
+    block: Option<ParticleBlockOptionState>,
+    item: Option<ParticleItemOptionState>,
 }
 
 fn particle_option_render_state(
@@ -1527,6 +1531,41 @@ fn particle_option_render_state(
 ) -> ParticleOptionRenderState {
     let mut decoder = Decoder::new(raw_options);
     match particle_type_id {
+        BLOCK_PARTICLE_TYPE_ID
+        | BLOCK_MARKER_PARTICLE_TYPE_ID
+        | FALLING_DUST_PARTICLE_TYPE_ID
+        | DUST_PILLAR_PARTICLE_TYPE_ID
+        | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
+            let Ok(block_state_id) = decoder.read_var_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                block: Some(ParticleBlockOptionState { block_state_id }),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ITEM_PARTICLE_TYPE_ID => {
+            let Ok(item_id) = decoder.read_var_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(count) = decoder.read_var_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if item_id < 0 || count <= 0 {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                item: Some(ParticleItemOptionState {
+                    item_id,
+                    count,
+                    component_patch_len: decoder.remaining_len(),
+                }),
+                ..ParticleOptionRenderState::default()
+            }
+        }
         EFFECT_PARTICLE_TYPE_ID | INSTANT_EFFECT_PARTICLE_TYPE_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
@@ -1854,6 +1893,7 @@ const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const GUST_PARTICLE_TYPE_ID: i32 = 24;
 const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
 const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
+const FALLING_DUST_PARTICLE_TYPE_ID: i32 = 29;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const TINTED_LEAVES_PARTICLE_TYPE_ID: i32 = 36;
 const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
@@ -2092,38 +2132,66 @@ mod tests {
     #[test]
     fn terrain_and_item_atlas_particles_are_definitionless_submission_inputs() {
         let mut resolver = test_resolver(0);
-        for (particle_type_id, particle_id, raw_options) in [
-            (BLOCK_PARTICLE_TYPE_ID, "minecraft:block", vec![0x81, 0x01]),
+        for (particle_type_id, particle_id, raw_options, block_state_id, item) in [
+            (
+                BLOCK_PARTICLE_TYPE_ID,
+                "minecraft:block",
+                block_particle_options(129),
+                Some(129),
+                None,
+            ),
             (
                 BLOCK_MARKER_PARTICLE_TYPE_ID,
                 "minecraft:block_marker",
-                vec![0x02],
+                block_particle_options(2),
+                Some(2),
+                None,
             ),
             (
                 DUST_PILLAR_PARTICLE_TYPE_ID,
                 "minecraft:dust_pillar",
-                vec![0x03],
+                block_particle_options(3),
+                Some(3),
+                None,
             ),
             (
                 BLOCK_CRUMBLE_PARTICLE_TYPE_ID,
                 "minecraft:block_crumble",
-                vec![0x04],
+                block_particle_options(4),
+                Some(4),
+                None,
             ),
-            (ITEM_PARTICLE_TYPE_ID, "minecraft:item", vec![0x05, 0x06]),
+            (
+                ITEM_PARTICLE_TYPE_ID,
+                "minecraft:item",
+                item_particle_options(5, 6, 0),
+                None,
+                Some(ParticleItemOptionState {
+                    item_id: 5,
+                    count: 6,
+                    component_patch_len: 2,
+                }),
+            ),
             (
                 ITEM_SLIME_PARTICLE_TYPE_ID,
                 "minecraft:item_slime",
                 Vec::new(),
+                None,
+                None,
             ),
             (
                 ITEM_COBWEB_PARTICLE_TYPE_ID,
                 "minecraft:item_cobweb",
                 Vec::new(),
+                None,
+                None,
             ),
             (
                 ITEM_SNOWBALL_PARTICLE_TYPE_ID,
                 "minecraft:item_snowball",
                 Vec::new(),
+                None,
+                None,
             ),
         ] {
             let mut packet = level_particles_packet(particle_type_id, 0);
@@ -2138,7 +2206,37 @@ mod tests {
             assert_eq!(command.particle_id, particle_id, "{particle_id}");
             assert!(command.sprite_ids.is_empty(), "{particle_id}");
             assert_eq!(command.raw_options_len, raw_options.len(), "{particle_id}");
+            assert_eq!(
+                command.option_block.map(|option| option.block_state_id),
+                block_state_id,
+                "{particle_id}"
+            );
+            assert_eq!(command.option_item, item, "{particle_id}");
         }
+    }
+
+    #[test]
+    fn falling_dust_decodes_block_particle_option_metadata() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = block_particle_options(321);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.missing_definition_count, 0);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, FALLING_DUST_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:falling_dust");
+        assert_eq!(command.sprite_ids, vec!["minecraft:generic_0".to_string()]);
+        assert_eq!(
+            command.option_block,
+            Some(ParticleBlockOptionState {
+                block_state_id: 321
+            })
+        );
+        assert_eq!(command.option_item, None);
+        assert_eq!(command.raw_options_len, block_particle_options(321).len());
     }
 
     #[test]
@@ -3664,6 +3762,14 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("falling_dust.json"),
+            r#"{
+              "textures": [
+                "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("trail.json"),
             r#"{
               "textures": [
@@ -3906,6 +4012,21 @@ mod tests {
         out.extend_from_slice(&from_color.to_be_bytes());
         out.extend_from_slice(&to_color.to_be_bytes());
         out.extend_from_slice(&scale.to_be_bytes());
+        out
+    }
+
+    fn block_particle_options(block_state_id: i32) -> Vec<u8> {
+        let mut out = Vec::new();
+        write_positive_var_i32(&mut out, block_state_id);
+        out
+    }
+
+    fn item_particle_options(item_id: i32, count: i32, added_components: i32) -> Vec<u8> {
+        let mut out = Vec::new();
+        write_positive_var_i32(&mut out, item_id);
+        write_positive_var_i32(&mut out, count);
+        write_positive_var_i32(&mut out, added_components);
+        write_positive_var_i32(&mut out, 0);
         out
     }
 

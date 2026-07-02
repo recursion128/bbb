@@ -1501,11 +1501,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     particle-atlas `OPAQUE` per vanilla. Sprite-transparency-driven
     `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS` selection and actual block/item
     atlas UV/tint resolution remain follow-up work.
-  - terrain/item particle option rendering：native now preserves the command and
-    raw option length for definition-less block/item atlas particle types, but
-    decoding `BlockParticleOption` / `ItemParticleOption`, resolving block/item
-    atlas sprites, terrain tint, random 4x4 UV sub-rects, and transparent
-    terrain/items vertex emission remain follow-up work.
+  - [x] terrain/item particle option metadata baseline：native now decodes
+    vanilla `BlockParticleOption` block-state ids for `block`, `block_marker`,
+    `falling_dust`, `dust_pillar`, and `block_crumble`, and decodes
+    `ItemParticleOption` `ItemStackTemplate` item id / count plus raw component
+    patch byte length for `item`; renderer `ParticleSpawnCommand` and
+    `ParticleInstance` preserve that metadata beside the terrain/item layer.
+  - terrain/item particle atlas rendering：resolving block/item atlas sprites,
+    terrain tint, random 4x4 UV sub-rects, sprite-transparency-driven
+    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, and transparent terrain/items
+    vertex emission remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
@@ -1535,13 +1540,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     double portal ring (`angle += PI / 20`, velocity radii `-5` and `-7`)
     after consuming the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
     random draws; the ender-eye item particles remain deferred with item
-    particle option rendering.
+    particle atlas rendering.
   - [x] splash / instant splash potion break spell particles：events `2002` and
     `2007` now consume the preceding eight `ItemParticleOption(Items.SPLASH_POTION)`
     random draws, then emit 100 vanilla-positioned `minecraft:effect` /
     `minecraft:instant_effect` submissions with event-data RGB, random
     brightness, and `SpellParticleOption` power. The splash-potion item
-    particles remain deferred with item particle option rendering.
+    particles remain deferred with item particle atlas rendering.
   - [x] bee-growth / turtle-egg-placement happy-villager in-block particles：
     events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
     (`PARTICLES_TURTLE_EGG_PLACEMENT`) now mirror vanilla

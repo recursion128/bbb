@@ -170,12 +170,15 @@ When an agent does any of the following, update this file in the same slice:
     - collision/player-coupled physics
     - atlas mip-level animation beyond covered age-based `SpriteSet` frame
       selection
-    - terrain/item particle option rendering:
+    - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
-      - decoding `BlockParticleOption` / `ItemParticleOption`, resolving
-        block/item atlas sprites, terrain tint, random 4x4 UV sub-rects, and
-        transparent terrain/items vertex emission remain deferred
+      - native now decodes `BlockParticleOption` block-state ids for block
+        atlas particles plus `falling_dust`, and decodes `ItemParticleOption`
+        item id / count plus raw component patch byte length for `item`
+      - resolving block/item atlas sprites, terrain tint, random 4x4 UV
+        sub-rects, sprite-transparency-driven terrain/item layer selection,
+        and transparent terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
       trial-spawner/happy-villager side effects
@@ -193,9 +196,10 @@ When an agent does any of the following, update this file in the same slice:
       through vanilla-shaped `RenderPipelines.OPAQUE_PARTICLE` (no blend) and
       `RenderPipelines.TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`)
       GPU pipelines. Definition-less block/item atlas particle types now keep
-      submission commands and record terrain/item layer metadata, but actual
-      block/item atlas sprite lookup and transparent terrain/item splitting
-      remain follow-up work.
+      submission commands, record terrain/item layer metadata, and preserve
+      decoded block-state / item-template option metadata, but actual
+      block/item atlas sprite lookup, terrain tint, random 4x4 UV sub-rects,
+      and transparent terrain/item splitting remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -286,7 +290,7 @@ When an agent does any of the following, update this file in the same slice:
         normal/ominous flame spawn particles
     - Remaining item/block option LevelEvent branches, including event `2003`'s
       ender-eye item particles and events `2002` / `2007` splash-potion item
-      particles, stay deferred with terrain/item particle option rendering
+      particles, stay deferred with terrain/item particle atlas rendering
       rather than being approximated as simple atlas particles. Event `1505`
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
@@ -562,7 +566,8 @@ When an agent does any of the following, update this file in the same slice:
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
         opaque layer, and transition partial-tick color lerp. Other non-spell
-        particle option rendering remains separate follow-up work.
+        option-driven atlas rendering and provider-specific option effects
+        remain separate follow-up work.
       - `SpellParticle.WitchProvider` reuses the simple spell motion/lifetime
         metadata and applies the vanilla shared random magenta brightness
         (`0.35..0.85` for red and blue, zero green)
