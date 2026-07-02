@@ -1661,6 +1661,14 @@
     oak/mangrove leaves and leaf litter on the BlockColors/tint path. Full
     mapColor catalog coverage, biome-aware per-spawn BlockColors, and
     on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` crop/succulent static mapColor expansion：native now
+    mirrors vanilla static mapColor fallback for wheat's age-selected
+    PLANT/COLOR_YELLOW branch plus carrots, potatoes, beetroots, nether wart,
+    torchflower crop, pitcher crop/plant, cactus, and cactus flower. Tests pin
+    age-selected wheat, crop age states, pitcher halves, and cactus states while
+    leaving sugar cane and melon/pumpkin stems on the BlockColors/tint path.
+    Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
+    on-ground roll reset remain follow-up work.
   - [x] `falling_dust` utility/mechanical static mapColor expansion：native now
     mirrors vanilla static mapColor fallback for bedrock/pistons/spawner/
     crafter/trial spawner/vault STONE blocks, note/bookshelf/chest/crafting

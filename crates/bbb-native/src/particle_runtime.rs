@@ -2738,6 +2738,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = resin_and_pale_garden_static_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = crop_static_map_color(name, properties) {
+        return Some(color);
+    }
     if let Some(color) = natural_static_map_color(name) {
         return Some(color);
     }
@@ -3077,6 +3080,31 @@ fn resin_and_pale_garden_static_map_color(name: &str) -> Option<u32> {
         "open_eyeblossom" => MAP_COLOR_ORANGE,
         "closed_eyeblossom" => MAP_COLOR_METAL,
         "firefly_bush" => MAP_COLOR_PLANT,
+        _ => return None,
+    })
+}
+
+fn crop_static_map_color(
+    name: &str,
+    properties: &std::collections::BTreeMap<String, String>,
+) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "wheat" => {
+            if properties
+                .get("age")
+                .and_then(|age| age.parse::<u8>().ok())
+                .is_some_and(|age| age >= 6)
+            {
+                MAP_COLOR_YELLOW
+            } else {
+                MAP_COLOR_PLANT
+            }
+        }
+        "carrots" | "potatoes" | "beetroots" | "torchflower_crop" | "pitcher_crop"
+        | "pitcher_plant" | "cactus" => MAP_COLOR_PLANT,
+        "cactus_flower" => MAP_COLOR_PINK,
+        "nether_wart" => MAP_COLOR_RED,
         _ => return None,
     })
 }
@@ -4733,6 +4761,82 @@ mod tests {
                 test_block_state_id("minecraft:mud", []),
                 "minecraft:mud",
                 rgb_option(0x57, 0x5c, 0x5c),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_crop_static_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:wheat", [("age", "0")]),
+                "minecraft:wheat age=0",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:wheat", [("age", "7")]),
+                "minecraft:wheat age=7",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:carrots", [("age", "0")]),
+                "minecraft:carrots",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:potatoes", [("age", "0")]),
+                "minecraft:potatoes",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:beetroots", [("age", "0")]),
+                "minecraft:beetroots",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:nether_wart", [("age", "0")]),
+                "minecraft:nether_wart",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:torchflower_crop", [("age", "0")]),
+                "minecraft:torchflower_crop",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:pitcher_crop", [("age", "0"), ("half", "upper")]),
+                "minecraft:pitcher_crop",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:pitcher_plant", [("half", "upper")]),
+                "minecraft:pitcher_plant",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:cactus", [("age", "0")]),
+                "minecraft:cactus",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:cactus_flower", []),
+                "minecraft:cactus_flower",
+                rgb_option(0xf2, 0x7f, 0xa5),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
