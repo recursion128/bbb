@@ -225,11 +225,14 @@ When an agent does any of the following, update this file in the same slice:
       represented as an ordinary particle-atlas `OPAQUE` provider with zero
       constructor velocity, age sprite selection, vanilla lifetime, grow-to-base
       size curve, roll / rotSpeed runtime state, and Y velocity clamped to
-      `-0.14`; actual block/item atlas sprite lookup, terrain tint,
-      on-ground roll reset, terrain/items atlas GPU binding, and transparent
-      terrain/item splitting remain follow-up work. Native spawn resolution
-      also mirrors `TerrainParticle.createTerrainParticle` for definition-less
-      `minecraft:block`, `minecraft:dust_pillar`, and
+      `-0.14`; native spawn resolution now projects the provider's
+      `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
+      dragon_egg, and concrete_powder into the renderer visual tint. Actual
+      block/item atlas sprite lookup, non-FallingBlock BlockColors / map-color
+      fallback, on-ground roll reset, terrain/items atlas GPU binding, and
+      transparent terrain/item splitting remain follow-up work. Native spawn
+      resolution also mirrors `TerrainParticle.createTerrainParticle` for
+      definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
       `shouldSpawnTerrainParticles=false` block states after packet sample RNG
       is consumed; `minecraft:block_marker` remains unfiltered like vanilla
@@ -6244,9 +6247,11 @@ When an agent does any of the following, update this file in the same slice:
         it to `-0.14`. Native spawn resolution now mirrors the provider's
         `!state.isAir() && state.getRenderShape() == RenderShape.INVISIBLE`
         rejection while preserving packet sample RNG consumption before the
-        rejected provider result. Block-state tint and on-ground roll reset
-        remain deferred until particle ticking can query world block/collision
-        state.
+        rejected provider result. Its `FallingBlock#getDustColor` branch is
+        projected into `ParticleSpawnCommand.option_color` for sand/red_sand,
+        gravel, dragon_egg, anvils, and concrete_powder states; non-FallingBlock
+        BlockColors / map-color fallback and on-ground roll reset remain
+        deferred until particle ticking can query world block/collision state.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
         `minecraft:block_crumble` submissions: air, `moving_piston`, and

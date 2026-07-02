@@ -5665,6 +5665,22 @@ mod tests {
     }
 
     #[test]
+    fn falling_dust_instance_uses_option_color_for_block_dust_tint() {
+        let mut random = ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED);
+        let mut command = spawn_command("minecraft:falling_dust", 0.0);
+        command.option_color = Some([0.86, 0.83, 0.63, 1.0]);
+
+        let falling_dust = ParticleInstance::from_spawn_command(command, &mut random);
+
+        assert_eq!(falling_dust.provider, "FallingDustParticle.Provider");
+        assert_eq!(falling_dust.color, [0.86, 0.83, 0.63, 1.0]);
+        assert_eq!(
+            falling_dust.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+    }
+
+    #[test]
     fn particle_runtime_snowflake_applies_vanilla_post_tick_damping() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:snowflake", 20);

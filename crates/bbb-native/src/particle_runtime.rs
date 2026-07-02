@@ -2062,6 +2062,11 @@ fn particle_option_render_state(
                 return ParticleOptionRenderState::default();
             }
             ParticleOptionRenderState {
+                color: if particle_type_id == FALLING_DUST_PARTICLE_TYPE_ID {
+                    falling_dust_color_for_block_state_id(block_state_id)
+                } else {
+                    None
+                },
                 block: Some(ParticleBlockOptionState { block_state_id }),
                 ..ParticleOptionRenderState::default()
             }
@@ -2240,6 +2245,51 @@ fn falling_dust_provider_rejects_block_name(name: &str) -> bool {
     ) && block_name_has_invisible_render_shape(name)
 }
 
+fn falling_dust_color_for_block_state_id(block_state_id: i32) -> Option<[f32; 4]> {
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let block_state = block_states.by_id(block_state_id)?;
+    falling_dust_color_for_block_name(&block_state.name).map(rgb_particle_color_u32)
+}
+
+fn falling_dust_color_for_block_name(name: &str) -> Option<u32> {
+    match name {
+        // Vanilla FallingDustParticle.Provider uses FallingBlock#getDustColor first.
+        "minecraft:sand" => Some(0xDB_D3_A0),
+        "minecraft:red_sand" => Some(0xA9_58_21),
+        "minecraft:gravel" => Some(0x80_7C_7B),
+        "minecraft:dragon_egg" => Some(0x00_00_00),
+        "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil" => {
+            Some(MAP_COLOR_METAL)
+        }
+        name => concrete_powder_map_color(name),
+    }
+}
+
+fn concrete_powder_map_color(name: &str) -> Option<u32> {
+    let color = name
+        .strip_prefix("minecraft:")?
+        .strip_suffix("_concrete_powder")?;
+    Some(match color {
+        "white" => MAP_COLOR_SNOW,
+        "orange" => MAP_COLOR_ORANGE,
+        "magenta" => MAP_COLOR_MAGENTA,
+        "light_blue" => MAP_COLOR_LIGHT_BLUE,
+        "yellow" => MAP_COLOR_YELLOW,
+        "lime" => MAP_COLOR_LIGHT_GREEN,
+        "pink" => MAP_COLOR_PINK,
+        "gray" => MAP_COLOR_GRAY,
+        "light_gray" => MAP_COLOR_LIGHT_GRAY,
+        "cyan" => MAP_COLOR_CYAN,
+        "purple" => MAP_COLOR_PURPLE,
+        "blue" => MAP_COLOR_BLUE,
+        "brown" => MAP_COLOR_BROWN,
+        "green" => MAP_COLOR_GREEN,
+        "red" => MAP_COLOR_RED,
+        "black" => MAP_COLOR_BLACK,
+        _ => return None,
+    })
+}
+
 fn terrain_particle_provider_accepts_block_state(block_state_id: i32) -> bool {
     let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
     let Some(block_state) = block_states.by_id(block_state_id) else {
@@ -2294,7 +2344,10 @@ fn decode_option_vec3d(decoder: &mut Decoder<'_>) -> bbb_protocol::codec::Result
 }
 
 fn rgb_particle_color(color: i32) -> [f32; 4] {
-    let color = color as u32;
+    rgb_particle_color_u32(color as u32)
+}
+
+fn rgb_particle_color_u32(color: u32) -> [f32; 4] {
     [
         ((color >> 16) & 0xff) as f32 / 255.0,
         ((color >> 8) & 0xff) as f32 / 255.0,
@@ -2634,6 +2687,23 @@ const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
+const MAP_COLOR_SNOW: u32 = 16_777_215;
+const MAP_COLOR_METAL: u32 = 10_987_431;
+const MAP_COLOR_ORANGE: u32 = 14_188_339;
+const MAP_COLOR_MAGENTA: u32 = 11_685_080;
+const MAP_COLOR_LIGHT_BLUE: u32 = 6_724_056;
+const MAP_COLOR_YELLOW: u32 = 15_066_419;
+const MAP_COLOR_LIGHT_GREEN: u32 = 8_375_321;
+const MAP_COLOR_PINK: u32 = 15_892_389;
+const MAP_COLOR_GRAY: u32 = 5_000_268;
+const MAP_COLOR_LIGHT_GRAY: u32 = 10_066_329;
+const MAP_COLOR_CYAN: u32 = 5_013_401;
+const MAP_COLOR_PURPLE: u32 = 8_339_378;
+const MAP_COLOR_BLUE: u32 = 3_361_970;
+const MAP_COLOR_BROWN: u32 = 6_704_179;
+const MAP_COLOR_GREEN: u32 = 6_717_235;
+const MAP_COLOR_RED: u32 = 10_040_115;
+const MAP_COLOR_BLACK: u32 = 1_644_825;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
@@ -3028,7 +3098,67 @@ mod tests {
             })
         );
         assert_eq!(command.option_item, None);
+        assert_eq!(command.option_color, None);
         assert_eq!(command.raw_options_len, block_particle_options(321).len());
+    }
+
+    #[test]
+    fn falling_dust_decodes_falling_block_dust_colors() {
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:sand", []),
+                "minecraft:sand",
+                rgb_option(0xDB, 0xD3, 0xA0),
+            ),
+            (
+                test_block_state_id("minecraft:red_sand", []),
+                "minecraft:red_sand",
+                rgb_option(0xA9, 0x58, 0x21),
+            ),
+            (
+                test_block_state_id("minecraft:gravel", []),
+                "minecraft:gravel",
+                rgb_option(0x80, 0x7C, 0x7B),
+            ),
+            (
+                test_block_state_id("minecraft:dragon_egg", []),
+                "minecraft:dragon_egg",
+                rgb_option(0x00, 0x00, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:anvil", [("facing", "north")]),
+                "minecraft:anvil",
+                rgb_option(0xA7, 0xA7, 0xA7),
+            ),
+            (
+                test_block_state_id("minecraft:red_concrete_powder", []),
+                "minecraft:red_concrete_powder",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:black_concrete_powder", []),
+                "minecraft:black_concrete_powder",
+                rgb_option(0x19, 0x19, 0x19),
+            ),
+        ] {
+            let mut resolver = test_resolver(0);
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_block,
+                Some(ParticleBlockOptionState { block_state_id }),
+                "{block_name}"
+            );
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
     }
 
     #[test]
@@ -5771,6 +5901,15 @@ mod tests {
 
     fn expected_random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -> f64 {
         min + random.next_double() * (max - min)
+    }
+
+    fn rgb_option(r: u8, g: u8, b: u8) -> [f32; 4] {
+        [
+            f32::from(r) / 255.0,
+            f32::from(g) / 255.0,
+            f32::from(b) / 255.0,
+            1.0,
+        ]
     }
 
     fn assert_sculk_charge_command(

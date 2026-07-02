@@ -1428,6 +1428,14 @@
     liquid block states, while still allowing air and preserving packet sample
     RNG consumption before the provider-null result. Block-state dust tint and
     on-ground roll reset remain world/collision-coupled follow-up work.
+  - [x] `falling_dust` FallingBlock dust-color tint：native
+    `LevelParticles` resolution now mirrors the provider's
+    `FallingBlock#getDustColor` branch for vanilla 26.1 sand, red_sand,
+    gravel, dragon_egg, anvils, and concrete_powder states by projecting the
+    resolved RGB into `ParticleSpawnCommand.option_color`; renderer
+    `FallingDustParticle.Provider` instances consume that option color as their
+    visual tint. Non-FallingBlock `BlockColors` / map-color fallback and
+    on-ground roll reset remain terrain/collision-coupled follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

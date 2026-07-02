@@ -245,8 +245,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 
 - 粒子 provider-specific behavior：
   - `falling_dust` 的非 air `RenderShape.INVISIBLE` provider spawn rejection 已
-    对齐 vanilla；block-state tint 与 on-ground roll reset 仍随 terrain/collision
-    查询推进。
+    对齐 vanilla；`FallingBlock#getDustColor` 分支的 sand/red_sand/gravel、
+    anvil、dragon_egg、concrete_powder RGB 已投影进 native spawn command 并由
+    renderer visual color 消费。非 FallingBlock 的 BlockColors / map-color fallback
+    与 on-ground roll reset 仍随 terrain/collision 查询推进。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
