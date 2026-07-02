@@ -169,8 +169,8 @@ Owns value-aware item-model resolution.
   rendering.
 - Exposes `NativeItemRuntime` and its context/result types; consumed by the
   `bbb-native` runtime, scene, and HUD paths.
-- Depends on `bbb-pack`, `bbb-protocol`, `bbb-renderer`, `bbb-world`, and
-  `bbb-audio`; holds no runtime orchestration or canonical world state.
+- Depends on `bbb-pack`, `bbb-protocol`, `bbb-renderer`, and `bbb-world`; holds
+  no runtime orchestration or canonical world state.
 
 ### `bbb-platform`
 
