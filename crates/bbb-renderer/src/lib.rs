@@ -4,6 +4,7 @@ mod clouds;
 mod counters;
 mod entity_models;
 mod exports;
+mod frame_buffers;
 mod generated_item;
 mod gpu;
 mod hud;

@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 
+use crate::frame_buffers::FrameDataBuffer;
 use crate::{
     clouds::CloudShape,
     entity_models::{
@@ -646,19 +647,12 @@ impl Renderer {
         }
 
         let item_entity_vertices = self.collect_item_entity_vertices();
-        let item_entity_vertex_buffer =
-            if self.item_entity_atlas.is_some() && !item_entity_vertices.is_empty() {
-                Some(
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-item-entity-frame-vertices"),
-                            contents: bytemuck::cast_slice(&item_entity_vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }),
-                )
-            } else {
-                None
-            };
+        let has_item_entity_vertices = self.item_entity_atlas.is_some()
+            && self.frame_item_entity_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&item_entity_vertices),
+            );
         let (block_item_translucent_vertices, block_item_translucent_indices) =
             self.collect_block_item_model_translucent_geometry();
         let block_item_translucent_buffers = self.create_item_model_frame_buffers(
@@ -739,9 +733,8 @@ impl Renderer {
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
             }
-            if let (Some(atlas), Some(vertex_buffer)) =
-                (&self.item_entity_atlas, &item_entity_vertex_buffer)
-            {
+            if let (Some(atlas), true) = (&self.item_entity_atlas, has_item_entity_vertices) {
+                let vertex_buffer = self.frame_item_entity_vertices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.item_entity_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
@@ -910,73 +903,47 @@ impl Renderer {
         }
 
         let particle_vertex_batches = self.collect_particle_vertex_batches();
-        let opaque_particle_vertex_buffer =
-            if self.particle_atlas.is_some() && !particle_vertex_batches.opaque.is_empty() {
-                Some(
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-opaque-particle-frame-vertices"),
-                            contents: bytemuck::cast_slice(&particle_vertex_batches.opaque),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }),
-                )
-            } else {
-                None
-            };
-        let translucent_particle_vertex_buffer =
-            if self.particle_atlas.is_some() && !particle_vertex_batches.translucent.is_empty() {
-                Some(
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-translucent-particle-frame-vertices"),
-                            contents: bytemuck::cast_slice(&particle_vertex_batches.translucent),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }),
-                )
-            } else {
-                None
-            };
+        let has_opaque_particles = self.particle_atlas.is_some()
+            && self.frame_opaque_particle_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&particle_vertex_batches.opaque),
+            );
+        let has_translucent_particles = self.particle_atlas.is_some()
+            && self.frame_translucent_particle_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&particle_vertex_batches.translucent),
+            );
         let weather_mesh = build_weather_mesh(&self.weather_render_state);
-        let weather_buffers = weather_mesh
+        let has_weather_buffers = weather_mesh
             .as_ref()
             .filter(|mesh| {
                 (!mesh.rain_indices.is_empty() && self.weather_rain_texture.is_some())
                     || (!mesh.snow_indices.is_empty() && self.weather_snow_texture.is_some())
             })
-            .map(|mesh| {
-                let vertex_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-weather-frame-vertices"),
-                            contents: bytemuck::cast_slice(&mesh.vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
-                let index_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-weather-frame-indices"),
-                            contents: bytemuck::cast_slice(&mesh.indices),
-                            usage: wgpu::BufferUsages::INDEX,
-                        });
-                (vertex_buffer, index_buffer)
+            .is_some_and(|mesh| {
+                self.frame_weather_vertices.upload(
+                    &self.device,
+                    &self.queue,
+                    bytemuck::cast_slice(&mesh.vertices),
+                ) && self.frame_weather_indices.upload(
+                    &self.device,
+                    &self.queue,
+                    bytemuck::cast_slice(&mesh.indices),
+                )
             });
         let lightning_mesh = build_lightning_mesh(&self.weather_render_state);
-        let lightning_buffers = lightning_mesh.as_ref().map(|mesh| {
-            let vertex_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("bbb-lightning-frame-vertices"),
-                    contents: bytemuck::cast_slice(&mesh.vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
-            let index_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("bbb-lightning-frame-indices"),
-                    contents: bytemuck::cast_slice(&mesh.indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
-            (vertex_buffer, index_buffer)
+        let has_lightning_buffers = lightning_mesh.as_ref().is_some_and(|mesh| {
+            self.frame_lightning_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&mesh.vertices),
+            ) && self.frame_lightning_indices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&mesh.indices),
+            )
         });
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1001,21 +968,25 @@ impl Renderer {
                 timestamp_writes: None,
             });
             if let Some(atlas) = &self.particle_atlas {
-                if let Some(vertex_buffer) = &opaque_particle_vertex_buffer {
+                if let Some(vertex_buffer) =
+                    has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
+                {
                     pass.set_pipeline(&self.opaque_particle_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &atlas.bind_group, &[]);
                     pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
                     pass.draw(0..particle_vertex_batches.opaque.len() as u32, 0..1);
                     particle_draw_calls += 1;
                 }
-                if let Some(vertex_buffer) = &translucent_particle_vertex_buffer {
+                if let Some(vertex_buffer) = has_translucent_particles
+                    .then(|| self.frame_translucent_particle_vertices.buffer())
+                {
                     pass.set_pipeline(&self.translucent_particle_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &atlas.bind_group, &[]);
                     pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.set_vertex_buffer(0, vertex_buffer.expect("uploaded").slice(..));
                     pass.draw(0..particle_vertex_batches.translucent.len() as u32, 0..1);
                     particle_draw_calls += 1;
                 }
@@ -1213,9 +1184,9 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if let (Some(mesh), Some((vertex_buffer, index_buffer))) =
-                (&lightning_mesh, &lightning_buffers)
-            {
+            if let (Some(mesh), true) = (&lightning_mesh, has_lightning_buffers) {
+                let vertex_buffer = self.frame_lightning_vertices.buffer().expect("uploaded");
+                let index_buffer = self.frame_lightning_indices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.lightning_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
@@ -1224,9 +1195,9 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
                 weather_draw_calls += 1;
             }
-            if let (Some(mesh), Some((vertex_buffer, index_buffer))) =
-                (&weather_mesh, &weather_buffers)
-            {
+            if let (Some(mesh), true) = (&weather_mesh, has_weather_buffers) {
+                let vertex_buffer = self.frame_weather_vertices.buffer().expect("uploaded");
+                let index_buffer = self.frame_weather_indices.buffer().expect("uploaded");
                 pass.set_pipeline(&self.weather_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -1293,20 +1264,21 @@ impl Renderer {
             transparency_blit_draw_calls += 1;
         }
 
+        // `collect_hud_draws` borrows self for the lifetime of its commands, so
+        // temporarily move the persistent buffer out to upload alongside them.
+        let mut frame_hud_vertices = std::mem::replace(
+            &mut self.frame_hud_vertices,
+            FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
+        );
         let hud_draws = self.collect_hud_draws();
-        let hud_vertex_buffer = if hud_draws.commands.is_empty() {
-            None
-        } else {
-            Some(
-                self.device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("bbb-hud-frame-vertices"),
-                        contents: bytemuck::cast_slice(&hud_draws.vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    }),
-            )
-        };
-        if let Some(hud_vertex_buffer) = &hud_vertex_buffer {
+        let has_hud_vertices = !hud_draws.commands.is_empty()
+            && frame_hud_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&hud_draws.vertices),
+            );
+        if has_hud_vertices {
+            let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
             let hud_commands = &hud_draws.commands[..hud_draws.post_gui_item_start];
             if !hud_commands.is_empty() {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1418,7 +1390,8 @@ impl Renderer {
             }
         }
 
-        if let Some(hud_vertex_buffer) = &hud_vertex_buffer {
+        if has_hud_vertices {
+            let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
             let hud_commands = &hud_draws.commands[hud_draws.post_gui_item_start..];
             if !hud_commands.is_empty() {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1441,6 +1414,8 @@ impl Renderer {
                 pipeline_switches += switches;
             }
         }
+        drop(hud_draws);
+        self.frame_hud_vertices = frame_hud_vertices;
 
         let readback = if let Some(path) = screenshot {
             Some(self.prepare_screenshot_copy(&mut encoder, &frame.texture, path)?)

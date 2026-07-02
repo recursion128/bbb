@@ -5,6 +5,7 @@ use glam::Mat4;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
+use crate::frame_buffers::FrameDataBuffer;
 use crate::{
     block_destroy::{
         create_block_destroy_overlays_gpu, create_block_destroy_pipeline, BlockDestroyOverlay,
@@ -145,6 +146,14 @@ pub struct Renderer {
     pub(super) entity_model_armor_entity_glint_pipeline: wgpu::RenderPipeline,
     pub(super) opaque_particle_pipeline: wgpu::RenderPipeline,
     pub(super) translucent_particle_pipeline: wgpu::RenderPipeline,
+    pub(super) frame_opaque_particle_vertices: FrameDataBuffer,
+    pub(super) frame_translucent_particle_vertices: FrameDataBuffer,
+    pub(super) frame_weather_vertices: FrameDataBuffer,
+    pub(super) frame_weather_indices: FrameDataBuffer,
+    pub(super) frame_lightning_vertices: FrameDataBuffer,
+    pub(super) frame_lightning_indices: FrameDataBuffer,
+    pub(super) frame_item_entity_vertices: FrameDataBuffer,
+    pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
     pub(super) lightning_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
@@ -914,6 +923,18 @@ impl Renderer {
             entity_model_armor_entity_glint_pipeline,
             opaque_particle_pipeline,
             translucent_particle_pipeline,
+            frame_opaque_particle_vertices: FrameDataBuffer::vertex(
+                "bbb-opaque-particle-frame-vertices",
+            ),
+            frame_translucent_particle_vertices: FrameDataBuffer::vertex(
+                "bbb-translucent-particle-frame-vertices",
+            ),
+            frame_weather_vertices: FrameDataBuffer::vertex("bbb-weather-frame-vertices"),
+            frame_weather_indices: FrameDataBuffer::index("bbb-weather-frame-indices"),
+            frame_lightning_vertices: FrameDataBuffer::vertex("bbb-lightning-frame-vertices"),
+            frame_lightning_indices: FrameDataBuffer::index("bbb-lightning-frame-indices"),
+            frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
+            frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
             lightning_pipeline,
             item_entity_pipeline,
