@@ -6016,6 +6016,10 @@ When an agent does any of the following, update this file in the same slice:
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
         and the randomized charged branch
+      - sculk-shrieker sound for event `3007`, gated off when the loaded event
+        block state has `waterlogged=true`, using
+        `SculkShriekerBlock.TOP_Y`, volume `2.0`, and
+        `0.6 + random.nextFloat() * 0.4` pitch after the shriek particles
       - sculk charge pop particles for event `3006` `data >> 6 == 0`: native
         level-event particle context now carries the target block full-shape
         classification, and the resolver emits `minecraft:sculk_charge_pop`
@@ -6023,9 +6027,9 @@ When an agent does any of the following, update this file in the same slice:
         velocity scale
       - sculk-shrieker event `3007` now emits the vanilla ten
         `minecraft:shriek` particles at `SculkShriekerBlock.TOP_Y` with
-        `ShriekParticleOption(i * 5)` delays; the waterlogged-gated
-        `SCULK_SHRIEKER_SHRIEK` local sound branch remains audio/world-state
-        follow-up
+        `ShriekParticleOption(i * 5)` delays, then records/plays the
+        waterlogged-gated `SCULK_SHRIEKER_SHRIEK` positioned sound when the
+        loaded event block state is not waterlogged
       - lava extinguish and redstone torch burnout now share the dispatcher
         path with renderer smoke side effects for events `1501` and `1502`
       - cobweb place event `3018` consumes the vanilla poof-particle random

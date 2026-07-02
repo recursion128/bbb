@@ -16,9 +16,11 @@ use crate::WorldStore;
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
+const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
+const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
@@ -426,6 +428,37 @@ impl WorldStore {
             "block",
             true,
         ))
+    }
+
+    pub fn sculk_shrieker_level_event_sound_with_random(
+        &self,
+        event: ProtocolLevelEvent,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        if event.event_type != SCULK_SHRIEKER_LEVEL_EVENT {
+            return None;
+        }
+        let pos = crate::protocol_block_pos(event.pos);
+        if self
+            .probe_block(pos)
+            .and_then(|probe| probe.block_properties.get("waterlogged").cloned())
+            .is_some_and(|waterlogged| waterlogged == "true")
+        {
+            return None;
+        }
+        Some(SoundEventState {
+            sound: direct_sound_holder("minecraft:block.sculk_shrieker.shriek"),
+            source: "block".to_string(),
+            position: ProtocolVec3d {
+                x: f64::from(pos.x) + 0.5,
+                y: f64::from(pos.y) + SCULK_SHRIEKER_TOP_Y,
+                z: f64::from(pos.z) + 0.5,
+            },
+            volume: 2.0,
+            pitch: ranged_pitch(0.6, 0.4, &mut next_float),
+            seed: 0,
+            distance_delay: false,
+        })
     }
 
     pub fn global_level_event_sound(
@@ -1606,6 +1639,52 @@ mod tests {
 
         let recorded = store.record_local_sound(sound);
         assert_eq!(store.last_local_sound(), Some(&recorded));
+    }
+
+    #[test]
+    fn sculk_shrieker_level_event_sound_uses_top_y_and_random_pitch() {
+        let store = WorldStore::new();
+        let sound = store
+            .sculk_shrieker_level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 3007,
+                    pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+                    data: 0,
+                    global: false,
+                },
+                || 0.25,
+            )
+            .unwrap();
+
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.sculk_shrieker.shriek")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 2.5,
+                y: 64.5,
+                z: -4.5,
+            }
+        );
+        assert_close(sound.volume, 2.0);
+        assert_close(sound.pitch, 0.7);
+        assert_eq!(sound.seed, 0);
+        assert!(!sound.distance_delay);
+
+        assert!(store
+            .sculk_shrieker_level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 3008,
+                    pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+                    data: 0,
+                    global: false,
+                },
+                || panic!("non-3007 should not sample random"),
+            )
+            .is_none());
     }
 
     #[test]

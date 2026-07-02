@@ -26,6 +26,7 @@ const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
+const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
@@ -383,6 +384,25 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     }
                     if let Some(state) = world
                         .cobweb_place_level_event_sound_with_random(event, || {
+                            level_event_sound_random.next_float()
+                        })
+                    {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else if event.event_type == SCULK_SHRIEKER_LEVEL_EVENT {
+                    emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        level_event_particle_context(world, &event),
+                        level_event_sound_random,
+                    );
+                    if let Some(state) = world
+                        .sculk_shrieker_level_event_sound_with_random(event, || {
                             level_event_sound_random.next_float()
                         })
                     {

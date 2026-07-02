@@ -1513,6 +1513,11 @@
     `TerrainParticle.DustPillarProvider` rejection for air, `moving_piston`, and
     no-terrain-particle states, preserving the event random draws before the
     rejected provider result.
+  - [x] sculk-shrieker LevelEvent sound：event `3007` now records and plays the
+    vanilla `SCULK_SHRIEKER_SHRIEK` positioned sound after the shriek particle
+    branch, using `SculkShriekerBlock.TOP_Y`, volume `2.0`,
+    `0.6 + random.nextFloat() * 0.4` pitch, and the loaded block state's
+    `waterlogged=true` gate.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

@@ -266,6 +266,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
     vault activation/portal ring/happy-villager/item-break/composter/known-shape block-destroy
     之外的剩余事件。
+- LevelEvent audio side effects：
+  - `3007` sculk-shrieker shriek sound 已按 vanilla 的
+    `waterlogged` gate、`SculkShriekerBlock.TOP_Y` 位置和随机 pitch 覆盖。
 
 完成标准：
 

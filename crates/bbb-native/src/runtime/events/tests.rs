@@ -4020,6 +4020,110 @@ fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
 }
 
 #[test]
+fn sculk_shrieker_level_event_emits_waterlogged_gated_sound_after_particles() {
+    let dry_event = LevelEvent {
+        event_type: 3007,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let wet_event = LevelEvent {
+        event_type: 3007,
+        pos: ProtocolBlockPos {
+            x: 17,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let dry_shrieker = vanilla_block_state_id(
+        "minecraft:sculk_shrieker",
+        [
+            ("can_summon", "false"),
+            ("shrieking", "false"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let wet_shrieker = vanilla_block_state_id(
+        "minecraft:sculk_shrieker",
+        [
+            ("can_summon", "false"),
+            ("shrieking", "false"),
+            ("waterlogged", "true"),
+        ],
+    );
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: dry_event.pos,
+        block_state_id: dry_shrieker,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: wet_event.pos,
+        block_state_id: wet_shrieker,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(dry_event)).unwrap();
+    tx.try_send(NetEvent::LevelEvent(wet_event)).unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_pitch = 0.6 + expected_random.next_float() * 0.4;
+    let expected_seed = expected_random.next_long();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(particles.level_events, vec![dry_event, wet_event]);
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(
+        command.sound.event_id,
+        "minecraft:block.sculk_shrieker.shriek"
+    );
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [16.5, -63.5, -31.5]);
+    assert_close(command.packet_volume, 2.0);
+    assert_close(command.packet_pitch, expected_pitch);
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.sculk_shrieker.shriek")
+    );
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
 fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
     let event = LevelEvent {
         event_type: 3000,
@@ -5934,6 +6038,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.sculk.charge": {
                 "sounds": ["block/sculk/charge"]
+            },
+            "block.sculk_shrieker.shriek": {
+                "sounds": ["block/sculk_shrieker/shriek"]
             },
             "block.cobweb.place": {
                 "sounds": ["block/cobweb/place"]
