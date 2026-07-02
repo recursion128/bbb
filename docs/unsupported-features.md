@@ -790,8 +790,8 @@ When an agent does any of the following, update this file in the same slice:
     `armorCutoutNoCull` / `armorTranslucent`, and `armorEntityGlint` shaders
     read the positive-bias matrix while item-frame block-model borders use the
     forward matrix for vanilla `RenderTypes.entitySolidZOffsetForward`; plain
-    `entityGlint` and solid item-model `glint` stay on the unshifted matrix.
-    Painting custom geometry and
+    `entityGlint`, solid item-model `glint`, and itemEntity-target
+    `glintTranslucent` stay on the unshifted matrix. Painting custom geometry and
     the exact entity-solid shader/cull split for block/painting atlas consumers
     remain later P1/P2 parity, not a narrow P0 blocker. Surface
     blended submissions now also keep a GPU draw plan of sorted index ranges, so
@@ -801,13 +801,15 @@ When an agent does any of the following, update this file in the same slice:
     Later GPU work should split remaining currently-coalesced render-type state,
     dynamic LightTexture / darkness-adjusted gamma, and diffuse visual parity.
     `entityCutoutZOffset`, `armorCutoutNoCull`, `armorTranslucent`,
-    `Eyes`, `waterMask`, entity glint, solid item glint, and scroll render
-    types now have dedicated baseline GPU pipelines; remaining work there is
-    narrower shader/time/sorting visual parity.
+    `Eyes`, `waterMask`, entity glint, solid item glint, item
+    `glintTranslucent`, and scroll render types now have dedicated baseline GPU
+    pipelines; remaining work there is narrower shader/time/sorting visual
+    parity.
     The P1-1 render-state closeout now treats the remaining generic entries as
     non-blocking follow-up buckets rather than an open narrow-pipeline checklist:
-    standard solid item-model `RenderTypes.glint()` now belongs to the covered
-    P1-3 item path, while `glintTranslucent`, SPECIAL foil decal pose, and 2D
+    standard solid item-model `RenderTypes.glint()` and world/itemEntity-target
+    `RenderTypes.glintTranslucent()` now belong to the covered P1-3 item path,
+    while SPECIAL foil decal pose, GUI transparent 3D icon parity, and 2D
     HUD/inventory sprite glint remain item presentation follow-ups; standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
@@ -1310,8 +1312,8 @@ When an agent does any of the following, update this file in the same slice:
     texture-backed entity, armor, and scroll shaders now also mirror
     `core/entity.fsh` alpha cutoff ordering: sample `Sampler0`, discard when the
     texture alpha is below `ALPHA_CUTOUT 0.1`, then multiply by the submitted
-    tint / vertex color; entity and item glint paths remain the separate
-    `core/glint.fsh` shader shape.
+    tint / vertex color; entity, solid item, and itemEntity-target translucent
+    item glint paths remain the separate `core/glint.fsh` shader shape.
     Surface buckets now also distinguish vanilla cull-on `entitySolid`,
     `entityCutoutCull`, and `entityTranslucentCullItemTarget` draws from no-cull
     entity surfaces, and those cull buckets use a separate texture-backed shader
@@ -2579,7 +2581,10 @@ When an agent does any of the following, update this file in the same slice:
         Foiled 3D block-item stacks now also carry `HudBlockItemModel.foil`
         from `ItemStackSummary::has_foil()` and mirror their solid GUI geometry
         into the same solid item `RenderTypes.glint()` pass as world items; flat
-        2D HUD / inventory sprites still need a separate sprite glint path.
+        2D HUD / inventory sprites still need a separate sprite glint path, and
+        transparent GUI 3D icon base/glint splitting remains a later GUI parity
+        slice rather than part of the world/itemEntity-target `glintTranslucent`
+        path.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.

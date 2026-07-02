@@ -665,6 +665,12 @@ impl Renderer {
             &flat_item_translucent_vertices,
             &flat_item_translucent_indices,
         );
+        let (item_model_glint_translucent_vertices, item_model_glint_translucent_indices) =
+            self.collect_item_model_glint_translucent_geometry();
+        let item_model_glint_translucent_buffers = self.create_item_model_frame_buffers(
+            &item_model_glint_translucent_vertices,
+            &item_model_glint_translucent_indices,
+        );
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -711,6 +717,18 @@ impl Renderer {
                     &self.item_model_translucent_pipeline,
                     buffers,
                     &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+            if let (Some(glint), Some(buffers)) = (
+                &self.item_glint_texture,
+                &item_model_glint_translucent_buffers,
+            ) {
+                self.draw_item_model_glint_frame_buffers(
+                    &mut pass,
+                    buffers,
+                    &glint.main_bind_group,
                 );
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
@@ -2406,6 +2424,44 @@ mod tests {
             "vanilla core/glint does not bind or sample LightTexture"
         );
         assert!(source[helper..helper_end].contains("&self.item_model_glint_pipeline"));
+    }
+
+    #[test]
+    fn item_model_glint_translucent_draws_in_item_entity_target_after_translucent_base() {
+        let source = include_str!("render.rs");
+        let collect = source
+            .find(
+                "let (item_model_glint_translucent_vertices, item_model_glint_translucent_indices)",
+            )
+            .expect("translucent item-model glint collection is present");
+        let item_entity_pass = source[collect..]
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .map(|index| collect + index)
+            .expect("itemEntity target pass follows glintTranslucent collection");
+        let translucent_base = source[item_entity_pass..]
+            .find("&self.item_model_translucent_pipeline")
+            .map(|index| item_entity_pass + index)
+            .expect("translucent item-model base draw uses itemEntity target");
+        let glint_draw = source[translucent_base..]
+            .find("self.draw_item_model_glint_frame_buffers(")
+            .map(|index| translucent_base + index)
+            .expect("glintTranslucent draw follows translucent item base");
+        let item_billboard = source[glint_draw..]
+            .find("pass.set_pipeline(&self.item_entity_pipeline)")
+            .map(|index| glint_draw + index)
+            .expect("item entity billboards follow item-model glintTranslucent");
+
+        assert!(
+            collect < item_entity_pass
+                && item_entity_pass < translucent_base
+                && translucent_base < glint_draw
+                && glint_draw < item_billboard,
+            "glintTranslucent draws in the itemEntity target after translucent item-model base depth writes"
+        );
+        assert!(
+            !source[glint_draw..item_billboard].contains("lightmap.sample_bind_group"),
+            "vanilla core/glint does not bind LightTexture for glintTranslucent"
+        );
     }
 
     #[test]

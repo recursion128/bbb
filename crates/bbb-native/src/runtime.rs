@@ -1637,6 +1637,10 @@ pub(crate) fn pump_network_and_terrain(
     let mut item_model_glint_meshes = dropped_item_models.block_glint_meshes;
     item_model_glint_meshes.extend(held_item_models.block_glint_meshes);
     item_model_glint_meshes.extend(item_frame_models.block_glint_meshes);
+    let mut item_model_glint_translucent_meshes =
+        dropped_item_models.block_glint_translucent_meshes;
+    item_model_glint_translucent_meshes.extend(held_item_models.block_glint_translucent_meshes);
+    item_model_glint_translucent_meshes.extend(item_frame_models.block_glint_translucent_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
     flat_item_meshes.extend(held_item_models.flat_meshes);
     flat_item_meshes.extend(item_frame_models.flat_meshes);
@@ -1646,12 +1650,16 @@ pub(crate) fn pump_network_and_terrain(
     item_model_glint_meshes.extend(dropped_item_models.flat_glint_meshes);
     item_model_glint_meshes.extend(held_item_models.flat_glint_meshes);
     item_model_glint_meshes.extend(item_frame_models.flat_glint_meshes);
+    item_model_glint_translucent_meshes.extend(dropped_item_models.flat_glint_translucent_meshes);
+    item_model_glint_translucent_meshes.extend(held_item_models.flat_glint_translucent_meshes);
+    item_model_glint_translucent_meshes.extend(item_frame_models.flat_glint_translucent_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(block_item_z_offset_forward_meshes);
     renderer.set_block_item_model_translucent_meshes(block_item_translucent_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
     renderer.set_flat_item_model_translucent_meshes(flat_item_translucent_meshes);
     renderer.set_item_model_glint_meshes(item_model_glint_meshes);
+    renderer.set_item_model_glint_translucent_meshes(item_model_glint_translucent_meshes);
     renderer.set_item_frame_map_surfaces(
         item_frame_models.map_textures,
         item_frame_models.map_surfaces,

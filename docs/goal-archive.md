@@ -1524,8 +1524,17 @@
     item solid quads into an item glint mesh bucket, and the renderer uploads
     `textures/misc/enchanted_glint_item.png` for vanilla `RenderTypes.glint()`
     draws using `GLINT_TEXTURING` scale `8.0`, GLINT blend, depth-equal,
-    no-depth-write, no-cull, and no-lightmap shader state. `glintTranslucent`,
-    SPECIAL foil decal pose, and 2D HUD/inventory sprite glint remain follow-ups.
+    no-depth-write, no-cull, and no-lightmap shader state. At that point
+    `glintTranslucent`, SPECIAL foil decal pose, and 2D HUD/inventory sprite
+    glint remained follow-ups.
+  - [x] item-model `glintTranslucent`：foiled dropped / held / item-frame
+    translucent item-model quads now mirror into a dedicated
+    `glint_translucent` mesh bucket, native aggregates that bucket separately
+    from solid item glint, and the renderer draws it inside the itemEntity target
+    after translucent item base geometry so vanilla `RenderTypes.glintTranslucent()`
+    keeps `OutputTarget.ITEM_ENTITY_TARGET`, `GLINT_TEXTURING`, depth-equal,
+    no-depth-write, no-cull, and no-lightmap state. SPECIAL foil decal pose, GUI
+    transparent 3D icon parity, and 2D HUD/inventory sprite glint remain follow-ups.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

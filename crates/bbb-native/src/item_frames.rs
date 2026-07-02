@@ -55,9 +55,11 @@ pub(crate) struct ItemFrameModels {
     pub block_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
     pub block_glint_meshes: Vec<ItemModelMesh>,
+    pub block_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
+    pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
     pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -83,9 +85,11 @@ pub(crate) fn item_frame_models(
     let mut block_z_offset_forward_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
     let mut block_glint_meshes = Vec::new();
+    let mut block_glint_translucent_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
     let mut flat_translucent_meshes = Vec::new();
     let mut flat_glint_meshes = Vec::new();
+    let mut flat_glint_translucent_meshes = Vec::new();
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
     let mut map_decoration_surfaces = Vec::new();
@@ -205,6 +209,7 @@ pub(crate) fn item_frame_models(
                         &mut block_meshes,
                         &mut block_translucent_meshes,
                         &mut block_glint_meshes,
+                        &mut block_glint_translucent_meshes,
                     );
                     continue;
                 }
@@ -240,6 +245,7 @@ pub(crate) fn item_frame_models(
             &mut flat_meshes,
             &mut flat_translucent_meshes,
             &mut flat_glint_meshes,
+            &mut flat_glint_translucent_meshes,
         );
     }
 
@@ -257,9 +263,11 @@ pub(crate) fn item_frame_models(
         block_z_offset_forward_meshes,
         block_translucent_meshes,
         block_glint_meshes,
+        block_glint_translucent_meshes,
         flat_meshes,
         flat_translucent_meshes,
         flat_glint_meshes,
+        flat_glint_translucent_meshes,
         map_textures: map_textures.into_values().collect(),
         map_surfaces,
         map_decoration_textures,
@@ -273,6 +281,7 @@ fn push_mesh_set(
     solid: &mut Vec<ItemModelMesh>,
     translucent: &mut Vec<ItemModelMesh>,
     glint: &mut Vec<ItemModelMesh>,
+    glint_translucent: &mut Vec<ItemModelMesh>,
 ) {
     if !meshes.solid.is_empty() {
         solid.push(meshes.solid);
@@ -282,6 +291,9 @@ fn push_mesh_set(
     }
     if !meshes.glint.is_empty() {
         glint.push(meshes.glint);
+    }
+    if !meshes.glint_translucent.is_empty() {
+        glint_translucent.push(meshes.glint_translucent);
     }
 }
 

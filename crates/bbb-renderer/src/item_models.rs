@@ -117,6 +117,8 @@ pub struct ItemModelMeshSet {
     pub translucent: ItemModelMesh,
     /// Vanilla `RenderTypes.glint()` overlay for foiled item-model solid quads.
     pub glint: ItemModelMesh,
+    /// Vanilla `RenderTypes.glintTranslucent()` overlay for foiled item-model translucent quads.
+    pub glint_translucent: ItemModelMesh,
 }
 
 pub(crate) struct ItemGlintTextureGpu {
@@ -240,6 +242,7 @@ impl ItemModelMeshSet {
             && self.solid_z_offset_forward.is_empty()
             && self.translucent.is_empty()
             && self.glint.is_empty()
+            && self.glint_translucent.is_empty()
     }
 }
 
@@ -294,9 +297,8 @@ pub fn bake_item_model_meshes_with_light_and_overlay(
 }
 
 /// Bakes a model into the same solid/translucent split as
-/// [`bake_item_model_meshes_with_light_and_overlay`], and when `foil` is true mirrors each solid quad
-/// into the vanilla `RenderTypes.glint()` bucket. Translucent item foil (`glintTranslucent`) is a
-/// separate target-path variant and is intentionally not folded into this solid glint mesh.
+/// [`bake_item_model_meshes_with_light_and_overlay`], and when `foil` is true mirrors solid quads
+/// into vanilla `RenderTypes.glint()` and translucent quads into `RenderTypes.glintTranslucent()`.
 pub fn bake_item_model_meshes_with_light_and_overlay_and_foil(
     quads: &[ItemModelQuad],
     transform: Mat4,
@@ -313,6 +315,16 @@ pub fn bake_item_model_meshes_with_light_and_overlay_and_foil(
                 light,
                 overlay,
             );
+            if foil {
+                meshes
+                    .glint_translucent
+                    .append_quads_with_light_and_overlay(
+                        std::slice::from_ref(quad),
+                        transform,
+                        light,
+                        overlay,
+                    );
+            }
         } else {
             meshes.solid.append_quads_with_light_and_overlay(
                 std::slice::from_ref(quad),
@@ -395,6 +407,12 @@ impl Renderer {
         self.item_model_glint_meshes = meshes;
     }
 
+    /// Sets translucent item-model foil overlay meshes drawn through vanilla
+    /// `RenderTypes.glintTranslucent()` on the itemEntity target.
+    pub fn set_item_model_glint_translucent_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_model_glint_translucent_meshes = meshes;
+    }
+
     /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item-model foil draws. The same
     /// texture is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
     /// is used in both scene item features and 3D inventory icons.
@@ -455,6 +473,12 @@ impl Renderer {
 
     pub(crate) fn collect_item_model_glint_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.item_model_glint_meshes)
+    }
+
+    pub(crate) fn collect_item_model_glint_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_model_glint_translucent_meshes)
     }
 }
 
@@ -1161,10 +1185,11 @@ mod tests {
             .chain(meshes.translucent.vertices.iter())
             .all(|vertex| vertex.overlay == overlay));
         assert!(meshes.glint.is_empty());
+        assert!(meshes.glint_translucent.is_empty());
     }
 
     #[test]
-    fn foiled_mesh_set_mirrors_solid_quads_to_item_glint_only() {
+    fn foiled_mesh_set_mirrors_quads_to_item_glint_buckets() {
         let mut solid = unit_quad(1.0, [0.25, 0.5, 0.75, 1.0]);
         solid.translucent = false;
         let mut translucent = unit_quad(0.8, [1.0, 0.5, 0.25, 0.5]);
@@ -1182,6 +1207,11 @@ mod tests {
         assert_eq!(meshes.translucent.indices.len(), 6);
         assert_eq!(meshes.glint.indices.len(), 6);
         assert_eq!(meshes.glint.vertices, meshes.solid.vertices);
+        assert_eq!(meshes.glint_translucent.indices.len(), 6);
+        assert_eq!(
+            meshes.glint_translucent.vertices,
+            meshes.translucent.vertices
+        );
     }
 
     #[test]

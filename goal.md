@@ -189,8 +189,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - item enchantment glint follow-ups：solid item-model `RenderTypes.glint()` 已覆盖 dropped /
   held / item-frame / HUD 3D block items，含 `ItemStackSummary::has_foil()` 跨 crate 投影、
   item glint mesh bucket、独立 `textures/misc/enchanted_glint_item.png` 上传、`GLINT_TEXTURING`
-  scale `8.0` shader、GLINT blend、depth-equal、no-lightmap draw。剩余是 `glintTranslucent()`、
-  SPECIAL foil decal pose、2D HUD/inventory sprite glint 与像素级视觉校验。
+  scale `8.0` shader、GLINT blend、depth-equal、no-lightmap draw；world/itemEntity-target
+  item-model translucent quads now also have `RenderTypes.glintTranslucent()` mesh/draw buckets。
+  剩余是 SPECIAL foil decal pose、GUI 透明 3D icon parity、2D HUD/inventory sprite glint 与像素级视觉校验。
 - First-person viewmodel：
   - hand transform。
   - use animation。
