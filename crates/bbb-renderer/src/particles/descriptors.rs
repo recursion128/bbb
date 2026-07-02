@@ -1156,7 +1156,15 @@ impl ParticleDescriptor {
                     color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
                     quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                // TrialSpawnerDetectionParticle: `super(..., 0, 0, 0, ...)` base
+                // spread, then `xd *= 0.0; yd *= 0.9; zd *= 0.0` before adding the
+                // command velocity. The provider passes `xAux/yAux/zAux` straight
+                // through with no y offset, so reuse the shared BaseAshSmoke shape
+                // with a `CommandWithYOffset { y_offset: 0.0 }` passthrough.
+                initial_velocity: ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                    dir: [0.0, 0.9, 0.0],
+                    provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.0 },
+                },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -4337,7 +4345,10 @@ mod tests {
             let descriptor = ParticleDescriptor::for_particle(particle_id);
             assert_eq!(
                 descriptor.initial_velocity,
-                ParticleInitialVelocityDescriptor::Command,
+                ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                    dir: [0.0, 0.9, 0.0],
+                    provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.0 },
+                },
                 "{particle_id}"
             );
             assert_eq!(
@@ -5912,6 +5923,72 @@ mod tests {
         assert_close_f64(command_offset[0], zero_offset[0] + 0.25);
         assert_close_f64(command_offset[1], zero_offset[1] + 0.5 + 0.15);
         assert_close_f64(command_offset[2], zero_offset[2] - 0.75);
+    }
+
+    #[test]
+    fn trial_spawner_detection_applies_y_axis_dir_spread_and_threads_command_velocity() {
+        // vanilla TrialSpawnerDetectionParticle (26.1):
+        //   super(level, x, y, z, 0.0, 0.0, 0.0, sprites.first()) -> SingleQuadParticle
+        //   -> Particle base ctor normalized rising spread (+0.1 on y), then
+        //   xd *= 0.0; yd *= 0.9; zd *= 0.0; xd += xa; yd += ya; zd += za.
+        // TrialSpawnerDetectionParticle.Provider passes the command velocity
+        // (xAux/yAux/zAux) straight through with no offset and draws no RNG, so the
+        // provider offset is CommandWithYOffset { y_offset: 0.0 } (not Zero, which
+        // would drop the command velocity).
+        let command = [0.2, 0.35, -0.3];
+
+        let descriptor = ParticleDescriptor::for_particle("minecraft:trial_spawner_detection");
+        assert_eq!(
+            descriptor.initial_velocity,
+            ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                dir: [0.0, 0.9, 0.0],
+                provider_offset: BaseAshSmokeOffset::CommandWithYOffset { y_offset: 0.0 },
+            }
+        );
+        // The ominous variant shares the same descriptor arm.
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:trial_spawner_detection_ominous")
+                .initial_velocity,
+            descriptor.initial_velocity
+        );
+
+        // Independent witness transcribed straight from the vanilla source lines,
+        // drawing in the same order as the descriptor (base spread, no offset RNG).
+        let mut random = ParticleRandom::new(51);
+        let bx = random_signed_velocity(&mut random);
+        let by = random_signed_velocity(&mut random);
+        let bz = random_signed_velocity(&mut random);
+        let speed = (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+        let length = (bx * bx + by * by + bz * bz).sqrt();
+        let base = [
+            bx / length * speed * 0.4,
+            by / length * speed * 0.4 + 0.1,
+            bz / length * speed * 0.4,
+        ];
+        let expected = [
+            base[0] * 0.0 + command[0],
+            base[1] * 0.9 + command[1],
+            base[2] * 0.0 + command[2],
+        ];
+
+        let velocity = descriptor
+            .initial_velocity
+            .sample(command, &mut ParticleRandom::new(51));
+        assert_close_f64(velocity[0], expected[0]);
+        assert_close_f64(velocity[1], expected[1]);
+        assert_close_f64(velocity[2], expected[2]);
+
+        // dir x/z are 0.0, so the base spread is dropped and command x/z pass
+        // straight through.
+        assert_close_f64(velocity[0], command[0]);
+        assert_close_f64(velocity[2], command[2]);
+        // y keeps the 0.9-scaled upward base drift plus the threaded command y.
+        assert_close_f64(velocity[1], base[1] * 0.9 + command[1]);
+        assert!(base[1] > 0.0, "expected upward base drift: {base:?}");
+        assert!(
+            velocity[1] > command[1],
+            "expected upward y velocity above command: {velocity:?}"
+        );
     }
 
     #[test]

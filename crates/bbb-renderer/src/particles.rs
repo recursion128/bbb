@@ -5226,7 +5226,16 @@ mod tests {
             ParticleFacingCameraMode::LookAtY
         );
         assert!((12..=24).contains(&detection.lifetime_ticks));
-        assert_eq!(detection.velocity, [0.25, 0.5, -0.75]);
+        // TrialSpawnerDetectionParticle scales the base spread per axis by
+        // (0.0, 0.9, 0.0) and threads the command velocity through with no offset,
+        // so x/z drop the base spread and pass straight through while y keeps the
+        // 0.9-scaled upward drift on top of the command y.
+        let detection_spread = expected_base_ash_smoke_velocity(82, [0.0, 0.9, 0.0], false);
+        assert_close_f64(detection.velocity[0], detection_spread[0] + 0.25);
+        assert_close_f64(detection.velocity[1], detection_spread[1] + 0.5);
+        assert_close_f64(detection.velocity[2], detection_spread[2] - 0.75);
+        assert_close_f64(detection.velocity[0], 0.25);
+        assert_close_f64(detection.velocity[2], -0.75);
         assert_eq!(detection.friction, 0.96);
         assert_eq!(detection.gravity, -0.1);
         assert!(detection.has_physics);

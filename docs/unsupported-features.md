@@ -547,8 +547,12 @@ When an agent does any of the following, update this file in the same slice:
         commands can query the world/entity table. `sculk_charge` now carries decoded
         `SculkChargeParticleOptions.roll` through to billboard roll rotation.
         `trial_spawner_detection` and `_ominous` now map to
-        `TrialSpawnerDetectionParticle.Provider` with age sprites, command
-        velocity, `scale(1.5)` over the vanilla `0.75` single-quad scale,
+        `TrialSpawnerDetectionParticle.Provider` with age sprites, the
+        `BaseAshSmokeParticle` initial velocity (`super(..., 0, 0, 0, ...)`
+        normalized base spread, then `xd *= 0.0; yd *= 0.9; zd *= 0.0` and the
+        command velocity added straight through with no offset — the x/z base
+        spread is dropped while the upward y drift is scaled by `0.9`),
+        `scale(1.5)` over the vanilla `0.75` single-quad scale,
         `12 / (0.5 + random * 0.5)` lifetime, opaque layer, full-block light,
         grow-to-base size curve, physics metadata, and
         `SingleQuadParticle.FacingCameraMode.LOOKAT_Y` represented as a
@@ -6033,8 +6037,10 @@ When an agent does any of the following, update this file in the same slice:
         translucent particle layer, full-bright block override, and decoded
         `SculkChargeParticleOptions.roll` billboard rotation.
       - particle descriptors map `TrialSpawnerDetectionParticle.Provider` for
-        `trial_spawner_detection` and `_ominous` to age sprites, command
-        velocity, `scale(1.5)` over the vanilla `0.75` single-quad scale,
+        `trial_spawner_detection` and `_ominous` to age sprites, the
+        `BaseAshSmokeParticle` `dir=(0.0, 0.9, 0.0)` base-spread velocity with
+        the command velocity threaded through (no offset),
+        `scale(1.5)` over the vanilla `0.75` single-quad scale,
         `12/(0.5+random*.5)` lifetime, opaque particle layer, full-block
         light, grow-to-base size curve, physics metadata, and vanilla
         `FacingCameraMode.LOOKAT_Y` vertex orientation with world-Y up.
