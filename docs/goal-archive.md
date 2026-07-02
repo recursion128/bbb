@@ -1565,6 +1565,15 @@
     and terracotta RGBs, including the white DyeColor-vs-terracotta split.
     Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
     on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` mineral/natural static mapColor expansion：native extends
+    the same final provider fallback through ore families, deepslate variants,
+    nether stone/brick families, snow/ice/clay/sandstone/suspicious block
+    colors, resource blocks, soul soil/sand, basalt/obsidian/ancient debris,
+    and glow lichen. Tests pin representative overworld/deepslate/nether ore
+    colors, resource-block RGBs, suspicious sand/gravel properties, snow/ice,
+    clay, deepslate, nether, soul, and basalt cases. Full mapColor catalog
+    coverage, biome-aware per-spawn BlockColors, and on-ground roll reset remain
+    follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

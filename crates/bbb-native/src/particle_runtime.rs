@@ -2584,6 +2584,42 @@ fn colored_family_map_color(name: &str) -> Option<u32> {
     None
 }
 
+fn ore_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    match name {
+        "nether_gold_ore" | "nether_quartz_ore" => return Some(MAP_COLOR_NETHER),
+        _ => {}
+    }
+    if name
+        .strip_prefix("deepslate_")
+        .is_some_and(|ore| ore.ends_with("_ore"))
+    {
+        return Some(MAP_COLOR_DEEPSLATE);
+    }
+    if name.ends_with("_ore") {
+        return Some(MAP_COLOR_STONE);
+    }
+    None
+}
+
+fn deepslate_family_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if name == "deepslate"
+        || name == "cobbled_deepslate"
+        || name == "polished_deepslate"
+        || name == "deepslate_tiles"
+        || name == "deepslate_bricks"
+        || name == "chiseled_deepslate"
+        || name == "cracked_deepslate_bricks"
+        || name == "cracked_deepslate_tiles"
+        || name == "infested_deepslate"
+        || name == "reinforced_deepslate"
+    {
+        return Some(MAP_COLOR_DEEPSLATE);
+    }
+    None
+}
+
 fn vanilla_static_map_color_for_block_state(
     name: &str,
     properties: &std::collections::BTreeMap<String, String>,
@@ -2591,16 +2627,30 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = colored_family_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = ore_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = deepslate_family_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
         | "minecraft:polished_andesite"
-        | "minecraft:cobblestone" => Some(MAP_COLOR_STONE),
+        | "minecraft:cobblestone"
+        | "minecraft:suspicious_gravel"
+        | "minecraft:dispenser"
+        | "minecraft:dropper"
+        | "minecraft:furnace"
+        | "minecraft:piston_head"
+        | "minecraft:moving_piston" => Some(MAP_COLOR_STONE),
         "minecraft:granite"
         | "minecraft:polished_granite"
         | "minecraft:dirt"
         | "minecraft:coarse_dirt"
-        | "minecraft:jungle_planks" => Some(MAP_COLOR_DIRT),
+        | "minecraft:jungle_planks"
+        | "minecraft:farmland"
+        | "minecraft:jukebox" => Some(MAP_COLOR_DIRT),
         "minecraft:diorite" | "minecraft:polished_diorite" | "minecraft:pale_oak_planks" => {
             Some(MAP_COLOR_QUARTZ)
         }
@@ -2618,6 +2668,34 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:dark_oak_planks" => Some(MAP_COLOR_BROWN),
         "minecraft:mangrove_planks" => Some(MAP_COLOR_RED),
         "minecraft:bamboo_planks" | "minecraft:bamboo_mosaic" => Some(MAP_COLOR_YELLOW),
+        "minecraft:suspicious_sand"
+        | "minecraft:sandstone"
+        | "minecraft:chiseled_sandstone"
+        | "minecraft:cut_sandstone" => Some(MAP_COLOR_SAND),
+        "minecraft:sponge" | "minecraft:wet_sponge" => Some(MAP_COLOR_YELLOW),
+        "minecraft:snow" | "minecraft:snow_block" => Some(MAP_COLOR_SNOW),
+        "minecraft:ice" | "minecraft:packed_ice" | "minecraft:blue_ice" => Some(MAP_COLOR_ICE),
+        "minecraft:clay" => Some(MAP_COLOR_CLAY),
+        "minecraft:lapis_block" => Some(MAP_COLOR_LAPIS),
+        "minecraft:diamond_block" => Some(MAP_COLOR_DIAMOND),
+        "minecraft:emerald_block" => Some(MAP_COLOR_EMERALD),
+        "minecraft:gold_block" | "minecraft:raw_gold_block" => Some(MAP_COLOR_GOLD),
+        "minecraft:iron_block" => Some(MAP_COLOR_METAL),
+        "minecraft:raw_iron_block" => Some(MAP_COLOR_RAW_IRON),
+        "minecraft:coal_block"
+        | "minecraft:basalt"
+        | "minecraft:polished_basalt"
+        | "minecraft:obsidian"
+        | "minecraft:crying_obsidian"
+        | "minecraft:ancient_debris"
+        | "minecraft:netherite_block" => Some(MAP_COLOR_BLACK),
+        "minecraft:netherrack"
+        | "minecraft:nether_bricks"
+        | "minecraft:red_nether_bricks"
+        | "minecraft:chiseled_nether_bricks"
+        | "minecraft:cracked_nether_bricks" => Some(MAP_COLOR_NETHER),
+        "minecraft:soul_sand" | "minecraft:soul_soil" => Some(MAP_COLOR_BROWN),
+        "minecraft:glow_lichen" => Some(MAP_COLOR_GLOW_LICHEN),
         "minecraft:crimson_planks" => Some(MAP_COLOR_CRIMSON_STEM),
         "minecraft:warped_planks" => Some(MAP_COLOR_WARPED_STEM),
         "minecraft:oak_wood" | "minecraft:stripped_oak_wood" => Some(MAP_COLOR_WOOD),
@@ -3114,9 +3192,11 @@ const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const MAP_COLOR_SAND: u32 = 16_247_203;
+const MAP_COLOR_ICE: u32 = 10_526_975;
 const MAP_COLOR_SNOW: u32 = 16_777_215;
 const MAP_COLOR_METAL: u32 = 10_987_431;
 const MAP_COLOR_PLANT: u32 = 31_744;
+const MAP_COLOR_CLAY: u32 = 10_791_096;
 const MAP_COLOR_DIRT: u32 = 9_923_917;
 const MAP_COLOR_STONE: u32 = 7_368_816;
 const MAP_COLOR_WOOD: u32 = 9_402_184;
@@ -3136,6 +3216,10 @@ const MAP_COLOR_BROWN: u32 = 6_704_179;
 const MAP_COLOR_GREEN: u32 = 6_717_235;
 const MAP_COLOR_RED: u32 = 10_040_115;
 const MAP_COLOR_BLACK: u32 = 1_644_825;
+const MAP_COLOR_GOLD: u32 = 16_445_005;
+const MAP_COLOR_DIAMOND: u32 = 6_085_589;
+const MAP_COLOR_LAPIS: u32 = 4_882_687;
+const MAP_COLOR_EMERALD: u32 = 55_610;
 const MAP_COLOR_TERRACOTTA_WHITE: u32 = 13_742_497;
 const MAP_COLOR_TERRACOTTA_ORANGE: u32 = 10_441_252;
 const MAP_COLOR_TERRACOTTA_MAGENTA: u32 = 9_787_244;
@@ -3153,10 +3237,14 @@ const MAP_COLOR_TERRACOTTA_GREEN: u32 = 5_001_770;
 const MAP_COLOR_TERRACOTTA_RED: u32 = 9_321_518;
 const MAP_COLOR_TERRACOTTA_BLACK: u32 = 2_430_480;
 const MAP_COLOR_PODZOL: u32 = 8_476_209;
+const MAP_COLOR_NETHER: u32 = 7_340_544;
 const MAP_COLOR_CRIMSON_STEM: u32 = 9_715_553;
 const MAP_COLOR_CRIMSON_HYPHAE: u32 = 6_035_741;
 const MAP_COLOR_WARPED_STEM: u32 = 3_837_580;
 const MAP_COLOR_WARPED_HYPHAE: u32 = 5_647_422;
+const MAP_COLOR_DEEPSLATE: u32 = 6_579_300;
+const MAP_COLOR_RAW_IRON: u32 = 14_200_723;
+const MAP_COLOR_GLOW_LICHEN: u32 = 8_365_974;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
@@ -4003,6 +4091,117 @@ mod tests {
                 test_block_state_id("minecraft:red_terracotta", []),
                 "minecraft:red_terracotta",
                 rgb_option(0x8e, 0x3c, 0x2e),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_mineral_and_natural_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:gold_ore", []),
+                "minecraft:gold_ore",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:deepslate_iron_ore", []),
+                "minecraft:deepslate_iron_ore",
+                rgb_option(0x64, 0x64, 0x64),
+            ),
+            (
+                test_block_state_id("minecraft:nether_quartz_ore", []),
+                "minecraft:nether_quartz_ore",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:lapis_block", []),
+                "minecraft:lapis_block",
+                rgb_option(0x4a, 0x80, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:diamond_block", []),
+                "minecraft:diamond_block",
+                rgb_option(0x5c, 0xdb, 0xd5),
+            ),
+            (
+                test_block_state_id("minecraft:emerald_block", []),
+                "minecraft:emerald_block",
+                rgb_option(0x00, 0xd9, 0x3a),
+            ),
+            (
+                test_block_state_id("minecraft:raw_iron_block", []),
+                "minecraft:raw_iron_block",
+                rgb_option(0xd8, 0xaf, 0x93),
+            ),
+            (
+                test_block_state_id("minecraft:suspicious_gravel", [("dusted", "0")]),
+                "minecraft:suspicious_gravel",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:suspicious_sand", [("dusted", "0")]),
+                "minecraft:suspicious_sand",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:sandstone", []),
+                "minecraft:sandstone",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:snow_block", []),
+                "minecraft:snow_block",
+                rgb_option(0xff, 0xff, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:ice", []),
+                "minecraft:ice",
+                rgb_option(0xa0, 0xa0, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:clay", []),
+                "minecraft:clay",
+                rgb_option(0xa4, 0xa8, 0xb8),
+            ),
+            (
+                test_block_state_id("minecraft:deepslate", [("axis", "y")]),
+                "minecraft:deepslate",
+                rgb_option(0x64, 0x64, 0x64),
+            ),
+            (
+                test_block_state_id("minecraft:netherrack", []),
+                "minecraft:netherrack",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:red_nether_bricks", []),
+                "minecraft:red_nether_bricks",
+                rgb_option(0x70, 0x02, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:soul_sand", []),
+                "minecraft:soul_sand",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:basalt", [("axis", "z")]),
+                "minecraft:basalt",
+                rgb_option(0x19, 0x19, 0x19),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
