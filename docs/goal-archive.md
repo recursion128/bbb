@@ -274,6 +274,10 @@
     client-time、partial tick 和 frame camera pose 之后读取；vanilla 依据是
     `LevelRenderer.renderLevel` 为 `addCloudsPass` 读取 `level.getGameTime()`、
     `deltaPartialTick` 和 `cameraRenderState.pos`。
+  - [x] weather field：`weather_render_state` 现在有源码顺序测试与绑定注释，固定为
+    client-time、partial tick 和 frame camera pose 之后读取；vanilla 依据是
+    `LevelRenderer.extractLevel` 调用
+    `WeatherEffectRenderer.extractRenderState(level, ticks, deltaPartialTick, cameraPos, ...)`。
 
 ## P1-2：实体专用 Renderer 行为
 

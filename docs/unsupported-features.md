@@ -113,7 +113,7 @@ When an agent does any of the following, update this file in the same slice:
     tick -> render frame order, one field per slice. The pump binds every
     world -> renderer value at the sequence point the removed `renderer.set_*`
     call historically occupied, so current behavior is preserved but not yet
-    vanilla-verified per field. Known interleaves to check next: weather and
+    vanilla-verified per field. Known interleaves to check next:
     particle-light projections.
   - A verified field either keeps its position with a vanilla citation on the
     binding, or its `let` moves across the relevant tick advance with the same
@@ -157,6 +157,13 @@ When an agent does any of the following, update this file in the same slice:
     partial tick, and `cameraRenderState.pos` for `addCloudsPass`, so bbb
     extracts `cloud_frame` after `advance_client_time`, after computing
     `entity_partial_tick`, and after binding the frame camera pose.
+  - `weather_render_state` now has a source-order test and binding comment:
+    vanilla `LevelRenderer.extractLevel` calls
+    `WeatherEffectRenderer.extractRenderState(level, ticks, deltaPartialTick,
+    cameraPos, ...)`, and that helper samples rain level, column animation
+    ticks, terrain light, and precipitation around the camera, so bbb extracts
+    weather after `advance_client_time`, after computing `entity_partial_tick`,
+    and after binding the frame camera pose.
   - The renderer receives the whole frame in one commit, so reorders are pure
     extraction-timing questions and cannot introduce partial-frame states.
 

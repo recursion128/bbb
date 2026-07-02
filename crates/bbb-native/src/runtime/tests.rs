@@ -620,6 +620,37 @@ fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick
 }
 
 #[test]
+fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
+    let source = include_str!("../runtime.rs");
+    let entity_tick = source
+        .find("let advanced_ticks = advance_entity_client_animations(")
+        .expect("pump should advance entity client animations before weather extraction");
+    let partial_tick = source
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .expect("pump should compute the render partial tick before weather extraction");
+    let client_time = source
+        .find("world.advance_client_time(running_ticks);")
+        .expect("pump should advance client time before weather extraction");
+    let camera_pose = source
+        .find("let camera_pose = camera_pose_from_world(world);")
+        .expect("pump should extract camera pose before weather");
+    let weather = source
+        .find("let weather_render_state =")
+        .expect("pump should extract weather render state");
+
+    for advance in [entity_tick, partial_tick, client_time] {
+        assert!(
+            advance < weather,
+            "vanilla weather extraction samples post-tick level time with the frame partial tick"
+        );
+    }
+    assert!(
+        camera_pose < weather,
+        "weather render state should read the frame camera pose used by LevelRenderer.extractLevel"
+    );
+}
+
+#[test]
 fn clear_color_applies_client_sky_flash_color_layer() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

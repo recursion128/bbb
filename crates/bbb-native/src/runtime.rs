@@ -1571,6 +1571,8 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `LevelRenderer.renderLevel` samples `level.getGameTime()`, camera position, and the
     // frame partial tick for the cloud pass after the client tick has advanced the level clock.
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
+    // Vanilla `LevelRenderer.extractLevel` calls `WeatherEffectRenderer.extractRenderState` with
+    // level ticks, `deltaPartialTick`, and camera position during render extraction.
     let weather_render_state =
         weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
