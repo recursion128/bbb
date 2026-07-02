@@ -1022,6 +1022,22 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Appends the pure-passthrough `EntityModelSourceState` -> `EntityRenderState`
+/// projections to an [`EntityModelInstance`] builder: each `with_field field`
+/// entry expands to `.with_field(source.field)`. Only fields copied verbatim
+/// (identical builder and source name, no computation) belong here; every derived
+/// projection stays in the hand-written chain above the invocation. `macro_rules!`
+/// cannot synthesize the `with_` builder name, so each entry spells it out,
+/// mirroring the renderer-side `entity_render_state!` per-field list.
+macro_rules! entity_render_state_passthrough {
+    (
+        $base:expr, $source:expr
+        $(, $with:ident $field:ident )* $(,)?
+    ) => {
+        $base $( .$with($source.$field) )*
+    };
+}
+
 fn entity_model_instance(
     source: EntityModelSourceState,
     world: &WorldStore,
@@ -1518,7 +1534,7 @@ fn entity_model_instance(
     } else {
         0
     };
-    Some(
+    Some(entity_render_state_passthrough!(
         EntityModelInstance::new(
             source.entity_id,
             kind,
@@ -1531,55 +1547,27 @@ fn entity_model_instance(
         )
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
-        .with_arrow_shake(source.arrow_shake)
         .with_trident_foil(thrown_trident_foil(
             source.entity_type_id,
             &source.data_values,
         ))
         .with_invisible(entity_invisible(&source.data_values))
-        .with_invisible_to_player(source.invisible_to_player)
         .with_outline_color(outline_color)
-        .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
-        .with_has_red_overlay(source.has_red_overlay)
-        .with_death_time(source.death_time)
-        .with_ender_dragon_death_time(source.ender_dragon_death_time)
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
         .with_bounding_box_height(drowned_bounding_box_height)
         .with_sleeping(sleeping)
-        .with_scale(source.scale)
-        .with_swim_amount(source.swim_amount)
-        .with_in_water(source.in_water)
-        .with_on_ground(source.on_ground)
-        .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_worn_head_animation_pos(source.worn_head_animation_position)
         .with_is_riding(source.is_passenger)
-        .with_attack_anim(source.attack_anim)
-        .with_main_arm_left(source.main_arm_left)
-        .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
-        .with_boat_rowing_time_left(source.boat_rowing_time_left)
-        .with_boat_rowing_time_right(source.boat_rowing_time_right)
-        .with_boat_hurt_time(source.boat_hurt_time)
-        .with_boat_hurt_dir(source.boat_hurt_dir)
-        .with_boat_damage_time(source.boat_damage_time)
         .with_minecart_hurt_time(source.boat_hurt_time)
         .with_minecart_hurt_dir(source.boat_hurt_dir)
         .with_minecart_damage_time(source.boat_damage_time)
-        .with_minecart_new_render(source.minecart_new_render)
-        .with_minecart_pos_on_rail(source.minecart_pos_on_rail)
-        .with_minecart_front_pos(source.minecart_front_pos)
-        .with_minecart_back_pos(source.minecart_back_pos)
-        .with_minecart_tnt_fuse_remaining_in_ticks(source.minecart_tnt_fuse_remaining_in_ticks)
-        .with_boat_bubble_angle(source.boat_bubble_angle)
-        .with_boat_underwater(source.boat_underwater)
-        .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
         .with_player_using_spear(player_using_spear)
-        .with_ticks_since_kinetic_hit_feedback(source.ticks_since_kinetic_hit_feedback)
         .with_player_main_hand_spear_pose(player_main_hand_spear_pose)
         .with_player_off_hand_spear_pose(player_off_hand_spear_pose)
         .with_humanoid_mob_main_hand_spear_pose(humanoid_mob_main_hand_spear_pose)
@@ -1597,13 +1585,9 @@ fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
         .with_player_elytra_texture(player_elytra_texture)
-        .with_show_extra_ears(source.show_extra_ears)
         .with_chest_wings_layer(chest_wings_layer)
         .with_chest_equipment_has_wings(chest_equipment_has_wings)
         .with_chest_equipment_has_humanoid(chest_equipment_has_humanoid)
-        .with_player_cape_flap(source.player_cape_flap)
-        .with_player_cape_lean(source.player_cape_lean)
-        .with_player_cape_lean2(source.player_cape_lean2)
         .with_player_left_shoulder_parrot(
             source
                 .player_left_shoulder_parrot
@@ -1614,8 +1598,6 @@ fn entity_model_instance(
                 .player_right_shoulder_parrot
                 .map(ParrotModelVariant::from_id),
         )
-        .with_is_using_item(source.is_using_item)
-        .with_use_item_off_hand(source.use_item_off_hand)
         .with_pillager_holds_crossbow(pillager_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
         .with_drowned_throw_trident(drowned_throw_trident)
@@ -1623,39 +1605,6 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
-        .with_crossbow_charge_ticks(source.crossbow_charge_ticks)
-        .with_enderman_carrying(source.enderman_carrying)
-        .with_enderman_creepy(source.enderman_creepy)
-        .with_bat_resting(source.bat_resting)
-        .with_bee_has_stinger(source.bee_has_stinger)
-        .with_bee_roll_amount(source.bee_roll_amount)
-        .with_frog_croak_seconds(source.frog_croak_seconds)
-        .with_frog_tongue_seconds(source.frog_tongue_seconds)
-        .with_frog_jump_seconds(source.frog_jump_seconds)
-        .with_frog_swim_idle_seconds(source.frog_swim_idle_seconds)
-        .with_sniffer_animation_id(source.sniffer_animation_id)
-        .with_sniffer_animation_seconds(source.sniffer_animation_seconds)
-        .with_sniffer_is_searching(source.sniffer_is_searching)
-        .with_armadillo_is_hiding_in_shell(source.armadillo_is_hiding_in_shell)
-        .with_armadillo_roll_up_seconds(source.armadillo_roll_up_seconds)
-        .with_armadillo_roll_out_seconds(source.armadillo_roll_out_seconds)
-        .with_armadillo_peek_seconds(source.armadillo_peek_seconds)
-        .with_fox_head_roll_angle(source.fox_head_roll_angle)
-        .with_fox_crouch_amount(source.fox_crouch_amount)
-        .with_fox_is_crouching(source.fox_is_crouching)
-        .with_fox_is_sleeping(source.fox_is_sleeping)
-        .with_fox_is_sitting(source.fox_is_sitting)
-        .with_fox_is_pouncing(source.fox_is_pouncing)
-        .with_fox_is_faceplanted(source.fox_is_faceplanted)
-        .with_feline_is_crouching(source.feline_is_crouching)
-        .with_feline_is_sprinting(source.feline_is_sprinting)
-        .with_feline_is_sitting(source.feline_is_sitting)
-        .with_feline_lie_down_amount(source.feline_lie_down_amount)
-        .with_feline_lie_down_amount_tail(source.feline_lie_down_amount_tail)
-        .with_feline_relax_state_one_amount(source.feline_relax_state_one_amount)
-        .with_feline_is_lying_on_top_of_sleeping_player(
-            source.feline_is_lying_on_top_of_sleeping_player,
-        )
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
@@ -1668,20 +1617,8 @@ fn entity_model_instance(
         .with_camel_sit_seconds(camel_sit.sit_seconds)
         .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
         .with_camel_standup_seconds(camel_sit.standup_seconds)
-        .with_camel_dash_seconds(source.camel_dash_seconds)
-        .with_camel_idle_seconds(source.camel_idle_seconds)
-        .with_copper_golem_idle_seconds(source.copper_golem_idle_seconds)
-        .with_copper_golem_get_item_seconds(source.copper_golem_get_item_seconds)
-        .with_copper_golem_get_no_item_seconds(source.copper_golem_get_no_item_seconds)
-        .with_copper_golem_drop_item_seconds(source.copper_golem_drop_item_seconds)
-        .with_copper_golem_drop_no_item_seconds(source.copper_golem_drop_no_item_seconds)
-        .with_camel_jump_cooldown(source.camel_jump_cooldown)
-        .with_vex_charging(source.vex_charging)
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
         .with_vex_left_hand_item_non_empty(vex_left_hand_item_non_empty)
-        .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
-        .with_wither_x_head_rots(source.wither_x_head_rots)
-        .with_wither_y_head_rots(source.wither_y_head_rots)
         .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
         .with_head_armor(armor_material(source.head_armor))
         .with_chest_armor(armor_material(source.chest_armor))
@@ -1691,48 +1628,23 @@ fn entity_model_instance(
         .with_chest_armor_dye(armor_dye(source.chest_armor_dye))
         .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
         .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
-        .with_head_armor_foil(source.head_armor_foil)
-        .with_chest_armor_foil(source.chest_armor_foil)
-        .with_legs_armor_foil(source.legs_armor_foil)
-        .with_feet_armor_foil(source.feet_armor_foil)
-        .with_pig_saddle(source.pig_saddle)
-        .with_equine_saddle(source.equine_saddle)
-        .with_equine_saddle_ridden(source.equine_saddle_ridden)
-        .with_equine_animate_tail(source.equine_animate_tail)
-        .with_equine_eat_animation(source.equine_eat_animation)
-        .with_equine_stand_animation(source.equine_stand_animation)
-        .with_equine_feeding_animation(source.equine_feeding_animation)
         .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
         .with_wolf_body_armor_dye(armor_dye(source.wolf_body_armor_dye))
         .with_wolf_body_armor_crackiness(wolf_armor_crackiness(source.wolf_body_armor_crackiness))
-        .with_wolf_body_armor_foil(source.wolf_body_armor_foil)
-        .with_strider_ridden(source.strider_ridden)
-        .with_strider_saddle(source.strider_saddle)
-        .with_camel_saddle(source.camel_saddle)
-        .with_camel_saddle_ridden(source.camel_saddle_ridden)
-        .with_nautilus_saddle(source.nautilus_saddle)
         .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
         .with_ender_dragon_beam(ender_dragon_beam(source.ender_dragon_beam))
-        .with_is_crouching(source.is_crouching)
-        .with_elytra_rot_x(source.elytra_rot_x)
-        .with_elytra_rot_y(source.elytra_rot_y)
-        .with_elytra_rot_z(source.elytra_rot_z)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
             game_time,
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
-        .with_wolf_wet_shade(source.wolf_wet_shade)
-        .with_wolf_shake_anim(source.wolf_shake_anim)
-        .with_wolf_head_roll_angle(source.wolf_head_roll_angle)
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
-        .with_parrot_party(source.parrot_party)
         .with_illager_spellcasting(illager_spellcasting(
             source.entity_type_id,
             &source.data_values,
@@ -1765,19 +1677,7 @@ fn entity_model_instance(
             world,
         ))
         .with_panda_sitting(panda_is_sitting(source.entity_type_id, &source.data_values))
-        .with_panda_sit_amount(source.panda_sit_amount)
-        .with_panda_lie_on_back_amount(source.panda_lie_on_back_amount)
-        .with_panda_roll_amount(source.panda_roll_amount)
-        .with_panda_roll_time(source.panda_roll_time)
         .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
-        .with_iron_golem_attack_ticks_remaining(source.iron_golem_attack_ticks_remaining)
-        .with_iron_golem_offer_flower_tick(source.iron_golem_offer_flower_tick)
-        .with_snow_golem_pumpkin(source.snow_golem_pumpkin)
-        .with_ravager_stunned_ticks_remaining(source.ravager_stunned_ticks_remaining)
-        .with_ravager_attack_ticks_remaining(source.ravager_attack_ticks_remaining)
-        .with_ravager_roar_animation(source.ravager_roar_animation)
-        .with_hoglin_attack_animation_tick(source.hoglin_attack_animation_tick)
-        .with_armor_stand_wiggle(source.armor_stand_wiggle)
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_turtle_laying_egg(turtle_laying_egg(
             source.entity_type_id,
@@ -1787,7 +1687,6 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
-        .with_creeper_swelling(source.creeper_swelling)
         .with_creeper_powered(creeper_powered(source.entity_type_id, &source.data_values))
         .with_villager_model_data(villager_model_data(
             source.entity_type_id,
@@ -1795,46 +1694,162 @@ fn entity_model_instance(
             villager_types,
             villager_professions,
         ))
-        .with_villager_unhappy(source.villager_unhappy)
-        .with_shulker_peek(source.shulker_peek)
         .with_shulker_attach_face(entity_attachment_face(source.shulker_attach_face))
-        .with_tendril_animation(source.tendril_animation)
-        .with_heart_animation(source.heart_animation)
-        .with_warden_roar_seconds(source.warden_roar_seconds)
-        .with_warden_sniff_seconds(source.warden_sniff_seconds)
-        .with_warden_attack_seconds(source.warden_attack_seconds)
-        .with_warden_sonic_boom_seconds(source.warden_sonic_boom_seconds)
-        .with_warden_emerge_seconds(source.warden_emerge_seconds)
-        .with_warden_dig_seconds(source.warden_dig_seconds)
-        .with_rabbit_hop_seconds(source.rabbit_hop_seconds)
-        .with_creaking_can_move(source.creaking_can_move)
-        .with_creaking_attack_seconds(source.creaking_attack_seconds)
-        .with_creaking_invulnerable_seconds(source.creaking_invulnerable_seconds)
-        .with_creaking_death_seconds(source.creaking_death_seconds)
-        .with_squid_tentacle_angle(source.squid_tentacle_angle)
         .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
-        .with_guardian_tail_animation(source.guardian_tail_animation)
-        .with_guardian_spikes_animation(source.guardian_spikes_animation)
-        .with_breeze_shoot_seconds(source.breeze_shoot_seconds)
-        .with_breeze_slide_seconds(source.breeze_slide_seconds)
-        .with_breeze_slide_back_seconds(source.breeze_slide_back_seconds)
-        .with_breeze_inhale_seconds(source.breeze_inhale_seconds)
-        .with_breeze_long_jump_seconds(source.breeze_long_jump_seconds)
-        .with_chicken_flap(source.chicken_flap)
-        .with_chicken_flap_speed(source.chicken_flap_speed)
-        .with_slime_squish(source.slime_squish)
-        .with_evoker_fangs_bite_progress(source.evoker_fangs_bite_progress)
-        .with_allay_dancing(source.allay_dancing)
-        .with_allay_spinning(source.allay_spinning)
-        .with_allay_spinning_progress(source.allay_spinning_progress)
-        .with_allay_holding_item_progress(source.allay_holding_item_progress)
-        .with_axolotl_playing_dead_factor(source.axolotl_playing_dead_factor)
-        .with_axolotl_in_water_factor(source.axolotl_in_water_factor)
-        .with_axolotl_on_ground_factor(source.axolotl_on_ground_factor)
-        .with_axolotl_moving_factor(source.axolotl_moving_factor)
-        .with_parrot_flap_angle(source.parrot_flap_angle)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
-    )
+        source,
+        with_arrow_shake arrow_shake,
+        with_invisible_to_player invisible_to_player,
+        with_polar_bear_stand_scale polar_bear_stand_scale,
+        with_has_red_overlay has_red_overlay,
+        with_death_time death_time,
+        with_ender_dragon_death_time ender_dragon_death_time,
+        with_scale scale,
+        with_swim_amount swim_amount,
+        with_in_water in_water,
+        with_on_ground on_ground,
+        with_is_moving is_moving,
+        with_attack_anim attack_anim,
+        with_main_arm_left main_arm_left,
+        with_attack_arm_off_hand attack_arm_off_hand,
+        with_boat_rowing_time_left boat_rowing_time_left,
+        with_boat_rowing_time_right boat_rowing_time_right,
+        with_boat_hurt_time boat_hurt_time,
+        with_boat_hurt_dir boat_hurt_dir,
+        with_boat_damage_time boat_damage_time,
+        with_minecart_new_render minecart_new_render,
+        with_minecart_pos_on_rail minecart_pos_on_rail,
+        with_minecart_front_pos minecart_front_pos,
+        with_minecart_back_pos minecart_back_pos,
+        with_minecart_tnt_fuse_remaining_in_ticks minecart_tnt_fuse_remaining_in_ticks,
+        with_boat_bubble_angle boat_bubble_angle,
+        with_boat_underwater boat_underwater,
+        with_is_aggressive is_aggressive,
+        with_ticks_since_kinetic_hit_feedback ticks_since_kinetic_hit_feedback,
+        with_show_extra_ears show_extra_ears,
+        with_player_cape_flap player_cape_flap,
+        with_player_cape_lean player_cape_lean,
+        with_player_cape_lean2 player_cape_lean2,
+        with_is_using_item is_using_item,
+        with_use_item_off_hand use_item_off_hand,
+        with_crossbow_charge_ticks crossbow_charge_ticks,
+        with_enderman_carrying enderman_carrying,
+        with_enderman_creepy enderman_creepy,
+        with_bat_resting bat_resting,
+        with_bee_has_stinger bee_has_stinger,
+        with_bee_roll_amount bee_roll_amount,
+        with_frog_croak_seconds frog_croak_seconds,
+        with_frog_tongue_seconds frog_tongue_seconds,
+        with_frog_jump_seconds frog_jump_seconds,
+        with_frog_swim_idle_seconds frog_swim_idle_seconds,
+        with_sniffer_animation_id sniffer_animation_id,
+        with_sniffer_animation_seconds sniffer_animation_seconds,
+        with_sniffer_is_searching sniffer_is_searching,
+        with_armadillo_is_hiding_in_shell armadillo_is_hiding_in_shell,
+        with_armadillo_roll_up_seconds armadillo_roll_up_seconds,
+        with_armadillo_roll_out_seconds armadillo_roll_out_seconds,
+        with_armadillo_peek_seconds armadillo_peek_seconds,
+        with_fox_head_roll_angle fox_head_roll_angle,
+        with_fox_crouch_amount fox_crouch_amount,
+        with_fox_is_crouching fox_is_crouching,
+        with_fox_is_sleeping fox_is_sleeping,
+        with_fox_is_sitting fox_is_sitting,
+        with_fox_is_pouncing fox_is_pouncing,
+        with_fox_is_faceplanted fox_is_faceplanted,
+        with_feline_is_crouching feline_is_crouching,
+        with_feline_is_sprinting feline_is_sprinting,
+        with_feline_is_sitting feline_is_sitting,
+        with_feline_lie_down_amount feline_lie_down_amount,
+        with_feline_lie_down_amount_tail feline_lie_down_amount_tail,
+        with_feline_relax_state_one_amount feline_relax_state_one_amount,
+        with_feline_is_lying_on_top_of_sleeping_player feline_is_lying_on_top_of_sleeping_player,
+        with_camel_dash_seconds camel_dash_seconds,
+        with_camel_idle_seconds camel_idle_seconds,
+        with_copper_golem_idle_seconds copper_golem_idle_seconds,
+        with_copper_golem_get_item_seconds copper_golem_get_item_seconds,
+        with_copper_golem_get_no_item_seconds copper_golem_get_no_item_seconds,
+        with_copper_golem_drop_item_seconds copper_golem_drop_item_seconds,
+        with_copper_golem_drop_no_item_seconds copper_golem_drop_no_item_seconds,
+        with_camel_jump_cooldown camel_jump_cooldown,
+        with_vex_charging vex_charging,
+        with_wither_invulnerable_ticks wither_invulnerable_ticks,
+        with_wither_x_head_rots wither_x_head_rots,
+        with_wither_y_head_rots wither_y_head_rots,
+        with_head_armor_foil head_armor_foil,
+        with_chest_armor_foil chest_armor_foil,
+        with_legs_armor_foil legs_armor_foil,
+        with_feet_armor_foil feet_armor_foil,
+        with_pig_saddle pig_saddle,
+        with_equine_saddle equine_saddle,
+        with_equine_saddle_ridden equine_saddle_ridden,
+        with_equine_animate_tail equine_animate_tail,
+        with_equine_eat_animation equine_eat_animation,
+        with_equine_stand_animation equine_stand_animation,
+        with_equine_feeding_animation equine_feeding_animation,
+        with_wolf_body_armor_foil wolf_body_armor_foil,
+        with_strider_ridden strider_ridden,
+        with_strider_saddle strider_saddle,
+        with_camel_saddle camel_saddle,
+        with_camel_saddle_ridden camel_saddle_ridden,
+        with_nautilus_saddle nautilus_saddle,
+        with_is_crouching is_crouching,
+        with_elytra_rot_x elytra_rot_x,
+        with_elytra_rot_y elytra_rot_y,
+        with_elytra_rot_z elytra_rot_z,
+        with_wolf_wet_shade wolf_wet_shade,
+        with_wolf_shake_anim wolf_shake_anim,
+        with_wolf_head_roll_angle wolf_head_roll_angle,
+        with_parrot_party parrot_party,
+        with_panda_sit_amount panda_sit_amount,
+        with_panda_lie_on_back_amount panda_lie_on_back_amount,
+        with_panda_roll_amount panda_roll_amount,
+        with_panda_roll_time panda_roll_time,
+        with_iron_golem_attack_ticks_remaining iron_golem_attack_ticks_remaining,
+        with_iron_golem_offer_flower_tick iron_golem_offer_flower_tick,
+        with_snow_golem_pumpkin snow_golem_pumpkin,
+        with_ravager_stunned_ticks_remaining ravager_stunned_ticks_remaining,
+        with_ravager_attack_ticks_remaining ravager_attack_ticks_remaining,
+        with_ravager_roar_animation ravager_roar_animation,
+        with_hoglin_attack_animation_tick hoglin_attack_animation_tick,
+        with_armor_stand_wiggle armor_stand_wiggle,
+        with_creeper_swelling creeper_swelling,
+        with_villager_unhappy villager_unhappy,
+        with_shulker_peek shulker_peek,
+        with_tendril_animation tendril_animation,
+        with_heart_animation heart_animation,
+        with_warden_roar_seconds warden_roar_seconds,
+        with_warden_sniff_seconds warden_sniff_seconds,
+        with_warden_attack_seconds warden_attack_seconds,
+        with_warden_sonic_boom_seconds warden_sonic_boom_seconds,
+        with_warden_emerge_seconds warden_emerge_seconds,
+        with_warden_dig_seconds warden_dig_seconds,
+        with_rabbit_hop_seconds rabbit_hop_seconds,
+        with_creaking_can_move creaking_can_move,
+        with_creaking_attack_seconds creaking_attack_seconds,
+        with_creaking_invulnerable_seconds creaking_invulnerable_seconds,
+        with_creaking_death_seconds creaking_death_seconds,
+        with_squid_tentacle_angle squid_tentacle_angle,
+        with_guardian_tail_animation guardian_tail_animation,
+        with_guardian_spikes_animation guardian_spikes_animation,
+        with_breeze_shoot_seconds breeze_shoot_seconds,
+        with_breeze_slide_seconds breeze_slide_seconds,
+        with_breeze_slide_back_seconds breeze_slide_back_seconds,
+        with_breeze_inhale_seconds breeze_inhale_seconds,
+        with_breeze_long_jump_seconds breeze_long_jump_seconds,
+        with_chicken_flap chicken_flap,
+        with_chicken_flap_speed chicken_flap_speed,
+        with_slime_squish slime_squish,
+        with_evoker_fangs_bite_progress evoker_fangs_bite_progress,
+        with_allay_dancing allay_dancing,
+        with_allay_spinning allay_spinning,
+        with_allay_spinning_progress allay_spinning_progress,
+        with_allay_holding_item_progress allay_holding_item_progress,
+        with_axolotl_playing_dead_factor axolotl_playing_dead_factor,
+        with_axolotl_in_water_factor axolotl_in_water_factor,
+        with_axolotl_on_ground_factor axolotl_on_ground_factor,
+        with_axolotl_moving_factor axolotl_moving_factor,
+        with_parrot_flap_angle parrot_flap_angle,
+    ))
 }
 
 /// Vanilla `LivingEntityRenderer.setupRotations` body shake, folded into the
