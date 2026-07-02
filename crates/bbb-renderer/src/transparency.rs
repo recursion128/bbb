@@ -1,6 +1,7 @@
 use crate::{
     clouds::CloudTarget,
     gpu::{DepthTarget, DEPTH_FORMAT, DEPTH_TARGET_USAGE},
+    pipeline_builder::RenderPipelineBuilder,
 };
 
 pub(super) const TRANSPARENCY_COMBINE_SHADER: &str = r#"
@@ -789,46 +790,11 @@ fn create_transparency_fullscreen_pipeline(
     pipeline_label: &str,
     shader_source: &str,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(shader_label),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(pipeline_layout_label),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(pipeline_label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, pipeline_label)
+        .shader(shader_label, shader_source)
+        .layout(pipeline_layout_label, &[bind_group_layout])
+        .color_target(format, None)
+        .build()
 }
 
 #[cfg(test)]

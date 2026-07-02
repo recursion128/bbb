@@ -1,4 +1,5 @@
 use crate::camera::LightmapEnvironment;
+use crate::pipeline_builder::RenderPipelineBuilder;
 
 pub(super) const LIGHTMAP_TEXTURE_SIZE: u32 = 16;
 pub(super) const LIGHTMAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -185,40 +186,11 @@ pub(super) fn create_lightmap_pipeline(
     device: &wgpu::Device,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-lightmap-shader"),
-        source: wgpu::ShaderSource::Wgsl(LIGHTMAP_SHADER.into()),
-    });
-    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-lightmap-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-lightmap-pipeline"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format: LIGHTMAP_FORMAT,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            ..Default::default()
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-lightmap-pipeline")
+        .shader("bbb-lightmap-shader", LIGHTMAP_SHADER)
+        .layout("bbb-lightmap-pipeline-layout", &[bind_group_layout])
+        .color_target(LIGHTMAP_FORMAT, None)
+        .build()
 }
 
 pub(super) fn create_lightmap_gpu(

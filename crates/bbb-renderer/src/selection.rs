@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 
 use crate::gpu::DEPTH_FORMAT;
+use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SelectionBox {
@@ -138,52 +139,21 @@ pub(super) fn create_selection_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-selection-outline-shader"),
-        source: wgpu::ShaderSource::Wgsl(SELECTION_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-selection-outline-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-selection-outline-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[selection_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::LineList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: SELECTION_LINES_DEPTH_WRITE,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-selection-outline-pipeline")
+        .shader("bbb-selection-outline-shader", SELECTION_SHADER)
+        .layout(
+            "bbb-selection-outline-pipeline-layout",
+            &[camera_bind_group_layout],
+        )
+        .vertex_buffers(&[selection_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .topology(wgpu::PrimitiveTopology::LineList)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            SELECTION_LINES_DEPTH_WRITE,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
 }
 
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {

@@ -2,7 +2,12 @@ use std::{collections::BTreeMap, mem};
 
 use anyhow::{anyhow, bail, Result};
 
-use crate::{gpu::DEPTH_FORMAT, particles::ParticleSpriteUv, particles::ParticleUvRect};
+use crate::{
+    gpu::DEPTH_FORMAT,
+    particles::ParticleSpriteUv,
+    particles::ParticleUvRect,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+};
 
 pub(crate) struct ParticleAtlasGpu {
     _texture: wgpu::Texture,
@@ -160,52 +165,21 @@ pub(crate) fn create_particle_pipeline(
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
     kind: ParticlePipelineKind,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-particle-shader"),
-        source: wgpu::ShaderSource::Wgsl(PARTICLE_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(kind.pipeline_layout_label()),
-        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(kind.pipeline_label()),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[particle_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: PARTICLE_PIPELINE_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED,
-            depth_compare: PARTICLE_PIPELINE_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: kind.blend_state(),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, kind.pipeline_label())
+        .shader("bbb-particle-shader", PARTICLE_SHADER)
+        .layout(
+            kind.pipeline_layout_label(),
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[particle_vertex_layout()])
+        .color_target(format, kind.blend_state())
+        .cull_mode(PARTICLE_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED,
+            PARTICLE_PIPELINE_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 pub(crate) fn create_particle_atlas_gpu(

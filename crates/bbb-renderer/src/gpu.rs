@@ -3,7 +3,11 @@ use std::mem;
 use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
-use crate::{camera::CameraUniform, terrain};
+use crate::{
+    camera::CameraUniform,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    terrain,
+};
 
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages = wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -479,52 +483,21 @@ fn create_terrain_pipeline_with_options(
     depth_write_enabled: bool,
     blend: Option<wgpu::BlendState>,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-terrain-shader"),
-        source: wgpu::ShaderSource::Wgsl(TERRAIN_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-terrain-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[terrain_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: TERRAIN_PIPELINE_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
+    RenderPipelineBuilder::new(device, label)
+        .shader("bbb-terrain-shader", TERRAIN_SHADER)
+        .layout(
+            "bbb-terrain-pipeline-layout",
+            &[camera_bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[terrain_vertex_layout()])
+        .color_target(format, blend)
+        .cull_mode(TERRAIN_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
             depth_write_enabled,
-            depth_compare: TERRAIN_PIPELINE_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+            TERRAIN_PIPELINE_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 fn terrain_vertex_layout() -> wgpu::VertexBufferLayout<'static> {

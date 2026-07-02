@@ -3,6 +3,7 @@ use wgpu::util::DeviceExt;
 
 use crate::camera::CameraPose;
 use crate::gpu::{DepthTarget, DEPTH_FORMAT, DEPTH_TARGET_USAGE};
+use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
 
 pub const VANILLA_DEFAULT_CLOUD_COLOR: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
 pub const VANILLA_DEFAULT_CLOUD_HEIGHT: f32 = 192.33;
@@ -292,51 +293,25 @@ pub(super) fn create_cloud_pipeline(
         CloudShape::Flat => ("bbb-cloud-flat-pipeline", CLOUD_FLAT_PIPELINE_CULL_MODE),
         CloudShape::Fancy => ("bbb-cloud-fancy-pipeline", CLOUD_FANCY_PIPELINE_CULL_MODE),
     };
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-cloud-shader"),
-        source: wgpu::ShaderSource::Wgsl(CLOUD_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-cloud-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout, cloud_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(pipeline_label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<CloudVertex>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
-            }],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(CLOUD_TARGET_BLEND),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode,
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
-            depth_compare: CLOUD_PIPELINE_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, pipeline_label)
+        .shader("bbb-cloud-shader", CLOUD_SHADER)
+        .layout(
+            "bbb-cloud-pipeline-layout",
+            &[bind_group_layout, cloud_bind_group_layout],
+        )
+        .vertex_buffers(&[wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<CloudVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+        }])
+        .color_target(format, Some(CLOUD_TARGET_BLEND))
+        .cull_mode(cull_mode)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
+            CLOUD_PIPELINE_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 pub(super) fn create_cloud_target(

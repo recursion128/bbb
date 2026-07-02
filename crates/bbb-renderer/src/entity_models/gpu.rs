@@ -7,6 +7,7 @@ use wgpu::util::DeviceExt;
 use crate::{
     camera::TerrainBounds,
     gpu::DEPTH_FORMAT,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     Renderer,
 };
@@ -1214,52 +1215,20 @@ pub(crate) fn create_entity_model_pipeline(
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-entity-model-shader"),
-        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-entity-model-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-entity-model-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[entity_model_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-entity-model-pipeline")
+        .shader("bbb-entity-model-shader", ENTITY_MODEL_SHADER)
+        .layout(
+            "bbb-entity-model-pipeline-layout",
+            &[camera_bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
 }
 
 pub(crate) fn create_entity_model_textured_pipeline(
@@ -1431,52 +1400,25 @@ pub(crate) fn create_entity_model_water_mask_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-entity-model-water-mask-shader"),
-        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_WATER_MASK_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-entity-model-water-mask-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-entity-model-water-mask-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[entity_model_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: ENTITY_MODEL_WATER_MASK_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
-            depth_compare: ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: ENTITY_MODEL_WATER_MASK_BLEND,
-                write_mask: ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-entity-model-water-mask-pipeline")
+        .shader(
+            "bbb-entity-model-water-mask-shader",
+            ENTITY_MODEL_WATER_MASK_SHADER,
+        )
+        .layout(
+            "bbb-entity-model-water-mask-pipeline-layout",
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_vertex_layout()])
+        .color_target(format, ENTITY_MODEL_WATER_MASK_BLEND)
+        .color_write_mask(ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK)
+        .cull_mode(ENTITY_MODEL_WATER_MASK_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 pub(crate) fn create_entity_model_dragon_rays_pipeline(
@@ -1523,52 +1465,25 @@ fn create_entity_model_position_color_pipeline(
     depth_compare: wgpu::CompareFunction,
     color_write_mask: wgpu::ColorWrites,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(&format!("{label_prefix}-shader")),
-        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_POSITION_COLOR_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(&format!("{label_prefix}-pipeline-layout")),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(&format!("{label_prefix}-pipeline")),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[entity_model_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
+    RenderPipelineBuilder::new(device, &format!("{label_prefix}-pipeline"))
+        .shader(
+            &format!("{label_prefix}-shader"),
+            ENTITY_MODEL_POSITION_COLOR_SHADER,
+        )
+        .layout(
+            &format!("{label_prefix}-pipeline-layout"),
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_vertex_layout()])
+        .color_target(format, blend)
+        .color_write_mask(color_write_mask)
+        .cull_mode(ENTITY_MODEL_DRAGON_RAYS_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
             depth_write_enabled,
             depth_compare,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend,
-                write_mask: color_write_mask,
-            })],
-        }),
-        multiview: None,
-    })
+        ))
+        .build()
 }
 
 pub(crate) fn create_entity_model_translucent_emissive_pipeline(
@@ -1836,55 +1751,21 @@ fn create_entity_model_scroll_pipeline_with_depth(
     let shader_label = format!("{label_prefix}-shader");
     let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
     let pipeline_label = format!("{label_prefix}-pipeline");
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(shader_label.as_str()),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(pipeline_layout_label.as_str()),
-        bind_group_layouts: &pipeline_bind_group_layouts(
-            bind_group_layout,
-            lightmap_bind_group_layout,
-        ),
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(pipeline_label.as_str()),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[entity_model_scroll_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: ENTITY_MODEL_SCROLL_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
+    RenderPipelineBuilder::new(device, &pipeline_label)
+        .shader(&shader_label, shader_source)
+        .layout(
+            &pipeline_layout_label,
+            &pipeline_bind_group_layouts(bind_group_layout, lightmap_bind_group_layout),
+        )
+        .vertex_buffers(&[entity_model_scroll_vertex_layout()])
+        .color_target(format, Some(blend))
+        .cull_mode(ENTITY_MODEL_SCROLL_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
             depth_write_enabled,
             depth_compare,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(blend),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+        ))
+        .build()
 }
 
 fn create_entity_model_textured_pipeline_with_depth(
@@ -1901,55 +1782,21 @@ fn create_entity_model_textured_pipeline_with_depth(
     let shader_label = format!("{label_prefix}-shader");
     let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
     let pipeline_label = format!("{label_prefix}-pipeline");
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(shader_label.as_str()),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(pipeline_layout_label.as_str()),
-        bind_group_layouts: &pipeline_bind_group_layouts(
-            bind_group_layout,
-            lightmap_bind_group_layout,
-        ),
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(pipeline_label.as_str()),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[entity_model_textured_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
+    RenderPipelineBuilder::new(device, &pipeline_label)
+        .shader(&shader_label, shader_source)
+        .layout(
+            &pipeline_layout_label,
+            &pipeline_bind_group_layouts(bind_group_layout, lightmap_bind_group_layout),
+        )
+        .vertex_buffers(&[entity_model_textured_vertex_layout()])
+        .color_target(format, blend)
+        .cull_mode(cull_mode)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
             depth_write_enabled,
-            depth_compare: ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 fn pipeline_bind_group_layouts<'a>(

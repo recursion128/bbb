@@ -3,6 +3,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     gpu::DEPTH_FORMAT,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
     terrain::{TerrainTint, TerrainUvRect, TerrainVertex},
 };
 
@@ -151,52 +152,24 @@ pub(super) fn create_block_destroy_pipeline(
     format: wgpu::TextureFormat,
     terrain_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-block-destroy-overlay-shader"),
-        source: wgpu::ShaderSource::Wgsl(BLOCK_DESTROY_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-block-destroy-overlay-pipeline-layout"),
-        bind_group_layouts: &[terrain_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-block-destroy-overlay-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[block_destroy_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: BLOCK_DESTROY_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
-            depth_compare: BLOCK_DESTROY_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
+    RenderPipelineBuilder::new(device, "bbb-block-destroy-overlay-pipeline")
+        .shader("bbb-block-destroy-overlay-shader", BLOCK_DESTROY_SHADER)
+        .layout(
+            "bbb-block-destroy-overlay-pipeline-layout",
+            &[terrain_bind_group_layout],
+        )
+        .vertex_buffers(&[block_destroy_vertex_layout()])
+        .color_target(format, Some(BLOCK_DESTROY_CRUMBLING_BLEND))
+        .cull_mode(BLOCK_DESTROY_CULL_MODE)
+        .depth_stencil(wgpu::DepthStencilState {
             bias: BLOCK_DESTROY_DEPTH_BIAS,
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(BLOCK_DESTROY_CRUMBLING_BLEND),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+            ..depth_stencil_state(
+                DEPTH_FORMAT,
+                BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
+                BLOCK_DESTROY_DEPTH_COMPARE,
+            )
+        })
+        .build()
 }
 
 struct BlockDestroyOverlayMesh {

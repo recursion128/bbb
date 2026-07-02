@@ -3,6 +3,7 @@ use std::mem;
 use anyhow::{anyhow, bail, Result};
 
 use super::HudVertex;
+use crate::pipeline_builder::RenderPipelineBuilder;
 
 const HUD_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
@@ -185,46 +186,12 @@ pub(crate) fn create_hud_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-hud-shader"),
-        source: wgpu::ShaderSource::Wgsl(HUD_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-hud-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-hud-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[hud_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-hud-pipeline")
+        .shader("bbb-hud-shader", HUD_SHADER)
+        .layout("bbb-hud-pipeline-layout", &[bind_group_layout])
+        .vertex_buffers(&[hud_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .build()
 }
 
 pub(crate) fn create_hud_item_glint_pipeline(
@@ -233,46 +200,15 @@ pub(crate) fn create_hud_item_glint_pipeline(
     glint_bind_group_layout: &wgpu::BindGroupLayout,
     item_mask_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-hud-item-glint-shader"),
-        source: wgpu::ShaderSource::Wgsl(HUD_ITEM_GLINT_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-hud-item-glint-pipeline-layout"),
-        bind_group_layouts: &[glint_bind_group_layout, item_mask_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-hud-item-glint-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[hud_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(HUD_ITEM_GLINT_BLEND),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-hud-item-glint-pipeline")
+        .shader("bbb-hud-item-glint-shader", HUD_ITEM_GLINT_SHADER)
+        .layout(
+            "bbb-hud-item-glint-pipeline-layout",
+            &[glint_bind_group_layout, item_mask_bind_group_layout],
+        )
+        .vertex_buffers(&[hud_vertex_layout()])
+        .color_target(format, Some(HUD_ITEM_GLINT_BLEND))
+        .build()
 }
 
 pub(crate) fn create_hud_sprite_gpu(

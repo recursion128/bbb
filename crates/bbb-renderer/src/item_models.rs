@@ -16,7 +16,11 @@
 use anyhow::{bail, Result};
 use glam::{EulerRot, Mat4, Quat, Vec3};
 
-use crate::{gpu::DEPTH_FORMAT, Renderer};
+use crate::{
+    gpu::DEPTH_FORMAT,
+    pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
+    Renderer,
+};
 
 mod map;
 pub use map::{
@@ -998,52 +1002,18 @@ pub(crate) fn create_item_model_glint_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-item-model-glint-shader"),
-        source: wgpu::ShaderSource::Wgsl(ITEM_MODEL_GLINT_SHADER.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-item-model-glint-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-item-model-glint-pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[item_model_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: ITEM_MODEL_GLINT_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
-            depth_compare: ITEM_MODEL_GLINT_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(ITEM_MODEL_GLINT_BLEND),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, "bbb-item-model-glint-pipeline")
+        .shader("bbb-item-model-glint-shader", ITEM_MODEL_GLINT_SHADER)
+        .layout("bbb-item-model-glint-pipeline-layout", &[bind_group_layout])
+        .vertex_buffers(&[item_model_vertex_layout()])
+        .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
+        .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+            ITEM_MODEL_GLINT_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 fn create_item_model_pipeline_with_blend(
@@ -1055,52 +1025,21 @@ fn create_item_model_pipeline_with_blend(
     label: &'static str,
     blend: wgpu::BlendState,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-item-model-shader"),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-item-model-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[item_model_vertex_layout()],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: ITEM_MODEL_PIPELINE_CULL_MODE,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(blend),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, label)
+        .shader("bbb-item-model-shader", shader_source)
+        .layout(
+            "bbb-item-model-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[item_model_vertex_layout()])
+        .color_target(format, Some(blend))
+        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
 }
 
 fn create_item_glint_texture_gpu(

@@ -13,6 +13,7 @@ mod item_models;
 mod lightmap;
 mod outline;
 mod particles;
+mod pipeline_builder;
 mod player_skin;
 mod render;
 mod renderer;

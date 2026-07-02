@@ -1,4 +1,5 @@
 use crate::gpu::{DepthTarget, DEPTH_FORMAT};
+use crate::pipeline_builder::RenderPipelineBuilder;
 
 const ENTITY_OUTLINE_COMPOSITE_SHADER: &str = r#"
 @group(0) @binding(0)
@@ -407,46 +408,12 @@ fn create_entity_outline_fullscreen_pipeline(
     blend: Option<wgpu::BlendState>,
     write_mask: wgpu::ColorWrites,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(shader_label),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(pipeline_layout_label),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
-    });
-
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(pipeline_label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: "vs_main",
-            buffers: &[],
-        },
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            unclipped_depth: false,
-            conservative: false,
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: "fs_main",
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend,
-                write_mask,
-            })],
-        }),
-        multiview: None,
-    })
+    RenderPipelineBuilder::new(device, pipeline_label)
+        .shader(shader_label, shader_source)
+        .layout(pipeline_layout_label, &[bind_group_layout])
+        .color_target(format, blend)
+        .color_write_mask(write_mask)
+        .build()
 }
 
 fn create_entity_outline_color_texture(
