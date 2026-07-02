@@ -30,6 +30,7 @@ pub use crate::item_registry::{
     ItemAttackRange, ItemDefaultAttributeModifier, ItemEquipmentSlot, ItemMiningProfile,
     ItemMiningRule, ItemMountBodyArmorKind, ItemRegistryCatalog, ItemUseEffects,
 };
+pub use crate::jukebox_song_registry::JukeboxSongRegistry;
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
@@ -37,6 +38,7 @@ pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCata
 pub use crate::particle_sprites::ParticleSpriteCatalog;
 pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
+pub use crate::sound_event_registry::SoundEventRegistry;
 pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 pub use crate::sprites::{
     SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteGuiMetadata,

@@ -1,6 +1,4 @@
 mod command;
-mod jukebox;
-mod registry;
 
 #[cfg(feature = "kira")]
 mod runtime;
@@ -11,8 +9,6 @@ pub use command::{
     PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
     TickEntitySoundPositionsCommand,
 };
-pub use jukebox::JukeboxSongRegistry;
-pub use registry::SoundEventRegistry;
 
 #[cfg(feature = "kira")]
 pub use runtime::KiraAudioRuntime;
