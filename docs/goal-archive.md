@@ -1308,6 +1308,22 @@
     Follow-up: `minecraft:dust_plume` also extends `BaseAshSmokeParticle`
     (`dir=(0.7, 0.6, 0.7)`, `ya + 0.15F`) and still uses `CommandWithYOffset`, so
     it has the same missing base-spread×dir shape and needs the same treatment.
+  - [x] dust_plume per-axis-dir initial velocity：renderer descriptor now maps
+    `minecraft:dust_plume` initial velocity to the same
+    `ParticleInitialVelocityDescriptor::BaseAshSmokeSpread { dir, provider_offset }`
+    variant instead of the flat `CommandWithYOffset` path, matching vanilla
+    `DustPlumeParticle extends BaseAshSmokeParticle`
+    (`super(..., 0.7F, 0.6F, 0.7F, xa, ya + 0.15F, za, ...)`): the `Particle`
+    7-arg normalized base spread scaled per axis by `dir=(0.7, 0.6, 0.7)`, then
+    the command velocity added on top with a `+0.15` y offset. A new
+    `BaseAshSmokeOffset::CommandWithYOffset { y_offset }` provider variant threads
+    the command velocity (`xa/ya/za`) and adds `y_offset` to `ya`, drawing no RNG
+    of its own (`DustPlumeParticle.Provider` passes the command velocity straight
+    through). Deterministic seed=86 tests reconstruct the dir-scaled base spread
+    from the vanilla source and pin the intake velocity to
+    `spread + command_velocity` with `+0.15` on y, resolving the ash/white_ash
+    dust_plume follow-up above. The per-tick `gravity *= 0.88` / `friction *= 0.92`
+    decay was already implemented as `ParticleTickMotionDescriptor::DustPlume`.
 - 粒子 sorting：
   - [x] single-quad particle render group / layer order：renderer
     `ParticleInstance` now records vanilla `ParticleRenderType.SINGLE_QUADS`

@@ -239,9 +239,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - 粒子 provider-specific behavior：
   - 初速度。smoke / large_smoke / white_smoke 已对齐 vanilla base-particle 随机扩散；
     ash / white_ash 的 per-axis-dir 速度变体（非均匀 `dir=(0.1, -0.1, 0.1)` +
-    WhiteAsh provider 随机偏移）已完成（见 goal-archive P1-5）。下一个具体项：
-    `dust_plume` 同样 extends `BaseAshSmokeParticle`（`dir=(0.7, 0.6, 0.7)` +
-    `ya + 0.15F`）但仍用 `CommandWithYOffset`，需要同样的 base-spread×dir 处理。
+    WhiteAsh provider 随机偏移）以及 `dust_plume`（`dir=(0.7, 0.6, 0.7)` +
+    `CommandWithYOffset { y_offset: 0.15 }`）的 base-spread×dir 初速度均已完成
+    （见 goal-archive P1-5）。下一个具体项：审计其余仍用纯 `Command` /
+    `CommandWithYOffset` 初速度的 provider（例如 campfire/soul smoke 系、其余
+    BaseAshSmoke 派生），逐个对齐 vanilla ctor 的 dir-scaled base spread。
   - lifetime。
   - size curve。
   - alpha/color curve。
