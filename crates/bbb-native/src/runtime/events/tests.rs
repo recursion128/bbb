@@ -3054,6 +3054,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(true),
                 block_state_id_at_event_pos: Some(1),
+                vault_block_entity_at_event_pos: false,
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
@@ -3062,12 +3063,86 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
                 block_state_id_at_event_pos: Some(0),
+                vault_block_entity_at_event_pos: false,
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
                 composter_fill_center_shape_max_y: None,
             },
         ]
+    );
+}
+
+#[test]
+fn vault_activation_level_event_threads_block_entity_context_to_particles() {
+    let vault_event = LevelEvent {
+        event_type: 3015,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let non_vault_event = LevelEvent {
+        event_type: 3015,
+        pos: ProtocolBlockPos {
+            x: 17,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
+        pos: vault_event.pos,
+        block_entity_type_id: 45,
+        raw_nbt: vec![0],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(vault_event)).unwrap();
+    tx.try_send(NetEvent::LevelEvent(non_vault_event)).unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert_eq!(
+        world.block_entity_type_id_at(bbb_world::BlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        }),
+        Some(45)
+    );
+    assert_eq!(particles.level_events, vec![vault_event, non_vault_event]);
+    assert_eq!(
+        particles.level_event_contexts[0].vault_block_entity_at_event_pos,
+        true
+    );
+    assert_eq!(
+        particles.level_event_contexts[1].vault_block_entity_at_event_pos,
+        false
     );
 }
 

@@ -1499,6 +1499,13 @@
     spread, and Y from the loaded block shape's center-column max-Y plus
     `0.03125`; missing/unloaded context falls back to vanilla full-block/unknown
     height.
+  - [x] vault activation LevelEvent particles：event `3015` now mirrors the
+    local cage smoke/flame branch of
+    `VaultBlockEntity.Client.emitActivationParticles`, gated on a loaded vault
+    block entity at the event position and emitting 20 `minecraft:smoke`
+    particles plus 20 normal/ominous flame particles from
+    `randomPosInsideCage`. Player connection particles remain deferred with
+    broader block-entity client effects.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs

@@ -25,7 +25,10 @@ const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
+const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
+// Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
+const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -768,11 +771,21 @@ pub(super) fn level_event_particle_context(
     LevelEventParticleContext {
         sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
+        vault_block_entity_at_event_pos: vault_block_entity_at_event_pos_context(world, event),
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
         growth_particles: growth_particle_context(world, event),
         in_block_particle_spread_height: in_block_particle_spread_height_context(world, event),
         composter_fill_center_shape_max_y: composter_fill_center_shape_max_y_context(world, event),
     }
+}
+
+fn vault_block_entity_at_event_pos_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> bool {
+    event.event_type == VAULT_ACTIVATE_LEVEL_EVENT
+        && world.block_entity_type_id_at(protocol_to_world_block_pos(event.pos))
+            == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID)
 }
 
 fn event_pos_block_state_id_context(

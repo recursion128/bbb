@@ -886,6 +886,22 @@ fn applies_block_entity_data_update() {
             sign_text: None,
         }
     );
+    assert_eq!(
+        store.block_entity_type_id_at(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        }),
+        Some(9)
+    );
+    assert_eq!(
+        store.block_entity_type_id_at(BlockPos {
+            x: 34,
+            y: 7,
+            z: -46,
+        }),
+        None
+    );
 
     let replacement_nbt = nbt_compound_with_string("id", "minecraft:furnace");
     assert!(store
@@ -902,6 +918,14 @@ fn applies_block_entity_data_update() {
     let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
     assert_eq!(chunk.block_entities.len(), 1);
     assert_eq!(chunk.block_entities[0].type_id, 11);
+    assert_eq!(
+        store.block_entity_type_id_at(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        }),
+        Some(11)
+    );
 
     let missing_chunk_applied = store
         .apply_block_entity_data(ProtocolBlockEntityData {

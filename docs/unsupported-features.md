@@ -192,7 +192,7 @@ When an agent does any of the following, update this file in the same slice:
         terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner/happy-villager/item-break/composter/known-shape
+      trial-spawner/vault activation/happy-villager/item-break/composter/known-shape
       block-destroy side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
@@ -334,6 +334,11 @@ When an agent does any of the following, update this file in the same slice:
       - event `3013`: normal trial spawner detected-player particles
       - event `3014`: trial spawner eject-item sound-side
         `minecraft:small_flame` and `minecraft:smoke` particles
+      - event `3015`: vault activation `minecraft:smoke` plus
+        `minecraft:small_flame` / `minecraft:soul_fire_flame` particles from
+        `randomPosInsideCage`, gated on a loaded vault block entity at the event
+        position; player connection particles remain deferred with broader
+        block-entity client effects
       - event `3016`: vault deactivation `minecraft:small_flame` /
         `minecraft:soul_fire_flame` particles from `randomPosCenterOfCage`,
         with gaussian `0.02` velocity

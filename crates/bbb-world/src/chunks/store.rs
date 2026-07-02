@@ -292,6 +292,21 @@ impl WorldStore {
         }
     }
 
+    pub fn block_entity_type_id_at(&self, pos: BlockPos) -> Option<i32> {
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let local_x = pos.x.rem_euclid(16) as u8;
+        let y = i16::try_from(pos.y).ok()?;
+        let local_z = pos.z.rem_euclid(16) as u8;
+        self.probe_chunk(chunk_pos)?
+            .block_entities
+            .iter()
+            .find(|entity| entity.local_x == local_x && entity.y == y && entity.local_z == local_z)
+            .map(|entity| entity.type_id)
+    }
+
     pub fn probe_block(&self, pos: BlockPos) -> Option<BlockProbe> {
         if !self.dimension.contains_y(pos.y) {
             return None;
