@@ -5033,6 +5033,139 @@ mod tests {
     }
 
     #[test]
+    fn level_event_particle_resolver_covers_vanilla_26_1_particle_events() {
+        let resolver = test_resolver(0);
+        let stone_id = test_block_state_id("minecraft:stone", []);
+        let cases = [
+            (COMPOSTER_FILL_LEVEL_EVENT, 0, "composter fill"),
+            (LAVA_EXTINGUISH_LEVEL_EVENT, 0, "lava extinguish"),
+            (
+                REDSTONE_TORCH_BURNOUT_LEVEL_EVENT,
+                0,
+                "redstone torch burnout",
+            ),
+            (
+                END_PORTAL_FRAME_FILL_LEVEL_EVENT,
+                0,
+                "end portal frame fill",
+            ),
+            (DRIPSTONE_DRIP_LEVEL_EVENT, 0, "pointed dripstone drip"),
+            (PLANT_GROWTH_LEVEL_EVENT, 2, "plant growth"),
+            (DISPENSER_SMOKE_LEVEL_EVENT, 0, "dispenser smoke"),
+            (
+                DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+                stone_id,
+                "destroy block",
+            ),
+            (POTION_BREAK_LEVEL_EVENT, 0x0033_66cc, "potion break"),
+            (
+                INSTANT_POTION_BREAK_LEVEL_EVENT,
+                0x0033_66cc,
+                "instant potion break",
+            ),
+            (ENDER_EYE_BREAK_LEVEL_EVENT, 0, "ender eye break"),
+            (BLAZE_SMOKE_LEVEL_EVENT, 0, "blaze smoke"),
+            (
+                DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT,
+                0,
+                "dragon fireball explode",
+            ),
+            (EXPLOSION_LEVEL_EVENT, 0, "explosion"),
+            (SPLASH_CLOUD_LEVEL_EVENT, 0, "splash cloud"),
+            (
+                DISPENSER_WHITE_SMOKE_LEVEL_EVENT,
+                0,
+                "dispenser white smoke",
+            ),
+            (BEE_GROWTH_PARTICLES_LEVEL_EVENT, 1, "bee growth"),
+            (
+                TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT,
+                1,
+                "turtle egg placement",
+            ),
+            (SMASH_ATTACK_PARTICLES_LEVEL_EVENT, 3, "smash attack"),
+            (END_GATEWAY_SPAWN_LEVEL_EVENT, 0, "end gateway spawn"),
+            (ELECTRIC_SPARK_LEVEL_EVENT, 0, "electric spark"),
+            (WAX_ON_LEVEL_EVENT, 0, "wax on"),
+            (WAX_OFF_LEVEL_EVENT, 0, "wax off"),
+            (SCRAPE_LEVEL_EVENT, 0, "scrape"),
+            (SCULK_CHARGE_LEVEL_EVENT, 2 << 6, "sculk charge"),
+            (SCULK_SHRIEK_PARTICLES_LEVEL_EVENT, 0, "sculk shriek"),
+            (
+                BRUSH_BLOCK_COMPLETE_LEVEL_EVENT,
+                stone_id,
+                "brush block complete",
+            ),
+            (EGG_CRACK_LEVEL_EVENT, 0, "egg crack"),
+            (
+                TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT,
+                0,
+                "trial spawner spawn particles",
+            ),
+            (
+                TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT,
+                1,
+                "trial spawner spawn mob",
+            ),
+            (
+                TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT,
+                2,
+                "trial spawner detect player",
+            ),
+            (
+                TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT,
+                0,
+                "trial spawner eject item",
+            ),
+            (VAULT_ACTIVATE_LEVEL_EVENT, 0, "vault activate"),
+            (VAULT_DEACTIVATE_LEVEL_EVENT, 0, "vault deactivate"),
+            (
+                TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT,
+                0,
+                "trial spawner eject item particles",
+            ),
+            (COBWEB_PLACE_PARTICLES_LEVEL_EVENT, 0, "cobweb place"),
+            (
+                TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT,
+                2,
+                "ominous trial spawner detect player",
+            ),
+            (
+                TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT,
+                1,
+                "trial spawner ominous activate",
+            ),
+            (
+                TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT,
+                1,
+                "trial spawner spawn item",
+            ),
+        ];
+
+        for (event_type, data, label) in cases {
+            let event = LevelEvent {
+                event_type,
+                data,
+                ..level_event_packet(event_type)
+            };
+            let mut random = LevelEventSoundRandomState::with_seed(0);
+            let batch = resolver.resolve_level_event_particles_with_context(
+                &event,
+                representative_level_event_particle_context(&event, stone_id),
+                &mut random,
+            );
+
+            assert!(
+                !batch.commands.is_empty(),
+                "vanilla LevelEvent particle case {event_type} ({label}) must be mapped"
+            );
+            assert_eq!(batch.missing_definition_count, 0, "{label}");
+            assert_eq!(batch.missing_sprite_count, 0, "{label}");
+            assert_eq!(batch.unknown_particle_type_count, 0, "{label}");
+        }
+    }
+
+    #[test]
     fn direction_normal_from_3d_data_value_matches_vanilla_wrapping() {
         assert_eq!(direction_normal_from_3d_data_value(0), (0, -1, 0));
         assert_eq!(direction_normal_from_3d_data_value(1), (0, 1, 0));
@@ -5075,6 +5208,34 @@ mod tests {
 
     fn test_resolver(seed: i64) -> ParticleCommandResolver {
         test_resolver_with_particle_status(seed, ClientParticleStatus::All)
+    }
+
+    fn representative_level_event_particle_context(
+        event: &LevelEvent,
+        block_state_id: i32,
+    ) -> LevelEventParticleContext {
+        match event.event_type {
+            DRIPSTONE_DRIP_LEVEL_EVENT => LevelEventParticleContext {
+                dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Water),
+                ..LevelEventParticleContext::default()
+            },
+            PLANT_GROWTH_LEVEL_EVENT => LevelEventParticleContext {
+                growth_particles: Some(LevelEventGrowthParticleContext {
+                    pos: event.pos,
+                    mode: LevelEventGrowthParticleMode::InBlock { spread_height: 1.0 },
+                }),
+                ..LevelEventParticleContext::default()
+            },
+            SMASH_ATTACK_PARTICLES_LEVEL_EVENT => LevelEventParticleContext {
+                block_state_id_at_event_pos: Some(block_state_id),
+                ..LevelEventParticleContext::default()
+            },
+            VAULT_ACTIVATE_LEVEL_EVENT => LevelEventParticleContext {
+                vault_block_entity_at_event_pos: true,
+                ..LevelEventParticleContext::default()
+            },
+            _ => LevelEventParticleContext::default(),
+        }
     }
 
     fn test_resolver_with_particle_status(

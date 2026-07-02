@@ -267,10 +267,10 @@ When an agent does any of the following, update this file in the same slice:
         sprite-transparency-driven terrain/item layer selection, binding
         terrain/items atlas textures in the particle GPU path, and transparent
         terrain/items vertex emission remain deferred
-    - remaining level-event particle effects beyond the currently covered
-      simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner/vault activation/happy-villager/item-break/composter/known-shape
-      block-destroy side effects
+    - LevelEvent particle side effects are now covered for every vanilla 26.1
+      `LevelEventHandler` case that emits particles; the remaining LevelEvent
+      work is audio ordering / world-context refinements, not unmapped particle
+      cases
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -307,7 +307,11 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
       `shouldSpawnTerrainParticles=false` block states after packet sample RNG
       is consumed; `minecraft:block_marker` remains unfiltered like vanilla
-      `BlockMarker.Provider`.
+      `BlockMarker.Provider`. The native coverage test
+      `level_event_particle_resolver_covers_vanilla_26_1_particle_events`
+      enumerates every vanilla 26.1 `LevelEventHandler` event id that emits
+      particles and verifies a representative mapped batch with no missing
+      definition / sprite diagnostics.
       Renderer tests enumerate every id registered by vanilla 26.1
       `ParticleResources.registerProviders()` and assert it maps to an explicit
       vanilla provider descriptor rather than the generic `Particle` fallback.

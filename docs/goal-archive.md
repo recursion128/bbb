@@ -1722,3 +1722,9 @@
     `3002`, `3004`, `3005`, and `3009` now advance their vanilla electric-spark
     axis or block-face, wax-off, scrape, and egg-crack random draws in
     audio-only dispatch before later LevelEvent sounds draw their seeds.
+  - [x] LevelEvent particle side-effects coverage：native particle resolution
+    now has a coverage test enumerating every vanilla 26.1 `LevelEventHandler`
+    event id that emits particles and verifying a representative mapped batch
+    with no missing definition / sprite diagnostics. The remaining LevelEvent
+    backlog is audio ordering / world-context refinement, not unmapped particle
+    event cases.
