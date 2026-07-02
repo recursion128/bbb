@@ -2796,6 +2796,12 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:snow" | "minecraft:snow_block" => Some(MAP_COLOR_SNOW),
         "minecraft:ice" | "minecraft:packed_ice" | "minecraft:blue_ice" => Some(MAP_COLOR_ICE),
         "minecraft:clay" => Some(MAP_COLOR_CLAY),
+        "minecraft:infested_stone"
+        | "minecraft:infested_cobblestone"
+        | "minecraft:infested_stone_bricks"
+        | "minecraft:infested_mossy_stone_bricks"
+        | "minecraft:infested_cracked_stone_bricks"
+        | "minecraft:infested_chiseled_stone_bricks" => Some(MAP_COLOR_CLAY),
         "minecraft:lapis_block" => Some(MAP_COLOR_LAPIS),
         "minecraft:diamond_block" => Some(MAP_COLOR_DIAMOND),
         "minecraft:emerald_block" => Some(MAP_COLOR_EMERALD),
@@ -4569,6 +4575,47 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(rgb_option(0x64, 0x64, 0x64)),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_infested_stone_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:infested_stone", []),
+                "minecraft:infested_stone",
+                rgb_option(0xa4, 0xa8, 0xb8),
+            ),
+            (
+                test_block_state_id("minecraft:infested_cobblestone", []),
+                "minecraft:infested_cobblestone",
+                rgb_option(0xa4, 0xa8, 0xb8),
+            ),
+            (
+                test_block_state_id("minecraft:infested_chiseled_stone_bricks", []),
+                "minecraft:infested_chiseled_stone_bricks",
+                rgb_option(0xa4, 0xa8, 0xb8),
+            ),
+            (
+                test_block_state_id("minecraft:infested_deepslate", [("axis", "y")]),
+                "minecraft:infested_deepslate",
+                rgb_option(0x64, 0x64, 0x64),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
                 "{block_name}"
             );
         }

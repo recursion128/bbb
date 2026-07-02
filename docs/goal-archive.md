@@ -1638,6 +1638,12 @@
     representative cobbled stairs, polished slab, tile wall, and brick stairs
     RGBs. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
     and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` infested stone static mapColor expansion：native now
+    mirrors vanilla's distinct CLAY mapColor for infested stone, cobblestone,
+    and stone-brick variants while leaving infested deepslate on the existing
+    DEEPSLATE family fallback. Tests pin CLAY RGBs plus the infested deepslate
+    axis state. Full mapColor catalog coverage, biome-aware per-spawn
+    BlockColors, and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
