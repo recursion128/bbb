@@ -105,11 +105,11 @@ impl ProbeContext {
                 bail!("play disconnected: {}", disconnect.reason)
             }
             PlayClientbound::ResourcePackPush(update) => {
+                // The world push apply already ran in apply_play_packet.
                 let pack_id = update.id;
                 let action = response_action_for_push(&update);
                 let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
-                self.world.apply_resource_pack_push(update);
                 self.world.apply_resource_pack_response(pack_id, action);
             }
             PlayClientbound::PlayerPosition(update) => {

@@ -11,6 +11,7 @@ use bbb_control::{AudioCounters, NetCounters};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundCatalog, SoundEventRegistry};
 use bbb_protocol::codec::Encoder;
+use bbb_protocol::packets::PlayClientbound;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
     AttributeSnapshot, AwardStats, BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate,
@@ -51,12 +52,30 @@ use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+fn advance_growth_randoms_for_context(
+    event: &bbb_protocol::packets::LevelEvent,
+    context: &LevelEventParticleContext,
+    random: &mut LevelEventSoundRandomState,
+) {
+    if let Some(growth) = &context.growth_particles {
+        let mode = match growth.mode {
+            LevelEventGrowthParticleMode::InBlock { .. } => {
+                bbb_world::LevelEventGrowthRandomMode::InBlock
+            }
+            LevelEventGrowthParticleMode::WideNoFloating { .. } => {
+                bbb_world::LevelEventGrowthRandomMode::WideNoFloating
+            }
+        };
+        advance_growth_level_event_particle_randoms(event.data, mode, random);
+    }
+}
+
 #[test]
 fn block_changed_ack_updates_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::BlockChangedAck(
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockChangedAck(
         bbb_protocol::packets::BlockChangedAck { sequence: 17 },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -103,14 +122,16 @@ fn configuration_reentry_clears_online_client_level_state() {
 #[test]
 fn chunk_cache_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::SetChunkCacheCenter(SetChunkCacheCenter {
-        chunk_x: -4,
-        chunk_z: 7,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetChunkCacheCenter(
+        SetChunkCacheCenter {
+            chunk_x: -4,
+            chunk_z: 7,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetChunkCacheRadius(SetChunkCacheRadius {
-        radius: 10,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetChunkCacheRadius(
+        SetChunkCacheRadius { radius: 10 },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -130,59 +151,67 @@ fn chunk_cache_events_update_world_counters() {
 #[test]
 fn terrain_chunk_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(7);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: ProtocolBlockPos {
             x: 16,
             y: -64,
             z: -32,
         },
         block_state_id: 5,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::SectionBlocksUpdate(SectionBlocksUpdate {
-        section_x: 1,
-        section_y: 0,
-        section_z: -2,
-        updates: vec![BlockUpdate {
-            pos: ProtocolBlockPos {
-                x: 17,
-                y: -64,
-                z: -31,
-            },
-            block_state_id: 6,
-        }],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
-        pos: ProtocolBlockPos {
-            x: 16,
-            y: -64,
-            z: -32,
+    tx.try_send(NetEvent::Play(PlayClientbound::SectionBlocksUpdate(
+        SectionBlocksUpdate {
+            section_x: 1,
+            section_y: 0,
+            section_z: -2,
+            updates: vec![BlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 17,
+                    y: -64,
+                    z: -31,
+                },
+                block_state_id: 6,
+            }],
         },
-        block_entity_type_id: 7,
-        raw_nbt: vec![0],
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::LightUpdate(LightUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: ProtocolBlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            },
+            block_entity_type_id: 7,
+            raw_nbt: vec![0],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LightUpdate(LightUpdate {
         chunk_x: 1,
         chunk_z: -2,
         light_data: empty_light_update_data(),
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
-        chunks: vec![ChunkBiomeData {
+    tx.try_send(NetEvent::Play(PlayClientbound::ChunksBiomes(
+        ChunksBiomes {
+            chunks: vec![ChunkBiomeData {
+                pos: ProtocolChunkPos { x: 1, z: -2 },
+                raw_biomes: single_biome_payload(7),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::ForgetLevelChunk(
+        ForgetLevelChunk {
             pos: ProtocolChunkPos { x: 1, z: -2 },
-            raw_biomes: single_biome_payload(7),
-        }],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::ForgetLevelChunk(ForgetLevelChunk {
-        pos: ProtocolChunkPos { x: 1, z: -2 },
-    }))
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -227,22 +256,24 @@ fn terrain_chunk_events_update_world_counters() {
 #[test]
 fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
-        pos: ProtocolBlockPos {
-            x: 16,
-            y: -64,
-            z: -32,
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: ProtocolBlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            },
+            block_entity_type_id: 7,
+            raw_nbt: sign_text_nbt(
+                ["Front A", "Front B", "Front C", "Front D"],
+                ["Back A", "Back B", "Back C", "Back D"],
+            ),
         },
-        block_entity_type_id: 7,
-        raw_nbt: sign_text_nbt(
-            ["Front A", "Front B", "Front C", "Front D"],
-            ["Back A", "Back B", "Back C", "Back D"],
-        ),
-    }))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -282,55 +313,63 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
 #[test]
 fn terrain_chunk_ignored_counters_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(6);
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: ProtocolBlockPos {
             x: 16,
             y: -64,
             z: -32,
         },
         block_state_id: 5,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::SectionBlocksUpdate(SectionBlocksUpdate {
-        section_x: 1,
-        section_y: 0,
-        section_z: -2,
-        updates: vec![BlockUpdate {
-            pos: ProtocolBlockPos {
-                x: 17,
-                y: -64,
-                z: -31,
-            },
-            block_state_id: 6,
-        }],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
-        pos: ProtocolBlockPos {
-            x: 16,
-            y: -64,
-            z: -32,
+    tx.try_send(NetEvent::Play(PlayClientbound::SectionBlocksUpdate(
+        SectionBlocksUpdate {
+            section_x: 1,
+            section_y: 0,
+            section_z: -2,
+            updates: vec![BlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 17,
+                    y: -64,
+                    z: -31,
+                },
+                block_state_id: 6,
+            }],
         },
-        block_entity_type_id: 7,
-        raw_nbt: vec![0],
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::LightUpdate(LightUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: ProtocolBlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            },
+            block_entity_type_id: 7,
+            raw_nbt: vec![0],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LightUpdate(LightUpdate {
         chunk_x: 1,
         chunk_z: -2,
         light_data: empty_light_update_data(),
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
-        chunks: vec![ChunkBiomeData {
+    tx.try_send(NetEvent::Play(PlayClientbound::ChunksBiomes(
+        ChunksBiomes {
+            chunks: vec![ChunkBiomeData {
+                pos: ProtocolChunkPos { x: 1, z: -2 },
+                raw_biomes: Vec::new(),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::ForgetLevelChunk(
+        ForgetLevelChunk {
             pos: ProtocolChunkPos { x: 1, z: -2 },
-            raw_biomes: Vec::new(),
-        }],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::ForgetLevelChunk(ForgetLevelChunk {
-        pos: ProtocolChunkPos { x: 1, z: -2 },
-    }))
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -372,11 +411,13 @@ fn terrain_chunk_ignored_counters_stay_in_world_store() {
 #[test]
 fn terrain_apply_errors_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
-        pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
-        block_entity_type_id: 7,
-        raw_nbt: vec![1],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
+            block_entity_type_id: 7,
+            raw_nbt: vec![1],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -404,7 +445,8 @@ fn terrain_chunk_decode_errors_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(1);
     let mut chunk = synthetic_native_level_chunk_packet();
     chunk.chunk_data.section_data = vec![0xff];
-    tx.try_send(NetEvent::LevelChunkWithLight(chunk)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(chunk)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -425,16 +467,18 @@ fn terrain_chunk_decode_errors_stay_in_world_store() {
 #[test]
 fn terrain_biome_decode_errors_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
-        chunks: vec![ChunkBiomeData {
-            pos: ProtocolChunkPos { x: 1, z: -2 },
-            raw_biomes: vec![65],
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ChunksBiomes(
+        ChunksBiomes {
+            chunks: vec![ChunkBiomeData {
+                pos: ProtocolChunkPos { x: 1, z: -2 },
+                raw_biomes: vec![65],
+            }],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -457,18 +501,18 @@ fn terrain_biome_decode_errors_stay_in_world_store() {
 #[test]
 fn respawn_clears_world_first_chunk_when_world_changes() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
 
     let mut spawn_info = protocol_play_login(9).common_spawn_info;
     spawn_info.dimension_type_id = 1;
     spawn_info.dimension = "minecraft:the_nether".to_string();
-    tx.try_send(NetEvent::Respawn(Respawn {
+    tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
         common_spawn_info: spawn_info,
         data_to_keep: 0,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -521,9 +565,9 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
 #[test]
 fn configuration_state_change_clears_client_level_state() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
     tx.try_send(NetEvent::StateChanged {
         state: bbb_net::ConnectionState::Configuration,
@@ -718,7 +762,7 @@ fn custom_report_details_event_updates_world_counters() {
 #[test]
 fn award_stats_event_updates_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::AwardStats(AwardStats {
+    tx.try_send(NetEvent::Play(PlayClientbound::AwardStats(AwardStats {
         stats: vec![
             StatUpdate {
                 stat_type_id: 8,
@@ -731,7 +775,7 @@ fn award_stats_event_updates_world_state_and_world_counters() {
                 amount: 11,
             },
         ],
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1008,28 +1052,35 @@ fn server_links_event_updates_world_and_world_counters() {
 #[test]
 fn client_ui_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::LowDiskSpaceWarning).unwrap();
-    tx.try_send(NetEvent::MountScreenOpen(MountScreenOpen {
-        container_id: 11,
-        inventory_columns: 5,
-        entity_id: 42,
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::OpenBook(OpenBook {
-        hand: InteractionHand::OffHand,
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::OpenSignEditor(OpenSignEditor {
-        pos: ProtocolBlockPos {
-            x: -5,
-            y: 70,
-            z: 12,
-        },
-        is_front_text: false,
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::PongResponse(PongResponse { time: 123456789 }))
+    tx.try_send(NetEvent::Play(PlayClientbound::LowDiskSpaceWarning))
         .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::MountScreenOpen(
+        MountScreenOpen {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::OpenBook(OpenBook {
+        hand: InteractionHand::OffHand,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::OpenSignEditor(
+        OpenSignEditor {
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::PongResponse(
+        PongResponse { time: 123456789 },
+    )))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -1080,14 +1131,16 @@ fn client_ui_events_update_world_and_world_counters() {
 #[test]
 fn open_book_event_uses_held_written_book_for_active_screen() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::SetPlayerInventory(SetPlayerInventory {
-        slot: 40,
-        item: written_book_stack(vec!["Native first", "Native second"]),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerInventory(
+        SetPlayerInventory {
+            slot: 40,
+            item: written_book_stack(vec!["Native first", "Native second"]),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::OpenBook(OpenBook {
+    tx.try_send(NetEvent::Play(PlayClientbound::OpenBook(OpenBook {
         hand: InteractionHand::OffHand,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1116,7 +1169,7 @@ fn open_book_event_uses_held_written_book_for_active_screen() {
 #[test]
 fn map_item_data_event_updates_world_state() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::MapItemData(MapItemData {
+    tx.try_send(NetEvent::Play(PlayClientbound::MapItemData(MapItemData {
         map_id: 42,
         scale: 2,
         locked: true,
@@ -1134,7 +1187,7 @@ fn map_item_data_event_updates_world_state() {
             height: 2,
             colors: vec![1, 2, 3, 4],
         }),
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1173,13 +1226,13 @@ fn map_item_data_event_updates_world_state() {
 #[test]
 fn take_item_entity_event_updates_world_counter() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::TakeItemEntity(
+    tx.try_send(NetEvent::Play(PlayClientbound::TakeItemEntity(
         bbb_protocol::packets::TakeItemEntity {
             item_id: 10,
             player_id: 20,
             amount: 3,
         },
-    ))
+    )))
     .unwrap();
     drop(tx);
 
@@ -1200,33 +1253,33 @@ fn take_item_entity_event_updates_world_counter() {
 #[test]
 fn clear_titles_event_updates_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::SetTitlesAnimation(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetTitlesAnimation(
         bbb_protocol::packets::SetTitlesAnimation {
             fade_in: 5,
             stay: 40,
             fade_out: 15,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetTitleText(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetTitleText(
         bbb_protocol::packets::SetTitleText {
             content: "Quest complete".to_string(),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetSubtitleText(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetSubtitleText(
         bbb_protocol::packets::SetSubtitleText {
             content: "Return to camp".to_string(),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ClearTitles(bbb_protocol::packets::ClearTitles {
-        reset_times: false,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ClearTitles(
+        bbb_protocol::packets::ClearTitles { reset_times: false },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ClearTitles(bbb_protocol::packets::ClearTitles {
-        reset_times: true,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ClearTitles(
+        bbb_protocol::packets::ClearTitles { reset_times: true },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1252,7 +1305,7 @@ fn clear_titles_event_updates_world_counters() {
 #[test]
 fn command_suggestions_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::CommandSuggestions(
+    tx.try_send(NetEvent::Play(PlayClientbound::CommandSuggestions(
         bbb_protocol::packets::CommandSuggestions {
             id: 7,
             start: 1,
@@ -1268,7 +1321,7 @@ fn command_suggestions_event_updates_world_and_world_counters() {
                 },
             ],
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1293,8 +1346,10 @@ fn command_suggestions_event_updates_world_and_world_counters() {
 #[test]
 fn commands_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::Commands(command_tree_packet("say")))
-        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::Commands(
+        command_tree_packet("say"),
+    )))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -1333,7 +1388,7 @@ fn client_chat_events_update_world_and_world_counters() {
         bytes: vec![9; 256],
     };
     let expected_signature_checksum = signature.checksum();
-    tx.try_send(NetEvent::PlayerChat(PlayerChat {
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerChat(PlayerChat {
         global_index: 0,
         sender,
         index: 2,
@@ -1350,19 +1405,21 @@ fn client_chat_events_update_world_and_world_counters() {
             mask_words: vec![1],
         },
         chat_type: protocol_chat_type("Alice"),
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::DeleteChat(DeleteChat {
+    tx.try_send(NetEvent::Play(PlayClientbound::DeleteChat(DeleteChat {
         message_signature: PackedMessageSignature {
             cache_id: Some(0),
             full_signature: None,
         },
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::DisguisedChat(DisguisedChat {
-        message: "server notice".to_string(),
-        chat_type: protocol_chat_type("Server"),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DisguisedChat(
+        DisguisedChat {
+            message: "server notice".to_string(),
+            chat_type: protocol_chat_type("Server"),
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1426,11 +1483,13 @@ fn client_chat_events_update_world_and_world_counters() {
 fn player_chat_events_queue_vanilla_threshold_acknowledgement() {
     let (tx, mut rx) = mpsc::channel(80);
     for index in 0..65 {
-        tx.try_send(NetEvent::PlayerChat(player_chat_with_signature(
-            index,
-            MessageSignature {
-                bytes: vec![index as u8; 256],
-            },
+        tx.try_send(NetEvent::Play(PlayClientbound::PlayerChat(
+            player_chat_with_signature(
+                index,
+                MessageSignature {
+                    bytes: vec![index as u8; 256],
+                },
+            ),
         )))
         .unwrap();
     }
@@ -1460,40 +1519,48 @@ fn player_chat_events_queue_vanilla_threshold_acknowledgement() {
 #[test]
 fn client_feature_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::CustomChatCompletions(CustomChatCompletions {
-        action: CustomChatCompletionsAction::Set,
-        entries: vec!["/warp".to_string(), "/spawn".to_string()],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::CustomChatCompletions(
+        CustomChatCompletions {
+            action: CustomChatCompletionsAction::Set,
+            entries: vec!["/warp".to_string(), "/spawn".to_string()],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlaceGhostRecipe(PlaceGhostRecipe {
-        container_id: 9,
-        recipe_display_type: RecipeDisplayType::Stonecutter,
-        recipe_display_body: vec![1, 2, 3],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::PlaceGhostRecipe(
+        PlaceGhostRecipe {
+            container_id: 9,
+            recipe_display_type: RecipeDisplayType::Stonecutter,
+            recipe_display_body: vec![1, 2, 3],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::UpdateAdvancements(UpdateAdvancements {
-        reset: true,
-        added: vec![AdvancementSummary {
-            id: "minecraft:story/root".to_string(),
-            parent: None,
-            display: None,
-            requirements: Vec::new(),
-            sends_telemetry_event: false,
-        }],
-        removed: Vec::new(),
-        progress: Vec::new(),
-        show_advancements: false,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateAdvancements(
+        UpdateAdvancements {
+            reset: true,
+            added: vec![AdvancementSummary {
+                id: "minecraft:story/root".to_string(),
+                parent: None,
+                display: None,
+                requirements: Vec::new(),
+                sends_telemetry_event: false,
+            }],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SelectAdvancementsTab(SelectAdvancementsTab {
-        tab: Some("minecraft:story/root".to_string()),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SelectAdvancementsTab(
+        SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::TagQuery(TagQuery {
+    tx.try_send(NetEvent::Play(PlayClientbound::TagQuery(TagQuery {
         transaction_id: 12,
         tag_present: true,
         raw_nbt: vec![10, 0],
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1543,46 +1610,58 @@ fn client_feature_events_update_world_and_world_counters() {
 #[test]
 fn inventory_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(8);
-    tx.try_send(NetEvent::OpenScreen(OpenScreen {
+    tx.try_send(NetEvent::Play(PlayClientbound::OpenScreen(OpenScreen {
         container_id: 7,
         menu_type_id: 18,
         title: "Inventory".to_string(),
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::ContainerSetContent(ContainerSetContent {
-        container_id: 7,
-        state_id: 1,
-        items: vec![item_stack(42, 1), item_stack(43, 2)],
-        carried_item: item_stack(99, 1),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ContainerSetContent(
+        ContainerSetContent {
+            container_id: 7,
+            state_id: 1,
+            items: vec![item_stack(42, 1), item_stack(43, 2)],
+            carried_item: item_stack(99, 1),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ContainerSetSlot(ContainerSetSlot {
-        container_id: 7,
-        state_id: 2,
-        slot: 1,
-        item: item_stack(44, 3),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ContainerSetSlot(
+        ContainerSetSlot {
+            container_id: 7,
+            state_id: 2,
+            slot: 1,
+            item: item_stack(44, 3),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ContainerSetData(ContainerSetData {
-        container_id: 7,
-        id: 3,
-        value: 11,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ContainerSetData(
+        ContainerSetData {
+            container_id: 7,
+            id: 3,
+            value: 11,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetPlayerInventory(SetPlayerInventory {
-        slot: 5,
-        item: item_stack(12, 1),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerInventory(
+        SetPlayerInventory {
+            slot: 5,
+            item: item_stack(12, 1),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetCursorItem(SetCursorItem {
-        item: item_stack(100, 4),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetCursorItem(
+        SetCursorItem {
+            item: item_stack(100, 4),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ContainerClose(ContainerClose { container_id: 7 }))
-        .unwrap();
-    tx.try_send(NetEvent::ContainerClose(ContainerClose {
-        container_id: 99,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ContainerClose(
+        ContainerClose { container_id: 7 },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::ContainerClose(
+        ContainerClose { container_id: 99 },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1615,28 +1694,34 @@ fn inventory_events_update_world_and_world_counters() {
 #[test]
 fn entity_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(19);
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity(123)))
-        .unwrap();
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity(456)))
-        .unwrap();
-    tx.try_send(NetEvent::EntityPositionSync(EntityPositionSync {
-        id: 123,
-        position: ProtocolVec3d {
-            x: 2.0,
-            y: 65.0,
-            z: -3.0,
-        },
-        delta_movement: ProtocolVec3d {
-            x: 0.0,
-            y: 0.25,
-            z: 0.0,
-        },
-        y_rot: 180.0,
-        x_rot: 30.0,
-        on_ground: true,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity(123),
+    )))
     .unwrap();
-    tx.try_send(NetEvent::MoveEntity(EntityMove {
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity(456),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityPositionSync(
+        EntityPositionSync {
+            id: 123,
+            position: ProtocolVec3d {
+                x: 2.0,
+                y: 65.0,
+                z: -3.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.25,
+                z: 0.0,
+            },
+            y_rot: 180.0,
+            x_rot: 30.0,
+            on_ground: true,
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::MoveEntity(EntityMove {
         id: 123,
         delta_x: 4096,
         delta_y: 0,
@@ -1644,36 +1729,40 @@ fn entity_events_update_world_and_world_counters() {
         y_rot: Some(-90.0),
         x_rot: Some(45.0),
         on_ground: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::TeleportEntity(TeleportEntity {
-        id: 123,
-        position: ProtocolVec3d {
-            x: 0.5,
-            y: 70.0,
-            z: -4.0,
+    tx.try_send(NetEvent::Play(PlayClientbound::TeleportEntity(
+        TeleportEntity {
+            id: 123,
+            position: ProtocolVec3d {
+                x: 0.5,
+                y: 70.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.2,
+                z: 0.0,
+            },
+            y_rot: 10.0,
+            x_rot: -120.0,
+            relatives_mask: 0,
+            on_ground: true,
         },
-        delta_movement: ProtocolVec3d {
-            x: 0.0,
-            y: 0.2,
-            z: 0.0,
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityPositionSync(
+        EntityPositionSync {
+            id: 999,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: false,
         },
-        y_rot: 10.0,
-        x_rot: -120.0,
-        relatives_mask: 0,
-        on_ground: true,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::EntityPositionSync(EntityPositionSync {
-        id: 999,
-        position: ProtocolVec3d::default(),
-        delta_movement: ProtocolVec3d::default(),
-        y_rot: 0.0,
-        x_rot: 0.0,
-        on_ground: false,
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::MoveEntity(EntityMove {
+    tx.try_send(NetEvent::Play(PlayClientbound::MoveEntity(EntityMove {
         id: 999,
         delta_x: 0,
         delta_y: 0,
@@ -1681,86 +1770,100 @@ fn entity_events_update_world_and_world_counters() {
         y_rot: None,
         x_rot: None,
         on_ground: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::TeleportEntity(TeleportEntity {
-        id: 999,
-        position: ProtocolVec3d::default(),
-        delta_movement: ProtocolVec3d::default(),
-        y_rot: 0.0,
-        x_rot: 0.0,
-        relatives_mask: 0,
-        on_ground: false,
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
-        id: 123,
-        delta_movement: ProtocolVec3d {
-            x: 0.1,
-            y: 0.0,
-            z: -0.1,
+    tx.try_send(NetEvent::Play(PlayClientbound::TeleportEntity(
+        TeleportEntity {
+            id: 999,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            relatives_mask: 0,
+            on_ground: false,
         },
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RotateHead(RotateHead {
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityMotion(
+        SetEntityMotion {
+            id: 123,
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: 0.0,
+                z: -0.1,
+            },
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::RotateHead(RotateHead {
         id: 123,
         y_head_rot: 90.0,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::EntityAnimation(EntityAnimation {
-        id: 123,
-        action: 3,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 123, action: 3 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::EntityEvent(EntityEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
         entity_id: 123,
         event_id: 35,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::HurtAnimation(HurtAnimation {
-        id: 123,
-        yaw: 45.5,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::HurtAnimation(
+        HurtAnimation { id: 123, yaw: 45.5 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetEntityData(SetEntityData {
-        id: 123,
-        values: vec![EntityDataValue {
-            data_id: 0,
-            serializer_id: 0,
-            value: EntityDataValueKind::Byte(0x20),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 123,
+            values: vec![EntityDataValue {
+                data_id: 0,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(0x20),
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetEquipment(SetEquipment {
-        entity_id: 123,
-        slots: vec![EquipmentSlotUpdate {
-            slot: EquipmentSlot::Head,
-            item: item_stack(42, 1),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEquipment(
+        SetEquipment {
+            entity_id: 123,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: item_stack(42, 1),
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::UpdateAttributes(UpdateAttributes {
-        entity_id: 123,
-        attributes: vec![AttributeSnapshot {
-            attribute_id: 21,
-            base: 20.0,
-            modifiers: Vec::new(),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateAttributes(
+        UpdateAttributes {
+            entity_id: 123,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: 21,
+                base: 20.0,
+                modifiers: Vec::new(),
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetEntityLink(SetEntityLink {
-        source_id: 123,
-        dest_id: 456,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityLink(
+        SetEntityLink {
+            source_id: 123,
+            dest_id: 456,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetPassengers(SetPassengers {
-        vehicle_id: 123,
-        passenger_ids: vec![456],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPassengers(
+        SetPassengers {
+            vehicle_id: 123,
+            passenger_ids: vec![456],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
-        entity_ids: vec![456, 999],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::RemoveEntities(
+        RemoveEntities {
+            entity_ids: vec![456, 999],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1817,9 +1920,8 @@ fn entity_events_materialize_ender_dragon_part_pick_targets() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity_with_type(
-        100,
-        ENDER_DRAGON_TYPE_ID,
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(100, ENDER_DRAGON_TYPE_ID),
     )))
     .unwrap();
 
@@ -1860,20 +1962,18 @@ fn entity_events_materialize_ender_dragon_part_pick_targets() {
 #[test]
 fn transient_entity_event_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::EntityAnimation(EntityAnimation {
-        id: 999,
-        action: 4,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 999, action: 4 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::EntityEvent(EntityEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
         entity_id: 999,
         event_id: 21,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::HurtAnimation(HurtAnimation {
-        id: 999,
-        yaw: 90.0,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::HurtAnimation(
+        HurtAnimation { id: 999, yaw: 90.0 },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1899,20 +1999,24 @@ fn transient_entity_event_ignored_counters_update_world_counters() {
 #[test]
 fn simple_entity_update_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
-        id: 999,
-        delta_movement: ProtocolVec3d::default(),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityMotion(
+        SetEntityMotion {
+            id: 999,
+            delta_movement: ProtocolVec3d::default(),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RotateHead(RotateHead {
+    tx.try_send(NetEvent::Play(PlayClientbound::RotateHead(RotateHead {
         id: 999,
         y_head_rot: 90.0,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::SetEntityLink(SetEntityLink {
-        source_id: 999,
-        dest_id: 123,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityLink(
+        SetEntityLink {
+            source_id: 999,
+            dest_id: 123,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1940,36 +2044,41 @@ fn entity_metadata_ignored_counters_update_world_counters() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity_with_type(
-        124,
-        VANILLA_ENTITY_TYPE_ITEM_ID,
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(124, VANILLA_ENTITY_TYPE_ITEM_ID),
     )))
     .unwrap();
-    tx.try_send(NetEvent::SetEquipment(SetEquipment {
-        entity_id: 124,
-        slots: vec![EquipmentSlotUpdate {
-            slot: EquipmentSlot::Head,
-            item: item_stack(42, 1),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEquipment(
+        SetEquipment {
+            entity_id: 124,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: item_stack(42, 1),
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::UpdateAttributes(UpdateAttributes {
-        entity_id: 124,
-        attributes: vec![AttributeSnapshot {
-            attribute_id: 21,
-            base: 20.0,
-            modifiers: Vec::new(),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateAttributes(
+        UpdateAttributes {
+            entity_id: 124,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: 21,
+                base: 20.0,
+                modifiers: Vec::new(),
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetEntityData(SetEntityData {
-        id: 999,
-        values: vec![EntityDataValue {
-            data_id: 0,
-            serializer_id: 0,
-            value: EntityDataValueKind::Byte(0x20),
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 999,
+            values: vec![EntityDataValue {
+                data_id: 0,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(0x20),
+            }],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -1998,10 +2107,12 @@ fn entity_metadata_ignored_counters_update_world_counters() {
 #[test]
 fn passenger_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::SetPassengers(SetPassengers {
-        vehicle_id: 999,
-        passenger_ids: vec![123, 124],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPassengers(
+        SetPassengers {
+            vehicle_id: 999,
+            passenger_ids: vec![123, 124],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2023,9 +2134,11 @@ fn passenger_ignored_counters_update_world_counters() {
 fn remove_entities_updates_world_active_effect_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
-        entity_ids: vec![entity_id],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::RemoveEntities(
+        RemoveEntities {
+            entity_ids: vec![entity_id],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2046,8 +2159,10 @@ fn remove_entities_updates_world_active_effect_counters() {
 fn add_entity_replacement_updates_world_active_effect_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity(entity_id)))
-        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity(entity_id),
+    )))
+    .unwrap();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id));
@@ -2068,21 +2183,20 @@ fn mob_effect_ignored_counters_update_world_counters() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::AddEntity(protocol_add_entity_with_type(
-        124,
-        VANILLA_ENTITY_TYPE_ITEM_ID,
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(124, VANILLA_ENTITY_TYPE_ITEM_ID),
     )))
     .unwrap();
-    tx.try_send(NetEvent::UpdateMobEffect(protocol_update_mob_effect(
-        124, 3,
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateMobEffect(
+        protocol_update_mob_effect(124, 3),
     )))
     .unwrap();
-    tx.try_send(NetEvent::RemoveMobEffect(
+    tx.try_send(NetEvent::Play(PlayClientbound::RemoveMobEffect(
         bbb_protocol::packets::RemoveMobEffect {
             entity_id: 124,
             effect_id: 3,
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2104,31 +2218,33 @@ fn mob_effect_ignored_counters_update_world_counters() {
 #[test]
 fn merchant_offers_event_updates_world_inventory_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::OpenScreen(OpenScreen {
+    tx.try_send(NetEvent::Play(PlayClientbound::OpenScreen(OpenScreen {
         container_id: 7,
         menu_type_id: 19,
         title: "Merchant".to_string(),
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::MerchantOffers(MerchantOffers {
-        container_id: 7,
-        offers: vec![MerchantOffer {
-            buy_a: item_cost(42, 3),
-            sell: item_stack(99, 1),
-            buy_b: Some(item_cost(43, 2)),
-            is_out_of_stock: true,
-            uses: 4,
-            max_uses: 12,
-            xp: 8,
-            special_price_diff: -2,
-            price_multiplier: 0.05,
-            demand: 6,
-        }],
-        villager_level: 3,
-        villager_xp: 120,
-        show_progress: true,
-        can_restock: false,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::MerchantOffers(
+        MerchantOffers {
+            container_id: 7,
+            offers: vec![MerchantOffer {
+                buy_a: item_cost(42, 3),
+                sell: item_stack(99, 1),
+                buy_b: Some(item_cost(43, 2)),
+                is_out_of_stock: true,
+                uses: 4,
+                max_uses: 12,
+                xp: 8,
+                special_price_diff: -2,
+                price_multiplier: 0.05,
+                demand: 6,
+            }],
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2161,36 +2277,42 @@ fn merchant_offers_event_updates_world_inventory_state_and_world_counters() {
 #[test]
 fn recipe_book_events_update_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::RecipeBookAdd(RecipeBookAdd {
-        replace: true,
-        entries: vec![
-            recipe_book_entry(7, true, true),
-            recipe_book_entry(8, false, false),
-        ],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::RecipeBookAdd(
+        RecipeBookAdd {
+            replace: true,
+            entries: vec![
+                recipe_book_entry(7, true, true),
+                recipe_book_entry(8, false, false),
+            ],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RecipeBookRemove(RecipeBookRemove {
-        recipe_ids: vec![RecipeDisplayId { index: 8 }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::RecipeBookRemove(
+        RecipeBookRemove {
+            recipe_ids: vec![RecipeDisplayId { index: 8 }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RecipeBookSettings(RecipeBookSettings {
-        crafting: RecipeBookTypeSettings {
-            open: true,
-            filtering: false,
+    tx.try_send(NetEvent::Play(PlayClientbound::RecipeBookSettings(
+        RecipeBookSettings {
+            crafting: RecipeBookTypeSettings {
+                open: true,
+                filtering: false,
+            },
+            furnace: RecipeBookTypeSettings {
+                open: false,
+                filtering: true,
+            },
+            blast_furnace: RecipeBookTypeSettings {
+                open: true,
+                filtering: true,
+            },
+            smoker: RecipeBookTypeSettings {
+                open: false,
+                filtering: false,
+            },
         },
-        furnace: RecipeBookTypeSettings {
-            open: false,
-            filtering: true,
-        },
-        blast_furnace: RecipeBookTypeSettings {
-            open: true,
-            filtering: true,
-        },
-        smoker: RecipeBookTypeSettings {
-            open: false,
-            filtering: false,
-        },
-    }))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2222,25 +2344,27 @@ fn recipe_book_events_update_world_state_and_world_counters() {
 #[test]
 fn update_advancements_event_updates_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::UpdateAdvancements(UpdateAdvancements {
-        reset: true,
-        added: vec![AdvancementSummary {
-            id: "minecraft:story/root".to_string(),
-            parent: None,
-            display: None,
-            requirements: vec![vec!["mine_stone".to_string(), "get_log".to_string()]],
-            sends_telemetry_event: true,
-        }],
-        removed: Vec::new(),
-        progress: vec![AdvancementProgressSummary {
-            id: "minecraft:story/root".to_string(),
-            criteria: vec![AdvancementCriterionProgressSummary {
-                name: "mine_stone".to_string(),
-                obtained_epoch_millis: Some(1_700_000_000_000),
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateAdvancements(
+        UpdateAdvancements {
+            reset: true,
+            added: vec![AdvancementSummary {
+                id: "minecraft:story/root".to_string(),
+                parent: None,
+                display: None,
+                requirements: vec![vec!["mine_stone".to_string(), "get_log".to_string()]],
+                sends_telemetry_event: true,
             }],
-        }],
-        show_advancements: true,
-    }))
+            removed: Vec::new(),
+            progress: vec![AdvancementProgressSummary {
+                id: "minecraft:story/root".to_string(),
+                criteria: vec![AdvancementCriterionProgressSummary {
+                    name: "mine_stone".to_string(),
+                    obtained_epoch_millis: Some(1_700_000_000_000),
+                }],
+            }],
+            show_advancements: true,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2280,23 +2404,25 @@ fn update_advancements_event_updates_world_state_and_world_counters() {
 #[test]
 fn update_recipes_event_replaces_world_recipe_access_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::UpdateRecipes(UpdateRecipes {
-        property_sets: vec![RecipePropertySetSummary {
-            key: "minecraft:furnace_input".to_string(),
-            item_ids: vec![42, 43],
-        }],
-        stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
-            input: IngredientSummary {
-                tag: None,
-                item_ids: vec![11, 12],
-            },
-            option_display: SlotDisplaySummary {
-                display_type_id: 4,
-                raw_payload: vec![4, 77],
-                item_stack: None,
-            },
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateRecipes(
+        UpdateRecipes {
+            property_sets: vec![RecipePropertySetSummary {
+                key: "minecraft:furnace_input".to_string(),
+                item_ids: vec![42, 43],
+            }],
+            stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                input: IngredientSummary {
+                    tag: None,
+                    item_ids: vec![11, 12],
+                },
+                option_display: SlotDisplaySummary {
+                    display_type_id: 4,
+                    raw_payload: vec![4, 77],
+                    item_stack: None,
+                },
+            }],
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2335,21 +2461,23 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         dialog: DialogHolder::Reference { registry_id: 11 },
     }))
     .unwrap();
-    tx.try_send(NetEvent::Waypoint(TrackedWaypointPacket {
-        operation: WaypointOperation::Track,
-        waypoint: TrackedWaypoint {
-            identifier: WaypointIdentifier::Uuid(waypoint_id),
-            icon: WaypointIcon {
-                style: "minecraft:default".to_string(),
-                color_rgb: Some(0x112233),
+    tx.try_send(NetEvent::Play(PlayClientbound::Waypoint(
+        TrackedWaypointPacket {
+            operation: WaypointOperation::Track,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Uuid(waypoint_id),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: Some(0x112233),
+                },
+                data: WaypointData::Position(WaypointVec3i {
+                    x: 10,
+                    y: 64,
+                    z: -5,
+                }),
             },
-            data: WaypointData::Position(WaypointVec3i {
-                x: 10,
-                y: 64,
-                z: -5,
-            }),
         },
-    }))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2423,26 +2551,33 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
 #[test]
 fn player_action_events_update_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::PlayerCombatEnter).unwrap();
-    tx.try_send(NetEvent::PlayerCombatEnd(PlayerCombatEnd { duration: 37 }))
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerCombatEnter))
         .unwrap();
-    tx.try_send(NetEvent::PlayerCombatKill(PlayerCombatKill {
-        player_id: 123,
-        message: "You died".to_string(),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerCombatEnd(
+        PlayerCombatEnd { duration: 37 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlayerLookAt(PlayerLookAt {
-        from_anchor: EntityAnchor::Eyes,
-        position: ProtocolVec3d {
-            x: 10.5,
-            y: 64.0,
-            z: -2.25,
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerCombatKill(
+        PlayerCombatKill {
+            player_id: 123,
+            message: "You died".to_string(),
         },
-        target: Some(PlayerLookAtTarget {
-            entity_id: 456,
-            to_anchor: EntityAnchor::Feet,
-        }),
-    }))
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerLookAt(
+        PlayerLookAt {
+            from_anchor: EntityAnchor::Eyes,
+            position: ProtocolVec3d {
+                x: 10.5,
+                y: 64.0,
+                z: -2.25,
+            },
+            target: Some(PlayerLookAtTarget {
+                entity_id: 456,
+                to_anchor: EntityAnchor::Feet,
+            }),
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2483,7 +2618,7 @@ fn player_action_events_update_snapshot_counters() {
 #[test]
 fn client_audio_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::Sound(SoundEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
         sound: SoundEventHolder::Reference { registry_id: 41 },
         source: SoundSource::Blocks,
         position: ProtocolVec3d {
@@ -2494,24 +2629,26 @@ fn client_audio_events_update_world_counters() {
         volume: 0.75,
         pitch: 1.25,
         seed: 123456789,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
-        sound: SoundEventHolder::Direct {
-            location: "minecraft:entity.cat.ambient".to_string(),
-            fixed_range: Some(32.0),
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: Some(32.0),
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
         },
-        source: SoundSource::Neutral,
-        entity_id: 123,
-        volume: 1.0,
-        pitch: 0.5,
-        seed: -9,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::StopSound(StopSound {
+    tx.try_send(NetEvent::Play(PlayClientbound::StopSound(StopSound {
         source: Some(SoundSource::Music),
         name: Some("minecraft:music.menu".to_string()),
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2576,7 +2713,7 @@ fn client_audio_events_update_world_counters() {
 #[test]
 fn client_audio_events_emit_runtime_commands_for_applied_events() {
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::Sound(SoundEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
         sound: SoundEventHolder::Reference { registry_id: 0 },
         source: SoundSource::Ambient,
         position: ProtocolVec3d {
@@ -2587,36 +2724,40 @@ fn client_audio_events_emit_runtime_commands_for_applied_events() {
         volume: 0.75,
         pitch: 1.25,
         seed: 123456789,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
-        sound: SoundEventHolder::Direct {
-            location: "minecraft:entity.cat.ambient".to_string(),
-            fixed_range: Some(32.0),
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: Some(32.0),
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
         },
-        source: SoundSource::Neutral,
-        entity_id: 123,
-        volume: 1.0,
-        pitch: 0.5,
-        seed: -9,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
-        sound: SoundEventHolder::Direct {
-            location: "minecraft:entity.cat.ambient".to_string(),
-            fixed_range: None,
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Neutral,
+            entity_id: 404,
+            volume: 0.2,
+            pitch: 1.8,
+            seed: 7,
         },
-        source: SoundSource::Neutral,
-        entity_id: 404,
-        volume: 0.2,
-        pitch: 1.8,
-        seed: 7,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::StopSound(StopSound {
+    tx.try_send(NetEvent::Play(PlayClientbound::StopSound(StopSound {
         source: Some(SoundSource::Music),
         name: Some("minecraft:music.menu".to_string()),
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2689,7 +2830,7 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
         }],
     }))
     .unwrap();
-    tx.try_send(NetEvent::Sound(SoundEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
         sound: SoundEventHolder::Reference { registry_id: 0 },
         source: SoundSource::Ambient,
         position: ProtocolVec3d {
@@ -2700,7 +2841,7 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
         volume: 0.75,
         pitch: 1.25,
         seed: 123456789,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2734,26 +2875,30 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
 #[test]
 fn silent_entity_sound_events_do_not_emit_runtime_commands() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::SetEntityData(SetEntityData {
-        id: 123,
-        values: vec![EntityDataValue {
-            data_id: 4,
-            serializer_id: 8,
-            value: EntityDataValueKind::Boolean(true),
-        }],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
-        sound: SoundEventHolder::Direct {
-            location: "minecraft:entity.cat.ambient".to_string(),
-            fixed_range: Some(32.0),
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 123,
+            values: vec![EntityDataValue {
+                data_id: 4,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            }],
         },
-        source: SoundSource::Neutral,
-        entity_id: 123,
-        volume: 1.0,
-        pitch: 0.5,
-        seed: -9,
-    }))
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: Some(32.0),
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -2777,7 +2922,7 @@ fn silent_entity_sound_events_do_not_emit_runtime_commands() {
 #[test]
 fn world_effect_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::Explosion(Explosion {
+    tx.try_send(NetEvent::Play(PlayClientbound::Explosion(Explosion {
         center: ProtocolVec3d {
             x: 1.0,
             y: 2.0,
@@ -2791,28 +2936,30 @@ fn world_effect_events_update_world_counters() {
             z: 1.5,
         }),
         raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelParticles(LevelParticles {
-        override_limiter: true,
-        always_show: false,
-        position: ProtocolVec3d {
-            x: 10.0,
-            y: 64.5,
-            z: -3.25,
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelParticles(
+        LevelParticles {
+            override_limiter: true,
+            always_show: false,
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 64.5,
+                z: -3.25,
+            },
+            offset: ProtocolVec3d {
+                x: f64::from(0.1_f32),
+                y: f64::from(0.2_f32),
+                z: f64::from(0.3_f32),
+            },
+            max_speed: 1.5,
+            count: 16,
+            particle: ParticlePayload {
+                particle_type_id: 45,
+                raw_options: vec![0xaa, 0xbb],
+            },
         },
-        offset: ProtocolVec3d {
-            x: f64::from(0.1_f32),
-            y: f64::from(0.2_f32),
-            z: f64::from(0.3_f32),
-        },
-        max_speed: 1.5,
-        count: 16,
-        particle: ParticlePayload {
-            particle_type_id: 45,
-            raw_options: vec![0xaa, 0xbb],
-        },
-    }))
+    )))
     .unwrap();
     let mut world = WorldStore::new();
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -2903,8 +3050,10 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
         },
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelParticles(packet.clone()))
-        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelParticles(
+        packet.clone(),
+    )))
+    .unwrap();
     let mut world = WorldStore::new();
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -2953,7 +3102,8 @@ fn level_event_smoke_particles_emit_particle_runtime_batch_and_world_counters() 
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
@@ -3031,8 +3181,10 @@ fn post_sound_smoke_level_events_advance_particle_randoms_without_particle_sink(
             global: false,
         };
         let (tx, mut rx) = mpsc::channel(2);
-        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+            .unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+            .unwrap();
 
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         let expected_pitch = if randomized_pitch {
@@ -3203,8 +3355,10 @@ fn particle_only_level_events_advance_randoms_without_particle_sink_before_follo
             global: false,
         };
         let (tx, mut rx) = mpsc::channel(2);
-        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+            .unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+            .unwrap();
 
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         advance_expected_simple_particle_only_level_event_randoms(event_type, &mut expected_random);
@@ -3268,8 +3422,10 @@ fn block_face_axis_level_events_advance_randoms_without_particle_sink_before_fol
             global: false,
         };
         let (tx, mut rx) = mpsc::channel(2);
-        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+            .unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+            .unwrap();
 
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         advance_expected_block_face_axis_level_event_randoms(
@@ -3340,18 +3496,23 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: full_block_event.pos,
         block_state_id: 1,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(full_block_event)).unwrap();
-    tx.try_send(NetEvent::LevelEvent(empty_block_event))
-        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(
+        full_block_event,
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(
+        empty_block_event,
+    )))
+    .unwrap();
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
@@ -3433,18 +3594,22 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
-        pos: vault_event.pos,
-        block_entity_type_id: 45,
-        raw_nbt: vec![0],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: vault_event.pos,
+            block_entity_type_id: 45,
+            raw_nbt: vec![0],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(vault_event)).unwrap();
-    tx.try_send(NetEvent::LevelEvent(non_vault_event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(vault_event)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(non_vault_event)))
+        .unwrap();
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
@@ -3518,7 +3683,8 @@ fn vault_deactivation_level_event_emits_sound_after_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
@@ -3746,20 +3912,26 @@ fn projectile_power_updates_world_entity_state_and_world_counters() {
     const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
-        entity_id: 123,
-        acceleration_power: 0.75,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ProjectilePower(
+        ProjectilePower {
+            entity_id: 123,
+            acceleration_power: 0.75,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
-        entity_id: 456,
-        acceleration_power: 0.25,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ProjectilePower(
+        ProjectilePower {
+            entity_id: 456,
+            acceleration_power: 0.25,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
-        entity_id: 404,
-        acceleration_power: 0.5,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ProjectilePower(
+        ProjectilePower {
+            entity_id: 404,
+            acceleration_power: 0.5,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -3797,56 +3969,68 @@ fn projectile_power_updates_world_entity_state_and_world_counters() {
 #[test]
 fn debug_game_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(8);
-    tx.try_send(NetEvent::DebugBlockValue(DebugBlockValue {
-        pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
-        raw_update_payload: vec![5, 1, 0xaa],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DebugBlockValue(
+        DebugBlockValue {
+            pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+            raw_update_payload: vec![5, 1, 0xaa],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::DebugChunkValue(DebugChunkValue {
-        pos: ProtocolChunkPos { x: 3, z: -4 },
-        raw_update_payload: vec![7, 0],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DebugChunkValue(
+        DebugChunkValue {
+            pos: ProtocolChunkPos { x: 3, z: -4 },
+            raw_update_payload: vec![7, 0],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::DebugEntityValue(DebugEntityValue {
-        entity_id: 123,
-        raw_update_payload: vec![9, 1, 0xbb],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DebugEntityValue(
+        DebugEntityValue {
+            entity_id: 123,
+            raw_update_payload: vec![9, 1, 0xbb],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::DebugEvent(DebugEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::DebugEvent(DebugEvent {
         raw_event_payload: vec![4, 0xcc],
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::DebugSample(DebugSample {
+    tx.try_send(NetEvent::Play(PlayClientbound::DebugSample(DebugSample {
         sample: vec![100, -50],
         sample_type: RemoteDebugSampleType::TickTime,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::GameRuleValues(GameRuleValues {
-        values: vec![
-            GameRuleValue {
-                rule: "minecraft:do_daylight_cycle".to_string(),
-                value: "false".to_string(),
-            },
-            GameRuleValue {
-                rule: "minecraft:random_tick_speed".to_string(),
-                value: "3".to_string(),
-            },
-        ],
-    }))
-    .unwrap();
-    tx.try_send(NetEvent::GameTestHighlightPos(GameTestHighlightPos {
-        absolute_pos: ProtocolBlockPos {
-            x: -10,
-            y: 70,
-            z: 22,
+    tx.try_send(NetEvent::Play(PlayClientbound::GameRuleValues(
+        GameRuleValues {
+            values: vec![
+                GameRuleValue {
+                    rule: "minecraft:do_daylight_cycle".to_string(),
+                    value: "false".to_string(),
+                },
+                GameRuleValue {
+                    rule: "minecraft:random_tick_speed".to_string(),
+                    value: "3".to_string(),
+                },
+            ],
         },
-        relative_pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::TestInstanceBlockStatus(TestInstanceBlockStatus {
-        status: "Ready".to_string(),
-        size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::GameTestHighlightPos(
+        GameTestHighlightPos {
+            absolute_pos: ProtocolBlockPos {
+                x: -10,
+                y: 70,
+                z: 22,
+            },
+            relative_pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::TestInstanceBlockStatus(
+        TestInstanceBlockStatus {
+            status: "Ready".to_string(),
+            size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -3938,7 +4122,7 @@ fn debug_game_events_update_world_counters() {
 #[test]
 fn block_destruction_event_updates_world_and_counter() {
     let (tx, mut rx) = mpsc::channel(3);
-    tx.try_send(NetEvent::BlockDestruction(
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockDestruction(
         bbb_protocol::packets::BlockDestruction {
             id: 4,
             pos: ProtocolBlockPos {
@@ -3948,9 +4132,9 @@ fn block_destruction_event_updates_world_and_counter() {
             },
             progress: 6,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockDestruction(
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockDestruction(
         bbb_protocol::packets::BlockDestruction {
             id: 4,
             pos: ProtocolBlockPos {
@@ -3960,15 +4144,15 @@ fn block_destruction_event_updates_world_and_counter() {
             },
             progress: 10,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockDestruction(
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockDestruction(
         bbb_protocol::packets::BlockDestruction {
             id: 99,
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
             progress: 255,
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -3988,23 +4172,27 @@ fn block_destruction_event_updates_world_and_counter() {
 #[test]
 fn block_and_level_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::BlockEvent(bbb_protocol::packets::BlockEvent {
-        pos: ProtocolBlockPos {
-            x: 12,
-            y: 65,
-            z: -5,
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEvent(
+        bbb_protocol::packets::BlockEvent {
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            },
+            b0: 2,
+            b1: 9,
+            block_id: 54,
         },
-        b0: 2,
-        b1: 9,
-        block_id: 54,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(bbb_protocol::packets::LevelEvent {
-        event_type: 1001,
-        pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
-        data: 42,
-        global: true,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(
+        bbb_protocol::packets::LevelEvent {
+            event_type: 1001,
+            pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+            data: 42,
+            global: true,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -4043,12 +4231,12 @@ fn block_and_level_events_update_world_and_world_counters() {
 #[test]
 fn level_event_2001_emits_vanilla_block_break_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 2001,
         pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
         data: 9,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -4094,7 +4282,8 @@ fn level_event_3008_emits_brushable_completion_sound_and_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -4144,7 +4333,8 @@ fn plant_growth_level_event_plays_bone_meal_sound_after_particles() {
     let short_grass_id = vanilla_block_state_id("minecraft:short_grass", []);
     let event = level_event_at_with_data(1505, 20, -63, -32, 4);
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     world
@@ -4153,7 +4343,7 @@ fn plant_growth_level_event_plays_bone_meal_sound_after_particles() {
     set_test_block(&mut world, block_pos(20, -63, -32), short_grass_id);
     let context = level_event_particle_context(&world, &event);
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    advance_growth_level_event_particle_randoms(&event, context, &mut expected_random);
+    advance_growth_randoms_for_context(&event, &context, &mut expected_random);
     let expected_seed = expected_random.next_long();
 
     let mut counters = NetCounters::default();
@@ -4205,7 +4395,8 @@ fn plant_growth_level_event_audio_only_advances_particle_randoms_before_sound_se
     let stone_id = vanilla_block_state_id("minecraft:stone", []);
     let event = level_event_at_with_data(1505, 16, -63, -32, 3);
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     world
@@ -4215,7 +4406,7 @@ fn plant_growth_level_event_audio_only_advances_particle_randoms_before_sound_se
     set_test_block(&mut world, block_pos(16, -64, -32), stone_id);
     let context = level_event_particle_context(&world, &event);
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    advance_growth_level_event_particle_randoms(&event, context, &mut expected_random);
+    advance_growth_randoms_for_context(&event, &context, &mut expected_random);
     let expected_seed = expected_random.next_long();
 
     let mut counters = NetCounters::default();
@@ -4251,12 +4442,12 @@ fn plant_growth_level_event_audio_only_advances_particle_randoms_before_sound_se
 #[test]
 fn fixed_level_event_emits_vanilla_positioned_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1004,
         pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -4306,12 +4497,12 @@ fn fixed_level_event_emits_vanilla_positioned_sound() {
 #[test]
 fn randomized_level_event_emits_vanilla_positioned_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1015,
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -4358,19 +4549,19 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
 #[test]
 fn potion_and_dragon_fireball_level_events_emit_vanilla_sounds() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 2002,
         pos: ProtocolBlockPos { x: 1, y: 64, z: -3 },
         data: 0x3366cc,
         global: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 2006,
         pos: ProtocolBlockPos { x: -2, y: 70, z: 4 },
         data: 1,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
@@ -4441,7 +4632,8 @@ fn potion_break_level_event_plays_sound_after_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     advance_potion_break_level_event_particle_randoms(&mut expected_random);
@@ -4500,7 +4692,8 @@ fn dragon_fireball_level_event_plays_sound_after_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     advance_dragon_fireball_explode_level_event_particle_randoms(&mut expected_random);
@@ -4616,19 +4809,19 @@ fn advance_expected_trial_spawner_become_ominous_particle_randoms(
 #[test]
 fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 3012,
         pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 3020,
         pos: ProtocolBlockPos { x: -8, y: 70, z: 2 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
@@ -4723,8 +4916,10 @@ fn trial_spawner_audio_only_events_advance_post_sound_particle_randoms() {
             global: false,
         };
         let (tx, mut rx) = mpsc::channel(2);
-        tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-        tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+            .unwrap();
+        tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+            .unwrap();
 
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         let expected_pitch =
@@ -4795,7 +4990,8 @@ fn trial_spawner_level_event_emits_sound_and_particle_side_effects() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     let expected_pitch = 1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
@@ -4880,12 +5076,12 @@ fn advance_expected_sculk_charge_level_event_particle_randoms(
 #[test]
 fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 3006,
         pos: ProtocolBlockPos { x: -2, y: 68, z: 3 },
         data: 5 << 6,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -4927,8 +5123,10 @@ fn sculk_charge_audio_only_charged_event_advances_particle_randoms() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-    tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     let count = (data >> 6) as f32;
@@ -5005,17 +5203,19 @@ fn sculk_charge_audio_only_pop_event_uses_full_block_particle_context() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(4);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: event.pos,
         block_state_id: 1,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
-    tx.try_send(NetEvent::LevelEvent(followup)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(followup)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     let expected_seed = expected_random.next_long();
@@ -5108,22 +5308,24 @@ fn sculk_shrieker_level_event_emits_waterlogged_gated_sound_after_particles() {
         ],
     );
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::LevelChunkWithLight(
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: dry_event.pos,
         block_state_id: dry_shrieker,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
         pos: wet_event.pos,
         block_state_id: wet_shrieker,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(dry_event)).unwrap();
-    tx.try_send(NetEvent::LevelEvent(wet_event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(dry_event)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(wet_event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -5182,7 +5384,8 @@ fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -5230,7 +5433,8 @@ fn cobweb_place_level_event_emits_particles_before_distance_delayed_sound() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -5286,7 +5490,8 @@ fn wax_on_level_event_emits_vanilla_sound_and_particles() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
@@ -5342,7 +5547,8 @@ fn wax_on_level_event_audio_only_advances_particles_before_sound_seed() {
         global: false,
     };
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
 
     let mut expected_random = LevelEventSoundRandomState::with_seed(0);
     advance_wax_on_level_event_particle_randoms(&mut expected_random);
@@ -5385,12 +5591,12 @@ fn wax_on_level_event_audio_only_advances_particles_before_sound_seed() {
 #[test]
 fn global_level_event_emits_vanilla_camera_relative_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1028,
         pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
         data: 0,
         global: true,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5445,12 +5651,12 @@ fn global_level_event_emits_vanilla_camera_relative_sound() {
 #[test]
 fn global_level_event_without_camera_does_not_emit_runtime_sound() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1023,
         pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
         data: 0,
         global: true,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5470,12 +5676,12 @@ fn global_level_event_without_camera_does_not_emit_runtime_sound() {
 #[test]
 fn portal_travel_level_event_emits_vanilla_local_ambience() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1032,
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5508,19 +5714,19 @@ fn portal_travel_level_event_emits_vanilla_local_ambience() {
 #[test]
 fn jukebox_level_events_update_world_audio_state() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1010,
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
         data: 27,
         global: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1011,
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5544,19 +5750,19 @@ fn jukebox_level_events_update_world_audio_state() {
 #[test]
 fn jukebox_level_events_emit_runtime_audio_commands() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1010,
         pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
         data: 1,
         global: false,
-    }))
+    })))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1011,
         pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5601,12 +5807,12 @@ fn jukebox_song_registry_data_updates_audio_resolution() {
         }],
     }))
     .unwrap();
-    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1010,
         pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
         data: 0,
         global: false,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5639,7 +5845,7 @@ fn jukebox_song_registry_data_updates_audio_resolution() {
 #[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
-    tx.try_send(NetEvent::InitializeBorder(
+    tx.try_send(NetEvent::Play(PlayClientbound::InitializeBorder(
         bbb_protocol::packets::InitializeBorder {
             new_center_x: 1.0,
             new_center_z: 2.0,
@@ -5650,34 +5856,34 @@ fn border_events_update_world_and_world_counters() {
             warning_blocks: 6,
             warning_time: 7,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetBorderCenter(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetBorderCenter(
         bbb_protocol::packets::SetBorderCenter {
             new_center_x: 3.0,
             new_center_z: 4.0,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetBorderLerpSize(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetBorderLerpSize(
         bbb_protocol::packets::SetBorderLerpSize {
             old_size: 200.0,
             new_size: 300.0,
             lerp_time: 50,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetBorderSize(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetBorderSize(
         bbb_protocol::packets::SetBorderSize { size: 250.0 },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetBorderWarningDelay(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetBorderWarningDelay(
         bbb_protocol::packets::SetBorderWarningDelay { warning_delay: 9 },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetBorderWarningDistance(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetBorderWarningDistance(
         bbb_protocol::packets::SetBorderWarningDistance { warning_blocks: 8 },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5716,7 +5922,7 @@ fn border_events_update_world_and_world_counters() {
 #[test]
 fn scoreboard_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(11);
-    tx.try_send(NetEvent::SetObjective(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetObjective(
         bbb_protocol::packets::SetObjective {
             objective_name: "kills".to_string(),
             method: bbb_protocol::packets::SetObjectiveMethod::Add,
@@ -5726,32 +5932,36 @@ fn scoreboard_events_update_world_and_world_counters() {
                 number_format: Some(vec![9]),
             }),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetDisplayObjective(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetDisplayObjective(
         bbb_protocol::packets::SetDisplayObjective {
             slot: bbb_protocol::packets::ScoreboardDisplaySlot::Sidebar,
             objective_name: Some("kills".to_string()),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
-        owner: "Steve".to_string(),
-        objective_name: "kills".to_string(),
-        score: 4,
-        display: Some("Four".to_string()),
-        number_format: None,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetScore(
+        bbb_protocol::packets::SetScore {
+            owner: "Steve".to_string(),
+            objective_name: "kills".to_string(),
+            score: 4,
+            display: Some("Four".to_string()),
+            number_format: None,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
-        owner: "Alex".to_string(),
-        objective_name: "kills".to_string(),
-        score: 1,
-        display: None,
-        number_format: None,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetScore(
+        bbb_protocol::packets::SetScore {
+            owner: "Alex".to_string(),
+            objective_name: "kills".to_string(),
+            score: 1,
+            display: None,
+            number_format: None,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetPlayerTeam(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerTeam(
         bbb_protocol::packets::SetPlayerTeam {
             name: "red".to_string(),
             method: bbb_protocol::packets::PlayerTeamMethod::Add,
@@ -5766,14 +5976,16 @@ fn scoreboard_events_update_world_and_world_counters() {
             }),
             players: vec!["Steve".to_string()],
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ResetScore(bbb_protocol::packets::ResetScore {
-        owner: "Alex".to_string(),
-        objective_name: Some("kills".to_string()),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ResetScore(
+        bbb_protocol::packets::ResetScore {
+            owner: "Alex".to_string(),
+            objective_name: Some("kills".to_string()),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetObjective(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetObjective(
         bbb_protocol::packets::SetObjective {
             objective_name: "missing".to_string(),
             method: bbb_protocol::packets::SetObjectiveMethod::Change,
@@ -5783,36 +5995,40 @@ fn scoreboard_events_update_world_and_world_counters() {
                 number_format: None,
             }),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetDisplayObjective(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetDisplayObjective(
         bbb_protocol::packets::SetDisplayObjective {
             slot: bbb_protocol::packets::ScoreboardDisplaySlot::List,
             objective_name: Some("missing".to_string()),
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
-        owner: "Nobody".to_string(),
-        objective_name: "missing".to_string(),
-        score: 9,
-        display: None,
-        number_format: None,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetScore(
+        bbb_protocol::packets::SetScore {
+            owner: "Nobody".to_string(),
+            objective_name: "missing".to_string(),
+            score: 9,
+            display: None,
+            number_format: None,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetPlayerTeam(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPlayerTeam(
         bbb_protocol::packets::SetPlayerTeam {
             name: "missing".to_string(),
             method: bbb_protocol::packets::PlayerTeamMethod::Join,
             parameters: None,
             players: vec!["Nobody".to_string()],
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ResetScore(bbb_protocol::packets::ResetScore {
-        owner: "Nobody".to_string(),
-        objective_name: Some("missing".to_string()),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ResetScore(
+        bbb_protocol::packets::ResetScore {
+            owner: "Nobody".to_string(),
+            objective_name: Some("missing".to_string()),
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5866,42 +6082,50 @@ fn scoreboard_events_update_world_and_world_counters() {
 fn hud_session_events_update_world_and_world_counters() {
     let boss_id = Uuid::from_u128(1);
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
-        id: boss_id,
-        operation: bbb_protocol::packets::BossEventOperation::Add {
-            name: "Ender Dragon".to_string(),
-            progress: 0.75,
-            color: bbb_protocol::packets::BossBarColor::Purple,
-            overlay: bbb_protocol::packets::BossBarOverlay::Progress,
-            flags: bbb_protocol::packets::BossEventFlags {
-                darken_screen: true,
-                play_music: false,
-                create_world_fog: true,
+    tx.try_send(NetEvent::Play(PlayClientbound::BossEvent(
+        bbb_protocol::packets::BossEvent {
+            id: boss_id,
+            operation: bbb_protocol::packets::BossEventOperation::Add {
+                name: "Ender Dragon".to_string(),
+                progress: 0.75,
+                color: bbb_protocol::packets::BossBarColor::Purple,
+                overlay: bbb_protocol::packets::BossBarOverlay::Progress,
+                flags: bbb_protocol::packets::BossEventFlags {
+                    darken_screen: true,
+                    play_music: false,
+                    create_world_fog: true,
+                },
             },
         },
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
-        id: boss_id,
-        operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 0.25 },
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::BossEvent(
+        bbb_protocol::packets::BossEvent {
+            id: boss_id,
+            operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 0.25 },
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
-        id: Uuid::from_u128(99),
-        operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 1.0 },
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::BossEvent(
+        bbb_protocol::packets::BossEvent {
+            id: Uuid::from_u128(99),
+            operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 1.0 },
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::TabList(bbb_protocol::packets::TabList {
-        header: Some("Welcome".to_string()),
-        footer: None,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::TabList(
+        bbb_protocol::packets::TabList {
+            header: Some("Welcome".to_string()),
+            footer: None,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::ChangeDifficulty(
+    tx.try_send(NetEvent::Play(PlayClientbound::ChangeDifficulty(
         bbb_protocol::packets::ChangeDifficulty {
             difficulty: bbb_protocol::packets::Difficulty::Hard,
             locked: true,
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -5937,7 +6161,7 @@ fn player_info_events_update_world_and_world_counters() {
     let profile_id = Uuid::from_u128(1);
     let removed_profile_id = Uuid::from_u128(2);
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::PlayerInfoUpdate(
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerInfoUpdate(
         bbb_protocol::packets::PlayerInfoUpdate {
             actions: vec![
                 bbb_protocol::packets::PlayerInfoAction::AddPlayer,
@@ -5991,13 +6215,13 @@ fn player_info_events_update_world_and_world_counters() {
                 },
             ],
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlayerInfoRemove(
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerInfoRemove(
         bbb_protocol::packets::PlayerInfoRemove {
             profile_ids: vec![removed_profile_id],
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6034,10 +6258,12 @@ fn player_info_events_update_world_and_world_counters() {
 fn server_presentation_events_update_world_and_world_counters() {
     let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::ServerData(bbb_protocol::packets::ServerData {
-        motd: "Native test server".to_string(),
-        icon_bytes: Some(vec![1, 2, 3, 4]),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::ServerData(
+        bbb_protocol::packets::ServerData {
+            motd: "Native test server".to_string(),
+            icon_bytes: Some(vec![1, 2, 3, 4]),
+        },
+    )))
     .unwrap();
     tx.try_send(NetEvent::ResourcePackPush(
         bbb_protocol::packets::ResourcePackPush {
@@ -6093,32 +6319,38 @@ fn server_presentation_events_update_world_and_world_counters() {
 fn entity_status_events_update_world_and_world_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(5);
-    tx.try_send(NetEvent::Cooldown(bbb_protocol::packets::Cooldown {
-        cooldown_group: "minecraft:ender_pearl".to_string(),
-        duration: 20,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::Cooldown(
+        bbb_protocol::packets::Cooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 20,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::DamageEvent(bbb_protocol::packets::DamageEvent {
-        entity_id,
-        source_type_id: 5,
-        source_cause_id: -1,
-        source_direct_id: 42,
-        source_position: Some(bbb_protocol::packets::Vec3d {
-            x: 1.0,
-            y: 2.0,
-            z: 3.0,
-        }),
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
+        bbb_protocol::packets::DamageEvent {
+            entity_id,
+            source_type_id: 5,
+            source_cause_id: -1,
+            source_direct_id: 42,
+            source_position: Some(bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            }),
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::DamageEvent(bbb_protocol::packets::DamageEvent {
-        entity_id: 99,
-        source_type_id: 5,
-        source_cause_id: -1,
-        source_direct_id: -1,
-        source_position: None,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
+        bbb_protocol::packets::DamageEvent {
+            entity_id: 99,
+            source_type_id: 5,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::UpdateMobEffect(
+    tx.try_send(NetEvent::Play(PlayClientbound::UpdateMobEffect(
         bbb_protocol::packets::UpdateMobEffect {
             entity_id,
             effect_id: 3,
@@ -6132,14 +6364,14 @@ fn entity_status_events_update_world_and_world_counters() {
                 blend: true,
             },
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::RemoveMobEffect(
+    tx.try_send(NetEvent::Play(PlayClientbound::RemoveMobEffect(
         bbb_protocol::packets::RemoveMobEffect {
             entity_id,
             effect_id: 99,
         },
-    ))
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6202,15 +6434,17 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
     }));
 
     event_tx
-        .try_send(NetEvent::MoveVehicle(bbb_protocol::packets::MoveVehicle {
-            position: ProtocolVec3d {
-                x: 5.0,
-                y: 66.0,
-                z: -7.0,
+        .try_send(NetEvent::Play(PlayClientbound::MoveVehicle(
+            bbb_protocol::packets::MoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
             },
-            y_rot: 45.0,
-            x_rot: -5.0,
-        }))
+        )))
         .unwrap();
 
     let mut counters = NetCounters::default();
@@ -6252,15 +6486,17 @@ fn move_vehicle_ignored_counters_update_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(1);
 
     event_tx
-        .try_send(NetEvent::MoveVehicle(bbb_protocol::packets::MoveVehicle {
-            position: ProtocolVec3d {
-                x: 5.0,
-                y: 66.0,
-                z: -7.0,
+        .try_send(NetEvent::Play(PlayClientbound::MoveVehicle(
+            bbb_protocol::packets::MoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
             },
-            y_rot: 45.0,
-            x_rot: -5.0,
-        }))
+        )))
         .unwrap();
 
     let mut world = WorldStore::new();
@@ -6284,24 +6520,26 @@ fn minecart_along_track_event_updates_world_state_and_world_counters() {
     world.apply_add_entity(protocol_add_entity_with_type(10, 85));
 
     event_tx
-        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
-            entity_id: 10,
-            lerp_steps: vec![MinecartStep {
-                position: ProtocolVec3d {
-                    x: 2.0,
-                    y: 64.25,
-                    z: -3.0,
-                },
-                movement: ProtocolVec3d {
-                    x: 0.3,
-                    y: 0.0,
-                    z: -0.3,
-                },
-                y_rot: 90.0,
-                x_rot: 5.0,
-                weight: 1.0,
-            }],
-        }))
+        .try_send(NetEvent::Play(PlayClientbound::MoveMinecartAlongTrack(
+            MoveMinecartAlongTrack {
+                entity_id: 10,
+                lerp_steps: vec![MinecartStep {
+                    position: ProtocolVec3d {
+                        x: 2.0,
+                        y: 64.25,
+                        z: -3.0,
+                    },
+                    movement: ProtocolVec3d {
+                        x: 0.3,
+                        y: 0.0,
+                        z: -0.3,
+                    },
+                    y_rot: 90.0,
+                    x_rot: 5.0,
+                    weight: 1.0,
+                }],
+            },
+        )))
         .unwrap();
 
     let mut counters = NetCounters::default();
@@ -6350,16 +6588,20 @@ fn minecart_along_track_ignored_counters_update_world_counters() {
     };
 
     event_tx
-        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
-            entity_id: 999,
-            lerp_steps: vec![step],
-        }))
+        .try_send(NetEvent::Play(PlayClientbound::MoveMinecartAlongTrack(
+            MoveMinecartAlongTrack {
+                entity_id: 999,
+                lerp_steps: vec![step],
+            },
+        )))
         .unwrap();
     event_tx
-        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
-            entity_id: 20,
-            lerp_steps: vec![step],
-        }))
+        .try_send(NetEvent::Play(PlayClientbound::MoveMinecartAlongTrack(
+            MoveMinecartAlongTrack {
+                entity_id: 20,
+                lerp_steps: vec![step],
+            },
+        )))
         .unwrap();
 
     let mut counters = NetCounters::default();
@@ -6379,12 +6621,14 @@ fn minecart_along_track_ignored_counters_update_world_counters() {
 fn login_tracks_local_player_id_in_world() {
     let (tx, mut rx) = mpsc::channel(2);
     let respawn_info = protocol_play_login(9).common_spawn_info;
-    tx.try_send(NetEvent::Login(protocol_play_login(9)))
-        .unwrap();
-    tx.try_send(NetEvent::Respawn(Respawn {
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
+        9,
+    ))))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
         common_spawn_info: respawn_info,
         data_to_keep: 0,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6402,10 +6646,10 @@ fn login_tracks_local_player_id_in_world() {
 #[test]
 fn respawn_event_resets_local_player_runtime_state() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::Respawn(Respawn {
+    tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
         common_spawn_info: protocol_play_login(9).common_spawn_info,
         data_to_keep: 0,
-    }))
+    })))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6483,29 +6727,33 @@ fn respawn_event_resets_local_player_runtime_state() {
 #[test]
 fn player_position_and_rotation_events_update_world_pose() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::PlayerPosition(PlayerPositionUpdate {
-        id: 23,
-        position: ProtocolVec3d {
-            x: 10.0,
-            y: 64.0,
-            z: -5.0,
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerPosition(
+        PlayerPositionUpdate {
+            id: 23,
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 64.0,
+                z: -5.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.125,
+                y: 0.0,
+                z: 0.25,
+            },
+            y_rot: 90.0,
+            x_rot: 15.0,
+            relatives_mask: 0,
         },
-        delta_movement: ProtocolVec3d {
-            x: 0.125,
-            y: 0.0,
-            z: 0.25,
-        },
-        y_rot: 90.0,
-        x_rot: 15.0,
-        relatives_mask: 0,
-    }))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlayerRotation(PlayerRotationUpdate {
-        y_rot: 10.0,
-        relative_y: true,
-        x_rot: -5.0,
-        relative_x: false,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerRotation(
+        PlayerRotationUpdate {
+            y_rot: 10.0,
+            relative_y: true,
+            x_rot: -5.0,
+            relative_x: false,
+        },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6545,9 +6793,11 @@ fn player_position_and_rotation_events_update_world_pose() {
 #[test]
 fn local_player_events_update_world_state_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(10);
-    tx.try_send(NetEvent::Login(protocol_play_login(9)))
-        .unwrap();
-    tx.try_send(NetEvent::PlayerAbilities(
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
+        9,
+    ))))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::PlayerAbilities(
         bbb_protocol::packets::PlayerAbilities {
             invulnerable: true,
             flying: false,
@@ -6556,29 +6806,29 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
             flying_speed: 0.05,
             walking_speed: 0.1,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlayerHealth(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetHealth(
         bbb_protocol::packets::PlayerHealth {
             health: 7.5,
             food: 16,
             saturation: 2.0,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::PlayerExperience(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetExperience(
         bbb_protocol::packets::PlayerExperience {
             progress: 0.75,
             level: 8,
             total: 123,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::HeldSlot(bbb_protocol::packets::SetHeldSlot {
-        slot: 5,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetHeldSlot(
+        bbb_protocol::packets::SetHeldSlot { slot: 5 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetDefaultSpawnPosition(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetDefaultSpawnPosition(
         bbb_protocol::packets::SetDefaultSpawnPosition {
             dimension: "minecraft:overworld".to_string(),
             pos: ProtocolBlockPos {
@@ -6589,19 +6839,19 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
             yaw: 90.0,
             pitch: -10.0,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetSimulationDistance(
+    tx.try_send(NetEvent::Play(PlayClientbound::SetSimulationDistance(
         bbb_protocol::packets::SetSimulationDistance { distance: 12 },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetCamera(bbb_protocol::packets::SetCamera {
-        camera_id: 9,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetCamera(
+        bbb_protocol::packets::SetCamera { camera_id: 9 },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::SetCamera(bbb_protocol::packets::SetCamera {
-        camera_id: 123,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetCamera(
+        bbb_protocol::packets::SetCamera { camera_id: 123 },
+    )))
     .unwrap();
 
     let mut world = WorldStore::new();
@@ -6650,46 +6900,56 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
 #[test]
 fn world_time_and_weather_update_world_counters_and_clear_color() {
     let (tx, mut rx) = mpsc::channel(7);
-    tx.try_send(NetEvent::SetTime(bbb_protocol::packets::PlayTime {
-        game_time: 123,
-        clock_updates: vec![bbb_protocol::packets::ClockUpdate {
-            clock_id: 0,
-            total_ticks: 6000,
-            partial_tick: 0.0,
-            rate: 1.0,
-        }],
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::SetTime(
+        bbb_protocol::packets::PlayTime {
+            game_time: 123,
+            clock_updates: vec![bbb_protocol::packets::ClockUpdate {
+                clock_id: 0,
+                total_ticks: 6000,
+                partial_tick: 0.0,
+                rate: 1.0,
+            }],
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
-        event_id: 7,
-        param: 0.5,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
+        bbb_protocol::packets::GameEvent {
+            event_id: 7,
+            param: 0.5,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
-        event_id: 3,
-        param: 3.0,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
+        bbb_protocol::packets::GameEvent {
+            event_id: 3,
+            param: 3.0,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
-        event_id: 11,
-        param: 1.0,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
+        bbb_protocol::packets::GameEvent {
+            event_id: 11,
+            param: 1.0,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
-        event_id: 12,
-        param: 1.0,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
+        bbb_protocol::packets::GameEvent {
+            event_id: 12,
+            param: 1.0,
+        },
+    )))
     .unwrap();
-    tx.try_send(NetEvent::TickingState(
+    tx.try_send(NetEvent::Play(PlayClientbound::TickingState(
         bbb_protocol::packets::TickingState {
             tick_rate: 0.25,
             frozen: true,
         },
-    ))
+    )))
     .unwrap();
-    tx.try_send(NetEvent::TickingStep(bbb_protocol::packets::TickingStep {
-        tick_steps: 7,
-    }))
+    tx.try_send(NetEvent::Play(PlayClientbound::TickingStep(
+        bbb_protocol::packets::TickingStep { tick_steps: 7 },
+    )))
     .unwrap();
 
     let mut counters = NetCounters::default();
@@ -7078,7 +7338,7 @@ impl ParticleEventSink for RecordingParticleSink {
         } else if event.event_type == 3003 {
             advance_wax_on_level_event_particle_randoms(random);
         } else if event.event_type == 1505 {
-            advance_growth_level_event_particle_randoms(event, context, random);
+            advance_growth_randoms_for_context(event, &context, random);
         } else if event.event_type == 3015 && context.vault_block_entity_at_event_pos {
             bbb_world::advance_vault_activation_particle_randoms(random);
         } else if event.event_type == 3016 {

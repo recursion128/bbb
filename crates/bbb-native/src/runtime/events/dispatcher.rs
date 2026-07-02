@@ -3,9 +3,8 @@ use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
-    advance_vault_deactivation_particle_randoms, ChunkPos, LevelEventSoundRandomState,
-    TerrainFluidKind, WorldStore,
+    LevelEventGrowthRandomMode, LevelEventSoundRandomState, PlayApplyEffects, TerrainFluidKind,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -17,41 +16,14 @@ use crate::particle_runtime::{
     ParticleEventSink,
 };
 
-use super::client_state::*;
 use super::control_state::apply_control_projection_event;
 
-const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
-const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
-const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
-const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
-const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
-const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
-const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
-const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
-const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
-const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
-const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
-const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
-const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
-const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
-const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
-const TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT: i32 = 3014;
-const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
-const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
-const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
-const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
-const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
-const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
-const SCRAPE_LEVEL_EVENT: i32 = 3005;
-const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
-const WAX_OFF_LEVEL_EVENT: i32 = 3004;
-const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
@@ -122,6 +94,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         apply_control_projection_event(&event, counters);
 
         match event {
+            NetEvent::Play(packet) => {
+                let mut effects = NativePlayEffects {
+                    counters,
+                    net_commands,
+                    audio_events: &mut audio_events,
+                    particle_events: &mut particle_events,
+                    particle_renderer: &mut particle_renderer,
+                };
+                // Connection-owned leftovers (movement responses, resource
+                // pack replies) are already handled by the event stream.
+                let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
+            }
             NetEvent::StartConfiguration {
                 pending_chat_acknowledgement,
             } => {
@@ -174,146 +158,14 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::CodeOfConduct { text } => {
                 world.apply_code_of_conduct(text);
             }
-            NetEvent::CustomChatCompletions(update) => {
-                world.apply_custom_chat_completions(update);
-            }
-            NetEvent::Sound(update) => {
-                let state = world.apply_sound_event(update);
-                emit_positioned_sound(&mut audio_events, &state);
-            }
-            NetEvent::SoundEntity(update) => {
-                if let Some(state) = world.apply_sound_entity_event(update) {
-                    let position = world
-                        .probe_entity_transform(state.entity_id)
-                        .map(|entity| audio_position(entity.position));
-                    emit_entity_sound(&mut audio_events, &state, position);
-                }
-            }
-            NetEvent::StopSound(update) => {
-                let state = world.apply_stop_sound(update);
-                emit_stop_sound(&mut audio_events, &state);
-            }
-            NetEvent::AwardStats(update) => {
-                world.apply_award_stats(update);
-            }
-            NetEvent::LowDiskSpaceWarning => {
-                world.apply_low_disk_space_warning();
-            }
-            NetEvent::MapItemData(update) => {
-                world.apply_map_item_data(update);
-            }
-            NetEvent::MountScreenOpen(update) => {
-                world.apply_mount_screen_open(update);
-            }
-            NetEvent::OpenBook(update) => {
-                world.apply_open_book(update);
-            }
-            NetEvent::OpenSignEditor(update) => {
-                world.apply_open_sign_editor(update);
-            }
-            NetEvent::PlaceGhostRecipe(update) => {
-                world.apply_place_ghost_recipe(update);
-            }
-            NetEvent::ClearDialog => {
-                world.apply_clear_dialog();
+            NetEvent::UpdateTags(update) => {
+                world.apply_update_tags(update);
             }
             NetEvent::ShowDialog(update) => {
                 world.apply_show_dialog(update);
             }
-            NetEvent::Waypoint(update) => {
-                world.apply_waypoint(update);
-            }
-            NetEvent::PlayerCombatEnd(update) => {
-                world.apply_player_combat_end(update);
-            }
-            NetEvent::PlayerCombatEnter => {
-                world.apply_player_combat_enter();
-            }
-            NetEvent::PlayerCombatKill(update) => {
-                world.apply_player_combat_kill(update);
-            }
-            NetEvent::PlayerLookAt(update) => {
-                apply_player_look_at_update(world, update);
-            }
-            NetEvent::PongResponse(update) => {
-                world.apply_pong_response(update);
-            }
-            NetEvent::Explosion(update) => {
-                world.apply_explosion(update);
-            }
-            NetEvent::LevelParticles(update) => {
-                world.apply_level_particles(update.clone());
-                emit_level_particles(
-                    &mut particle_events,
-                    &mut particle_renderer,
-                    &update,
-                    level_particle_spawn_context(world),
-                );
-            }
-            NetEvent::ProjectilePower(update) => {
-                world.apply_projectile_power(update);
-            }
-            NetEvent::DebugBlockValue(update) => {
-                world.apply_debug_block_value(update);
-            }
-            NetEvent::DebugChunkValue(update) => {
-                world.apply_debug_chunk_value(update);
-            }
-            NetEvent::DebugEntityValue(update) => {
-                world.apply_debug_entity_value(update);
-            }
-            NetEvent::DebugEvent(update) => {
-                world.apply_debug_event(update);
-            }
-            NetEvent::DebugSample(update) => {
-                world.apply_debug_sample(update);
-            }
-            NetEvent::DeleteChat(update) => {
-                world.apply_delete_chat(update);
-            }
-            NetEvent::DisguisedChat(update) => {
-                world.apply_disguised_chat(update);
-            }
-            NetEvent::PlayerChat(update) => {
-                if let Some(command) = world.apply_player_chat(update) {
-                    queue_chat_acknowledgement(net_commands, counters, command);
-                }
-            }
-            NetEvent::GameRuleValues(update) => {
-                world.apply_game_rule_values(update);
-            }
-            NetEvent::GameTestHighlightPos(update) => {
-                world.apply_game_test_highlight_pos(update);
-            }
-            NetEvent::TestInstanceBlockStatus(update) => {
-                world.apply_test_instance_block_status(update);
-            }
-            NetEvent::RecipeBookAdd(update) => {
-                world.apply_recipe_book_add(update);
-            }
-            NetEvent::RecipeBookRemove(update) => {
-                world.apply_recipe_book_remove(update);
-            }
-            NetEvent::RecipeBookSettings(update) => {
-                world.apply_recipe_book_settings(update);
-            }
-            NetEvent::UpdateAdvancements(update) => {
-                world.apply_update_advancements(update);
-            }
-            NetEvent::SelectAdvancementsTab(update) => {
-                world.apply_select_advancements_tab(update);
-            }
-            NetEvent::UpdateRecipes(update) => {
-                world.apply_update_recipes(update);
-            }
-            NetEvent::PlayerInfoUpdate(update) => {
-                world.apply_player_info_update(update);
-            }
-            NetEvent::PlayerInfoRemove(update) => {
-                world.apply_player_info_remove(update);
-            }
-            NetEvent::ServerData(update) => {
-                world.apply_server_data(update);
+            NetEvent::ClearDialog => {
+                world.apply_clear_dialog();
             }
             NetEvent::ResourcePackPush(update) => {
                 world.apply_resource_pack_push(update);
@@ -323,364 +175,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::ResourcePackPop(update) => {
                 world.apply_resource_pack_pop(update);
-            }
-            NetEvent::Cooldown(update) => {
-                world.apply_cooldown(update);
-            }
-            NetEvent::DamageEvent(update) => {
-                world.apply_damage_event(update);
-            }
-            NetEvent::UpdateMobEffect(update) => {
-                world.apply_update_mob_effect(update);
-            }
-            NetEvent::RemoveMobEffect(update) => {
-                world.apply_remove_mob_effect(update);
-            }
-            NetEvent::ContainerClose(update) => {
-                world.apply_container_close(update);
-            }
-            NetEvent::ContainerSetContent(update) => {
-                world.apply_container_set_content(update);
-            }
-            NetEvent::ContainerSetData(update) => {
-                world.apply_container_set_data(update);
-            }
-            NetEvent::ContainerSetSlot(update) => {
-                world.apply_container_set_slot(update);
-            }
-            NetEvent::MerchantOffers(update) => {
-                world.apply_merchant_offers(update);
-            }
-            NetEvent::OpenScreen(update) => {
-                world.apply_open_screen(update);
-            }
-            NetEvent::SetCursorItem(update) => {
-                world.apply_set_cursor_item(update);
-            }
-            NetEvent::SetPlayerInventory(update) => {
-                world.apply_set_player_inventory(update);
-            }
-            NetEvent::BlockDestruction(update) => {
-                world.apply_block_destruction(update);
-            }
-            NetEvent::BossEvent(update) => {
-                world.apply_boss_event(update);
-            }
-            NetEvent::ChangeDifficulty(update) => {
-                world.apply_change_difficulty(update);
-            }
-            NetEvent::BlockEvent(event) => {
-                world.apply_block_event(event);
-            }
-            NetEvent::LevelEvent(event) => {
-                let jukebox_event = world.apply_level_event(event);
-                if let Some(jukebox_event) = jukebox_event {
-                    emit_jukebox_level_event(&mut audio_events, &jukebox_event);
-                }
-                if let Some(state) =
-                    camera_audio_position_from_world(world).and_then(|camera_position| {
-                        world.global_level_event_sound(event, camera_position)
-                    })
-                {
-                    let state = world.record_positioned_sound(with_level_event_sound_seed(
-                        state,
-                        level_event_sound_random,
-                    ));
-                    emit_positioned_sound(&mut audio_events, &state);
-                }
-                if let Some(state) = world
-                    .level_event_local_sound_with_random(event, || {
-                        level_event_sound_random.next_float()
-                    })
-                    .map(|state| world.record_local_sound(state))
-                {
-                    emit_local_sound(&mut audio_events, &state);
-                }
-                if matches!(
-                    event.event_type,
-                    POTION_BREAK_LEVEL_EVENT | INSTANT_POTION_BREAK_LEVEL_EVENT
-                ) {
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        level_event_particle_context(world, &event),
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_potion_break_level_event_particle_randoms(level_event_sound_random);
-                    }
-                    if let Some(state) = world.level_event_sound_with_random(event, || {
-                        level_event_sound_random.next_float()
-                    }) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if event.event_type == DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT {
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        level_event_particle_context(world, &event),
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_dragon_fireball_explode_level_event_particle_randoms(
-                            level_event_sound_random,
-                        );
-                    }
-                    if let Some(state) = world.level_event_sound_with_random(event, || {
-                        level_event_sound_random.next_float()
-                    }) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if event.event_type == WAX_ON_LEVEL_EVENT {
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        level_event_particle_context(world, &event),
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_wax_on_level_event_particle_randoms(level_event_sound_random);
-                    }
-                    if let Some(state) = world.level_event_sound(event) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if event.event_type == PLANT_GROWTH_LEVEL_EVENT {
-                    let context = level_event_particle_context(world, &event);
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        context,
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_growth_level_event_particle_randoms(
-                            &event,
-                            context,
-                            level_event_sound_random,
-                        );
-                    }
-                    if let Some(state) = world.level_event_sound(event) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        level_event_particle_context(world, &event),
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_cobweb_place_particle_randoms(level_event_sound_random);
-                    }
-                    if let Some(state) = world
-                        .cobweb_place_level_event_sound_with_random(event, || {
-                            level_event_sound_random.next_float()
-                        })
-                    {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if event.event_type == SCULK_SHRIEKER_LEVEL_EVENT {
-                    emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        level_event_particle_context(world, &event),
-                        level_event_sound_random,
-                    );
-                    if let Some(state) = world
-                        .sculk_shrieker_level_event_sound_with_random(event, || {
-                            level_event_sound_random.next_float()
-                        })
-                    {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else if matches!(
-                    event.event_type,
-                    VAULT_ACTIVATE_LEVEL_EVENT | VAULT_DEACTIVATE_LEVEL_EVENT
-                ) {
-                    let context = level_event_particle_context(world, &event);
-                    let should_advance_particle_random = event.event_type
-                        == VAULT_DEACTIVATE_LEVEL_EVENT
-                        || context.vault_block_entity_at_event_pos;
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        context,
-                        level_event_sound_random,
-                    );
-                    if should_advance_particle_random && !particles_consumed_random {
-                        advance_vault_level_event_particle_randoms(
-                            event.event_type,
-                            level_event_sound_random,
-                        );
-                    }
-                    if let Some(state) = world.vault_level_event_sound_with_random(event, || {
-                        level_event_sound_random.next_float()
-                    }) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                } else {
-                    if let Some(state) = world.level_event_sound_with_random(event, || {
-                        level_event_sound_random.next_float()
-                    }) {
-                        let state = world.record_positioned_sound(with_level_event_sound_seed(
-                            state,
-                            level_event_sound_random,
-                        ));
-                        emit_positioned_sound(&mut audio_events, &state);
-                    }
-                    let context = level_event_particle_context(world, &event);
-                    let particles_consumed_random = emit_level_event_particles(
-                        &mut particle_events,
-                        &mut particle_renderer,
-                        &event,
-                        context,
-                        level_event_sound_random,
-                    );
-                    if !particles_consumed_random {
-                        advance_level_event_particle_randoms_without_sink(
-                            &event,
-                            context,
-                            level_event_sound_random,
-                        );
-                    }
-                }
-            }
-            NetEvent::InitializeBorder(border) => {
-                world.apply_initialize_border(border);
-            }
-            NetEvent::SetBorderCenter(update) => {
-                world.apply_set_border_center(update);
-            }
-            NetEvent::SetBorderLerpSize(update) => {
-                world.apply_set_border_lerp_size(update);
-            }
-            NetEvent::SetBorderSize(update) => {
-                world.apply_set_border_size(update);
-            }
-            NetEvent::SetBorderWarningDelay(update) => {
-                world.apply_set_border_warning_delay(update);
-            }
-            NetEvent::SetBorderWarningDistance(update) => {
-                world.apply_set_border_warning_distance(update);
-            }
-            NetEvent::ResetScore(update) => {
-                world.apply_reset_score(update);
-            }
-            NetEvent::SetDisplayObjective(update) => {
-                world.apply_set_display_objective(update);
-            }
-            NetEvent::SetObjective(update) => {
-                world.apply_set_objective(update);
-            }
-            NetEvent::SetPlayerTeam(update) => {
-                world.apply_set_player_team(update);
-            }
-            NetEvent::SetScore(update) => {
-                world.apply_set_score(update);
-            }
-            NetEvent::Commands(update) => {
-                world.apply_commands(update);
-            }
-            NetEvent::CommandSuggestions(update) => {
-                world.apply_command_suggestions(update);
-            }
-            NetEvent::TagQuery(update) => {
-                world.apply_tag_query(update);
-            }
-            NetEvent::TabList(update) => {
-                world.apply_tab_list(update);
-            }
-            NetEvent::AddEntity(entity) => {
-                world.apply_add_entity(entity);
-            }
-            NetEvent::EntityAnimation(update) => {
-                world.apply_entity_animation(update);
-            }
-            NetEvent::EntityEvent(update) => {
-                world.apply_entity_event(update);
-            }
-            NetEvent::HurtAnimation(update) => {
-                world.apply_hurt_animation(update);
-            }
-            NetEvent::MoveEntity(update) => {
-                world.apply_entity_move(update);
-            }
-            NetEvent::MoveMinecartAlongTrack(update) => {
-                world.apply_move_minecart_along_track(update);
-            }
-            NetEvent::MoveVehicle(update) => {
-                let report = world.apply_move_vehicle(update);
-                if let Some(report) = report {
-                    queue_vehicle_move_command(counters, net_commands, report);
-                }
-            }
-            NetEvent::EntityPositionSync(update) => {
-                world.apply_entity_position_sync(update);
-            }
-            NetEvent::RemoveEntities(update) => {
-                world.apply_remove_entities(update);
-            }
-            NetEvent::RotateHead(update) => {
-                world.apply_rotate_head(update);
-            }
-            NetEvent::SetEntityMotion(update) => {
-                world.apply_set_entity_motion(update);
-            }
-            NetEvent::SetEntityLink(update) => {
-                world.apply_set_entity_link(update);
-            }
-            NetEvent::SetEquipment(update) => {
-                world.apply_set_equipment(update);
-            }
-            NetEvent::TakeItemEntity(update) => {
-                world.apply_take_item_entity(update);
-            }
-            NetEvent::SetPassengers(update) => {
-                world.apply_set_passengers(update);
-            }
-            NetEvent::UpdateAttributes(update) => {
-                world.apply_update_attributes(update);
-            }
-            NetEvent::SetEntityData(update) => {
-                world.apply_set_entity_data(update);
-            }
-            NetEvent::TeleportEntity(update) => {
-                world.apply_teleport_entity(update);
             }
             NetEvent::RegistryData(update) => {
                 let sound_event_registry = sound_event_registry_from_registry_data(&update);
@@ -695,111 +189,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     }
                 }
             }
-            NetEvent::UpdateTags(update) => {
-                world.apply_update_tags(update);
-            }
-            NetEvent::Login(login) => {
-                world.apply_login(&login);
-            }
-            NetEvent::Respawn(respawn) => {
-                world.apply_respawn(&respawn);
-            }
-            NetEvent::PlayerPosition(update) => {
-                apply_player_position_update(world, update);
-            }
-            NetEvent::PlayerRotation(update) => {
-                apply_player_rotation_update(world, update);
-            }
-            NetEvent::PlayerAbilities(abilities) => {
-                world.apply_player_abilities(abilities);
-            }
-            NetEvent::PlayerHealth(health) => {
-                world.apply_player_health(health);
-            }
-            NetEvent::PlayerExperience(experience) => {
-                world.apply_player_experience(experience);
-            }
-            NetEvent::HeldSlot(slot) => {
-                world.apply_held_slot(slot);
-            }
-            NetEvent::SetDefaultSpawnPosition(spawn) => {
-                world.apply_default_spawn_position(spawn);
-            }
-            NetEvent::SetSimulationDistance(distance) => {
-                world.apply_simulation_distance(distance);
-            }
-            NetEvent::SystemChat(chat) => {
-                apply_system_chat_update(world, chat);
-            }
-            NetEvent::SetActionBarText(text) => {
-                apply_action_bar_update(world, text);
-            }
-            NetEvent::SetTitleText(text) => {
-                apply_title_text_update(world, text);
-            }
-            NetEvent::SetSubtitleText(text) => {
-                apply_subtitle_text_update(world, text);
-            }
-            NetEvent::ClearTitles(clear) => {
-                apply_clear_titles_update(world, clear);
-            }
-            NetEvent::SetTitlesAnimation(animation) => {
-                apply_titles_animation_update(world, animation);
-            }
-            NetEvent::TickingState(ticking) => {
-                world.apply_ticking_state(ticking);
-            }
-            NetEvent::TickingStep(step) => {
-                world.apply_ticking_step(step);
-            }
-            NetEvent::SetCamera(camera) => {
-                world.apply_set_camera(camera);
-            }
-            NetEvent::BlockChangedAck(ack) => {
-                world.apply_block_changed_ack(ack);
-            }
-            NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
-                Ok(_) => {}
-                Err(_) => {}
-            },
-            NetEvent::GameEvent(event) => {
-                world.apply_game_event(event);
-            }
-            NetEvent::SetTime(time) => {
-                world.apply_world_time(time);
-            }
-            NetEvent::LevelChunkWithLight(chunk) => {
-                match world.insert_level_chunk_with_light(chunk) {
-                    Ok(_) => {}
-                    Err(_) => {}
-                }
-            }
-            NetEvent::LightUpdate(update) => match world.apply_light_update(update) {
-                Ok(_) => {}
-                Err(_) => {}
-            },
-            NetEvent::ChunksBiomes(update) => match world.apply_biome_update(update) {
-                Ok(_) => {}
-                Err(_) => {}
-            },
-            NetEvent::ForgetLevelChunk(update) => {
-                world.forget_chunk(ChunkPos {
-                    x: update.pos.x,
-                    z: update.pos.z,
-                });
-            }
-            NetEvent::BlockUpdate(update) => {
-                world.apply_block_update(update);
-            }
-            NetEvent::SectionBlocksUpdate(update) => {
-                world.apply_section_blocks_update(update);
-            }
-            NetEvent::SetChunkCacheCenter(update) => {
-                world.apply_set_chunk_cache_center(update);
-            }
-            NetEvent::SetChunkCacheRadius(update) => {
-                world.apply_set_chunk_cache_radius(update);
-            }
             NetEvent::Connected
             | NetEvent::Disconnected { .. }
             | NetEvent::StateChanged { .. }
@@ -811,6 +200,98 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         }
     }
     drained
+}
+
+/// Runtime sink routing for `WorldStore::apply_play_packet`.
+struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer> {
+    counters: &'a mut NetCounters,
+    net_commands: &'b Option<mpsc::Sender<NetCommand>>,
+    audio_events: &'c mut Option<&'audio mut dyn AudioEventSink>,
+    particle_events: &'c mut Option<&'particle mut dyn ParticleEventSink>,
+    particle_renderer: &'c mut Option<&'renderer mut bbb_renderer::Renderer>,
+}
+
+impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
+    fn positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
+        emit_positioned_sound(self.audio_events, state);
+    }
+
+    fn local_sound(&mut self, state: &bbb_world::LocalSoundEventState) {
+        emit_local_sound(self.audio_events, state);
+    }
+
+    fn entity_sound(
+        &mut self,
+        state: &bbb_world::SoundEntityEventState,
+        position: Option<[f64; 3]>,
+    ) {
+        emit_entity_sound(self.audio_events, state, position);
+    }
+
+    fn stop_sound(&mut self, state: &bbb_world::StopSoundEventState) {
+        emit_stop_sound(self.audio_events, state);
+    }
+
+    fn jukebox_level_event(&mut self, state: &bbb_world::JukeboxLevelEventState) {
+        emit_jukebox_level_event(self.audio_events, state);
+    }
+
+    fn chat_acknowledgement(&mut self, command: bbb_protocol::packets::ChatAcknowledgement) {
+        queue_chat_acknowledgement(self.net_commands, self.counters, command);
+    }
+
+    fn vehicle_move_report(&mut self, report: bbb_world::VehicleMoveReport) {
+        queue_vehicle_move_command(self.counters, self.net_commands, report);
+    }
+
+    fn level_particles(
+        &mut self,
+        world: &WorldStore,
+        packet: &bbb_protocol::packets::LevelParticles,
+    ) {
+        emit_level_particles(
+            self.particle_events,
+            self.particle_renderer,
+            packet,
+            level_particle_spawn_context(world),
+        );
+    }
+
+    fn level_event_particles(
+        &mut self,
+        world: &WorldStore,
+        event: &bbb_protocol::packets::LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> bool {
+        emit_level_event_particles(
+            self.particle_events,
+            self.particle_renderer,
+            event,
+            level_event_particle_context(world, event),
+            random,
+        )
+    }
+
+    fn sculk_charge_pop_full_block(
+        &mut self,
+        world: &WorldStore,
+        event: &bbb_protocol::packets::LevelEvent,
+    ) -> Option<bool> {
+        sculk_charge_pop_full_block_context(world, event)
+    }
+
+    fn growth_particle_random_mode(
+        &mut self,
+        world: &WorldStore,
+        event: &bbb_protocol::packets::LevelEvent,
+    ) -> Option<LevelEventGrowthRandomMode> {
+        growth_particle_context(world, event).map(|context| match context.mode {
+            LevelEventGrowthParticleMode::InBlock { .. } => LevelEventGrowthRandomMode::InBlock,
+            LevelEventGrowthParticleMode::WideNoFloating { .. } => {
+                LevelEventGrowthRandomMode::WideNoFloating
+            }
+        })
+    }
 }
 
 fn sound_event_registry_from_registry_data(update: &RegistryData) -> Option<SoundEventRegistry> {
@@ -1293,308 +774,6 @@ fn level_water_evaporates(world: &WorldStore) -> bool {
             || level.dimension == "minecraft:the_nether"
             || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
     })
-}
-
-fn with_level_event_sound_seed(
-    mut state: bbb_world::SoundEventState,
-    random: &mut LevelEventSoundRandomState,
-) -> bbb_world::SoundEventState {
-    state.seed = random.next_long();
-    state
-}
-
-fn advance_vault_level_event_particle_randoms(
-    event_type: i32,
-    random: &mut LevelEventSoundRandomState,
-) {
-    match event_type {
-        VAULT_ACTIVATE_LEVEL_EVENT => advance_vault_activation_particle_randoms(random),
-        VAULT_DEACTIVATE_LEVEL_EVENT => advance_vault_deactivation_particle_randoms(random),
-        _ => {}
-    }
-}
-
-fn advance_level_event_particle_randoms_without_sink(
-    event: &bbb_protocol::packets::LevelEvent,
-    context: LevelEventParticleContext,
-    random: &mut LevelEventSoundRandomState,
-) {
-    match event.event_type {
-        LAVA_EXTINGUISH_LEVEL_EVENT => {
-            for _ in 0..8 {
-                let _ = random.next_double();
-                let _ = random.next_double();
-            }
-        }
-        REDSTONE_TORCH_BURNOUT_LEVEL_EVENT => {
-            for _ in 0..5 {
-                let _ = random.next_double();
-                let _ = random.next_double();
-                let _ = random.next_double();
-            }
-        }
-        END_PORTAL_FRAME_FILL_LEVEL_EVENT => {
-            for _ in 0..16 {
-                let _ = random.next_double();
-                let _ = random.next_double();
-            }
-        }
-        DISPENSER_SMOKE_LEVEL_EVENT | DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
-            advance_shoot_particles_randoms(random);
-        }
-        ENDER_EYE_BREAK_LEVEL_EVENT => {
-            advance_item_break_particle_randoms(random);
-        }
-        BLAZE_SMOKE_LEVEL_EVENT => {
-            for _ in 0..20 {
-                let _ = random.next_double();
-                let _ = random.next_double();
-                let _ = random.next_double();
-            }
-        }
-        SPLASH_CLOUD_LEVEL_EVENT => {
-            for _ in 0..8 {
-                let _ = random.next_double();
-                let _ = random.next_double();
-            }
-        }
-        ELECTRIC_SPARK_LEVEL_EVENT => {
-            if matches!(event.data, 0..=2) {
-                advance_axis_particles_randoms(10, 19, random);
-            } else {
-                advance_block_face_particle_randoms(3, 5, random);
-            }
-        }
-        WAX_OFF_LEVEL_EVENT | SCRAPE_LEVEL_EVENT => {
-            advance_block_face_particle_randoms(3, 5, random);
-        }
-        EGG_CRACK_LEVEL_EVENT => {
-            advance_block_face_particle_randoms(3, 6, random);
-        }
-        TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
-            advance_trial_spawner_spawn_particle_randoms(random);
-        }
-        TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT
-        | TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT => {
-            advance_trial_spawner_detect_player_particle_randoms(event.data, random);
-        }
-        TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT => {
-            advance_trial_spawner_eject_item_particle_randoms(random);
-        }
-        TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT => {
-            advance_trial_spawner_detect_player_particle_randoms(0, random);
-            advance_trial_spawner_become_ominous_particle_randoms(random);
-        }
-        SCULK_CHARGE_LEVEL_EVENT => {
-            advance_sculk_charge_level_event_particle_randoms(event, context, random);
-        }
-        _ => {}
-    }
-}
-
-fn advance_shoot_particles_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..10 {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-    }
-}
-
-fn advance_item_break_particle_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..8 {
-        let _ = random.next_gaussian();
-        let _ = random.next_double();
-        let _ = random.next_gaussian();
-    }
-}
-
-fn advance_block_face_particle_randoms(
-    min_particles_per_face: i32,
-    max_particles_per_face: i32,
-    random: &mut LevelEventSoundRandomState,
-) {
-    for _ in 0..6 {
-        let particle_count = random
-            .next_int_bound(max_particles_per_face - min_particles_per_face + 1)
-            + min_particles_per_face;
-        for _ in 0..particle_count {
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-        }
-    }
-}
-
-fn advance_axis_particles_randoms(
-    min_particles: i32,
-    max_particles: i32,
-    random: &mut LevelEventSoundRandomState,
-) {
-    let particle_count = random.next_int_bound(max_particles - min_particles + 1) + min_particles;
-    for _ in 0..particle_count {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-    }
-}
-
-fn advance_sculk_charge_level_event_particle_randoms(
-    event: &bbb_protocol::packets::LevelEvent,
-    context: LevelEventParticleContext,
-    random: &mut LevelEventSoundRandomState,
-) {
-    let count = event.data >> 6;
-    if count <= 0 {
-        let particle_count = if context.sculk_charge_pop_full_block.unwrap_or(false) {
-            40
-        } else {
-            20
-        };
-        for _ in 0..particle_count {
-            let _ = random.next_float();
-            let _ = random.next_float();
-            let _ = random.next_float();
-        }
-        return;
-    }
-
-    let particle_data = event.data & 63;
-    let face_count = if particle_data == 0 {
-        6
-    } else {
-        particle_data.count_ones()
-    };
-    for _ in 0..face_count {
-        let particle_count = random.next_int_bound(count + 1);
-        for _ in 0..particle_count {
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-        }
-    }
-}
-
-fn advance_trial_spawner_spawn_particle_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..20 {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-    }
-}
-
-fn advance_trial_spawner_detect_player_particle_randoms(
-    data: i32,
-    random: &mut LevelEventSoundRandomState,
-) {
-    let count = 30_i64 + i64::from(data.min(10)) * 5;
-    for _ in 0..count.max(0) {
-        let _ = random.next_float();
-        let _ = random.next_float();
-        let _ = random.next_float();
-    }
-}
-
-fn advance_trial_spawner_eject_item_particle_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..20 {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-    }
-}
-
-fn advance_trial_spawner_become_ominous_particle_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..20 {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-    }
-}
-
-pub(super) fn advance_growth_level_event_particle_randoms(
-    event: &bbb_protocol::packets::LevelEvent,
-    context: LevelEventParticleContext,
-    random: &mut LevelEventSoundRandomState,
-) {
-    let Some(growth) = context.growth_particles else {
-        return;
-    };
-    let count = match growth.mode {
-        LevelEventGrowthParticleMode::InBlock { .. } => event.data,
-        LevelEventGrowthParticleMode::WideNoFloating { .. } => event.data.wrapping_mul(3),
-    };
-    advance_particle_utils_spawn_particles_randoms(count, random);
-}
-
-pub(super) fn advance_wax_on_level_event_particle_randoms(random: &mut LevelEventSoundRandomState) {
-    for _ in 0..6 {
-        let particle_count = random.next_int_bound(3) + 3;
-        for _ in 0..particle_count {
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-            let _ = random.next_double();
-        }
-    }
-}
-
-pub(super) fn advance_dragon_fireball_explode_level_event_particle_randoms(
-    random: &mut LevelEventSoundRandomState,
-) {
-    for _ in 0..200 {
-        let _ = random.next_float();
-        let _ = random.next_float();
-        let _ = random.next_double();
-    }
-}
-
-pub(super) fn advance_potion_break_level_event_particle_randoms(
-    random: &mut LevelEventSoundRandomState,
-) {
-    for _ in 0..8 {
-        let _ = random.next_gaussian();
-        let _ = random.next_double();
-        let _ = random.next_gaussian();
-    }
-    for _ in 0..100 {
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_float();
-    }
-}
-
-fn advance_particle_utils_spawn_particles_randoms(
-    count: i32,
-    random: &mut LevelEventSoundRandomState,
-) {
-    for _ in 0..count.max(0) {
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-        let _ = random.next_gaussian();
-        let _ = random.next_double();
-        let _ = random.next_double();
-        let _ = random.next_double();
-    }
-}
-
-fn audio_position(position: bbb_world::EntityVec3) -> [f64; 3] {
-    [position.x, position.y, position.z]
 }
 
 fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d> {

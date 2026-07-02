@@ -536,10 +536,15 @@ impl WorldStore {
             PlayClientbound::UpdateRecipes(update) => {
                 self.apply_update_recipes(update);
             }
+            PlayClientbound::ResourcePackPush(update) => {
+                // The push is world-owned; the response action and serverbound
+                // reply stay with the caller's net context.
+                self.apply_resource_pack_push(update.clone());
+                return Some(PlayClientbound::ResourcePackPush(update));
+            }
             // Connection-owned packets: keepalive/ping responses, chunk batch
-            // feedback, cookies, configuration handoff, resource-pack
-            // responses, disconnects, and unknown packets stay with the
-            // caller's net context.
+            // feedback, cookies, configuration handoff, disconnects, and
+            // unknown packets stay with the caller's net context.
             packet @ (PlayClientbound::KeepAlive { .. }
             | PlayClientbound::Ping { .. }
             | PlayClientbound::ChunkBatchStart
@@ -548,7 +553,6 @@ impl WorldStore {
             | PlayClientbound::StoreCookie(_)
             | PlayClientbound::StartConfiguration
             | PlayClientbound::Disconnect(_)
-            | PlayClientbound::ResourcePackPush(_)
             | PlayClientbound::Unknown { .. }) => return Some(packet),
         }
         None
@@ -616,11 +620,7 @@ impl WorldStore {
             let particles_consumed_random = effects.level_event_particles(self, &event, random);
             if !particles_consumed_random {
                 if let Some(mode) = effects.growth_particle_random_mode(self, &event) {
-                    let count = match mode {
-                        LevelEventGrowthRandomMode::InBlock => event.data,
-                        LevelEventGrowthRandomMode::WideNoFloating => event.data.wrapping_mul(3),
-                    };
-                    advance_particle_utils_spawn_particles_randoms(count, random);
+                    advance_growth_level_event_particle_randoms(event.data, mode, random);
                 }
             }
             if let Some(state) = self.level_event_sound(event) {
@@ -938,7 +938,21 @@ fn advance_trial_spawner_become_ominous_particle_randoms(random: &mut LevelEvent
     }
 }
 
-pub(crate) fn advance_wax_on_level_event_particle_randoms(random: &mut LevelEventSoundRandomState) {
+/// Advances the particle random stream for a sink-less plant-growth level
+/// event with the given data count and spawn mode.
+pub fn advance_growth_level_event_particle_randoms(
+    data: i32,
+    mode: LevelEventGrowthRandomMode,
+    random: &mut LevelEventSoundRandomState,
+) {
+    let count = match mode {
+        LevelEventGrowthRandomMode::InBlock => data,
+        LevelEventGrowthRandomMode::WideNoFloating => data.wrapping_mul(3),
+    };
+    advance_particle_utils_spawn_particles_randoms(count, random);
+}
+
+pub fn advance_wax_on_level_event_particle_randoms(random: &mut LevelEventSoundRandomState) {
     for _ in 0..6 {
         let particle_count = random.next_int_bound(3) + 3;
         for _ in 0..particle_count {
@@ -951,7 +965,7 @@ pub(crate) fn advance_wax_on_level_event_particle_randoms(random: &mut LevelEven
     }
 }
 
-pub(crate) fn advance_dragon_fireball_explode_level_event_particle_randoms(
+pub fn advance_dragon_fireball_explode_level_event_particle_randoms(
     random: &mut LevelEventSoundRandomState,
 ) {
     for _ in 0..200 {
@@ -961,9 +975,7 @@ pub(crate) fn advance_dragon_fireball_explode_level_event_particle_randoms(
     }
 }
 
-pub(crate) fn advance_potion_break_level_event_particle_randoms(
-    random: &mut LevelEventSoundRandomState,
-) {
+pub fn advance_potion_break_level_event_particle_randoms(random: &mut LevelEventSoundRandomState) {
     for _ in 0..8 {
         let _ = random.next_gaussian();
         let _ = random.next_double();

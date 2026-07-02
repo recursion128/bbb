@@ -80,31 +80,27 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-net` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Keep adding parity regression tests for every decoded packet that has a
-    `WorldStore` apply API.
-  - Prefer shared semantics or focused paired tests when probe and online
-    handling differ.
+  - Close the remaining sink-less level-event particle random context gap:
+    probe callers use the default `PlayApplyEffects` context callbacks, so
+    sculk-charge pop full-block and plant-growth mode contexts resolve to
+    `None` (vanilla missing-block fallback) instead of probing chunk shape
+    data the way the native runtime does.
 - Evidence / boundary:
-  - Probe and online paths now cover many packet families, including:
-    - unsupported diagnostics
-    - play -> configuration teardown
-    - custom payload brand/unknown presentation state
-    - item cooldown add/remove state
-    - delete/disguised chat state
-    - entity motion/head rotation/animation/hurt transient state
-    - scoreboard objective/display/score/team updates
-    - advancement update/select-tab state
-    - recipe book add/remove/settings updates
-    - recipe access `UpdateRecipes` property-set and stonecutter updates
-    - command tree and registry tag updates
-    - HUD system chat, action-bar, title/subtitle, and title timing updates
-    - world border initialize/center/size/warning updates
-    - level chunk insert, block/section updates, chunk view, and chunk forgets
-    - terrain light and biome updates
-    - inventory, container, cursor, and merchant-offer updates
-    - entity position, metadata, equipment, attributes, status, link,
-      passenger, take-item, and remove updates
-    - minecart along-track lerp updates
+  - `WorldStore::apply_play_packet` is the single shared clientbound
+    play-packet -> canonical-world mapping. Both the offline probe
+    (`bbb-net/src/probe/play.rs`) and the online dispatcher
+    (`bbb-native/src/runtime/events/dispatcher.rs`, via `NetEvent::Play`)
+    delegate to it; per-family packet arms exist only there.
+  - Runtime side effects (audio/particle sinks, chat/vehicle
+    acknowledgements) flow through the `PlayApplyEffects` trait; the
+    deterministic level-event sound/particle random stream advances
+    identically for sink-less callers, including potion break, dragon
+    fireball, wax-on, vault, trial spawner, and sculk charge events that the
+    probe previously skipped.
+  - Connection-owned packets (keepalive/ping, chunk batch feedback, cookies,
+    configuration handoff, resource-pack responses, movement responses,
+    disconnects, unknown packets) are returned to the caller and stay
+    net-context-owned by design.
   - The final criterion:
     - every supported decoded packet stays aligned
 

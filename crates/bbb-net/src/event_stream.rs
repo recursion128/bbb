@@ -895,7 +895,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::BlockDestruction(update) if update == block_destruction
+            NetEvent::Play(PlayClientbound::BlockDestruction(update)) if update == block_destruction
         ));
 
         let entity_move = packets::EntityMove {
@@ -917,7 +917,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::MoveEntity(update) if update == entity_move
+            NetEvent::Play(PlayClientbound::MoveEntity(update)) if update == entity_move
         ));
 
         let entity_event = packets::EntityEvent {
@@ -934,7 +934,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::EntityEvent(update) if update == entity_event
+            NetEvent::Play(PlayClientbound::EntityEvent(update)) if update == entity_event
         ));
 
         let respawn = packets::Respawn {
@@ -960,7 +960,9 @@ mod tests {
             .await
             .expect("respawn event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::Respawn(update) if update == respawn));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::Respawn(update)) if update == respawn)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -1028,7 +1030,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::Login(login.clone()),
             "play login event should be emitted",
-            NetEvent::Login(update) if update == login
+            NetEvent::Play(PlayClientbound::Login(update)) if update == login
         );
 
         let profile_id = uuid::Uuid::from_u128(1);
@@ -1071,7 +1073,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::PlayerInfoUpdate(player_info.clone()),
             "player info update event should be emitted",
-            NetEvent::PlayerInfoUpdate(update) if update == player_info
+            NetEvent::Play(PlayClientbound::PlayerInfoUpdate(update)) if update == player_info
         );
 
         let player_info_remove = packets::PlayerInfoRemove {
@@ -1080,14 +1082,14 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::PlayerInfoRemove(player_info_remove.clone()),
             "player info remove event should be emitted",
-            NetEvent::PlayerInfoRemove(update) if update == player_info_remove
+            NetEvent::Play(PlayClientbound::PlayerInfoRemove(update)) if update == player_info_remove
         );
 
         let camera = packets::SetCamera { camera_id: 99 };
         assert_matching_event!(
             PlayClientbound::SetCamera(camera),
             "set camera event should be emitted",
-            NetEvent::SetCamera(update) if update == camera
+            NetEvent::Play(PlayClientbound::SetCamera(update)) if update == camera
         );
 
         let difficulty = packets::ChangeDifficulty {
@@ -1097,7 +1099,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::ChangeDifficulty(difficulty),
             "change difficulty event should be emitted",
-            NetEvent::ChangeDifficulty(update) if update == difficulty
+            NetEvent::Play(PlayClientbound::ChangeDifficulty(update)) if update == difficulty
         );
 
         let tab_list = packets::TabList {
@@ -1107,7 +1109,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::TabList(tab_list.clone()),
             "tab list event should be emitted",
-            NetEvent::TabList(update) if update == tab_list
+            NetEvent::Play(PlayClientbound::TabList(update)) if update == tab_list
         );
 
         assert!(
@@ -1167,21 +1169,21 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::AddEntity(add_entity.clone()),
             "add entity event should be emitted",
-            NetEvent::AddEntity(update) if update == add_entity
+            NetEvent::Play(PlayClientbound::AddEntity(update)) if update == add_entity
         );
 
         let entity_animation = packets::EntityAnimation { id: 123, action: 3 };
         assert_matching_event!(
             PlayClientbound::EntityAnimation(entity_animation),
             "entity animation event should be emitted",
-            NetEvent::EntityAnimation(update) if update == entity_animation
+            NetEvent::Play(PlayClientbound::EntityAnimation(update)) if update == entity_animation
         );
 
         let hurt_animation = packets::HurtAnimation { id: 123, yaw: 45.5 };
         assert_matching_event!(
             PlayClientbound::HurtAnimation(hurt_animation),
             "hurt animation event should be emitted",
-            NetEvent::HurtAnimation(update) if update == hurt_animation
+            NetEvent::Play(PlayClientbound::HurtAnimation(update)) if update == hurt_animation
         );
 
         let position_sync = packets::EntityPositionSync {
@@ -1203,7 +1205,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::EntityPositionSync(position_sync),
             "entity position sync event should be emitted",
-            NetEvent::EntityPositionSync(update) if update == position_sync
+            NetEvent::Play(PlayClientbound::EntityPositionSync(update)) if update == position_sync
         );
 
         let teleport = packets::TeleportEntity {
@@ -1226,7 +1228,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::TeleportEntity(teleport),
             "entity teleport event should be emitted",
-            NetEvent::TeleportEntity(update) if update == teleport
+            NetEvent::Play(PlayClientbound::TeleportEntity(update)) if update == teleport
         );
 
         let rotate_head = packets::RotateHead {
@@ -1236,7 +1238,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::RotateHead(rotate_head),
             "entity head rotation event should be emitted",
-            NetEvent::RotateHead(update) if update == rotate_head
+            NetEvent::Play(PlayClientbound::RotateHead(update)) if update == rotate_head
         );
 
         let motion = packets::SetEntityMotion {
@@ -1250,7 +1252,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetEntityMotion(motion),
             "entity motion event should be emitted",
-            NetEvent::SetEntityMotion(update) if update == motion
+            NetEvent::Play(PlayClientbound::SetEntityMotion(update)) if update == motion
         );
 
         let link = packets::SetEntityLink {
@@ -1260,7 +1262,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetEntityLink(link),
             "entity link event should be emitted",
-            NetEvent::SetEntityLink(update) if update == link
+            NetEvent::Play(PlayClientbound::SetEntityLink(update)) if update == link
         );
 
         let passengers = packets::SetPassengers {
@@ -1270,7 +1272,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetPassengers(passengers.clone()),
             "entity passengers event should be emitted",
-            NetEvent::SetPassengers(update) if update == passengers
+            NetEvent::Play(PlayClientbound::SetPassengers(update)) if update == passengers
         );
 
         let equipment = packets::SetEquipment {
@@ -1283,7 +1285,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetEquipment(equipment.clone()),
             "entity equipment event should be emitted",
-            NetEvent::SetEquipment(update) if update == equipment
+            NetEvent::Play(PlayClientbound::SetEquipment(update)) if update == equipment
         );
 
         let attributes = packets::UpdateAttributes {
@@ -1301,7 +1303,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::UpdateAttributes(attributes.clone()),
             "entity attributes event should be emitted",
-            NetEvent::UpdateAttributes(update) if update == attributes
+            NetEvent::Play(PlayClientbound::UpdateAttributes(update)) if update == attributes
         );
 
         let entity_data = packets::SetEntityData {
@@ -1322,7 +1324,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetEntityData(entity_data.clone()),
             "entity data event should be emitted",
-            NetEvent::SetEntityData(update) if update == entity_data
+            NetEvent::Play(PlayClientbound::SetEntityData(update)) if update == entity_data
         );
 
         let take_item = packets::TakeItemEntity {
@@ -1333,7 +1335,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::TakeItemEntity(take_item),
             "take item entity event should be emitted",
-            NetEvent::TakeItemEntity(update) if update == take_item
+            NetEvent::Play(PlayClientbound::TakeItemEntity(update)) if update == take_item
         );
 
         let mob_effect = packets::UpdateMobEffect {
@@ -1352,7 +1354,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::UpdateMobEffect(mob_effect),
             "mob effect update event should be emitted",
-            NetEvent::UpdateMobEffect(update) if update == mob_effect
+            NetEvent::Play(PlayClientbound::UpdateMobEffect(update)) if update == mob_effect
         );
 
         let damage = packets::DamageEvent {
@@ -1369,7 +1371,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::DamageEvent(damage),
             "damage event should be emitted",
-            NetEvent::DamageEvent(update) if update == damage
+            NetEvent::Play(PlayClientbound::DamageEvent(update)) if update == damage
         );
 
         let remove_effect = packets::RemoveMobEffect {
@@ -1379,7 +1381,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::RemoveMobEffect(remove_effect),
             "remove mob effect event should be emitted",
-            NetEvent::RemoveMobEffect(update) if update == remove_effect
+            NetEvent::Play(PlayClientbound::RemoveMobEffect(update)) if update == remove_effect
         );
 
         let minecart = packets::MoveMinecartAlongTrack {
@@ -1403,7 +1405,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::MoveMinecartAlongTrack(minecart.clone()),
             "minecart along-track event should be emitted",
-            NetEvent::MoveMinecartAlongTrack(update) if update == minecart
+            NetEvent::Play(PlayClientbound::MoveMinecartAlongTrack(update)) if update == minecart
         );
 
         let vehicle = packets::MoveVehicle {
@@ -1418,7 +1420,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::MoveVehicle(vehicle),
             "move vehicle event should be emitted",
-            NetEvent::MoveVehicle(update) if update == vehicle
+            NetEvent::Play(PlayClientbound::MoveVehicle(update)) if update == vehicle
         );
 
         let explosion = packets::Explosion {
@@ -1439,7 +1441,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::Explosion(explosion.clone()),
             "explosion event should be emitted",
-            NetEvent::Explosion(update) if update == explosion
+            NetEvent::Play(PlayClientbound::Explosion(update)) if update == explosion
         );
 
         let remove_entities = packets::RemoveEntities {
@@ -1448,7 +1450,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::RemoveEntities(remove_entities.clone()),
             "remove entities event should be emitted",
-            NetEvent::RemoveEntities(update) if update == remove_entities
+            NetEvent::Play(PlayClientbound::RemoveEntities(update)) if update == remove_entities
         );
 
         assert!(
@@ -1512,7 +1514,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ResourcePackPush(update) if update.id == pack_id
+            NetEvent::Play(PlayClientbound::ResourcePackPush(update)) if update.id == pack_id
         ));
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
@@ -1580,7 +1582,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ResourcePackPush(update) if update.id == pack_id
+            NetEvent::Play(PlayClientbound::ResourcePackPush(update)) if update.id == pack_id
         ));
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
@@ -1681,7 +1683,9 @@ mod tests {
             .await
             .expect("custom payload event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::CustomPayload(update) if update == custom_payload));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::CustomPayload(update)) if update == custom_payload)
+        );
 
         let mut details = BTreeMap::new();
         details.insert("Server".to_string(), "play".to_string());
@@ -1698,7 +1702,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::CustomReportDetails(update) if update == custom_report_details
+            NetEvent::Play(PlayClientbound::CustomReportDetails(update)) if update == custom_report_details
         ));
 
         let server_links = packets::ServerLinks {
@@ -1715,7 +1719,9 @@ mod tests {
             .await
             .expect("server links event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ServerLinks(update) if update == server_links));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ServerLinks(update)) if update == server_links)
+        );
 
         let server_data = packets::ServerData {
             motd: "Offline play server".to_string(),
@@ -1729,7 +1735,9 @@ mod tests {
             .await
             .expect("server data event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ServerData(update) if update == server_data));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ServerData(update)) if update == server_data)
+        );
 
         let resource_pack_pop = packets::ResourcePackPop {
             id: Some(uuid::Uuid::from_u128(
@@ -1746,7 +1754,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ResourcePackPop(update) if update == resource_pack_pop
+            NetEvent::Play(PlayClientbound::ResourcePackPop(update)) if update == resource_pack_pop
         ));
 
         let transfer = packets::Transfer {
@@ -1761,7 +1769,9 @@ mod tests {
             .await
             .expect("transfer event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::Transfer(update) if update == transfer));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::Transfer(update)) if update == transfer)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -1808,7 +1818,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetActionBarText(action_bar.clone()),
             "action bar event should be emitted",
-            NetEvent::SetActionBarText(update) if update == action_bar
+            NetEvent::Play(PlayClientbound::SetActionBarText(update)) if update == action_bar
         );
 
         let title = packets::SetTitleText {
@@ -1817,7 +1827,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetTitleText(title.clone()),
             "title text event should be emitted",
-            NetEvent::SetTitleText(update) if update == title
+            NetEvent::Play(PlayClientbound::SetTitleText(update)) if update == title
         );
 
         let subtitle = packets::SetSubtitleText {
@@ -1826,14 +1836,14 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetSubtitleText(subtitle.clone()),
             "subtitle text event should be emitted",
-            NetEvent::SetSubtitleText(update) if update == subtitle
+            NetEvent::Play(PlayClientbound::SetSubtitleText(update)) if update == subtitle
         );
 
         let clear_titles = packets::ClearTitles { reset_times: true };
         assert_matching_event!(
             PlayClientbound::ClearTitles(clear_titles),
             "clear titles event should be emitted",
-            NetEvent::ClearTitles(update) if update == clear_titles
+            NetEvent::Play(PlayClientbound::ClearTitles(update)) if update == clear_titles
         );
 
         let titles_animation = packets::SetTitlesAnimation {
@@ -1844,7 +1854,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetTitlesAnimation(titles_animation),
             "titles animation event should be emitted",
-            NetEvent::SetTitlesAnimation(update) if update == titles_animation
+            NetEvent::Play(PlayClientbound::SetTitlesAnimation(update)) if update == titles_animation
         );
 
         let show_dialog = packets::ShowDialog {
@@ -1855,19 +1865,19 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::ShowDialog(show_dialog.clone()),
             "show dialog event should be emitted",
-            NetEvent::ShowDialog(update) if update == show_dialog
+            NetEvent::Play(PlayClientbound::ShowDialog(update)) if update == show_dialog
         );
 
         assert_matching_event!(
             PlayClientbound::ClearDialog,
             "clear dialog event should be emitted",
-            NetEvent::ClearDialog
+            NetEvent::Play(PlayClientbound::ClearDialog)
         );
 
         assert_matching_event!(
             PlayClientbound::LowDiskSpaceWarning,
             "low disk warning event should be emitted",
-            NetEvent::LowDiskSpaceWarning
+            NetEvent::Play(PlayClientbound::LowDiskSpaceWarning)
         );
 
         let mount_screen = packets::MountScreenOpen {
@@ -1878,7 +1888,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::MountScreenOpen(mount_screen),
             "mount screen open event should be emitted",
-            NetEvent::MountScreenOpen(update) if update == mount_screen
+            NetEvent::Play(PlayClientbound::MountScreenOpen(update)) if update == mount_screen
         );
 
         let open_book = packets::OpenBook {
@@ -1887,7 +1897,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::OpenBook(open_book),
             "open book event should be emitted",
-            NetEvent::OpenBook(update) if update == open_book
+            NetEvent::Play(PlayClientbound::OpenBook(update)) if update == open_book
         );
 
         let open_sign = packets::OpenSignEditor {
@@ -1901,7 +1911,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::OpenSignEditor(open_sign),
             "open sign editor event should be emitted",
-            NetEvent::OpenSignEditor(update) if update == open_sign
+            NetEvent::Play(PlayClientbound::OpenSignEditor(update)) if update == open_sign
         );
 
         let ghost_recipe = packets::PlaceGhostRecipe {
@@ -1912,14 +1922,14 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::PlaceGhostRecipe(ghost_recipe.clone()),
             "place ghost recipe event should be emitted",
-            NetEvent::PlaceGhostRecipe(update) if update == ghost_recipe
+            NetEvent::Play(PlayClientbound::PlaceGhostRecipe(update)) if update == ghost_recipe
         );
 
         let pong = packets::PongResponse { time: 123456789 };
         assert_matching_event!(
             PlayClientbound::PongResponse(pong),
             "pong response event should be emitted",
-            NetEvent::PongResponse(update) if update == pong
+            NetEvent::Play(PlayClientbound::PongResponse(update)) if update == pong
         );
 
         assert!(
@@ -1978,7 +1988,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::AwardStats(stats.clone()),
             "award stats event should be emitted",
-            NetEvent::AwardStats(update) if update == stats
+            NetEvent::Play(PlayClientbound::AwardStats(update)) if update == stats
         );
 
         let cooldown = packets::Cooldown {
@@ -1988,7 +1998,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::Cooldown(cooldown.clone()),
             "cooldown event should be emitted",
-            NetEvent::Cooldown(update) if update == cooldown
+            NetEvent::Play(PlayClientbound::Cooldown(update)) if update == cooldown
         );
 
         let boss_event = packets::BossEvent {
@@ -2008,20 +2018,20 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::BossEvent(boss_event.clone()),
             "boss event should be emitted",
-            NetEvent::BossEvent(update) if update == boss_event
+            NetEvent::Play(PlayClientbound::BossEvent(update)) if update == boss_event
         );
 
         assert_matching_event!(
             PlayClientbound::PlayerCombatEnter,
             "player combat enter event should be emitted",
-            NetEvent::PlayerCombatEnter
+            NetEvent::Play(PlayClientbound::PlayerCombatEnter)
         );
 
         let combat_end = packets::PlayerCombatEnd { duration: 37 };
         assert_matching_event!(
             PlayClientbound::PlayerCombatEnd(combat_end),
             "player combat end event should be emitted",
-            NetEvent::PlayerCombatEnd(update) if update == combat_end
+            NetEvent::Play(PlayClientbound::PlayerCombatEnd(update)) if update == combat_end
         );
 
         let combat_kill = packets::PlayerCombatKill {
@@ -2031,7 +2041,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::PlayerCombatKill(combat_kill.clone()),
             "player combat kill event should be emitted",
-            NetEvent::PlayerCombatKill(update) if update == combat_kill
+            NetEvent::Play(PlayClientbound::PlayerCombatKill(update)) if update == combat_kill
         );
 
         assert!(
@@ -2095,7 +2105,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::MapItemData(map.clone()),
             "map item data event should be emitted",
-            NetEvent::MapItemData(update) if update == map
+            NetEvent::Play(PlayClientbound::MapItemData(update)) if update == map
         );
 
         let particles = packets::LevelParticles {
@@ -2121,7 +2131,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::LevelParticles(particles.clone()),
             "level particles event should be emitted",
-            NetEvent::LevelParticles(update) if update == particles
+            NetEvent::Play(PlayClientbound::LevelParticles(update)) if update == particles
         );
 
         let sound = packets::SoundEvent {
@@ -2139,7 +2149,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::Sound(sound.clone()),
             "sound event should be emitted",
-            NetEvent::Sound(update) if update == sound
+            NetEvent::Play(PlayClientbound::Sound(update)) if update == sound
         );
 
         let entity_sound = packets::SoundEntityEvent {
@@ -2156,7 +2166,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SoundEntity(entity_sound.clone()),
             "entity sound event should be emitted",
-            NetEvent::SoundEntity(update) if update == entity_sound
+            NetEvent::Play(PlayClientbound::SoundEntity(update)) if update == entity_sound
         );
 
         let stop_sound = packets::StopSound {
@@ -2166,7 +2176,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::StopSound(stop_sound.clone()),
             "stop sound event should be emitted",
-            NetEvent::StopSound(update) if update == stop_sound
+            NetEvent::Play(PlayClientbound::StopSound(update)) if update == stop_sound
         );
 
         assert!(
@@ -2210,7 +2220,9 @@ mod tests {
             .await
             .expect("open screen event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::OpenScreen(update) if update == open_screen));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::OpenScreen(update)) if update == open_screen)
+        );
 
         let content = packets::ContainerSetContent {
             container_id: 7,
@@ -2228,7 +2240,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ContainerSetContent(update) if update == content
+            NetEvent::Play(PlayClientbound::ContainerSetContent(update)) if update == content
         ));
 
         let slot = packets::ContainerSetSlot {
@@ -2245,7 +2257,9 @@ mod tests {
             .await
             .expect("container slot event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ContainerSetSlot(update) if update == slot));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ContainerSetSlot(update)) if update == slot)
+        );
 
         let data = packets::ContainerSetData {
             container_id: 7,
@@ -2260,7 +2274,9 @@ mod tests {
             .await
             .expect("container data event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ContainerSetData(update) if update == data));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ContainerSetData(update)) if update == data)
+        );
 
         let player_slot = packets::SetPlayerInventory {
             slot: 36,
@@ -2276,7 +2292,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SetPlayerInventory(update) if update == player_slot
+            NetEvent::Play(PlayClientbound::SetPlayerInventory(update)) if update == player_slot
         ));
 
         let cursor = packets::SetCursorItem {
@@ -2290,7 +2306,9 @@ mod tests {
             .await
             .expect("cursor item event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::SetCursorItem(update) if update == cursor));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SetCursorItem(update)) if update == cursor)
+        );
 
         let offers = packets::MerchantOffers {
             container_id: 7,
@@ -2323,7 +2341,9 @@ mod tests {
             .await
             .expect("merchant offers event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::MerchantOffers(update) if update == offers));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::MerchantOffers(update)) if update == offers)
+        );
 
         let close = packets::ContainerClose { container_id: 7 };
         stream
@@ -2334,7 +2354,9 @@ mod tests {
             .await
             .expect("container close event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ContainerClose(update) if update == close));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ContainerClose(update)) if update == close)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -2373,7 +2395,9 @@ mod tests {
             .await
             .expect("commands event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::Commands(update) if update == commands));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::Commands(update)) if update == commands)
+        );
 
         let completions = packets::CustomChatCompletions {
             action: packets::CustomChatCompletionsAction::Set,
@@ -2389,7 +2413,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::CustomChatCompletions(update) if update == completions
+            NetEvent::Play(PlayClientbound::CustomChatCompletions(update)) if update == completions
         ));
 
         let suggestions = packets::CommandSuggestions {
@@ -2417,7 +2441,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::CommandSuggestions(update) if update == suggestions
+            NetEvent::Play(PlayClientbound::CommandSuggestions(update)) if update == suggestions
         ));
 
         let tag_query = packets::TagQuery {
@@ -2433,7 +2457,9 @@ mod tests {
             .await
             .expect("tag query event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::TagQuery(update) if update == tag_query));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::TagQuery(update)) if update == tag_query)
+        );
 
         let player_chat = player_chat_packet(3);
         stream
@@ -2444,7 +2470,9 @@ mod tests {
             .await
             .expect("player chat event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerChat(update) if update == player_chat));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerChat(update)) if update == player_chat)
+        );
 
         let delete_chat = packets::DeleteChat {
             message_signature: packets::PackedMessageSignature {
@@ -2460,7 +2488,9 @@ mod tests {
             .await
             .expect("delete chat event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::DeleteChat(update) if update == delete_chat));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::DeleteChat(update)) if update == delete_chat)
+        );
 
         let disguised_chat = packets::DisguisedChat {
             message: "Server says hi".to_string(),
@@ -2476,7 +2506,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::DisguisedChat(update) if update == disguised_chat
+            NetEvent::Play(PlayClientbound::DisguisedChat(update)) if update == disguised_chat
         ));
 
         let system_chat = packets::SystemChat {
@@ -2491,7 +2521,9 @@ mod tests {
             .await
             .expect("system chat event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::SystemChat(update) if update == system_chat));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SystemChat(update)) if update == system_chat)
+        );
 
         let update_tags = packets::UpdateTags {
             registries: vec![packets::RegistryTags {
@@ -2510,7 +2542,9 @@ mod tests {
             .await
             .expect("update tags event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::UpdateTags(update) if update == update_tags));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::UpdateTags(update)) if update == update_tags)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -2556,7 +2590,9 @@ mod tests {
             .await
             .expect("player abilities event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerAbilities(update) if update == abilities));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerAbilities(update)) if update == abilities)
+        );
 
         let health = packets::PlayerHealth {
             health: 7.5,
@@ -2571,7 +2607,9 @@ mod tests {
             .await
             .expect("player health event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerHealth(update) if update == health));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SetHealth(update)) if update == health)
+        );
 
         let experience = packets::PlayerExperience {
             progress: 0.75,
@@ -2588,7 +2626,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::PlayerExperience(update) if update == experience
+            NetEvent::Play(PlayClientbound::SetExperience(update)) if update == experience
         ));
 
         let held_slot = packets::SetHeldSlot { slot: 5 };
@@ -2600,7 +2638,9 @@ mod tests {
             .await
             .expect("held slot event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::HeldSlot(update) if update == held_slot));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SetHeldSlot(update)) if update == held_slot)
+        );
 
         let spawn = packets::SetDefaultSpawnPosition {
             dimension: "minecraft:overworld".to_string(),
@@ -2622,7 +2662,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SetDefaultSpawnPosition(update) if update == spawn
+            NetEvent::Play(PlayClientbound::SetDefaultSpawnPosition(update)) if update == spawn
         ));
 
         let simulation_distance = packets::SetSimulationDistance { distance: 12 };
@@ -2636,7 +2676,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SetSimulationDistance(update) if update == simulation_distance
+            NetEvent::Play(PlayClientbound::SetSimulationDistance(update)) if update == simulation_distance
         ));
 
         let look_at = packets::PlayerLookAt {
@@ -2659,7 +2699,9 @@ mod tests {
             .await
             .expect("player look-at event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerLookAt(update) if update == look_at));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerLookAt(update)) if update == look_at)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -2706,7 +2748,9 @@ mod tests {
             .await
             .expect("world time event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::SetTime(update) if update == time));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::SetTime(update)) if update == time)
+        );
 
         let game_event = packets::GameEvent {
             event_id: 7,
@@ -2720,7 +2764,9 @@ mod tests {
             .await
             .expect("game event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::GameEvent(update) if update == game_event));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::GameEvent(update)) if update == game_event)
+        );
 
         let ticking_state = packets::TickingState {
             tick_rate: 0.25,
@@ -2736,7 +2782,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::TickingState(update) if update == ticking_state
+            NetEvent::Play(PlayClientbound::TickingState(update)) if update == ticking_state
         ));
 
         let ticking_step = packets::TickingStep { tick_steps: 7 };
@@ -2748,7 +2794,9 @@ mod tests {
             .await
             .expect("ticking step event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::TickingStep(update) if update == ticking_step));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::TickingStep(update)) if update == ticking_step)
+        );
 
         let ack = packets::BlockChangedAck { sequence: 17 };
         stream
@@ -2759,7 +2807,9 @@ mod tests {
             .await
             .expect("block changed ack event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::BlockChangedAck(update) if update == ack));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::BlockChangedAck(update)) if update == ack)
+        );
 
         let block_entity = packets::BlockEntityData {
             pos: packets::BlockPos {
@@ -2780,7 +2830,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::BlockEntityData(update) if update == block_entity
+            NetEvent::Play(PlayClientbound::BlockEntityData(update)) if update == block_entity
         ));
 
         let block_event = packets::BlockEvent {
@@ -2801,7 +2851,9 @@ mod tests {
             .await
             .expect("block event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::BlockEvent(update) if update == block_event));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::BlockEvent(update)) if update == block_event)
+        );
 
         let level_event = packets::LevelEvent {
             event_type: 1001,
@@ -2817,7 +2869,9 @@ mod tests {
             .await
             .expect("level event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::LevelEvent(update) if update == level_event));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::LevelEvent(update)) if update == level_event)
+        );
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -2882,7 +2936,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::LevelChunkWithLight(update) if update == chunk
+            NetEvent::Play(PlayClientbound::LevelChunkWithLight(update)) if update == chunk
         ));
 
         let light = packets::LightUpdate {
@@ -2905,7 +2959,9 @@ mod tests {
             .await
             .expect("light update event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::LightUpdate(update) if update == light));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::LightUpdate(update)) if update == light)
+        );
 
         let biomes = packets::ChunksBiomes {
             chunks: vec![packets::ChunkBiomeData {
@@ -2921,7 +2977,9 @@ mod tests {
             .await
             .expect("chunk biome event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::ChunksBiomes(update) if update == biomes));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::ChunksBiomes(update)) if update == biomes)
+        );
 
         let forget = packets::ForgetLevelChunk {
             pos: packets::ChunkPos { x: 1, z: -2 },
@@ -2936,7 +2994,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ForgetLevelChunk(update) if update == forget
+            NetEvent::Play(PlayClientbound::ForgetLevelChunk(update)) if update == forget
         ));
 
         let block = packets::BlockUpdate {
@@ -2955,7 +3013,9 @@ mod tests {
             .await
             .expect("block update event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::BlockUpdate(update) if update == block));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::BlockUpdate(update)) if update == block)
+        );
 
         let section = packets::SectionBlocksUpdate {
             section_x: 1,
@@ -2990,7 +3050,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SectionBlocksUpdate(update) if update == section
+            NetEvent::Play(PlayClientbound::SectionBlocksUpdate(update)) if update == section
         ));
 
         let center = packets::SetChunkCacheCenter {
@@ -3007,7 +3067,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SetChunkCacheCenter(update) if update == center
+            NetEvent::Play(PlayClientbound::SetChunkCacheCenter(update)) if update == center
         ));
 
         let radius = packets::SetChunkCacheRadius { radius: 7 };
@@ -3021,7 +3081,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SetChunkCacheRadius(update) if update == radius
+            NetEvent::Play(PlayClientbound::SetChunkCacheRadius(update)) if update == radius
         ));
 
         assert!(
@@ -3076,7 +3136,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::InitializeBorder(initialize_border),
             "initialize border event should be emitted",
-            NetEvent::InitializeBorder(update) if update == initialize_border
+            NetEvent::Play(PlayClientbound::InitializeBorder(update)) if update == initialize_border
         );
 
         let border_center = packets::SetBorderCenter {
@@ -3086,7 +3146,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetBorderCenter(border_center),
             "border center event should be emitted",
-            NetEvent::SetBorderCenter(update) if update == border_center
+            NetEvent::Play(PlayClientbound::SetBorderCenter(update)) if update == border_center
         );
 
         let border_lerp = packets::SetBorderLerpSize {
@@ -3097,28 +3157,28 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetBorderLerpSize(border_lerp),
             "border lerp size event should be emitted",
-            NetEvent::SetBorderLerpSize(update) if update == border_lerp
+            NetEvent::Play(PlayClientbound::SetBorderLerpSize(update)) if update == border_lerp
         );
 
         let border_size = packets::SetBorderSize { size: 250.0 };
         assert_matching_event!(
             PlayClientbound::SetBorderSize(border_size),
             "border size event should be emitted",
-            NetEvent::SetBorderSize(update) if update == border_size
+            NetEvent::Play(PlayClientbound::SetBorderSize(update)) if update == border_size
         );
 
         let warning_delay = packets::SetBorderWarningDelay { warning_delay: 9 };
         assert_matching_event!(
             PlayClientbound::SetBorderWarningDelay(warning_delay),
             "border warning delay event should be emitted",
-            NetEvent::SetBorderWarningDelay(update) if update == warning_delay
+            NetEvent::Play(PlayClientbound::SetBorderWarningDelay(update)) if update == warning_delay
         );
 
         let warning_distance = packets::SetBorderWarningDistance { warning_blocks: 8 };
         assert_matching_event!(
             PlayClientbound::SetBorderWarningDistance(warning_distance),
             "border warning distance event should be emitted",
-            NetEvent::SetBorderWarningDistance(update) if update == warning_distance
+            NetEvent::Play(PlayClientbound::SetBorderWarningDistance(update)) if update == warning_distance
         );
 
         let objective = packets::SetObjective {
@@ -3133,7 +3193,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetObjective(objective.clone()),
             "scoreboard objective event should be emitted",
-            NetEvent::SetObjective(update) if update == objective
+            NetEvent::Play(PlayClientbound::SetObjective(update)) if update == objective
         );
 
         let display_objective = packets::SetDisplayObjective {
@@ -3143,7 +3203,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetDisplayObjective(display_objective.clone()),
             "scoreboard display objective event should be emitted",
-            NetEvent::SetDisplayObjective(update) if update == display_objective
+            NetEvent::Play(PlayClientbound::SetDisplayObjective(update)) if update == display_objective
         );
 
         let score = packets::SetScore {
@@ -3156,7 +3216,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetScore(score.clone()),
             "scoreboard score event should be emitted",
-            NetEvent::SetScore(update) if update == score
+            NetEvent::Play(PlayClientbound::SetScore(update)) if update == score
         );
 
         let team = packets::SetPlayerTeam {
@@ -3176,7 +3236,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::SetPlayerTeam(team.clone()),
             "scoreboard team event should be emitted",
-            NetEvent::SetPlayerTeam(update) if update == team
+            NetEvent::Play(PlayClientbound::SetPlayerTeam(update)) if update == team
         );
 
         let reset_score = packets::ResetScore {
@@ -3186,7 +3246,7 @@ mod tests {
         assert_matching_event!(
             PlayClientbound::ResetScore(reset_score.clone()),
             "scoreboard reset score event should be emitted",
-            NetEvent::ResetScore(update) if update == reset_score
+            NetEvent::Play(PlayClientbound::ResetScore(update)) if update == reset_score
         );
 
         assert!(
@@ -3231,7 +3291,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::DebugBlockValue(update) if update == debug_block
+            NetEvent::Play(PlayClientbound::DebugBlockValue(update)) if update == debug_block
         ));
 
         let debug_chunk = packets::DebugChunkValue {
@@ -3248,7 +3308,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::DebugChunkValue(update) if update == debug_chunk
+            NetEvent::Play(PlayClientbound::DebugChunkValue(update)) if update == debug_chunk
         ));
 
         let debug_entity = packets::DebugEntityValue {
@@ -3265,7 +3325,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::DebugEntityValue(update) if update == debug_entity
+            NetEvent::Play(PlayClientbound::DebugEntityValue(update)) if update == debug_entity
         ));
 
         let debug_event = packets::DebugEvent {
@@ -3279,7 +3339,9 @@ mod tests {
             .await
             .expect("debug event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::DebugEvent(update) if update == debug_event));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::DebugEvent(update)) if update == debug_event)
+        );
 
         let debug_sample = packets::DebugSample {
             sample: vec![100, -50],
@@ -3295,7 +3357,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::DebugSample(update) if update == debug_sample
+            NetEvent::Play(PlayClientbound::DebugSample(update)) if update == debug_sample
         ));
 
         let game_rules = packets::GameRuleValues {
@@ -3320,7 +3382,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::GameRuleValues(update) if update == game_rules
+            NetEvent::Play(PlayClientbound::GameRuleValues(update)) if update == game_rules
         ));
 
         let game_test_highlight = packets::GameTestHighlightPos {
@@ -3343,7 +3405,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::GameTestHighlightPos(update) if update == game_test_highlight
+            NetEvent::Play(PlayClientbound::GameTestHighlightPos(update)) if update == game_test_highlight
         ));
 
         let test_instance_status = packets::TestInstanceBlockStatus {
@@ -3362,7 +3424,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::TestInstanceBlockStatus(update) if update == test_instance_status
+            NetEvent::Play(PlayClientbound::TestInstanceBlockStatus(update)) if update == test_instance_status
         ));
 
         assert!(
@@ -3407,7 +3469,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::ProjectilePower(update) if update == projectile_power
+            NetEvent::Play(PlayClientbound::ProjectilePower(update)) if update == projectile_power
         ));
 
         let waypoint = packets::TrackedWaypointPacket {
@@ -3433,7 +3495,9 @@ mod tests {
             .await
             .expect("waypoint event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::Waypoint(update) if update == waypoint));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::Waypoint(update)) if update == waypoint)
+        );
 
         let recipe_id = packets::RecipeDisplayId { index: 7 };
         let recipe_book_add = packets::RecipeBookAdd {
@@ -3468,7 +3532,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::RecipeBookAdd(update) if update == recipe_book_add
+            NetEvent::Play(PlayClientbound::RecipeBookAdd(update)) if update == recipe_book_add
         ));
 
         let recipe_book_remove = packets::RecipeBookRemove {
@@ -3486,7 +3550,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::RecipeBookRemove(update) if update == recipe_book_remove
+            NetEvent::Play(PlayClientbound::RecipeBookRemove(update)) if update == recipe_book_remove
         ));
 
         let recipe_book_settings = packets::RecipeBookSettings {
@@ -3517,7 +3581,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::RecipeBookSettings(update) if update == recipe_book_settings
+            NetEvent::Play(PlayClientbound::RecipeBookSettings(update)) if update == recipe_book_settings
         ));
 
         let update_advancements = packets::UpdateAdvancements {
@@ -3539,7 +3603,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::UpdateAdvancements(update) if update == update_advancements
+            NetEvent::Play(PlayClientbound::UpdateAdvancements(update)) if update == update_advancements
         ));
 
         let select_advancements_tab = packets::SelectAdvancementsTab {
@@ -3557,7 +3621,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::SelectAdvancementsTab(update) if update == select_advancements_tab
+            NetEvent::Play(PlayClientbound::SelectAdvancementsTab(update)) if update == select_advancements_tab
         ));
 
         let update_recipes = packets::UpdateRecipes {
@@ -3587,7 +3651,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             event,
-            NetEvent::UpdateRecipes(update) if update == update_recipes
+            NetEvent::Play(PlayClientbound::UpdateRecipes(update)) if update == update_recipes
         ));
 
         assert!(
@@ -3754,7 +3818,9 @@ mod tests {
             .await
             .expect("player position event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerPosition(update) if update == first_update));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerPosition(update)) if update == first_update)
+        );
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -3802,7 +3868,9 @@ mod tests {
             .await
             .expect("second player position event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerPosition(update) if update == second_update));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerPosition(update)) if update == second_update)
+        );
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -3866,7 +3934,9 @@ mod tests {
             .await
             .expect("player rotation event should be emitted")
             .unwrap();
-        assert!(matches!(event, NetEvent::PlayerRotation(event_update) if event_update == update));
+        assert!(
+            matches!(event, NetEvent::Play(PlayClientbound::PlayerRotation(event_update)) if event_update == update)
+        );
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
