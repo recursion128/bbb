@@ -308,6 +308,24 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     GlowSquid,
     Lava,
     Firefly,
+    /// `BaseAshSmokeParticle`: the `Particle` 7-arg normalized base spread
+    /// multiplied per axis by `dir` (`xd *= dirX; yd *= dirY; zd *= dirZ`),
+    /// then the provider velocity added (`xd += xa; yd += ya; zd += za`).
+    BaseAshSmokeSpread {
+        dir: [f64; 3],
+        provider_offset: BaseAshSmokeOffset,
+    },
+}
+
+/// Provider velocity added after the per-axis `dir` multiply in
+/// `BaseAshSmokeParticle` (`this.xd += xa; this.yd += ya; this.zd += za`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum BaseAshSmokeOffset {
+    /// `AshParticle.Provider.createParticle` passes velocity `(0, 0, 0)`.
+    Zero,
+    /// `WhiteAshParticle.Provider.createParticle` ignores the command velocity
+    /// and draws its own negative-biased `xa/ya/za`.
+    WhiteAsh,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1634,7 +1652,10 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::RandomGray { max: 0.5 },
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity: ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                    dir: [0.1, -0.1, 0.1],
+                    provider_offset: BaseAshSmokeOffset::Zero,
+                },
                 friction: 0.96,
                 gravity: 0.1,
                 has_physics: false,
@@ -1651,7 +1672,10 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
                 },
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity: ParticleInitialVelocityDescriptor::BaseAshSmokeSpread {
+                    dir: [0.1, -0.1, 0.1],
+                    provider_offset: BaseAshSmokeOffset::WhiteAsh,
+                },
                 friction: 0.96,
                 gravity: 0.0125,
                 has_physics: false,
@@ -2530,6 +2554,37 @@ impl ParticleInitialVelocityDescriptor {
                 [x * 0.8, f64::from(random.next_f32()) * 0.4 + 0.05, z * 0.8]
             }
             Self::Firefly => sample_firefly_velocity(command_velocity, random),
+            Self::BaseAshSmokeSpread {
+                dir,
+                provider_offset,
+            } => {
+                // BaseAshSmokeParticle: `super(..., 0.0, 0.0, 0.0, ...)` runs the
+                // Particle 7-arg zero-aux base spread, then per-axis
+                // `xd *= dirX; yd *= dirY; zd *= dirZ` and finally
+                // `xd += xa; yd += ya; zd += za` (the provider velocity).
+                let base = ParticleInitialVelocityDescriptor::ParticleConstructorZero
+                    .sample([0.0; 3], random);
+                let offset = match provider_offset {
+                    // AshParticle.Provider forces provider velocity to (0, 0, 0).
+                    BaseAshSmokeOffset::Zero => [0.0, 0.0, 0.0],
+                    // WhiteAshParticle.Provider ignores the command velocity and
+                    // draws its own negative-biased xa/ya/za.
+                    BaseAshSmokeOffset::WhiteAsh => [
+                        f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+                        f64::from(random.next_f32())
+                            * -0.5
+                            * f64::from(random.next_f32())
+                            * 0.1
+                            * 5.0,
+                        f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+                    ],
+                };
+                [
+                    base[0] * dir[0] + offset[0],
+                    base[1] * dir[1] + offset[1],
+                    base[2] * dir[2] + offset[2],
+                ]
+            }
         }
     }
 }

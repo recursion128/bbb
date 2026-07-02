@@ -6042,6 +6042,21 @@ When an agent does any of the following, update this file in the same slice:
         initial gravity, `0.96` friction, `ARGB(0xBAB1C2)-random*.2`
         tint, grow-to-base size curve, and provider tick motion that decays
         gravity by `0.88` and friction by `0.92` before default motion.
+      - particle descriptors map `AshParticle.Provider` and
+        `WhiteAshParticle.Provider` for `ash` / `white_ash` to age sprites,
+        `BaseAshSmokeParticle` `0.75` quad-size scale, `20/(random*.8+.2)`
+        lifetime, opaque particle layer, no-physics + speed-up-when-Y-blocked
+        metadata, `0.96` friction, and the vanilla `BaseAshSmokeParticle`
+        base-spread velocity: the `Particle` 7-arg zero-aux normalized spread
+        scaled per axis by `dir = (0.1, -0.1, 0.1)` (`xd *= dirX; yd *= dirY;
+        zd *= dirZ`) so the y component is negated and `0.1`-damped, then the
+        provider velocity added (`xd += xa; yd += ya; zd += za`). `ash` adds
+        `(0, 0, 0)` with `0.5` random-gray tint and `0.1` gravity; `white_ash`
+        ignores the command velocity and adds its own
+        `xa = rand*-1.9*rand*.1`, `ya = rand*-0.5*rand*.1*5.0`,
+        `za = rand*-1.9*rand*.1` with fixed `ARGB(0xBAB1C2)` tint and
+        `0.0125` gravity. World-coupled collision removal remains deferred with
+        broader particle collision/physics work.
       - particle descriptors map `WaterDropParticle.Provider` and
         `SplashParticle.Provider` for `rain` / `splash` to random sprites,
         vanilla single-quad size, `8/(random*.8+.2)` lifetime, opaque

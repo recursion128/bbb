@@ -3131,6 +3131,111 @@ mod tests {
         );
     }
 
+    // Independent witness for `BaseAshSmokeParticle`: `Particle.java` 7-arg base
+    // spread (super called with xa=ya=za=0), reconstructed straight from the
+    // vanilla source lines so it does not lean on the descriptor under test.
+    fn base_ash_smoke_base_spread(seed: i64) -> [f64; 3] {
+        let mut random = ParticleRandom::new(seed);
+        let x = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let y = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let z = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let speed = (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+        let length = (x * x + y * y + z * z).sqrt();
+        [
+            x / length * speed * 0.4,
+            y / length * speed * 0.4 + 0.1,
+            z / length * speed * 0.4,
+        ]
+    }
+
+    // Full `BaseAshSmokeParticle` velocity: base spread times per-axis `dir`
+    // (`xd *= dirX; yd *= dirY; zd *= dirZ`) plus the provider velocity
+    // (`xd += xa; yd += ya; zd += za`). `white_ash` draws the same negative-biased
+    // xa/ya/za as `WhiteAshParticle.Provider`; `ash` adds `(0, 0, 0)`.
+    fn expected_base_ash_smoke_velocity(seed: i64, dir: [f64; 3], white_ash: bool) -> [f64; 3] {
+        let mut random = ParticleRandom::new(seed);
+        let x = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let y = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let z = (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4;
+        let speed = (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+        let length = (x * x + y * y + z * z).sqrt();
+        let base = [
+            x / length * speed * 0.4,
+            y / length * speed * 0.4 + 0.1,
+            z / length * speed * 0.4,
+        ];
+        let offset = if white_ash {
+            [
+                f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+                f64::from(random.next_f32()) * -0.5 * f64::from(random.next_f32()) * 0.1 * 5.0,
+                f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+            ]
+        } else {
+            [0.0, 0.0, 0.0]
+        };
+        [
+            base[0] * dir[0] + offset[0],
+            base[1] * dir[1] + offset[1],
+            base[2] * dir[2] + offset[2],
+        ]
+    }
+
+    #[test]
+    fn ash_provider_applies_per_axis_dir_to_base_spread_and_ignores_command_velocity() {
+        // AshParticle.Provider.createParticle forces provider velocity (0, 0, 0);
+        // the incoming command velocity must be dropped.
+        let mut command = spawn_command("minecraft:ash", 5.0);
+        command.velocity = [3.0, 4.0, 5.0];
+        let mut random = ParticleRandom::new(0);
+
+        let ash = ParticleInstance::from_spawn_command(command, &mut random);
+
+        let dir = [0.1, -0.1, 0.1];
+        let expected = expected_base_ash_smoke_velocity(0, dir, false);
+        assert_close_f64(ash.velocity[0], expected[0]);
+        assert_close_f64(ash.velocity[1], expected[1]);
+        assert_close_f64(ash.velocity[2], expected[2]);
+
+        // Per-axis dir: x/z scaled by 0.1, y negated and damped by 0.1.
+        let base = base_ash_smoke_base_spread(0);
+        assert_close_f64(ash.velocity[0], base[0] * 0.1);
+        assert_close_f64(ash.velocity[1], base[1] * -0.1);
+        assert_close_f64(ash.velocity[2], base[2] * 0.1);
+
+        // Command velocity is fully ignored: nowhere near [3, 4, 5].
+        assert_ne!(ash.velocity, [3.0, 4.0, 5.0]);
+        assert!(ash.velocity[0].abs() < 0.02);
+        assert!(ash.velocity[1].abs() < 0.03);
+        assert!(ash.velocity[2].abs() < 0.02);
+    }
+
+    #[test]
+    fn white_ash_provider_adds_negative_biased_offset_to_per_axis_base_spread() {
+        // WhiteAshParticle.Provider.createParticle ignores the command velocity and
+        // adds its own negative-biased xa/ya/za on top of the dir-scaled spread.
+        let mut command = spawn_command("minecraft:white_ash", 5.0);
+        command.velocity = [3.0, 4.0, 5.0];
+        let mut random = ParticleRandom::new(0);
+
+        let white_ash = ParticleInstance::from_spawn_command(command, &mut random);
+
+        let dir = [0.1, -0.1, 0.1];
+        let expected = expected_base_ash_smoke_velocity(0, dir, true);
+        assert_close_f64(white_ash.velocity[0], expected[0]);
+        assert_close_f64(white_ash.velocity[1], expected[1]);
+        assert_close_f64(white_ash.velocity[2], expected[2]);
+
+        // Command velocity is ignored.
+        assert_ne!(white_ash.velocity, [3.0, 4.0, 5.0]);
+
+        // The provider offset makes white_ash diverge from the ash zero-offset
+        // branch at the same seed. Because `ya = rand*-0.5*rand*0.1*5.0 <= 0`, the
+        // extra provider velocity always biases the y component downward.
+        let ash_only = expected_base_ash_smoke_velocity(0, dir, false);
+        assert_ne!(white_ash.velocity, ash_only);
+        assert!(white_ash.velocity[1] < ash_only[1]);
+    }
+
     #[test]
     fn firework_spark_provider_uses_vanilla_simple_animated_state() {
         let mut random = ParticleRandom::new(71);
