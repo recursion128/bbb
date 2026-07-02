@@ -1,7 +1,8 @@
 use super::*;
 use crate::audio_runtime::resolver::{AudioCommandResolver, AudioResolveError};
 use crate::particle_runtime::{
-    LevelEventParticleContext, LevelParticleSpawnContext, ParticleEventSink,
+    LevelEventDripstoneDripParticle, LevelEventParticleContext, LevelParticleSpawnContext,
+    ParticleEventSink,
 };
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{AudioCategory, AudioCommand};
@@ -3052,12 +3053,94 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(true),
                 block_state_id_at_event_pos: Some(1),
+                dripstone_drip_particle: None,
             },
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
                 block_state_id_at_event_pos: Some(0),
+                dripstone_drip_particle: None,
             },
         ]
+    );
+}
+
+#[test]
+fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
+    let tip_id = vanilla_block_state_id(
+        "minecraft:pointed_dripstone",
+        [
+            ("thickness", "tip"),
+            ("vertical_direction", "down"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let waterlogged_tip_id = vanilla_block_state_id(
+        "minecraft:pointed_dripstone",
+        [
+            ("thickness", "tip"),
+            ("vertical_direction", "down"),
+            ("waterlogged", "true"),
+        ],
+    );
+    let stone_id = vanilla_block_state_id("minecraft:stone", []);
+    let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+    let lava_id = vanilla_block_state_id("minecraft:lava", [("level", "0")]);
+
+    let mut world = WorldStore::new();
+    world
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut world, block_pos(16, -64, -32), tip_id);
+    set_test_block(&mut world, block_pos(16, -63, -32), stone_id);
+    set_test_block(&mut world, block_pos(16, -62, -32), water_id);
+    set_test_block(&mut world, block_pos(17, -64, -32), tip_id);
+    set_test_block(&mut world, block_pos(17, -63, -32), stone_id);
+    set_test_block(&mut world, block_pos(17, -62, -32), lava_id);
+    set_test_block(&mut world, block_pos(18, -64, -32), waterlogged_tip_id);
+
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at(1504, 16, -64, -32))
+            .dripstone_drip_particle,
+        Some(LevelEventDripstoneDripParticle::Water)
+    );
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at(1504, 17, -64, -32))
+            .dripstone_drip_particle,
+        Some(LevelEventDripstoneDripParticle::Lava)
+    );
+    assert_eq!(
+        level_event_particle_context(&world, &level_event_at(1504, 18, -64, -32))
+            .dripstone_drip_particle,
+        None
+    );
+
+    let mut default_overworld = WorldStore::new();
+    default_overworld
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut default_overworld, block_pos(19, -64, -32), tip_id);
+    set_test_block(&mut default_overworld, block_pos(19, -63, -32), stone_id);
+    assert_eq!(
+        level_event_particle_context(&default_overworld, &level_event_at(1504, 19, -64, -32))
+            .dripstone_drip_particle,
+        Some(LevelEventDripstoneDripParticle::Water)
+    );
+
+    let mut nether = WorldStore::new();
+    let mut login = protocol_play_login(1);
+    login.levels = vec!["minecraft:the_nether".to_string()];
+    login.common_spawn_info.dimension_type_id = 1;
+    login.common_spawn_info.dimension = "minecraft:the_nether".to_string();
+    nether.apply_login(&login);
+    nether
+        .insert_level_chunk_with_light(synthetic_native_level_chunk_packet())
+        .unwrap();
+    set_test_block(&mut nether, block_pos(16, 0, -32), tip_id);
+    set_test_block(&mut nether, block_pos(16, 1, -32), stone_id);
+    assert_eq!(
+        level_event_particle_context(&nether, &level_event_at(1504, 16, 0, -32))
+            .dripstone_drip_particle,
+        Some(LevelEventDripstoneDripParticle::Lava)
     );
 }
 
@@ -5711,6 +5794,33 @@ fn protocol_update_mob_effect(
             blend: true,
         },
     }
+}
+
+fn level_event_at(event_type: i32, x: i32, y: i32, z: i32) -> LevelEvent {
+    LevelEvent {
+        event_type,
+        pos: block_pos(x, y, z),
+        data: 0,
+        global: false,
+    }
+}
+
+fn set_test_block(world: &mut WorldStore, pos: ProtocolBlockPos, block_state_id: i32) {
+    assert!(world.apply_block_update(BlockUpdate {
+        pos,
+        block_state_id,
+    }));
+}
+
+fn block_pos(x: i32, y: i32, z: i32) -> ProtocolBlockPos {
+    ProtocolBlockPos { x, y, z }
+}
+
+fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+    let properties = BTreeMap::from(props.map(|(key, value)| (key.to_string(), value.to_string())));
+    bbb_world::RegistrySet::vanilla_26_1()
+        .block_state_id_by_name_and_properties(name, &properties)
+        .unwrap_or_else(|| panic!("missing vanilla block state {name} {properties:?}"))
 }
 
 fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {

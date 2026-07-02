@@ -3,20 +3,24 @@ use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, WorldStore,
+    advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, TerrainFluidKind,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::{
-    LevelEventParticleContext, LevelParticleSpawnContext, ParticleEventSink,
+    LevelEventDripstoneDripParticle, LevelEventParticleContext, LevelParticleSpawnContext,
+    ParticleEventSink,
 };
 
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -752,13 +756,14 @@ fn emit_level_event_particles(
     false
 }
 
-fn level_event_particle_context(
+pub(super) fn level_event_particle_context(
     world: &WorldStore,
     event: &bbb_protocol::packets::LevelEvent,
 ) -> LevelEventParticleContext {
     LevelEventParticleContext {
         sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
+        dripstone_drip_particle: dripstone_drip_particle_context(world, event),
     }
 }
 
@@ -789,6 +794,101 @@ fn sculk_charge_pop_full_block_context(
     world
         .probe_block(pos)
         .map(|probe| crate::block_outline::block_probe_has_full_block_shape(&probe))
+}
+
+fn dripstone_drip_particle_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<LevelEventDripstoneDripParticle> {
+    if event.event_type != DRIPSTONE_DRIP_LEVEL_EVENT {
+        return None;
+    }
+    let tip_pos = bbb_world::BlockPos {
+        x: event.pos.x,
+        y: event.pos.y,
+        z: event.pos.z,
+    };
+    let tip = world.probe_block(tip_pos)?;
+    if !block_probe_can_drip(&tip) {
+        return None;
+    }
+    let root_pos = pointed_dripstone_root_pos(world, tip_pos)?;
+    let above_root_pos = block_pos_above(root_pos)?;
+    let above_root = world.probe_block(above_root_pos)?;
+
+    if above_root.block_name.as_deref() == Some("minecraft:mud") && !level_water_evaporates(world) {
+        return Some(LevelEventDripstoneDripParticle::Water);
+    }
+
+    match above_root.fluid.map(|fluid| fluid.kind) {
+        Some(TerrainFluidKind::Lava) => Some(LevelEventDripstoneDripParticle::Lava),
+        Some(TerrainFluidKind::Water) => Some(LevelEventDripstoneDripParticle::Water),
+        None => Some(default_dripstone_drip_particle(world)),
+    }
+}
+
+fn pointed_dripstone_root_pos(
+    world: &WorldStore,
+    tip_pos: bbb_world::BlockPos,
+) -> Option<bbb_world::BlockPos> {
+    for step in 1..POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH {
+        let pos = bbb_world::BlockPos {
+            x: tip_pos.x,
+            y: tip_pos.y.checked_add(step)?,
+            z: tip_pos.z,
+        };
+        let probe = world.probe_block(pos)?;
+        if probe.block_name.as_deref() != Some("minecraft:pointed_dripstone") {
+            return Some(pos);
+        }
+        if !block_probe_is_down_pointed_dripstone(&probe) {
+            return None;
+        }
+    }
+    None
+}
+
+fn block_probe_can_drip(probe: &bbb_world::BlockProbe) -> bool {
+    block_probe_is_down_pointed_dripstone(probe)
+        && probe.block_properties.get("thickness").map(String::as_str) == Some("tip")
+        && probe
+            .block_properties
+            .get("waterlogged")
+            .map(String::as_str)
+            == Some("false")
+}
+
+fn block_probe_is_down_pointed_dripstone(probe: &bbb_world::BlockProbe) -> bool {
+    probe.block_name.as_deref() == Some("minecraft:pointed_dripstone")
+        && probe
+            .block_properties
+            .get("vertical_direction")
+            .map(String::as_str)
+            == Some("down")
+}
+
+fn block_pos_above(pos: bbb_world::BlockPos) -> Option<bbb_world::BlockPos> {
+    Some(bbb_world::BlockPos {
+        x: pos.x,
+        y: pos.y.checked_add(1)?,
+        z: pos.z,
+    })
+}
+
+fn default_dripstone_drip_particle(world: &WorldStore) -> LevelEventDripstoneDripParticle {
+    if level_water_evaporates(world) {
+        LevelEventDripstoneDripParticle::Lava
+    } else {
+        LevelEventDripstoneDripParticle::Water
+    }
+}
+
+fn level_water_evaporates(world: &WorldStore) -> bool {
+    world.level_info().is_some_and(|level| {
+        level.dimension_type_id == 1
+            || level.dimension == "minecraft:the_nether"
+            || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
+    })
 }
 
 fn with_level_event_sound_seed(

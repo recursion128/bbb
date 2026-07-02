@@ -257,8 +257,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.
 - LevelEvent particle side effects：
-  - block-state shape-sensitive `spawnParticleInBlock` heights plus
-    `1504` pointed-dripstone drip particles, `1505`
+  - block-state shape-sensitive `spawnParticleInBlock` heights plus `1505`
     (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water branches,
     and the still-deferred `2002` / `2003` / `2007` item-particle portions
     remain follow-up work; `1505` water / neighbor-spreader emission is

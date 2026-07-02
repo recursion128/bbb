@@ -1448,6 +1448,15 @@
     `minecraft:shriek` submissions at block center / `SculkShriekerBlock.TOP_Y`
     with `ShriekParticleOption(i * 5)` delays. The waterlogged-gated
     `SCULK_SHRIEKER_SHRIEK` sound branch remains audio/world-state follow-up.
+  - [x] pointed-dripstone drip LevelEvent：event `1504` now mirrors vanilla
+    `LevelEventHandler` -> `PointedDripstoneBlock.spawnDripParticle` for
+    loaded client block state: native validates a downward, unwaterlogged
+    `tip`, follows the same upward root search, samples root-above water/lava
+    or mud-as-water outside water-evaporating dimensions, falls back to the
+    built-in default dripstone particle (`water` outside the Nether, `lava` in
+    the Nether), and submits the deterministic `offsetType(XZ)` drip position.
+    Custom dimension `visual/default_dripstone_particle` attributes remain P3
+    resource-registry follow-up.
   - [x] charged sculk block-face particles：event `3006` now mirrors the
     `count = data >> 6` charged branch for `count > 0`, including
     `UniformInt.of(0, count)` face repetition, full-block six-face vs
@@ -1463,4 +1472,3 @@
     `minecraft:small_flame` for `data == 0` or `minecraft:soul_fire_flame`
     otherwise, spawning 20 particles from `randomPosCenterOfCage`
     (`0.4..0.6` on each axis) with gaussian `0.02` velocity.
-

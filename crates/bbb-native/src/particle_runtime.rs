@@ -38,6 +38,13 @@ pub(crate) struct LevelParticleSpawnContext {
 pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
     pub(crate) block_state_id_at_event_pos: Option<i32>,
+    pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LevelEventDripstoneDripParticle {
+    Water,
+    Lava,
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -393,6 +400,7 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
             }
+            DRIPSTONE_DRIP_LEVEL_EVENT => self.dripstone_drip_particle_batch(event, context),
             DISPENSER_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
             }
@@ -638,6 +646,24 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn dripstone_drip_particle_batch(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+    ) -> ParticleSpawnBatch {
+        let particle_type_id = match context.dripstone_drip_particle {
+            Some(LevelEventDripstoneDripParticle::Lava) => DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+            Some(LevelEventDripstoneDripParticle::Water) => {
+                DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID
+            }
+            None => return ParticleSpawnBatch::default(),
+        };
+        self.simple_particle_batch(
+            particle_type_id,
+            vec![(pointed_dripstone_drip_position(event), Vec3d::default())],
+        )
     }
 
     fn sculk_charge_particle_batch(
@@ -1929,9 +1955,42 @@ fn random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -
     random.next_double() * (max - min) + min
 }
 
+fn pointed_dripstone_drip_position(event: &LevelEvent) -> Vec3d {
+    let (x_offset, z_offset) = pointed_dripstone_xz_offset(event.pos.x, event.pos.z);
+    Vec3d {
+        x: f64::from(event.pos.x) + 0.5 + x_offset,
+        y: f64::from(event.pos.y) + POINTED_DRIPSTONE_DRIP_Y_OFFSET,
+        z: f64::from(event.pos.z) + 0.5 + z_offset,
+    }
+}
+
+fn pointed_dripstone_xz_offset(x: i32, z: i32) -> (f64, f64) {
+    let seed = java_block_position_seed(x, 0, z);
+    let x_offset = ((((seed & 15) as f32) / 15.0 - 0.5) * 0.5).clamp(
+        -POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
+        POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
+    );
+    let z_offset = ((((seed >> 8 & 15) as f32) / 15.0 - 0.5) * 0.5).clamp(
+        -POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
+        POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
+    );
+    (f64::from(x_offset), f64::from(z_offset))
+}
+
+fn java_block_position_seed(x: i32, y: i32, z: i32) -> i64 {
+    let seed = i64::from(x.wrapping_mul(3_129_871))
+        ^ i64::from(z).wrapping_mul(116_129_781)
+        ^ i64::from(y);
+    seed.wrapping_mul(seed)
+        .wrapping_mul(42_317_861)
+        .wrapping_add(seed.wrapping_mul(11))
+        >> 16
+}
+
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
+const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
@@ -1998,6 +2057,8 @@ const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
 const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
+const DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID: i32 = 95;
+const DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID: i32 = 97;
 const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
 const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
@@ -2042,6 +2103,8 @@ const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
+const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
+const POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET: f32 = 0.125;
 
 fn smash_attack_particle_loop_count(count: i32, divisor: f32) -> usize {
     let limit = count as f32 / divisor;
@@ -2826,6 +2889,53 @@ mod tests {
             [0.0, 0.0, 0.0],
             false,
         );
+
+        let dripstone_event = LevelEvent {
+            event_type: DRIPSTONE_DRIP_LEVEL_EVENT,
+            ..level_event_packet(DRIPSTONE_DRIP_LEVEL_EVENT)
+        };
+        let mut water_drip_random = LevelEventSoundRandomState::with_seed(0);
+        let water_drip = resolver.resolve_level_event_particles_with_context(
+            &dripstone_event,
+            LevelEventParticleContext {
+                dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Water),
+                ..LevelEventParticleContext::default()
+            },
+            &mut water_drip_random,
+        );
+        assert_eq!(water_drip.len(), 1);
+        assert_particle_command(
+            &water_drip.commands[0],
+            DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+            "minecraft:dripping_dripstone_water",
+            [10.583_333_343_267_44, 64.25, -2.416_666_656_732_56],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+
+        let mut lava_drip_random = LevelEventSoundRandomState::with_seed(0);
+        let lava_drip = resolver.resolve_level_event_particles_with_context(
+            &dripstone_event,
+            LevelEventParticleContext {
+                dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Lava),
+                ..LevelEventParticleContext::default()
+            },
+            &mut lava_drip_random,
+        );
+        assert_eq!(lava_drip.len(), 1);
+        assert_eq!(
+            lava_drip.commands[0].particle_type_id,
+            DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID
+        );
+        assert_eq!(
+            lava_drip.commands[0].particle_id,
+            "minecraft:dripping_dripstone_lava"
+        );
+
+        let mut missing_context_random = LevelEventSoundRandomState::with_seed(0);
+        let missing_context_drip =
+            resolver.resolve_level_event_particles(&dripstone_event, &mut missing_context_random);
+        assert!(missing_context_drip.commands.is_empty());
 
         let mut shriek_random = LevelEventSoundRandomState::with_seed(0);
         let shriek = resolver.resolve_level_event_particles(
@@ -3791,6 +3901,8 @@ mod tests {
                 "large_smoke_0",
                 "lava",
                 "white_smoke_0",
+                "dripping_dripstone_lava",
+                "dripping_dripstone_water",
                 "poof_0",
                 "happy_villager_0",
                 "small_flame",
@@ -3995,6 +4107,22 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:white_smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("dripping_dripstone_lava.json"),
+            r#"{
+              "textures": [
+                "minecraft:dripping_dripstone_lava"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("dripping_dripstone_water.json"),
+            r#"{
+              "textures": [
+                "minecraft:dripping_dripstone_water"
               ]
             }"#,
         );

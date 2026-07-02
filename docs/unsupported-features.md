@@ -255,6 +255,12 @@ When an agent does any of the following, update this file in the same slice:
         burnout
       - event `1503`: sixteen `minecraft:smoke` particles above end portal
         frame fill
+      - event `1504`: pointed-dripstone drip particles, using the loaded
+        client block state to validate a downward, unwaterlogged `tip`, find
+        the root within vanilla's 11-block search, sample the root-above fluid,
+        apply mud-as-water outside water-evaporating dimensions, fall back to
+        the built-in dimension default (`water` outside the Nether, `lava` in
+        the Nether), and submit the vanilla XZ-offset drip position
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
@@ -318,10 +324,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
     - Remaining world-state / item-option LevelEvent branches, including event
-      `1504` pointed-dripstone drip particles, event `2003`'s ender-eye item
-      particles, and events `2002` / `2007` splash-potion item particles, stay
-      deferred with terrain/item particle atlas rendering rather than being
-      approximated as simple atlas particles. Event `1505`
+      `2003`'s ender-eye item particles and events `2002` / `2007`
+      splash-potion item particles, stay deferred with terrain/item particle
+      atlas rendering rather than being approximated as simple atlas particles.
+      Event `1505`
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
       `BonemealableBlock` type or water state before choosing the particle
