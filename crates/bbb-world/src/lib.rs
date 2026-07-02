@@ -12,6 +12,7 @@ mod fluid;
 mod internal;
 mod level;
 mod maps;
+mod play_apply;
 mod position;
 mod recipe_book;
 mod recipes;

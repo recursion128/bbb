@@ -1,112 +1,69 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, PlayClientbound, Vec3d as ProtocolVec3d};
-use bbb_world::{advance_cobweb_place_particle_randoms, ChunkPos, WorldStore};
+use bbb_protocol::packets::{self, ChatAcknowledgement, PlayClientbound};
+use bbb_world::{ChunkPos, PlayApplyEffects, VehicleMoveReport};
 
 use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
 
-const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+/// Buffered play-apply side effects: the probe finishes the serverbound
+/// responses after the synchronous world application returns.
+#[derive(Default)]
+struct ProbePlayEffects {
+    chat_acknowledgement: Option<ChatAcknowledgement>,
+    vehicle_move_report: Option<VehicleMoveReport>,
+    inserted_chunk_pos: Option<ChunkPos>,
+}
+
+impl PlayApplyEffects for ProbePlayEffects {
+    fn chat_acknowledgement(&mut self, command: ChatAcknowledgement) {
+        self.chat_acknowledgement = Some(command);
+    }
+
+    fn vehicle_move_report(&mut self, report: VehicleMoveReport) {
+        self.vehicle_move_report = Some(report);
+    }
+
+    fn chunk_inserted(&mut self, pos: ChunkPos) {
+        self.inserted_chunk_pos = Some(pos);
+    }
+}
 
 impl ProbeContext {
     pub(super) async fn handle_play_packet(
         &mut self,
         packet: PlayClientbound,
     ) -> Result<Option<ChunkPos>> {
+        let mut effects = ProbePlayEffects::default();
+        let connection_packet =
+            self.world
+                .apply_play_packet(packet, &mut self.level_event_sound_random, &mut effects);
+
+        if let Some(command) = effects.chat_acknowledgement.take() {
+            let (id, payload) = packets::encode_play_chat_acknowledgement(command);
+            self.conn.send_packet(id, &payload).await?;
+        }
+        if let Some(report) = effects.vehicle_move_report.take() {
+            let (id, payload) = packets::encode_play_move_vehicle(
+                report.position.x,
+                report.position.y,
+                report.position.z,
+                report.y_rot,
+                report.x_rot,
+                report.on_ground,
+            );
+            self.conn.send_packet(id, &payload).await?;
+        }
+
+        let Some(packet) = connection_packet else {
+            return Ok(effects.inserted_chunk_pos);
+        };
         match packet {
-            PlayClientbound::BundleDelimiter => {}
-            PlayClientbound::AddEntity(entity) => {
-                self.world.apply_add_entity(entity);
-            }
-            PlayClientbound::EntityAnimation(update) => {
-                self.world.apply_entity_animation(update);
-            }
-            PlayClientbound::AwardStats(update) => {
-                self.world.apply_award_stats(update);
-            }
-            PlayClientbound::BlockDestruction(update) => {
-                self.world.apply_block_destruction(update);
-            }
-            PlayClientbound::BossEvent(update) => {
-                self.world.apply_boss_event(update);
-            }
-            PlayClientbound::ChangeDifficulty(update) => {
-                self.world.apply_change_difficulty(update);
-            }
-            PlayClientbound::Cooldown(update) => {
-                self.world.apply_cooldown(update);
-            }
-            PlayClientbound::CustomChatCompletions(update) => {
-                self.world.apply_custom_chat_completions(update);
-            }
-            PlayClientbound::CustomPayload(payload) => {
-                self.world.apply_custom_payload(payload);
-            }
-            PlayClientbound::ServerLinks(links) => {
-                self.world.apply_server_links(links);
-            }
-            PlayClientbound::CustomReportDetails(details) => {
-                self.world.apply_custom_report_details(details);
-            }
-            PlayClientbound::DamageEvent(update) => {
-                self.world.apply_damage_event(update);
-            }
-            PlayClientbound::DebugBlockValue(update) => {
-                self.world.apply_debug_block_value(update);
-            }
-            PlayClientbound::DebugChunkValue(update) => {
-                self.world.apply_debug_chunk_value(update);
-            }
-            PlayClientbound::DebugEntityValue(update) => {
-                self.world.apply_debug_entity_value(update);
-            }
-            PlayClientbound::DebugEvent(update) => {
-                self.world.apply_debug_event(update);
-            }
-            PlayClientbound::DebugSample(update) => {
-                self.world.apply_debug_sample(update);
-            }
-            PlayClientbound::DeleteChat(update) => {
-                self.world.apply_delete_chat(update);
-            }
-            PlayClientbound::DisguisedChat(update) => {
-                self.world.apply_disguised_chat(update);
-            }
-            PlayClientbound::UpdateMobEffect(update) => {
-                self.world.apply_update_mob_effect(update);
-            }
-            PlayClientbound::UpdateTags(update) => {
-                self.world.apply_update_tags(update);
-            }
-            PlayClientbound::RemoveMobEffect(update) => {
-                self.world.apply_remove_mob_effect(update);
-            }
-            PlayClientbound::MoveEntity(update) => {
-                self.world.apply_entity_move(update);
-            }
-            PlayClientbound::MoveMinecartAlongTrack(update) => {
-                self.world.apply_move_minecart_along_track(update);
-            }
-            PlayClientbound::MoveVehicle(update) => {
-                if let Some(report) = self.world.apply_move_vehicle(update) {
-                    let (id, payload) = packets::encode_play_move_vehicle(
-                        report.position.x,
-                        report.position.y,
-                        report.position.z,
-                        report.y_rot,
-                        report.x_rot,
-                        report.on_ground,
-                    );
-                    self.conn.send_packet(id, &payload).await?;
-                }
-            }
             PlayClientbound::KeepAlive { id } => {
                 let (id, payload) = packets::encode_play_keep_alive(id);
                 self.conn.send_packet(id, &payload).await?;
             }
-            PlayClientbound::LowDiskSpaceWarning => {
-                self.world.apply_low_disk_space_warning();
-            }
-            PlayClientbound::MountScreenOpen(update) => {
-                self.world.apply_mount_screen_open(update);
+            PlayClientbound::Ping { id } => {
+                let (id, payload) = packets::encode_play_pong(id);
+                self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::ChunkBatchStart => {
                 self.chunk_batch_size.on_batch_start();
@@ -117,21 +74,6 @@ impl ProbeContext {
                     packets::encode_play_chunk_batch_received(desired_chunks_per_tick);
                 self.conn.send_packet(id, &payload).await?;
             }
-            PlayClientbound::ContainerClose(update) => {
-                self.world.apply_container_close(update);
-            }
-            PlayClientbound::ContainerSetContent(update) => {
-                self.world.apply_container_set_content(update);
-            }
-            PlayClientbound::ContainerSetData(update) => {
-                self.world.apply_container_set_data(update);
-            }
-            PlayClientbound::ContainerSetSlot(update) => {
-                self.world.apply_container_set_slot(update);
-            }
-            PlayClientbound::MerchantOffers(update) => {
-                self.world.apply_merchant_offers(update);
-            }
             PlayClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
                 let payload_present = payload.is_some();
@@ -140,27 +82,12 @@ impl ProbeContext {
                 self.world
                     .apply_cookie_request(request.key, payload_present);
             }
-            PlayClientbound::OpenScreen(update) => {
-                self.world.apply_open_screen(update);
-            }
-            PlayClientbound::OpenBook(update) => {
-                self.world.apply_open_book(update);
-            }
-            PlayClientbound::OpenSignEditor(update) => {
-                self.world.apply_open_sign_editor(update);
-            }
-            PlayClientbound::PlaceGhostRecipe(update) => {
-                self.world.apply_place_ghost_recipe(update);
-            }
-            PlayClientbound::PongResponse(update) => {
-                self.world.apply_pong_response(update);
-            }
-            PlayClientbound::Disconnect(disconnect) => {
-                bail!("play disconnected: {}", disconnect.reason)
-            }
-            PlayClientbound::Ping { id } => {
-                let (id, payload) = packets::encode_play_pong(id);
-                self.conn.send_packet(id, &payload).await?;
+            PlayClientbound::StoreCookie(cookie) => {
+                let key = cookie.key;
+                let payload_len = cookie.payload.len();
+                self.server_cookies.insert(key.clone(), cookie.payload);
+                self.world
+                    .apply_store_cookie(key, payload_len, self.server_cookies.len());
             }
             PlayClientbound::StartConfiguration => {
                 if let Some(command) = self.world.take_pending_player_chat_acknowledgement() {
@@ -174,258 +101,18 @@ impl ProbeContext {
                 self.seen_code_of_conduct = false;
                 self.world.clear_client_level();
             }
-            PlayClientbound::StoreCookie(cookie) => {
-                let key = cookie.key;
-                let payload_len = cookie.payload.len();
-                self.server_cookies.insert(key.clone(), cookie.payload);
-                self.world
-                    .apply_store_cookie(key, payload_len, self.server_cookies.len());
-            }
-            PlayClientbound::Login(login) => {
-                self.world.apply_login(&login);
-            }
-            PlayClientbound::Respawn(respawn) => {
-                self.world.apply_respawn(&respawn);
-            }
-            PlayClientbound::SetHealth(health) => {
-                self.world.apply_player_health(health);
-            }
-            PlayClientbound::EntityPositionSync(update) => {
-                self.world.apply_entity_position_sync(update);
-            }
-            PlayClientbound::Explosion(update) => {
-                self.world.apply_explosion(update);
-            }
-            PlayClientbound::EntityEvent(update) => {
-                self.world.apply_entity_event(update);
-            }
-            PlayClientbound::HurtAnimation(update) => {
-                self.world.apply_hurt_animation(update);
-            }
-            PlayClientbound::RemoveEntities(update) => {
-                self.world.apply_remove_entities(update);
-            }
-            PlayClientbound::RotateHead(update) => {
-                self.world.apply_rotate_head(update);
-            }
-            PlayClientbound::SetEntityMotion(update) => {
-                self.world.apply_set_entity_motion(update);
-            }
-            PlayClientbound::SetEntityLink(update) => {
-                self.world.apply_set_entity_link(update);
-            }
-            PlayClientbound::SetEquipment(update) => {
-                self.world.apply_set_equipment(update);
-            }
-            PlayClientbound::TakeItemEntity(update) => {
-                self.world.apply_take_item_entity(update);
-            }
-            PlayClientbound::SetPassengers(update) => {
-                self.world.apply_set_passengers(update);
-            }
-            PlayClientbound::UpdateAttributes(update) => {
-                self.world.apply_update_attributes(update);
-            }
-            PlayClientbound::SetEntityData(update) => {
-                self.world.apply_set_entity_data(update);
-            }
-            PlayClientbound::TeleportEntity(update) => {
-                self.world.apply_teleport_entity(update);
-            }
-            PlayClientbound::PlayerAbilities(update) => {
-                self.world.apply_player_abilities(update);
-            }
-            PlayClientbound::PlayerChat(update) => {
-                if let Some(command) = self.world.apply_player_chat(update) {
-                    let (id, payload) = packets::encode_play_chat_acknowledgement(command);
-                    self.conn.send_packet(id, &payload).await?;
-                }
-            }
-            PlayClientbound::SetExperience(update) => {
-                self.world.apply_player_experience(update);
-            }
-            PlayClientbound::SetHeldSlot(update) => {
-                self.world.apply_held_slot(update);
-            }
-            PlayClientbound::SetCursorItem(update) => {
-                self.world.apply_set_cursor_item(update);
-            }
-            PlayClientbound::SetPlayerInventory(update) => {
-                self.world.apply_set_player_inventory(update);
-            }
-            PlayClientbound::SetDefaultSpawnPosition(update) => {
-                self.world.apply_default_spawn_position(update);
-            }
-            PlayClientbound::SetSimulationDistance(update) => {
-                self.world.apply_simulation_distance(update);
-            }
-            PlayClientbound::SystemChat(update) => {
-                self.world.apply_system_chat(update);
-            }
-            PlayClientbound::PlayerCombatEnd(update) => {
-                self.world.apply_player_combat_end(update);
-            }
-            PlayClientbound::PlayerCombatEnter => {
-                self.world.apply_player_combat_enter();
-            }
-            PlayClientbound::PlayerCombatKill(update) => {
-                self.world.apply_player_combat_kill(update);
-            }
-            PlayClientbound::PlayerLookAt(update) => {
-                self.world.apply_player_look_at(update);
-            }
-            PlayClientbound::MapItemData(update) => {
-                self.world.apply_map_item_data(update);
-            }
-            PlayClientbound::SetActionBarText(update) => {
-                self.world.apply_action_bar_text(update);
-            }
-            PlayClientbound::SetTitleText(update) => {
-                self.world.apply_title_text(update);
-            }
-            PlayClientbound::SetSubtitleText(update) => {
-                self.world.apply_subtitle_text(update);
-            }
-            PlayClientbound::ClearTitles(update) => {
-                self.world.apply_clear_titles(update);
-            }
-            PlayClientbound::SetTitlesAnimation(update) => {
-                self.world.apply_titles_animation(update);
-            }
-            PlayClientbound::Sound(update) => {
-                self.world.apply_sound_event(update);
-            }
-            PlayClientbound::SoundEntity(update) => {
-                self.world.apply_sound_entity_event(update);
-            }
-            PlayClientbound::StopSound(update) => {
-                self.world.apply_stop_sound(update);
-            }
-            PlayClientbound::TickingState(update) => {
-                self.world.apply_ticking_state(update);
-            }
-            PlayClientbound::TickingStep(update) => {
-                self.world.apply_ticking_step(update);
-            }
-            PlayClientbound::Transfer(update) => {
-                self.world.apply_transfer(update);
-            }
-            PlayClientbound::SetCamera(update) => {
-                self.world.apply_set_camera(update);
-            }
-            PlayClientbound::InitializeBorder(border) => {
-                self.world.apply_initialize_border(border);
-            }
-            PlayClientbound::SetBorderCenter(update) => {
-                self.world.apply_set_border_center(update);
-            }
-            PlayClientbound::SetBorderLerpSize(update) => {
-                self.world.apply_set_border_lerp_size(update);
-            }
-            PlayClientbound::SetBorderSize(update) => {
-                self.world.apply_set_border_size(update);
-            }
-            PlayClientbound::SetBorderWarningDelay(update) => {
-                self.world.apply_set_border_warning_delay(update);
-            }
-            PlayClientbound::SetBorderWarningDistance(update) => {
-                self.world.apply_set_border_warning_distance(update);
-            }
-            PlayClientbound::ResetScore(update) => {
-                self.world.apply_reset_score(update);
-            }
-            PlayClientbound::SetDisplayObjective(update) => {
-                self.world.apply_set_display_objective(update);
-            }
-            PlayClientbound::SetObjective(update) => {
-                self.world.apply_set_objective(update);
-            }
-            PlayClientbound::SetPlayerTeam(update) => {
-                self.world.apply_set_player_team(update);
-            }
-            PlayClientbound::SetScore(update) => {
-                self.world.apply_set_score(update);
-            }
-            PlayClientbound::Commands(update) => {
-                self.world.apply_commands(update);
-            }
-            PlayClientbound::CommandSuggestions(update) => {
-                self.world.apply_command_suggestions(update);
-            }
-            PlayClientbound::SelectAdvancementsTab(update) => {
-                self.world.apply_select_advancements_tab(update);
-            }
-            PlayClientbound::TagQuery(update) => {
-                self.world.apply_tag_query(update);
-            }
-            PlayClientbound::ClearDialog => {
-                self.world.apply_clear_dialog();
-            }
-            PlayClientbound::ShowDialog(update) => {
-                self.world.apply_show_dialog(update);
-            }
-            PlayClientbound::TestInstanceBlockStatus(update) => {
-                self.world.apply_test_instance_block_status(update);
-            }
-            PlayClientbound::TabList(update) => {
-                self.world.apply_tab_list(update);
-            }
-            PlayClientbound::BlockChangedAck(update) => {
-                self.world.apply_block_changed_ack(update);
-            }
-            PlayClientbound::BlockEntityData(update) => {
-                let _ = self.world.apply_block_entity_data(update);
-            }
-            PlayClientbound::BlockEvent(event) => {
-                self.world.apply_block_event(event);
-            }
-            PlayClientbound::LevelEvent(event) => {
-                self.world.apply_level_event(event);
-                if let Some(state) =
-                    probe_camera_audio_position(&self.world).and_then(|camera_position| {
-                        self.world.global_level_event_sound(event, camera_position)
-                    })
-                {
-                    let state = self.with_level_event_sound_seed(state);
-                    self.world.record_positioned_sound(state);
-                }
-                if let Some(state) = self.world.level_event_local_sound_with_random(event, || {
-                    self.level_event_sound_random.next_float()
-                }) {
-                    self.world.record_local_sound(state);
-                }
-                if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
-                    advance_cobweb_place_particle_randoms(&mut self.level_event_sound_random);
-                    if let Some(state) = self
-                        .world
-                        .cobweb_place_level_event_sound_with_random(event, || {
-                            self.level_event_sound_random.next_float()
-                        })
-                    {
-                        let state = self.with_level_event_sound_seed(state);
-                        self.world.record_positioned_sound(state);
-                    }
-                } else if let Some(state) = self.world.level_event_sound_with_random(event, || {
-                    self.level_event_sound_random.next_float()
-                }) {
-                    let state = self.with_level_event_sound_seed(state);
-                    self.world.record_positioned_sound(state);
-                }
-            }
-            PlayClientbound::GameEvent(update) => {
-                self.world.apply_game_event(update);
-            }
-            PlayClientbound::GameRuleValues(update) => {
-                self.world.apply_game_rule_values(update);
-            }
-            PlayClientbound::GameTestHighlightPos(update) => {
-                self.world.apply_game_test_highlight_pos(update);
-            }
-            PlayClientbound::SetTime(update) => {
-                self.world.apply_world_time(update);
+            PlayClientbound::Disconnect(disconnect) => {
+                bail!("play disconnected: {}", disconnect.reason)
+            }
+            PlayClientbound::ResourcePackPush(update) => {
+                let pack_id = update.id;
+                let action = response_action_for_push(&update);
+                let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
+                self.conn.send_packet(id, &payload).await?;
+                self.world.apply_resource_pack_push(update);
+                self.world.apply_resource_pack_response(pack_id, action);
             }
             PlayClientbound::PlayerPosition(update) => {
-                self.world.apply_player_position(update);
                 self.player_position_state = update.apply_to_state(self.player_position_state);
                 let (id, payload) = packets::encode_play_accept_teleportation(update.id);
                 self.conn.send_packet(id, &payload).await?;
@@ -446,7 +133,6 @@ impl ProbeContext {
                 }
             }
             PlayClientbound::PlayerRotation(update) => {
-                self.world.apply_player_rotation(update);
                 self.player_position_state = update.apply_to_state(self.player_position_state);
                 let (id, payload) = packets::encode_play_move_player_rot(
                     self.player_position_state.y_rot,
@@ -456,115 +142,13 @@ impl ProbeContext {
                 );
                 self.conn.send_packet(id, &payload).await?;
             }
-            PlayClientbound::PlayerInfoUpdate(update) => {
-                self.world.apply_player_info_update(update);
-            }
-            PlayClientbound::PlayerInfoRemove(update) => {
-                self.world.apply_player_info_remove(update);
-            }
-            PlayClientbound::ServerData(update) => {
-                self.world.apply_server_data(update);
-            }
-            PlayClientbound::ResourcePackPush(update) => {
-                let pack_id = update.id;
-                let action = response_action_for_push(&update);
-                let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
-                self.conn.send_packet(id, &payload).await?;
-                self.world.apply_resource_pack_push(update);
-                self.world.apply_resource_pack_response(pack_id, action);
-            }
-            PlayClientbound::ResourcePackPop(update) => {
-                self.world.apply_resource_pack_pop(update);
-            }
-            PlayClientbound::LevelChunkWithLight(chunk) => {
-                match self.world.insert_level_chunk_with_light(chunk) {
-                    Ok(pos) => return Ok(Some(pos)),
-                    Err(_) => {}
-                }
-            }
-            PlayClientbound::LevelParticles(update) => {
-                self.world.apply_level_particles(update);
-            }
-            PlayClientbound::LightUpdate(update) => {
-                let _ = self.world.apply_light_update(update);
-            }
-            PlayClientbound::ChunksBiomes(update) => {
-                let _ = self.world.apply_biome_update(update);
-            }
-            PlayClientbound::ForgetLevelChunk(update) => {
-                self.world.forget_chunk(ChunkPos {
-                    x: update.pos.x,
-                    z: update.pos.z,
-                });
-            }
-            PlayClientbound::BlockUpdate(update) => {
-                self.world.apply_block_update(update);
-            }
-            PlayClientbound::SectionBlocksUpdate(update) => {
-                self.world.apply_section_blocks_update(update);
-            }
-            PlayClientbound::SetChunkCacheCenter(update) => {
-                self.world.apply_set_chunk_cache_center(update);
-            }
-            PlayClientbound::SetChunkCacheRadius(update) => {
-                self.world.apply_set_chunk_cache_radius(update);
-            }
-            PlayClientbound::ProjectilePower(update) => {
-                self.world.apply_projectile_power(update);
-            }
-            PlayClientbound::Waypoint(update) => {
-                self.world.apply_waypoint(update);
-            }
-            PlayClientbound::RecipeBookAdd(update) => {
-                self.world.apply_recipe_book_add(update);
-            }
-            PlayClientbound::RecipeBookRemove(update) => {
-                self.world.apply_recipe_book_remove(update);
-            }
-            PlayClientbound::RecipeBookSettings(update) => {
-                self.world.apply_recipe_book_settings(update);
-            }
-            PlayClientbound::UpdateAdvancements(update) => {
-                self.world.apply_update_advancements(update);
-            }
-            PlayClientbound::UpdateRecipes(update) => {
-                self.world.apply_update_recipes(update);
-            }
             PlayClientbound::Unknown { packet_id, len } => {
                 self.record_unsupported_packet(self.state, packet_id, len);
             }
+            _ => {}
         }
-        Ok(None)
+        Ok(effects.inserted_chunk_pos)
     }
-
-    fn with_level_event_sound_seed(
-        &mut self,
-        mut state: bbb_world::SoundEventState,
-    ) -> bbb_world::SoundEventState {
-        state.seed = self.level_event_sound_random.next_long();
-        state
-    }
-}
-
-fn probe_camera_audio_position(world: &WorldStore) -> Option<ProtocolVec3d> {
-    let camera = world.local_player().camera;
-    if let Some(camera_id) = camera.entity_id {
-        if !camera.follows_player {
-            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
-                return Some(ProtocolVec3d {
-                    x: camera_pose.position.x,
-                    y: camera_pose.position.y + f64::from(camera_pose.eye_height),
-                    z: camera_pose.position.z,
-                });
-            }
-        }
-    }
-
-    world.local_player_pose().map(|pose| ProtocolVec3d {
-        x: pose.position.x,
-        y: pose.position.y + pose.eye_height(),
-        z: pose.position.z,
-    })
 }
 
 #[cfg(test)]
