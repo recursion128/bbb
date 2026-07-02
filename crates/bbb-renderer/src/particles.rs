@@ -17,8 +17,8 @@ use descriptors::{
     ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
-    create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind,
-    ParticleVertex,
+    create_particle_atlas_gpu, create_particle_pipeline, update_particle_atlas_gpu,
+    ParticleAtlasGpu, ParticlePipelineKind, ParticleVertex,
 };
 
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
@@ -1419,6 +1419,13 @@ impl Renderer {
             sprite_uvs,
         )?);
         Ok(())
+    }
+
+    pub fn update_particle_atlas(&mut self, rgba: &[u8]) -> Result<()> {
+        let Some(atlas) = self.particle_atlas.as_ref() else {
+            return Ok(());
+        };
+        update_particle_atlas_gpu(&self.queue, atlas, rgba)
     }
 
     pub fn set_terrain_particle_sprite_uvs(&mut self, sprite_uvs: Vec<ParticleSpriteUv>) {

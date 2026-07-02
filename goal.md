@@ -334,9 +334,6 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     particle renderer path. Fixed item providers now resolve
     `minecraft:item_slime`, `minecraft:item_cobweb`, and
     `minecraft:item_snowball` to their vanilla item atlas sprite ids.
-- atlas mip / animation：
-  - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
-    remains follow-up work.
 
 完成标准：
 

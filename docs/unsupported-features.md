@@ -238,8 +238,6 @@ When an agent does any of the following, update this file in the same slice:
       - sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
         `TRANSLUCENT_ITEMS` selection remains deferred
     - collision/player-coupled physics
-    - atlas mip-level animation beyond covered age-based `SpriteSet` frame
-      selection
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -847,6 +845,11 @@ When an agent does any of the following, update this file in the same slice:
         `SculkChargeParticleOptions.roll` into initial `oRoll` / `roll`, and
         billboard vertex emission applies the vanilla roll transform.
     - Uploads a stitched official particle atlas when assets are available.
+      Animated particle texture frames are restitched and uploaded on the same
+      50 ms cadence as terrain texture animation; local vanilla 26.1 has
+      `assets/minecraft/textures/particle/vibration.png.mcmeta` with
+      `frametime: 1`, and `particles/vibration.json` references
+      `minecraft:vibration`.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
     - full vanilla provider behavior
@@ -6420,7 +6423,7 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are
         terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
-        branches, atlas animation, or special-group drawing.
+        branches, or special-group drawing.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent

@@ -1629,6 +1629,9 @@ pub(crate) fn pump_network_and_terrain(
         },
     );
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
+    if let Some(particle_events) = particle_events.as_mut() {
+        particle_events.maybe_upload_particle_atlas_animation(renderer);
+    }
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));

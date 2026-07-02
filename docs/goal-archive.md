@@ -1533,6 +1533,15 @@
     `index * (sprites.size() - 1) / max`, advances age-selected sprites on
     client ticks, keeps random-selected sprites stable, and reaches the last
     frame at the lifetime boundary.
+  - [x] particle atlas animation upload：native particle runtime now preserves
+    animated particle `SpriteImage` sources, restitches the renderer's
+    single-mip particle atlas on the same 50 ms tick cadence used by terrain
+    texture animation, and writes the updated RGBA frame into the existing
+    particle GPU texture before render. Local vanilla 26.1 evidence is
+    `assets/minecraft/textures/particle/vibration.png.mcmeta`
+    (`frametime: 1`) plus `assets/minecraft/particles/vibration.json`
+    referencing `minecraft:vibration`. Tests cover animated atlas-frame
+    selection and the 50 ms tick gate.
   - [x] missing definition / missing sprite diagnostics：native particle
     resolution records missing definitions, unknown particle types, and missing
     sprites without dropping otherwise renderable spawn commands; renderer

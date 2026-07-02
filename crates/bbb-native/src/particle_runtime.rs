@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
@@ -18,7 +18,11 @@ use bbb_world::{
 
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
+const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
+
 pub(crate) trait ParticleEventSink {
+    fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
+
     fn spawn_level_particles(
         &mut self,
         packet: &LevelParticles,
@@ -105,6 +109,8 @@ impl LevelEventGrowthParticleSupport {
 pub(crate) struct NativeParticleRuntime {
     resolver: ParticleCommandResolver,
     atlas: NativeParticleAtlas,
+    texture_animation_tick: u64,
+    last_texture_animation_at: Option<Instant>,
 }
 
 impl NativeParticleRuntime {
@@ -120,6 +126,8 @@ impl NativeParticleRuntime {
         Ok(Self {
             resolver: ParticleCommandResolver::new(definitions, sprites, particle_status),
             atlas,
+            texture_animation_tick: 0,
+            last_texture_animation_at: None,
         })
     }
 
@@ -131,9 +139,46 @@ impl NativeParticleRuntime {
             self.atlas.sprite_uvs.clone(),
         )
     }
+
+    pub(crate) fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
+        if !self.atlas.has_animation() {
+            return;
+        }
+        let Some(tick) = advance_particle_texture_animation_tick(self, Instant::now()) else {
+            return;
+        };
+        match self.atlas.animation_atlas_frame(tick) {
+            Ok(Some(frame)) => {
+                if frame.width != self.atlas.width || frame.height != self.atlas.height {
+                    tracing::warn!(
+                        width = frame.width,
+                        height = frame.height,
+                        atlas_width = self.atlas.width,
+                        atlas_height = self.atlas.height,
+                        "animated particle atlas frame dimensions changed"
+                    );
+                    return;
+                }
+                if let Err(err) = renderer.update_particle_atlas(&frame.rgba) {
+                    tracing::warn!(?err, "failed to update animated particle texture atlas");
+                }
+            }
+            Ok(None) => {}
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    "failed to stitch animated particle texture atlas frame"
+                );
+            }
+        }
+    }
 }
 
 impl ParticleEventSink for NativeParticleRuntime {
+    fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
+        NativeParticleRuntime::maybe_upload_particle_atlas_animation(self, renderer);
+    }
+
     fn spawn_level_particles(
         &mut self,
         packet: &LevelParticles,
@@ -176,10 +221,56 @@ struct NativeParticleAtlas {
     height: u32,
     rgba: Vec<u8>,
     sprite_uvs: Vec<ParticleSpriteUv>,
+    animation: Option<NativeParticleAtlasAnimation>,
+}
+
+impl NativeParticleAtlas {
+    fn has_animation(&self) -> bool {
+        self.animation.is_some()
+    }
+
+    fn animation_atlas_frame(&self, tick: u64) -> Result<Option<NativeParticleAtlasFrame>> {
+        self.animation
+            .as_ref()
+            .map(|animation| animation.atlas_frame(tick))
+            .transpose()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct NativeParticleAtlasAnimation {
+    packer: AtlasPacker,
+    images: Vec<SpriteImage>,
+}
+
+impl NativeParticleAtlasAnimation {
+    fn new(packer: AtlasPacker, images: Vec<SpriteImage>) -> Option<Self> {
+        images
+            .iter()
+            .any(|image| image.animation.is_some())
+            .then_some(Self { packer, images })
+    }
+
+    fn atlas_frame(&self, tick: u64) -> Result<NativeParticleAtlasFrame> {
+        let atlas = self.packer.stitch_animation_frame(&self.images, tick)?;
+        Ok(NativeParticleAtlasFrame {
+            width: atlas.layout.width,
+            height: atlas.layout.height,
+            rgba: atlas.rgba,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NativeParticleAtlasFrame {
+    width: u32,
+    height: u32,
+    rgba: Vec<u8>,
 }
 
 fn particle_atlas_from_images(images: Vec<SpriteImage>) -> Result<NativeParticleAtlas> {
-    let atlas = AtlasPacker::new(4096, 1)?.stitch(&images)?;
+    let packer = AtlasPacker::new(4096, 1)?;
+    let atlas = packer.stitch(&images)?;
     let sprite_uvs = atlas
         .layout
         .sprites
@@ -194,7 +285,31 @@ fn particle_atlas_from_images(images: Vec<SpriteImage>) -> Result<NativeParticle
         height: atlas.layout.height,
         rgba: atlas.rgba,
         sprite_uvs,
+        animation: NativeParticleAtlasAnimation::new(packer, images),
     })
+}
+
+fn advance_particle_texture_animation_tick(
+    runtime: &mut NativeParticleRuntime,
+    now: Instant,
+) -> Option<u64> {
+    let Some(last) = runtime.last_texture_animation_at else {
+        runtime.last_texture_animation_at = Some(now);
+        return None;
+    };
+    let elapsed = now.saturating_duration_since(last);
+    let ticks = elapsed.as_millis() / PARTICLE_TEXTURE_ANIMATION_INTERVAL.as_millis();
+    if ticks == 0 {
+        return None;
+    }
+
+    let ticks = u64::try_from(ticks).unwrap_or(u64::MAX);
+    runtime.texture_animation_tick = runtime.texture_animation_tick.saturating_add(ticks);
+    let advanced = Duration::from_millis(
+        ticks.saturating_mul(PARTICLE_TEXTURE_ANIMATION_INTERVAL.as_millis() as u64),
+    );
+    runtime.last_texture_animation_at = last.checked_add(advanced).or(Some(now));
+    Some(runtime.texture_animation_tick)
 }
 
 fn particle_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ParticleUvRect {
@@ -2798,10 +2913,11 @@ impl LegacyRandom {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_pack::{SpriteAnimation, SpriteAnimationFrame};
     use std::{
         path::{Path, PathBuf},
         sync::atomic::{AtomicU64, Ordering},
-        time::{SystemTime, UNIX_EPOCH},
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
     };
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
@@ -5204,6 +5320,87 @@ mod tests {
                 },
             }]
         );
+    }
+
+    #[test]
+    fn particle_atlas_animation_frame_uses_sprite_animation_tick() {
+        let mut image = SpriteImage::new("minecraft:vibration", 1, 1, vec![10, 0, 0, 255]).unwrap();
+        image.animation = Some(SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: false,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 2 },
+                SpriteAnimationFrame { index: 1, time: 1 },
+            ],
+        });
+        image.animation_frames_rgba = vec![vec![10, 0, 0, 255], vec![20, 0, 0, 255]];
+
+        let atlas = particle_atlas_from_images(vec![image]).unwrap();
+        let tick_zero = atlas.animation_atlas_frame(0).unwrap().unwrap();
+        let tick_two = atlas.animation_atlas_frame(2).unwrap().unwrap();
+
+        assert!(atlas.has_animation());
+        assert_eq!(
+            (tick_zero.width, tick_zero.height),
+            (atlas.width, atlas.height)
+        );
+        assert_eq!(
+            (tick_two.width, tick_two.height),
+            (atlas.width, atlas.height)
+        );
+        assert_eq!(
+            atlas_pixel(&tick_zero.rgba, tick_zero.width, 1, 1),
+            [10, 0, 0, 255]
+        );
+        assert_eq!(
+            atlas_pixel(&tick_two.rgba, tick_two.width, 1, 1),
+            [20, 0, 0, 255]
+        );
+    }
+
+    #[test]
+    fn particle_texture_animation_tick_advances_at_vanilla_interval() {
+        let atlas = particle_atlas_from_images(vec![SpriteImage::new(
+            "minecraft:generic_0",
+            1,
+            1,
+            vec![10, 0, 0, 255],
+        )
+        .unwrap()])
+        .unwrap();
+        let mut runtime = NativeParticleRuntime {
+            resolver: test_resolver(0),
+            atlas,
+            texture_animation_tick: 0,
+            last_texture_animation_at: None,
+        };
+        let start = Instant::now();
+
+        assert_eq!(
+            advance_particle_texture_animation_tick(&mut runtime, start),
+            None
+        );
+        assert_eq!(
+            advance_particle_texture_animation_tick(
+                &mut runtime,
+                start + PARTICLE_TEXTURE_ANIMATION_INTERVAL - Duration::from_millis(1),
+            ),
+            None
+        );
+        assert_eq!(
+            advance_particle_texture_animation_tick(
+                &mut runtime,
+                start + PARTICLE_TEXTURE_ANIMATION_INTERVAL * 3,
+            ),
+            Some(3)
+        );
+        assert_eq!(runtime.texture_animation_tick, 3);
+    }
+
+    fn atlas_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+        let offset = usize::try_from((y * width + x) * 4).unwrap();
+        rgba[offset..offset + 4].try_into().unwrap()
     }
 
     fn test_resolver(seed: i64) -> ParticleCommandResolver {

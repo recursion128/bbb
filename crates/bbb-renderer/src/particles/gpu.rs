@@ -10,9 +10,11 @@ use crate::{
 };
 
 pub(crate) struct ParticleAtlasGpu {
-    _texture: wgpu::Texture,
+    texture: wgpu::Texture,
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) sprite_uvs: BTreeMap<String, ParticleUvRect>,
 }
@@ -257,15 +259,45 @@ pub(crate) fn create_particle_atlas_gpu(
     });
 
     Ok(ParticleAtlasGpu {
-        _texture: texture,
+        texture,
         _view: view,
         _sampler: sampler,
+        width,
+        height,
         bind_group,
         sprite_uvs: sprite_uvs
             .into_iter()
             .map(|sprite| (sprite.id, sprite.uv))
             .collect(),
     })
+}
+
+pub(crate) fn update_particle_atlas_gpu(
+    queue: &wgpu::Queue,
+    atlas: &ParticleAtlasGpu,
+    rgba: &[u8],
+) -> Result<()> {
+    validate_particle_atlas_rgba(atlas.width, atlas.height, rgba)?;
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &atlas.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(atlas.width * 4),
+            rows_per_image: Some(atlas.height),
+        },
+        wgpu::Extent3d {
+            width: atlas.width,
+            height: atlas.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    Ok(())
 }
 
 fn validate_particle_atlas_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
