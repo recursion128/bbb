@@ -2584,6 +2584,44 @@ fn colored_family_map_color(name: &str) -> Option<u32> {
     None
 }
 
+fn candle_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if name == "candle" {
+        return Some(MAP_COLOR_SAND);
+    }
+    let color = name.strip_suffix("_candle")?;
+    if color == "white" {
+        Some(MAP_COLOR_WOOL)
+    } else {
+        dye_color_map_color(color)
+    }
+}
+
+fn shulker_box_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    if name == "shulker_box" {
+        return Some(MAP_COLOR_PURPLE);
+    }
+    let color = name.strip_suffix("_shulker_box")?;
+    if color == "purple" {
+        Some(MAP_COLOR_TERRACOTTA_PURPLE)
+    } else {
+        dye_color_map_color(color)
+    }
+}
+
+fn bed_map_color(
+    name: &str,
+    properties: &std::collections::BTreeMap<String, String>,
+) -> Option<u32> {
+    let color = name.strip_prefix("minecraft:")?.strip_suffix("_bed")?;
+    match properties.get("part").map(String::as_str) {
+        Some("head") => Some(MAP_COLOR_WOOL),
+        Some("foot") => dye_color_map_color(color),
+        _ => None,
+    }
+}
+
 fn ore_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     match name {
@@ -2625,6 +2663,15 @@ fn vanilla_static_map_color_for_block_state(
     properties: &std::collections::BTreeMap<String, String>,
 ) -> Option<u32> {
     if let Some(color) = colored_family_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = candle_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = shulker_box_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = bed_map_color(name, properties) {
         return Some(color);
     }
     if let Some(color) = ore_map_color(name) {
@@ -3192,6 +3239,7 @@ const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const MAP_COLOR_SAND: u32 = 16_247_203;
+const MAP_COLOR_WOOL: u32 = 13_092_807;
 const MAP_COLOR_ICE: u32 = 10_526_975;
 const MAP_COLOR_SNOW: u32 = 16_777_215;
 const MAP_COLOR_METAL: u32 = 10_987_431;
@@ -4202,6 +4250,90 @@ mod tests {
                 test_block_state_id("minecraft:basalt", [("axis", "z")]),
                 "minecraft:basalt",
                 rgb_option(0x19, 0x19, 0x19),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_decorative_colored_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:candle",
+                    [("candles", "4"), ("lit", "false"), ("waterlogged", "false")],
+                ),
+                "minecraft:candle",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:white_candle",
+                    [("candles", "2"), ("lit", "true"), ("waterlogged", "false")],
+                ),
+                "minecraft:white_candle",
+                rgb_option(0xc7, 0xc7, 0xc7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:purple_candle",
+                    [("candles", "1"), ("lit", "false"), ("waterlogged", "false")],
+                ),
+                "minecraft:purple_candle",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:white_bed",
+                    [("facing", "north"), ("occupied", "false"), ("part", "foot")],
+                ),
+                "minecraft:white_bed foot",
+                rgb_option(0xff, 0xff, 0xff),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:white_bed",
+                    [("facing", "north"), ("occupied", "false"), ("part", "head")],
+                ),
+                "minecraft:white_bed head",
+                rgb_option(0xc7, 0xc7, 0xc7),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:red_bed",
+                    [("facing", "east"), ("occupied", "true"), ("part", "foot")],
+                ),
+                "minecraft:red_bed foot",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:shulker_box", [("facing", "up")]),
+                "minecraft:shulker_box",
+                rgb_option(0x7f, 0x3f, 0xb2),
+            ),
+            (
+                test_block_state_id("minecraft:white_shulker_box", [("facing", "north")]),
+                "minecraft:white_shulker_box",
+                rgb_option(0xff, 0xff, 0xff),
+            ),
+            (
+                test_block_state_id("minecraft:purple_shulker_box", [("facing", "down")]),
+                "minecraft:purple_shulker_box",
+                rgb_option(0x7a, 0x49, 0x58),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

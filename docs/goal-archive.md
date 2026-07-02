@@ -1574,6 +1574,14 @@
     clay, deepslate, nether, soul, and basalt cases. Full mapColor catalog
     coverage, biome-aware per-spawn BlockColors, and on-ground roll reset remain
     follow-up work.
+  - [x] `falling_dust` decorative colored static mapColor expansion：native
+    extends the same final provider fallback through bed, candle, and shulker
+    box color families. The helper mirrors vanilla's non-DyeColor exceptions:
+    bed head parts use `MapColor.WOOL`, white candles use `MapColor.WOOL`, and
+    purple shulker boxes use `MapColor.TERRACOTTA_PURPLE`. Tests pin those
+    exceptions plus representative foot-bed, base candle, and uncolored shulker
+    colors. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
+    and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
