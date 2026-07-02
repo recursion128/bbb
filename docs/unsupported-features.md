@@ -304,9 +304,9 @@ When an agent does any of the following, update this file in the same slice:
       bed/candle/shulker families, cave/emissive amethyst/tuff/calcite/sculk/
       froglight families, copper weathering families, nether flora / blackstone
       static families, quartz/prismarine/End static families, construction
-      stone/brick static families, plus ore, deepslate/nether,
-      snow/ice/clay/sandstone/suspicious block, and resource block
-      mineral/natural static colors.
+      stone/brick static families, resin/pale garden static families, plus ore,
+      deepslate/nether, snow/ice/clay/sandstone/suspicious block, and resource
+      block mineral/natural static colors.
       Renderer
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
@@ -372,8 +372,8 @@ When an agent does any of the following, update this file in the same slice:
       bed/candle/shulker decorative families, cave/emissive block families,
       copper weathering families, nether flora / blackstone static families,
       quartz/prismarine/End static families, construction stone/brick static
-      families, and ore/deepslate/nether plus mineral/natural static block
-      families.
+      families, resin/pale garden static families, and ore/deepslate/nether
+      plus mineral/natural static block families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
       `Starter` child-particle presentation path.
@@ -6445,8 +6445,8 @@ When an agent does any of the following, update this file in the same slice:
         families, bed/candle/shulker decorative families, cave/emissive block
         families, copper weathering families, nether flora / blackstone static
         families, quartz/prismarine/End static families, construction
-        stone/brick static families, ore/deepslate/nether colors, and
-        mineral/natural static block families.
+        stone/brick static families, resin/pale garden static families,
+        ore/deepslate/nether colors, and mineral/natural static block families.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.

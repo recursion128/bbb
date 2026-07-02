@@ -2723,6 +2723,9 @@ fn vanilla_static_map_color_for_block_state(
     if let Some(color) = construction_static_map_color(name) {
         return Some(color);
     }
+    if let Some(color) = resin_and_pale_garden_static_map_color(name) {
+        return Some(color);
+    }
     match name {
         "minecraft:stone"
         | "minecraft:andesite"
@@ -3032,6 +3035,24 @@ fn construction_static_map_color(name: &str) -> Option<u32> {
         | "red_nether_brick_stairs"
         | "red_nether_brick_slab"
         | "red_nether_brick_wall" => MAP_COLOR_NETHER,
+        _ => return None,
+    })
+}
+
+fn resin_and_pale_garden_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    Some(match name {
+        "resin_block"
+        | "resin_clump"
+        | "resin_bricks"
+        | "resin_brick_stairs"
+        | "resin_brick_slab"
+        | "resin_brick_wall"
+        | "chiseled_resin_bricks" => MAP_COLOR_TERRACOTTA_ORANGE,
+        "pale_moss_block" | "pale_moss_carpet" | "pale_hanging_moss" => MAP_COLOR_LIGHT_GRAY,
+        "open_eyeblossom" => MAP_COLOR_ORANGE,
+        "closed_eyeblossom" => MAP_COLOR_METAL,
+        "firefly_bush" => MAP_COLOR_PLANT,
         _ => return None,
     })
 }
@@ -5102,6 +5123,106 @@ mod tests {
                 test_block_state_id("minecraft:red_nether_brick_wall", wall),
                 "minecraft:red_nether_brick_wall",
                 rgb_option(0x70, 0x02, 0x00),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_resin_and_pale_garden_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        let wall = [
+            ("east", "low"),
+            ("north", "none"),
+            ("south", "none"),
+            ("up", "true"),
+            ("waterlogged", "false"),
+            ("west", "none"),
+        ];
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:resin_block", []),
+                "minecraft:resin_block",
+                rgb_option(0x9f, 0x52, 0x24),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:resin_clump",
+                    [
+                        ("down", "false"),
+                        ("east", "false"),
+                        ("north", "true"),
+                        ("south", "false"),
+                        ("up", "false"),
+                        ("waterlogged", "false"),
+                        ("west", "false"),
+                    ],
+                ),
+                "minecraft:resin_clump",
+                rgb_option(0x9f, 0x52, 0x24),
+            ),
+            (
+                test_block_state_id("minecraft:resin_brick_wall", wall),
+                "minecraft:resin_brick_wall",
+                rgb_option(0x9f, 0x52, 0x24),
+            ),
+            (
+                test_block_state_id("minecraft:chiseled_resin_bricks", []),
+                "minecraft:chiseled_resin_bricks",
+                rgb_option(0x9f, 0x52, 0x24),
+            ),
+            (
+                test_block_state_id("minecraft:pale_moss_block", []),
+                "minecraft:pale_moss_block",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:pale_moss_carpet",
+                    [
+                        ("bottom", "false"),
+                        ("east", "none"),
+                        ("north", "none"),
+                        ("south", "none"),
+                        ("west", "none"),
+                    ],
+                ),
+                "minecraft:pale_moss_carpet",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:pale_hanging_moss", [("tip", "true")]),
+                "minecraft:pale_hanging_moss",
+                rgb_option(0x99, 0x99, 0x99),
+            ),
+            (
+                test_block_state_id("minecraft:open_eyeblossom", []),
+                "minecraft:open_eyeblossom",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:closed_eyeblossom", []),
+                "minecraft:closed_eyeblossom",
+                rgb_option(0xa7, 0xa7, 0xa7),
+            ),
+            (
+                test_block_state_id("minecraft:firefly_bush", []),
+                "minecraft:firefly_bush",
+                rgb_option(0x00, 0x7c, 0x00),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

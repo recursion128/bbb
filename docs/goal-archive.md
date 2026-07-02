@@ -1623,6 +1623,14 @@
     sandstone, brick, mud brick, nether brick, and red nether brick RGBs. Full
     mapColor catalog coverage, biome-aware per-spawn BlockColors, and on-ground
     roll reset remain follow-up work.
+  - [x] `falling_dust` resin/pale garden static mapColor expansion：native
+    extends the same final provider fallback through vanilla 26.1 resin block,
+    resin clump, resin brick variants, pale moss, pale moss carpet, pale
+    hanging moss, open/closed eyeblossom, and firefly bush static colors. Tests
+    pin terracotta-orange resin, light-gray pale moss, orange open eyeblossom,
+    metal closed eyeblossom, and plant-green firefly bush RGBs. Full mapColor
+    catalog coverage, biome-aware per-spawn BlockColors, and on-ground roll
+    reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
