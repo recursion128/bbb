@@ -22,9 +22,13 @@ use super::control_state::apply_control_projection_event;
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
+const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
 const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
+const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
+const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
+const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
 const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
@@ -42,6 +46,7 @@ const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const SCULK_CHARGE_LEVEL_EVENT: i32 = 3006;
 const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
+const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -563,7 +568,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         level_event_sound_random,
                     );
                     if !particles_consumed_random {
-                        advance_post_sound_level_event_particle_randoms(
+                        advance_level_event_particle_randoms_without_sink(
                             &event,
                             context,
                             level_event_sound_random,
@@ -1305,7 +1310,7 @@ fn advance_vault_level_event_particle_randoms(
     }
 }
 
-fn advance_post_sound_level_event_particle_randoms(
+fn advance_level_event_particle_randoms_without_sink(
     event: &bbb_protocol::packets::LevelEvent,
     context: LevelEventParticleContext,
     random: &mut LevelEventSoundRandomState,
@@ -1330,6 +1335,25 @@ fn advance_post_sound_level_event_particle_randoms(
                 let _ = random.next_double();
             }
         }
+        DISPENSER_SMOKE_LEVEL_EVENT | DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
+            advance_shoot_particles_randoms(random);
+        }
+        ENDER_EYE_BREAK_LEVEL_EVENT => {
+            advance_item_break_particle_randoms(random);
+        }
+        BLAZE_SMOKE_LEVEL_EVENT => {
+            for _ in 0..20 {
+                let _ = random.next_double();
+                let _ = random.next_double();
+                let _ = random.next_double();
+            }
+        }
+        SPLASH_CLOUD_LEVEL_EVENT => {
+            for _ in 0..8 {
+                let _ = random.next_double();
+                let _ = random.next_double();
+            }
+        }
         TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
             advance_trial_spawner_spawn_particle_randoms(random);
         }
@@ -1348,6 +1372,26 @@ fn advance_post_sound_level_event_particle_randoms(
             advance_sculk_charge_level_event_particle_randoms(event, context, random);
         }
         _ => {}
+    }
+}
+
+fn advance_shoot_particles_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..10 {
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+    }
+}
+
+fn advance_item_break_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..8 {
+        let _ = random.next_gaussian();
+        let _ = random.next_double();
+        let _ = random.next_gaussian();
     }
 }
 

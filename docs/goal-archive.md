@@ -1660,3 +1660,8 @@
     before later LevelEvent sounds draw their seeds. The pop branch threads the
     same full-block context used by visible particles, so full blocks advance
     the 40-particle stream while partial/unknown blocks advance 20.
+  - [x] simple particle-only LevelEvent random stream：events `2000`, `2003`,
+    `2004`, `2009`, and `2010` now advance their vanilla dispenser-smoke,
+    ender-eye item-break, blaze smoke/flame, splash cloud, or white-smoke
+    particle random draws in audio-only dispatch before later LevelEvent sounds
+    draw their seeds.

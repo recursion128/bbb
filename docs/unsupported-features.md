@@ -6089,6 +6089,10 @@ When an agent does any of the following, update this file in the same slice:
         audio-only dispatch also advances the post-sound smoke particle random
         stream for events `1501`, `1502`, and `1503` before later LevelEvent
         sound seeds
+      - particle-only events `2000`, `2003`, `2004`, `2009`, and `2010`
+        advance their vanilla smoke / ender-eye item-break / blaze smoke /
+        cloud / white-smoke random streams in audio-only dispatch before later
+        LevelEvent sound seeds
       - cobweb place event `3018` consumes the vanilla poof-particle random
         sequence before recording/playing:
         - `minecraft:block.cobweb.place`
