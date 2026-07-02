@@ -2707,6 +2707,28 @@ fn copper_weathering_base_suffix(name: &str) -> bool {
     )
 }
 
+fn wooden_stairs_and_slabs_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    let family = name
+        .strip_suffix("_stairs")
+        .or_else(|| name.strip_suffix("_slab"))?;
+    Some(match family {
+        "oak" => MAP_COLOR_WOOD,
+        "spruce" => MAP_COLOR_PODZOL,
+        "birch" => MAP_COLOR_SAND,
+        "jungle" => MAP_COLOR_DIRT,
+        "acacia" => MAP_COLOR_ORANGE,
+        "cherry" => MAP_COLOR_TERRACOTTA_WHITE,
+        "dark_oak" => MAP_COLOR_BROWN,
+        "pale_oak" => MAP_COLOR_QUARTZ,
+        "mangrove" => MAP_COLOR_RED,
+        "bamboo" | "bamboo_mosaic" => MAP_COLOR_YELLOW,
+        "crimson" => MAP_COLOR_CRIMSON_STEM,
+        "warped" => MAP_COLOR_WARPED_STEM,
+        _ => return None,
+    })
+}
+
 fn vanilla_static_map_color_for_block_state(
     name: &str,
     properties: &std::collections::BTreeMap<String, String>,
@@ -2730,6 +2752,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = copper_weathering_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = wooden_stairs_and_slabs_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -4413,6 +4438,166 @@ mod tests {
                 test_block_state_id("minecraft:warped_hyphae", [("axis", "y")]),
                 "minecraft:warped_hyphae",
                 rgb_option(0x56, 0x2c, 0x3e),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_wooden_stairs_and_slabs_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id(
+                    "minecraft:oak_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:oak_stairs",
+                rgb_option(0x8f, 0x77, 0x48),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:spruce_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:spruce_slab",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:birch_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:birch_stairs",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:jungle_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:jungle_slab",
+                rgb_option(0x97, 0x6d, 0x4d),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:acacia_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:acacia_stairs",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:cherry_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:cherry_slab",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:dark_oak_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:dark_oak_stairs",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:pale_oak_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:pale_oak_slab",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:mangrove_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:mangrove_stairs",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:bamboo_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:bamboo_slab",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:bamboo_mosaic_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:bamboo_mosaic_stairs",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:crimson_stairs",
+                    [
+                        ("facing", "north"),
+                        ("half", "top"),
+                        ("shape", "straight"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:crimson_stairs",
+                rgb_option(0x94, 0x3f, 0x61),
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:warped_slab",
+                    [("type", "top"), ("waterlogged", "true")],
+                ),
+                "minecraft:warped_slab",
+                rgb_option(0x3a, 0x8e, 0x8c),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

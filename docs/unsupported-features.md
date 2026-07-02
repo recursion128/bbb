@@ -300,9 +300,10 @@ When an agent does any of the following, update this file in the same slice:
       dragon_egg, and concrete_powder into the renderer visual tint, and now
       applies vanilla static mapColor fallback for foundational non-tinted
       stone/dirt/planks, wood/log/bamboo axis states, crimson/warped stem/hyphae
-      static colors, DyeColor and colored terracotta families, decorative
-      bed/candle/shulker families, cave/emissive amethyst/tuff/calcite/sculk/
-      froglight families, copper weathering families, nether flora / blackstone
+      static colors, wooden stairs/slabs, DyeColor and colored terracotta
+      families, decorative bed/candle/shulker families, cave/emissive
+      amethyst/tuff/calcite/sculk/froglight families, copper weathering
+      families, nether flora / blackstone
       static families, quartz/prismarine/End static families, construction
       stone/brick static families, deepslate construction variants, infested
       stone CLAY variants, resin/pale garden static families,
@@ -372,14 +373,16 @@ When an agent does any of the following, update this file in the same slice:
       default-colormap, redstone power, stem age, and lily pad world-color
       sources; the `falling_dust` mapColor fallback now covers foundational
       static block colors for stone/dirt/planks, wood/log/bamboo axis states,
-      crimson/warped stem/hyphae colors, DyeColor / colored terracotta families,
-      bed/candle/shulker decorative families, cave/emissive block families,
+      wooden stairs/slabs, crimson/warped stem/hyphae colors, DyeColor /
+      colored terracotta families, bed/candle/shulker decorative families,
+      cave/emissive block families,
       copper weathering families, nether flora / blackstone static families,
       quartz/prismarine/End static families, construction stone/brick static
       families, deepslate construction variants, infested stone CLAY variants,
       resin/pale garden static families, plant/dripstone/moss/root/mud natural
       static families, non-tinted foliage static families, crop/succulent static
-      families, produce/fungus static families, utility/mechanical static families, and
+      families, produce/fungus static families, utility/mechanical static
+      families, and
       ore/deepslate/nether plus mineral/natural static block families.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
@@ -6448,9 +6451,9 @@ When an agent does any of the following, update this file in the same slice:
         constant, default-colormap, redstone power, stem age, and lily pad
         world-color sources. Vanilla static mapColor fallback now covers
         foundational non-tinted stone/dirt/planks, wood/log/bamboo axis states,
-        crimson/warped stem/hyphae colors, DyeColor / colored terracotta
-        families, bed/candle/shulker decorative families, cave/emissive block
-        families, copper weathering families, nether flora / blackstone static
+        wooden stairs/slabs, crimson/warped stem/hyphae colors, DyeColor /
+        colored terracotta families, bed/candle/shulker decorative families,
+        cave/emissive block families, copper weathering families, nether flora / blackstone static
         families, quartz/prismarine/End static families, construction
         stone/brick static families, deepslate construction variants,
         infested stone CLAY variants, resin/pale garden static families,
