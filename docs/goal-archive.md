@@ -1549,6 +1549,14 @@
     vanilla branch order (`FallingBlock#getDustColor`, then BlockColors tint,
     then mapColor fallback). Full mapColor catalog coverage, biome-aware
     per-spawn BlockColors, and on-ground roll reset remain follow-up work.
+  - [x] `falling_dust` wood/log/stem static mapColor expansion：native extends
+    the same final provider fallback through vanilla `Blocks.logProperties`
+    axis colors for spruce/birch/jungle/acacia/cherry/pale-oak/mangrove logs,
+    bamboo block, stripped log variants, fixed wood/stripped-wood map colors,
+    and `netherStemProperties` / hyphae colors for crimson and warped stems.
+    Tests pin representative top-vs-side axis splits and static stem/hyphae
+    RGBs. Full mapColor catalog coverage, biome-aware per-spawn BlockColors,
+    and on-ground roll reset remain follow-up work.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

@@ -2555,19 +2555,102 @@ fn vanilla_static_map_color_for_block_state(
         "minecraft:diorite" | "minecraft:polished_diorite" | "minecraft:pale_oak_planks" => {
             Some(MAP_COLOR_QUARTZ)
         }
+        "minecraft:pale_oak_wood" => Some(MAP_COLOR_STONE),
         "minecraft:oak_planks" => Some(MAP_COLOR_WOOD),
-        "minecraft:spruce_planks" | "minecraft:podzol" => Some(MAP_COLOR_PODZOL),
+        "minecraft:spruce_planks"
+        | "minecraft:podzol"
+        | "minecraft:mangrove_roots"
+        | "minecraft:muddy_mangrove_roots"
+        | "minecraft:spruce_wood"
+        | "minecraft:stripped_spruce_wood" => Some(MAP_COLOR_PODZOL),
         "minecraft:birch_planks" => Some(MAP_COLOR_SAND),
         "minecraft:acacia_planks" => Some(MAP_COLOR_ORANGE),
         "minecraft:cherry_planks" => Some(MAP_COLOR_TERRACOTTA_WHITE),
         "minecraft:dark_oak_planks" => Some(MAP_COLOR_BROWN),
         "minecraft:mangrove_planks" => Some(MAP_COLOR_RED),
         "minecraft:bamboo_planks" | "minecraft:bamboo_mosaic" => Some(MAP_COLOR_YELLOW),
+        "minecraft:crimson_planks" => Some(MAP_COLOR_CRIMSON_STEM),
+        "minecraft:warped_planks" => Some(MAP_COLOR_WARPED_STEM),
+        "minecraft:oak_wood" | "minecraft:stripped_oak_wood" => Some(MAP_COLOR_WOOD),
+        "minecraft:birch_wood" | "minecraft:stripped_birch_wood" => Some(MAP_COLOR_SAND),
+        "minecraft:jungle_wood" | "minecraft:stripped_jungle_wood" => Some(MAP_COLOR_DIRT),
+        "minecraft:acacia_wood" => Some(MAP_COLOR_GRAY),
+        "minecraft:stripped_acacia_wood" => Some(MAP_COLOR_ORANGE),
+        "minecraft:cherry_wood" => Some(MAP_COLOR_TERRACOTTA_GRAY),
+        "minecraft:stripped_cherry_wood" => Some(MAP_COLOR_TERRACOTTA_PINK),
+        "minecraft:dark_oak_wood" | "minecraft:stripped_dark_oak_wood" => Some(MAP_COLOR_BROWN),
+        "minecraft:mangrove_wood"
+        | "minecraft:stripped_mangrove_wood"
+        | "minecraft:stripped_mangrove_log" => Some(MAP_COLOR_RED),
+        "minecraft:stripped_bamboo_block" => Some(MAP_COLOR_YELLOW),
+        "minecraft:crimson_stem" | "minecraft:stripped_crimson_stem" => {
+            Some(MAP_COLOR_CRIMSON_STEM)
+        }
+        "minecraft:warped_stem" | "minecraft:stripped_warped_stem" => Some(MAP_COLOR_WARPED_STEM),
+        "minecraft:crimson_hyphae" | "minecraft:stripped_crimson_hyphae" => {
+            Some(MAP_COLOR_CRIMSON_HYPHAE)
+        }
+        "minecraft:warped_hyphae" | "minecraft:stripped_warped_hyphae" => {
+            Some(MAP_COLOR_WARPED_HYPHAE)
+        }
         "minecraft:oak_log" => Some(rotated_pillar_map_color(
             properties,
             MAP_COLOR_WOOD,
             MAP_COLOR_PODZOL,
         )),
+        "minecraft:spruce_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_PODZOL,
+            MAP_COLOR_BROWN,
+        )),
+        "minecraft:birch_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_SAND,
+            MAP_COLOR_QUARTZ,
+        )),
+        "minecraft:jungle_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_DIRT,
+            MAP_COLOR_PODZOL,
+        )),
+        "minecraft:acacia_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_ORANGE,
+            MAP_COLOR_STONE,
+        )),
+        "minecraft:cherry_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_TERRACOTTA_WHITE,
+            MAP_COLOR_TERRACOTTA_GRAY,
+        )),
+        "minecraft:dark_oak_log" => Some(MAP_COLOR_BROWN),
+        "minecraft:pale_oak_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_QUARTZ,
+            MAP_COLOR_STONE,
+        )),
+        "minecraft:mangrove_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_RED,
+            MAP_COLOR_PODZOL,
+        )),
+        "minecraft:bamboo_block" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_YELLOW,
+            MAP_COLOR_PLANT,
+        )),
+        "minecraft:stripped_spruce_log" => Some(MAP_COLOR_PODZOL),
+        "minecraft:stripped_birch_log" => Some(MAP_COLOR_SAND),
+        "minecraft:stripped_jungle_log" => Some(MAP_COLOR_DIRT),
+        "minecraft:stripped_acacia_log" => Some(MAP_COLOR_ORANGE),
+        "minecraft:stripped_cherry_log" => Some(rotated_pillar_map_color(
+            properties,
+            MAP_COLOR_TERRACOTTA_WHITE,
+            MAP_COLOR_TERRACOTTA_PINK,
+        )),
+        "minecraft:stripped_dark_oak_log" => Some(MAP_COLOR_BROWN),
+        "minecraft:stripped_pale_oak_log" => Some(MAP_COLOR_QUARTZ),
+        "minecraft:stripped_oak_log" => Some(MAP_COLOR_WOOD),
         _ => None,
     }
 }
@@ -2984,6 +3067,7 @@ const AIR_BLOCK_STATE_ID: i32 = 0;
 const MAP_COLOR_SAND: u32 = 16_247_203;
 const MAP_COLOR_SNOW: u32 = 16_777_215;
 const MAP_COLOR_METAL: u32 = 10_987_431;
+const MAP_COLOR_PLANT: u32 = 31_744;
 const MAP_COLOR_DIRT: u32 = 9_923_917;
 const MAP_COLOR_STONE: u32 = 7_368_816;
 const MAP_COLOR_WOOD: u32 = 9_402_184;
@@ -3004,7 +3088,13 @@ const MAP_COLOR_GREEN: u32 = 6_717_235;
 const MAP_COLOR_RED: u32 = 10_040_115;
 const MAP_COLOR_BLACK: u32 = 1_644_825;
 const MAP_COLOR_TERRACOTTA_WHITE: u32 = 13_742_497;
+const MAP_COLOR_TERRACOTTA_GRAY: u32 = 3_746_083;
+const MAP_COLOR_TERRACOTTA_PINK: u32 = 10_505_550;
 const MAP_COLOR_PODZOL: u32 = 8_476_209;
+const MAP_COLOR_CRIMSON_STEM: u32 = 9_715_553;
+const MAP_COLOR_CRIMSON_HYPHAE: u32 = 6_035_741;
+const MAP_COLOR_WARPED_STEM: u32 = 3_837_580;
+const MAP_COLOR_WARPED_HYPHAE: u32 = 5_647_422;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
@@ -3649,6 +3739,132 @@ mod tests {
                 test_block_state_id("minecraft:oak_log", [("axis", "x")]),
                 "minecraft:oak_log axis=x",
                 rgb_option(0x81, 0x56, 0x31),
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_wood_log_and_stem_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name, expected_color) in [
+            (
+                test_block_state_id("minecraft:spruce_log", [("axis", "y")]),
+                "minecraft:spruce_log axis=y",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                test_block_state_id("minecraft:spruce_log", [("axis", "x")]),
+                "minecraft:spruce_log axis=x",
+                rgb_option(0x66, 0x4c, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:birch_log", [("axis", "y")]),
+                "minecraft:birch_log axis=y",
+                rgb_option(0xf7, 0xe9, 0xa3),
+            ),
+            (
+                test_block_state_id("minecraft:birch_log", [("axis", "z")]),
+                "minecraft:birch_log axis=z",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:acacia_log", [("axis", "y")]),
+                "minecraft:acacia_log axis=y",
+                rgb_option(0xd8, 0x7f, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:acacia_log", [("axis", "x")]),
+                "minecraft:acacia_log axis=x",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:cherry_log", [("axis", "y")]),
+                "minecraft:cherry_log axis=y",
+                rgb_option(0xd1, 0xb1, 0xa1),
+            ),
+            (
+                test_block_state_id("minecraft:cherry_log", [("axis", "x")]),
+                "minecraft:cherry_log axis=x",
+                rgb_option(0x39, 0x29, 0x23),
+            ),
+            (
+                test_block_state_id("minecraft:pale_oak_log", [("axis", "y")]),
+                "minecraft:pale_oak_log axis=y",
+                rgb_option(0xff, 0xfc, 0xf5),
+            ),
+            (
+                test_block_state_id("minecraft:pale_oak_log", [("axis", "z")]),
+                "minecraft:pale_oak_log axis=z",
+                rgb_option(0x70, 0x70, 0x70),
+            ),
+            (
+                test_block_state_id("minecraft:mangrove_log", [("axis", "y")]),
+                "minecraft:mangrove_log axis=y",
+                rgb_option(0x99, 0x33, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:mangrove_log", [("axis", "x")]),
+                "minecraft:mangrove_log axis=x",
+                rgb_option(0x81, 0x56, 0x31),
+            ),
+            (
+                test_block_state_id("minecraft:bamboo_block", [("axis", "y")]),
+                "minecraft:bamboo_block axis=y",
+                rgb_option(0xe5, 0xe5, 0x33),
+            ),
+            (
+                test_block_state_id("minecraft:bamboo_block", [("axis", "x")]),
+                "minecraft:bamboo_block axis=x",
+                rgb_option(0x00, 0x7c, 0x00),
+            ),
+            (
+                test_block_state_id("minecraft:acacia_wood", [("axis", "z")]),
+                "minecraft:acacia_wood",
+                rgb_option(0x4c, 0x4c, 0x4c),
+            ),
+            (
+                test_block_state_id("minecraft:stripped_cherry_log", [("axis", "x")]),
+                "minecraft:stripped_cherry_log axis=x",
+                rgb_option(0xa0, 0x4d, 0x4e),
+            ),
+            (
+                test_block_state_id("minecraft:stripped_cherry_wood", [("axis", "y")]),
+                "minecraft:stripped_cherry_wood",
+                rgb_option(0xa0, 0x4d, 0x4e),
+            ),
+            (
+                test_block_state_id("minecraft:crimson_planks", []),
+                "minecraft:crimson_planks",
+                rgb_option(0x94, 0x3f, 0x61),
+            ),
+            (
+                test_block_state_id("minecraft:crimson_hyphae", [("axis", "x")]),
+                "minecraft:crimson_hyphae",
+                rgb_option(0x5c, 0x19, 0x1d),
+            ),
+            (
+                test_block_state_id("minecraft:warped_stem", [("axis", "z")]),
+                "minecraft:warped_stem",
+                rgb_option(0x3a, 0x8e, 0x8c),
+            ),
+            (
+                test_block_state_id("minecraft:warped_hyphae", [("axis", "y")]),
+                "minecraft:warped_hyphae",
+                rgb_option(0x56, 0x2c, 0x3e),
             ),
         ] {
             let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);

@@ -299,7 +299,8 @@ When an agent does any of the following, update this file in the same slice:
       `FallingBlock#getDustColor` branch for sand/red_sand/gravel, anvils,
       dragon_egg, and concrete_powder into the renderer visual tint, and now
       applies vanilla static mapColor fallback for foundational non-tinted
-      stone/dirt/planks plus oak_log axis states. Renderer
+      stone/dirt/planks, wood/log/bamboo axis states, and crimson/warped
+      stem/hyphae static colors. Renderer
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
@@ -359,7 +360,8 @@ When an agent does any of the following, update this file in the same slice:
       non-FallingBlock `falling_dust` (`colorAsTerrainParticle`) for constant,
       default-colormap, redstone power, stem age, and lily pad world-color
       sources; the `falling_dust` mapColor fallback now covers foundational
-      static block colors for stone/dirt/planks and oak_log axis states.
+      static block colors for stone/dirt/planks, wood/log/bamboo axis states,
+      and crimson/warped stem/hyphae colors.
       Remaining color work is tied to deferred owners: biome-aware per-spawn
       BlockColors, the full map-color catalog, and the broader firework
       `Starter` child-particle presentation path.
@@ -6426,7 +6428,8 @@ When an agent does any of the following, update this file in the same slice:
         vanilla `BlockColors.createDefault()` layer-0 tint is also installed for
         constant, default-colormap, redstone power, stem age, and lily pad
         world-color sources. Vanilla static mapColor fallback now covers
-        foundational non-tinted stone/dirt/planks plus oak_log axis states.
+        foundational non-tinted stone/dirt/planks, wood/log/bamboo axis states,
+        and crimson/warped stem/hyphae colors.
         Full mapColor catalog coverage, biome-aware per-spawn BlockColors, and
         on-ground roll reset remain deferred until particle ticking can query
         world block/collision state.
