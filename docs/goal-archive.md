@@ -1745,6 +1745,13 @@
     BlockColors layer: ladder, floor/wall torch variants including redstone,
     soul, and copper torches, plus end rod. Tests pin facing, waterlogged, lit,
     wall, and vertical rod states to black `option_color`.
+  - [x] `falling_dust` redstone/rail default-NONE static mapColor expansion：
+    native now mirrors vanilla default `MapColor.NONE` for powered/detector/
+    activator/ordinary rails, lever, repeater, comparator, tripwire hook, and
+    tripwire string blocks that register without explicit mapColor or BlockColors
+    tint layers. Tests pin powered and waterlogged rail shapes, lever face,
+    repeater delay/lock, comparator mode, and tripwire attachment/direction
+    state combinations to black `option_color`.
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`

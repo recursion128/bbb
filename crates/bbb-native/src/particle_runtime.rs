@@ -3297,7 +3297,16 @@ fn utility_static_map_color(name: &str) -> Option<u32> {
         | "soul_wall_torch"
         | "copper_torch"
         | "copper_wall_torch"
-        | "end_rod" => MAP_COLOR_NONE,
+        | "end_rod"
+        | "powered_rail"
+        | "detector_rail"
+        | "rail"
+        | "lever"
+        | "repeater"
+        | "tripwire_hook"
+        | "tripwire"
+        | "comparator"
+        | "activator_rail" => MAP_COLOR_NONE,
         "light_weighted_pressure_plate" | "bell" => MAP_COLOR_GOLD,
         "heavy_weighted_pressure_plate"
         | "iron_door"
@@ -5948,6 +5957,123 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_redstone_fixture_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (
+                test_block_state_id(
+                    "minecraft:powered_rail",
+                    [
+                        ("powered", "true"),
+                        ("shape", "ascending_east"),
+                        ("waterlogged", "true"),
+                    ],
+                ),
+                "minecraft:powered_rail",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:detector_rail",
+                    [
+                        ("powered", "false"),
+                        ("shape", "ascending_south"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:detector_rail",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:rail",
+                    [("shape", "north_east"), ("waterlogged", "true")],
+                ),
+                "minecraft:rail",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:activator_rail",
+                    [
+                        ("powered", "true"),
+                        ("shape", "ascending_west"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                "minecraft:activator_rail",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:lever",
+                    [("face", "ceiling"), ("facing", "east"), ("powered", "true")],
+                ),
+                "minecraft:lever",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:repeater",
+                    [
+                        ("delay", "4"),
+                        ("facing", "north"),
+                        ("locked", "true"),
+                        ("powered", "false"),
+                    ],
+                ),
+                "minecraft:repeater",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:comparator",
+                    [
+                        ("facing", "east"),
+                        ("mode", "subtract"),
+                        ("powered", "false"),
+                    ],
+                ),
+                "minecraft:comparator",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:tripwire_hook",
+                    [
+                        ("attached", "true"),
+                        ("facing", "north"),
+                        ("powered", "true"),
+                    ],
+                ),
+                "minecraft:tripwire_hook",
+            ),
+            (
+                test_block_state_id(
+                    "minecraft:tripwire",
+                    [
+                        ("attached", "true"),
+                        ("disarmed", "false"),
+                        ("east", "true"),
+                        ("north", "false"),
+                        ("powered", "true"),
+                        ("south", "true"),
+                        ("west", "false"),
+                    ],
+                ),
+                "minecraft:tripwire",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
                 "{block_name}"
             );
         }
