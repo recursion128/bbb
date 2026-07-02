@@ -27,7 +27,7 @@ fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
 #[test]
 fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
     let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
-    let apple = SpriteImage::new("minecraft:item/apple", 1, 1, vec![255, 0, 0, 255]).unwrap();
+    let apple = SpriteImage::new("minecraft:item/apple", 1, 1, vec![255, 0, 0, 127]).unwrap();
 
     let state = ItemTextureState::from_images(vec![missing, apple]).unwrap();
 
@@ -44,10 +44,10 @@ fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
     assert_eq!(sprite_uvs.len(), state.texture_count());
     assert!(sprite_uvs
         .iter()
-        .any(|sprite| sprite.id == "minecraft:item/apple"));
+        .any(|sprite| sprite.id == "minecraft:item/apple" && sprite.has_translucent));
     assert!(sprite_uvs
         .iter()
-        .any(|sprite| sprite.id == MISSING_TEXTURE_ID));
+        .any(|sprite| sprite.id == MISSING_TEXTURE_ID && !sprite.has_translucent));
 }
 
 #[test]

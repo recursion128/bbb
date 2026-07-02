@@ -313,6 +313,7 @@ pub struct ItemAtlasIcon {
 pub struct ItemAtlasSpriteUv {
     pub id: String,
     pub uv: ItemAtlasUvRect,
+    pub has_translucent: bool,
 }
 
 /// Per-stack use-state values for vanilla item-model numeric properties. These

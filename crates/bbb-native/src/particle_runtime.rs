@@ -297,6 +297,7 @@ fn particle_atlas_from_images(images: Vec<SpriteImage>) -> Result<NativeParticle
         .map(|sprite| ParticleSpriteUv {
             id: sprite.id.clone(),
             uv: particle_uv_rect(&atlas.layout, sprite),
+            has_translucent: sprite.transparency.has_translucent,
         })
         .collect();
     Ok(NativeParticleAtlas {
@@ -5573,6 +5574,7 @@ mod tests {
                     min: [0.375, 0.375],
                     max: [0.625, 0.625],
                 },
+                has_translucent: false,
             }]
         );
     }

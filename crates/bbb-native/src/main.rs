@@ -752,6 +752,7 @@ fn item_particle_sprite_uvs(items: &NativeItemRuntime) -> Vec<ParticleSpriteUv> 
                 min: sprite.uv.min,
                 max: sprite.uv.max,
             },
+            has_translucent: sprite.has_translucent,
         })
         .collect()
 }
@@ -881,5 +882,6 @@ mod tests {
         assert_eq!(particle_uvs[0].id, item_uvs[0].id);
         assert_eq!(particle_uvs[0].uv.min, item_uvs[0].uv.min);
         assert_eq!(particle_uvs[0].uv.max, item_uvs[0].uv.max);
+        assert_eq!(particle_uvs[0].has_translucent, item_uvs[0].has_translucent);
     }
 }

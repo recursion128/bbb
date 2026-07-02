@@ -1312,6 +1312,7 @@ fn terrain_particle_sprite_uvs(layout: &AtlasLayout) -> Vec<ParticleSpriteUv> {
                     min: uv.min,
                     max: uv.max,
                 },
+                has_translucent: sprite.transparency.has_translucent,
             }
         })
         .collect()

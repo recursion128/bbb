@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, time::Instant};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Instant,
+};
 
 use anyhow::{anyhow, Result};
 use glam::Mat4;
@@ -267,7 +270,9 @@ pub struct Renderer {
     pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
     pub(super) terrain_particle_sprite_uvs: BTreeMap<String, ParticleUvRect>,
+    pub(super) terrain_particle_translucent_sprites: BTreeSet<String>,
     pub(super) item_particle_sprite_uvs: BTreeMap<String, ParticleUvRect>,
+    pub(super) item_particle_translucent_sprites: BTreeSet<String>,
     pub(super) weather_rain_texture: Option<WeatherTextureGpu>,
     pub(super) weather_snow_texture: Option<WeatherTextureGpu>,
     pub(super) weather_render_state: WeatherRenderState,
@@ -1045,7 +1050,9 @@ impl Renderer {
             entity_model_instances: Vec::new(),
             particle_atlas: None,
             terrain_particle_sprite_uvs: BTreeMap::new(),
+            terrain_particle_translucent_sprites: BTreeSet::new(),
             item_particle_sprite_uvs: BTreeMap::new(),
+            item_particle_translucent_sprites: BTreeSet::new(),
             weather_rain_texture: None,
             weather_snow_texture: None,
             weather_render_state: WeatherRenderState::default(),

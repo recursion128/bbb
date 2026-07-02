@@ -236,7 +236,8 @@ When an agent does any of the following, update this file in the same slice:
         definition-less block/item atlas particle types
       - renderer records `OPAQUE_TERRAIN` / `OPAQUE_ITEMS` layer metadata
       - sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
-        `TRANSLUCENT_ITEMS` selection remains deferred
+        `TRANSLUCENT_ITEMS` selection is covered for uploaded terrain/item
+        sprite metadata
     - collision/player-coupled physics
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
@@ -260,10 +261,9 @@ When an agent does any of the following, update this file in the same slice:
         and `block_crumble`: air, `moving_piston`, and
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
-      - resolving block/item atlas sprites, terrain tint,
-        sprite-transparency-driven terrain/item layer selection, item sprite UV
-        catalog upload, and transparent terrain/items vertex emission remain
-        deferred
+      - remaining deferred work is component-driven item stack material
+        selection, biome-aware per-spawn terrain tint, map-color fallback,
+        collision/roll coupling, and broader firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -302,8 +302,12 @@ When an agent does any of the following, update this file in the same slice:
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
       block atlas sprite UVs to the particle renderer, and native item atlas
-      upload supplies item atlas sprite UVs to the same path. Fixed
-      `BreakingItemParticle` providers now resolve `minecraft:item_slime`,
+      upload supplies item atlas sprite UVs to the same path. Terrain/item
+      particle sprite uploads now also carry atlas `hasTranslucent`, and
+      renderer vertex batching mirrors vanilla
+      `SingleQuadParticle.Layer.bySprite` by routing current translucent
+      terrain/item sprites to `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`.
+      Fixed `BreakingItemParticle` providers now resolve `minecraft:item_slime`,
       `minecraft:item_cobweb`, and `minecraft:item_snowball` to their vanilla
       item atlas sprite ids. `TerrainParticle` providers now resolve
       `minecraft:block`, `minecraft:block_marker`, `minecraft:dust_pillar`,
@@ -313,8 +317,7 @@ When an agent does any of the following, update this file in the same slice:
       now resolve the default GROUND item particle material active-layer sprite
       ids and let the renderer randomly select one; full component-driven stack
       material selection, biome-aware per-spawn BlockColors, map-color fallback,
-      on-ground roll reset,
-      and transparent terrain/item splitting remain follow-up work. Native spawn
+      and on-ground roll reset remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and

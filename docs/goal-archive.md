@@ -1438,9 +1438,9 @@
     particle JSON definitions, preserve `raw_options_len`, and record
     terrain/item layer order metadata (`OPAQUE_TERRAIN` / `OPAQUE_ITEMS`)
     instead of falling into generic `OPAQUE`; `falling_dust` remains ordinary
-    particle-atlas `OPAQUE` per vanilla. Sprite-transparency-driven
-    `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS` selection and actual block/item
-    atlas UV/tint resolution remain follow-up work.
+    particle-atlas `OPAQUE` per vanilla. Later slices add concrete atlas UVs,
+    tint, and sprite-transparency-driven `TRANSLUCENT_TERRAIN` /
+    `TRANSLUCENT_ITEMS` selection.
   - [x] terrain/item particle option metadata baseline：native now decodes
     vanilla `BlockParticleOption` block-state ids for `block`, `block_marker`,
     `falling_dust`, `dust_pillar`, and `block_crumble`, and decodes
@@ -1471,10 +1471,9 @@
     translucent particle pipelines, so `SingleQuadParticle.Layer` selections
     can bind particle, terrain, or item atlas textures before the shared
     lightmap and draw call. Native terrain atlas upload also forwards block
-    atlas sprite UVs to the particle renderer path. Actual block/item sprite
-    resolution, terrain tint, item sprite UV catalog upload, and
-    sprite-transparency-driven transparent terrain/item emission remain with
-    broader terrain/item particle rendering.
+    atlas sprite UVs to the particle renderer path. Later slices add concrete
+    block/item sprite resolution, terrain tint, item sprite UV catalog upload,
+    and sprite-transparency-driven terrain/item layer selection.
   - [x] terrain particle block-state sprite lookup：native terrain texture state
     now preserves the resolved block model `textures.particle` material, maps
     vanilla block-state ids to terrain atlas sprite ids, and installs that map
@@ -1484,17 +1483,26 @@
     vanilla `TerrainParticle` via
     `BlockStateModelSet.getParticleMaterial(blockState).sprite()`. Tests cover
     pack particle texture retention, terrain block-state sprite lookup, and
-    native command sprite-id emission. Block marker, terrain tint,
-    transparent terrain splitting, and generic item-stack sprite selection stay
-    with the remaining terrain/item particle rendering follow-up.
+    native command sprite-id emission. Block marker, terrain tint, and generic
+    item-stack sprite selection stay with the remaining terrain/item particle
+    rendering follow-up.
   - [x] item particle sprite UV catalog upload：`NativeItemRuntime` now exposes
     the stitched item atlas sprite-id to UV catalog using the same half-texel
     content rects as item icon resolution, and native startup forwards that
     catalog to the renderer after the shared item entity atlas is uploaded.
     The particle draw path can therefore bind the item atlas and look up item
     sprite UVs once per-stack `BreakingItemParticle` sprite selection is
-    resolved; concrete item sprite selection and translucent item splitting
-    remain broader terrain/item particle rendering follow-up work.
+    resolved; concrete item sprite selection remains broader terrain/item
+    particle rendering follow-up work.
+  - [x] sprite-transparency-driven terrain/item particle layer selection：
+    terrain and item particle sprite catalogs now carry stitched-atlas
+    `hasTranslucent` metadata into renderer state. The particle vertex batcher
+    resolves the current terrain/item sprite at emission time and mirrors
+    vanilla `SingleQuadParticle.Layer.bySprite`: translucent terrain/item
+    sprites route to `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS`, while opaque
+    and transparent cutout-only sprites stay in `OPAQUE_TERRAIN` /
+    `OPAQUE_ITEMS`. Renderer tests cover both terrain and item atlas pipeline
+    selection.
   - [x] fixed item particle sprite lookup：renderer `BreakingItemParticle`
     instances now resolve the three fixed vanilla item providers to concrete
     item atlas sprite ids from local 26.1 assets:

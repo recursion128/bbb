@@ -265,6 +265,7 @@ impl ItemTextureState {
             .map(|sprite| ItemAtlasSpriteUv {
                 id: sprite.id.clone(),
                 uv: item_uv_rect(&self.atlas.layout, sprite),
+                has_translucent: sprite.transparency.has_translucent,
             })
             .collect()
     }

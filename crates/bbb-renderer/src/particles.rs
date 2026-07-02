@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use anyhow::Result;
 use glam::{EulerRot, Quat, Vec3};
@@ -105,6 +105,7 @@ pub struct ParticleUvRect {
 pub struct ParticleSpriteUv {
     pub id: String,
     pub uv: ParticleUvRect,
+    pub has_translucent: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -1429,11 +1430,15 @@ impl Renderer {
     }
 
     pub fn set_terrain_particle_sprite_uvs(&mut self, sprite_uvs: Vec<ParticleSpriteUv>) {
-        self.terrain_particle_sprite_uvs = particle_sprite_uv_map(sprite_uvs);
+        let (uvs, translucent_sprites) = particle_sprite_uv_map(sprite_uvs);
+        self.terrain_particle_sprite_uvs = uvs;
+        self.terrain_particle_translucent_sprites = translucent_sprites;
     }
 
     pub fn set_item_particle_sprite_uvs(&mut self, sprite_uvs: Vec<ParticleSpriteUv>) {
-        self.item_particle_sprite_uvs = particle_sprite_uv_map(sprite_uvs);
+        let (uvs, translucent_sprites) = particle_sprite_uv_map(sprite_uvs);
+        self.item_particle_sprite_uvs = uvs;
+        self.item_particle_translucent_sprites = translucent_sprites;
     }
 
     pub fn submit_particle_spawns(&mut self, batch: ParticleSpawnBatch) {
@@ -1506,6 +1511,8 @@ impl Renderer {
             particles: particle_sprite_uvs,
             terrain: Some(&self.terrain_particle_sprite_uvs),
             items: item_sprite_uvs,
+            terrain_translucent_sprites: Some(&self.terrain_particle_translucent_sprites),
+            item_translucent_sprites: Some(&self.item_particle_translucent_sprites),
         };
         let axes = camera_billboard_axes(pose);
         ParticleVertexBatches {
@@ -1525,11 +1532,18 @@ impl Renderer {
     }
 }
 
-fn particle_sprite_uv_map(sprite_uvs: Vec<ParticleSpriteUv>) -> BTreeMap<String, ParticleUvRect> {
-    sprite_uvs
-        .into_iter()
-        .map(|sprite| (sprite.id, sprite.uv))
-        .collect()
+fn particle_sprite_uv_map(
+    sprite_uvs: Vec<ParticleSpriteUv>,
+) -> (BTreeMap<String, ParticleUvRect>, BTreeSet<String>) {
+    let mut uvs = BTreeMap::new();
+    let mut translucent_sprites = BTreeSet::new();
+    for sprite in sprite_uvs {
+        if sprite.has_translucent {
+            translucent_sprites.insert(sprite.id.clone());
+        }
+        uvs.insert(sprite.id, sprite.uv);
+    }
+    (uvs, translucent_sprites)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1537,6 +1551,8 @@ struct ParticleAtlasUvSets<'a> {
     particles: Option<&'a BTreeMap<String, ParticleUvRect>>,
     terrain: Option<&'a BTreeMap<String, ParticleUvRect>>,
     items: Option<&'a BTreeMap<String, ParticleUvRect>>,
+    terrain_translucent_sprites: Option<&'a BTreeSet<String>>,
+    item_translucent_sprites: Option<&'a BTreeSet<String>>,
 }
 
 impl<'a> ParticleAtlasUvSets<'a> {
@@ -1548,6 +1564,22 @@ impl<'a> ParticleAtlasUvSets<'a> {
             ParticleTextureAtlasKind::Particles => self.particles,
             ParticleTextureAtlasKind::Terrain => self.terrain,
             ParticleTextureAtlasKind::Items => self.items,
+        }
+    }
+
+    fn has_translucent_sprite(
+        self,
+        texture_atlas: ParticleTextureAtlasKind,
+        sprite_id: &str,
+    ) -> bool {
+        match texture_atlas {
+            ParticleTextureAtlasKind::Particles => false,
+            ParticleTextureAtlasKind::Terrain => self
+                .terrain_translucent_sprites
+                .is_some_and(|sprites| sprites.contains(sprite_id)),
+            ParticleTextureAtlasKind::Items => self
+                .item_translucent_sprites
+                .is_some_and(|sprites| sprites.contains(sprite_id)),
         }
     }
 }
@@ -1565,15 +1597,19 @@ fn particle_pipeline_vertex_batch<'a>(
         .into_iter()
         .filter(|instance| instance.render_group == ParticleRenderGroup::SingleQuads)
         .filter(|instance| instance.delay_ticks == 0)
-        .filter(|instance| instance.render_layer.pipeline_kind() == pipeline_kind)
+        .filter_map(|instance| {
+            let sprite_id = instance.current_sprite_id.as_deref()?;
+            let render_layer = particle_render_layer_for_sprite(instance, atlas_uvs, sprite_id);
+            (render_layer.pipeline_kind() == pipeline_kind).then_some((instance, render_layer))
+        })
         .collect();
-    instances.sort_by_key(|instance| {
+    instances.sort_by_key(|(_, render_layer)| {
         (
-            instance.render_group.vanilla_order(),
-            instance.render_layer.vanilla_solid_translucent_order(),
+            ParticleRenderGroup::SingleQuads.vanilla_order(),
+            render_layer.vanilla_solid_translucent_order(),
         )
     });
-    for instance in instances {
+    for (instance, _) in instances {
         let Some(sprite_id) = instance.current_sprite_id.as_deref() else {
             continue;
         };
@@ -1648,6 +1684,31 @@ fn particle_billboard_vertices<'a>(
         append_particle_instance_vertices(&mut vertices, instance, uv, axes);
     }
     vertices
+}
+
+fn particle_render_layer_for_sprite(
+    instance: &ParticleInstance,
+    atlas_uvs: ParticleAtlasUvSets<'_>,
+    sprite_id: &str,
+) -> ParticleRenderLayer {
+    let has_translucent = atlas_uvs.has_translucent_sprite(instance.texture_atlas, sprite_id);
+    match instance.render_layer {
+        ParticleRenderLayer::OpaqueTerrain | ParticleRenderLayer::TranslucentTerrain => {
+            if has_translucent {
+                ParticleRenderLayer::TranslucentTerrain
+            } else {
+                ParticleRenderLayer::OpaqueTerrain
+            }
+        }
+        ParticleRenderLayer::OpaqueItems | ParticleRenderLayer::TranslucentItems => {
+            if has_translucent {
+                ParticleRenderLayer::TranslucentItems
+            } else {
+                ParticleRenderLayer::OpaqueItems
+            }
+        }
+        render_layer => render_layer,
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -6042,6 +6103,8 @@ mod tests {
                 particles: Some(&particle_sprite_uvs),
                 terrain: Some(&terrain_sprite_uvs),
                 items: Some(&item_sprite_uvs),
+                terrain_translucent_sprites: None,
+                item_translucent_sprites: None,
             },
             ParticleBillboardAxes {
                 right: Vec3::X,
@@ -6100,6 +6163,8 @@ mod tests {
                 particles: None,
                 terrain: None,
                 items: Some(&item_sprite_uvs),
+                terrain_translucent_sprites: None,
+                item_translucent_sprites: None,
             },
             ParticleBillboardAxes {
                 right: Vec3::X,
@@ -6118,6 +6183,101 @@ mod tests {
             }]
         );
         assert!(batch.vertices[0].position[0] < 10.0);
+    }
+
+    #[test]
+    fn terrain_particles_use_current_sprite_translucency_for_pipeline() {
+        let mut block = test_instance_with_lifetime("minecraft:block", 20);
+        block.position = [10.0, 0.0, 0.0];
+        block.current_sprite_id = Some("minecraft:block/tinted_glass".to_string());
+        let terrain_sprite_uvs = BTreeMap::from([(
+            "minecraft:block/tinted_glass".to_string(),
+            ParticleUvRect {
+                min: [0.25, 0.25],
+                max: [0.75, 0.75],
+            },
+        )]);
+        let terrain_translucent_sprites =
+            BTreeSet::from(["minecraft:block/tinted_glass".to_string()]);
+        let atlas_uvs = ParticleAtlasUvSets {
+            particles: None,
+            terrain: Some(&terrain_sprite_uvs),
+            items: None,
+            terrain_translucent_sprites: Some(&terrain_translucent_sprites),
+            item_translucent_sprites: None,
+        };
+        let axes = ParticleBillboardAxes {
+            right: Vec3::X,
+            up: Vec3::Y,
+        };
+
+        let opaque =
+            particle_pipeline_vertex_batch([&block], atlas_uvs, axes, ParticlePipelineKind::Opaque);
+        let translucent = particle_pipeline_vertex_batch(
+            [&block],
+            atlas_uvs,
+            axes,
+            ParticlePipelineKind::Translucent,
+        );
+
+        assert_eq!(opaque.vertices.len(), 0);
+        assert_eq!(translucent.vertices.len(), 6);
+        assert_eq!(
+            translucent.draws,
+            vec![ParticleAtlasDrawRange {
+                texture_atlas: ParticleTextureAtlasKind::Terrain,
+                vertex_start: 0,
+                vertex_count: 6,
+            }]
+        );
+        assert_eq!(translucent.vertices[0].uv, [0.25, 0.75]);
+    }
+
+    #[test]
+    fn item_particles_use_current_sprite_translucency_for_pipeline() {
+        let mut item = test_instance_with_lifetime("minecraft:item", 20);
+        item.position = [10.0, 0.0, 0.0];
+        item.current_sprite_id = Some("minecraft:item/glass_bottle".to_string());
+        let item_sprite_uvs = BTreeMap::from([(
+            "minecraft:item/glass_bottle".to_string(),
+            ParticleUvRect {
+                min: [0.125, 0.125],
+                max: [0.625, 0.625],
+            },
+        )]);
+        let item_translucent_sprites = BTreeSet::from(["minecraft:item/glass_bottle".to_string()]);
+        let atlas_uvs = ParticleAtlasUvSets {
+            particles: None,
+            terrain: None,
+            items: Some(&item_sprite_uvs),
+            terrain_translucent_sprites: None,
+            item_translucent_sprites: Some(&item_translucent_sprites),
+        };
+        let axes = ParticleBillboardAxes {
+            right: Vec3::X,
+            up: Vec3::Y,
+        };
+
+        let opaque =
+            particle_pipeline_vertex_batch([&item], atlas_uvs, axes, ParticlePipelineKind::Opaque);
+        let translucent = particle_pipeline_vertex_batch(
+            [&item],
+            atlas_uvs,
+            axes,
+            ParticlePipelineKind::Translucent,
+        );
+
+        assert_eq!(opaque.vertices.len(), 0);
+        assert_eq!(translucent.vertices.len(), 6);
+        assert_eq!(
+            translucent.draws,
+            vec![ParticleAtlasDrawRange {
+                texture_atlas: ParticleTextureAtlasKind::Items,
+                vertex_start: 0,
+                vertex_count: 6,
+            }]
+        );
+        assert_eq!(translucent.vertices[0].uv, [0.125, 0.625]);
     }
 
     #[test]
