@@ -303,10 +303,11 @@ When an agent does any of the following, update this file in the same slice:
       particle draw batches now keep per-atlas draw ranges and bind the
       particle / terrain / item atlas texture selected by
       `SingleQuadParticle.Layer`; native terrain texture upload also supplies
-      block atlas sprite UVs to the particle renderer. Actual block/item atlas
-      sprite lookup, item sprite UV catalog upload, non-FallingBlock
-      BlockColors / map-color fallback, on-ground roll reset, and transparent
-      terrain/item splitting remain follow-up work. Native spawn
+      block atlas sprite UVs to the particle renderer, and native item atlas
+      upload supplies item atlas sprite UVs to the same path. Actual block/item
+      atlas sprite lookup, non-FallingBlock BlockColors / map-color fallback,
+      on-ground roll reset, and transparent terrain/item splitting remain
+      follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -487,8 +488,10 @@ When an agent does any of the following, update this file in the same slice:
         normal/ominous flame spawn particles
     - LevelEvent item-particle branches now submit definition-less
       `minecraft:item` commands with item-template option metadata; resolving
-      their item atlas sprites and item sprite UV catalog upload stays deferred
-      with broader terrain/item particle atlas rendering.
+      their concrete item atlas sprites stays deferred with broader
+      terrain/item particle atlas rendering. Native item atlas upload now
+      supplies the item sprite UV catalog the renderer draw path needs once
+      that per-stack sprite selection is available.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

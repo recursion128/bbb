@@ -4,6 +4,7 @@ use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog,
 };
+use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
 use std::collections::BTreeMap;
 use winit::{
@@ -272,10 +273,11 @@ fn main() -> Result<()> {
         {
             tracing::warn!(?err, "continuing without native item HUD atlas");
         }
-        if let Err(err) =
-            renderer.upload_item_entity_atlas(atlas_width, atlas_height, items.atlas_rgba())
-        {
-            tracing::warn!(?err, "continuing without native item entity atlas");
+        match renderer.upload_item_entity_atlas(atlas_width, atlas_height, items.atlas_rgba()) {
+            Ok(()) => renderer.set_item_particle_sprite_uvs(item_particle_sprite_uvs(items)),
+            Err(err) => {
+                tracing::warn!(?err, "continuing without native item entity atlas");
+            }
         }
     }
     let mut screenshot = args.screenshot;
@@ -734,6 +736,20 @@ fn world_block_sound_profile(profile: &PackBlockSoundProfile) -> WorldBlockSound
     }
 }
 
+fn item_particle_sprite_uvs(items: &NativeItemRuntime) -> Vec<ParticleSpriteUv> {
+    items
+        .atlas_sprite_uvs()
+        .into_iter()
+        .map(|sprite| ParticleSpriteUv {
+            id: sprite.id,
+            uv: ParticleUvRect {
+                min: sprite.uv.min,
+                max: sprite.uv.max,
+            },
+        })
+        .collect()
+}
+
 fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
     if *captured == capture {
         return;
@@ -847,5 +863,17 @@ mod tests {
         });
 
         assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn item_particle_sprite_uvs_reuse_item_atlas_rects() {
+        let runtime = NativeItemRuntime::empty_for_test();
+        let item_uvs = runtime.atlas_sprite_uvs();
+        let particle_uvs = item_particle_sprite_uvs(&runtime);
+
+        assert_eq!(particle_uvs.len(), item_uvs.len());
+        assert_eq!(particle_uvs[0].id, item_uvs[0].id);
+        assert_eq!(particle_uvs[0].uv.min, item_uvs[0].uv.min);
+        assert_eq!(particle_uvs[0].uv.max, item_uvs[0].uv.max);
     }
 }

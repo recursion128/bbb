@@ -1475,6 +1475,14 @@
     resolution, terrain tint, item sprite UV catalog upload, and
     sprite-transparency-driven transparent terrain/item emission remain with
     broader terrain/item particle rendering.
+  - [x] item particle sprite UV catalog upload：`NativeItemRuntime` now exposes
+    the stitched item atlas sprite-id to UV catalog using the same half-texel
+    content rects as item icon resolution, and native startup forwards that
+    catalog to the renderer after the shared item entity atlas is uploaded.
+    The particle draw path can therefore bind the item atlas and look up item
+    sprite UVs once per-stack `BreakingItemParticle` sprite selection is
+    resolved; concrete item sprite selection and translucent item splitting
+    remain broader terrain/item particle rendering follow-up work.
   - [x] `falling_dust` provider-specific particle-atlas behavior：
     renderer now maps `FallingDustParticle.Provider` as ordinary
     particle-atlas `OPAQUE`, keeps zero constructor velocity, age sprite

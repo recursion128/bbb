@@ -13,8 +13,9 @@ mod skin_runtime;
 
 pub use item_runtime::{
     default_player_skin_for_profile_id, GeneratedItemLayer, ItemAtlasIcon, ItemAtlasIconLayer,
-    ItemAtlasUvRect, ItemModelCompassContext, ItemModelCompassTarget, ItemModelKeybindContext,
-    ItemModelTimeContext, ItemModelUseContext, NativeDynamicPlayerSkinDownload,
-    NativeDynamicPlayerTextureDownload, NativeItemRuntime, NativeItemTooltipLine,
+    ItemAtlasSpriteUv, ItemAtlasUvRect, ItemModelCompassContext, ItemModelCompassTarget,
+    ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
+    NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload, NativeItemRuntime,
+    NativeItemTooltipLine,
 };
 pub use skin_runtime::{default_player_skin_cache_dir, DynamicPlayerTextureKind};

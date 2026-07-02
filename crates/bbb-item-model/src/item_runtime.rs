@@ -309,6 +309,12 @@ pub struct ItemAtlasIcon {
     pub layers: Vec<ItemAtlasIconLayer>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemAtlasSpriteUv {
+    pub id: String,
+    pub uv: ItemAtlasUvRect,
+}
+
 /// Per-stack use-state values for vanilla item-model numeric properties. These
 /// are active only for the stack that vanilla would expose as
 /// `LivingEntity.getUseItem()`.

@@ -257,6 +257,18 @@ impl ItemTextureState {
         &self.atlas.rgba
     }
 
+    pub(super) fn sprite_uvs(&self) -> Vec<ItemAtlasSpriteUv> {
+        self.atlas
+            .layout
+            .sprites
+            .iter()
+            .map(|sprite| ItemAtlasSpriteUv {
+                id: sprite.id.clone(),
+                uv: item_uv_rect(&self.atlas.layout, sprite),
+            })
+            .collect()
+    }
+
     pub(super) fn fallback_index(&self) -> u32 {
         self.fallback_index
     }

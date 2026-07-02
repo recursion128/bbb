@@ -40,6 +40,14 @@ fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
         state.texture_index("custom:item/missing"),
         state.texture_index(MISSING_TEXTURE_ID)
     );
+    let sprite_uvs = state.sprite_uvs();
+    assert_eq!(sprite_uvs.len(), state.texture_count());
+    assert!(sprite_uvs
+        .iter()
+        .any(|sprite| sprite.id == "minecraft:item/apple"));
+    assert!(sprite_uvs
+        .iter()
+        .any(|sprite| sprite.id == MISSING_TEXTURE_ID));
 }
 
 #[test]
@@ -238,6 +246,11 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     assert_eq!(icon.layers.len(), 2);
     assert_eq!(icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
     assert_eq!(icon.layers[1].tint, rgb_i32_tint(0xff_00_ff));
+    let sprite_uvs = runtime.atlas_sprite_uvs();
+    assert_eq!(sprite_uvs.len(), runtime.texture_count());
+    assert!(sprite_uvs
+        .iter()
+        .any(|sprite| sprite.id == "minecraft:item/test_sword" && sprite.uv == icon.layers[0].uv));
     assert_eq!(
         icon.layers[1].uv,
         runtime

@@ -653,6 +653,10 @@ impl NativeItemRuntime {
         self.textures.atlas_rgba()
     }
 
+    pub fn atlas_sprite_uvs(&self) -> Vec<ItemAtlasSpriteUv> {
+        self.textures.sprite_uvs()
+    }
+
     pub fn texture_index(&self, texture_id: &str) -> u32 {
         self.textures.texture_index(texture_id)
     }
