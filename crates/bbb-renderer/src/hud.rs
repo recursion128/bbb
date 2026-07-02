@@ -1582,13 +1582,20 @@ impl Renderer {
     /// block quads under its slot placement (`translate(slot_center)·scale(slot_px,-slot_px,slot_px)`)
     /// composed with the item's `gui` display transform. The GUI ortho camera projects it in the GUI item
     /// pass. Empty when no hotbar slot holds a 3D block item.
-    pub(crate) fn collect_hud_block_item_mesh(&self) -> crate::item_models::ItemModelMesh {
+    pub(crate) fn collect_hud_block_item_mesh(&self) -> crate::item_models::ItemModelMeshSet {
         let surface_size = self.surface_size();
-        let mut mesh = crate::item_models::ItemModelMesh::new();
+        let mut meshes = crate::item_models::ItemModelMeshSet::default();
+        let mut append_model = |model: &HudBlockItemModel, placement: glam::Mat4| {
+            let transform = placement * model.gui_display;
+            meshes.solid.append_quads(&model.quads, transform);
+            if model.foil {
+                meshes.glint.append_quads(&model.quads, transform);
+            }
+        };
         for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
             if let Some(model) = model {
                 let placement = gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
-                mesh.append_quads(&model.quads, placement * model.gui_display);
+                append_model(model, placement);
             }
         }
         // The open inventory screen's block items (container slots + the cursor / floating item) render as
@@ -1602,7 +1609,7 @@ impl Renderer {
                     x,
                     y,
                 ));
-                mesh.append_quads(&model.quads, placement * model.gui_display);
+                append_model(model, placement);
             };
             for slot in &screen.slots {
                 if let Some(model) = &slot.block_model {
@@ -1615,7 +1622,7 @@ impl Renderer {
                 }
             }
         }
-        mesh
+        meshes
     }
 
     pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
@@ -3821,6 +3828,7 @@ mod tests {
             quads,
             gui_display: glam::Mat4::IDENTITY,
             lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
         };
 
         // A slot whose block model has geometry keeps it; one with no quads drops it (None).
@@ -3851,6 +3859,7 @@ mod tests {
                 quads: vec![quad],
                 gui_display: glam::Mat4::IDENTITY,
                 lighting: GuiItemLightingEntry::ItemsFlat,
+                foil: false,
             }),
         });
         assert!(wrong_lighting.block_model.is_none());

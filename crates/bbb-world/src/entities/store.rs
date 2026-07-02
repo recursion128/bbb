@@ -148,12 +148,6 @@ fn wolf_armor_crackiness(
     }
 }
 
-fn item_stack_has_foil(item: &ItemStackSummary) -> bool {
-    item.component_patch
-        .enchantment_glint_override
-        .unwrap_or(!item.component_patch.enchantments.is_empty())
-}
-
 fn end_crystal_renderer_y(time_in_ticks: f32) -> f32 {
     let hh = (time_in_ticks * 0.2).sin() / 2.0 + 0.5;
     (hh * hh + hh) * 0.4 - 1.4
@@ -1002,7 +996,7 @@ impl EntityStore {
         let armor_foil = |slot: ProtocolEquipmentSlot| -> bool {
             armor_material(slot)
                 .and_then(|_| armor_item(slot))
-                .is_some_and(item_stack_has_foil)
+                .is_some_and(ItemStackSummary::has_foil)
         };
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
@@ -1107,7 +1101,7 @@ impl EntityStore {
             .unwrap_or(WolfArmorCrackiness::None);
         let wolf_body_armor_foil = wolf_body_armor
             .and_then(|_| body_slot_item())
-            .is_some_and(item_stack_has_foil);
+            .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)

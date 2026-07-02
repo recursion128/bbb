@@ -51,10 +51,11 @@ use crate::{
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
-        create_item_model_pipeline, create_item_model_translucent_pipeline,
-        create_item_model_z_offset_forward_pipeline, ItemFrameMapAtlasGpu,
-        ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface, ItemFrameMapSurface,
-        ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface, ItemModelMesh,
+        create_item_model_glint_pipeline, create_item_model_pipeline,
+        create_item_model_translucent_pipeline, create_item_model_z_offset_forward_pipeline,
+        ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface,
+        ItemFrameMapSurface, ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface,
+        ItemGlintTextureGpu, ItemModelMesh,
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
@@ -150,6 +151,7 @@ pub struct Renderer {
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_translucent_pipeline: wgpu::RenderPipeline,
+    pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
@@ -257,12 +259,14 @@ pub struct Renderer {
     pub(super) weather_snow_texture: Option<WeatherTextureGpu>,
     pub(super) weather_render_state: WeatherRenderState,
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
+    pub(super) item_glint_texture: Option<ItemGlintTextureGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(super) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(super) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub(super) block_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(super) flat_item_model_meshes: Vec<ItemModelMesh>,
     pub(super) flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
+    pub(super) item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(super) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(super) item_frame_map_atlas: Option<ItemFrameMapAtlasGpu>,
     pub(super) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
@@ -725,6 +729,8 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let item_model_glint_pipeline =
+            create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
@@ -906,6 +912,7 @@ impl Renderer {
             item_model_pipeline,
             item_model_z_offset_forward_pipeline,
             item_model_translucent_pipeline,
+            item_model_glint_pipeline,
             selection_pipeline,
             lightmap_pipeline,
             lightmap,
@@ -1008,12 +1015,14 @@ impl Renderer {
             weather_snow_texture: None,
             weather_render_state: WeatherRenderState::default(),
             item_entity_atlas: None,
+            item_glint_texture: None,
             item_entity_billboards: Vec::new(),
             block_item_model_meshes: Vec::new(),
             block_item_model_z_offset_forward_meshes: Vec::new(),
             block_item_model_translucent_meshes: Vec::new(),
             flat_item_model_meshes: Vec::new(),
             flat_item_model_translucent_meshes: Vec::new(),
+            item_model_glint_meshes: Vec::new(),
             item_frame_map_surfaces: Vec::new(),
             item_frame_map_atlas: None,
             item_frame_map_decoration_surfaces: Vec::new(),

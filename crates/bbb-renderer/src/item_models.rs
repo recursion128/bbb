@@ -13,6 +13,7 @@
 //! the submitted tint; the shader applies vanilla-shaped normal diffuse and light. Vanilla item
 //! pipelines carry UV1 in the vertex format but do not sample the overlay texture.
 
+use anyhow::{bail, Result};
 use glam::{Mat4, Vec3};
 
 use crate::{gpu::DEPTH_FORMAT, Renderer};
@@ -82,6 +83,9 @@ pub struct HudBlockItemModel {
     pub quads: Vec<ItemModelQuad>,
     pub gui_display: Mat4,
     pub lighting: GuiItemLightingEntry,
+    /// Vanilla `ItemStack.hasFoil()` projected by the native layer for the stack occupying this GUI
+    /// slot. When true, solid quads also submit through vanilla `RenderTypes.glint()`.
+    pub foil: bool,
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
@@ -111,6 +115,16 @@ pub struct ItemModelMeshSet {
     pub solid: ItemModelMesh,
     pub solid_z_offset_forward: ItemModelMesh,
     pub translucent: ItemModelMesh,
+    /// Vanilla `RenderTypes.glint()` overlay for foiled item-model solid quads.
+    pub glint: ItemModelMesh,
+}
+
+pub(crate) struct ItemGlintTextureGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) main_bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
 impl ItemModelMesh {
@@ -222,7 +236,10 @@ impl ItemModelMesh {
 
 impl ItemModelMeshSet {
     pub fn is_empty(&self) -> bool {
-        self.solid.is_empty() && self.translucent.is_empty()
+        self.solid.is_empty()
+            && self.solid_z_offset_forward.is_empty()
+            && self.translucent.is_empty()
+            && self.glint.is_empty()
     }
 }
 
@@ -273,6 +290,20 @@ pub fn bake_item_model_meshes_with_light_and_overlay(
     light: [f32; 2],
     overlay: [f32; 2],
 ) -> ItemModelMeshSet {
+    bake_item_model_meshes_with_light_and_overlay_and_foil(quads, transform, light, overlay, false)
+}
+
+/// Bakes a model into the same solid/translucent split as
+/// [`bake_item_model_meshes_with_light_and_overlay`], and when `foil` is true mirrors each solid quad
+/// into the vanilla `RenderTypes.glint()` bucket. Translucent item foil (`glintTranslucent`) is a
+/// separate target-path variant and is intentionally not folded into this solid glint mesh.
+pub fn bake_item_model_meshes_with_light_and_overlay_and_foil(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+    overlay: [f32; 2],
+    foil: bool,
+) -> ItemModelMeshSet {
     let mut meshes = ItemModelMeshSet::default();
     for quad in quads {
         if quad.translucent {
@@ -289,6 +320,14 @@ pub fn bake_item_model_meshes_with_light_and_overlay(
                 light,
                 overlay,
             );
+            if foil {
+                meshes.glint.append_quads_with_light_and_overlay(
+                    std::slice::from_ref(quad),
+                    transform,
+                    light,
+                    overlay,
+                );
+            }
         }
     }
     meshes
@@ -351,6 +390,33 @@ impl Renderer {
         self.flat_item_model_translucent_meshes = meshes;
     }
 
+    /// Sets solid item-model foil overlay meshes drawn through vanilla `RenderTypes.glint()`.
+    pub fn set_item_model_glint_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_model_glint_meshes = meshes;
+    }
+
+    /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item-model foil draws. The same
+    /// texture is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
+    /// is used in both scene item features and 3D inventory icons.
+    pub fn upload_item_glint_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.item_glint_texture = Some(create_item_glint_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            &self.gui_item_camera_buffer,
+            width,
+            height,
+            rgba,
+        )?);
+        Ok(())
+    }
+
     /// Sets this frame's 3D block items for the hotbar slots (`None` for an empty slot or a flat item,
     /// which keeps its 2D sprite). Each is the block's model quads plus its `gui` display transform; the
     /// renderer seats them in their slot pixel rects and draws them in the GUI item pass (vanilla 3D
@@ -385,6 +451,10 @@ impl Renderer {
         &self,
     ) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.flat_item_model_translucent_meshes)
+    }
+
+    pub(crate) fn collect_item_model_glint_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_model_glint_meshes)
     }
 }
 
@@ -600,6 +670,175 @@ pub(crate) fn create_item_model_translucent_pipeline(
     )
 }
 
+/// Vanilla `BlendFunction.GLINT`: `src * srcColor + dst * 1` for colour, alpha keeps destination.
+const ITEM_MODEL_GLINT_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Src,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+const ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED: bool = false;
+const ITEM_MODEL_GLINT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::Equal;
+const ITEM_MODEL_GLINT_CULL_MODE: Option<wgpu::Face> = None;
+
+const ITEM_MODEL_GLINT_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var item_glint_texture: texture_2d<f32>;
+
+@group(0) @binding(2)
+var item_glint_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
+    @location(5) normal_diffuse: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
+};
+
+const GLINT_UV_SCALE: f32 = 8.0;
+const GLINT_ALPHA: f32 = 0.75;
+const GLINT_ANGLE: f32 = 0.1745329252;
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn total_fog_value(spherical_distance: f32, cylindrical_distance: f32) -> f32 {
+    return max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+}
+
+fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {
+    let scaled = local_uv * GLINT_UV_SCALE;
+    let cos_angle = cos(GLINT_ANGLE);
+    let sin_angle = sin(GLINT_ANGLE);
+    let rotated = vec2<f32>(
+        scaled.x * cos_angle - scaled.y * sin_angle,
+        scaled.x * sin_angle + scaled.y * cos_angle,
+    );
+    return rotated + camera.glint_offsets.xy;
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = glint_uv(input.uv);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let color = textureSample(item_glint_texture, item_glint_sampler, fract(input.uv));
+    if color.a < 0.1 {
+        discard;
+    }
+    let fade = (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance)) * GLINT_ALPHA;
+    return vec4<f32>(color.rgb * fade, color.a);
+}
+"#;
+
+/// Builds vanilla `RenderTypes.glint()` for solid item-model foil overlays: item glint texture,
+/// `GLINT_TEXTURING` scale 8.0, GLINT blend, depth equal, no depth writes, and no cull.
+pub(crate) fn create_item_model_glint_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-item-model-glint-shader"),
+        source: wgpu::ShaderSource::Wgsl(ITEM_MODEL_GLINT_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-item-model-glint-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-item-model-glint-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[item_model_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: ITEM_MODEL_GLINT_CULL_MODE,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+            depth_compare: ITEM_MODEL_GLINT_DEPTH_COMPARE,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(ITEM_MODEL_GLINT_BLEND),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
 fn create_item_model_pipeline_with_blend(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -655,6 +894,130 @@ fn create_item_model_pipeline_with_blend(
         }),
         multiview: None,
     })
+}
+
+fn create_item_glint_texture_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    main_camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> Result<ItemGlintTextureGpu> {
+    validate_item_glint_texture_rgba(width, height, rgba)?;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-item-glint-texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-item-glint-sampler"),
+        address_mode_u: wgpu::AddressMode::Repeat,
+        address_mode_v: wgpu::AddressMode::Repeat,
+        address_mode_w: wgpu::AddressMode::Repeat,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let main_bind_group = create_item_glint_bind_group(
+        device,
+        layout,
+        main_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-item-glint-main-bind-group",
+    );
+    let gui_bind_group = create_item_glint_bind_group(
+        device,
+        layout,
+        gui_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-item-glint-gui-bind-group",
+    );
+    Ok(ItemGlintTextureGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        main_bind_group,
+        gui_bind_group,
+    })
+}
+
+fn create_item_glint_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+    label: &'static str,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
+fn validate_item_glint_texture_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+    if width == 0 || height == 0 {
+        bail!("item glint texture dimensions must be non-zero");
+    }
+    let expected = width as usize * height as usize * 4;
+    if rgba.len() != expected {
+        bail!(
+            "item glint texture rgba length {} does not match {}x{}",
+            rgba.len(),
+            width,
+            height
+        );
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -797,6 +1160,65 @@ mod tests {
             .iter()
             .chain(meshes.translucent.vertices.iter())
             .all(|vertex| vertex.overlay == overlay));
+        assert!(meshes.glint.is_empty());
+    }
+
+    #[test]
+    fn foiled_mesh_set_mirrors_solid_quads_to_item_glint_only() {
+        let mut solid = unit_quad(1.0, [0.25, 0.5, 0.75, 1.0]);
+        solid.translucent = false;
+        let mut translucent = unit_quad(0.8, [1.0, 0.5, 0.25, 0.5]);
+        translucent.translucent = true;
+
+        let meshes = bake_item_model_meshes_with_light_and_overlay_and_foil(
+            &[solid, translucent],
+            Mat4::IDENTITY,
+            [1.0, 1.0],
+            [0.0, 10.0],
+            true,
+        );
+
+        assert_eq!(meshes.solid.indices.len(), 6);
+        assert_eq!(meshes.translucent.indices.len(), 6);
+        assert_eq!(meshes.glint.indices.len(), 6);
+        assert_eq!(meshes.glint.vertices, meshes.solid.vertices);
+    }
+
+    #[test]
+    fn item_model_glint_pipeline_state_matches_vanilla_glint() {
+        assert_eq!(
+            ITEM_MODEL_GLINT_BLEND.color.src_factor,
+            wgpu::BlendFactor::Src
+        );
+        assert_eq!(
+            ITEM_MODEL_GLINT_BLEND.color.dst_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            ITEM_MODEL_GLINT_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::Zero
+        );
+        assert_eq!(
+            ITEM_MODEL_GLINT_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::One
+        );
+        assert!(!ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED);
+        assert_eq!(ITEM_MODEL_GLINT_DEPTH_COMPARE, wgpu::CompareFunction::Equal);
+        assert_eq!(ITEM_MODEL_GLINT_CULL_MODE, None);
+    }
+
+    #[test]
+    fn item_model_glint_shader_uses_vanilla_glint_texturing_shape() {
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_UV_SCALE: f32 = 8.0"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_ALPHA: f32 = 0.75"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("glint_offsets: vec4<f32>"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("rotated + camera.glint_offsets.xy"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("textureSample(item_glint_texture"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("fract(input.uv)"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("if color.a < 0.1"));
+        assert!(!ITEM_MODEL_GLINT_SHADER.contains("lightmap_texture"));
+        assert!(!ITEM_MODEL_GLINT_SHADER.contains("input.color"));
     }
 
     #[test]

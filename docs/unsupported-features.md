@@ -790,7 +790,8 @@ When an agent does any of the following, update this file in the same slice:
     `armorCutoutNoCull` / `armorTranslucent`, and `armorEntityGlint` shaders
     read the positive-bias matrix while item-frame block-model borders use the
     forward matrix for vanilla `RenderTypes.entitySolidZOffsetForward`; plain
-    `entityGlint` stays on the unshifted matrix. Painting custom geometry and
+    `entityGlint` and solid item-model `glint` stay on the unshifted matrix.
+    Painting custom geometry and
     the exact entity-solid shader/cull split for block/painting atlas consumers
     remain later P1/P2 parity, not a narrow P0 blocker. Surface
     blended submissions now also keep a GPU draw plan of sorted index ranges, so
@@ -800,15 +801,16 @@ When an agent does any of the following, update this file in the same slice:
     Later GPU work should split remaining currently-coalesced render-type state,
     dynamic LightTexture / darkness-adjusted gamma, and diffuse visual parity.
     `entityCutoutZOffset`, `armorCutoutNoCull`, `armorTranslucent`,
-    `Eyes`, `waterMask`, glint, and scroll render types now have dedicated
-    baseline GPU pipelines; remaining work there is narrower shader/time/sorting
-    visual parity.
+    `Eyes`, `waterMask`, entity glint, solid item glint, and scroll render
+    types now have dedicated baseline GPU pipelines; remaining work there is
+    narrower shader/time/sorting visual parity.
     The P1-1 render-state closeout now treats the remaining generic entries as
     non-blocking follow-up buckets rather than an open narrow-pipeline checklist:
-    `glintTranslucent` and other item foil variants belong to P1-3 item
-    presentation, standalone mip/sampler generalization belongs to P3 resource
-    parity, and remaining diffuse/fog polish is handled only by later scoped
-    visual slices.
+    standard solid item-model `RenderTypes.glint()` now belongs to the covered
+    P1-3 item path, while `glintTranslucent`, SPECIAL foil decal pose, and 2D
+    HUD/inventory sprite glint remain item presentation follow-ups; standalone
+    mip/sampler generalization belongs to P3 resource parity, and remaining
+    diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
@@ -1308,8 +1310,8 @@ When an agent does any of the following, update this file in the same slice:
     texture-backed entity, armor, and scroll shaders now also mirror
     `core/entity.fsh` alpha cutoff ordering: sample `Sampler0`, discard when the
     texture alpha is below `ALPHA_CUTOUT 0.1`, then multiply by the submitted
-    tint / vertex color; the glint path remains the separate `core/glint.fsh`
-    shader shape.
+    tint / vertex color; entity and item glint paths remain the separate
+    `core/glint.fsh` shader shape.
     Surface buckets now also distinguish vanilla cull-on `entitySolid`,
     `entityCutoutCull`, and `entityTranslucentCullItemTarget` draws from no-cull
     entity surfaces, and those cull buckets use a separate texture-backed shader
@@ -2574,6 +2576,10 @@ When an agent does any of the following, update this file in the same slice:
         durability / cooldown overlays the 3D pass does not draw are emitted in
         the post-GUI-item overlay phase — so the flat square no longer peeks out
         behind the iso block's silhouette and the overlays remain above it.
+        Foiled 3D block-item stacks now also carry `HudBlockItemModel.foil`
+        from `ItemStackSummary::has_foil()` and mirror their solid GUI geometry
+        into the same solid item `RenderTypes.glint()` pass as world items; flat
+        2D HUD / inventory sprites still need a separate sprite glint path.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.

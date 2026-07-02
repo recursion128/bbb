@@ -23,6 +23,16 @@ fn try_load_entity_model_textures(
 ) -> Result<()> {
     let images = load_entity_model_texture_images(roots)?;
     renderer.upload_entity_model_textures(&images)?;
+    if let Some(glint) = images
+        .iter()
+        .find(|image| image.texture.path == "textures/misc/enchanted_glint_item.png")
+    {
+        renderer.upload_item_glint_texture(
+            glint.texture.size[0],
+            glint.texture.size[1],
+            &glint.rgba,
+        )?;
+    }
     tracing::info!(
         textures = images.len(),
         "loaded vanilla entity model textures"

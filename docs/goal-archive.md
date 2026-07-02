@@ -1518,6 +1518,14 @@
     branch, using `SculkShriekerBlock.TOP_Y`, volume `2.0`,
     `0.6 + random.nextFloat() * 0.4` pitch, and the loaded block state's
     `waterlogged=true` gate.
+  - [x] solid item enchantment glint：`ItemStackSummary::has_foil()` now
+    centralizes the decoded `enchantment_glint_override` / enchantments
+    fallback, native projects foiled dropped / held / item-frame / HUD 3D block
+    item solid quads into an item glint mesh bucket, and the renderer uploads
+    `textures/misc/enchanted_glint_item.png` for vanilla `RenderTypes.glint()`
+    draws using `GLINT_TEXTURING` scale `8.0`, GLINT blend, depth-equal,
+    no-depth-write, no-cull, and no-lightmap shader state. `glintTranslucent`,
+    SPECIAL foil decal pose, and 2D HUD/inventory sprite glint remain follow-ups.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

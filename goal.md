@@ -186,10 +186,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 
 已完成项见 docs/goal-archive.md#p1-3物品frame-与第一人称表现。
 
-- item enchantment glint（P1-1 closeout 归入 P1-3）：`entityGlint` GPU 管线已存在可复用，
-  需 `has_foil` 跨 crate 投影 + item glint mesh/pipeline，属中型 GPU slice（像素级验证较难）。
-  item-model select-property resolver 已高度成熟（local_time `G`/`u`/`D` 已收口最后的静默
-  fallback 缺口），glint 是当前 P1-3 剩余里价值较高的下一项。
+- item enchantment glint follow-ups：solid item-model `RenderTypes.glint()` 已覆盖 dropped /
+  held / item-frame / HUD 3D block items，含 `ItemStackSummary::has_foil()` 跨 crate 投影、
+  item glint mesh bucket、独立 `textures/misc/enchanted_glint_item.png` 上传、`GLINT_TEXTURING`
+  scale `8.0` shader、GLINT blend、depth-equal、no-lightmap draw。剩余是 `glintTranslucent()`、
+  SPECIAL foil decal pose、2D HUD/inventory sprite glint 与像素级视觉校验。
 - First-person viewmodel：
   - hand transform。
   - use animation。

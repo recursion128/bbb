@@ -15,10 +15,11 @@ use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
-    bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,
-    copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
-    custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
-    fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
+    bake_item_model_mesh_with_light_and_overlay,
+    bake_item_model_meshes_with_light_and_overlay_and_foil, copper_golem_antenna_block_transform,
+    copper_golem_hand_attach_transform, custom_head_item_transforms,
+    dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
+    humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
@@ -63,8 +64,10 @@ const BROWN_MUSHROOM_BLOCK_ID: &str = "minecraft:brown_mushroom";
 pub(crate) struct DroppedItemModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
+    pub block_glint_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
+    pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub handled_entity_ids: BTreeSet<i32>,
 }
 
@@ -274,15 +277,19 @@ pub(crate) fn dropped_item_models(
 ) -> DroppedItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
+    let mut block_glint_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
     let mut flat_translucent_meshes = Vec::new();
+    let mut flat_glint_meshes = Vec::new();
     let mut handled_entity_ids = BTreeSet::new();
     let Some(item_runtime) = item_runtime else {
         return DroppedItemModels {
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
             handled_entity_ids,
         };
     };
@@ -323,9 +330,11 @@ pub(crate) fn dropped_item_models(
                             shader_light(state.light),
                             count,
                             seed,
+                            state.stack.has_foil(),
                         ),
                         &mut block_meshes,
                         &mut block_translucent_meshes,
+                        &mut block_glint_meshes,
                     );
                     handled_entity_ids.insert(state.entity_id);
                     continue;
@@ -361,9 +370,11 @@ pub(crate) fn dropped_item_models(
                 shader_light(state.light),
                 count,
                 seed,
+                state.stack.has_foil(),
             ),
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         handled_entity_ids.insert(state.entity_id);
     }
@@ -371,8 +382,10 @@ pub(crate) fn dropped_item_models(
     DroppedItemModels {
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
         handled_entity_ids,
     }
 }
@@ -437,8 +450,10 @@ pub(crate) fn display_matrix(display: &BlockModelDisplayTransform, left_hand: bo
 pub(crate) struct HeldItemModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
+    pub block_glint_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
+    pub flat_glint_meshes: Vec<ItemModelMesh>,
 }
 
 /// Bakes the third-person main- and off-hand held items for every humanoid entity that holds one
@@ -454,14 +469,18 @@ pub(crate) fn held_item_models(
 ) -> HeldItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
+    let mut block_glint_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
     let mut flat_translucent_meshes = Vec::new();
+    let mut flat_glint_meshes = Vec::new();
     let Some(item_runtime) = item_runtime else {
         return HeldItemModels {
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
         };
     };
     let enchantment_keys = world_enchantment_keys(world);
@@ -485,8 +504,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_held_hand(
             instance,
@@ -500,8 +521,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_fox_held_item(
             instance,
@@ -514,8 +537,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_dolphin_carried_item(
             instance,
@@ -528,8 +553,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_witch_held_item(
             instance,
@@ -542,8 +569,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_copper_golem_held_items(
             instance,
@@ -556,8 +585,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_allay_held_items(
             instance,
@@ -570,8 +601,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_villager_crossed_arms_item(
             instance,
@@ -584,8 +617,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_panda_held_item(
             instance,
@@ -598,8 +633,10 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
         bake_custom_head_item(
             instance,
@@ -612,16 +649,20 @@ pub(crate) fn held_item_models(
             context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
+            &mut block_glint_meshes,
             &mut flat_meshes,
             &mut flat_translucent_meshes,
+            &mut flat_glint_meshes,
         );
     }
 
     HeldItemModels {
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     }
 }
 
@@ -677,8 +718,10 @@ fn bake_held_hand(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let off_hand = left_arm != instance.render_state.main_arm_left;
     let Some(stack) = world.held_item(instance.entity_id, off_hand) else {
@@ -717,8 +760,10 @@ fn bake_held_hand(
             terrain_textures,
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
         );
     }
 }
@@ -748,8 +793,10 @@ fn bake_fox_held_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.held_item(instance.entity_id, false) else {
         return;
@@ -777,8 +824,10 @@ fn bake_fox_held_item(
         terrain_textures,
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -797,8 +846,10 @@ fn bake_dolphin_carried_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.held_item(instance.entity_id, false) else {
         return;
@@ -826,8 +877,10 @@ fn bake_dolphin_carried_item(
         terrain_textures,
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -846,8 +899,10 @@ fn bake_witch_held_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.held_item(instance.entity_id, false) else {
         return;
@@ -875,8 +930,10 @@ fn bake_witch_held_item(
         terrain_textures,
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -894,8 +951,10 @@ fn bake_copper_golem_held_items(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     for left_hand in [false, true] {
         let Some(stack) = world.held_item(instance.entity_id, left_hand) else {
@@ -929,8 +988,10 @@ fn bake_copper_golem_held_items(
             terrain_textures,
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
         );
     }
 }
@@ -951,8 +1012,10 @@ fn bake_allay_held_items(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     for left_hand in [false, true] {
         let Some(stack) = world.held_item(instance.entity_id, left_hand) else {
@@ -986,8 +1049,10 @@ fn bake_allay_held_items(
             terrain_textures,
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
         );
     }
 }
@@ -1006,8 +1071,10 @@ fn bake_villager_crossed_arms_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.held_item(instance.entity_id, false) else {
         return;
@@ -1035,8 +1102,10 @@ fn bake_villager_crossed_arms_item(
         terrain_textures,
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -1055,8 +1124,10 @@ fn bake_panda_held_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.held_item(instance.entity_id, false) else {
         return;
@@ -1084,8 +1155,10 @@ fn bake_panda_held_item(
         terrain_textures,
         block_meshes,
         block_translucent_meshes,
+        block_glint_meshes,
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -1104,8 +1177,10 @@ fn bake_custom_head_item(
     context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(stack) = world.equipment_item(instance.entity_id, EquipmentSlot::Head) else {
         return;
@@ -1142,8 +1217,10 @@ fn bake_custom_head_item(
             terrain_textures,
             block_meshes,
             block_translucent_meshes,
+            block_glint_meshes,
             flat_meshes,
             flat_translucent_meshes,
+            flat_glint_meshes,
         );
     }
 }
@@ -1254,8 +1331,10 @@ fn bake_item_stack_at_transform(
     terrain_textures: &TerrainTextureState,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    block_glint_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_glint_meshes: &mut Vec<ItemModelMesh>,
 ) {
     let Some(item_id) = stack.item_id else {
         return;
@@ -1269,13 +1348,16 @@ fn bake_item_stack_at_transform(
                 let display = retained.unwrap_or(block_fallback);
                 let transform = attach * display_matrix(&display, left_hand);
                 push_mesh_set(
-                    bake_item_model_meshes_with_light(
+                    bake_item_model_meshes_with_light_and_overlay_and_foil(
                         &quads,
                         transform,
                         ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        ITEM_MODEL_NO_OVERLAY,
+                        stack.has_foil(),
                     ),
                     block_meshes,
                     block_translucent_meshes,
+                    block_glint_meshes,
                 );
                 return;
             }
@@ -1317,9 +1399,16 @@ fn bake_item_stack_at_transform(
     let display = retained.unwrap_or(generated_fallback);
     let transform = attach * display_matrix(&display, left_hand);
     push_mesh_set(
-        bake_item_model_meshes_with_light(&quads, transform, ITEM_MODEL_FULL_BRIGHT_LIGHT),
+        bake_item_model_meshes_with_light_and_overlay_and_foil(
+            &quads,
+            transform,
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            ITEM_MODEL_NO_OVERLAY,
+            stack.has_foil(),
+        ),
         flat_meshes,
         flat_translucent_meshes,
+        flat_glint_meshes,
     );
 }
 
@@ -1346,6 +1435,7 @@ fn stacked_item_mesh(
     light: [f32; 2],
     count: usize,
     seed: i64,
+    foil: bool,
 ) -> ItemModelMeshSet {
     let ground_matrix = display_matrix(ground, false);
     // Vanilla `ItemEntityRenderer.submit`: `minOffsetY = -modelBoundingBox.minY + 1/16` seats the
@@ -1363,6 +1453,7 @@ fn stacked_item_mesh(
         count,
         seed,
         depth,
+        foil,
     );
     mesh
 }
@@ -1418,12 +1509,16 @@ fn push_mesh_set(
     meshes: ItemModelMeshSet,
     solid: &mut Vec<ItemModelMesh>,
     translucent: &mut Vec<ItemModelMesh>,
+    glint: &mut Vec<ItemModelMesh>,
 ) {
     if !meshes.solid.is_empty() {
         solid.push(meshes.solid);
     }
     if !meshes.translucent.is_empty() {
         translucent.push(meshes.translucent);
+    }
+    if !meshes.glint.is_empty() {
+        glint.push(meshes.glint);
     }
 }
 
@@ -1432,6 +1527,7 @@ fn append_quads_to_mesh_set(
     quads: &[ItemModelQuad],
     transform: Mat4,
     light: [f32; 2],
+    foil: bool,
 ) {
     for quad in quads {
         let mesh = if quad.translucent {
@@ -1440,6 +1536,11 @@ fn append_quads_to_mesh_set(
             &mut meshes.solid
         };
         mesh.append_quads_with_light(std::slice::from_ref(quad), transform, light);
+        if foil && !quad.translucent {
+            meshes
+                .glint
+                .append_quads_with_light(std::slice::from_ref(quad), transform, light);
+        }
     }
 }
 
@@ -1452,16 +1553,17 @@ fn append_cluster(
     count: usize,
     seed: i64,
     depth: f32,
+    foil: bool,
 ) {
     let mut random = LegacyRandom::new(seed);
     if depth > FLAT_ITEM_DEPTH_THRESHOLD {
-        append_quads_to_mesh_set(mesh, quads, base * ground, light);
+        append_quads_to_mesh_set(mesh, quads, base * ground, light, foil);
         for _ in 1..count {
             let xo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let yo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let zo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let offset = Mat4::from_translation(Vec3::new(xo, yo, zo));
-            append_quads_to_mesh_set(mesh, quads, base * offset * ground, light);
+            append_quads_to_mesh_set(mesh, quads, base * offset * ground, light, foil);
         }
     } else {
         let offset_z = depth * 1.5;
@@ -1471,13 +1573,14 @@ fn append_cluster(
             quads,
             base * Mat4::from_translation(Vec3::new(0.0, 0.0, z)) * ground,
             light,
+            foil,
         );
         z += offset_z;
         for _ in 1..count {
             let xo = (random.next_float() * 2.0 - 1.0) * 0.15 * 0.5;
             let yo = (random.next_float() * 2.0 - 1.0) * 0.15 * 0.5;
             let offset = Mat4::from_translation(Vec3::new(xo, yo, z));
-            append_quads_to_mesh_set(mesh, quads, base * offset * ground, light);
+            append_quads_to_mesh_set(mesh, quads, base * offset * ground, light, foil);
             z += offset_z;
         }
     }
@@ -2188,8 +2291,10 @@ mod tests {
         let bake = |owner_main_hand_left| {
             let mut block_meshes = Vec::new();
             let mut block_translucent_meshes = Vec::new();
+            let mut block_glint_meshes = Vec::new();
             let mut flat_meshes = Vec::new();
             let mut flat_translucent_meshes = Vec::new();
+            let mut flat_glint_meshes = Vec::new();
             bake_item_stack_at_transform(
                 &stack,
                 Mat4::IDENTITY,
@@ -2209,12 +2314,16 @@ mod tests {
                 &terrain_textures,
                 &mut block_meshes,
                 &mut block_translucent_meshes,
+                &mut block_glint_meshes,
                 &mut flat_meshes,
                 &mut flat_translucent_meshes,
+                &mut flat_glint_meshes,
             );
             assert!(block_meshes.is_empty());
             assert!(block_translucent_meshes.is_empty());
+            assert!(block_glint_meshes.is_empty());
             assert!(flat_translucent_meshes.is_empty());
+            assert!(flat_glint_meshes.is_empty());
             assert_eq!(flat_meshes.len(), 1);
             flat_meshes.remove(0)
         };
@@ -2248,8 +2357,10 @@ mod tests {
         let bake = |context_entity_type| {
             let mut block_meshes = Vec::new();
             let mut block_translucent_meshes = Vec::new();
+            let mut block_glint_meshes = Vec::new();
             let mut flat_meshes = Vec::new();
             let mut flat_translucent_meshes = Vec::new();
+            let mut flat_glint_meshes = Vec::new();
             bake_item_stack_at_transform(
                 &stack,
                 Mat4::IDENTITY,
@@ -2269,12 +2380,16 @@ mod tests {
                 &terrain_textures,
                 &mut block_meshes,
                 &mut block_translucent_meshes,
+                &mut block_glint_meshes,
                 &mut flat_meshes,
                 &mut flat_translucent_meshes,
+                &mut flat_glint_meshes,
             );
             assert!(block_meshes.is_empty());
             assert!(block_translucent_meshes.is_empty());
+            assert!(block_glint_meshes.is_empty());
             assert!(flat_translucent_meshes.is_empty());
+            assert!(flat_glint_meshes.is_empty());
             assert_eq!(flat_meshes.len(), 1);
             flat_meshes.remove(0)
         };
@@ -2721,6 +2836,7 @@ mod tests {
             [4.0 / 15.0, 11.0 / 15.0],
             1,
             7,
+            false,
         );
         let cluster = stacked_item_mesh(
             &quads,
@@ -2731,9 +2847,41 @@ mod tests {
             [4.0 / 15.0, 11.0 / 15.0],
             4,
             7,
+            false,
         );
         assert!(!single.is_empty());
         assert!(!cluster.is_empty());
+    }
+
+    #[test]
+    fn foiled_cluster_mirrors_solid_geometry_to_item_glint_bucket() {
+        let quads = unit_block_quads();
+        let plain = stacked_item_mesh(
+            &quads,
+            [0.0, 0.0, 0.0],
+            0.0,
+            0,
+            &BLOCK_GROUND_FALLBACK,
+            [1.0, 1.0],
+            1,
+            7,
+            false,
+        );
+        let foiled = stacked_item_mesh(
+            &quads,
+            [0.0, 0.0, 0.0],
+            0.0,
+            0,
+            &BLOCK_GROUND_FALLBACK,
+            [1.0, 1.0],
+            1,
+            7,
+            true,
+        );
+
+        assert!(plain.glint.is_empty());
+        assert_eq!(foiled.glint, foiled.solid);
+        assert!(foiled.translucent.is_empty());
     }
 
     #[test]

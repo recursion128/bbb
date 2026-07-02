@@ -511,6 +511,21 @@ impl Renderer {
                 item_model_draw_calls += 1;
             }
         }
+        let (item_model_glint_vertices, item_model_glint_indices) =
+            self.collect_item_model_glint_geometry();
+        if !item_model_glint_indices.is_empty() {
+            if let Some(glint) = &self.item_glint_texture {
+                self.draw_item_model_glint_geometry(
+                    &mut encoder,
+                    main_view,
+                    &item_model_glint_vertices,
+                    &item_model_glint_indices,
+                    &glint.main_bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
 
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
@@ -1301,22 +1316,26 @@ impl Renderer {
         // faces within each slot. Block-light items sample the blocks atlas via the GUI item bind group
         // (the world camera's pass already finished, so reusing the depth target with a clear is safe).
         {
-            let gui_item_mesh = self.collect_hud_block_item_mesh();
-            if !gui_item_mesh.indices.is_empty() {
+            let gui_item_meshes = self.collect_hud_block_item_mesh();
+            if !gui_item_meshes.solid.indices.is_empty() {
                 let vertex_buffer =
                     self.device
                         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("bbb-hud-block-item-vertices"),
-                            contents: bytemuck::cast_slice(&gui_item_mesh.vertices),
+                            contents: bytemuck::cast_slice(&gui_item_meshes.solid.vertices),
                             usage: wgpu::BufferUsages::VERTEX,
                         });
                 let index_buffer =
                     self.device
                         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("bbb-hud-block-item-indices"),
-                            contents: bytemuck::cast_slice(&gui_item_mesh.indices),
+                            contents: bytemuck::cast_slice(&gui_item_meshes.solid.indices),
                             usage: wgpu::BufferUsages::INDEX,
                         });
+                let glint_buffers = self.create_item_model_frame_buffers(
+                    &gui_item_meshes.glint.vertices,
+                    &gui_item_meshes.glint.indices,
+                );
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-item-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1343,9 +1362,18 @@ impl Renderer {
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..gui_item_mesh.indices.len() as u32, 0, 0..1);
+                pass.draw_indexed(0..gui_item_meshes.solid.indices.len() as u32, 0, 0..1);
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
+                if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
+                    self.draw_item_model_glint_frame_buffers(
+                        &mut pass,
+                        buffers,
+                        &glint.gui_bind_group,
+                    );
+                    pipeline_switches += 1;
+                    item_model_draw_calls += 1;
+                }
             }
         }
 
@@ -1484,6 +1512,41 @@ impl Renderer {
         self.draw_item_model_frame_buffers(&mut pass, pipeline, &buffers, bind_group);
     }
 
+    fn draw_item_model_glint_geometry(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        vertices: &[crate::item_models::ItemModelVertex],
+        indices: &[u32],
+        bind_group: &wgpu::BindGroup,
+    ) {
+        let Some(buffers) = self.create_item_model_frame_buffers(vertices, indices) else {
+            return;
+        };
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("bbb-native-item-model-glint-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        self.draw_item_model_glint_frame_buffers(&mut pass, &buffers, bind_group);
+    }
+
     fn create_item_model_frame_buffers(
         &self,
         vertices: &[crate::item_models::ItemModelVertex],
@@ -1523,6 +1586,19 @@ impl Renderer {
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, bind_group, &[]);
         pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
+        pass.set_index_buffer(buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..buffers.index_count, 0, 0..1);
+    }
+
+    fn draw_item_model_glint_frame_buffers<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        buffers: &'a ItemModelFrameBuffers,
+        bind_group: &'a wgpu::BindGroup,
+    ) {
+        pass.set_pipeline(&self.item_model_glint_pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
         pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
         pass.set_index_buffer(buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..buffers.index_count, 0, 0..1);
@@ -2292,6 +2368,44 @@ mod tests {
             hud_pipeline < hud_atlas && hud_atlas < hud_lightmap && hud_lightmap < hud_draw,
             "HUD 3D block item draws bind the renderer-owned LightTexture before drawing"
         );
+    }
+
+    #[test]
+    fn item_model_glint_draws_after_solid_items_without_lightmap() {
+        let source = include_str!("render.rs");
+        let solid_items = source
+            .find("let (flat_item_vertices, flat_item_indices)")
+            .expect("flat solid item-model collection is present");
+        let glint_collect = source[solid_items..]
+            .find("let (item_model_glint_vertices, item_model_glint_indices)")
+            .map(|index| solid_items + index)
+            .expect("item-model glint collection follows solid item draws");
+        let glint_draw = source[glint_collect..]
+            .find("self.draw_item_model_glint_geometry(")
+            .map(|index| glint_collect + index)
+            .expect("item-model glint draw helper is called");
+        let depth_copy = source[glint_draw..]
+            .find("encoder.copy_texture_to_texture(")
+            .map(|index| glint_draw + index)
+            .expect("main depth copy follows item-model glint");
+
+        assert!(
+            solid_items < glint_collect && glint_collect < glint_draw && glint_draw < depth_copy,
+            "solid item glint draws before target depth copies so depth-equal can match base items"
+        );
+
+        let helper = source
+            .find("fn draw_item_model_glint_frame_buffers")
+            .expect("item-model glint frame helper exists");
+        let helper_end = source[helper..]
+            .find("fn has_entity_translucent_features")
+            .map(|index| helper + index)
+            .expect("glint helper ends before next helper");
+        assert!(
+            !source[helper..helper_end].contains("lightmap.sample_bind_group"),
+            "vanilla core/glint does not bind or sample LightTexture"
+        );
+        assert!(source[helper..helper_end].contains("&self.item_model_glint_pipeline"));
     }
 
     #[test]
@@ -3581,7 +3695,7 @@ mod tests {
             .map(|index| pre_commands + index)
             .expect("base HUD pass label is used");
         let gui_items = source[hud_pass..]
-            .find("let gui_item_mesh = self.collect_hud_block_item_mesh()")
+            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
             .map(|index| hud_pass + index)
             .expect("GUI 3D item mesh is collected after base HUD");
         let hud_item_pass = source[gui_items..]

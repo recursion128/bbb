@@ -1634,17 +1634,24 @@ pub(crate) fn pump_network_and_terrain(
     let mut block_item_translucent_meshes = dropped_item_models.block_translucent_meshes;
     block_item_translucent_meshes.extend(held_item_models.block_translucent_meshes);
     block_item_translucent_meshes.extend(item_frame_models.block_translucent_meshes);
+    let mut item_model_glint_meshes = dropped_item_models.block_glint_meshes;
+    item_model_glint_meshes.extend(held_item_models.block_glint_meshes);
+    item_model_glint_meshes.extend(item_frame_models.block_glint_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
     flat_item_meshes.extend(held_item_models.flat_meshes);
     flat_item_meshes.extend(item_frame_models.flat_meshes);
     let mut flat_item_translucent_meshes = dropped_item_models.flat_translucent_meshes;
     flat_item_translucent_meshes.extend(held_item_models.flat_translucent_meshes);
     flat_item_translucent_meshes.extend(item_frame_models.flat_translucent_meshes);
+    item_model_glint_meshes.extend(dropped_item_models.flat_glint_meshes);
+    item_model_glint_meshes.extend(held_item_models.flat_glint_meshes);
+    item_model_glint_meshes.extend(item_frame_models.flat_glint_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(block_item_z_offset_forward_meshes);
     renderer.set_block_item_model_translucent_meshes(block_item_translucent_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
     renderer.set_flat_item_model_translucent_meshes(flat_item_translucent_meshes);
+    renderer.set_item_model_glint_meshes(item_model_glint_meshes);
     renderer.set_item_frame_map_surfaces(
         item_frame_models.map_textures,
         item_frame_models.map_surfaces,
@@ -1850,6 +1857,7 @@ fn block_item_3d_model(
         quads,
         gui_display: crate::item_models::display_matrix(&gui, false),
         lighting: GuiItemLightingEntry::Items3d,
+        foil: item.has_foil(),
     })
 }
 
@@ -2219,7 +2227,7 @@ fn apply_smithing_result_equipment(
             entity.render_state.head_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.head_armor_foil =
-                entity.render_state.head_armor.is_some() && item_stack_has_foil(stack);
+                entity.render_state.head_armor.is_some() && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Head) => {
             if smithing_result_is_custom_head_skull(item_runtime, item_id) {
@@ -2240,7 +2248,7 @@ fn apply_smithing_result_equipment(
             entity.render_state.chest_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.chest_armor_foil =
-                entity.render_state.chest_armor.is_some() && item_stack_has_foil(stack);
+                entity.render_state.chest_armor.is_some() && stack.has_foil();
             entity.render_state.chest_wings_layer =
                 item_runtime.item_equipment_wings_layer(item_id);
             entity.render_state.chest_equipment_has_wings =
@@ -2254,7 +2262,7 @@ fn apply_smithing_result_equipment(
             entity.render_state.legs_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.legs_armor_foil =
-                entity.render_state.legs_armor.is_some() && item_stack_has_foil(stack);
+                entity.render_state.legs_armor.is_some() && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Feet) => {
             entity.render_state.feet_armor =
@@ -2262,7 +2270,7 @@ fn apply_smithing_result_equipment(
             entity.render_state.feet_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.feet_armor_foil =
-                entity.render_state.feet_armor.is_some() && item_stack_has_foil(stack);
+                entity.render_state.feet_armor.is_some() && stack.has_foil();
         }
         Some(
             ItemEquipmentSlot::MainHand
@@ -2293,7 +2301,7 @@ fn smithing_preview_item_layer(
         display_context,
         item_id: stack.item_id.unwrap_or_default(),
         count: stack.count,
-        foil: item_stack_has_foil(stack),
+        foil: stack.has_foil(),
         light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
         overlay: ITEM_MODEL_NO_OVERLAY,
         order: 0,
@@ -2316,12 +2324,6 @@ fn smithing_result_is_custom_head_skull(item_runtime: &NativeItemRuntime, item_i
                     | "minecraft:player_head"
             )
         })
-}
-
-fn item_stack_has_foil(item: &ItemStackSummary) -> bool {
-    item.component_patch
-        .enchantment_glint_override
-        .unwrap_or(!item.component_patch.enchantments.is_empty())
 }
 
 fn quaternion_x(angle_radians: f32) -> [f32; 4] {

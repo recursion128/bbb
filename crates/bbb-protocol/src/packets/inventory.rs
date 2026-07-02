@@ -36,6 +36,15 @@ impl ItemStackSummary {
             component_patch: DataComponentPatchSummary::default(),
         }
     }
+
+    /// Component-summary equivalent of vanilla `ItemStack.hasFoil()` for the data retained by bbb:
+    /// `minecraft:enchantment_glint_override` wins when present, otherwise decoded enchantments make
+    /// the stack foiled.
+    pub fn has_foil(&self) -> bool {
+        self.component_patch
+            .enchantment_glint_override
+            .unwrap_or(!self.component_patch.enchantments.is_empty())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -182,6 +191,32 @@ mod tests {
         ids,
         packets::{decode_play_clientbound, EquipmentSlot, PlayClientbound},
     };
+
+    #[test]
+    fn item_stack_has_foil_uses_glint_override_before_enchantments() {
+        let mut stack = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        assert!(!stack.has_foil());
+
+        stack
+            .component_patch
+            .enchantments
+            .push(ItemEnchantmentSummary {
+                holder_id: 7,
+                level: 3,
+            });
+        assert!(stack.has_foil());
+
+        stack.component_patch.enchantment_glint_override = Some(false);
+        assert!(!stack.has_foil());
+
+        stack.component_patch.enchantments.clear();
+        stack.component_patch.enchantment_glint_override = Some(true);
+        assert!(stack.has_foil());
+    }
 
     #[test]
     fn decodes_set_equipment_item_stack_with_supported_component_patch() {
