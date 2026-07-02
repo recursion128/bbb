@@ -2802,6 +2802,15 @@ fn cake_static_map_color(name: &str) -> Option<u32> {
     dye_color_map_color(color).map(|_| MAP_COLOR_NONE)
 }
 
+fn default_none_static_map_color(name: &str) -> Option<u32> {
+    let name = name.strip_prefix("minecraft:")?;
+    matches!(
+        name,
+        "air" | "cave_air" | "void_air" | "test_instance_block"
+    )
+    .then_some(MAP_COLOR_NONE)
+}
+
 fn wooden_sign_static_map_color(name: &str) -> Option<u32> {
     let name = name.strip_prefix("minecraft:")?;
     if let Some(family) = name.strip_suffix("_wall_hanging_sign") {
@@ -2901,6 +2910,9 @@ fn vanilla_static_map_color_for_block_state(
         return Some(color);
     }
     if let Some(color) = cake_static_map_color(name) {
+        return Some(color);
+    }
+    if let Some(color) = default_none_static_map_color(name) {
         return Some(color);
     }
     if let Some(color) = construction_static_map_color(name) {
@@ -7080,6 +7092,40 @@ mod tests {
             assert_eq!(
                 batch.commands[0].option_color,
                 Some(expected_color),
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn falling_dust_uses_vanilla_default_none_map_color_fallbacks() {
+        let mut resolver = test_resolver(0);
+        resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
+
+        for (block_state_id, block_name) in [
+            (test_block_state_id("minecraft:air", []), "minecraft:air"),
+            (
+                test_block_state_id("minecraft:cave_air", []),
+                "minecraft:cave_air",
+            ),
+            (
+                test_block_state_id("minecraft:void_air", []),
+                "minecraft:void_air",
+            ),
+            (
+                test_block_state_id("minecraft:test_instance_block", []),
+                "minecraft:test_instance_block",
+            ),
+        ] {
+            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            packet.particle.raw_options = block_particle_options(block_state_id);
+
+            let batch = resolver.resolve_level_particles(&packet);
+
+            assert_eq!(batch.len(), 1, "{block_name}");
+            assert_eq!(
+                batch.commands[0].option_color,
+                Some(rgb_option(0x00, 0x00, 0x00)),
                 "{block_name}"
             );
         }

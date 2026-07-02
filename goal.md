@@ -315,7 +315,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     misc redstone/slime/bone/frosted-ice/dirt-path/petrified-slab static blocks /
     ladder / torch / redstone torch / soul torch / copper torch / end rod /
     rail / lever / repeater / comparator / tripwire / skull-head / potted /
-    cake 默认
+    cake / air / cave_air / void_air / test_instance_block 默认
     `MapColor.NONE`、
     crimson/warped stem/hyphae 静态色、DyeColor / colored terracotta 系列、
     bed/candle/shulker decorative colored families、
@@ -358,7 +358,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     misc redstone/slime/bone/frosted-ice/dirt-path/petrified-slab static blocks /
     ladder / torch / redstone torch / soul torch / copper torch / end rod /
     rail / lever / repeater / comparator / tripwire / skull-head / potted /
-    cake 默认
+    cake / air / cave_air / void_air / test_instance_block 默认
     `MapColor.NONE`、colored block families、
     decorative colored families、
     cave/emissive block families、copper weathering families、nether flora /
