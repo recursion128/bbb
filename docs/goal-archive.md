@@ -1292,6 +1292,22 @@
     `ash` / `white_ash` keep pure command velocity as follow-up because their
     non-uniform `dir=(0.1, -0.1, 0.1)` (plus `WhiteAsh` provider random offset)
     needs a per-axis-dir velocity variant.
+  - [x] ash / white_ash per-axis-dir initial velocity：renderer descriptors now
+    use a new `ParticleInitialVelocityDescriptor::BaseAshSmokeSpread { dir,
+    provider_offset }` variant (with `BaseAshSmokeOffset::{Zero, WhiteAsh}`)
+    instead of pure command velocity, matching vanilla `BaseAshSmokeParticle`
+    (`super(..., 0.0, 0.0, 0.0, ...)` base spread, then `xd *= dirX; yd *= dirY;
+    zd *= dirZ` with `dir=(0.1, -0.1, 0.1)`, then `xd += xa; yd += ya; zd += za`).
+    `AshParticle.Provider` forces the provider velocity to `(0, 0, 0)` and
+    `WhiteAshParticle.Provider` ignores the command velocity and adds its own
+    negative-biased `xa/ya/za` (`rand*-1.9*rand*0.1`, `rand*-0.5*rand*0.1*5.0`,
+    `rand*-1.9*rand*0.1`). Deterministic seed=0 tests reconstruct the base spread
+    and offset straight from the vanilla source lines (independent of the
+    descriptor under test) and pin the intake velocity, that command velocity is
+    ignored, that y is negated+damped, and that white_ash biases y downward.
+    Follow-up: `minecraft:dust_plume` also extends `BaseAshSmokeParticle`
+    (`dir=(0.7, 0.6, 0.7)`, `ya + 0.15F`) and still uses `CommandWithYOffset`, so
+    it has the same missing base-spread×dir shape and needs the same treatment.
 - 粒子 sorting：
   - [x] single-quad particle render group / layer order：renderer
     `ParticleInstance` now records vanilla `ParticleRenderType.SINGLE_QUADS`
