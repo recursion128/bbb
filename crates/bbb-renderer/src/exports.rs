@@ -84,13 +84,14 @@ pub use crate::item_models::{
     bake_item_frame_map_text_surface, bake_item_model_mesh, bake_item_model_mesh_with_light,
     bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,
     bake_item_model_meshes_with_light_and_overlay,
-    bake_item_model_meshes_with_light_and_overlay_and_foil, item_frame_map_decoration_type,
+    bake_item_model_meshes_with_light_and_overlay_and_foil,
+    bake_item_model_meshes_with_light_and_overlay_and_foil_mode, item_frame_map_decoration_type,
     item_frame_map_text_width, GuiItemLightingEntry, HudBlockItemModel,
     ItemFrameMapDecorationSubmission, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapDecorationTextureRef, ItemFrameMapDecorationType, ItemFrameMapRenderType,
     ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTextSubmission,
     ItemFrameMapTextSurface, ItemFrameMapTextTextureRef, ItemFrameMapTexture,
-    ItemFrameMapTextureRef, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    ItemFrameMapTextureRef, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
     ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 pub use crate::particles::{

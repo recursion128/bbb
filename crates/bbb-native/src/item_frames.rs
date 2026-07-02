@@ -12,7 +12,7 @@ use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
     bake_item_frame_map_text_surface, bake_item_model_mesh_with_light,
-    bake_item_model_meshes_with_light_and_overlay_and_foil, ItemFrameMapDecorationSurface,
+    bake_item_model_meshes_with_light_and_overlay_and_foil_mode, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
     ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
@@ -20,7 +20,7 @@ use bbb_renderer::{
 use bbb_world::{ItemFrameFacing, MapItemState, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
-use crate::item_models::display_matrix;
+use crate::item_models::{display_matrix, item_stack_foil_mode};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
 
@@ -199,12 +199,16 @@ pub(crate) fn item_frame_models(
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
                     push_mesh_set(
-                        bake_item_model_meshes_with_light_and_overlay_and_foil(
+                        bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
                             &quads,
                             item_transform,
                             item_light,
                             ITEM_MODEL_NO_OVERLAY,
-                            stack.has_foil(),
+                            item_stack_foil_mode(
+                                stack,
+                                item_runtime,
+                                BlockModelDisplayContext::Fixed,
+                            ),
                         ),
                         &mut block_meshes,
                         &mut block_translucent_meshes,
@@ -235,12 +239,12 @@ pub(crate) fn item_frame_models(
             continue;
         }
         push_mesh_set(
-            bake_item_model_meshes_with_light_and_overlay_and_foil(
+            bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
                 &quads,
                 item_transform,
                 item_light,
                 ITEM_MODEL_NO_OVERLAY,
-                stack.has_foil(),
+                item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed),
             ),
             &mut flat_meshes,
             &mut flat_translucent_meshes,

@@ -808,9 +808,11 @@ When an agent does any of the following, update this file in the same slice:
     The P1-1 render-state closeout now treats the remaining generic entries as
     non-blocking follow-up buckets rather than an open narrow-pipeline checklist:
     standard solid item-model `RenderTypes.glint()` and world/itemEntity-target
-    `RenderTypes.glintTranslucent()` now belong to the covered P1-3 item path,
-    while SPECIAL foil decal pose, GUI transparent 3D icon parity, and 2D
-    HUD/inventory sprite glint remain item presentation follow-ups; standalone
+    `RenderTypes.glintTranslucent()` now belong to the covered P1-3 item path.
+    Clock / compass SPECIAL foil decal UVs are also covered for current dropped,
+    held, and item-frame item-model consumers. GUI transparent 3D icon parity,
+    2D HUD/inventory sprite glint, and first-person special consumers remain
+    item presentation follow-ups; standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2584,7 +2586,9 @@ When an agent does any of the following, update this file in the same slice:
         2D HUD / inventory sprites still need a separate sprite glint path, and
         transparent GUI 3D icon base/glint splitting remains a later GUI parity
         slice rather than part of the world/itemEntity-target `glintTranslucent`
-        path.
+        path. Clock / compass SPECIAL foil decal UVs are covered in the current
+        dropped / held / item-frame item-model path; GUI flat sprite and
+        first-person consumers remain deferred with their presentation surfaces.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.

@@ -14,7 +14,7 @@
 //! pipelines carry UV1 in the vertex format but do not sample the overlay texture.
 
 use anyhow::{bail, Result};
-use glam::{Mat4, Vec3};
+use glam::{EulerRot, Mat4, Quat, Vec3};
 
 use crate::{gpu::DEPTH_FORMAT, Renderer};
 
@@ -43,6 +43,7 @@ pub const ITEM_MODEL_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 pub const ITEM_MODEL_NO_OVERLAY: [f32; 2] = [0.0, 10.0];
 
 const ITEM_MODEL_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const SPECIAL_FOIL_TEXTURE_SCALE: f32 = 1.0 / 128.0;
 
 /// One textured quad of a baked block/item model: four corners in vanilla `0..=16` model space, with
 /// atlas-absolute UVs. The mesh bake step selects triangle index order from the submitted normal so the
@@ -86,6 +87,39 @@ pub struct HudBlockItemModel {
     /// Vanilla `ItemStack.hasFoil()` projected by the native layer for the stack occupying this GUI
     /// slot. When true, solid quads also submit through vanilla `RenderTypes.glint()`.
     pub foil: bool,
+}
+
+/// Vanilla `ItemStackRenderState.FoilType` projected into the renderer's item-model bake.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ItemModelFoil {
+    None,
+    Standard,
+    /// Vanilla SPECIAL foil: clock and `ItemTags.COMPASSES` item models route their foil through
+    /// `SheetedDecalTextureGenerator`. `decal_pose_scale` is `1.0` for world contexts, `0.5` for GUI,
+    /// and `0.75` for first person.
+    Special {
+        decal_pose_scale: f32,
+    },
+}
+
+impl ItemModelFoil {
+    pub fn from_has_foil(foil: bool) -> Self {
+        if foil {
+            Self::Standard
+        } else {
+            Self::None
+        }
+    }
+
+    pub fn has_foil(self) -> bool {
+        self != Self::None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ItemModelUvMode {
+    Atlas,
+    SpecialFoilDecal { decal_pose_scale: f32 },
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
@@ -168,6 +202,29 @@ impl ItemModelMesh {
         light: [f32; 2],
         overlay: [f32; 2],
     ) {
+        self.append_quads_with_light_overlay_and_uv_mode(
+            quads,
+            transform,
+            light,
+            overlay,
+            ItemModelUvMode::Atlas,
+        );
+    }
+
+    fn append_quads_with_light_overlay_and_uv_mode(
+        &mut self,
+        quads: &[ItemModelQuad],
+        transform: Mat4,
+        light: [f32; 2],
+        overlay: [f32; 2],
+        uv_mode: ItemModelUvMode,
+    ) {
+        let special_foil_inverse = match uv_mode {
+            ItemModelUvMode::Atlas => None,
+            ItemModelUvMode::SpecialFoilDecal { decal_pose_scale } => {
+                Some(componentwise_scaled_pose(transform, decal_pose_scale).inverse())
+            }
+        };
         for quad in quads {
             let base =
                 u32::try_from(self.vertices.len()).expect("item-model vertex count fits in u32");
@@ -186,10 +243,15 @@ impl ItemModelMesh {
             let normal_diffuse = [normal.x, normal.y, normal.z, 1.0];
             for (corner, uv) in quad.corners.iter().zip(quad.uvs.iter()) {
                 let local = Vec3::from_array(*corner) * MODEL_SPACE_SCALE;
-                let position = transform.transform_point3(local).to_array();
+                let position = transform.transform_point3(local);
+                let uv = if let Some(inverse) = special_foil_inverse {
+                    sheeted_decal_uv(inverse.transform_point3(position), quad.normal)
+                } else {
+                    *uv
+                };
                 self.vertices.push(ItemModelVertex {
-                    position,
-                    uv: *uv,
+                    position: position.to_array(),
+                    uv,
                     color,
                     light,
                     overlay,
@@ -243,6 +305,55 @@ impl ItemModelMeshSet {
             && self.translucent.is_empty()
             && self.glint.is_empty()
             && self.glint_translucent.is_empty()
+    }
+
+    /// Appends model quads into this mesh set's vanilla solid/translucent item phases, and mirrors
+    /// foiled quads into the matching glint phase. SPECIAL foil uses vanilla sheeted-decal UV
+    /// projection for the glint copy only.
+    pub fn append_quads_with_light_and_overlay_and_foil(
+        &mut self,
+        quads: &[ItemModelQuad],
+        transform: Mat4,
+        light: [f32; 2],
+        overlay: [f32; 2],
+        foil: ItemModelFoil,
+    ) {
+        for quad in quads {
+            if quad.translucent {
+                self.translucent.append_quads_with_light_and_overlay(
+                    std::slice::from_ref(quad),
+                    transform,
+                    light,
+                    overlay,
+                );
+                if foil.has_foil() {
+                    self.glint_translucent
+                        .append_quads_with_light_overlay_and_uv_mode(
+                            std::slice::from_ref(quad),
+                            transform,
+                            light,
+                            overlay,
+                            glint_uv_mode(foil),
+                        );
+                }
+            } else {
+                self.solid.append_quads_with_light_and_overlay(
+                    std::slice::from_ref(quad),
+                    transform,
+                    light,
+                    overlay,
+                );
+                if foil.has_foil() {
+                    self.glint.append_quads_with_light_overlay_and_uv_mode(
+                        std::slice::from_ref(quad),
+                        transform,
+                        light,
+                        overlay,
+                        glint_uv_mode(foil),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -306,42 +417,27 @@ pub fn bake_item_model_meshes_with_light_and_overlay_and_foil(
     overlay: [f32; 2],
     foil: bool,
 ) -> ItemModelMeshSet {
+    bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+        quads,
+        transform,
+        light,
+        overlay,
+        ItemModelFoil::from_has_foil(foil),
+    )
+}
+
+/// Bakes a model into the same split as
+/// [`bake_item_model_meshes_with_light_and_overlay_and_foil`], carrying vanilla's explicit
+/// `ItemStackRenderState.FoilType` so SPECIAL clock/compass foil can use sheeted decal UVs.
+pub fn bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+    overlay: [f32; 2],
+    foil: ItemModelFoil,
+) -> ItemModelMeshSet {
     let mut meshes = ItemModelMeshSet::default();
-    for quad in quads {
-        if quad.translucent {
-            meshes.translucent.append_quads_with_light_and_overlay(
-                std::slice::from_ref(quad),
-                transform,
-                light,
-                overlay,
-            );
-            if foil {
-                meshes
-                    .glint_translucent
-                    .append_quads_with_light_and_overlay(
-                        std::slice::from_ref(quad),
-                        transform,
-                        light,
-                        overlay,
-                    );
-            }
-        } else {
-            meshes.solid.append_quads_with_light_and_overlay(
-                std::slice::from_ref(quad),
-                transform,
-                light,
-                overlay,
-            );
-            if foil {
-                meshes.glint.append_quads_with_light_and_overlay(
-                    std::slice::from_ref(quad),
-                    transform,
-                    light,
-                    overlay,
-                );
-            }
-        }
-    }
+    meshes.append_quads_with_light_and_overlay_and_foil(quads, transform, light, overlay, foil);
     meshes
 }
 
@@ -365,6 +461,92 @@ fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
     let b = Vec3::from_array(b);
     let c = Vec3::from_array(c);
     (b - a).cross(c - a).normalize_or_zero()
+}
+
+fn glint_uv_mode(foil: ItemModelFoil) -> ItemModelUvMode {
+    match foil {
+        ItemModelFoil::None | ItemModelFoil::Standard => ItemModelUvMode::Atlas,
+        ItemModelFoil::Special { decal_pose_scale } => {
+            ItemModelUvMode::SpecialFoilDecal { decal_pose_scale }
+        }
+    }
+}
+
+fn componentwise_scaled_pose(transform: Mat4, scale: f32) -> Mat4 {
+    let mut values = transform.to_cols_array();
+    for value in &mut values {
+        *value *= scale;
+    }
+    Mat4::from_cols_array(&values)
+}
+
+fn sheeted_decal_uv(local_position: Vec3, local_normal: [f32; 3]) -> [f32; 2] {
+    let direction = approximate_nearest_direction(Vec3::from_array(local_normal));
+    let world_pos = Mat4::from_rotation_y(std::f32::consts::PI).transform_vector3(local_position);
+    let world_pos =
+        Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2).transform_vector3(world_pos);
+    let world_pos = decal_direction_rotation(direction) * world_pos;
+    [
+        -world_pos.x * SPECIAL_FOIL_TEXTURE_SCALE,
+        -world_pos.y * SPECIAL_FOIL_TEXTURE_SCALE,
+    ]
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DecalDirection {
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
+fn approximate_nearest_direction(normal: Vec3) -> DecalDirection {
+    let candidates = [
+        (DecalDirection::Down, Vec3::NEG_Y),
+        (DecalDirection::Up, Vec3::Y),
+        (DecalDirection::North, Vec3::NEG_Z),
+        (DecalDirection::South, Vec3::Z),
+        (DecalDirection::West, Vec3::NEG_X),
+        (DecalDirection::East, Vec3::X),
+    ];
+    let mut result = DecalDirection::North;
+    let mut highest_dot = f32::MIN_POSITIVE;
+    for (direction, vector) in candidates {
+        let dot = normal.dot(vector);
+        if dot > highest_dot {
+            highest_dot = dot;
+            result = direction;
+        }
+    }
+    result
+}
+
+fn decal_direction_rotation(direction: DecalDirection) -> Quat {
+    match direction {
+        DecalDirection::Down => Quat::from_rotation_x(std::f32::consts::PI),
+        DecalDirection::Up => Quat::IDENTITY,
+        DecalDirection::North => Quat::from_euler(
+            EulerRot::XYZ,
+            std::f32::consts::FRAC_PI_2,
+            0.0,
+            std::f32::consts::PI,
+        ),
+        DecalDirection::South => Quat::from_rotation_x(std::f32::consts::FRAC_PI_2),
+        DecalDirection::West => Quat::from_euler(
+            EulerRot::XYZ,
+            std::f32::consts::FRAC_PI_2,
+            0.0,
+            std::f32::consts::FRAC_PI_2,
+        ),
+        DecalDirection::East => Quat::from_euler(
+            EulerRot::XYZ,
+            std::f32::consts::FRAC_PI_2,
+            0.0,
+            -std::f32::consts::FRAC_PI_2,
+        ),
+    }
 }
 
 impl Renderer {
@@ -1065,6 +1247,17 @@ mod tests {
         }
     }
 
+    fn assert_uv_close(actual: [f32; 2], expected: [f32; 2]) {
+        assert!(
+            (actual[0] - expected[0]).abs() < 1e-6,
+            "u mismatch: actual {actual:?}, expected {expected:?}"
+        );
+        assert!(
+            (actual[1] - expected[1]).abs() < 1e-6,
+            "v mismatch: actual {actual:?}, expected {expected:?}"
+        );
+    }
+
     #[test]
     fn baking_a_quad_emits_two_triangles_normalized_to_the_unit_cube() {
         let mesh = bake_item_model_mesh(&[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])], Mat4::IDENTITY);
@@ -1212,6 +1405,59 @@ mod tests {
             meshes.glint_translucent.vertices,
             meshes.translucent.vertices
         );
+    }
+
+    #[test]
+    fn special_foil_mesh_set_projects_sheeted_decal_uvs_only_for_glint() {
+        let quad = unit_quad(1.0, [0.25, 0.5, 0.75, 1.0]);
+
+        let meshes = bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+            &[quad],
+            Mat4::IDENTITY,
+            [1.0, 1.0],
+            [0.0, 10.0],
+            ItemModelFoil::Special {
+                decal_pose_scale: 1.0,
+            },
+        );
+
+        assert_eq!(meshes.solid.indices.len(), 6);
+        assert_eq!(meshes.glint.indices.len(), 6);
+        assert_eq!(meshes.solid.vertices[0].uv, [0.0, 1.0]);
+        for (vertex, expected) in meshes.glint.vertices.iter().zip([
+            [-0.0, -0.0],
+            [1.0 / 128.0, -0.0],
+            [1.0 / 128.0, -1.0 / 128.0],
+            [-0.0, -1.0 / 128.0],
+        ]) {
+            assert_uv_close(vertex.uv, expected);
+        }
+        assert_eq!(
+            meshes.glint.vertices[0].position,
+            meshes.solid.vertices[0].position
+        );
+        assert_eq!(
+            meshes.glint.vertices[0].normal_diffuse,
+            meshes.solid.vertices[0].normal_diffuse
+        );
+    }
+
+    #[test]
+    fn special_foil_decal_pose_scale_matches_vanilla_component_scale() {
+        let quad = unit_quad(1.0, [1.0, 1.0, 1.0, 1.0]);
+
+        let gui = bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
+            &[quad],
+            Mat4::IDENTITY,
+            [1.0, 1.0],
+            [0.0, 10.0],
+            ItemModelFoil::Special {
+                decal_pose_scale: 0.5,
+            },
+        );
+
+        assert_uv_close(gui.glint.vertices[1].uv, [2.0 / 128.0, -0.0]);
+        assert_uv_close(gui.glint.vertices[2].uv, [2.0 / 128.0, -2.0 / 128.0]);
     }
 
     #[test]

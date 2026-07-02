@@ -1535,6 +1535,15 @@
     keeps `OutputTarget.ITEM_ENTITY_TARGET`, `GLINT_TEXTURING`, depth-equal,
     no-depth-write, no-cull, and no-lightmap state. SPECIAL foil decal pose, GUI
     transparent 3D icon parity, and 2D HUD/inventory sprite glint remain follow-ups.
+  - [x] SPECIAL item foil decal UVs for current world consumers：`NativeItemRuntime`
+    now detects vanilla `CuboidItemModelWrapper.hasSpecialAnimatedTexture`
+    (`minecraft:clock` plus current `tags/item/compasses`) and projects foiled
+    dropped / held / item-frame item-model submits as `ItemModelFoil::Special`.
+    The renderer bakes those glint copies through a `SheetedDecalTextureGenerator`
+    shaped UV projection (`textureScale = 1/128`) while base geometry keeps atlas
+    UVs; GUI `0.5` and first-person `0.75` decal pose scales are represented in
+    the API, but GUI flat sprite and first-person visual consumers remain later
+    presentation work.
   - [x] composter fill LevelEvent particles：event `1500` now mirrors vanilla
     `ComposterBlock.handleFill` for ten `minecraft:composter` particles,
     including gaussian `0.02` velocity, `0.1875 + 0.625 * randomFloat` X/Z

@@ -1715,6 +1715,39 @@ impl NativeItemRuntime {
         self.registry.as_ref()?.resource_id(protocol_id)
     }
 
+    /// The protocol id for an item resource id via the loaded item registry.
+    pub fn item_protocol_id(&self, resource_id: &str) -> Option<i32> {
+        self.registry.as_ref()?.protocol_id(resource_id)
+    }
+
+    /// Vanilla `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: clocks and item-tagged compasses use
+    /// `ItemStackRenderState.FoilType.SPECIAL`, which routes foil through `SheetedDecalTextureGenerator`
+    /// instead of reusing atlas UVs.
+    pub fn item_stack_uses_special_foil_texture(&self, stack: &ItemStackSummary) -> bool {
+        let Some(resource_id) = stack
+            .item_id
+            .and_then(|item_id| self.registry.as_ref()?.resource_id(item_id))
+        else {
+            return false;
+        };
+        self.item_resource_uses_special_foil_texture(resource_id)
+    }
+
+    fn item_resource_uses_special_foil_texture(&self, resource_id: &str) -> bool {
+        if resource_id == "minecraft:clock" {
+            return true;
+        }
+        self.item_tags
+            .as_ref()
+            .map(|tags| tags.contains("minecraft:compasses", resource_id))
+            .unwrap_or_else(|| {
+                matches!(
+                    resource_id,
+                    "minecraft:compass" | "minecraft:recovery_compass"
+                )
+            })
+    }
+
     /// The item's own model display transform for a context (vanilla `ItemTransform`), retained from the
     /// resolved item cuboid model. `None` if the item has no registry entry or no resolved model (the
     /// caller then falls back to the parent-model default). Used to place the 3D model in hand / frame /
@@ -4487,6 +4520,54 @@ mod tests {
             .unwrap();
         assert_eq!(stack_icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
         assert_eq!(stack_icon.layers[1].tint, rgb_i32_tint(0x12_34_56));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn special_foil_texture_detection_follows_clock_and_compasses_tag() {
+        let root = unique_temp_dir("item-runtime-special-foil");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_item_registry_source(&root, &["clock", "compass", "recovery_compass", "spyglass"]);
+        for item_id in ["clock", "compass", "recovery_compass", "spyglass"] {
+            write_json(
+                &assets.join("items").join(format!("{item_id}.json")),
+                &format!(
+                    r#"{{
+                        "model": {{ "type": "minecraft:model", "model": "minecraft:item/{item_id}" }}
+                    }}"#
+                ),
+            );
+            write_flat_item_model_and_texture(&assets, item_id, &[40, 80, 120, 255]);
+        }
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("item")
+                .join("compasses.json"),
+            r#"{
+                "replace": true,
+                "values": ["minecraft:compass"]
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let stack = |resource_id: &str| ItemStackSummary {
+            item_id: registry.protocol_id(resource_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+
+        assert!(runtime.item_stack_uses_special_foil_texture(&stack("minecraft:clock")));
+        assert!(runtime.item_stack_uses_special_foil_texture(&stack("minecraft:compass")));
+        assert!(!runtime.item_stack_uses_special_foil_texture(&stack("minecraft:recovery_compass")));
+        assert!(!runtime.item_stack_uses_special_foil_texture(&stack("minecraft:spyglass")));
 
         std::fs::remove_dir_all(root).unwrap();
     }

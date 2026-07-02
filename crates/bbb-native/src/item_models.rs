@@ -16,15 +16,15 @@ use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
     bake_item_model_mesh_with_light_and_overlay,
-    bake_item_model_meshes_with_light_and_overlay_and_foil, copper_golem_antenna_block_transform,
-    copper_golem_hand_attach_transform, custom_head_item_transforms,
-    dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
-    humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
+    bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
+    copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
+    custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
+    fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
-    EntityModelKind, HumanoidModelFamily, IllagerModelFamily, ItemModelMesh, ItemModelMeshSet,
-    ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
+    EntityModelKind, HumanoidModelFamily, IllagerModelFamily, ItemModelFoil, ItemModelMesh,
+    ItemModelMeshSet, ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
     ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{TerrainLight, WorldStore};
@@ -321,6 +321,8 @@ pub(crate) fn dropped_item_models(
                 .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
                 .unwrap_or(fallback)
         };
+        let foil =
+            item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
 
         // Block path: the item is a block with 3D item geometry.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
@@ -336,7 +338,7 @@ pub(crate) fn dropped_item_models(
                             shader_light(state.light),
                             count,
                             seed,
-                            state.stack.has_foil(),
+                            foil,
                         ),
                         &mut block_meshes,
                         &mut block_translucent_meshes,
@@ -377,7 +379,7 @@ pub(crate) fn dropped_item_models(
                 shader_light(state.light),
                 count,
                 seed,
-                state.stack.has_foil(),
+                foil,
             ),
             &mut flat_meshes,
             &mut flat_translucent_meshes,
@@ -454,6 +456,37 @@ pub(crate) fn display_matrix(display: &BlockModelDisplayTransform, left_hand: bo
         * rotation
         * Mat4::from_scale(Vec3::from_array(display.scale))
         * Mat4::from_translation(Vec3::splat(-0.5))
+}
+
+pub(crate) fn item_stack_foil_mode(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+    context: BlockModelDisplayContext,
+) -> ItemModelFoil {
+    if !stack.has_foil() {
+        return ItemModelFoil::None;
+    }
+    if item_runtime.item_stack_uses_special_foil_texture(stack) {
+        ItemModelFoil::Special {
+            decal_pose_scale: special_foil_decal_pose_scale(context),
+        }
+    } else {
+        ItemModelFoil::Standard
+    }
+}
+
+fn special_foil_decal_pose_scale(context: BlockModelDisplayContext) -> f32 {
+    match context {
+        BlockModelDisplayContext::Gui => 0.5,
+        BlockModelDisplayContext::FirstPersonLeftHand
+        | BlockModelDisplayContext::FirstPersonRightHand => 0.75,
+        BlockModelDisplayContext::ThirdPersonLeftHand
+        | BlockModelDisplayContext::ThirdPersonRightHand
+        | BlockModelDisplayContext::Head
+        | BlockModelDisplayContext::Ground
+        | BlockModelDisplayContext::Fixed
+        | BlockModelDisplayContext::OnShelf => 1.0,
+    }
 }
 
 /// The baked held-item meshes for this frame, split by atlas (block-items vs flat items).
@@ -1424,12 +1457,12 @@ fn bake_item_stack_at_transform(
                 let display = retained.unwrap_or(block_fallback);
                 let transform = attach * display_matrix(&display, left_hand);
                 push_mesh_set(
-                    bake_item_model_meshes_with_light_and_overlay_and_foil(
+                    bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
                         &quads,
                         transform,
                         ITEM_MODEL_FULL_BRIGHT_LIGHT,
                         ITEM_MODEL_NO_OVERLAY,
-                        stack.has_foil(),
+                        item_stack_foil_mode(stack, item_runtime, context),
                     ),
                     block_meshes,
                     block_translucent_meshes,
@@ -1476,12 +1509,12 @@ fn bake_item_stack_at_transform(
     let display = retained.unwrap_or(generated_fallback);
     let transform = attach * display_matrix(&display, left_hand);
     push_mesh_set(
-        bake_item_model_meshes_with_light_and_overlay_and_foil(
+        bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
             &quads,
             transform,
             ITEM_MODEL_FULL_BRIGHT_LIGHT,
             ITEM_MODEL_NO_OVERLAY,
-            stack.has_foil(),
+            item_stack_foil_mode(stack, item_runtime, context),
         ),
         flat_meshes,
         flat_translucent_meshes,
@@ -1513,7 +1546,7 @@ fn stacked_item_mesh(
     light: [f32; 2],
     count: usize,
     seed: i64,
-    foil: bool,
+    foil: ItemModelFoil,
 ) -> ItemModelMeshSet {
     let ground_matrix = display_matrix(ground, false);
     // Vanilla `ItemEntityRenderer.submit`: `minOffsetY = -modelBoundingBox.minY + 1/16` seats the
@@ -1609,24 +1642,15 @@ fn append_quads_to_mesh_set(
     quads: &[ItemModelQuad],
     transform: Mat4,
     light: [f32; 2],
-    foil: bool,
+    foil: ItemModelFoil,
 ) {
-    for quad in quads {
-        let mesh = if quad.translucent {
-            &mut meshes.translucent
-        } else {
-            &mut meshes.solid
-        };
-        mesh.append_quads_with_light(std::slice::from_ref(quad), transform, light);
-        if foil {
-            let glint_mesh = if quad.translucent {
-                &mut meshes.glint_translucent
-            } else {
-                &mut meshes.glint
-            };
-            glint_mesh.append_quads_with_light(std::slice::from_ref(quad), transform, light);
-        }
-    }
+    meshes.append_quads_with_light_and_overlay_and_foil(
+        quads,
+        transform,
+        light,
+        ITEM_MODEL_NO_OVERLAY,
+        foil,
+    );
 }
 
 fn append_cluster(
@@ -1638,7 +1662,7 @@ fn append_cluster(
     count: usize,
     seed: i64,
     depth: f32,
-    foil: bool,
+    foil: ItemModelFoil,
 ) {
     let mut random = LegacyRandom::new(seed);
     if depth > FLAT_ITEM_DEPTH_THRESHOLD {
@@ -2933,7 +2957,7 @@ mod tests {
             [4.0 / 15.0, 11.0 / 15.0],
             1,
             7,
-            false,
+            ItemModelFoil::None,
         );
         let cluster = stacked_item_mesh(
             &quads,
@@ -2944,7 +2968,7 @@ mod tests {
             [4.0 / 15.0, 11.0 / 15.0],
             4,
             7,
-            false,
+            ItemModelFoil::None,
         );
         assert!(!single.is_empty());
         assert!(!cluster.is_empty());
@@ -2966,7 +2990,7 @@ mod tests {
             [1.0, 1.0],
             1,
             7,
-            false,
+            ItemModelFoil::None,
         );
         let foiled = stacked_item_mesh(
             &quads,
@@ -2977,7 +3001,7 @@ mod tests {
             [1.0, 1.0],
             1,
             7,
-            true,
+            ItemModelFoil::Standard,
         );
 
         assert!(plain.glint.is_empty());
@@ -3011,6 +3035,76 @@ mod tests {
         let block_head =
             display_matrix(&BLOCK_HEAD_FALLBACK, false).transform_point3(Vec3::splat(0.5));
         assert!((block_head - Vec3::ZERO).length() < 1e-6);
+    }
+
+    #[test]
+    fn item_stack_foil_mode_projects_vanilla_special_context_scale() {
+        let root = unique_item_model_temp_dir("special-foil-mode");
+        write_flat_item_runtime_fixture(&root, &["clock", "spyglass"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let foiled_stack = |resource_id: &str| ItemStackSummary {
+            item_id: item_runtime.item_protocol_id(resource_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                enchantment_glint_override: Some(true),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let plain_clock = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:clock"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+
+        assert_eq!(
+            item_stack_foil_mode(
+                &foiled_stack("minecraft:clock"),
+                &item_runtime,
+                BlockModelDisplayContext::Ground
+            ),
+            ItemModelFoil::Special {
+                decal_pose_scale: 1.0
+            }
+        );
+        assert_eq!(
+            item_stack_foil_mode(
+                &foiled_stack("minecraft:clock"),
+                &item_runtime,
+                BlockModelDisplayContext::Gui
+            ),
+            ItemModelFoil::Special {
+                decal_pose_scale: 0.5
+            }
+        );
+        assert_eq!(
+            item_stack_foil_mode(
+                &foiled_stack("minecraft:clock"),
+                &item_runtime,
+                BlockModelDisplayContext::FirstPersonRightHand
+            ),
+            ItemModelFoil::Special {
+                decal_pose_scale: 0.75
+            }
+        );
+        assert_eq!(
+            item_stack_foil_mode(
+                &foiled_stack("minecraft:spyglass"),
+                &item_runtime,
+                BlockModelDisplayContext::Ground
+            ),
+            ItemModelFoil::Standard
+        );
+        assert_eq!(
+            item_stack_foil_mode(
+                &plain_clock,
+                &item_runtime,
+                BlockModelDisplayContext::Ground
+            ),
+            ItemModelFoil::None
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
