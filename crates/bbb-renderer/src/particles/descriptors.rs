@@ -296,6 +296,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
         scale: f64,
         y_offset: f64,
     },
+    TerrainDustPillar,
     CrimsonSpore,
     WarpedSpore,
     CampfireSmoke,
@@ -1807,6 +1808,53 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:block" => terrain_particle_descriptor(
+                "TerrainParticle.Provider",
+                ParticleLifetimeDescriptor::BaseParticle,
+                ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 1.0 },
+            ),
+            "minecraft:block_marker" => Self {
+                provider: "BlockMarker.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(80),
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 0.5,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dust_pillar" => terrain_particle_descriptor(
+                "TerrainParticle.DustPillarProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 20, max: 39 },
+                ParticleInitialVelocityDescriptor::TerrainDustPillar,
+            ),
+            "minecraft:block_crumble" => terrain_particle_descriptor(
+                "TerrainParticle.CrumblingProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 1, max: 10 },
+                ParticleInitialVelocityDescriptor::Zero,
+            ),
+            "minecraft:item" => breaking_item_particle_descriptor(
+                "BreakingItemParticle.Provider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                    scale: 0.1,
+                },
+            ),
+            "minecraft:item_slime" => breaking_item_particle_descriptor(
+                "BreakingItemParticle.SlimeProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
+            "minecraft:item_cobweb" => breaking_item_particle_descriptor(
+                "BreakingItemParticle.CobwebProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
+            "minecraft:item_snowball" => breaking_item_particle_descriptor(
+                "BreakingItemParticle.SnowballProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
             _ => Self {
                 provider: "Particle",
                 lifetime: ParticleLifetimeDescriptor::BaseParticle,
@@ -2403,6 +2451,11 @@ impl ParticleInitialVelocityDescriptor {
                     z / length * speed * 0.4 * scale,
                 ]
             }
+            Self::TerrainDustPillar => [
+                random.next_gaussian() / 30.0,
+                command_velocity[1] + random.next_gaussian() / 2.0,
+                random.next_gaussian() / 30.0,
+            ],
             Self::CampfireSmoke => [
                 command_velocity[0],
                 command_velocity[1] + f64::from(random.next_f32()) / 500.0,
@@ -2615,6 +2668,7 @@ const DRAGON_BREATH_COLOR_MIN: [f32; 3] = [0.717_647_1, 0.0, 0.823_529_4];
 const DRAGON_BREATH_COLOR_MAX: [f32; 3] = [0.874_509_8, 0.0, 0.976_470_6];
 const CRIT_COLOR_SCALE: [f32; 3] = [1.0, 0.96, 0.9];
 const MAGIC_CRIT_COLOR_SCALE: [f32; 3] = [0.3, 0.768, 0.9];
+const TERRAIN_PARTICLE_RGB: [f32; 3] = [0.6, 0.6, 0.6];
 
 impl ParticleRandom {
     pub(crate) fn new(seed: i64) -> Self {
@@ -2721,6 +2775,49 @@ fn pale_oak_falling_leaves_descriptor() -> FallingLeavesDescriptor {
         flow_away: false,
         scale: 2.0,
         start_velocity: 0.021,
+    }
+}
+
+fn terrain_particle_descriptor(
+    provider: &'static str,
+    lifetime: ParticleLifetimeDescriptor,
+    initial_velocity: ParticleInitialVelocityDescriptor,
+) -> ParticleDescriptor {
+    ParticleDescriptor {
+        provider,
+        lifetime,
+        sprite_selection: ParticleSpriteSelection::First,
+        visual: ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.5,
+            color: ParticleColorDescriptor::FixedRgb(TERRAIN_PARTICLE_RGB),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        },
+        initial_velocity,
+        friction: 0.98,
+        gravity: 1.0,
+        has_physics: true,
+        speed_up_when_y_motion_is_blocked: false,
+    }
+}
+
+fn breaking_item_particle_descriptor(
+    provider: &'static str,
+    initial_velocity: ParticleInitialVelocityDescriptor,
+) -> ParticleDescriptor {
+    ParticleDescriptor {
+        provider,
+        lifetime: ParticleLifetimeDescriptor::BaseParticle,
+        sprite_selection: ParticleSpriteSelection::First,
+        visual: ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.5,
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        },
+        initial_velocity,
+        friction: 0.98,
+        gravity: 1.0,
+        has_physics: true,
+        speed_up_when_y_motion_is_blocked: false,
     }
 }
 
@@ -4930,6 +5027,123 @@ mod tests {
     }
 
     #[test]
+    fn particle_descriptor_maps_terrain_and_item_atlas_provider_shapes() {
+        let terrain_visual = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.5,
+            color: ParticleColorDescriptor::FixedRgb(TERRAIN_PARTICLE_RGB),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        };
+        for (particle_id, provider, lifetime, initial_velocity) in [
+            (
+                "minecraft:block",
+                "TerrainParticle.Provider",
+                ParticleLifetimeDescriptor::BaseParticle,
+                ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 1.0 },
+            ),
+            (
+                "minecraft:dust_pillar",
+                "TerrainParticle.DustPillarProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 20, max: 39 },
+                ParticleInitialVelocityDescriptor::TerrainDustPillar,
+            ),
+            (
+                "minecraft:block_crumble",
+                "TerrainParticle.CrumblingProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 1, max: 10 },
+                ParticleInitialVelocityDescriptor::Zero,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                lifetime,
+                ParticleSpriteSelection::First,
+                terrain_visual,
+                0.98,
+                1.0,
+                true,
+                false,
+            );
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).initial_velocity,
+                initial_velocity,
+                "{particle_id}"
+            );
+        }
+
+        assert_descriptor(
+            "minecraft:block_marker",
+            "BlockMarker.Provider",
+            ParticleLifetimeDescriptor::Fixed(80),
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.5,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.98,
+            0.0,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:block_marker").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+
+        let item_visual = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.5,
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        };
+        for (particle_id, provider, initial_velocity) in [
+            (
+                "minecraft:item",
+                "BreakingItemParticle.Provider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                    scale: 0.1,
+                },
+            ),
+            (
+                "minecraft:item_slime",
+                "BreakingItemParticle.SlimeProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
+            (
+                "minecraft:item_cobweb",
+                "BreakingItemParticle.CobwebProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
+            (
+                "minecraft:item_snowball",
+                "BreakingItemParticle.SnowballProvider",
+                ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                ParticleLifetimeDescriptor::BaseParticle,
+                ParticleSpriteSelection::First,
+                item_visual,
+                0.98,
+                1.0,
+                true,
+                false,
+            );
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).initial_velocity,
+                initial_velocity,
+                "{particle_id}"
+            );
+        }
+
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:falling_dust").provider,
+            "Particle"
+        );
+    }
+
+    #[test]
     fn sprite_index_for_age_matches_vanilla_integer_frame_selection() {
         assert_eq!(sprite_index_for_age(8, 0, 20), Some(0));
         assert_eq!(sprite_index_for_age(8, 10, 20), Some(3));
@@ -5439,6 +5653,18 @@ mod tests {
         assert_close_f64(crimson_velocity[0], 1.3558214650566454E-6);
         assert_close_f64(crimson_velocity[1], -0.8270729973920494E-4);
         assert_close_f64(crimson_velocity[2], 1.6065611415614136E-6);
+
+        let mut expected_dust_pillar_random = ParticleRandom::new(46);
+        let expected_dust_pillar = [
+            expected_dust_pillar_random.next_gaussian() / 30.0,
+            0.25 + expected_dust_pillar_random.next_gaussian() / 2.0,
+            expected_dust_pillar_random.next_gaussian() / 30.0,
+        ];
+        let dust_pillar_velocity = ParticleInitialVelocityDescriptor::TerrainDustPillar
+            .sample([9.0, 0.25, 9.0], &mut ParticleRandom::new(46));
+        assert_close_f64(dust_pillar_velocity[0], expected_dust_pillar[0]);
+        assert_close_f64(dust_pillar_velocity[1], expected_dust_pillar[1]);
+        assert_close_f64(dust_pillar_velocity[2], expected_dust_pillar[2]);
 
         let warped_velocity = ParticleInitialVelocityDescriptor::WarpedSpore
             .sample([9.0, 9.0, 9.0], &mut ParticleRandom::new(47));

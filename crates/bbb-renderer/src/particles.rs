@@ -89,6 +89,12 @@ pub struct ParticleItemOptionState {
     pub component_patch_len: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ParticleAtlasUvSubRect {
+    pub(crate) u_offset: f32,
+    pub(crate) v_offset: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleUvRect {
     pub min: [f32; 2],
@@ -219,6 +225,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub(crate) option_item: Option<ParticleItemOptionState>,
+    #[serde(default)]
+    pub(crate) atlas_uv_sub_rect: Option<ParticleAtlasUvSubRect>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -762,6 +770,8 @@ impl ParticleInstance {
             } else {
                 (0.0, 0.0, 0.0, 0.0)
             };
+        let atlas_uv_sub_rect =
+            particle_atlas_uv_sub_rect_for_particle(&command.particle_id, random);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -816,6 +826,7 @@ impl ParticleInstance {
             option_roll: command.option_roll,
             option_block: command.option_block,
             option_item: command.option_item,
+            atlas_uv_sub_rect,
         }
     }
 
@@ -1833,6 +1844,26 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:witch" => ParticleRenderLayer::Translucent,
         _ => ParticleRenderLayer::Opaque,
     }
+}
+
+fn particle_atlas_uv_sub_rect_for_particle(
+    particle_id: &str,
+    random: &mut ParticleRandom,
+) -> Option<ParticleAtlasUvSubRect> {
+    matches!(
+        particle_id,
+        "minecraft:block"
+            | "minecraft:dust_pillar"
+            | "minecraft:block_crumble"
+            | "minecraft:item"
+            | "minecraft:item_slime"
+            | "minecraft:item_cobweb"
+            | "minecraft:item_snowball"
+    )
+    .then(|| ParticleAtlasUvSubRect {
+        u_offset: random.next_f32() * 3.0,
+        v_offset: random.next_f32() * 3.0,
+    })
 }
 
 fn particle_vertex(
@@ -5230,6 +5261,90 @@ mod tests {
     }
 
     #[test]
+    fn particle_instances_record_terrain_and_item_atlas_provider_shape_and_sub_rects() {
+        let mut random = ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED);
+        let block = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block", 0.0),
+            &mut random,
+        );
+        let block_marker = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block_marker", 1.0),
+            &mut random,
+        );
+        let dust_pillar = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dust_pillar", 2.0),
+            &mut random,
+        );
+        let block_crumble = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:block_crumble", 3.0),
+            &mut random,
+        );
+        let item =
+            ParticleInstance::from_spawn_command(spawn_command("minecraft:item", 4.0), &mut random);
+        let item_slime = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_slime", 5.0),
+            &mut random,
+        );
+        let item_cobweb = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_cobweb", 6.0),
+            &mut random,
+        );
+        let item_snowball = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:item_snowball", 7.0),
+            &mut random,
+        );
+        let falling_dust = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_dust", 8.0),
+            &mut random,
+        );
+
+        for terrain in [&block, &dust_pillar, &block_crumble] {
+            assert_eq!(terrain.render_layer, ParticleRenderLayer::OpaqueTerrain);
+            assert_range_f32(terrain.base_quad_size, 0.05, 0.1);
+            assert_eq!(terrain.color, [0.6, 0.6, 0.6, 1.0]);
+            assert_close_f32(terrain.gravity, 1.0);
+            assert!(terrain.has_physics);
+            assert_atlas_sub_rect(terrain);
+        }
+        assert_eq!(block.provider, "TerrainParticle.Provider");
+        assert_eq!(dust_pillar.provider, "TerrainParticle.DustPillarProvider");
+        assert_range_f32(dust_pillar.lifetime_ticks as f32, 20.0, 39.0);
+        assert_eq!(block_crumble.provider, "TerrainParticle.CrumblingProvider");
+        assert_range_f32(block_crumble.lifetime_ticks as f32, 1.0, 10.0);
+
+        assert_eq!(block_marker.provider, "BlockMarker.Provider");
+        assert_eq!(
+            block_marker.render_layer,
+            ParticleRenderLayer::OpaqueTerrain
+        );
+        assert_close_f32(block_marker.base_quad_size, 0.5);
+        assert_eq!(block_marker.lifetime_ticks, 80);
+        assert_close_f32(block_marker.gravity, 0.0);
+        assert!(!block_marker.has_physics);
+        assert_eq!(block_marker.atlas_uv_sub_rect, None);
+
+        for item_particle in [&item, &item_slime, &item_cobweb, &item_snowball] {
+            assert_eq!(item_particle.render_layer, ParticleRenderLayer::OpaqueItems);
+            assert_range_f32(item_particle.base_quad_size, 0.05, 0.1);
+            assert_eq!(item_particle.color, [1.0, 1.0, 1.0, 1.0]);
+            assert_close_f32(item_particle.gravity, 1.0);
+            assert!(item_particle.has_physics);
+            assert_atlas_sub_rect(item_particle);
+        }
+        assert_eq!(item.provider, "BreakingItemParticle.Provider");
+        assert_eq!(item_slime.provider, "BreakingItemParticle.SlimeProvider");
+        assert_eq!(item_cobweb.provider, "BreakingItemParticle.CobwebProvider");
+        assert_eq!(
+            item_snowball.provider,
+            "BreakingItemParticle.SnowballProvider"
+        );
+
+        assert_eq!(falling_dust.provider, "Particle");
+        assert_eq!(falling_dust.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(falling_dust.atlas_uv_sub_rect, None);
+    }
+
+    #[test]
     fn particle_runtime_snowflake_applies_vanilla_post_tick_damping() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:snowflake", 20);
@@ -6090,6 +6205,7 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            atlas_uv_sub_rect: None,
         }
     }
 
@@ -6143,6 +6259,14 @@ mod tests {
             actual >= min && actual <= max,
             "expected {actual} to be in {min}..={max}"
         );
+    }
+
+    fn assert_atlas_sub_rect(instance: &ParticleInstance) {
+        let sub_rect = instance
+            .atlas_uv_sub_rect
+            .expect("terrain/item atlas particle should record a 4x4 sub-rect offset");
+        assert_range_f32(sub_rect.u_offset, 0.0, 3.0);
+        assert_range_f32(sub_rect.v_offset, 0.0, 3.0);
     }
 
     fn assert_close3(actual: [f64; 3], expected: [f64; 3]) {

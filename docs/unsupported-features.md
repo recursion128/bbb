@@ -176,9 +176,13 @@ When an agent does any of the following, update this file in the same slice:
       - native now decodes `BlockParticleOption` block-state ids for block
         atlas particles plus `falling_dust`, and decodes `ItemParticleOption`
         item id / count plus raw component patch byte length for `item`
-      - resolving block/item atlas sprites, terrain tint, random 4x4 UV
-        sub-rects, sprite-transparency-driven terrain/item layer selection,
-        and transparent terrain/items vertex emission remain deferred
+      - renderer now records vanilla TerrainParticle / BreakingItemParticle /
+        BlockMarker provider shape plus random 4x4 UV sub-rect offsets for the
+        TerrainParticle / BreakingItemParticle paths
+      - resolving block/item atlas sprites, terrain tint, converting the
+        recorded sub-rect offsets into real atlas UV emission,
+        sprite-transparency-driven terrain/item layer selection, and
+        transparent terrain/items vertex emission remain deferred
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
       trial-spawner/happy-villager side effects
@@ -196,10 +200,12 @@ When an agent does any of the following, update this file in the same slice:
       through vanilla-shaped `RenderPipelines.OPAQUE_PARTICLE` (no blend) and
       `RenderPipelines.TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`)
       GPU pipelines. Definition-less block/item atlas particle types now keep
-      submission commands, record terrain/item layer metadata, and preserve
-      decoded block-state / item-template option metadata, but actual
-      block/item atlas sprite lookup, terrain tint, random 4x4 UV sub-rects,
-      and transparent terrain/item splitting remain follow-up work.
+      submission commands, record terrain/item layer metadata, preserve decoded
+      block-state / item-template option metadata, and record vanilla provider
+      shape plus TerrainParticle / BreakingItemParticle random 4x4 sub-rect
+      offsets, but actual block/item atlas sprite lookup, terrain tint,
+      sub-rect atlas UV emission, and transparent terrain/item splitting remain
+      follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
