@@ -451,8 +451,33 @@ pub struct MinecartDisplayBlockState {
     pub display_offset: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EntityModelSourceState {
+/// Generates the [`EntityModelSourceState`] struct from one `pub $name: $ty`
+/// declaration per field, forwarding each field's doc comments and
+/// `#[serde(...)]` attributes verbatim so serialization stays byte-identical and
+/// other crates keep plain `pub` field access. Adding a projected source field is
+/// a single declaration here instead of a struct field plus a matching serde
+/// default. Fields carry `pub` in the declaration so the invocation reads like the
+/// struct body and the byte-for-byte serde forwarding is obvious; `macro_rules!`
+/// forwards the attributes but cannot itself synthesize the field names, so each
+/// field is spelled out once.
+macro_rules! entity_model_source_state {
+    (
+        $(
+            $(#[$meta:meta])*
+            pub $name:ident : $ty:ty
+        ),* $(,)?
+    ) => {
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+        pub struct EntityModelSourceState {
+            $(
+                $(#[$meta])*
+                pub $name: $ty,
+            )*
+        }
+    };
+}
+
+entity_model_source_state! {
     pub entity_id: i32,
     #[serde(default)]
     pub uuid: uuid::Uuid,
