@@ -1867,13 +1867,13 @@ impl WorldStore {
             target.position,
             partial_ticks,
             &self.registries,
-            &self.default_item_max_damage,
-            &self.default_item_armor_materials,
-            &self.default_item_equipment_slots,
-            &self.default_llama_body_decor_colors,
-            &self.default_nautilus_body_armor_materials,
-            &self.default_horse_body_armor_materials,
-            &self.default_wolf_body_armor_materials,
+            &self.items.default_item_max_damage,
+            &self.items.default_item_armor_materials,
+            &self.items.default_item_equipment_slots,
+            &self.items.default_llama_body_decor_colors,
+            &self.items.default_nautilus_body_armor_materials,
+            &self.items.default_horse_body_armor_materials,
+            &self.items.default_wolf_body_armor_materials,
         )?;
         source.light = self
             .sample_block_light(entity_light_block_pos(target.position))

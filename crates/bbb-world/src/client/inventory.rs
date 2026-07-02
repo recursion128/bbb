@@ -993,7 +993,7 @@ impl WorldStore {
 
         self.local_player_inventory_item(i32::from(selected_slot))
             .is_some_and(|item| {
-                item_stack_has_piercing_weapon(item, &self.default_piercing_weapon_item_ids)
+                item_stack_has_piercing_weapon(item, &self.items.default_piercing_weapon_item_ids)
             })
     }
 
@@ -1004,7 +1004,7 @@ impl WorldStore {
         }
 
         self.local_player_inventory_item(i32::from(selected_slot))
-            .and_then(|item| item_stack_attack_range(item, &self.default_item_attack_ranges))
+            .and_then(|item| item_stack_attack_range(item, &self.items.default_item_attack_ranges))
     }
 
     pub(crate) fn entity_held_item_swing_duration(&self, id: i32, off_hand: bool) -> i32 {
@@ -1013,7 +1013,10 @@ impl WorldStore {
             .map(|item| {
                 self.entity_swing_duration_with_effects(
                     id,
-                    item_stack_swing_duration(item, &self.default_item_swing_animation_durations),
+                    item_stack_swing_duration(
+                        item,
+                        &self.items.default_item_swing_animation_durations,
+                    ),
                 )
             })
             .unwrap_or(ATTACK_SWING_DURATION)
@@ -1045,7 +1048,7 @@ impl WorldStore {
             }
         }?;
 
-        item_stack_use_effects(item, &self.default_item_use_effects)
+        item_stack_use_effects(item, &self.items.default_item_use_effects)
     }
 
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
@@ -1084,7 +1087,7 @@ impl WorldStore {
     }
 
     pub fn set_default_item_max_stack_sizes(&mut self, max_stack_sizes: BTreeMap<i32, i32>) {
-        self.default_item_max_stack_sizes = max_stack_sizes
+        self.items.default_item_max_stack_sizes = max_stack_sizes
             .into_iter()
             .filter(|(item_id, size)| *item_id >= 0 && *size > 0)
             .map(|(item_id, size)| (item_id, clamp_vanilla_item_max_stack_size(size)))
@@ -1092,29 +1095,30 @@ impl WorldStore {
     }
 
     pub fn set_default_item_max_damage(&mut self, max_damage: BTreeMap<i32, i32>) {
-        self.default_item_max_damage = max_damage
+        self.items.default_item_max_damage = max_damage
             .into_iter()
             .filter(|(item_id, max_damage)| *item_id >= 0 && *max_damage > 0)
             .collect();
     }
 
     pub fn set_default_item_crafting_remainders(&mut self, remainders: BTreeMap<i32, i32>) {
-        self.default_item_crafting_remainders_known = true;
-        self.default_item_crafting_remainders = remainders
+        self.items.default_item_crafting_remainders_known = true;
+        self.items.default_item_crafting_remainders = remainders
             .into_iter()
             .filter(|(item_id, remainder_id)| *item_id >= 0 && *remainder_id >= 0)
             .collect();
     }
 
     pub fn set_recipe_specific_crafting_remainder_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.recipe_specific_crafting_remainder_item_ids = item_ids
+        self.items.recipe_specific_crafting_remainder_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
-        self.default_item_max_stack_sizes
+        self.items
+            .default_item_max_stack_sizes
             .get(&item_id)
             .copied()
             .map(clamp_vanilla_item_max_stack_size)
@@ -1140,7 +1144,7 @@ impl WorldStore {
             container.container_id,
             &mut container.slots,
             &offer,
-            &self.default_item_max_stack_sizes,
+            &self.items.default_item_max_stack_sizes,
         );
         true
     }
@@ -1164,63 +1168,63 @@ impl WorldStore {
     }
 
     pub fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.furnace_fuel_item_ids = item_ids
+        self.items.furnace_fuel_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_brewing_potion_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.brewing_potion_item_ids = item_ids
+        self.items.brewing_potion_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_brewing_ingredient_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.brewing_ingredient_item_ids = item_ids
+        self.items.brewing_ingredient_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_enchantment_lapis_lazuli_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.enchantment_lapis_lazuli_item_ids = item_ids
+        self.items.enchantment_lapis_lazuli_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_cartography_additional_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.cartography_additional_item_ids = item_ids
+        self.items.cartography_additional_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_default_damageable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.default_damageable_item_ids = item_ids
+        self.items.default_damageable_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_freeze_immune_wearable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.freeze_immune_wearable_item_ids = item_ids
+        self.items.freeze_immune_wearable_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_powder_snow_walkable_foot_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.powder_snow_walkable_foot_item_ids = item_ids
+        self.items.powder_snow_walkable_foot_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
     }
 
     pub fn set_default_piercing_weapon_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.default_piercing_weapon_item_ids = item_ids
+        self.items.default_piercing_weapon_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
@@ -1230,14 +1234,14 @@ impl WorldStore {
         &mut self,
         attack_ranges: BTreeMap<i32, ItemAttackRange>,
     ) {
-        self.default_item_attack_ranges = attack_ranges
+        self.items.default_item_attack_ranges = attack_ranges
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
     }
 
     pub fn set_default_item_swing_animation_durations(&mut self, durations: BTreeMap<i32, i32>) {
-        self.default_item_swing_animation_durations = durations
+        self.items.default_item_swing_animation_durations = durations
             .into_iter()
             .filter(|(item_id, duration)| *item_id >= 0 && *duration > 0)
             .collect();
@@ -1271,7 +1275,7 @@ impl WorldStore {
     }
 
     pub fn set_default_item_use_effects(&mut self, use_effects: BTreeMap<i32, ItemUseEffects>) {
-        self.default_item_use_effects = use_effects
+        self.items.default_item_use_effects = use_effects
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1281,7 +1285,7 @@ impl WorldStore {
         &mut self,
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     ) {
-        self.default_item_equipment_slots = equipment_slots
+        self.items.default_item_equipment_slots = equipment_slots
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1293,7 +1297,7 @@ impl WorldStore {
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_item_armor_materials = armor_materials
+        self.items.default_item_armor_materials = armor_materials
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1303,7 +1307,7 @@ impl WorldStore {
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     ) {
-        self.default_mount_body_armor_kinds = armor_kinds
+        self.items.default_mount_body_armor_kinds = armor_kinds
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1313,7 +1317,7 @@ impl WorldStore {
         &mut self,
         decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
     ) {
-        self.default_llama_body_decor_colors = decor_colors
+        self.items.default_llama_body_decor_colors = decor_colors
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1323,7 +1327,7 @@ impl WorldStore {
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_nautilus_body_armor_materials = armor_materials
+        self.items.default_nautilus_body_armor_materials = armor_materials
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1333,7 +1337,7 @@ impl WorldStore {
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_horse_body_armor_materials = armor_materials
+        self.items.default_horse_body_armor_materials = armor_materials
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1343,7 +1347,7 @@ impl WorldStore {
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
-        self.default_wolf_body_armor_materials = armor_materials
+        self.items.default_wolf_body_armor_materials = armor_materials
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1426,9 +1430,9 @@ impl WorldStore {
             request.slot_num,
             request.input,
             &slots_after,
-            self.default_item_crafting_remainders_known,
-            &self.default_item_crafting_remainders,
-            &self.recipe_specific_crafting_remainder_item_ids,
+            self.items.default_item_crafting_remainders_known,
+            &self.items.default_item_crafting_remainders,
+            &self.items.recipe_specific_crafting_remainder_item_ids,
         ) {
             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                 request.input,
@@ -1447,11 +1451,11 @@ impl WorldStore {
                         &mut slots_after,
                         &mut cursor_after,
                         request.button_num,
-                        self.default_item_crafting_remainders_known,
-                        &self.default_item_crafting_remainders,
-                        &self.recipe_specific_crafting_remainder_item_ids,
+                        self.items.default_item_crafting_remainders_known,
+                        &self.items.default_item_crafting_remainders,
+                        &self.items.recipe_specific_crafting_remainder_item_ids,
                         self.local_player.selected_hotbar_slot,
-                        &self.default_item_max_stack_sizes,
+                        &self.items.default_item_max_stack_sizes,
                     ) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::Pickup,
@@ -1473,7 +1477,7 @@ impl WorldStore {
                         &mut cursor_after,
                         request.button_num,
                         selected_offer.as_ref(),
-                        &self.default_item_max_stack_sizes,
+                        &self.items.default_item_max_stack_sizes,
                     ) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::Pickup,
@@ -1572,7 +1576,7 @@ impl WorldStore {
                     &mut cursor_after,
                     request.slot_num,
                     request.button_num,
-                    &self.default_item_max_stack_sizes,
+                    &self.items.default_item_max_stack_sizes,
                 ),
                 ProtocolContainerInput::Clone => apply_clone_click_to_slots(
                     &slots_after,
@@ -1581,24 +1585,24 @@ impl WorldStore {
                     self.local_player
                         .abilities
                         .is_some_and(|abilities| abilities.instabuild),
-                    &self.default_item_max_stack_sizes,
+                    &self.items.default_item_max_stack_sizes,
                 ),
                 ProtocolContainerInput::QuickMove => {
                     if container_id == INVENTORY_MENU_CONTAINER_ID {
                         if request.slot_num == 0 {
                             apply_inventory_menu_result_quick_move_to_slots(
                                 &mut slots_after,
-                                &self.default_item_crafting_remainders,
+                                &self.items.default_item_crafting_remainders,
                                 self.local_player.selected_hotbar_slot,
-                                &self.default_item_max_stack_sizes,
+                                &self.items.default_item_max_stack_sizes,
                             );
                         } else {
                             apply_quick_move_to_slots(
                                 container_id,
                                 &mut slots_after,
                                 request.slot_num,
-                                &self.default_item_equipment_slots,
-                                &self.default_item_max_stack_sizes,
+                                &self.items.default_item_equipment_slots,
+                                &self.items.default_item_max_stack_sizes,
                             )
                         }
                     } else if let Some(container_slot_count) =
@@ -1609,15 +1613,15 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if mount.is_some() {
                         if mount_inventory_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
                             mount_equipment_slots,
-                            &self.default_item_equipment_slots,
-                            &self.default_mount_body_armor_kinds,
+                            &self.items.default_item_equipment_slots,
+                            &self.items.default_mount_body_armor_kinds,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1628,9 +1632,9 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             mount_equipment_slots,
-                            &self.default_item_equipment_slots,
-                            &self.default_mount_body_armor_kinds,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_equipment_slots,
+                            &self.items.default_mount_body_armor_kinds,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
                         generic_3x3_container_slot_count(menu_type_id)
@@ -1640,18 +1644,18 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID) {
                         if request.slot_num == CRAFTING_MENU_RESULT_SLOT {
                             if !apply_crafting_menu_result_quick_move_to_slots(
                                 container_id,
                                 &mut slots_after,
-                                self.default_item_crafting_remainders_known,
-                                &self.default_item_crafting_remainders,
-                                &self.recipe_specific_crafting_remainder_item_ids,
+                                self.items.default_item_crafting_remainders_known,
+                                &self.items.default_item_crafting_remainders,
+                                &self.items.recipe_specific_crafting_remainder_item_ids,
                                 self.local_player.selected_hotbar_slot,
-                                &self.default_item_max_stack_sizes,
+                                &self.items.default_item_max_stack_sizes,
                             ) {
                                 return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                     ProtocolContainerInput::QuickMove,
@@ -1662,7 +1666,7 @@ impl WorldStore {
                                 container_id,
                                 &mut slots_after,
                                 request.slot_num,
-                                &self.default_item_max_stack_sizes,
+                                &self.items.default_item_max_stack_sizes,
                             )
                         }
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_ID) {
@@ -1672,7 +1676,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             &disabled_slots,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_ANVIL_ID) {
                         if anvil_quick_move_requires_server_authority(
@@ -1688,7 +1692,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             anvil_result_may_pickup,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_BEACON_ID) {
                         apply_beacon_menu_quick_move_to_slots(
@@ -1696,13 +1700,13 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             self.registry_tags("minecraft:item"),
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_ENCHANTMENT_ID) {
                         if enchantment_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
-                            &self.enchantment_lapis_lazuli_item_ids,
+                            &self.items.enchantment_lapis_lazuli_item_ids,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1712,8 +1716,8 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
-                            &self.enchantment_lapis_lazuli_item_ids,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.enchantment_lapis_lazuli_item_ids,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if furnace_family_menu_type(menu_type_id).is_some() {
                         apply_furnace_quick_move_to_slots(
@@ -1722,8 +1726,8 @@ impl WorldStore {
                             request.slot_num,
                             menu_type_id,
                             &self.recipes.property_sets,
-                            &self.furnace_fuel_item_ids,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.furnace_fuel_item_ids,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_BREWING_STAND_ID) {
                         apply_brewing_stand_menu_quick_move_to_slots(
@@ -1731,15 +1735,15 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             self.registry_tags("minecraft:item"),
-                            &self.brewing_potion_item_ids,
-                            &self.brewing_ingredient_item_ids,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.brewing_potion_item_ids,
+                            &self.items.brewing_ingredient_item_ids,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_GRINDSTONE_ID) {
                         if grindstone_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
-                            &self.default_damageable_item_ids,
+                            &self.items.default_damageable_item_ids,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1749,8 +1753,8 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
-                            &self.default_damageable_item_ids,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_damageable_item_ids,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_SMITHING_ID) {
                         if smithing_quick_move_requires_server_authority(
@@ -1767,13 +1771,13 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             &self.recipes.property_sets,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) {
                         if cartography_table_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
-                            &self.cartography_additional_item_ids,
+                            &self.items.cartography_additional_item_ids,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1783,8 +1787,8 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
-                            &self.cartography_additional_item_ids,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.cartography_additional_item_ids,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_LOOM_ID) {
                         apply_loom_menu_quick_move_to_slots(
@@ -1792,7 +1796,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             self.registry_tags("minecraft:item"),
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID) {
                         let selected_offer = merchant_offers_after.as_ref().and_then(|offers| {
@@ -1806,7 +1810,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             selected_offer.as_ref(),
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         ) {
                             merchant_increment_selected_offer_use(&mut merchant_offers_after);
                         }
@@ -1816,7 +1820,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             &self.recipes.stonecutter_recipes,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
                         hopper_container_slot_count(menu_type_id)
@@ -1826,7 +1830,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
                         shulker_box_container_slot_count(menu_type_id)
@@ -1836,7 +1840,7 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
-                            &self.default_item_max_stack_sizes,
+                            &self.items.default_item_max_stack_sizes,
                         )
                     } else {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
@@ -1859,7 +1863,7 @@ impl WorldStore {
                         &cursor_after,
                         request.slot_num,
                         request.button_num,
-                        &self.default_item_max_stack_sizes,
+                        &self.items.default_item_max_stack_sizes,
                     )
                 }
                 ProtocolContainerInput::QuickCraft
@@ -1872,7 +1876,7 @@ impl WorldStore {
                         &mut quick_craft_after,
                         request.slot_num,
                         request.button_num,
-                        &self.default_item_max_stack_sizes,
+                        &self.items.default_item_max_stack_sizes,
                     )
                 }
                 ProtocolContainerInput::PickupAll
@@ -1883,7 +1887,7 @@ impl WorldStore {
                         &mut cursor_after,
                         request.slot_num,
                         request.button_num,
-                        &self.default_item_max_stack_sizes,
+                        &self.items.default_item_max_stack_sizes,
                     )
                 }
                 input => {
@@ -1898,9 +1902,9 @@ impl WorldStore {
         {
             if apply_inventory_menu_result_take_side_effects(
                 &mut slots_after,
-                &self.default_item_crafting_remainders,
+                &self.items.default_item_crafting_remainders,
                 self.local_player.selected_hotbar_slot,
-                &self.default_item_max_stack_sizes,
+                &self.items.default_item_max_stack_sizes,
             )
             .is_none()
             {
@@ -1976,14 +1980,22 @@ impl WorldStore {
         .filter_map(|slot| self.local_player_inventory_item(slot))
         .filter(|item| item.count > 0)
         .filter_map(|item| item.item_id)
-        .any(|item_id| self.freeze_immune_wearable_item_ids.contains(&item_id))
+        .any(|item_id| {
+            self.items
+                .freeze_immune_wearable_item_ids
+                .contains(&item_id)
+        })
     }
 
     pub(crate) fn local_player_can_walk_on_powder_snow(&self) -> bool {
         self.local_player_inventory_item(PLAYER_FEET_EQUIPMENT_SLOT)
             .filter(|item| item.count > 0)
             .and_then(|item| item.item_id)
-            .is_some_and(|item_id| self.powder_snow_walkable_foot_item_ids.contains(&item_id))
+            .is_some_and(|item_id| {
+                self.items
+                    .powder_snow_walkable_foot_item_ids
+                    .contains(&item_id)
+            })
     }
 
     fn local_player_inventory_item(&self, slot_id: i32) -> Option<&ProtocolItemStackSummary> {

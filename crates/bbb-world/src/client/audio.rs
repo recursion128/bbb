@@ -224,7 +224,7 @@ impl WorldStore {
         &mut self,
         profiles: BTreeMap<String, WorldBlockSoundProfile>,
     ) {
-        self.default_block_sound_profiles = profiles
+        self.items.default_block_sound_profiles = profiles
             .into_iter()
             .filter(|(block_name, profile)| {
                 !block_name.is_empty()
@@ -356,7 +356,7 @@ impl WorldStore {
     pub fn local_block_hit_sound(&self, pos: crate::BlockPos) -> Option<SoundEventState> {
         let block = self.probe_block(pos)?;
         let block_name = block.block_name.as_deref()?;
-        let profile = self.default_block_sound_profiles.get(block_name)?;
+        let profile = self.items.default_block_sound_profiles.get(block_name)?;
         Some(block_sound_state(
             pos,
             &profile.hit_sound,
@@ -553,7 +553,10 @@ impl WorldStore {
         if is_air_block_name(&block_state.name) {
             return None;
         }
-        let profile = self.default_block_sound_profiles.get(&block_state.name)?;
+        let profile = self
+            .items
+            .default_block_sound_profiles
+            .get(&block_state.name)?;
         if profile.break_sound.is_empty() {
             return None;
         }

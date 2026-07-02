@@ -1,4 +1,3 @@
-
 use super::*;
 use bbb_protocol::packets::{
     AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo, DataComponentPatchSummary,

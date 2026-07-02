@@ -44,7 +44,7 @@ impl WorldStore {
         &mut self,
         profiles: std::collections::BTreeMap<String, WorldBlockDestroyProfile>,
     ) {
-        self.default_block_destroy_profiles = profiles
+        self.items.default_block_destroy_profiles = profiles
             .into_iter()
             .filter(|(block_name, _)| !block_name.is_empty())
             .collect();
@@ -54,7 +54,7 @@ impl WorldStore {
         &mut self,
         profiles: std::collections::BTreeMap<i32, WorldItemMiningProfile>,
     ) {
-        self.default_item_mining_profiles = profiles
+        self.items.default_item_mining_profiles = profiles
             .into_iter()
             .filter(|(item_id, profile)| {
                 *item_id >= 0
@@ -149,7 +149,7 @@ impl WorldStore {
     ) -> u32 {
         item.item_id
             .filter(|_| item.count > 0)
-            .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
+            .and_then(|item_id| self.items.default_item_mining_profiles.get(&item_id))
             .map(|profile| item_mining_speed_thousandths(profile, block_name))
             .unwrap_or(1_000)
     }
@@ -191,12 +191,13 @@ impl WorldStore {
     ) -> bool {
         item.item_id
             .filter(|_| item.count > 0)
-            .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
+            .and_then(|item_id| self.items.default_item_mining_profiles.get(&item_id))
             .is_some_and(|profile| item_is_correct_for_drops(profile, block_name))
     }
 
     fn local_block_destroy_profile(&self, block_name: &str) -> Option<LocalBlockDestroyProfile> {
-        self.default_block_destroy_profiles
+        self.items
+            .default_block_destroy_profiles
             .get(block_name)
             .map(LocalBlockDestroyProfile::from)
             .or_else(|| fallback_local_block_destroy_profile(block_name))

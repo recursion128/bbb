@@ -10,6 +10,7 @@ mod error;
 mod exports;
 mod fluid;
 mod internal;
+mod item_profiles;
 mod level;
 mod maps;
 mod play_apply;
