@@ -23,9 +23,9 @@ use bbb_renderer::{
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
-    FireworkRocketExplosionParticleState, LevelEventSoundRandomState, RavagerRoarParticleState,
-    TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
-    WitchMagicParticleState,
+    FireworkRocketExplosionParticleState, LevelEventSoundRandomState,
+    LivingEntityPoofParticleState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
+    TerrainLight, VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -86,6 +86,10 @@ pub(crate) trait ParticleEventSink {
     ) -> ParticleSpawnBatch;
     fn spawn_witch_magic_particles(&mut self, state: WitchMagicParticleState)
         -> ParticleSpawnBatch;
+    fn spawn_living_entity_poof_particles(
+        &mut self,
+        state: LivingEntityPoofParticleState,
+    ) -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -330,6 +334,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: WitchMagicParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.witch_magic_particle_batch(state)
+    }
+
+    fn spawn_living_entity_poof_particles(
+        &mut self,
+        state: LivingEntityPoofParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.living_entity_poof_particle_batch(state)
     }
 }
 
@@ -2523,6 +2534,39 @@ impl ParticleCommandResolver {
                 Vec3d::default(),
                 false,
             ));
+        }
+        batch
+    }
+
+    fn living_entity_poof_particle_batch(
+        &mut self,
+        state: LivingEntityPoofParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..20 {
+            let velocity = Vec3d {
+                x: self.random.next_gaussian() * 0.02,
+                y: self.random.next_gaussian() * 0.02,
+                z: self.random.next_gaussian() * 0.02,
+            };
+            let position = Vec3d {
+                x: state.position.x + f64::from(state.width) * (2.0 * self.random.next_f64() - 1.0)
+                    - velocity.x * 10.0,
+                y: state.position.y + f64::from(state.height) * self.random.next_f64()
+                    - velocity.y * 10.0,
+                z: state.position.z + f64::from(state.width) * (2.0 * self.random.next_f64() - 1.0)
+                    - velocity.z * 10.0,
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
         }
         batch
     }
@@ -5417,6 +5461,50 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.velocity == [0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn living_entity_poof_batch_matches_vanilla_make_poof_particles() {
+        let mut resolver = test_resolver(0);
+        let state = LivingEntityPoofParticleState {
+            entity_id: 73,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.6,
+            height: 1.95,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+        ];
+        let width = f64::from(state.width);
+        let height = f64::from(state.height);
+        let expected_position = [
+            10.0 + width * (2.0 * expected_random.next_f64() - 1.0) - expected_velocity[0] * 10.0,
+            64.0 + height * expected_random.next_f64() - expected_velocity[1] * 10.0,
+            -3.0 + width * (2.0 * expected_random.next_f64() - 1.0) - expected_velocity[2] * 10.0,
+        ];
+
+        let batch = resolver.living_entity_poof_particle_batch(state);
+
+        assert_eq!(batch.len(), 20);
+        assert_particle_command(
+            &batch.commands[0],
+            POOF_PARTICLE_TYPE_ID,
+            "minecraft:poof",
+            expected_position,
+            expected_velocity,
+            true,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:poof"));
     }
 
     #[test]

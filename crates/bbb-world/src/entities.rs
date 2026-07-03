@@ -364,6 +364,14 @@ pub struct WitchMagicParticleState {
     pub bounding_box_max_y: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LivingEntityPoofParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
@@ -1945,6 +1953,23 @@ impl WorldStore {
             entity_id,
             position: transform.position,
             bounding_box_max_y: transform.position.y + f64::from(bounds.max[1]),
+        })
+    }
+
+    pub fn living_entity_poof_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<LivingEntityPoofParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !vanilla_living_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(LivingEntityPoofParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
         })
     }
 

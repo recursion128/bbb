@@ -295,13 +295,18 @@ When an agent does any of the following, update this file in the same slice:
         particles: `nextInt(35)+10` commands at the witch's current `x/z` and
         `boundingBox.maxY + 0.5`, each with gaussian `*0.13F` positional jitter
         on all three axes and zero velocity.
+      - LivingEntity entity event `60` now emits vanilla `minecraft:poof`
+        particles: 20 commands using gaussian `*0.02` velocity and
+        `getRandomX(1.0) - vx*10`, `getRandomY() - vy*10`,
+        `getRandomZ(1.0) - vz*10` position sampling from the current living
+        entity AABB width/height.
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
-        magic burst, and the
-        GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
-        model submit
+        magic burst, LivingEntity event-60 poof burst, and the GameEvent
+        elder-guardian particle and `ELDER_GUARDIANS` special-group model
+        submit
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -468,6 +473,10 @@ When an agent does any of the following, update this file in the same slice:
       burst from the ravager AABB center with gaussian `0.2` velocity and
       applies the vanilla local-authoritative roar knockback to the local player
       when its current pose AABB intersects the ravager AABB inflated by `4.0`.
+      Native LivingEntity event `60` now emits the vanilla
+      `minecraft:poof` burst from `makePoofParticles`: 20 commands with
+      gaussian `0.02` velocity and `getRandomX` / `getRandomY` /
+      `getRandomZ` position sampling from the current living entity AABB.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant
