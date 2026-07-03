@@ -770,8 +770,9 @@ pub(super) enum SelectProperty {
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
-    /// `G` era, `M`/`L` month, `d` day, `D` day-of-year, `H`/`k`/`K`/`h`
-    /// hour, `m`/`s`/`S`, `E` weekday, `a`, and `Z`/`X`/`x` offsets).
+    /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
+    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and `Z`/`X`/`x`
+    /// offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1481,6 +1482,10 @@ fn format_local_time_field(
             };
             english_text(locale, text)
         }
+        // ICU `Q` / `q` quarter symbols: 1/2 are numeric, 3 is abbreviated,
+        // 4 is wide text, and 5 is narrow. The native subset keeps root/en
+        // text parity and treats format / stand-alone quarter the same.
+        'Q' | 'q' => format_quarter(fields.month, count, locale),
         'M' | 'L' => match count {
             1 => Some(fields.month.to_string()),
             2 => Some(padded_u32(fields.month, 2)),
@@ -1584,7 +1589,7 @@ fn fractional_second(millisecond: u32, width: usize) -> String {
     digits
 }
 
-fn english_text(locale: &str, value: &'static str) -> Option<String> {
+fn english_text(locale: &str, value: &str) -> Option<String> {
     if locale.is_empty()
         || locale.eq_ignore_ascii_case("root")
         || locale.eq_ignore_ascii_case("en")
@@ -1594,6 +1599,38 @@ fn english_text(locale: &str, value: &'static str) -> Option<String> {
         Some(value.to_string())
     } else {
         None
+    }
+}
+
+fn format_quarter(month: u32, width: usize, locale: &str) -> Option<String> {
+    let quarter = ((month.saturating_sub(1)) / 3 + 1).clamp(1, 4);
+    match width {
+        1 => Some(quarter.to_string()),
+        2 => Some(padded_u32(quarter, 2)),
+        3 => english_text(locale, short_quarter_name(quarter)),
+        4 => english_text(locale, long_quarter_name(quarter)),
+        5 => Some(quarter.to_string()),
+        _ => None,
+    }
+}
+
+fn short_quarter_name(quarter: u32) -> &'static str {
+    match quarter {
+        1 => "Q1",
+        2 => "Q2",
+        3 => "Q3",
+        4 => "Q4",
+        _ => "",
+    }
+}
+
+fn long_quarter_name(quarter: u32) -> &'static str {
+    match quarter {
+        1 => "1st quarter",
+        2 => "2nd quarter",
+        3 => "3rd quarter",
+        4 => "4th quarter",
+        _ => "",
     }
 }
 

@@ -948,17 +948,22 @@
   - [x] `minecraft:local_time` item-model select now resolves from wall-clock
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
     root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era,
-    `M`/`L`, `d`, `D` day-of-year, 24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`,
-    `E`, `a`, `Z`/`X`/`x` offset fields, and quoted literals), using fixed
-    `GMT`/UTC offset and IANA `time_zone` IDs when present or the system local
+    `Q`/`q` quarter, `M`/`L`, `d`, `D` day-of-year, 24/12-hour
+    `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, `Z`/`X`/`x` offset fields, and
+    quoted literals), using fixed `GMT`/UTC offset and IANA `time_zone` IDs
+    when present or the system local
     zone otherwise. `G`/`u`/`D` follow Java `DateTimeFormatter`/`IsoChronology`
     (`u` = proleptic year, identical to `y` for every CE epoch-millis date;
     era text gated on root/en locale; day-of-year zero-padded by pattern count).
+    `Q`/`q` mirror ICU quarter widths 1..=5 for root/en (`3`, `03`, `Q3`,
+    `3rd quarter`, `3`), treating format and stand-alone quarter identically
+    for the supported locale subset.
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
-    `uuuu-DDD-G` proleptic-year / day-of-year / era branch from vanilla
-    `LocalTime.get`. Localized week (`w`/`W`/`e`/`c`/`F`), quarter (`Q`/`q`),
-    zone-name (`z`/`v`/`V`/`O`) fields and non-English locales remain follow-up.
+    `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
+    `Q`/`q` quarter branch from vanilla `LocalTime.get`. Localized week
+    (`w`/`W`/`e`/`c`/`F`), zone-name (`z`/`v`/`V`/`O`) fields and non-English
+    locales remain follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,
     matching vanilla `Time.get` target values from `EnvironmentAttributes` and
