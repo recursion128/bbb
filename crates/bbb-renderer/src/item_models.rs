@@ -604,6 +604,39 @@ impl Renderer {
         self.item_model_glint_translucent_meshes = meshes;
     }
 
+    pub fn set_item_pickup_block_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_pickup_block_item_model_meshes = meshes;
+    }
+
+    pub fn set_item_pickup_block_item_model_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.item_pickup_block_item_model_translucent_meshes = meshes;
+    }
+
+    pub fn set_item_pickup_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_pickup_flat_item_model_meshes = meshes;
+    }
+
+    pub fn set_item_pickup_flat_item_model_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.item_pickup_flat_item_model_translucent_meshes = meshes;
+    }
+
+    pub fn set_item_pickup_item_model_glint_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_pickup_item_model_glint_meshes = meshes;
+    }
+
+    pub fn set_item_pickup_item_model_glint_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.item_pickup_item_model_glint_translucent_meshes = meshes;
+    }
+
     /// Sets first-person block-atlas item meshes. These are already transformed
     /// into world space relative to the current camera and are drawn in the
     /// depth-cleared hand pass before HUD overlays.
@@ -707,6 +740,42 @@ impl Renderer {
         &self,
     ) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.item_model_glint_translucent_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_block_item_model_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_block_item_model_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_block_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_block_item_model_translucent_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_flat_item_model_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_flat_item_model_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_flat_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_flat_item_model_translucent_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_item_model_glint_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_item_model_glint_meshes)
+    }
+
+    pub(crate) fn collect_item_pickup_item_model_glint_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_pickup_item_model_glint_translucent_meshes)
     }
 
     pub(crate) fn collect_first_person_block_item_model_geometry(

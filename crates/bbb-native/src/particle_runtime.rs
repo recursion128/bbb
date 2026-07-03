@@ -24,7 +24,7 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, LevelEventSoundRandomState, RavagerRoarParticleState,
-    TakeItemEntityPickupParticleState, VaultConnectionParticleState,
+    TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
 };
 
 use crate::{
@@ -2449,6 +2449,9 @@ impl ParticleCommandResolver {
                     .item_stack
                     .as_ref()
                     .and_then(particle_item_option_state_for_stack),
+                option_item_pickup_source_entity_id: Some(state.item_entity_id),
+                option_item_pickup_age_ticks: Some(state.item_age_ticks),
+                option_item_pickup_light: Some(particle_shader_light(state.item_light)),
                 option_firework_trail: false,
                 option_firework_twinkle: false,
                 option_firework_half_lifetime_age: false,
@@ -2832,6 +2835,9 @@ impl ParticleCommandResolver {
             option_roll: option_state.roll,
             option_block: option_state.block,
             option_item: option_state.item,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,
@@ -3109,6 +3115,13 @@ fn particle_item_option_state_for_stack(
         count: stack.count,
         component_patch_len: usize::from(stack.component_patch != Default::default()),
     })
+}
+
+fn particle_shader_light(light: TerrainLight) -> [f32; 2] {
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
 }
 
 fn particle_option_render_state(
@@ -5200,6 +5213,8 @@ mod tests {
                 y: 0.2,
                 z: -0.3,
             },
+            item_age_ticks: 9.5,
+            item_light: TerrainLight { block: 6, sky: 12 },
             target_entity_id: 20,
             target_position: bbb_world::EntityVec3 {
                 x: 4.0,
@@ -5235,6 +5250,12 @@ mod tests {
                 entity_id: 20,
                 y_offset: 1.62 * 0.5,
             })
+        );
+        assert_eq!(command.option_item_pickup_source_entity_id, Some(10));
+        assert_eq!(command.option_item_pickup_age_ticks, Some(9.5));
+        assert_eq!(
+            command.option_item_pickup_light,
+            Some([6.0 / 15.0, 12.0 / 15.0])
         );
         assert_eq!(
             command.option_item,

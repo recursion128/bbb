@@ -85,6 +85,12 @@ pub struct ParticleSpawnCommand {
     #[serde(default)]
     pub option_item: Option<ParticleItemOptionState>,
     #[serde(default)]
+    pub option_item_pickup_source_entity_id: Option<i32>,
+    #[serde(default)]
+    pub option_item_pickup_age_ticks: Option<f32>,
+    #[serde(default)]
+    pub option_item_pickup_light: Option<[f32; 2]>,
+    #[serde(default)]
     pub option_firework_trail: bool,
     #[serde(default)]
     pub option_firework_twinkle: bool,
@@ -192,6 +198,15 @@ pub struct ParticleItemOptionState {
     pub item_id: i32,
     pub count: i32,
     pub component_patch_len: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ItemPickupParticleRenderState {
+    pub source_entity_id: i32,
+    pub item: ParticleItemOptionState,
+    pub position: [f32; 3],
+    pub age_ticks: f32,
+    pub light: [f32; 2],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -366,6 +381,12 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub(crate) option_item: Option<ParticleItemOptionState>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_source_entity_id: Option<i32>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_age_ticks: Option<f32>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_light: Option<[f32; 2]>,
     #[serde(default)]
     pub(crate) firework_trail: bool,
     #[serde(default)]
@@ -1337,6 +1358,9 @@ impl ParticleInstance {
             option_roll: command.option_roll,
             option_block: command.option_block,
             option_item: command.option_item,
+            option_item_pickup_source_entity_id: command.option_item_pickup_source_entity_id,
+            option_item_pickup_age_ticks: command.option_item_pickup_age_ticks,
+            option_item_pickup_light: command.option_item_pickup_light,
             firework_trail,
             firework_twinkle,
             item_pickup_previous_target: item_pickup_target,
@@ -2029,7 +2053,6 @@ impl ParticleInstance {
             })
     }
 
-    #[cfg(test)]
     fn item_pickup_position_at_partial_tick(&self, partial_tick: f32) -> Option<[f64; 3]> {
         if self.render_group != ParticleRenderGroup::ItemPickup {
             return None;
@@ -2151,6 +2174,9 @@ impl ParticleInstance {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             option_firework_trail: false,
             option_firework_twinkle: self.firework_twinkle,
             option_firework_half_lifetime_age: true,
@@ -2238,6 +2264,9 @@ impl ParticleInstance {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,
@@ -2306,6 +2335,9 @@ impl ParticleInstance {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,
@@ -2357,6 +2389,9 @@ impl ParticleInstance {
                     option_roll: None,
                     option_block: None,
                     option_item: None,
+                    option_item_pickup_source_entity_id: None,
+                    option_item_pickup_age_ticks: None,
+                    option_item_pickup_light: None,
                     option_firework_trail: false,
                     option_firework_twinkle: false,
                     option_firework_half_lifetime_age: false,
@@ -2417,6 +2452,9 @@ impl ParticleInstance {
                     option_roll: None,
                     option_block: None,
                     option_item: None,
+                    option_item_pickup_source_entity_id: None,
+                    option_item_pickup_age_ticks: None,
+                    option_item_pickup_light: None,
                     option_firework_trail: false,
                     option_firework_twinkle: false,
                     option_firework_half_lifetime_age: false,
@@ -2685,6 +2723,10 @@ impl Renderer {
         };
         elder_guardian_particle_render_instances(self.particles.active_instances.iter(), pose)
     }
+
+    pub fn item_pickup_particle_render_states(&self) -> Vec<ItemPickupParticleRenderState> {
+        item_pickup_particle_render_states(self.particles.active_instances.iter())
+    }
 }
 
 fn particle_sprite_uv_map(
@@ -2918,6 +2960,33 @@ fn elder_guardian_particle_render_instances<'a>(
                 transform: elder_guardian_particle_model_transform(pose, age_scale),
                 tint: [1.0, 1.0, 1.0, elder_guardian_particle_alpha(age_scale)],
             }
+        })
+        .collect()
+}
+
+fn item_pickup_particle_render_states<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+) -> Vec<ItemPickupParticleRenderState> {
+    instances
+        .into_iter()
+        .filter(|instance| instance.render_group == ParticleRenderGroup::ItemPickup)
+        .filter(|instance| instance.delay_ticks == 0)
+        .filter_map(|instance| {
+            let item = instance.option_item?;
+            let source_entity_id = instance.option_item_pickup_source_entity_id?;
+            let position = instance
+                .item_pickup_position_at_partial_tick(DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)?;
+            Some(ItemPickupParticleRenderState {
+                source_entity_id,
+                item,
+                position: [position[0] as f32, position[1] as f32, position[2] as f32],
+                age_ticks: instance
+                    .option_item_pickup_age_ticks
+                    .unwrap_or(instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK),
+                light: instance
+                    .option_item_pickup_light
+                    .unwrap_or(DEFAULT_PARTICLE_LIGHT),
+            })
         })
         .collect()
 }
@@ -3769,6 +3838,21 @@ mod tests {
                 lerp_f64(time, 1.0, target[0]),
                 lerp_f64(time, 64.0, target[1]),
                 lerp_f64(time, -2.0, target[2]),
+            ],
+        );
+        let render_states = item_pickup_particle_render_states(particles.active_instances().iter());
+        assert_eq!(render_states.len(), 1);
+        assert_eq!(render_states[0].source_entity_id, 10);
+        assert_eq!(render_states[0].item.item_id, 42);
+        assert_eq!(render_states[0].item.count, 5);
+        assert_eq!(render_states[0].age_ticks, 12.0);
+        assert_eq!(render_states[0].light, [0.4, 0.8]);
+        assert_close3_f32(
+            render_states[0].position,
+            [
+                lerp_f64(time, 1.0, target[0]) as f32,
+                lerp_f64(time, 64.0, target[1]) as f32,
+                lerp_f64(time, -2.0, target[2]) as f32,
             ],
         );
 
@@ -9815,6 +9899,9 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             firework_trail: false,
             firework_twinkle: false,
             item_pickup_previous_target: None,
@@ -9850,6 +9937,9 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_item_pickup_source_entity_id: None,
+            option_item_pickup_age_ticks: None,
+            option_item_pickup_light: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,
@@ -9873,6 +9963,9 @@ mod tests {
             count: 5,
             component_patch_len: 0,
         });
+        command.option_item_pickup_source_entity_id = Some(10);
+        command.option_item_pickup_age_ticks = Some(12.0);
+        command.option_item_pickup_light = Some([0.4, 0.8]);
         command
     }
 

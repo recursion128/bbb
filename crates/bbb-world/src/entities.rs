@@ -338,6 +338,10 @@ pub struct TakeItemEntityPickupParticleState {
     pub item_entity_type_id: i32,
     pub item_position: EntityVec3,
     pub item_delta_movement: EntityVec3,
+    #[serde(default)]
+    pub item_age_ticks: f32,
+    #[serde(default = "entity_model_source_full_bright_light")]
+    pub item_light: TerrainLight,
     pub target_entity_id: i32,
     pub target_position: EntityVec3,
     pub target_eye_height: f32,
@@ -1843,12 +1847,22 @@ impl WorldStore {
         let item_stack = (item.entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
             .then(|| self.entities.item_stack_for_entity(item_entity_id))
             .flatten();
+        let item_age_ticks = self
+            .entities
+            .entity_age_ticks(item_entity_id)
+            .map(|age| age as f32 + 1.0)
+            .unwrap_or(1.0);
+        let item_light = self
+            .sample_block_light(entity_light_block_pos(item.position))
+            .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
 
         Some(TakeItemEntityPickupParticleState {
             item_entity_id,
             item_entity_type_id: item.entity_type_id,
             item_position: item.position,
             item_delta_movement: item.delta_movement,
+            item_age_ticks,
+            item_light,
             target_entity_id: target.0,
             target_position: target.1,
             target_eye_height: target.2,

@@ -1449,6 +1449,9 @@ fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
     assert_eq!(state.item_delta_movement.x, 0.1);
     assert_eq!(state.item_delta_movement.y, 0.2);
     assert_eq!(state.item_delta_movement.z, -0.3);
+    assert_eq!(state.item_age_ticks, 1.0);
+    assert_eq!(state.item_light.block, 15);
+    assert_eq!(state.item_light.sky, 15);
     assert_eq!(state.target_entity_id, 20);
     assert_eq!(state.target_position.x, 4.0);
     assert_eq!(state.target_position.y, 70.0);

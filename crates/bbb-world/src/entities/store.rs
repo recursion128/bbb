@@ -2471,6 +2471,12 @@ impl EntityStore {
         item_entity_render_stack(&metadata.data_values).cloned()
     }
 
+    pub(crate) fn entity_age_ticks(&self, id: i32) -> Option<u32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(client_animations.animations.age_ticks)
+    }
+
     /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the
     /// facing wall, the `0..=7` item rotation, glow/invisible flags, the framed item, and framed map id.
     /// Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).

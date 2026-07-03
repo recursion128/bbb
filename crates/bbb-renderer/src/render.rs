@@ -988,6 +988,40 @@ impl Renderer {
             &self.queue,
             bytemuck::cast_slice(&particle_vertex_batches.translucent.vertices),
         );
+        let (item_pickup_block_vertices, item_pickup_block_indices) =
+            self.collect_item_pickup_block_item_model_geometry();
+        let item_pickup_block_buffers = self.create_item_model_frame_buffers(
+            &item_pickup_block_vertices,
+            &item_pickup_block_indices,
+        );
+        let (item_pickup_flat_vertices, item_pickup_flat_indices) =
+            self.collect_item_pickup_flat_item_model_geometry();
+        let item_pickup_flat_buffers = self
+            .create_item_model_frame_buffers(&item_pickup_flat_vertices, &item_pickup_flat_indices);
+        let (item_pickup_glint_vertices, item_pickup_glint_indices) =
+            self.collect_item_pickup_item_model_glint_geometry();
+        let item_pickup_glint_buffers = self.create_item_model_frame_buffers(
+            &item_pickup_glint_vertices,
+            &item_pickup_glint_indices,
+        );
+        let (item_pickup_block_translucent_vertices, item_pickup_block_translucent_indices) =
+            self.collect_item_pickup_block_item_model_translucent_geometry();
+        let item_pickup_block_translucent_buffers = self.create_item_model_frame_buffers(
+            &item_pickup_block_translucent_vertices,
+            &item_pickup_block_translucent_indices,
+        );
+        let (item_pickup_flat_translucent_vertices, item_pickup_flat_translucent_indices) =
+            self.collect_item_pickup_flat_item_model_translucent_geometry();
+        let item_pickup_flat_translucent_buffers = self.create_item_model_frame_buffers(
+            &item_pickup_flat_translucent_vertices,
+            &item_pickup_flat_translucent_indices,
+        );
+        let (item_pickup_glint_translucent_vertices, item_pickup_glint_translucent_indices) =
+            self.collect_item_pickup_item_model_glint_translucent_geometry();
+        let item_pickup_glint_translucent_buffers = self.create_item_model_frame_buffers(
+            &item_pickup_glint_translucent_vertices,
+            &item_pickup_glint_translucent_indices,
+        );
         let elder_guardian_particles = self.collect_elder_guardian_particle_render_instances();
         let elder_guardian_particle_index_count =
             if let Some(atlas) = &self.entity_model_texture_atlas {
@@ -1047,6 +1081,74 @@ impl Renderer {
                     &particle_vertex_batches.translucent,
                     stats,
                 );
+            }
+            if let Some(buffers) = &item_pickup_block_buffers {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_pipeline,
+                    buffers,
+                    &self.terrain_bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+            if let (Some(atlas), Some(buffers)) =
+                (&self.item_entity_atlas, &item_pickup_flat_buffers)
+            {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_pipeline,
+                    buffers,
+                    &atlas.bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+            if let (Some(glint), Some(buffers)) =
+                (&self.item_glint_texture, &item_pickup_glint_buffers)
+            {
+                self.draw_item_model_glint_frame_buffers(
+                    &mut pass,
+                    buffers,
+                    &glint.main_bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+            if let Some(buffers) = &item_pickup_block_translucent_buffers {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &self.terrain_bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+            if let (Some(atlas), Some(buffers)) = (
+                &self.item_entity_atlas,
+                &item_pickup_flat_translucent_buffers,
+            ) {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &atlas.bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+            if let (Some(glint), Some(buffers)) = (
+                &self.item_glint_texture,
+                &item_pickup_glint_translucent_buffers,
+            ) {
+                self.draw_item_model_glint_frame_buffers(
+                    &mut pass,
+                    buffers,
+                    &glint.main_bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
             }
             if let (Some(index_count), Some(atlas)) = (
                 elder_guardian_particle_index_count,
@@ -3174,6 +3276,37 @@ mod tests {
                 && block_destroy < translucent
                 && billboards < particle,
             "vanilla FeatureRenderDispatcher draws text before ItemFeatureRenderer, then block/crumbling features, translucent terrain, and particles"
+        );
+    }
+
+    #[test]
+    fn item_pickup_item_models_draw_in_particle_group_before_elder_guardians() {
+        let source = include_str!("render.rs");
+        let target = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let translucent_particles = source[target..]
+            .find("has_translucent_particles")
+            .map(|index| target + index)
+            .expect("translucent single-quad particles draw in particle target");
+        let pickup_block = source[target..]
+            .find("&item_pickup_block_buffers")
+            .map(|index| target + index)
+            .expect("item-pickup block item meshes draw in particle target");
+        let pickup_flat = source[pickup_block..]
+            .find("&item_pickup_flat_buffers")
+            .map(|index| pickup_block + index)
+            .expect("item-pickup flat item meshes draw in particle target");
+        let elder_guardian = source[pickup_flat..]
+            .find("elder_guardian_particle_index_count")
+            .map(|index| pickup_flat + index)
+            .expect("elder guardian particle group follows item-pickup group");
+
+        assert!(
+            translucent_particles < pickup_block
+                && pickup_block < pickup_flat
+                && pickup_flat < elder_guardian,
+            "vanilla particle group order is SINGLE_QUADS, ITEM_PICKUP, ELDER_GUARDIANS"
         );
     }
 

@@ -63,7 +63,8 @@ use crate::{
     item_frames::item_frame_models,
     item_models::{
         dropped_item_models, entity_block_models, first_person_item_models,
-        first_person_player_arms, held_item_models, ominous_item_spawner_models,
+        first_person_player_arms, held_item_models, item_pickup_particle_item_models,
+        ominous_item_spawner_models,
     },
     particle_runtime::{ParticleEventSink, SMOKE_PARTICLE_TYPE_ID},
     terrain_runtime::{
@@ -1558,6 +1559,15 @@ pub(crate) fn pump_network_and_terrain(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
+    let item_pickup_particle_states = renderer.item_pickup_particle_render_states();
+    let item_pickup_particle_models = item_pickup_particle_item_models(
+        &item_pickup_particle_states,
+        item_runtime,
+        terrain_textures,
+        trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
+        attribute_keys.as_deref(),
+    );
     let item_entity_billboards = item_entity_billboards_from_world(
         world,
         item_runtime,
@@ -1694,6 +1704,22 @@ pub(crate) fn pump_network_and_terrain(
             flat_item_model_translucent_meshes: flat_item_translucent_meshes,
             item_model_glint_meshes,
             item_model_glint_translucent_meshes,
+            item_pickup_block_item_model_meshes: item_pickup_particle_models.block_meshes,
+            item_pickup_block_item_model_translucent_meshes: item_pickup_particle_models
+                .block_translucent_meshes,
+            item_pickup_flat_item_model_meshes: item_pickup_particle_models.flat_meshes,
+            item_pickup_flat_item_model_translucent_meshes: item_pickup_particle_models
+                .flat_translucent_meshes,
+            item_pickup_item_model_glint_meshes: item_pickup_particle_models
+                .block_glint_meshes
+                .into_iter()
+                .chain(item_pickup_particle_models.flat_glint_meshes)
+                .collect(),
+            item_pickup_item_model_glint_translucent_meshes: item_pickup_particle_models
+                .block_glint_translucent_meshes
+                .into_iter()
+                .chain(item_pickup_particle_models.flat_glint_translucent_meshes)
+                .collect(),
             first_person_block_item_model_meshes: first_person_item_models.block_meshes,
             first_person_block_item_model_translucent_meshes: first_person_item_models
                 .block_translucent_meshes,
@@ -1835,6 +1861,9 @@ fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> Part
         option_roll: None,
         option_block: None,
         option_item: None,
+        option_item_pickup_source_entity_id: None,
+        option_item_pickup_age_ticks: None,
+        option_item_pickup_light: None,
         option_firework_trail: false,
         option_firework_twinkle: false,
         option_firework_half_lifetime_age: false,

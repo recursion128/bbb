@@ -34,8 +34,9 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, SpearKineticWeapon,
-    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    ItemPickupParticleRenderState, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
+    SpearKineticWeapon, ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -629,6 +630,106 @@ pub(crate) fn ominous_item_spawner_models(
             &mut models.flat_glint_translucent_meshes,
         );
         models.handled_entity_ids.insert(state.entity_id);
+    }
+
+    models
+}
+
+/// Bakes ordinary item-stack render states carried by vanilla
+/// `ItemPickupParticleGroup`. The particle runtime owns the target interpolation;
+/// this helper reuses the same item-cluster bake as dropped item entities at the
+/// extracted particle position.
+pub(crate) fn item_pickup_particle_item_models(
+    states: &[ItemPickupParticleRenderState],
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    trim_material_keys: Option<&[String]>,
+    enchantment_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
+) -> DroppedItemModels {
+    let mut models = DroppedItemModels::empty();
+    let Some(item_runtime) = item_runtime else {
+        return models;
+    };
+
+    for state in states {
+        if state.item.component_patch_len != 0 || state.item.item_id < 0 || state.item.count <= 0 {
+            continue;
+        }
+        let stack = ItemStackSummary {
+            item_id: Some(state.item.item_id),
+            count: state.item.count,
+            component_patch: Default::default(),
+        };
+        let count = rendered_amount(stack.count);
+        let seed = state.item.item_id as i64;
+        let ground = |default_transform| {
+            item_runtime
+                .item_display_transform_for_stack(&stack, BlockModelDisplayContext::Ground)
+                .unwrap_or(default_transform)
+        };
+        let foil = item_stack_foil_mode(&stack, item_runtime, BlockModelDisplayContext::Ground);
+
+        if let Some(resource_id) = item_runtime.item_resource_id(state.item.item_id) {
+            if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
+                if !quads.is_empty() {
+                    push_mesh_set(
+                        stacked_item_mesh(
+                            &quads,
+                            state.position,
+                            state.age_ticks,
+                            state.source_entity_id,
+                            &ground(BLOCK_GROUND_FALLBACK),
+                            state.light,
+                            count,
+                            seed,
+                            foil,
+                        ),
+                        &mut models.block_meshes,
+                        &mut models.block_translucent_meshes,
+                        &mut models.block_glint_meshes,
+                        &mut models.block_glint_translucent_meshes,
+                    );
+                    continue;
+                }
+            }
+        }
+
+        let mut quads: Vec<ItemModelQuad> = Vec::new();
+        for layer in item_runtime.generated_item_layers_for_stack_with_registry_context(
+            &stack,
+            BlockModelDisplayContext::Ground,
+            trim_material_keys,
+            enchantment_keys,
+            attribute_keys,
+        ) {
+            quads.extend(bake_generated_item_quads(
+                &layer.mask,
+                layer.rect,
+                layer.tint,
+                layer.translucent,
+            ));
+        }
+        if quads.is_empty() {
+            continue;
+        }
+        push_mesh_set(
+            stacked_item_mesh(
+                &quads,
+                state.position,
+                state.age_ticks,
+                state.source_entity_id,
+                &ground(GENERATED_GROUND_FALLBACK),
+                state.light,
+                count,
+                seed,
+                foil,
+            ),
+            &mut models.flat_meshes,
+            &mut models.flat_translucent_meshes,
+            &mut models.flat_glint_meshes,
+            &mut models.flat_glint_translucent_meshes,
+        );
     }
 
     models
@@ -3388,7 +3489,10 @@ mod tests {
         EntityEvent, EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData,
         SetEquipment, SetPlayerInventory, SwingAnimationSummary, Vec3d,
     };
-    use bbb_renderer::{EntityDefaultPlayerSkin, EntityPlayerSkin, PlayerModelPartVisibility};
+    use bbb_renderer::{
+        EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState,
+        PlayerModelPartVisibility,
+    };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
         PalettedContainerData, WorldDimension,
@@ -7132,6 +7236,58 @@ mod tests {
         assert_eq!(models.flat_meshes.len(), 1);
         assert!(!models.flat_meshes[0].is_empty());
         assert!(models.handled_entity_ids.contains(&801));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
+        let root = unique_item_model_temp_dir("item-pickup-particle");
+        write_flat_item_runtime_fixture(&root, &["picked_up"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let item_id = item_runtime
+            .item_protocol_id("minecraft:picked_up")
+            .expect("fixture item registered");
+        let state = ItemPickupParticleRenderState {
+            source_entity_id: 77,
+            item: ParticleItemOptionState {
+                item_id,
+                count: 18,
+                component_patch_len: 0,
+            },
+            position: [1.25, 65.5, -3.0],
+            age_ticks: 9.5,
+            light: [6.0 / 15.0, 12.0 / 15.0],
+        };
+
+        let models = item_pickup_particle_item_models(
+            &[state],
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
+        let skipped = item_pickup_particle_item_models(
+            &[ItemPickupParticleRenderState {
+                item: ParticleItemOptionState {
+                    component_patch_len: 1,
+                    ..state.item
+                },
+                ..state
+            }],
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            None,
+            None,
+            None,
+        );
+
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.flat_meshes.len(), 1);
+        assert!(!models.flat_meshes[0].is_empty());
+        assert!(models.handled_entity_ids.is_empty());
+        assert!(skipped.flat_meshes.is_empty());
         std::fs::remove_dir_all(root).unwrap();
     }
 

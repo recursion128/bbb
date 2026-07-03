@@ -623,6 +623,12 @@ pub(crate) struct RendererFrame {
     pub(crate) flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(crate) item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_block_item_model_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_block_item_model_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_flat_item_model_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_item_model_glint_meshes: Vec<ItemModelMesh>,
+    pub(crate) item_pickup_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_block_item_model_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_block_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_flat_item_model_meshes: Vec<ItemModelMesh>,
@@ -676,6 +682,18 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_flat_item_model_translucent_meshes(frame.flat_item_model_translucent_meshes);
     renderer.set_item_model_glint_meshes(frame.item_model_glint_meshes);
     renderer.set_item_model_glint_translucent_meshes(frame.item_model_glint_translucent_meshes);
+    renderer.set_item_pickup_block_item_model_meshes(frame.item_pickup_block_item_model_meshes);
+    renderer.set_item_pickup_block_item_model_translucent_meshes(
+        frame.item_pickup_block_item_model_translucent_meshes,
+    );
+    renderer.set_item_pickup_flat_item_model_meshes(frame.item_pickup_flat_item_model_meshes);
+    renderer.set_item_pickup_flat_item_model_translucent_meshes(
+        frame.item_pickup_flat_item_model_translucent_meshes,
+    );
+    renderer.set_item_pickup_item_model_glint_meshes(frame.item_pickup_item_model_glint_meshes);
+    renderer.set_item_pickup_item_model_glint_translucent_meshes(
+        frame.item_pickup_item_model_glint_translucent_meshes,
+    );
     renderer.set_first_person_block_item_model_meshes(frame.first_person_block_item_model_meshes);
     renderer.set_first_person_block_item_model_translucent_meshes(
         frame.first_person_block_item_model_translucent_meshes,

@@ -274,8 +274,11 @@ When an agent does any of the following, update this file in the same slice:
         world removes or shrinks the entity; native also submits the vanilla
         `ItemPickupParticle` runtime command before that mutation, and the
         renderer tracks its `ITEM_PICKUP` group order, 3-tick lifetime, target
-        midpoint following, and quadratic extract interpolation. Rendering the
-        carried `EntityRenderState` through the item-pickup group remains a
+        midpoint following, and quadratic extract interpolation. Ordinary
+        item-stack carried models now also submit through the item-pickup
+        particle group using frozen source age/light and dropped-item GROUND
+        item-cluster baking. Component-rich item stacks, experience-orb
+        rendering, and generic carried `EntityRenderState` submit remain a
         deferred GPU entity-submit slice.
       - Ravager entity event `69` now emits vanilla roar `minecraft:poof`
         particles: 40 commands at the ravager AABB center with gaussian
@@ -444,7 +447,12 @@ When an agent does any of the following, update this file in the same slice:
       source entity position / delta movement, target midpoint source, and
       pre-shrink item stack summary; renderer runtime keeps it in the vanilla
       `ITEM_PICKUP` group and advances the 3-tick target-following lifetime.
-      GPU submission of the carried entity render state is still deferred.
+      Ordinary item-stack carried models now draw in the particle target after
+      single-quad particles and before elder-guardian special-group rendering,
+      reusing the captured source entity id, frozen `extractEntity(..., 1.0F)`
+      age/light, quadratic target interpolation, and dropped-item GROUND
+      cluster bake. Component-rich item stacks, experience-orb rendering, and
+      generic carried entity render-state submission remain deferred.
       Native ravager event `69` now emits the vanilla roar `minecraft:poof`
       burst from the ravager AABB center with gaussian `0.2` velocity and
       applies the vanilla local-authoritative roar knockback to the local player
@@ -6846,7 +6854,8 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are
         terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
-        branches, or the `ItemPickupParticle` carried-entity submit.
+        branches, or the remaining component-rich / experience-orb / generic
+        entity branches of `ItemPickupParticle` carried-entity submit.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent
