@@ -347,8 +347,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     collision 回调，按 vanilla Y-first / largest-horizontal 轴顺序对
     vanilla 0.2x0.2 粒子 AABB 做三轴 block-shape clipping，应用
     `Particle.onGround` X/Z damping，并在落地后的 tick 清零
-    `FallingDustParticle` roll；剩余 gravity/collision/player-coupled work
-    是特殊 context 和 player-coupled emitter。
+    `FallingDustParticle` roll。Plain `DripParticle.FallingParticle`
+    providers (`falling_nectar` / `falling_spore_blossom`) 现在也通过
+    world collision callback 的 vanilla `move` 路径在 `onGround` 时移除；
+    剩余 gravity/collision/player-coupled work 是特殊 context 和
+    player-coupled emitter。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

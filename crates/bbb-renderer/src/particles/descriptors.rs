@@ -42,6 +42,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     CampfireSmoke,
     DripHang,
     CoolingDripHang,
+    DripFalling,
     DustPlume,
     WaterDrop,
     Wake,
@@ -1992,9 +1993,10 @@ impl ParticleDescriptor {
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
             }
-            "DripParticle.NectarFallProvider"
-            | "DripParticle.SporeBlossomFallProvider"
-            | "DripParticle.HoneyFallProvider"
+            "DripParticle.NectarFallProvider" | "DripParticle.SporeBlossomFallProvider" => {
+                ParticleTickMotionDescriptor::DripFalling
+            }
+            "DripParticle.HoneyFallProvider"
             | "DripParticle.HoneyLandProvider"
             | "DripParticle.ObsidianTearFallProvider"
             | "DripParticle.ObsidianTearLandProvider"
@@ -3558,7 +3560,7 @@ mod tests {
         );
         assert_eq!(
             falling_nectar.tick_motion(),
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFalling
         );
         assert_descriptor(
             "minecraft:falling_spore_blossom",
@@ -3587,7 +3589,7 @@ mod tests {
         );
         assert_eq!(
             falling_spore_blossom.tick_motion(),
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFalling
         );
         for (particle_id, provider, lifetime, color, gravity, tick_motion) in [
             (

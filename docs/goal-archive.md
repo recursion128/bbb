@@ -1265,8 +1265,9 @@
     direct gravity motion with `0.98` friction, fixed tints
     `[0.92, 0.782, 0.72]` / `[0.32, 0.5, 0.22]`, gravity `0.007` /
     `0.005`, and lifetimes `16 / (random * 0.8 + 0.2)` /
-    `64 / randomBetween(0.1, 0.9)`. On-ground removal remains in the
-    world-coupled collision follow-up.
+    `64 / randomBetween(0.1, 0.9)`. Renderer ticks now use the world
+    collision callback for their vanilla `move` path and remove the particle
+    when `onGround` becomes true.
   - [x] `DripParticle.HoneyHangProvider` / `HoneyFallProvider` /
     `HoneyLandProvider`：renderer descriptor now maps `dripping_honey`,
     `falling_honey`, and `landing_honey` to random sprites, vanilla
@@ -2325,6 +2326,11 @@
     against known block collision shape faces for downward, upward, and
     horizontal movement. Tests cover upward ceiling clipping, horizontal side
     clipping, horizontal non-overlap rejection, and the vanilla axis-order rule.
+  - [x] plain drip falling on-ground removal：`falling_nectar` and
+    `falling_spore_blossom` now use a dedicated `DripFalling` tick motion that
+    calls the collision-backed vanilla `move` path and removes the active
+    particle when `onGround` becomes true. Tests cover the descriptor mapping
+    and runtime removal via a collision callback.
 
 ## P2：Terrain / Block Render Presentation
 

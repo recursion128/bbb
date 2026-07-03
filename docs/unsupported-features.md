@@ -648,7 +648,8 @@ When an agent does any of the following, update this file in the same slice:
         motion with `0.98` friction, fixed tints `[0.92, 0.782, 0.72]` /
         `[0.32, 0.5, 0.22]`, gravity `0.007` / `0.005`, and lifetimes
         `16 / (random * 0.8 + 0.2)` / `64 / randomBetween(0.1, 0.9)`.
-        On-ground removal remains deferred with world-coupled collision work.
+        Renderer ticks now use the world collision callback for their vanilla
+        `move` path and remove the particle when `onGround` becomes true.
       - `DripParticle.HoneyHangProvider`, `HoneyFallProvider`, and
         `HoneyLandProvider` use random sprite selection, zero initial velocity,
         DripParticle opaque layer, physics metadata, fixed honey tints,

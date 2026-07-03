@@ -213,6 +213,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) stopped_by_collision: bool,
     #[serde(default)]
+    pub(crate) removed: bool,
+    #[serde(default)]
     pub(crate) tick_motion: ParticleTickMotionDescriptor,
     #[serde(default)]
     pub(crate) tick_angle: f32,
@@ -631,6 +633,11 @@ impl ParticleRuntimeState {
                 continue;
             }
             instance.tick_motion(&mut self.random, collide);
+            if instance.removed {
+                self.decrement_particle_limit(instance.particle_limit);
+                expired_instances += 1;
+                continue;
+            }
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
@@ -903,6 +910,7 @@ impl ParticleInstance {
             collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
             on_ground: false,
             stopped_by_collision: false,
+            removed: false,
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit,
@@ -1113,6 +1121,18 @@ impl ParticleInstance {
                 self.velocity[0] *= 0.02 * friction;
                 self.velocity[1] *= 0.02 * friction;
                 self.velocity[2] *= 0.02 * friction;
+            }
+            ParticleTickMotionDescriptor::DripFalling => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.move_particle(self.velocity, collide);
+                if self.on_ground {
+                    self.removed = true;
+                } else {
+                    let friction = f64::from(self.friction);
+                    self.velocity[0] *= friction;
+                    self.velocity[1] *= friction;
+                    self.velocity[2] *= friction;
+                }
             }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
@@ -2654,6 +2674,29 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.2, 2.24, 2.6]);
         assert_close3(instance.velocity, [0.196, 0.2352, -0.392]);
+    }
+
+    #[test]
+    fn particle_runtime_drip_falling_removes_on_ground_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_nectar", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
     }
 
     #[test]
@@ -4266,7 +4309,7 @@ mod tests {
         assert!(falling_nectar.has_physics);
         assert_eq!(
             falling_nectar.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFalling
         );
         assert_eq!(falling_nectar.render_layer, ParticleRenderLayer::Opaque);
 
@@ -4296,7 +4339,7 @@ mod tests {
         assert!(falling_spore_blossom.has_physics);
         assert_eq!(
             falling_spore_blossom.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFalling
         );
         assert_eq!(
             falling_spore_blossom.render_layer,
@@ -7207,6 +7250,7 @@ mod tests {
             collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
             on_ground: false,
             stopped_by_collision: false,
+            removed: false,
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
