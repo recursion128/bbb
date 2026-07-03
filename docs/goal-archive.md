@@ -1199,6 +1199,18 @@
     trident use before generic stack `CONSUMABLE` data, and applies the vanilla
     throw-charge transform. Tests cover non-skipped idle/using rendering, mesh
     movement, override precedence, and exact matrix order/formula.
+  - [x] first-person bow BOW use pose：local vanilla 26.1
+    `BowItem.getUseAnimation` returns `ItemUseAnimation.BOW` and
+    `BowItem.getUseDuration` returns `72000`; `ItemInHandRenderer` applies
+    `applyItemArmTransform`, the fixed draw translate / X-Y-Z rotations, bow
+    power curve, charge shake, Z scale, and `Axis.YN` 45 degree rotation using
+    `timeHeld = useDuration - (remainingTicks - frameInterp + 1)`. Vanilla
+    `evaluateWhichHandsToRender` renders only the used hand while drawing a bow.
+    Native now allows `minecraft:bow` through first-person item rendering,
+    classifies bow use before generic stack `CONSUMABLE` data, applies the
+    vanilla draw transform, and hides the other hand while using bow/crossbow
+    items. Tests cover non-skipped idle/using rendering, used-hand selection,
+    mesh movement, override precedence, and exact matrix order/formula.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

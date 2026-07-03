@@ -80,6 +80,8 @@ const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
 /// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
 const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
+/// Vanilla `BowItem.getUseDuration`.
+const VANILLA_BOW_USE_DURATION_TICKS: f32 = 72_000.0;
 /// Vanilla `TridentItem.getUseDuration`.
 const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
 
@@ -1055,11 +1057,25 @@ pub(crate) fn first_person_item_models(
     let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
     let camera_world = first_person_camera_world_transform(camera_pose);
     let attack_swing = world.local_player_attack_swing(partial_ticks);
+    let only_render_using_hand = using_hand.filter(|hand| {
+        let stack = match hand {
+            InteractionHand::MainHand => main_stack,
+            InteractionHand::OffHand => off_stack,
+        };
+        stack
+            .and_then(|stack| first_person_stack_resource_id(stack, item_runtime))
+            .is_some_and(|resource_id| {
+                matches!(resource_id, "minecraft:bow" | "minecraft:crossbow")
+            })
+    });
 
     for (hand, stack) in [
         (InteractionHand::MainHand, main_stack),
         (InteractionHand::OffHand, off_stack),
     ] {
+        if only_render_using_hand.is_some_and(|only_hand| only_hand != hand) {
+            continue;
+        }
         let Some(stack) = stack else {
             continue;
         };
@@ -1112,6 +1128,15 @@ pub(crate) fn first_person_item_models(
                 }
                 FirstPersonUseAnimation::Trident { use_duration_ticks } => {
                     attach = first_person_apply_trident_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Bow { use_duration_ticks } => {
+                    attach = first_person_apply_bow_use_transform(
                         attach,
                         arm_left,
                         use_duration_ticks,
@@ -1183,6 +1208,7 @@ enum FirstPersonUseAnimation {
     Brush { use_duration_ticks: f32 },
     Bundle,
     Trident { use_duration_ticks: f32 },
+    Bow { use_duration_ticks: f32 },
 }
 
 fn supported_first_person_item_stack(
@@ -1200,7 +1226,7 @@ fn supported_first_person_item_stack(
     };
     !matches!(
         resource_id,
-        "minecraft:filled_map" | "minecraft:bow" | "minecraft:crossbow" | "minecraft:spyglass"
+        "minecraft:filled_map" | "minecraft:crossbow" | "minecraft:spyglass"
     )
 }
 
@@ -1244,6 +1270,11 @@ fn first_person_stack_supported_use_animation(
         Some("minecraft:trident") => {
             return Some(FirstPersonUseAnimation::Trident {
                 use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
+            });
+        }
+        Some("minecraft:bow") => {
+            return Some(FirstPersonUseAnimation::Bow {
+                use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
             });
         }
         _ => {}
@@ -1565,6 +1596,52 @@ fn first_person_trident_use_transform(
         * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
         * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
         * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.2))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+fn first_person_apply_bow_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_bow_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_bow_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let mut power = time_held / 20.0;
+    power = (power * power + power * 2.0) / 3.0;
+    if power > 1.0 {
+        power = 1.0;
+    }
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.2785682, 0.18344387, 0.15731531))
+        * Mat4::from_rotation_x((-13.935_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 35.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
         * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
         * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
 }
@@ -3586,7 +3663,7 @@ mod tests {
     #[test]
     fn first_person_item_models_skip_using_and_special_paths() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
-        write_flat_item_runtime_fixture(&root, &["hand_item", "bow"]);
+        write_flat_item_runtime_fixture(&root, &["hand_item", "crossbow"]);
         let item_runtime =
             NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
         let hand_item = ItemStackSummary {
@@ -3594,8 +3671,8 @@ mod tests {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
-        let bow = ItemStackSummary {
-            item_id: item_runtime.item_protocol_id("minecraft:bow"),
+        let crossbow = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:crossbow"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
@@ -3623,7 +3700,10 @@ mod tests {
         .is_empty());
 
         let mut special_world = WorldStore::new();
-        special_world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: bow });
+        special_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: crossbow,
+        });
         assert!(first_person_item_models(
             &special_world,
             Some(&item_runtime),
@@ -4147,6 +4227,84 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_bow_use_pose_and_hand_selection() {
+        let root = unique_item_model_temp_dir("first-person-bow-use");
+        write_flat_item_runtime_fixture(&root, &["bow", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let bow = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:bow"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let off_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:off_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut edible_bow = bow.clone();
+        edible_bow.component_patch.added = 1;
+        edible_bow.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        edible_bow.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        assert_eq!(
+            first_person_stack_supported_use_animation(&edible_bow, &item_runtime),
+            Some(FirstPersonUseAnimation::Bow {
+                use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
+            }),
+            "BowItem.getUseAnimation overrides stack CONSUMABLE data"
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: bow.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut using_world = WorldStore::new();
+        using_world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: bow });
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: off_item,
+        });
+        using_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        using_world.advance_local_using_item_ticks(12);
+        let using = first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(
+            using.flat_meshes.len(),
+            1,
+            "vanilla renders only the used hand while drawing a bow"
+        );
+        assert_ne!(
+            idle.flat_meshes[0], using.flat_meshes[0],
+            "BOW use applies ItemInHandRenderer's draw transform"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -4424,6 +4582,36 @@ mod tests {
             * Mat4::from_rotation_z((-9.785_f32).to_radians())
             * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
             * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.2))
+            * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+            * Mat4::from_rotation_y((-45.0_f32).to_radians());
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_bow_use_transform_matches_vanilla_draw_transform() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let transformed = first_person_apply_bow_use_transform(
+            base,
+            false,
+            VANILLA_BOW_USE_DURATION_TICKS,
+            12.0,
+            0.5,
+        );
+        let remaining_ticks = VANILLA_BOW_USE_DURATION_TICKS - 12.0;
+        let time_held = VANILLA_BOW_USE_DURATION_TICKS - (remaining_ticks - 0.5 + 1.0);
+        let mut power = time_held / 20.0;
+        power = (power * power + power * 2.0) / 3.0;
+        if power > 1.0 {
+            power = 1.0;
+        }
+        let shake = ((time_held - 0.1) * 1.3).sin() * (power - 0.1);
+        let expected = base
+            * Mat4::from_translation(Vec3::new(-0.2785682, 0.18344387, 0.15731531))
+            * Mat4::from_rotation_x((-13.935_f32).to_radians())
+            * Mat4::from_rotation_y(35.3_f32.to_radians())
+            * Mat4::from_rotation_z((-9.785_f32).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
             * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
             * Mat4::from_rotation_y((-45.0_f32).to_radians());
         assert!(transformed.abs_diff_eq(expected, 1.0e-5));
