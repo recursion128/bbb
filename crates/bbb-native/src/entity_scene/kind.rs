@@ -310,9 +310,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             size: slime_size(data_values),
         },
         VANILLA_ENTITY_TYPE_MARKER_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => {
-            entity_type_bounds_placeholder("ominous_item_spawner_entity_type_bounds", 0.25, 0.25)
-        }
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {

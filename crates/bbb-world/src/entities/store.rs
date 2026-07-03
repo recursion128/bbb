@@ -20,15 +20,16 @@ use super::{
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
     FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    MinecartDisplayBlockState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, WolfArmorCrackiness,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
@@ -2500,6 +2501,46 @@ impl EntityStore {
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 stack: stack.clone(),
                 shot_at_angle: firework_rocket_shot_at_angle(&metadata.data_values),
+            });
+        }
+        items
+    }
+
+    /// Collects the ominous item spawner item-cluster render state. Vanilla
+    /// `OminousItemSpawner.DATA_ITEM` is the first accessor after `Entity` and therefore uses
+    /// item-stack metadata id 8.
+    pub(crate) fn ominous_item_spawner_item_states_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<OminousItemSpawnerItemState> {
+        let mut items = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+                continue;
+            };
+            let Ok(client_animations) = self.ecs.get::<&EntityClientAnimations>(entity) else {
+                continue;
+            };
+            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+                continue;
+            };
+            items.push(OminousItemSpawnerItemState {
+                entity_id: identity.id,
+                position: transform.position,
+                age_ticks: client_animations.animations.age_ticks as f32 + partial_ticks,
+                stack: stack.clone(),
             });
         }
         items

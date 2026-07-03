@@ -6204,6 +6204,13 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:item` to `NoRender`; visible dropped items are submitted by the
       existing block/3D dropped-item model path or the item atlas billboard path,
       with handled entity ids suppressing duplicate flat billboards.
+    - ominous item spawners now use the vanilla 26.1
+      `OminousItemSpawnerRenderer` item-cluster path instead of a placeholder
+      bounds box. `WorldStore` reads the `DATA_ITEM` item stack (entity-data id
+      8) and entity `ageInTicks`; native bakes the stack with full-bright light,
+      50-tick scale-in, Y rotation at 40 degrees per tick, and the shared
+      `ItemEntityRenderer.submitMultipleFromCount` cluster layout. Ominous
+      spawning particles and sounds remain deferred presentation work.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -6212,12 +6219,11 @@ When an agent does any of the following, update this file in the same slice:
     - simple non-display placeholder bounds are no longer guessed `todo_*`
       model keys when vanilla `EntityType.sized(width, height)` gives the exact
       box: dragon fireball (1.0), experience orb (0.5), and
-      fishing bobber/ominous item spawner (0.25) now use
+      fishing bobber (0.25) now use
       source-verified `*_entity_type_bounds` keys. The actual dedicated
       renderers remain deferred presentation work: dragon-fireball /
-      fishing-hook / experience-orb textured camera quads, ominous-spawner item
-      model clusters,
-      and their renderer-specific lighting/tint/line behavior.
+      fishing-hook / experience-orb textured camera quads and their
+      renderer-specific lighting/tint/line behavior.
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, custom/datapack cow/pig

@@ -12047,6 +12047,44 @@ fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
 }
 
 #[test]
+fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![item_stack_entity_data(item_stack(910, 3))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![item_stack_entity_data(ProtocolItemStackSummary::empty())],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![item_stack_entity_data(item_stack(912, 1))],
+    }));
+
+    store.advance_entity_client_animations(7);
+
+    let items = store.ominous_item_spawner_item_states_at_partial_tick(0.25);
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].entity_id, 80);
+    assert_eq!(items[0].stack, item_stack(910, 3));
+    assert_eq!(items[0].age_ticks, 7.25);
+}
+
+#[test]
 fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

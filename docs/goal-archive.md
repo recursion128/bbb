@@ -535,8 +535,9 @@
     (`1.0`), falling block / TNT (`0.98`, both later replaced by block-model
     attachment slices below), firework rocket (later replaced by the item-billboard
     renderer slice below), item entity (later replaced by the item renderer slice
-    below), fishing bobber / ominous item spawner (`0.25`), and keeps the prior XP
-    orb `0.5` key on the same helper. Tests pin every id, key, and
+    below), ominous item spawner (later replaced by the item-cluster renderer
+    slice below), and fishing bobber (`0.25`), and keeps the prior XP orb `0.5`
+    key on the same helper. Tests pin every id, key, and
     `EntityType.sized(width, height)` box. Display entities, painting, and the
     unknown future-id placeholder stay deferred because their current boxes are not
     direct vanilla `EntityType.sized` renderer boxes.
@@ -581,6 +582,17 @@
     `item_entity_billboards_from_world`, with `handled_entity_ids` preventing
     double rendering. The item stack metadata projection remains in
     `WorldStore::item_entity_stacks`.
+  - [x] ominous item spawner item-cluster renderer：native entity scene now maps
+    vanilla ominous item spawners to `EntityModelKind::NoRender` instead of the
+    prior source-verified placeholder bounds. `WorldStore` reads
+    `OminousItemSpawner.DATA_ITEM` (item-stack metadata id 8) and projects
+    `ageInTicks` from entity client animation age plus partial tick. Native
+    bakes the carried stack through the shared item cluster helper with the
+    vanilla `OminousItemSpawnerRenderer` transform: scale in over the first 50
+    ticks, rotate around Y at 40 degrees per tick, and submit at full-bright
+    light. Tests cover metadata/age projection, scene `NoRender`, transform
+    math, and flat item mesh emission. Ominous spawning particles and sounds
+    remain tracked with particle/audio presentation work.
 
 ## P1-3：物品、Frame 与第一人称表现
 

@@ -188,6 +188,14 @@ pub struct FireworkRocketItemState {
     pub shot_at_angle: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OminousItemSpawnerItemState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub age_ticks: f32,
+    pub stack: ProtocolItemStackSummary,
+}
+
 /// The wall the front of an item frame faces (vanilla `ItemFrame.getDirection`). Drives the frame's
 /// render orientation: horizontal facings rotate the frame about Y, vertical facings tilt it about X.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2288,6 +2296,16 @@ impl WorldStore {
                 .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
         }
         items
+    }
+
+    /// The item-cluster render state for ominous item spawner entities (vanilla
+    /// `OminousItemSpawnerRenderer`), projected with entity `ageInTicks` for scale-in and spin.
+    pub fn ominous_item_spawner_item_states_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<OminousItemSpawnerItemState> {
+        self.entities
+            .ominous_item_spawner_item_states_at_partial_tick(partial_ticks)
     }
 
     fn item_stacks_with_sampled_light(

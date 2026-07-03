@@ -6898,12 +6898,6 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             0.25,
             0.25,
         ),
-        (
-            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-            "ominous_item_spawner_entity_type_bounds",
-            0.25,
-            0.25,
-        ),
     ] {
         assert_eq!(
             entity_model_kind(entity_type_id, &[]),
@@ -6947,6 +6941,14 @@ fn firework_rocket_uses_item_billboard_renderer_not_placeholder_bounds() {
 fn item_entity_uses_item_model_renderer_not_placeholder_bounds() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ITEM_ID, &[]),
+        EntityModelKind::NoRender
+    );
+}
+
+#[test]
+fn ominous_item_spawner_uses_item_cluster_renderer_not_placeholder_bounds() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, &[]),
         EntityModelKind::NoRender
     );
 }

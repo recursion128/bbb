@@ -56,7 +56,9 @@ use crate::{
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
-    item_models::{dropped_item_models, entity_block_models, held_item_models},
+    item_models::{
+        dropped_item_models, entity_block_models, held_item_models, ominous_item_spawner_models,
+    },
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
@@ -1515,6 +1517,15 @@ pub(crate) fn pump_network_and_terrain(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
+    let ominous_item_spawner_models = ominous_item_spawner_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        entity_partial_tick,
+        trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
+        attribute_keys.as_deref(),
+    );
     let item_entity_billboards = item_entity_billboards_from_world(
         world,
         item_runtime,
@@ -1543,30 +1554,40 @@ pub(crate) fn pump_network_and_terrain(
         entity_partial_tick,
     );
     let mut block_item_meshes = dropped_item_models.block_meshes;
+    block_item_meshes.extend(ominous_item_spawner_models.block_meshes);
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);
     block_item_meshes.extend(entity_block_meshes);
     let block_item_z_offset_forward_meshes = item_frame_models.block_z_offset_forward_meshes;
     let mut block_item_translucent_meshes = dropped_item_models.block_translucent_meshes;
+    block_item_translucent_meshes.extend(ominous_item_spawner_models.block_translucent_meshes);
     block_item_translucent_meshes.extend(held_item_models.block_translucent_meshes);
     block_item_translucent_meshes.extend(item_frame_models.block_translucent_meshes);
     let mut item_model_glint_meshes = dropped_item_models.block_glint_meshes;
+    item_model_glint_meshes.extend(ominous_item_spawner_models.block_glint_meshes);
     item_model_glint_meshes.extend(held_item_models.block_glint_meshes);
     item_model_glint_meshes.extend(item_frame_models.block_glint_meshes);
     let mut item_model_glint_translucent_meshes =
         dropped_item_models.block_glint_translucent_meshes;
+    item_model_glint_translucent_meshes
+        .extend(ominous_item_spawner_models.block_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(held_item_models.block_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(item_frame_models.block_glint_translucent_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
+    flat_item_meshes.extend(ominous_item_spawner_models.flat_meshes);
     flat_item_meshes.extend(held_item_models.flat_meshes);
     flat_item_meshes.extend(item_frame_models.flat_meshes);
     let mut flat_item_translucent_meshes = dropped_item_models.flat_translucent_meshes;
+    flat_item_translucent_meshes.extend(ominous_item_spawner_models.flat_translucent_meshes);
     flat_item_translucent_meshes.extend(held_item_models.flat_translucent_meshes);
     flat_item_translucent_meshes.extend(item_frame_models.flat_translucent_meshes);
     item_model_glint_meshes.extend(dropped_item_models.flat_glint_meshes);
+    item_model_glint_meshes.extend(ominous_item_spawner_models.flat_glint_meshes);
     item_model_glint_meshes.extend(held_item_models.flat_glint_meshes);
     item_model_glint_meshes.extend(item_frame_models.flat_glint_meshes);
     item_model_glint_translucent_meshes.extend(dropped_item_models.flat_glint_translucent_meshes);
+    item_model_glint_translucent_meshes
+        .extend(ominous_item_spawner_models.flat_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(held_item_models.flat_glint_translucent_meshes);
     item_model_glint_translucent_meshes.extend(item_frame_models.flat_glint_translucent_meshes);
     let item_frame_map_textures = item_frame_models.map_textures;

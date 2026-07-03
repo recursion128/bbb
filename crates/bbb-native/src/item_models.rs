@@ -4,7 +4,8 @@
 //! `1/16`-thick slab over the item atlas (the generated/flat path, vanilla `builtin/generated`). Both
 //! are placed by vanilla `ItemEntityRenderer.submit` (the bob lift + Y spin) composed with the model's
 //! GROUND display transform, and a stack of items renders as the vanilla cluster of `1..=5` jittered
-//! copies (`submitMultipleFromCount`).
+//! copies (`submitMultipleFromCount`). Ominous item spawners reuse the same item-cluster bake with their
+//! renderer-owned scale-in and spin transform.
 
 use std::{
     borrow::Cow,
@@ -55,6 +56,8 @@ const GENERATED_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayT
 /// Vanilla `FLAT_ITEM_DEPTH_THRESHOLD` / `ITEM_MIN_HOVER_HEIGHT`: a rendered model thinner than this in Z
 /// is stacked back-to-front; a thicker one is scattered in 3D.
 const FLAT_ITEM_DEPTH_THRESHOLD: f32 = 0.0625;
+const OMINOUS_ITEM_SPAWNER_SCALE_IN_TICKS: f32 = 50.0;
+const OMINOUS_ITEM_SPAWNER_ROTATION_SPEED_DEGREES_PER_TICK: f32 = 40.0;
 const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
 const POPPY_BLOCK_ID: &str = "minecraft:poppy";
 const RED_MUSHROOM_BLOCK_ID: &str = "minecraft:red_mushroom";
@@ -73,6 +76,22 @@ pub(crate) struct DroppedItemModels {
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub handled_entity_ids: BTreeSet<i32>,
+}
+
+impl DroppedItemModels {
+    fn empty() -> Self {
+        Self {
+            block_meshes: Vec::new(),
+            block_translucent_meshes: Vec::new(),
+            block_glint_meshes: Vec::new(),
+            block_glint_translucent_meshes: Vec::new(),
+            flat_meshes: Vec::new(),
+            flat_translucent_meshes: Vec::new(),
+            flat_glint_meshes: Vec::new(),
+            flat_glint_translucent_meshes: Vec::new(),
+            handled_entity_ids: BTreeSet::new(),
+        }
+    }
 }
 
 struct EntityBlockAttachment {
@@ -381,10 +400,10 @@ pub(crate) fn dropped_item_models(
 
         // The item's own retained GROUND display transform (custom ground rotation / scale / offset for
         // items that define one); falls back to the vanilla `block/block` or `item/generated` default.
-        let ground = |fallback| {
+        let ground = |default_transform| {
             item_runtime
                 .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
-                .unwrap_or(fallback)
+                .unwrap_or(default_transform)
         };
         let foil =
             item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
@@ -466,6 +485,110 @@ pub(crate) fn dropped_item_models(
         flat_glint_translucent_meshes,
         handled_entity_ids,
     }
+}
+
+/// Bakes the item cluster carried by every ominous item spawner entity. Vanilla
+/// `OminousItemSpawnerRenderer` uses `ItemClusterRenderState` with full-bright light, scales in for the
+/// first 50 ticks, spins at 40 degrees per tick, then delegates to
+/// `ItemEntityRenderer.submitMultipleFromCount`.
+pub(crate) fn ominous_item_spawner_models(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    entity_partial_tick: f32,
+    trim_material_keys: Option<&[String]>,
+    enchantment_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
+) -> DroppedItemModels {
+    let mut models = DroppedItemModels::empty();
+    let Some(item_runtime) = item_runtime else {
+        return models;
+    };
+
+    for state in world.ominous_item_spawner_item_states_at_partial_tick(entity_partial_tick) {
+        let Some(item_id) = state.stack.item_id else {
+            continue;
+        };
+        let position = [
+            state.position.x as f32,
+            state.position.y as f32,
+            state.position.z as f32,
+        ];
+        let count = rendered_amount(state.stack.count);
+        // Vanilla `ItemClusterRenderState.getSeedForItemStack`: item id plus damage. The currently
+        // retained stack summary keeps item id; damaged stack jitter is deferred with broader item
+        // component render-state parity.
+        let seed = item_id as i64;
+        let ground = |default_transform| {
+            item_runtime
+                .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
+                .unwrap_or(default_transform)
+        };
+        let foil =
+            item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
+        let base = ominous_item_spawner_base_transform(position, state.age_ticks);
+
+        if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
+            if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
+                if !quads.is_empty() {
+                    push_mesh_set(
+                        item_cluster_mesh_with_base(
+                            &quads,
+                            base,
+                            &ground(BLOCK_GROUND_FALLBACK),
+                            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                            count,
+                            seed,
+                            foil,
+                        ),
+                        &mut models.block_meshes,
+                        &mut models.block_translucent_meshes,
+                        &mut models.block_glint_meshes,
+                        &mut models.block_glint_translucent_meshes,
+                    );
+                    models.handled_entity_ids.insert(state.entity_id);
+                    continue;
+                }
+            }
+        }
+
+        let mut quads: Vec<ItemModelQuad> = Vec::new();
+        for layer in item_runtime.generated_item_layers_for_stack_with_registry_context(
+            &state.stack,
+            BlockModelDisplayContext::Ground,
+            trim_material_keys,
+            enchantment_keys,
+            attribute_keys,
+        ) {
+            quads.extend(bake_generated_item_quads(
+                &layer.mask,
+                layer.rect,
+                layer.tint,
+                layer.translucent,
+            ));
+        }
+        if quads.is_empty() {
+            continue;
+        }
+        push_mesh_set(
+            item_cluster_mesh_with_base(
+                &quads,
+                base,
+                &ground(GENERATED_GROUND_FALLBACK),
+                ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                count,
+                seed,
+                foil,
+            ),
+            &mut models.flat_meshes,
+            &mut models.flat_translucent_meshes,
+            &mut models.flat_glint_meshes,
+            &mut models.flat_glint_translucent_meshes,
+        );
+        models.handled_entity_ids.insert(state.entity_id);
+    }
+
+    models
 }
 
 /// Fallback third-person right-hand display transform for a block item (`minecraft:block/block`):
@@ -1636,6 +1759,32 @@ fn stacked_item_mesh(
     mesh
 }
 
+fn item_cluster_mesh_with_base(
+    quads: &[ItemModelQuad],
+    base: Mat4,
+    ground: &BlockModelDisplayTransform,
+    light: [f32; 2],
+    count: usize,
+    seed: i64,
+    foil: ItemModelFoil,
+) -> ItemModelMeshSet {
+    let ground_matrix = display_matrix(ground, false);
+    let (_, depth) = ground_model_bounds(quads, ground_matrix);
+    let mut mesh = ItemModelMeshSet::default();
+    append_cluster(
+        &mut mesh,
+        quads,
+        base,
+        ground_matrix,
+        light,
+        count,
+        seed,
+        depth,
+        foil,
+    );
+    mesh
+}
+
 fn shader_light(light: TerrainLight) -> [f32; 2] {
     [
         light.block.min(15) as f32 / 15.0,
@@ -1655,6 +1804,20 @@ fn base_transform(position: [f32; 3], age_ticks: f32, entity_id: i32, min_offset
         position[1] + bob + min_offset_y,
         position[2],
     )) * Mat4::from_rotation_y(spin)
+}
+
+fn ominous_item_spawner_base_transform(position: [f32; 3], age_ticks: f32) -> Mat4 {
+    let scale = if age_ticks <= OMINOUS_ITEM_SPAWNER_SCALE_IN_TICKS {
+        age_ticks.clamp(0.0, OMINOUS_ITEM_SPAWNER_SCALE_IN_TICKS)
+            / OMINOUS_ITEM_SPAWNER_SCALE_IN_TICKS
+    } else {
+        1.0
+    };
+    let spin_degrees =
+        (age_ticks * OMINOUS_ITEM_SPAWNER_ROTATION_SPEED_DEGREES_PER_TICK).rem_euclid(360.0);
+    Mat4::from_translation(Vec3::from_array(position))
+        * Mat4::from_scale(Vec3::splat(scale))
+        * Mat4::from_rotation_y(spin_degrees.to_radians())
 }
 
 /// The rendered model's floor and Z thickness (vanilla `modelBoundingBox.minY` / `getZsize()`): each quad
@@ -3277,6 +3440,67 @@ mod tests {
         assert_eq!(foiled.glint, foiled.solid);
         assert_eq!(foiled.glint_translucent, foiled.translucent);
         assert!(!foiled.translucent.is_empty());
+    }
+
+    #[test]
+    fn ominous_item_spawner_base_transform_scales_in_and_spins() {
+        let early = ominous_item_spawner_base_transform([1.0, 2.0, 3.0], 9.0);
+        assert!((early.transform_point3(Vec3::ZERO) - Vec3::new(1.0, 2.0, 3.0)).length() < 1e-6);
+        assert!((early.transform_vector3(Vec3::X) - Vec3::new(0.18, 0.0, 0.0)).length() < 1e-6);
+
+        let full_size = ominous_item_spawner_base_transform([0.0, 0.0, 0.0], 60.0);
+        assert!((full_size.transform_vector3(Vec3::X).length() - 1.0).abs() < 1e-6);
+        assert!(
+            (full_size.transform_vector3(Vec3::X) - Vec3::X).length() > 1.0,
+            "60 ticks spins by 240 degrees, not identity"
+        );
+    }
+
+    #[test]
+    fn ominous_item_spawner_models_emit_item_cluster_meshes() {
+        const OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID: u8 = 8;
+
+        let root = unique_item_model_temp_dir("ominous-item-spawner");
+        write_flat_item_runtime_fixture(&root, &["omen_drop"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let item_id = item_runtime
+            .item_protocol_id("minecraft:omen_drop")
+            .expect("fixture item registered");
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            801,
+            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 801,
+            values: vec![EntityDataValue {
+                data_id: OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID,
+                serializer_id: 7,
+                value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 3,
+                    component_patch: DataComponentPatchSummary::default(),
+                }),
+            }],
+        }));
+        world.advance_entity_client_animations(25);
+
+        let models = ominous_item_spawner_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            0.5,
+            None,
+            None,
+            None,
+        );
+
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.flat_meshes.len(), 1);
+        assert!(!models.flat_meshes[0].is_empty());
+        assert!(models.handled_entity_ids.contains(&801));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
