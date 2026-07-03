@@ -20,19 +20,20 @@ use super::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
     EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FoxEatParticleState, ItemEntityStackState, ItemFrameRenderState,
-    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
-    OminousItemSpawnerItemState, RavagerRoarParticleState, RavagerStunParticleState,
-    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, RavagerRoarParticleState,
+    RavagerStunParticleState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
@@ -358,6 +359,7 @@ pub(crate) struct EntityStore {
     order: Vec<i32>,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
+    pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
 }
 
 impl EntityStore {
@@ -940,6 +942,12 @@ impl EntityStore {
         &mut self,
     ) -> Vec<EvokerFangsCritParticleState> {
         std::mem::take(&mut self.pending_evoker_fangs_crit_particles)
+    }
+
+    pub(crate) fn take_firework_rocket_trail_particle_states(
+        &mut self,
+    ) -> Vec<FireworkRocketTrailParticleState> {
+        std::mem::take(&mut self.pending_firework_rocket_trail_particles)
     }
 
     pub(crate) fn ravager_roar_particle_state(&self, id: i32) -> Option<RavagerRoarParticleState> {
@@ -3187,6 +3195,7 @@ impl EntityStore {
                 append_client_tick_particle_triggers(
                     &mut self.pending_ravager_stun_particles,
                     &mut self.pending_evoker_fangs_crit_particles,
+                    &mut self.pending_firework_rocket_trail_particles,
                     identity,
                     transform,
                     &metadata.data_values,
@@ -3419,6 +3428,7 @@ impl Default for EntityStore {
             order: Vec::new(),
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
+            pending_firework_rocket_trail_particles: Vec::new(),
         }
     }
 }
@@ -3483,6 +3493,8 @@ impl Clone for EntityStore {
         store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
         store.pending_evoker_fangs_crit_particles =
             self.pending_evoker_fangs_crit_particles.clone();
+        store.pending_firework_rocket_trail_particles =
+            self.pending_firework_rocket_trail_particles.clone();
         store
     }
 }
@@ -3587,6 +3599,7 @@ fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
 fn append_client_tick_particle_triggers(
     pending_ravager_stun_particles: &mut Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: &mut Vec<EvokerFangsCritParticleState>,
+    pending_firework_rocket_trail_particles: &mut Vec<FireworkRocketTrailParticleState>,
     identity: &EntityIdentity,
     transform: &EntityTransform,
     data_values: &[bbb_protocol::packets::EntityDataValue],
@@ -3594,6 +3607,14 @@ fn append_client_tick_particle_triggers(
     client_animations: EntityClientAnimationState,
     triggers: EntityClientTickParticleTriggers,
 ) {
+    if identity.entity_type_id == VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
+        pending_firework_rocket_trail_particles.push(FireworkRocketTrailParticleState {
+            entity_id: identity.id,
+            position: transform.position,
+            delta_movement: transform.delta_movement,
+        });
+    }
+
     if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
         return;
     }

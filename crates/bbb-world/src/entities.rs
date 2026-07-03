@@ -229,6 +229,13 @@ pub struct FireworkRocketExplosionParticleState {
     pub explosions: Vec<ProtocolFireworkExplosionSummary>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct FireworkRocketTrailParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub delta_movement: EntityVec3,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OminousItemSpawnerItemState {
     pub entity_id: i32,
@@ -2756,6 +2763,12 @@ impl WorldStore {
 
     pub fn take_evoker_fangs_crit_particle_states(&mut self) -> Vec<EvokerFangsCritParticleState> {
         self.entities.take_evoker_fangs_crit_particle_states()
+    }
+
+    pub fn take_firework_rocket_trail_particle_states(
+        &mut self,
+    ) -> Vec<FireworkRocketTrailParticleState> {
+        self.entities.take_firework_rocket_trail_particle_states()
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player

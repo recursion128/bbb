@@ -49,12 +49,12 @@ use bbb_protocol::packets::{
 use bbb_world::{
     advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
     ArrowEffectParticleState, BlockPos, ChunkPos, DolphinHappyParticleState,
-    EntityTamingParticleState, FireworkRocketExplosionParticleState, FoxEatParticleState,
-    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
-    RegistryPacketEntry, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    ThrownEggHitParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LocalPlayerPoseState, RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -9250,6 +9250,7 @@ struct RecordingParticleSink {
     firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     firework_explosion_states: Vec<FireworkRocketExplosionParticleState>,
     firework_explosion_camera_positions: Vec<Option<[f64; 3]>>,
+    firework_rocket_trail_states: Vec<FireworkRocketTrailParticleState>,
     tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
     take_item_entity_pickup_states: Vec<TakeItemEntityPickupParticleState>,
     ravager_roar_states: Vec<RavagerRoarParticleState>,
@@ -9354,6 +9355,16 @@ impl ParticleEventSink for RecordingParticleSink {
             missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()
         };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_firework_rocket_trail_particles(
+        &mut self,
+        state: FireworkRocketTrailParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.firework_rocket_trail_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
     }

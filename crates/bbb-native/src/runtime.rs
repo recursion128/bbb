@@ -33,11 +33,12 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    BlockPos, BookScreenState, ContainerState, EvokerFangsCritParticleState, ItemEquipmentSlot,
-    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
-    MountInventoryKind, PrimedTntSmokeParticleState, RavagerStunParticleState, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldStore, WorldWeatherState,
+    BlockPos, BookScreenState, ContainerState, EvokerFangsCritParticleState,
+    FireworkRocketTrailParticleState, ItemEquipmentSlot, MerchantOfferState, MerchantOffersState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, PrimedTntSmokeParticleState,
+    RavagerStunParticleState, SoundEventState, SoundHolderState, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -1470,7 +1471,7 @@ pub(crate) fn pump_network_and_terrain(
     let particle_local_player_motion_context = particle_local_player_motion_context(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
-    submit_entity_client_tick_particles(renderer, world);
+    submit_entity_client_tick_particles(renderer, world, &mut particle_events);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
@@ -1843,12 +1844,26 @@ fn primed_tnt_smoke_particle_batch(
     }
 }
 
-fn submit_entity_client_tick_particles(renderer: &mut Renderer, world: &mut WorldStore) {
+fn submit_entity_client_tick_particles(
+    renderer: &mut Renderer,
+    world: &mut WorldStore,
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+) {
+    let firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState> =
+        world.take_firework_rocket_trail_particle_states();
     let batch = entity_client_tick_particle_batch(
         world.take_ravager_stun_particle_states(),
         world.take_evoker_fangs_crit_particle_states(),
     );
     renderer.submit_particle_spawns(batch);
+
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    for state in firework_rocket_trail_particles {
+        renderer
+            .submit_particle_spawns(particle_events.spawn_firework_rocket_trail_particles(state));
+    }
 }
 
 fn entity_client_tick_particle_batch(

@@ -405,7 +405,8 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
       - remaining deferred work is broader firework presentation outside the
-        current Starter particle/audio path
+        current Starter particle/audio path and FireworkRocketEntity client
+        tick trail
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -673,7 +674,10 @@ When an agent does any of the following, update this file in the same slice:
       large_blast sound, including far variants, volume, pitch range, seed, and
       distance-delay metadata, plus delayed twinkle / twinkle_far sounds after
       the vanilla Starter lifetime using release-time camera distance for the
-      far variant.
+      far variant. FireworkRocketEntity client tick trail now submits one
+      sprite-backed `minecraft:firework` particle per advanced client tick at
+      the rocket's current world transform, with vanilla gaussian X/Z speed
+      `*0.05` and Y speed `-deltaMovement.y*0.5`.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6570,7 +6574,11 @@ When an agent does any of the following, update this file in the same slice:
       are covered; non-empty explosions now project Starter base spark shapes,
       center `flash`, fade-colors, trail child spark duplication, and twinkle
       visibility gating, plus the life-0 blast / large_blast local ambient
-      sound and delayed twinkle / twinkle_far local ambient sound.
+      sound and delayed twinkle / twinkle_far local ambient sound. Client tick
+      trail particles now mirror vanilla `FireworkRocketEntity.tick` by
+      submitting one sprite-backed `minecraft:firework` particle each advanced
+      client tick at the rocket's current transform, with gaussian X/Z speed
+      `*0.05` and Y speed `-deltaMovement.y*0.5`.
     - dropped item entities now use the vanilla 26.1 `ItemEntityRenderer` item
       stack path instead of a placeholder bounds box. Native entity scene maps
       `minecraft:item` to `NoRender`; visible dropped items are submitted by the

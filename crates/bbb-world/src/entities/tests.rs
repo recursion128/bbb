@@ -671,6 +671,53 @@ fn primed_tnt_smoke_particles_use_current_position_when_post_decrement_fuse_surv
 }
 
 #[test]
+fn firework_rocket_trail_particles_queue_once_per_client_tick() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 3.5,
+            y: 70.25,
+            z: -6.75,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.2,
+            y: 0.8,
+            z: -0.4,
+        },
+        ..protocol_add_entity_with_type(210, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        211,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    store.advance_entity_client_animations(2);
+
+    let states = store.take_firework_rocket_trail_particle_states();
+    assert_eq!(states.len(), 2);
+    assert!(states.iter().all(|state| state.entity_id == 210));
+    assert!(states.iter().all(|state| {
+        state.position
+            == EntityVec3 {
+                x: 3.5,
+                y: 70.25,
+                z: -6.75,
+            }
+    }));
+    assert!(states.iter().all(|state| {
+        state.delta_movement
+            == EntityVec3 {
+                x: 0.2,
+                y: 0.8,
+                z: -0.4,
+            }
+    }));
+    assert!(store
+        .take_firework_rocket_trail_particle_states()
+        .is_empty());
+}
+
+#[test]
 fn update_attributes_ignores_non_living_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

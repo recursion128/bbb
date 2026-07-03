@@ -25,11 +25,12 @@ use bbb_world::{
     block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
-    FoxEatParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TerrainLight, ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
+    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::{
@@ -75,6 +76,10 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         state: &FireworkRocketExplosionParticleState,
         camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch;
+    fn spawn_firework_rocket_trail_particles(
+        &mut self,
+        state: FireworkRocketTrailParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_tracking_emitter_particles(
         &mut self,
@@ -354,6 +359,13 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .firework_explosion_particle_batch(state, camera_position)
+    }
+
+    fn spawn_firework_rocket_trail_particles(
+        &mut self,
+        state: FireworkRocketTrailParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.firework_rocket_trail_particle_batch(state)
     }
 
     fn spawn_tracking_emitter_particles(
@@ -2265,6 +2277,31 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn firework_rocket_trail_particle_batch(
+        &mut self,
+        state: FireworkRocketTrailParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(FIREWORK_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let position = Vec3d {
+            x: state.position.x,
+            y: state.position.y,
+            z: state.position.z,
+        };
+        let velocity = Vec3d {
+            x: self.random.next_gaussian() * 0.05,
+            y: -state.delta_movement.y * 0.5,
+            z: self.random.next_gaussian() * 0.05,
+        };
+        ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            commands: vec![self.command_from_template(&template, position, velocity, false)],
+            ..ParticleSpawnBatch::default()
+        }
     }
 
     fn firework_blast_sound_event(
@@ -5826,6 +5863,52 @@ mod tests {
         assert_close_f32(random.next_float(), 0.730_967_76);
         assert_close_f32(random.next_float(), 0.831_441);
         assert_close_f32(random.next_float(), 0.240_536_39);
+    }
+
+    #[test]
+    fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
+        let mut resolver = test_resolver(0);
+        let batch =
+            resolver.firework_rocket_trail_particle_batch(FireworkRocketTrailParticleState {
+                entity_id: 7,
+                position: bbb_world::EntityVec3 {
+                    x: 10.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+                delta_movement: bbb_world::EntityVec3 {
+                    x: 0.2,
+                    y: 0.8,
+                    z: -0.4,
+                },
+            });
+
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_eq!(batch.commands.len(), 1);
+        let mut expected_random = LegacyRandom::new(0);
+        let command = &batch.commands[0];
+        assert_particle_command(
+            command,
+            FIREWORK_PARTICLE_TYPE_ID,
+            "minecraft:firework",
+            [10.0, 64.0, -3.0],
+            [
+                expected_random.next_gaussian() * 0.05,
+                -0.4,
+                expected_random.next_gaussian() * 0.05,
+            ],
+            false,
+        );
+        assert_eq!(
+            command.sprite_ids,
+            vec![
+                "minecraft:firework_0".to_string(),
+                "minecraft:firework_1".to_string()
+            ]
+        );
+        assert!(!command.option_firework_trail);
+        assert!(!command.option_firework_twinkle);
     }
 
     #[test]
@@ -13831,6 +13914,8 @@ mod tests {
                 "flame",
                 "soul_fire_flame",
                 "explosion_0",
+                "firework_0",
+                "firework_1",
                 "gust_0",
                 "smoke_0",
                 "large_smoke_0",

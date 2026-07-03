@@ -899,7 +899,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
     let entity_client_tick_particles = source
-        .find("submit_entity_client_tick_particles(renderer, world);")
+        .find("submit_entity_client_tick_particles(renderer, world, &mut particle_events);")
         .expect("pump should emit entity client tick particles before particle tick");
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
