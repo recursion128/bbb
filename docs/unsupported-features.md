@@ -830,14 +830,16 @@ When an agent does any of the following, update this file in the same slice:
         `SimpleAnimatedParticle` friction `0.91`, gravity `0.1`, full-bright
         light, translucent layer, command velocity, `0.75` quad-size scale,
         fixed initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and
-        the half-lifetime alpha fade formula; firework `Starter` trail/twinkle
-        child spawning and audio remain part of the broader firework rocket /
-        level-event presentation follow-up. `trail` now maps to
-        `TrailParticle.Provider` with decoded target / RGB color / duration,
-        vanilla random color scaling, target interpolation, full-bright light,
-        and opaque layer. `vibration` now maps block `PositionSource` options
-        to `VibrationSignalParticle.Provider` with decoded target center /
-        arrival ticks, random sprite selection, fixed `0.3` quad size,
+        the half-lifetime alpha fade formula. Firework rocket entity event `17`
+        with empty/no explosions now emits vanilla `minecraft:poof` particles;
+        non-empty `Starter` trail/twinkle child spawning and audio remain part
+        of the broader firework rocket / level-event presentation follow-up.
+        `trail` now maps to `TrailParticle.Provider` with decoded target / RGB
+        color / duration, vanilla random color scaling, target interpolation,
+        full-bright light, and opaque layer. `vibration` now maps block
+        `PositionSource` options to `VibrationSignalParticle.Provider` with
+        decoded target center / arrival ticks, random sprite selection, fixed
+        `0.3` quad size,
         translucent layer, full-block light, target interpolation, vanilla
         yaw/pitch/sway state, and the two rotated quads from
         `VibrationSignalParticle.extract`. Entity `PositionSource` options now
@@ -6257,7 +6259,8 @@ When an agent does any of the following, update this file in the same slice:
       rockets to mirror `shouldRender`, and native submits the stack through the
       item atlas billboard layer with entity light. The renderer-owned billboard
       orientation carries the vanilla post-camera `Z+180 / Y+180 / X+90` pose
-      for `isShotAtAngle`. Firework explosion / Starter child particles remain
+      for `isShotAtAngle`. Empty/no-explosion entity event `17` poof particles
+      are covered; non-empty explosion / Starter child particles remain
       deferred to particle presentation work.
     - dropped item entities now use the vanilla 26.1 `ItemEntityRenderer` item
       stack path instead of a placeholder bounds box. Native entity scene maps
@@ -6422,9 +6425,10 @@ When an agent does any of the following, update this file in the same slice:
         friction `0.91`, gravity `0.1`, full-bright light, translucent
         particle layer, command velocity, `0.75` quad-size scale, fixed
         initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and the
-        half-lifetime alpha fade formula. Firework `Starter` trail/twinkle
-        child spawning and audio remain deferred to the broader firework
-        rocket / level-event presentation slice.
+        half-lifetime alpha fade formula. Firework rocket entity event `17`
+        with empty/no explosions now emits vanilla `minecraft:poof` particles;
+        non-empty `Starter` trail/twinkle child spawning and audio remain
+        deferred to the broader firework rocket / level-event presentation slice.
       - particle descriptors map `DripParticle.HoneyHangProvider`,
         `HoneyFallProvider`, and `HoneyLandProvider` for `dripping_honey`,
         `falling_honey`, and `landing_honey` to random sprites, vanilla

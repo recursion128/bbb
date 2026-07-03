@@ -388,6 +388,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SpellParticle` scoping alpha 现在接收 native local-player eye position /
     first-person spyglass context，覆盖近距 alpha=0 与离开后按 0.05 lerp 回
     `originalAlpha` 的 tick 行为；
+    firework rocket entity event `17` 的 empty/no-explosion `createFireworks`
+    分支现在按 vanilla 在 rocket 位置生成 `random.nextInt(3)+2` 个
+    `minecraft:poof` 粒子，使用 gaussian X/Z `*0.05` 与固定 Y `0.005`
+    速度，并保留 `ParticleTypes.POOF` 的 `overrideLimiter=true` 语义，绕过普通
+    距离 / 粒子状态门；
     `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
     local-player position / delta-movement context，覆盖 vanilla
     `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
@@ -438,8 +443,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     families、fire/cocoa/creaking heart static families、glowstone/enchanting/
     beacon static families、矿物/自然 static block families，以及 final accepted
     vanilla static states）。全量 mapColor catalog 与 biome-aware per-spawn
-    BlockColors 已收敛；firework `Starter` 子粒子的 fade-color 仍归属
-    firework 宽面，不再作为 provider alpha/color curve 小项跟踪。
+    BlockColors 已收敛；firework 非空 explosions 的 `Starter` 子粒子
+    fade-color 仍归属 firework 宽面，不再作为 provider alpha/color curve 小项跟踪。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：on-ground roll reset 和三轴

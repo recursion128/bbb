@@ -267,6 +267,16 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn firework_empty_explosion_particles(&mut self, world: &WorldStore, position: [f64; 3]) {
+        emit_firework_empty_explosion_particles(
+            self.particle_events,
+            self.particle_renderer,
+            position,
+            camera_audio_position_from_world(world)
+                .map(|position| [position.x, position.y, position.z]),
+        );
+    }
+
     fn level_event_particles(
         &mut self,
         world: &WorldStore,
@@ -397,6 +407,21 @@ fn emit_level_particles(
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch =
             particle_events.spawn_level_particles(packet, context, biome_sampler, item_runtime);
+        if let Some(renderer) = particle_renderer.as_deref_mut() {
+            renderer.submit_particle_spawns(batch);
+        }
+    }
+}
+
+fn emit_firework_empty_explosion_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    position: [f64; 3],
+    camera_position: Option<[f64; 3]>,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let batch =
+            particle_events.spawn_firework_empty_explosion_particles(position, camera_position);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }

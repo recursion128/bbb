@@ -2467,6 +2467,16 @@
     collision-backed particle move path; focused tests cover query dimensions,
     ground/stopped collision state, retained Y velocity, and alpha-zero
     removal before motion.
+  - [x] Firework empty-explosion poof branch：local vanilla 26.1
+    `FireworkRocketEntity.handleEntityEvent(17)` calls
+    `ClientLevel.createFireworks`; empty explosions spawn
+    `random.nextInt(3)+2` `minecraft:poof` particles at the rocket position
+    with gaussian X/Z velocity `* 0.05` and fixed Y velocity `0.005`, while
+    non-empty explosions remain the broader `Starter` follow-up. Native world
+    event handling now detects firework rockets with no decoded explosions, and
+    native particle runtime emits the poof batch while preserving
+    `ParticleTypes.POOF` `overrideLimiter=true` behavior. Tests cover resolver
+    randoms and dispatcher gating.
 
 ## P2：Terrain / Block Render Presentation
 

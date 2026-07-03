@@ -19,15 +19,15 @@ use bbb_protocol::packets::{
     ChatTypeBound, ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData,
     ChunkPos as ProtocolChunkPos, ChunksBiomes, CommonPlayerSpawnInfo, ContainerClose,
     ContainerSetContent, ContainerSetData, ContainerSetSlot, CustomChatCompletions,
-    CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
-    DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
-    DisguisedChat, EntityAnchor, EntityAnimation, EntityDataValue, EntityDataValueKind,
-    EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion,
-    FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue, GameRuleValues,
-    GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand, ItemCostSummary,
-    ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
-    LevelParticles, LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
-    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
+    CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DataComponentPatchSummary,
+    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
+    DialogHolder, DisguisedChat, EntityAnchor, EntityAnimation, EntityDataValue,
+    EntityDataValueKind, EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot,
+    EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue,
+    GameRuleValues, GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand,
+    ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight,
+    LevelEvent, LevelParticles, LightUpdate, LightUpdateData, MapColorPatch, MapDecoration,
+    MapItemData, MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
     MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
     ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
     PlayerLookAt, PlayerLookAtTarget, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse,
@@ -1914,6 +1914,77 @@ fn entity_events_update_world_and_world_counters() {
     assert_eq!(world_counters.entity_removes_received, 2);
     assert_eq!(world_counters.entities_removed, 1);
     assert_eq!(world_counters.entity_removes_ignored, 1);
+}
+
+#[test]
+fn firework_entity_event_with_empty_explosions_emits_poof_particles() {
+    let (tx, mut rx) = mpsc::channel(8);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(100, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        firework_item_entity_data(100, Some(0)),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 100,
+        event_id: 17,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(200, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        firework_item_entity_data(200, Some(1)),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 200,
+        event_id: 17,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(300, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 300,
+        event_id: 17,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        8
+    );
+
+    assert_eq!(
+        particles.firework_empty_explosion_positions,
+        vec![[1.0, 64.0, -2.0]]
+    );
+    assert_eq!(
+        particles.firework_empty_explosion_camera_positions,
+        vec![None]
+    );
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 3);
 }
 
 #[test]
@@ -7093,6 +7164,23 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
     }
 }
 
+fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {
+    let mut stack = item_stack(901, 1);
+    stack.component_patch = DataComponentPatchSummary {
+        fireworks_flight_duration: Some(1),
+        fireworks_explosions_count: explosions_count,
+        ..DataComponentPatchSummary::default()
+    };
+    SetEntityData {
+        id: entity_id,
+        values: vec![EntityDataValue {
+            data_id: 8,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(stack),
+        }],
+    }
+}
+
 fn written_book_stack(pages: Vec<&str>) -> ItemStackSummary {
     let mut stack = item_stack(42, 1);
     let pages: Vec<String> = pages.into_iter().map(str::to_string).collect();
@@ -7382,6 +7470,8 @@ struct RecordingParticleSink {
     contexts: Vec<LevelParticleSpawnContext>,
     level_events: Vec<LevelEvent>,
     level_event_contexts: Vec<LevelEventParticleContext>,
+    firework_empty_explosion_positions: Vec<[f64; 3]>,
+    firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -7426,6 +7516,22 @@ impl ParticleEventSink for RecordingParticleSink {
         }
         self.level_events.push(*event);
         self.level_event_contexts.push(context);
+        let batch = bbb_renderer::ParticleSpawnBatch {
+            missing_sprite_count: 1,
+            ..bbb_renderer::ParticleSpawnBatch::default()
+        };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_firework_empty_explosion_particles(
+        &mut self,
+        position: [f64; 3],
+        camera_position: Option<[f64; 3]>,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.firework_empty_explosion_positions.push(position);
+        self.firework_empty_explosion_camera_positions
+            .push(camera_position);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()

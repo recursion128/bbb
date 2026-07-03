@@ -48,6 +48,11 @@ pub(crate) trait ParticleEventSink {
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch;
+    fn spawn_firework_empty_explosion_particles(
+        &mut self,
+        position: [f64; 3],
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -235,6 +240,15 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .resolve_level_event_particles_with_context(event, context, random)
+    }
+
+    fn spawn_firework_empty_explosion_particles(
+        &mut self,
+        position: [f64; 3],
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .firework_empty_explosion_particle_batch(position, camera_position)
     }
 }
 
@@ -1862,6 +1876,50 @@ impl ParticleCommandResolver {
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         self.particle_in_block_batch(event, POOF_PARTICLE_TYPE_ID, 10, 1.0, random)
+    }
+
+    fn firework_empty_explosion_particle_batch(
+        &mut self,
+        position: [f64; 3],
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch {
+        let count = self.random.next_i32(3) + 2;
+        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..count {
+            let velocity = Vec3d {
+                x: self.random.next_gaussian() * 0.05,
+                y: 0.005,
+                z: self.random.next_gaussian() * 0.05,
+            };
+            let command_position = Vec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            };
+            if self.should_spawn_level_particle(
+                template.particle_type.override_limiter,
+                false,
+                command_position,
+                camera_position,
+            ) {
+                batch.commands.push(self.command_from_template(
+                    &template,
+                    command_position,
+                    velocity,
+                    false,
+                ));
+            }
+        }
+
+        batch
     }
 
     fn particle_in_block_batch(
@@ -10394,6 +10452,19 @@ mod tests {
                 -0.018_030_921_768_350_243,
                 0.041_618_415_808_563_26,
             ],
+            true,
+        );
+
+        let mut firework_resolver = test_resolver(0);
+        let firework_poof =
+            firework_resolver.firework_empty_explosion_particle_batch([10.0, 64.0, -3.0], None);
+        assert_eq!(firework_poof.len(), 2);
+        assert_particle_command(
+            &firework_poof.commands[0],
+            59,
+            "minecraft:poof",
+            [10.0, 64.0, -3.0],
+            [0.057_302_703_614_493_14, 0.005, 0.018_385_983_023_454_71],
             true,
         );
 

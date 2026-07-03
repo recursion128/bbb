@@ -2506,6 +2506,28 @@ impl EntityStore {
         items
     }
 
+    pub(crate) fn firework_rocket_empty_explosions_position(
+        &self,
+        id: i32,
+    ) -> Option<super::EntityVec3> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
+            return None;
+        }
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let has_explosions = self
+            .ecs
+            .get::<&EntityMetadata>(entity)
+            .ok()
+            .and_then(|metadata| item_entity_render_stack(&metadata.data_values).cloned())
+            .is_some_and(|stack| firework_rocket_stack_has_explosions(&stack));
+        if has_explosions {
+            return None;
+        }
+        Some(transform.position)
+    }
+
     /// Collects the ominous item spawner item-cluster render state. Vanilla
     /// `OminousItemSpawner.DATA_ITEM` is the first accessor after `Entity` and therefore uses
     /// item-stack metadata id 8.
@@ -3409,6 +3431,14 @@ fn firework_rocket_shot_at_angle(data_values: &[bbb_protocol::packets::EntityDat
         value.data_id == FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID
             && matches!(&value.value, EntityDataValueKind::Boolean(true))
     })
+}
+
+fn firework_rocket_stack_has_explosions(stack: &ItemStackSummary) -> bool {
+    stack
+        .component_patch
+        .fireworks_explosions_count
+        .unwrap_or(stack.component_patch.fireworks_explosions.len())
+        > 0
 }
 
 impl Serialize for EntityStore {

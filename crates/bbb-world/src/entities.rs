@@ -2298,6 +2298,13 @@ impl WorldStore {
         items
     }
 
+    /// Firework rocket event `17` uses `ClientLevel.createFireworks`; when the
+    /// rocket stack has no `minecraft:fireworks` explosions, vanilla emits only
+    /// local `poof` particles at the rocket position.
+    pub fn firework_rocket_empty_explosions_position(&self, id: i32) -> Option<EntityVec3> {
+        self.entities.firework_rocket_empty_explosions_position(id)
+    }
+
     /// The item-cluster render state for ominous item spawner entities (vanilla
     /// `OminousItemSpawnerRenderer`), projected with entity `ageInTicks` for scale-in and spin.
     pub fn ominous_item_spawner_item_states_at_partial_tick(
