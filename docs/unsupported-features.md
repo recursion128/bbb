@@ -291,10 +291,15 @@ When an agent does any of the following, update this file in the same slice:
         alive living target modeled here as the local player: targets inside the
         ravager AABB inflated by `4.0` receive vanilla `strongKnockback`
         `(xd/dd*4.0, +0.2, zd/dd*4.0)` with `dd=max(xd^2+zd^2,0.001)`.
+      - Witch entity event `15` now emits vanilla `minecraft:witch`
+        particles: `nextInt(35)+10` commands at the witch's current `x/z` and
+        `boundingBox.maxY + 0.5`, each with gaussian `*0.13F` positional jitter
+        on all three axes and zero velocity.
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
-        emitter, animate 4/5 crit/enchanted-hit tracking emitters, and the
+        emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
+        magic burst, and the
         GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
         model submit
     - terrain/item particle option metadata / atlas rendering:

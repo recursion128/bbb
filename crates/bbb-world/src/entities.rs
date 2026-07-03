@@ -357,6 +357,13 @@ pub struct RavagerRoarParticleState {
     pub center: EntityVec3,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WitchMagicParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub bounding_box_max_y: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
@@ -1926,6 +1933,19 @@ impl WorldStore {
 
     pub fn ravager_roar_particle_state(&self, entity_id: i32) -> Option<RavagerRoarParticleState> {
         self.entities.ravager_roar_particle_state(entity_id)
+    }
+
+    pub fn witch_magic_particle_state(&self, entity_id: i32) -> Option<WitchMagicParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_WITCH_ID {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(WitchMagicParticleState {
+            entity_id,
+            position: transform.position,
+            bounding_box_max_y: transform.position.y + f64::from(bounds.max[1]),
+        })
     }
 
     pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {

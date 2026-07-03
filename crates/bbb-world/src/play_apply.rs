@@ -17,7 +17,8 @@ use crate::{
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, JukeboxLevelEventState, LevelEventSoundRandomState,
     LocalSoundEventState, RavagerRoarParticleState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport, WorldStore,
+    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport,
+    WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -56,6 +57,7 @@ const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
+const WITCH_MAGIC_EVENT_ID: i8 = 15;
 
 /// Growth level-event particle spawn mode; only the random-consumption shape
 /// matters for callers without a particle sink.
@@ -116,6 +118,7 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn ravager_roar_particles(&mut self, _world: &WorldStore, _state: RavagerRoarParticleState) {}
+    fn witch_magic_particles(&mut self, _world: &WorldStore, _state: WitchMagicParticleState) {}
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
     /// deterministic random stream in the sink's place.
@@ -335,6 +338,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let witch_magic_particles = if update.event_id == WITCH_MAGIC_EVENT_ID {
+                    self.witch_magic_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let applied = self.apply_entity_event(update);
                 if let Some(state) = firework_explosion_particles {
                     if state.has_explosions {
@@ -352,6 +360,9 @@ impl WorldStore {
                     if let Some(state) = ravager_roar_particles {
                         effects.ravager_roar_particles(self, state);
                         let _ = self.apply_ravager_roar_knockback(update.entity_id);
+                    }
+                    if let Some(state) = witch_magic_particles {
+                        effects.witch_magic_particles(self, state);
                     }
                 }
                 if applied && update.event_id == 35 {
@@ -1281,7 +1292,7 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, GameEvent,
@@ -1295,6 +1306,7 @@ mod tests {
         positioned_sounds: Vec<SoundEventState>,
         elder_guardian_effect_particles: Vec<Vec3d>,
         ravager_roar_particles: Vec<RavagerRoarParticleState>,
+        witch_magic_particles: Vec<WitchMagicParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
 
@@ -1309,6 +1321,10 @@ mod tests {
 
         fn ravager_roar_particles(&mut self, _world: &WorldStore, state: RavagerRoarParticleState) {
             self.ravager_roar_particles.push(state);
+        }
+
+        fn witch_magic_particles(&mut self, _world: &WorldStore, state: WitchMagicParticleState) {
+            self.witch_magic_particles.push(state);
         }
 
         fn tracking_emitter_particles(
@@ -1880,6 +1896,64 @@ mod tests {
             ]
         );
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn witch_magic_entity_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                90,
+                VANILLA_ENTITY_TYPE_WITCH_ID,
+                Vec3d {
+                    x: 1.25,
+                    y: 64.0,
+                    z: -2.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                91,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 90,
+                event_id: WITCH_MAGIC_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 91,
+                event_id: WITCH_MAGIC_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: WITCH_MAGIC_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.witch_magic_particles.len(), 1);
+        let state = effects.witch_magic_particles[0];
+        assert_eq!(state.entity_id, 90);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert!((state.bounding_box_max_y - 65.95).abs() < 1.0e-5);
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

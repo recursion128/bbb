@@ -10,5 +10,5 @@ pub use crate::entities::{
     LlamaBodyDecorColor, MinecartDisplayBlockState, OminousItemSpawnerItemState,
     PolarBearStandingAnimationState, PrimedTntSmokeParticleState, ProjectilePowerUpdateState,
     RavagerRoarParticleState, TakeItemEntityPickupParticleState, VehicleMoveReport,
-    WolfArmorCrackiness,
+    WitchMagicParticleState, WolfArmorCrackiness,
 };

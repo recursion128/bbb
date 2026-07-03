@@ -25,6 +25,7 @@ use bbb_world::{
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, LevelEventSoundRandomState, RavagerRoarParticleState,
     TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::{
@@ -83,6 +84,8 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         state: RavagerRoarParticleState,
     ) -> ParticleSpawnBatch;
+    fn spawn_witch_magic_particles(&mut self, state: WitchMagicParticleState)
+        -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -320,6 +323,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: RavagerRoarParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.ravager_roar_particle_batch(state)
+    }
+
+    fn spawn_witch_magic_particles(
+        &mut self,
+        state: WitchMagicParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.witch_magic_particle_batch(state)
     }
 }
 
@@ -2487,6 +2497,32 @@ impl ParticleCommandResolver {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn witch_magic_particle_batch(&mut self, state: WitchMagicParticleState) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(WITCH_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let count = self.random.next_i32(35) + 10;
+        for _ in 0..count {
+            let position = Vec3d {
+                x: state.position.x + self.random.next_gaussian() * 0.13_f32 as f64,
+                y: state.bounding_box_max_y + 0.5 + self.random.next_gaussian() * 0.13_f32 as f64,
+                z: state.position.z + self.random.next_gaussian() * 0.13_f32 as f64,
+            };
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                Vec3d::default(),
+                false,
+            ));
         }
         batch
     }
@@ -4860,6 +4896,7 @@ pub(crate) const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
 pub(crate) const TOTEM_OF_UNDYING_PARTICLE_TYPE_ID: i32 = 68;
 const SPLASH_PARTICLE_TYPE_ID: i32 = 70;
+const WITCH_PARTICLE_TYPE_ID: i32 = 71;
 const DRIPPING_HONEY_PARTICLE_TYPE_ID: i32 = 79;
 const FALLING_HONEY_PARTICLE_TYPE_ID: i32 = 80;
 const LANDING_HONEY_PARTICLE_TYPE_ID: i32 = 81;
@@ -5343,6 +5380,43 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.position == [1.0, 65.1, -2.0]));
+    }
+
+    #[test]
+    fn witch_magic_batch_matches_vanilla_entity_event_particles() {
+        let mut resolver = test_resolver(0);
+        let state = WitchMagicParticleState {
+            entity_id: 71,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            bounding_box_max_y: 65.95,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_count = expected_random.next_i32(35) + 10;
+        let expected_position = [
+            10.0 + expected_random.next_gaussian() * 0.13_f32 as f64,
+            65.95 + 0.5 + expected_random.next_gaussian() * 0.13_f32 as f64,
+            -3.0 + expected_random.next_gaussian() * 0.13_f32 as f64,
+        ];
+
+        let batch = resolver.witch_magic_particle_batch(state);
+
+        assert_eq!(batch.len(), expected_count as usize);
+        assert_particle_command(
+            &batch.commands[0],
+            WITCH_PARTICLE_TYPE_ID,
+            "minecraft:witch",
+            expected_position,
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.velocity == [0.0, 0.0, 0.0]));
     }
 
     #[test]
@@ -12457,6 +12531,7 @@ mod tests {
                 "happy_villager_0",
                 "composter_0",
                 "totem_0",
+                "witch_0",
                 "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
@@ -12756,6 +12831,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:totem_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("witch.json"),
+            r#"{
+              "textures": [
+                "minecraft:witch_0"
               ]
             }"#,
         );
