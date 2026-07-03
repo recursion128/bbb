@@ -2509,6 +2509,13 @@
     position advances by velocity after gravity, and velocity is damped by
     vanilla `0.7` friction. Tests cover spawn-state motion and provider
     sampling.
+  - [x] Flame/Portal collision-free metadata：local vanilla 26.1
+    `FlameParticle` and `PortalParticle` keep the base `hasPhysics=true`
+    metadata and avoid collision through provider-specific `move` overrides;
+    `ReversePortalParticle` inherits the portal path. Renderer descriptors now
+    preserve `has_physics=true` while marking flame, small-flame, portal, and
+    reverse-portal as `moves_without_collision`. Tests cover flame runtime
+    collision bypass plus provider metadata for flame and portal variants.
 
 ## P2：Terrain / Block Render Presentation
 

@@ -4817,7 +4817,7 @@ mod tests {
     #[test]
     fn particle_runtime_moves_particles_even_when_physics_is_disabled() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
-        let mut instance = test_instance_with_lifetime("minecraft:flame", 20);
+        let mut instance = test_instance_with_lifetime("minecraft:angry_villager", 20);
         assert!(!instance.has_physics);
         instance.velocity = [0.25, 0.5, 0.75];
         particles.active_instances.push_back(instance);
@@ -4826,7 +4826,7 @@ mod tests {
 
         let instance = &particles.active_instances()[0];
         assert_close3(instance.position, [0.25, 0.5, 0.75]);
-        assert_close3(instance.velocity, [0.24, 0.48, 0.72]);
+        assert_close3(instance.velocity, [0.215, 0.43, 0.645]);
     }
 
     #[test]
@@ -5082,6 +5082,33 @@ mod tests {
         assert!(!instance.stopped_by_collision);
         assert_close3(instance.position, [1.2, 1.5995, 2.4]);
         assert_close3(instance.velocity, [0.182, -0.364455, -0.546]);
+    }
+
+    #[test]
+    fn particle_runtime_flame_move_ignores_collision_callback() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:flame", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        assert!(instance.has_physics);
+        assert!(instance.moves_without_collision);
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |_query| {
+            collision_queries += 1;
+            [0.0, 0.0, 0.0]
+        });
+
+        assert_eq!(collision_queries, 0);
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(!instance.on_ground);
+        assert!(!instance.stopped_by_collision);
+        assert_close3(instance.position, [1.2, 1.6, 2.4]);
+        assert_close3(instance.velocity, [0.192, -0.384, -0.576]);
     }
 
     #[test]
@@ -5610,6 +5637,10 @@ mod tests {
         assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
         assert_eq!(flame.color, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
+        assert!(flame.has_physics);
+        assert!(flame.moves_without_collision);
+        assert!(small_flame.has_physics);
+        assert!(small_flame.moves_without_collision);
 
         let mut cosy_random = ParticleRandom::new(46);
         let mut cosy_command = spawn_command("minecraft:campfire_cosy_smoke", 1.0);
@@ -7272,7 +7303,8 @@ mod tests {
         assert_eq!(portal.velocity, [-5.0, 0.0, 5.0]);
         assert_eq!(portal.friction, 0.98);
         assert_eq!(portal.gravity, 0.0);
-        assert!(!portal.has_physics);
+        assert!(portal.has_physics);
+        assert!(portal.moves_without_collision);
         assert_eq!(portal.tick_motion, ParticleTickMotionDescriptor::Portal);
         assert_eq!(
             portal.light_emission,
@@ -7304,6 +7336,8 @@ mod tests {
         assert_eq!(reverse_portal.color[3], 1.0);
         assert!((60..=61).contains(&reverse_portal.lifetime_ticks));
         assert_eq!(reverse_portal.velocity, [-5.0, 0.0, 5.0]);
+        assert!(reverse_portal.has_physics);
+        assert!(reverse_portal.moves_without_collision);
         assert_eq!(
             reverse_portal.tick_motion,
             ParticleTickMotionDescriptor::ReversePortal

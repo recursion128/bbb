@@ -624,13 +624,16 @@ When an agent does any of the following, update this file in the same slice:
         `0.1 * (random * 0.2 + 0.5)` quad size, brightness-derived
         `[0.9, 0.3, 1.0]` RGB scaling, `40..49` lifetime,
         `1 - (1-progress)^2` render-size curve, start-position tick path, and
-        `(age / lifetime)^4` smooth block-light emission
+        `(age / lifetime)^4` smooth block-light emission, while preserving
+        vanilla `hasPhysics=true` metadata plus the collision-free `move`
+        override
       - `ReversePortalParticle.ReversePortalProvider` inherits portal random
         sprite/color setup, applies the vanilla `1.5` quad-size multiplier,
         consumes the parent portal lifetime draw before overriding lifetime to
         `60..61`, uses the `1 - progress / 1.5` render-size curve, moves by
-        incremental age-scaled velocity, and inherits quartic smooth block
-        emission
+        incremental age-scaled velocity, preserves vanilla `hasPhysics=true`
+        metadata plus the collision-free `move` override, and inherits quartic
+        smooth block emission
       - `NoteParticle.Provider` command-x hue color formula, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, and blocked-y speed-up metadata
@@ -784,6 +787,10 @@ When an agent does any of the following, update this file in the same slice:
         gravity, no-physics metadata, and the vanilla constructor-time `tick()`
         that advances age/position and damps velocity before the particle
         enters the runtime list
+      - `FlameParticle.Provider` and `SmallFlameProvider` use random sprites,
+        rising lifetime, flame render-size curve, smooth block-light emission,
+        vanilla `hasPhysics=true` metadata, and the collision-free `move`
+        override
       - `BubbleParticle.Provider` command velocity scaled by `0.2` plus
         random `+-0.02` velocity, random `0.2..0.8` quad-size scaling,
         `8 / (random * 0.8 + 0.2)` lifetime, `0.85` friction, and upward

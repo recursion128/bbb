@@ -1260,19 +1260,17 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
-            "minecraft:flame" | "minecraft:soul_fire_flame" | "minecraft:copper_fire_flame" => {
-                Self {
-                    provider: "FlameParticle.Provider",
-                    lifetime: ParticleLifetimeDescriptor::Rising,
-                    sprite_selection: ParticleSpriteSelection::Random,
-                    visual: ParticleVisualDescriptor::Flame { scale: 1.0 },
-                    initial_velocity: ParticleInitialVelocityDescriptor::Command,
-                    friction: 0.96,
-                    gravity: 0.0,
-                    has_physics: false,
-                    speed_up_when_y_motion_is_blocked: false,
-                }
-            }
+            "minecraft:flame" | "minecraft:soul_fire_flame" | "minecraft:copper_fire_flame" => Self {
+                provider: "FlameParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Rising,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Flame { scale: 1.0 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:lava" => Self {
                 provider: "LavaParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::SixteenOverRandom,
@@ -1572,7 +1570,7 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.0,
-                has_physics: false,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:campfire_cosy_smoke" | "minecraft:campfire_signal_smoke" => Self {
@@ -1839,7 +1837,7 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.98,
                 gravity: 0.0,
-                has_physics: false,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:reverse_portal" => Self {
@@ -1850,7 +1848,7 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.98,
                 gravity: 0.0,
-                has_physics: false,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:spit" => Self {
@@ -2069,6 +2067,10 @@ impl ParticleDescriptor {
         matches!(
             self.provider,
             "EndRodParticle.Provider"
+                | "FlameParticle.Provider"
+                | "FlameParticle.SmallFlameProvider"
+                | "PortalParticle.Provider"
+                | "ReversePortalParticle.ReversePortalProvider"
                 | "SuspendedTownParticle.HappyVillagerProvider"
                 | "SuspendedTownParticle.ComposterFillProvider"
                 | "SuspendedTownParticle.DolphinSpeedProvider"
@@ -4575,7 +4577,7 @@ mod tests {
             ParticleVisualDescriptor::Flame { scale: 1.0 },
             0.96,
             0.0,
-            false,
+            true,
             false,
         );
         assert_descriptor(
@@ -4889,7 +4891,7 @@ mod tests {
             ParticleVisualDescriptor::Flame { scale: 0.5 },
             0.96,
             0.0,
-            false,
+            true,
             false,
         );
         for (particle_id, provider, lifetime, alpha) in [
@@ -5196,7 +5198,7 @@ mod tests {
             ParticleVisualDescriptor::Portal,
             0.98,
             0.0,
-            false,
+            true,
             false,
         );
         let portal = ParticleDescriptor::for_particle("minecraft:portal");
@@ -5217,7 +5219,7 @@ mod tests {
             ParticleVisualDescriptor::ReversePortal,
             0.98,
             0.0,
-            false,
+            true,
             false,
         );
         let reverse_portal = ParticleDescriptor::for_particle("minecraft:reverse_portal");
