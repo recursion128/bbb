@@ -152,6 +152,8 @@ pub struct Renderer {
     pub(super) translucent_particle_pipeline: wgpu::RenderPipeline,
     pub(super) frame_opaque_particle_vertices: FrameDataBuffer,
     pub(super) frame_translucent_particle_vertices: FrameDataBuffer,
+    pub(super) frame_elder_guardian_particle_vertices: FrameDataBuffer,
+    pub(super) frame_elder_guardian_particle_indices: FrameDataBuffer,
     pub(super) frame_weather_vertices: FrameDataBuffer,
     pub(super) frame_weather_indices: FrameDataBuffer,
     pub(super) frame_lightning_vertices: FrameDataBuffer,
@@ -950,6 +952,12 @@ impl Renderer {
             ),
             frame_translucent_particle_vertices: FrameDataBuffer::vertex(
                 "bbb-translucent-particle-frame-vertices",
+            ),
+            frame_elder_guardian_particle_vertices: FrameDataBuffer::vertex(
+                "bbb-elder-guardian-particle-frame-vertices",
+            ),
+            frame_elder_guardian_particle_indices: FrameDataBuffer::index(
+                "bbb-elder-guardian-particle-frame-indices",
             ),
             frame_weather_vertices: FrameDataBuffer::vertex("bbb-weather-frame-vertices"),
             frame_weather_indices: FrameDataBuffer::index("bbb-weather-frame-indices"),

@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use anyhow::Result;
-use glam::{EulerRot, Quat, Vec3};
+use glam::{EulerRot, Mat4, Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
-use crate::Renderer;
+use crate::{entity_models::ElderGuardianParticleRenderInstance, Renderer};
 
 mod descriptors;
 mod gpu;
@@ -34,6 +34,9 @@ const HUGE_EXPLOSION_CHILD_PARTICLE_ID: &str = "minecraft:explosion";
 const GUST_CHILD_PARTICLE_ID: &str = "minecraft:gust";
 const ITEM_PICKUP_PARTICLE_ID: &str = "minecraft:item_pickup";
 const ITEM_PICKUP_PARTICLE_LIFETIME_TICKS: u32 = 3;
+const ELDER_GUARDIAN_PARTICLE_ID: &str = "minecraft:elder_guardian";
+const ELDER_GUARDIAN_PARTICLE_MODEL_SCALE: f32 = 0.425_531_92;
+const ELDER_GUARDIAN_PARTICLE_BAKED_LAYER_SCALE: f32 = 2.35;
 const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
 const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
 const FALLING_LEAVES_ACCELERATION_SCALE: f64 = 0.0025;
@@ -2673,6 +2676,15 @@ impl Renderer {
             ),
         }
     }
+
+    pub(crate) fn collect_elder_guardian_particle_render_instances(
+        &self,
+    ) -> Vec<ElderGuardianParticleRenderInstance> {
+        let Some(pose) = self.camera_pose else {
+            return Vec::new();
+        };
+        elder_guardian_particle_render_instances(self.particles.active_instances.iter(), pose)
+    }
 }
 
 fn particle_sprite_uv_map(
@@ -2886,6 +2898,85 @@ fn camera_billboard_axes(pose: crate::CameraPose) -> ParticleBillboardAxes {
             Vec3::Y
         },
     }
+}
+
+fn elder_guardian_particle_render_instances<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+    pose: crate::CameraPose,
+) -> Vec<ElderGuardianParticleRenderInstance> {
+    instances
+        .into_iter()
+        .filter(|instance| instance.render_group == ParticleRenderGroup::ElderGuardians)
+        .filter(|instance| instance.delay_ticks == 0)
+        .map(|instance| {
+            let age_scale = elder_guardian_particle_age_scale(
+                instance.age_ticks,
+                instance.lifetime_ticks,
+                DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+            );
+            ElderGuardianParticleRenderInstance {
+                transform: elder_guardian_particle_model_transform(pose, age_scale),
+                tint: [1.0, 1.0, 1.0, elder_guardian_particle_alpha(age_scale)],
+            }
+        })
+        .collect()
+}
+
+fn elder_guardian_particle_model_transform(pose: crate::CameraPose, age_scale: f32) -> Mat4 {
+    camera_to_world_transform(pose)
+        * Mat4::from_rotation_x((60.0 - 150.0 * age_scale).to_radians())
+        * Mat4::from_scale(Vec3::new(
+            ELDER_GUARDIAN_PARTICLE_MODEL_SCALE,
+            -ELDER_GUARDIAN_PARTICLE_MODEL_SCALE,
+            -ELDER_GUARDIAN_PARTICLE_MODEL_SCALE,
+        ))
+        * Mat4::from_translation(Vec3::new(0.0, -0.56, 3.5))
+        * Mat4::from_scale(Vec3::splat(ELDER_GUARDIAN_PARTICLE_BAKED_LAYER_SCALE))
+}
+
+fn elder_guardian_particle_age_scale(
+    age_ticks: u32,
+    lifetime_ticks: u32,
+    partial_tick: f32,
+) -> f32 {
+    let lifetime = lifetime_ticks.max(1) as f32;
+    (age_ticks as f32 + partial_tick.clamp(0.0, 1.0)) / lifetime
+}
+
+fn elder_guardian_particle_alpha(age_scale: f32) -> f32 {
+    0.05 + 0.5 * (age_scale * std::f32::consts::PI).sin()
+}
+
+fn camera_to_world_transform(pose: crate::CameraPose) -> Mat4 {
+    let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
+    let yaw = pose.y_rot.to_radians();
+    let pitch = pose.x_rot.to_radians();
+    let cos_pitch = pitch.cos();
+    let forward =
+        Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch).normalize_or_zero();
+    let forward = if forward.length_squared() > 0.0 {
+        forward
+    } else {
+        Vec3::Z
+    };
+    let right = Vec3::Y.cross(forward).normalize_or_zero();
+    let right = if right.length_squared() > 0.0 {
+        right
+    } else {
+        Vec3::X
+    };
+    let up = forward.cross(right).normalize_or_zero();
+    let up = if up.length_squared() > 0.0 {
+        up
+    } else {
+        Vec3::Y
+    };
+    Mat4::from_cols(
+        right.extend(0.0),
+        up.extend(0.0),
+        (-forward).extend(0.0),
+        eye.extend(1.0),
+    )
 }
 
 fn particle_axes_for_instance(
@@ -3218,7 +3309,7 @@ fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32
 fn particle_render_group_for_particle(particle_id: &str) -> ParticleRenderGroup {
     match particle_id {
         ITEM_PICKUP_PARTICLE_ID => ParticleRenderGroup::ItemPickup,
-        "minecraft:elder_guardian" => ParticleRenderGroup::ElderGuardians,
+        ELDER_GUARDIAN_PARTICLE_ID => ParticleRenderGroup::ElderGuardians,
         _ => ParticleRenderGroup::SingleQuads,
     }
 }
@@ -3254,7 +3345,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:flash"
         | "minecraft:firework"
         | "minecraft:firefly"
-        | "minecraft:elder_guardian"
+        | ELDER_GUARDIAN_PARTICLE_ID
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -8367,6 +8458,44 @@ mod tests {
     }
 
     #[test]
+    fn elder_guardian_particle_render_instances_use_vanilla_special_group_state() {
+        let mut random = ParticleRandom::new(0);
+        let mut elder_guardian = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:elder_guardian", 14.0),
+            &mut random,
+        );
+        elder_guardian.age_ticks = 10;
+        elder_guardian.position = [999.0, 999.0, 999.0];
+        let mut delayed = elder_guardian.clone();
+        delayed.delay_ticks = 1;
+        let cloud = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:cloud", 2.0),
+            &mut random,
+        );
+        let pose = crate::CameraPose {
+            position: [10.0, 64.0, -3.0],
+            y_rot: 45.0,
+            x_rot: -15.0,
+            eye_height: 1.62,
+        };
+
+        let instances =
+            elder_guardian_particle_render_instances([&elder_guardian, &delayed, &cloud], pose);
+
+        assert_eq!(instances.len(), 1);
+        let age_scale = (10.0 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK) / 30.0;
+        assert_eq!(&instances[0].tint[0..3], &[1.0, 1.0, 1.0]);
+        assert_close_f32(
+            instances[0].tint[3],
+            0.05 + 0.5 * (age_scale * std::f32::consts::PI).sin(),
+        );
+        assert_mat4_close(
+            instances[0].transform,
+            elder_guardian_particle_model_transform(pose, age_scale),
+        );
+    }
+
+    #[test]
     fn particle_instances_preserve_terrain_and_item_option_metadata() {
         let mut random = ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED);
         let mut block_command = spawn_command("minecraft:block", 0.0);
@@ -9768,6 +9897,17 @@ mod tests {
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
         );
+    }
+
+    fn assert_mat4_close(actual: Mat4, expected: Mat4) {
+        let actual = actual.to_cols_array();
+        let expected = expected.to_cols_array();
+        for (index, (actual, expected)) in actual.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (actual - expected).abs() < 1.0e-6,
+                "matrix[{index}] expected {expected}, got {actual}"
+            );
+        }
     }
 
     fn assert_range_f32(actual: f32, min: f32, max: f32) {

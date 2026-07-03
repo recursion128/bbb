@@ -7,9 +7,10 @@ use crate::frame_buffers::FrameDataBuffer;
 use crate::{
     clouds::CloudShape,
     entity_models::{
-        EntityModelLayerRenderType, EntityModelMeshGpu, EntityModelPositionColorDrawRange,
-        EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
-        EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
+        upload_elder_guardian_particle_textured_mesh, EntityModelLayerRenderType,
+        EntityModelMeshGpu, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
+        EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
+        EntityModelTranslucentDrawRange,
     },
     lightmap::write_lightmap_uniform,
     particles::{ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind},
@@ -987,6 +988,20 @@ impl Renderer {
             &self.queue,
             bytemuck::cast_slice(&particle_vertex_batches.translucent.vertices),
         );
+        let elder_guardian_particles = self.collect_elder_guardian_particle_render_instances();
+        let elder_guardian_particle_index_count =
+            if let Some(atlas) = &self.entity_model_texture_atlas {
+                upload_elder_guardian_particle_textured_mesh(
+                    &self.device,
+                    &self.queue,
+                    &mut self.frame_elder_guardian_particle_vertices,
+                    &mut self.frame_elder_guardian_particle_indices,
+                    &elder_guardian_particles,
+                    &atlas.layout,
+                )
+            } else {
+                None
+            };
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(PARTICLE_TARGET_PASS_LABEL),
@@ -1032,6 +1047,31 @@ impl Renderer {
                     &particle_vertex_batches.translucent,
                     stats,
                 );
+            }
+            if let (Some(index_count), Some(atlas)) = (
+                elder_guardian_particle_index_count,
+                self.entity_model_texture_atlas.as_ref(),
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(
+                    0,
+                    self.frame_elder_guardian_particle_vertices
+                        .buffer()
+                        .expect("elder guardian particle vertices uploaded")
+                        .slice(..),
+                );
+                pass.set_index_buffer(
+                    self.frame_elder_guardian_particle_indices
+                        .buffer()
+                        .expect("elder guardian particle indices uploaded")
+                        .slice(..),
+                    wgpu::IndexFormat::Uint32,
+                );
+                pass.draw_indexed(0..index_count, 0, 0..1);
+                stats.particle_draw_calls += 1;
             }
         }
     }
@@ -4033,13 +4073,25 @@ mod tests {
     #[test]
     fn particle_target_copies_main_depth_and_clears_before_combine() {
         let source = include_str!("render.rs");
+        let particle_fn = source
+            .find("fn particle_target_pass")
+            .expect("particle target pass function is present");
+        let particle_fn_end = source[particle_fn..]
+            .find("fn entity_outline_post_chain")
+            .map(|index| particle_fn + index)
+            .expect("particle target pass ends before outline post-chain");
         let entity_translucent_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
-        let target = source
+        let target = source[particle_fn..]
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .map(|index| particle_fn + index)
             .expect("particle target pass label is used");
         let copy_depth = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
+        let elder_upload = source[particle_fn..target]
+            .find("upload_elder_guardian_particle_textured_mesh(")
+            .map(|index| particle_fn + index)
+            .expect("elder guardian particle model mesh is uploaded before the render pass");
         let opaque_particle_pipeline = source[target..]
             .find("pass.set_pipeline(&self.opaque_particle_pipeline)")
             .map(|index| target + index)
@@ -4056,6 +4108,14 @@ mod tests {
             .find("&particle_vertex_batches.translucent")
             .map(|index| translucent_particle_pipeline + index)
             .expect("translucent particle vertex batch is drawn into the target");
+        let elder_particle_pipeline = source[translucent_particle_draw..particle_fn_end]
+            .find("pass.set_pipeline(&self.entity_model_translucent_pipeline)")
+            .map(|index| translucent_particle_draw + index)
+            .expect("elder guardian particles draw through the entity translucent pipeline");
+        let elder_particle_draw = source[elder_particle_pipeline..particle_fn_end]
+            .find("pass.draw_indexed(0..index_count, 0, 0..1)")
+            .map(|index| elder_particle_pipeline + index)
+            .expect("elder guardian particle model draw follows its pipeline");
         let draw_helper = source
             .find("fn draw_particle_vertex_batch")
             .expect("particle draw helper is present");
@@ -4081,12 +4141,36 @@ mod tests {
         assert!(
             copy_depth < entity_translucent_features
                 && entity_translucent_features < target
+                && elder_upload < target
                 && target < opaque_particle_pipeline
                 && opaque_particle_pipeline < opaque_particle_draw
                 && opaque_particle_pipeline < translucent_particle_pipeline
                 && translucent_particle_pipeline < translucent_particle_draw
-                && translucent_particle_draw < combine,
+                && translucent_particle_draw < elder_particle_pipeline
+                && elder_particle_pipeline < elder_particle_draw
+                && elder_particle_draw < combine,
             "particle target copies main depth, clears transparent, draws opaque then translucent particles, then transparency combine consumes it"
+        );
+        assert!(
+            source[elder_upload..target].contains("frame_elder_guardian_particle_vertices")
+                && source[elder_upload..target].contains("frame_elder_guardian_particle_indices")
+                && source[elder_upload..target].contains("&atlas.layout"),
+            "elder guardian particles upload into renderer-owned frame buffers with the entity atlas layout"
+        );
+        assert!(
+            source[elder_particle_pipeline..elder_particle_draw]
+                .contains("pass.set_bind_group(0, &atlas.bind_group, &[])")
+                && source[elder_particle_pipeline..elder_particle_draw]
+                    .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+                && source[elder_particle_pipeline..elder_particle_draw]
+                    .contains("self.frame_elder_guardian_particle_vertices")
+                && source[elder_particle_pipeline..elder_particle_draw]
+                    .contains("self.frame_elder_guardian_particle_indices"),
+            "elder guardian particles bind the entity atlas, lightmap, and persistent frame buffers before drawing"
+        );
+        assert!(
+            !source[particle_fn..particle_fn_end].contains("create_buffer_init"),
+            "particle target per-frame uploads must use FrameDataBuffer rather than create_buffer_init"
         );
         assert!(
             helper_atlas < helper_lightmap && helper_lightmap < helper_draw,

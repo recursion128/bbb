@@ -44,30 +44,30 @@ use super::{
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
         wolf_body_armor_texture_layers, ArmorStandModel, BoatWaterPatchModel, BreezeWindModel,
         CamelModel, CreeperModel, CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel,
-        CustomHeadSkullModel, ElytraModel, EquineAnimationPose, HumanoidArmorModelLayerSet,
-        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
-        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonClothingModel, SkeletonModel,
-        SpinAttackEffectModel, StriderModel, TridentModel, VillagerModel, WitherModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
-        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
-        HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        CustomHeadSkullModel, ElytraModel, EquineAnimationPose, GuardianModel,
+        HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
+        NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
+        SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel, TridentModel,
+        VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
+        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
+        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
+        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -173,6 +173,12 @@ pub(super) struct EntityModelCustomGeometrySubmission {
     pub(super) transform: Mat4,
     pub(super) order: i32,
     pub(super) submit_sequence: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ElderGuardianParticleRenderInstance {
+    pub(crate) transform: Mat4,
+    pub(crate) tint: [f32; 4],
 }
 
 #[derive(Clone, Copy)]
@@ -972,6 +978,38 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             };
             dispatch_vanilla_entity_layers(instance, &mut sink);
         }
+    }
+    meshes.flush_sorted_uploads();
+    meshes
+}
+
+pub(super) fn elder_guardian_particle_textured_meshes(
+    instances: &[ElderGuardianParticleRenderInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    let model = GuardianModel::new();
+    let base_pass = guardian_textured_layer_passes(true)[0];
+    for (index, instance) in instances.iter().copied().enumerate() {
+        let submit_sequence =
+            u32::try_from(index).expect("elder guardian particle submit count fits in u32");
+        let pass = EntityModelLayerPass {
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            tint: instance.tint,
+            submit_sequence,
+            ..base_pass
+        };
+        let submit = no_overlay_layer_submission_with_tint(pass, instance.tint, instance.transform)
+            .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+        render_textured_submission(&mut meshes, submit, atlas, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
     }
     meshes.flush_sorted_uploads();
     meshes

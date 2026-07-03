@@ -421,6 +421,43 @@ fn guardian_textured_render_matches_vanilla_renderer() {
     }
 }
 
+#[test]
+fn elder_guardian_particle_mesh_uses_vanilla_special_group_submission() {
+    let atlas = guardian_beam_atlas();
+    let transform = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0)) * Mat4::from_rotation_x(0.25);
+    let instance = ElderGuardianParticleRenderInstance {
+        transform,
+        tint: [1.0, 1.0, 1.0, 0.42],
+    };
+
+    let meshes = elder_guardian_particle_textured_meshes(&[instance], &atlas);
+
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(
+        !meshes.translucent.vertices.is_empty(),
+        "elder guardian particle emits textured translucent geometry"
+    );
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.texture, GUARDIAN_ELDER_TEXTURE_REF);
+    assert_eq!(submit.tint, instance.tint);
+    assert_eq!(submit.transform, transform);
+    assert_eq!(submit.light, ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+    assert_eq!(submit.overlay, ENTITY_VERTEX_NO_OVERLAY);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes.translucent.vertices.iter().all(|vertex| {
+        vertex.tint == instance.tint
+            && vertex.light == ENTITY_VERTEX_FULL_BRIGHT_LIGHT
+            && vertex.overlay == ENTITY_VERTEX_NO_OVERLAY
+    }));
+}
+
 // Build an atlas covering the guardian base + beam textures, enough to render a beaming guardian.
 fn guardian_beam_atlas() -> EntityModelTextureAtlasLayout {
     let images: Vec<EntityModelTextureImage> = guardian_entity_texture_refs()

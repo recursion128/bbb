@@ -6,6 +6,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::TerrainBounds,
+    frame_buffers::FrameDataBuffer,
     gpu::DEPTH_FORMAT,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
@@ -27,6 +28,7 @@ use super::{
         EntityModelTexturedVertex, EntityModelVertex,
     },
     instances::EntityModelInstance,
+    textured::{elder_guardian_particle_textured_meshes, ElderGuardianParticleRenderInstance},
 };
 
 pub(crate) struct EntityModelMeshGpu {
@@ -2839,6 +2841,26 @@ fn create_entity_model_textured_mesh_gpu_from_mesh(
         index_count: mesh.indices.len() as u32,
         bounds,
     })
+}
+
+pub(crate) fn upload_elder_guardian_particle_textured_mesh(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    vertex_buffer: &mut FrameDataBuffer,
+    index_buffer: &mut FrameDataBuffer,
+    instances: &[ElderGuardianParticleRenderInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> Option<u32> {
+    let mut meshes = elder_guardian_particle_textured_meshes(instances, atlas);
+    let mesh = std::mem::replace(&mut meshes.translucent, EntityModelTexturedMesh::new());
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let index_count = u32::try_from(mesh.indices.len()).expect("particle index count fits in u32");
+    let vertices_uploaded =
+        vertex_buffer.upload(device, queue, bytemuck::cast_slice(&mesh.vertices));
+    let indices_uploaded = index_buffer.upload(device, queue, bytemuck::cast_slice(&mesh.indices));
+    (vertices_uploaded && indices_uploaded).then_some(index_count)
 }
 
 fn merged_entity_model_bounds(bounds: &[Option<TerrainBounds>]) -> Option<TerrainBounds> {

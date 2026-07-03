@@ -289,7 +289,8 @@ When an agent does any of the following, update this file in the same slice:
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, and the
-        GameEvent elder-guardian particle
+        GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
+        model submit
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -1070,8 +1071,10 @@ When an agent does any of the following, update this file in the same slice:
         `entityTranslucent(textures/entity/guardian/guardian_elder.png)`
         render-type intent, and `ParticleRenderType.ELDER_GUARDIANS`; the
         atlas billboard submission path explicitly skips non-`SINGLE_QUADS`
-        groups. Rendering the actual elder guardian model remains deferred to
-        special-group visual parity.
+        groups, while the particle target now renders the bind-pose elder
+        guardian model after single-quads through the entity translucent
+        pipeline with vanilla alpha, camera-relative transform, full-bright
+        light, and no overlay.
       - `SculkChargePopParticle.Provider` uses vanilla command velocity,
         `alpha=1`, base quad size, age sprite selection,
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
@@ -6837,14 +6840,17 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are
         terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
-        branches, or special-group drawing.
+        branches, or the `ItemPickupParticle` carried-entity submit.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent
         `entityTranslucent(textures/entity/guardian/guardian_elder.png)`
         intent, and `ParticleRenderType.ELDER_GUARDIANS`; atlas billboard
-        vertices are limited to `SINGLE_QUADS`, so actual elder guardian model
-        drawing remains deferred to special-group visual parity.
+        vertices are limited to `SINGLE_QUADS`, and actual model drawing is now
+        covered by particle-target entity translucent submission using the
+        vanilla elder guardian texture, alpha curve, full-bright light, no
+        overlay, camera-facing rotation, `0.42553192` particle scale, translated
+        model pose, and `2.35` elder baked-layer scale.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

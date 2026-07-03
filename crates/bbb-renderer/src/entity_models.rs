@@ -59,7 +59,7 @@ pub(crate) use gpu::{
     create_entity_model_scroll_pipeline, create_entity_model_textured_cull_pipeline,
     create_entity_model_textured_pipeline, create_entity_model_translucent_cull_pipeline,
     create_entity_model_translucent_emissive_pipeline, create_entity_model_translucent_pipeline,
-    create_entity_model_water_mask_pipeline,
+    create_entity_model_water_mask_pipeline, upload_elder_guardian_particle_textured_mesh,
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
@@ -143,8 +143,8 @@ use textured::{
 };
 #[cfg(test)]
 use textured::{
-    dynamic_player_texture_test_meshes, entity_model_textured_meshes,
-    entity_model_textured_meshes_with_dynamic_skins,
+    dynamic_player_texture_test_meshes, elder_guardian_particle_textured_meshes,
+    entity_model_textured_meshes, entity_model_textured_meshes_with_dynamic_skins,
     entity_model_textured_meshes_with_dynamic_textures, EntityModelTexturedMeshes,
 };
 use textured::{
@@ -152,8 +152,9 @@ use textured::{
     first_person_player_arm_textured_meshes,
 };
 pub(crate) use textured::{
-    EntityModelLayerRenderType, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
-    EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
+    ElderGuardianParticleRenderInstance, EntityModelLayerRenderType,
+    EntityModelPositionColorDrawRange, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
+    EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
 };
 
 #[cfg(test)]
