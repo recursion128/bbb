@@ -409,7 +409,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     速度，并保留 `ParticleTypes.POOF` 的 `overrideLimiter=true` 语义，绕过普通
     距离 / 粒子状态门；non-empty explosions 现在从 rocket item metadata
     投影 `FireworkParticles.Starter` 的 small/large ball、star、creeper、
-    burst 基础 spark 形状、中心 `flash` 与 per-spark fade-color；
+    burst 基础 spark 形状、中心 `flash`、per-spark fade-color，以及
+    trail 子 spark 复制 / twinkle 可见性 gate；
     `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
     local-player position / delta-movement context，覆盖 vanilla
     `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
@@ -515,7 +516,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla static states）。全量 mapColor catalog 与 biome-aware per-spawn
     BlockColors 已收敛；firework 非空 explosions 的基础 `Starter`
     spark/flash 与 per-spark fade-color 已由 firework event path 覆盖；
-    trail/twinkle 复制子粒子与 blast/twinkle 音频仍归属 firework 宽面。
+    trail 子 spark 复制与 twinkle 可见性 gate 也已覆盖；blast/twinkle
+    音频仍归属 firework 宽面。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：on-ground roll reset 和三轴

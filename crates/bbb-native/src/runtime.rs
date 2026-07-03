@@ -1831,6 +1831,9 @@ fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> Part
         option_roll: None,
         option_block: None,
         option_item: None,
+        option_firework_trail: false,
+        option_firework_twinkle: false,
+        option_firework_half_lifetime_age: false,
     }
 }
 

@@ -81,6 +81,12 @@ pub struct ParticleSpawnCommand {
     pub option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub option_item: Option<ParticleItemOptionState>,
+    #[serde(default)]
+    pub option_firework_trail: bool,
+    #[serde(default)]
+    pub option_firework_twinkle: bool,
+    #[serde(default)]
+    pub option_firework_half_lifetime_age: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -342,6 +348,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub(crate) option_item: Option<ParticleItemOptionState>,
+    #[serde(default)]
+    pub(crate) firework_trail: bool,
+    #[serde(default)]
+    pub(crate) firework_twinkle: bool,
     #[serde(default)]
     pub(crate) item_pickup_previous_target: Option<[f64; 3]>,
     #[serde(default)]
@@ -1156,6 +1166,11 @@ impl ParticleInstance {
         } else {
             None
         };
+        let is_firework_spark = descriptor.provider == "FireworkParticles.SparkProvider";
+        let firework_trail = is_firework_spark && command.option_firework_trail;
+        let firework_twinkle = is_firework_spark && command.option_firework_twinkle;
+        let firework_half_lifetime_age =
+            is_firework_spark && command.option_firework_half_lifetime_age;
         let mut instance = Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -1224,10 +1239,15 @@ impl ParticleInstance {
             option_roll: command.option_roll,
             option_block: command.option_block,
             option_item: command.option_item,
+            firework_trail,
+            firework_twinkle,
             item_pickup_previous_target: item_pickup_target,
             item_pickup_target,
             atlas_uv_sub_rect,
         };
+        if firework_half_lifetime_age {
+            instance.age_ticks = instance.lifetime_ticks / 2;
+        }
         instance.apply_constructor_tick_on_spawn();
         instance.apply_spell_scope_alpha_on_spawn(scope_context);
         instance
@@ -1970,7 +1990,11 @@ impl ParticleInstance {
     }
 
     fn child_spawn_commands(&self, random: &mut ParticleRandom) -> Vec<ParticleSpawnCommand> {
-        match self.child_emission {
+        let mut commands: Vec<_> = self
+            .firework_trail_child_spawn_command()
+            .into_iter()
+            .collect();
+        let mut descriptor_commands = match self.child_emission {
             Some(ParticleChildEmissionDescriptor::LavaSmoke) => self
                 .lava_child_smoke_spawn_command(random)
                 .into_iter()
@@ -1993,7 +2017,46 @@ impl ParticleInstance {
                 tick_delay,
             ),
             None => Vec::new(),
+        };
+        commands.append(&mut descriptor_commands);
+        commands
+    }
+
+    fn firework_trail_child_spawn_command(&self) -> Option<ParticleSpawnCommand> {
+        if self.provider != "FireworkParticles.SparkProvider"
+            || !self.firework_trail
+            || self.age_ticks >= self.lifetime_ticks / 2
+            || (self.age_ticks + self.lifetime_ticks) % 2 != 0
+        {
+            return None;
         }
+        Some(ParticleSpawnCommand {
+            particle_type_id: self.particle_type_id,
+            particle_id: self.particle_id.clone(),
+            sprite_ids: self.sprite_ids.clone(),
+            position: self.position,
+            velocity: [0.0, 0.0, 0.0],
+            override_limiter: self.override_limiter,
+            always_show: self.always_show,
+            raw_options_len: 0,
+            initial_delay_ticks: 0,
+            child_spawn_templates: Vec::new(),
+            option_color: Some([self.color[0], self.color[1], self.color[2], 0.99]),
+            option_color_to: self
+                .color_fade_target
+                .map(|target| [target[0], target[1], target[2], 1.0]),
+            option_scale: None,
+            option_power: None,
+            option_target: None,
+            option_entity_target_source: None,
+            option_duration_ticks: None,
+            option_roll: None,
+            option_block: None,
+            option_item: None,
+            option_firework_trail: false,
+            option_firework_twinkle: self.firework_twinkle,
+            option_firework_half_lifetime_age: true,
+        })
     }
 
     fn removal_child_spawn_commands(
@@ -2077,6 +2140,9 @@ impl ParticleInstance {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_firework_trail: false,
+            option_firework_twinkle: false,
+            option_firework_half_lifetime_age: false,
         })
     }
 
@@ -2142,6 +2208,9 @@ impl ParticleInstance {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_firework_trail: false,
+            option_firework_twinkle: false,
+            option_firework_half_lifetime_age: false,
         })
     }
 
@@ -2190,6 +2259,9 @@ impl ParticleInstance {
                     option_roll: None,
                     option_block: None,
                     option_item: None,
+                    option_firework_trail: false,
+                    option_firework_twinkle: false,
+                    option_firework_half_lifetime_age: false,
                 }
             })
             .collect()
@@ -2247,6 +2319,9 @@ impl ParticleInstance {
                     option_roll: None,
                     option_block: None,
                     option_item: None,
+                    option_firework_trail: false,
+                    option_firework_twinkle: false,
+                    option_firework_half_lifetime_age: false,
                 }
             })
             .collect()
@@ -2886,7 +2961,16 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
             color[3] = firefly_fade_amount(progress, 0.3, 0.5);
         }
     }
+    if firework_twinkle_hidden(instance) {
+        color[3] = 0.0;
+    }
     color
+}
+
+fn firework_twinkle_hidden(instance: &ParticleInstance) -> bool {
+    instance.firework_twinkle
+        && instance.age_ticks >= instance.lifetime_ticks / 3
+        && ((instance.age_ticks + instance.lifetime_ticks) / 3) % 2 != 0
 }
 
 fn simple_animated_alpha(age_ticks: u32, lifetime_ticks: u32) -> f32 {
@@ -5579,6 +5663,8 @@ mod tests {
             0x99 as f32 / 255.0,
             1.0,
         ]);
+        command.option_firework_trail = true;
+        command.option_firework_twinkle = true;
 
         let firework = ParticleInstance::from_spawn_command(command, &mut random);
 
@@ -5608,6 +5694,8 @@ mod tests {
             ])
         );
         assert_eq!(firework.velocity, [0.1, 0.2, 0.3]);
+        assert!(firework.firework_trail);
+        assert!(firework.firework_twinkle);
         assert_eq!(firework.friction, 0.91);
         assert_eq!(firework.gravity, 0.1);
         assert!(firework.has_physics);
@@ -5639,6 +5727,55 @@ mod tests {
         let instance = &particles.active_instances()[0];
         assert_eq!(instance.age_ticks, 25);
         assert_close_f32(instance.color[3], 1.0 - 1.0 / 48.0);
+    }
+
+    #[test]
+    fn particle_runtime_firework_trail_spawns_half_lifetime_twinkle_child() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 8, 99);
+        let mut parent = test_instance_with_lifetime("minecraft:firework", 48);
+        parent.particle_type_id = 30;
+        parent.sprite_ids = vec!["minecraft:firework_0".to_string()];
+        parent.current_sprite_id = Some("minecraft:firework_0".to_string());
+        parent.position = [1.0, 2.0, 3.0];
+        parent.previous_position = parent.position;
+        parent.velocity = [0.0, 0.0, 0.0];
+        parent.age_ticks = 21;
+        parent.color = [0.2, 0.4, 0.6, 0.99];
+        parent.color_fade_target = Some([0.8, 0.7, 0.6]);
+        parent.firework_trail = true;
+        parent.firework_twinkle = true;
+        particles.active_instances.push_back(parent);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.active_instances, 2);
+        let parent = &particles.active_instances()[0];
+        assert_eq!(parent.age_ticks, 22);
+        assert!(parent.firework_trail);
+        let child = &particles.active_instances()[1];
+        assert_eq!(child.particle_id, "minecraft:firework");
+        assert!(!child.firework_trail);
+        assert!(child.firework_twinkle);
+        assert_eq!(child.age_ticks, child.lifetime_ticks / 2);
+        assert_eq!(child.color, [0.2, 0.4, 0.6, 0.99]);
+        assert_eq!(child.color_fade_target, Some([0.8, 0.7, 0.6]));
+        assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn particle_render_color_hides_firework_twinkle_frames() {
+        let mut twinkle = test_instance_with_lifetime("minecraft:firework", 48);
+        twinkle.firework_twinkle = true;
+        twinkle.color = [1.0, 1.0, 1.0, 0.99];
+
+        twinkle.age_ticks = 15;
+        assert_close_f32(particle_render_color(&twinkle)[3], 0.99);
+        twinkle.age_ticks = 16;
+        assert_eq!(particle_render_color(&twinkle)[3], 0.0);
+        twinkle.age_ticks = 18;
+        assert_close_f32(particle_render_color(&twinkle)[3], 0.99);
     }
 
     #[test]
@@ -9314,6 +9451,8 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            firework_trail: false,
+            firework_twinkle: false,
             item_pickup_previous_target: None,
             item_pickup_target: None,
             atlas_uv_sub_rect: None,
@@ -9347,6 +9486,9 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            option_firework_trail: false,
+            option_firework_twinkle: false,
+            option_firework_half_lifetime_age: false,
         }
     }
 

@@ -2275,6 +2275,8 @@ impl ParticleCommandResolver {
             colors,
             &mut self.random,
         )));
+        command.option_firework_trail = explosion.has_trail;
+        command.option_firework_twinkle = explosion.has_twinkle;
         if !explosion.fade_colors.is_empty() {
             command.option_color_to = Some(firework_spark_fade_color(random_firework_color(
                 &explosion.fade_colors,
@@ -2369,6 +2371,9 @@ impl ParticleCommandResolver {
                     .item_stack
                     .as_ref()
                     .and_then(particle_item_option_state_for_stack),
+                option_firework_trail: false,
+                option_firework_twinkle: false,
+                option_firework_half_lifetime_age: false,
             }],
             ..ParticleSpawnBatch::default()
         }
@@ -2749,6 +2754,9 @@ impl ParticleCommandResolver {
             option_roll: option_state.roll,
             option_block: option_state.block,
             option_item: option_state.item,
+            option_firework_trail: false,
+            option_firework_twinkle: false,
+            option_firework_half_lifetime_age: false,
         }
     }
 
@@ -11317,6 +11325,8 @@ mod tests {
         assert_eq!(first_spark.particle_type_id, FIREWORK_PARTICLE_TYPE_ID);
         assert_eq!(first_spark.particle_id, "minecraft:firework");
         assert_eq!(first_spark.position, [10.0, 64.0, -3.0]);
+        assert!(first_spark.option_firework_trail);
+        assert!(first_spark.option_firework_twinkle);
         let first_spark_color = first_spark.option_color.unwrap();
         assert!([
             [
