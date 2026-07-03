@@ -2746,12 +2746,13 @@ When an agent does any of the following, update this file in the same slice:
       decoration/text submits (`showOnlyFrame=false`) and the vanilla
       `textures/map/map_background*.png` background/checkerboard quads in the
       same depth-cleared hand pass, and
+      applies vanilla first-person use transforms for custom consumable
+      BOW/TRIDENT/BRUSH/BUNDLE animations while preserving the generic
+      no-switch base-arm behavior for NONE/CROSSBOW/SPYGLASS/TOOT_HORN, and
       draws in a depth-cleared pass after world transparency is composited and
       before HUD overlays. Remaining refinements are first-person
-      non-EAT/DRINK use/special paths beyond goat horn, brush, bundle, trident,
-      bow, crossbow, spyglass, and decoded filled-map base/decorations/text/
-      background/checkerboard; first-person player arms; combat arm poses; and
-      custom ground transforms. Done:
+      SPEAR/kinetic use animation; first-person player arms; combat arm poses;
+      and custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,

@@ -1417,17 +1417,29 @@ fn first_person_stack_supported_use_animation(
         _ => {}
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
+        let use_duration_ticks = first_person_consumable_use_duration_ticks(consumable);
         return match consumable.animation {
             ItemUseAnimationSummary::None => Some(FirstPersonUseAnimation::None),
             ItemUseAnimationSummary::Eat | ItemUseAnimationSummary::Drink => {
-                Some(FirstPersonUseAnimation::EatDrink {
-                    use_duration_ticks: first_person_consumable_use_duration_ticks(consumable),
-                })
+                Some(FirstPersonUseAnimation::EatDrink { use_duration_ticks })
             }
             ItemUseAnimationSummary::Block => Some(FirstPersonUseAnimation::Block(
                 first_person_stack_block_kind_for_animation(stack, item_runtime)?,
             )),
-            _ => None,
+            ItemUseAnimationSummary::Bow => {
+                Some(FirstPersonUseAnimation::Bow { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Trident => {
+                Some(FirstPersonUseAnimation::Trident { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Crossbow
+            | ItemUseAnimationSummary::Spyglass
+            | ItemUseAnimationSummary::TootHorn => Some(FirstPersonUseAnimation::None),
+            ItemUseAnimationSummary::Brush => {
+                Some(FirstPersonUseAnimation::Brush { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Bundle => Some(FirstPersonUseAnimation::Bundle),
+            ItemUseAnimationSummary::Spear => None,
         };
     }
     first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
@@ -3117,6 +3129,26 @@ mod tests {
         item
     }
 
+    fn first_person_test_consumable_stack(
+        item_runtime: &NativeItemRuntime,
+        item_id: &str,
+        animation: ItemUseAnimationSummary,
+        consume_seconds: f32,
+    ) -> ItemStackSummary {
+        let mut item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        item.component_patch.added = 1;
+        item.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        item.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds,
+            animation,
+        });
+        item
+    }
+
     fn protocol_optional_block_state_data(
         data_id: u8,
         block_state: Option<i32>,
@@ -4582,6 +4614,153 @@ mod tests {
         assert_ne!(
             idle.flat_meshes[0], eating.flat_meshes[0],
             "default item prototype CONSUMABLE applies vanilla EAT first-person use pose"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_apply_custom_consumable_non_eat_use_animations() {
+        let root = unique_item_model_temp_dir("first-person-custom-consumable-use");
+        write_flat_item_runtime_fixture(&root, &["snack", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let snack_bow = first_person_test_consumable_stack(
+            &item_runtime,
+            "minecraft:snack",
+            ItemUseAnimationSummary::Bow,
+            1.6,
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(&snack_bow, &item_runtime),
+            Some(FirstPersonUseAnimation::Bow {
+                use_duration_ticks: 32.0,
+            })
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(
+                &first_person_test_consumable_stack(
+                    &item_runtime,
+                    "minecraft:snack",
+                    ItemUseAnimationSummary::Trident,
+                    1.6,
+                ),
+                &item_runtime,
+            ),
+            Some(FirstPersonUseAnimation::Trident {
+                use_duration_ticks: 32.0,
+            })
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(
+                &first_person_test_consumable_stack(
+                    &item_runtime,
+                    "minecraft:snack",
+                    ItemUseAnimationSummary::Brush,
+                    1.6,
+                ),
+                &item_runtime,
+            ),
+            Some(FirstPersonUseAnimation::Brush {
+                use_duration_ticks: 32.0,
+            })
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(
+                &first_person_test_consumable_stack(
+                    &item_runtime,
+                    "minecraft:snack",
+                    ItemUseAnimationSummary::Bundle,
+                    1.6,
+                ),
+                &item_runtime,
+            ),
+            Some(FirstPersonUseAnimation::Bundle)
+        );
+        for animation in [
+            ItemUseAnimationSummary::None,
+            ItemUseAnimationSummary::Crossbow,
+            ItemUseAnimationSummary::Spyglass,
+            ItemUseAnimationSummary::TootHorn,
+        ] {
+            assert_eq!(
+                first_person_stack_supported_use_animation(
+                    &first_person_test_consumable_stack(
+                        &item_runtime,
+                        "minecraft:snack",
+                        animation,
+                        1.6,
+                    ),
+                    &item_runtime,
+                ),
+                Some(FirstPersonUseAnimation::None),
+                "generic {animation:?} has no ItemInHandRenderer switch case"
+            );
+        }
+        assert_eq!(
+            first_person_stack_supported_use_animation(
+                &first_person_test_consumable_stack(
+                    &item_runtime,
+                    "minecraft:snack",
+                    ItemUseAnimationSummary::Spear,
+                    1.6,
+                ),
+                &item_runtime,
+            ),
+            None,
+            "SPEAR needs the kinetic SpearAnimations.firstPersonUse path"
+        );
+
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+        let off_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:off_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack_bow.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut using_world = WorldStore::new();
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack_bow,
+        });
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: off_item,
+        });
+        using_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        using_world.advance_local_using_item_ticks(12);
+        let using = first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(
+            using.flat_meshes.len(),
+            2,
+            "generic BOW animation is not an Items.BOW/CROSSBOW hand-selection special case"
+        );
+        assert_ne!(
+            idle.flat_meshes[0], using.flat_meshes[0],
+            "generic BOW consumables still apply the vanilla draw transform"
         );
         std::fs::remove_dir_all(root).unwrap();
     }

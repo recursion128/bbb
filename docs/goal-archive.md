@@ -1276,6 +1276,17 @@
     coordinates, atlas filtering/remapping, missing-data plain background, and
     decoded-map checkerboard selection. First-person player arms and
     screenshot-level visual parity remain follow-ups.
+  - [x] custom consumable first-person non-EAT/DRINK use animations：local
+    vanilla 26.1 `Item.getUseAnimation` reads `DataComponents.CONSUMABLE`
+    before `BLOCKS_ATTACKS` / `KINETIC_WEAPON`, and `ItemInHandRenderer` has
+    switch cases for generic BOW, TRIDENT, BRUSH, and BUNDLE animations while
+    generic NONE/CROSSBOW/SPYGLASS/TOOT_HORN fall through to the base arm
+    transform. Native now maps those custom consumable animations to the same
+    first-person transforms already used by the vanilla item special cases and
+    keeps generic BOW from using the `Items.BOW` / `Items.CROSSBOW`
+    used-hand-only selection path. Tests cover all mapped animations, generic
+    no-switch base-arm cases, and leave SPEAR unsupported for the kinetic
+    `SpearAnimations.firstPersonUse` slice.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
