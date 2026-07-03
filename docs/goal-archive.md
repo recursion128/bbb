@@ -2169,6 +2169,12 @@
     `falling_dust` emits the raw tint before falling back to static mapColor.
     Tests cover count-randomized spawns crossing biome boundaries, falling-dust
     foliage tint, and the lightweight terrain particle tint catalog.
+  - [x] LevelEvent item-break concrete item sprites：native LevelEvent potion /
+    instant-potion / ender-eye break branches now keep their existing vanilla
+    `ItemParticleOption` item-template metadata while resolving the first eight
+    `minecraft:item` commands through the installed empty-component GROUND item
+    material sprite ids. Tests pin splash-potion and ender-eye sprite ids without
+    changing the vanilla random stream.
 
 ## P2：Terrain / Block Render Presentation
 

@@ -10330,6 +10330,98 @@ mod tests {
     }
 
     #[test]
+    fn level_event_item_break_particles_use_installed_item_sprite_ids() {
+        let mut resolver = test_resolver(0);
+        resolver.default_item_particle_sprite_ids.insert(
+            VANILLA_SPLASH_POTION_ITEM_ID,
+            vec!["minecraft:item/splash_potion".to_string()],
+        );
+        resolver.default_item_particle_sprite_ids.insert(
+            VANILLA_ENDER_EYE_ITEM_ID,
+            vec!["minecraft:item/ender_eye".to_string()],
+        );
+        let assert_item_sprites =
+            |command: &ParticleSpawnCommand, item_id: i32, sprite_id: &str| {
+                assert_eq!(command.particle_type_id, ITEM_PARTICLE_TYPE_ID);
+                assert_eq!(command.particle_id, "minecraft:item");
+                assert_eq!(
+                    command.option_item,
+                    Some(ParticleItemOptionState {
+                        item_id,
+                        count: 1,
+                        component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+                    })
+                );
+                assert_eq!(command.sprite_ids, vec![sprite_id.to_string()]);
+            };
+
+        let mut potion_random = LevelEventSoundRandomState::with_seed(0);
+        let potion = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: POTION_BREAK_LEVEL_EVENT,
+                data: 0x0033_66cc,
+                ..level_event_packet(POTION_BREAK_LEVEL_EVENT)
+            },
+            &mut potion_random,
+        );
+        assert!(potion.len() >= POTION_BREAK_ITEM_PARTICLE_COUNT as usize);
+        for command in potion
+            .commands
+            .iter()
+            .take(POTION_BREAK_ITEM_PARTICLE_COUNT as usize)
+        {
+            assert_item_sprites(
+                command,
+                VANILLA_SPLASH_POTION_ITEM_ID,
+                "minecraft:item/splash_potion",
+            );
+        }
+
+        let mut instant_potion_random = LevelEventSoundRandomState::with_seed(0);
+        let instant_potion = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: INSTANT_POTION_BREAK_LEVEL_EVENT,
+                data: 0x00ff_cc00,
+                ..level_event_packet(INSTANT_POTION_BREAK_LEVEL_EVENT)
+            },
+            &mut instant_potion_random,
+        );
+        assert!(instant_potion.len() >= POTION_BREAK_ITEM_PARTICLE_COUNT as usize);
+        for command in instant_potion
+            .commands
+            .iter()
+            .take(POTION_BREAK_ITEM_PARTICLE_COUNT as usize)
+        {
+            assert_item_sprites(
+                command,
+                VANILLA_SPLASH_POTION_ITEM_ID,
+                "minecraft:item/splash_potion",
+            );
+        }
+
+        let mut ender_eye_random = LevelEventSoundRandomState::with_seed(0);
+        let ender_eye = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: ENDER_EYE_BREAK_LEVEL_EVENT,
+                ..level_event_packet(ENDER_EYE_BREAK_LEVEL_EVENT)
+            },
+            &mut ender_eye_random,
+        );
+        assert!(ender_eye.len() >= ITEM_BREAK_PARTICLE_COUNT as usize);
+        for command in ender_eye
+            .commands
+            .iter()
+            .take(ITEM_BREAK_PARTICLE_COUNT as usize)
+        {
+            assert_item_sprites(
+                command,
+                VANILLA_ENDER_EYE_ITEM_ID,
+                "minecraft:item/ender_eye",
+            );
+        }
+    }
+
+    #[test]
     fn level_event_destroy_block_particles_use_block_particle_options() {
         let resolver = test_resolver(0);
         let stone_id = test_block_state_id("minecraft:stone", []);

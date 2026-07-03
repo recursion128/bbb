@@ -567,11 +567,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
     - LevelEvent item-particle branches now submit definition-less
-      `minecraft:item` commands with item-template option metadata; resolving
-      their concrete item atlas sprites stays deferred with broader
-      terrain/item particle atlas rendering. Native item atlas upload now
-      supplies the item sprite UV catalog the renderer draw path needs once
-      that per-stack sprite selection is available.
+      `minecraft:item` commands with item-template option metadata and resolve
+      empty-component splash-potion / ender-eye break particles through the
+      installed default GROUND item material sprite ids. Native item atlas
+      upload supplies the item sprite UV catalog the renderer draw path needs.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
