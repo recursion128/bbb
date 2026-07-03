@@ -775,7 +775,7 @@ pub(super) enum SelectProperty {
     /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
     /// day, `D` day-of-year, `w`/`W` week numbers, `F`
     /// day-of-week-in-month, `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
-    /// `m`/`s`/`S`, `a`, `z` zone names,
+    /// `m`/`s`/`S`, root/en `a` AM/PM widths 1..=5, `z` zone names,
     /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
     /// 1..=5, and localized-GMT `O` offsets).
     LocalTime {
@@ -1531,7 +1531,7 @@ fn format_local_time_field(
         'm' => Some(padded_u32(fields.minute, count)),
         's' => Some(padded_u32(fields.second, count)),
         'S' => Some(fractional_second(fields.millisecond, count)),
-        'a' => english_text(locale, if fields.hour < 12 { "AM" } else { "PM" }),
+        'a' => format_ampm_marker(fields.hour, count, locale),
         'Z' => {
             if (1..=3).contains(&count) {
                 Some(rfc822_offset(fields.offset_seconds))
@@ -1722,6 +1722,15 @@ fn format_quarter(month: u32, width: usize, locale: &str) -> Option<String> {
         3 => english_text(locale, short_quarter_name(quarter)),
         4 => english_text(locale, long_quarter_name(quarter)),
         5 => Some(quarter.to_string()),
+        _ => None,
+    }
+}
+
+fn format_ampm_marker(hour: u32, width: usize, locale: &str) -> Option<String> {
+    let pm = hour >= 12;
+    match width {
+        1..=4 => english_text(locale, if pm { "PM" } else { "AM" }),
+        5 => english_text(locale, if pm { "p" } else { "a" }),
         _ => None,
     }
 }
