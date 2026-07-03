@@ -12,7 +12,7 @@ use bbb_world::{
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
     SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    WitchMagicParticleState, WorldStore,
+    ThrownEggHitParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -375,6 +375,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn thrown_egg_hit_particles(&mut self, _world: &WorldStore, state: ThrownEggHitParticleState) {
+        emit_thrown_egg_hit_particles(
+            self.particle_events,
+            self.particle_renderer,
+            state,
+            self.item_runtime,
+        );
+    }
+
     fn honey_block_particles(&mut self, _world: &WorldStore, state: HoneyBlockParticleState) {
         emit_honey_block_particles(self.particle_events, self.particle_renderer, state);
     }
@@ -712,6 +721,21 @@ fn emit_snowball_hit_particles(
         return;
     };
     let batch = particle_events.spawn_snowball_hit_particles(state, item_runtime);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_thrown_egg_hit_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: ThrownEggHitParticleState,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_thrown_egg_hit_particles(state, item_runtime);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

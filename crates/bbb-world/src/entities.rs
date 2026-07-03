@@ -56,6 +56,8 @@ pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+/// Vanilla 26.1 `Items.EGG` protocol id from `bbb-pack`'s `Items.java` registry parser.
+pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
 /// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
 pub(crate) const VANILLA_ITEM_SNOWBALL_ID: i32 = 1017;
 
@@ -397,6 +399,14 @@ pub struct SnowballHitParticleState {
     /// `None` matches vanilla's empty-stack `ParticleTypes.ITEM_SNOWBALL` branch;
     /// missing metadata uses `Items.SNOWBALL` as the default projectile item.
     pub item_stack: Option<ProtocolItemStackSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ThrownEggHitParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    /// Missing metadata uses `Items.EGG`; explicit empty stacks do not emit particles.
+    pub item_stack: ProtocolItemStackSummary,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -2061,6 +2071,30 @@ impl WorldStore {
             }),
         };
         Some(SnowballHitParticleState {
+            entity_id,
+            position: transform.position,
+            item_stack,
+        })
+    }
+
+    pub fn thrown_egg_hit_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<ThrownEggHitParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_EGG_ID {
+            return None;
+        }
+        let item_stack = match self.entities.raw_item_stack_for_entity(entity_id) {
+            Some(stack) if stack.item_id.is_some() && stack.count > 0 => stack,
+            Some(_) => return None,
+            None => ProtocolItemStackSummary {
+                item_id: Some(VANILLA_ITEM_EGG_ID),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        };
+        Some(ThrownEggHitParticleState {
             entity_id,
             position: transform.position,
             item_stack,

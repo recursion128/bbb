@@ -26,7 +26,7 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TerrainLight, VaultConnectionParticleState, WitchMagicParticleState,
+    TerrainLight, ThrownEggHitParticleState, VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -102,6 +102,11 @@ pub(crate) trait ParticleEventSink {
     fn spawn_snowball_hit_particles(
         &mut self,
         state: SnowballHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch;
+    fn spawn_thrown_egg_hit_particles(
+        &mut self,
+        state: ThrownEggHitParticleState,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_honey_block_particles(&mut self, state: HoneyBlockParticleState)
@@ -380,6 +385,15 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .snowball_hit_particle_batch(state, item_runtime)
+    }
+
+    fn spawn_thrown_egg_hit_particles(
+        &mut self,
+        state: ThrownEggHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .thrown_egg_hit_particle_batch(state, item_runtime)
     }
 
     fn spawn_honey_block_particles(
@@ -2728,6 +2742,55 @@ impl ParticleCommandResolver {
                     z: state.position.z,
                 },
                 Vec3d::default(),
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state.clone(),
+                None,
+                item_runtime,
+            ));
+        }
+        batch
+    }
+
+    fn thrown_egg_hit_particle_batch(
+        &mut self,
+        state: ThrownEggHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let Some(item) = particle_item_option_state_for_stack(&state.item_stack) else {
+            return ParticleSpawnBatch::default();
+        };
+        let template = match self.simple_particle_template(ITEM_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let option_state = ParticleOptionRenderState {
+            item: Some(item),
+            item_stack: Some(state.item_stack.clone()),
+            item_component_patch_empty: state.item_stack.component_patch == Default::default(),
+            ..ParticleOptionRenderState::default()
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..8 {
+            let velocity = Vec3d {
+                x: f64::from((self.random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+                y: f64::from((self.random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+                z: f64::from((self.random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+            };
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                velocity,
                 template.particle_type.override_limiter,
                 false,
                 0,
@@ -5221,6 +5284,7 @@ const EGG_CRACK_PARTICLE_MAX: i32 = 6;
 const ITEM_BREAK_PARTICLE_COUNT: i32 = 8;
 const POTION_BREAK_ITEM_PARTICLE_COUNT: i32 = ITEM_BREAK_PARTICLE_COUNT;
 const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
+const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
 const VANILLA_SPLASH_POTION_ITEM_ID: i32 = 1292;
@@ -5874,6 +5938,58 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:item_snowball"));
+    }
+
+    #[test]
+    fn thrown_egg_hit_batch_matches_vanilla_event_particles() {
+        let mut resolver = test_resolver(0);
+        let state = ThrownEggHitParticleState {
+            entity_id: 78,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            item_stack: ItemStackSummary {
+                item_id: Some(1032),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            f64::from((expected_random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+            f64::from((expected_random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+            f64::from((expected_random.next_float() - 0.5) * THROWN_EGG_HIT_VELOCITY_SCALE),
+        ];
+
+        let batch = resolver.thrown_egg_hit_particle_batch(state, None);
+
+        assert_eq!(batch.len(), 8);
+        assert_particle_command(
+            &batch.commands[0],
+            ITEM_PARTICLE_TYPE_ID,
+            "minecraft:item",
+            [10.0, 64.0, -3.0],
+            expected_velocity,
+            false,
+        );
+        assert_eq!(
+            batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 1032,
+                count: 1,
+                component_patch_len: 0,
+            })
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:item"));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.velocity != [0.0, 0.0, 0.0]));
     }
 
     #[test]

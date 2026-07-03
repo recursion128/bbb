@@ -312,6 +312,10 @@ When an agent does any of the following, update this file in the same slice:
         at the snowball's current position with zero velocity. The normal
         synced item stack branch uses `minecraft:item`; an explicit empty stack
         uses `minecraft:item_snowball`.
+      - ThrownEgg entity event `3` now emits vanilla hit particles: non-empty
+        item stacks spawn 8 `minecraft:item` commands at the egg's current
+        position with `(nextFloat()-0.5)*0.08` velocity on each axis. Missing
+        metadata uses `Items.EGG`; explicit empty stacks emit no particles.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -323,7 +327,8 @@ When an agent does any of the following, update this file in the same slice:
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
         magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
         drown bubbles, LivingEntity event-46 portal burst, HoneyBlock
-        event-53/54 block particles, Snowball event-3 item burst, and the
+        event-53/54 block particles, Snowball event-3 item burst, ThrownEgg
+        event-3 item burst, and the
         GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
         model submit
     - terrain/item particle option metadata / atlas rendering:
@@ -508,6 +513,10 @@ When an agent does any of the following, update this file in the same slice:
       `Snowball.handleEntityEvent`: 8 commands at the snowball position with
       zero velocity, using `minecraft:item` for the normal synced item stack
       branch and `minecraft:item_snowball` for explicit empty stacks.
+      Native ThrownEgg event `3` now emits vanilla hit particles from
+      `ThrownEgg.handleEntityEvent`: 8 `minecraft:item` commands for non-empty
+      item stacks at the egg position, with `(nextFloat()-0.5)*0.08` velocity
+      on each axis; explicit empty stacks emit no particles.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,
