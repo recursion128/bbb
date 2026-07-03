@@ -261,11 +261,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   using vanilla `applyItemArmTransform` constants and ordinary WHACK `swingArm`
   plus STAB `SpearAnimations.firstPersonAttack` from the local player's
   `attackAnim` / `swingingArm`, first-person BLOCK/shield use pose, and
-  patch-carried/default consumable EAT/DRINK `applyEatTransform` use pose.
-  剩余是 first-person special consumers / non-EAT/DRINK use animation 与像素级视觉校验。
+  patch-carried/default consumable EAT/DRINK `applyEatTransform` use pose, and
+  goat horn `TOOT_HORN` base-arm use pose. 剩余是 first-person special consumers /
+  other non-EAT/DRINK use animation 与像素级视觉校验。
 - First-person viewmodel：
-  - remaining non-EAT/DRINK use animation。
-  - map / bow / crossbow / spyglass / trident / brush / bundle / goat horn 等特殊路径。
+  - remaining non-EAT/DRINK use animation beyond goat horn `TOOT_HORN`。
+  - map / bow / crossbow / spyglass / trident / brush / bundle 等特殊路径。
 - Combat / held item arm pose：
   - third-person hand-use sway。
   - kinetic weapon / ticksUsingItem。

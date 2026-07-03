@@ -1110,8 +1110,9 @@ When an agent does any of the following, update this file in the same slice:
     depth-cleared hand pass, including the vanilla WHACK `swingArm` transform
     and STAB `SpearAnimations.firstPersonAttack` transforms from local-player
     attack animation, BLOCK/shield use pose, and patch-carried/default
-    consumable EAT/DRINK `applyEatTransform`; remaining non-EAT/DRINK use and
-    special consumers remain item presentation follow-ups. Standalone
+    consumable EAT/DRINK `applyEatTransform`, plus goat horn `TOOT_HORN`
+    base-arm use pose; remaining non-EAT/DRINK use and special consumers remain
+    item presentation follow-ups. Standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2730,10 +2731,11 @@ When an agent does any of the following, update this file in the same slice:
       local `attackAnim` / `swingingArm`, applies the BLOCK use transform for
       non-shield `blocks_attacks` stacks while vanilla shields keep only the arm
       transform, applies the vanilla EAT/DRINK use transform for patch-carried
-      and default item-prototype consumables, and draws in a depth-cleared pass
-      after world transparency is composited and before HUD overlays. Remaining
-      refinements are first-person non-EAT/DRINK use/special paths, combat arm
-      poses, and custom ground transforms. Done:
+      and default item-prototype consumables, keeps goat horn `TOOT_HORN` use on
+      the base arm transform, and draws in a depth-cleared pass after world
+      transparency is composited and before HUD overlays. Remaining refinements
+      are first-person non-EAT/DRINK use/special paths beyond goat horn, combat
+      arm poses, and custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,

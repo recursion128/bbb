@@ -1178,7 +1178,6 @@ fn supported_first_person_item_stack(
             | "minecraft:trident"
             | "minecraft:brush"
             | "minecraft:bundle"
-            | "minecraft:goat_horn"
     )
 }
 
@@ -1225,7 +1224,19 @@ fn first_person_stack_supported_use_animation(
             _ => None,
         };
     }
+    if first_person_stack_resource_id(stack, item_runtime) == Some("minecraft:goat_horn") {
+        return Some(FirstPersonUseAnimation::None);
+    }
     first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
+}
+
+fn first_person_stack_resource_id<'a>(
+    stack: &ItemStackSummary,
+    item_runtime: &'a NativeItemRuntime,
+) -> Option<&'a str> {
+    stack
+        .item_id
+        .and_then(|item_id| item_runtime.item_resource_id(item_id))
 }
 
 fn first_person_stack_consumable_summary(
@@ -3752,6 +3763,65 @@ mod tests {
         assert_ne!(
             idle.flat_meshes[0], eating.flat_meshes[0],
             "default item prototype CONSUMABLE applies vanilla EAT first-person use pose"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_apply_goat_horn_base_use_pose() {
+        let root = unique_item_model_temp_dir("first-person-goat-horn-use");
+        write_flat_item_runtime_fixture(&root, &["goat_horn"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut goat_horn = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:goat_horn"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        goat_horn.component_patch.added = 1;
+        goat_horn.component_patch.added_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+        goat_horn.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::None,
+            duration: 0,
+        });
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: goat_horn.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut tooting_world = WorldStore::new();
+        tooting_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: goat_horn,
+        });
+        tooting_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        let tooting = first_person_item_models(
+            &tooting_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(tooting.flat_meshes.len(), 1);
+        assert_eq!(
+            idle.flat_meshes[0], tooting.flat_meshes[0],
+            "vanilla TOOT_HORN first-person use keeps only the base arm transform"
         );
         std::fs::remove_dir_all(root).unwrap();
     }

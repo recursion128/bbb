@@ -1162,6 +1162,14 @@
     `CONSUMABLE`. Tests cover default food / dried-kelp / drink parsing,
     runtime default lookup, and mesh movement for a default EAT item without a
     stack consumable patch.
+  - [x] first-person goat horn TOOT_HORN use pose：local vanilla 26.1
+    `InstrumentItem.getUseAnimation` returns `ItemUseAnimation.TOOT_HORN`;
+    `ItemInHandRenderer.renderArmWithItem` applies `applyItemArmTransform` for
+    non-custom use animations and has no `TOOT_HORN` switch case, so
+    first-person goat horn use keeps the base arm transform. Native now allows
+    `minecraft:goat_horn` through first-person item rendering and classifies
+    using goat horns as base-arm use animation. Tests cover non-skipped rendering
+    and exact idle/use mesh equality with `swing_animation = NONE`.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
