@@ -50,8 +50,8 @@ use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
-    RavagerRoarParticleState, RegistryPacketEntry, TakeItemEntityPickupParticleState,
-    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2694,6 +2694,89 @@ fn living_entity_portal_entity_event_emits_particle_state() {
     assert_close(state.height, 1.95);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn snowball_hit_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(8);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(78, VANILLA_ENTITY_TYPE_SNOWBALL_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(79, VANILLA_ENTITY_TYPE_SNOWBALL_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 79,
+            values: vec![EntityDataValue {
+                data_id: 8,
+                serializer_id: 7,
+                value: EntityDataValueKind::ItemStack(ItemStackSummary::empty()),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(80, VANILLA_ENTITY_TYPE_ITEM_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 78,
+        event_id: 3,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 79,
+        event_id: 3,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 80,
+        event_id: 3,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 3,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        8
+    );
+
+    assert_eq!(particles.snowball_hit_states.len(), 2);
+    assert_eq!(particles.snowball_hit_states[0].entity_id, 78);
+    assert_eq!(particles.snowball_hit_states[0].position.x, 1.0);
+    assert_eq!(particles.snowball_hit_states[0].position.y, 64.0);
+    assert_eq!(particles.snowball_hit_states[0].position.z, -2.0);
+    assert_eq!(
+        particles.snowball_hit_states[0].item_stack,
+        Some(item_stack(1017, 1))
+    );
+    assert_eq!(particles.snowball_hit_states[1].entity_id, 79);
+    assert_eq!(particles.snowball_hit_states[1].item_stack, None);
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().entity_events_applied, 3);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8546,6 +8629,7 @@ struct RecordingParticleSink {
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
+    snowball_hit_states: Vec<SnowballHitParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
@@ -8706,6 +8790,17 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityPortalParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_portal_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_snowball_hit_particles(
+        &mut self,
+        state: SnowballHitParticleState,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.snowball_hit_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

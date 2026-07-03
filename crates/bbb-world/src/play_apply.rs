@@ -18,8 +18,8 @@ use crate::{
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
-    VehicleMoveReport, WitchMagicParticleState, WorldStore,
+    SnowballHitParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+    TakeItemEntityPickupParticleState, VehicleMoveReport, WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -58,6 +58,7 @@ const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
+const SNOWBALL_HIT_EVENT_ID: i8 = 3;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
@@ -145,6 +146,7 @@ pub trait PlayApplyEffects {
         _state: LivingEntityPortalParticleState,
     ) {
     }
+    fn snowball_hit_particles(&mut self, _world: &WorldStore, _state: SnowballHitParticleState) {}
     fn honey_block_particles(&mut self, _world: &WorldStore, _state: HoneyBlockParticleState) {}
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
@@ -360,6 +362,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let snowball_hit_particles = if update.event_id == SNOWBALL_HIT_EVENT_ID {
+                    self.snowball_hit_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let ravager_roar_particles = if update.event_id == RAVAGER_ROAR_EVENT_ID {
                     self.ravager_roar_particle_state(update.entity_id)
                 } else {
@@ -430,6 +437,9 @@ impl WorldStore {
                     }
                     if let Some(state) = living_entity_portal_particles {
                         effects.living_entity_portal_particles(self, state);
+                    }
+                    if let Some(state) = snowball_hit_particles {
+                        effects.snowball_hit_particles(self, state);
                     }
                     if let Some(state) = honey_block_particles {
                         effects.honey_block_particles(self, state);
@@ -1362,12 +1372,14 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, EntityPositionSync,
-        GameEvent, LevelEvent, PlayTime, PlayerHealth, SoundEvent, SoundEventHolder, SoundSource,
-        TakeItemEntity, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
+        EntityDataValueKind, EntityEvent, EntityPositionSync, GameEvent, ItemStackSummary,
+        LevelEvent, PlayTime, PlayerHealth, SetEntityData, SoundEvent, SoundEventHolder,
+        SoundSource, TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1380,6 +1392,7 @@ mod tests {
         living_entity_poof_particles: Vec<LivingEntityPoofParticleState>,
         living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
+        snowball_hit_particles: Vec<SnowballHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
@@ -1425,6 +1438,10 @@ mod tests {
             self.living_entity_portal_particles.push(state);
         }
 
+        fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
+            self.snowball_hit_particles.push(state);
+        }
+
         fn honey_block_particles(&mut self, _world: &WorldStore, state: HoneyBlockParticleState) {
             self.honey_block_particles.push(state);
         }
@@ -1461,6 +1478,22 @@ mod tests {
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        }
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+
+    fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
+        EntityDataValue {
+            data_id: crate::entities::VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(item),
         }
     }
 
@@ -2271,6 +2304,85 @@ mod tests {
         assert!((state.width - 0.6).abs() < 1.0e-6);
         assert!((state.height - 1.95).abs() < 1.0e-5);
         assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn snowball_hit_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                98,
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                Vec3d {
+                    x: 1.25,
+                    y: 64.0,
+                    z: -2.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                99,
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 99,
+                values: vec![item_stack_entity_data(ItemStackSummary::empty())],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                100,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                Vec3d {
+                    x: 6.0,
+                    y: 71.0,
+                    z: 9.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 98,
+                event_id: SNOWBALL_HIT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 99,
+                event_id: SNOWBALL_HIT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 100,
+                event_id: SNOWBALL_HIT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: SNOWBALL_HIT_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.snowball_hit_particles.len(), 2);
+        assert_eq!(effects.snowball_hit_particles[0].entity_id, 98);
+        assert_eq!(
+            effects.snowball_hit_particles[0].position,
+            crate::EntityVec3 {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert_eq!(
+            effects.snowball_hit_particles[0].item_stack,
+            Some(item_stack(crate::entities::VANILLA_ITEM_SNOWBALL_ID, 1))
+        );
+        assert_eq!(effects.snowball_hit_particles[1].entity_id, 99);
+        assert_eq!(effects.snowball_hit_particles[1].item_stack, None);
+        assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

@@ -10,6 +10,7 @@ pub use crate::entities::{
     ItemFrameRenderState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaBodyDecorColor, MinecartDisplayBlockState,
     OminousItemSpawnerItemState, PolarBearStandingAnimationState, PrimedTntSmokeParticleState,
-    ProjectilePowerUpdateState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
-    VehicleMoveReport, WitchMagicParticleState, WolfArmorCrackiness,
+    ProjectilePowerUpdateState, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, VehicleMoveReport, WitchMagicParticleState,
+    WolfArmorCrackiness,
 };

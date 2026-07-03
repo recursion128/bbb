@@ -2490,6 +2490,12 @@ impl EntityStore {
         item_entity_render_stack(&metadata.data_values).cloned()
     }
 
+    pub(crate) fn raw_item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        raw_item_stack(&metadata.data_values).cloned()
+    }
+
     pub(crate) fn entity_age_ticks(&self, id: i32) -> Option<u32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
@@ -3603,6 +3609,12 @@ fn shulker_attach_face(
 fn item_entity_render_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
+    raw_item_stack(data_values).filter(|stack| stack.item_id.is_some() && stack.count > 0)
+}
+
+fn raw_item_stack(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> Option<&bbb_protocol::packets::ItemStackSummary> {
     data_values.iter().find_map(|value| {
         if value.data_id != VANILLA_ITEM_ENTITY_STACK_DATA_ID {
             return None;
@@ -3610,11 +3622,7 @@ fn item_entity_render_stack(
         let EntityDataValueKind::ItemStack(stack) = &value.value else {
             return None;
         };
-        if stack.item_id.is_some() && stack.count > 0 {
-            Some(stack)
-        } else {
-            None
-        }
+        Some(stack)
     })
 }
 

@@ -25,8 +25,8 @@ use bbb_world::{
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    RavagerRoarParticleState, TakeItemEntityPickupParticleState, TerrainLight,
-    VaultConnectionParticleState, WitchMagicParticleState,
+    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TerrainLight, VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -98,6 +98,11 @@ pub(crate) trait ParticleEventSink {
     fn spawn_living_entity_portal_particles(
         &mut self,
         state: LivingEntityPortalParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_snowball_hit_particles(
+        &mut self,
+        state: SnowballHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_honey_block_particles(&mut self, state: HoneyBlockParticleState)
         -> ParticleSpawnBatch;
@@ -366,6 +371,15 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityPortalParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_portal_particle_batch(state)
+    }
+
+    fn spawn_snowball_hit_particles(
+        &mut self,
+        state: SnowballHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .snowball_hit_particle_batch(state, item_runtime)
     }
 
     fn spawn_honey_block_particles(
@@ -2665,6 +2679,63 @@ impl ParticleCommandResolver {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn snowball_hit_particle_batch(
+        &self,
+        state: SnowballHitParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let (particle_type_id, option_state) = match state
+            .item_stack
+            .as_ref()
+            .and_then(particle_item_option_state_for_stack)
+        {
+            Some(item) => (
+                ITEM_PARTICLE_TYPE_ID,
+                ParticleOptionRenderState {
+                    item: Some(item),
+                    item_stack: state.item_stack.clone(),
+                    item_component_patch_empty: state
+                        .item_stack
+                        .as_ref()
+                        .is_some_and(|stack| stack.component_patch == Default::default()),
+                    ..ParticleOptionRenderState::default()
+                },
+            ),
+            None => (
+                ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+                ParticleOptionRenderState::default(),
+            ),
+        };
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..8 {
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: state.position.x,
+                    y: state.position.y,
+                    z: state.position.z,
+                },
+                Vec3d::default(),
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state.clone(),
+                None,
+                item_runtime,
+            ));
         }
         batch
     }
@@ -5730,6 +5801,79 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:portal"));
+    }
+
+    #[test]
+    fn snowball_hit_batch_matches_vanilla_event_particles() {
+        let resolver = test_resolver(0);
+        let state = SnowballHitParticleState {
+            entity_id: 76,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            item_stack: Some(ItemStackSummary {
+                item_id: Some(1017),
+                count: 1,
+                component_patch: Default::default(),
+            }),
+        };
+
+        let batch = resolver.snowball_hit_particle_batch(state, None);
+
+        assert_eq!(batch.len(), 8);
+        assert_particle_command(
+            &batch.commands[0],
+            ITEM_PARTICLE_TYPE_ID,
+            "minecraft:item",
+            [10.0, 64.0, -3.0],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert_eq!(
+            batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 1017,
+                count: 1,
+                component_patch_len: 0,
+            })
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:item"));
+    }
+
+    #[test]
+    fn snowball_hit_batch_uses_item_snowball_for_empty_stack() {
+        let resolver = test_resolver(0);
+        let state = SnowballHitParticleState {
+            entity_id: 77,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            item_stack: None,
+        };
+
+        let batch = resolver.snowball_hit_particle_batch(state, None);
+
+        assert_eq!(batch.len(), 8);
+        assert_particle_command(
+            &batch.commands[0],
+            ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+            "minecraft:item_snowball",
+            [10.0, 64.0, -3.0],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert_eq!(batch.commands[0].option_item, None);
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:item_snowball"));
     }
 
     #[test]

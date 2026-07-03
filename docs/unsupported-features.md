@@ -308,6 +308,10 @@ When an agent does any of the following, update this file in the same slice:
         particles: 128 commands interpolated from `xo/yo/zo` to the current
         position, with width/height random offsets and
         `(nextFloat()-0.5)*0.2` velocity.
+      - Snowball entity event `3` now emits vanilla hit particles: 8 commands
+        at the snowball's current position with zero velocity. The normal
+        synced item stack branch uses `minecraft:item`; an explicit empty stack
+        uses `minecraft:item_snowball`.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -319,7 +323,7 @@ When an agent does any of the following, update this file in the same slice:
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
         magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
         drown bubbles, LivingEntity event-46 portal burst, HoneyBlock
-        event-53/54 block particles, and the
+        event-53/54 block particles, Snowball event-3 item burst, and the
         GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
         model submit
     - terrain/item particle option metadata / atlas rendering:
@@ -500,6 +504,10 @@ When an agent does any of the following, update this file in the same slice:
       particles from `handleEntityEvent`: 128 commands interpolated from
       `xo/yo/zo` to current position with width/height random offsets and
       `(nextFloat()-0.5)*0.2` velocity.
+      Native Snowball event `3` now emits vanilla hit particles from
+      `Snowball.handleEntityEvent`: 8 commands at the snowball position with
+      zero velocity, using `minecraft:item` for the normal synced item stack
+      branch and `minecraft:item_snowball` for explicit empty stacks.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

@@ -56,6 +56,8 @@ pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+/// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
+pub(crate) const VANILLA_ITEM_SNOWBALL_ID: i32 = 1017;
 
 /// Local-player melee swing state sampled for first-person item rendering.
 ///
@@ -386,6 +388,15 @@ pub struct LivingEntityPortalParticleState {
     pub position: EntityVec3,
     pub width: f32,
     pub height: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SnowballHitParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    /// `None` matches vanilla's empty-stack `ParticleTypes.ITEM_SNOWBALL` branch;
+    /// missing metadata uses `Items.SNOWBALL` as the default projectile item.
+    pub item_stack: Option<ProtocolItemStackSummary>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -2032,6 +2043,27 @@ impl WorldStore {
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    pub fn snowball_hit_particle_state(&self, entity_id: i32) -> Option<SnowballHitParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_SNOWBALL_ID {
+            return None;
+        }
+        let item_stack = match self.entities.raw_item_stack_for_entity(entity_id) {
+            Some(stack) if stack.item_id.is_some() && stack.count > 0 => Some(stack),
+            Some(_) => None,
+            None => Some(ProtocolItemStackSummary {
+                item_id: Some(VANILLA_ITEM_SNOWBALL_ID),
+                count: 1,
+                component_patch: Default::default(),
+            }),
+        };
+        Some(SnowballHitParticleState {
+            entity_id,
+            position: transform.position,
+            item_stack,
         })
     }
 

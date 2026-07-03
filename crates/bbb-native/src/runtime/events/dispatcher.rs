@@ -11,7 +11,8 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventGrowthRandomMode,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
-    TakeItemEntityPickupParticleState, TerrainFluidKind, WitchMagicParticleState, WorldStore,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
+    WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -365,6 +366,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         emit_living_entity_portal_particles(self.particle_events, self.particle_renderer, state);
     }
 
+    fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
+        emit_snowball_hit_particles(
+            self.particle_events,
+            self.particle_renderer,
+            state,
+            self.item_runtime,
+        );
+    }
+
     fn honey_block_particles(&mut self, _world: &WorldStore, state: HoneyBlockParticleState) {
         emit_honey_block_particles(self.particle_events, self.particle_renderer, state);
     }
@@ -687,6 +697,21 @@ fn emit_living_entity_portal_particles(
         return;
     };
     let batch = particle_events.spawn_living_entity_portal_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_snowball_hit_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: SnowballHitParticleState,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_snowball_hit_particles(state, item_runtime);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }
