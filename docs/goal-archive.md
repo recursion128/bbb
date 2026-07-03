@@ -2384,6 +2384,11 @@
     marks it as moving without collision so the default tick's gravity/friction
     path skips the world collision callback and mirrors the vanilla
     `EndRodParticle.move` bounding-box translation override.
+  - [x] FallingLeaves collision removal：`FallingLeavesParticle` runtime motion
+    now uses the world collision callback for the vanilla custom leaf move,
+    removes on `onGround`, removes when X or Z velocity is zeroed by collision
+    after the first tick (`lifetime < 299`), and keeps the first-tick
+    horizontal-block grace.
 
 ## P2：Terrain / Block Render Presentation
 

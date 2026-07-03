@@ -372,6 +372,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     default tick 的 world collision callback 覆盖；
     `EndRodParticle` 保留 `hasPhysics=true` 元数据但按 vanilla 覆写走
     collision-free `move`；
+    `FallingLeavesParticle` 现在通过 world collision callback 覆盖落地移除、
+    第二 tick 起的水平轴阻塞移除，以及第一 tick 水平阻塞 grace；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。

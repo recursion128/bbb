@@ -888,8 +888,10 @@ When an agent does any of the following, update this file in the same slice:
         tinted `ColorParticleOption` ARGB command decode with renderer RGB
         tinting, default particle alpha preservation, gravity
         `fallAcceleration * 1.2 * 0.0025`, flow/swirl acceleration, and roll
-        spin acceleration. On-ground / blocked-axis removal remains deferred
-        until world-coupled particle collision state is represented.
+        spin acceleration. Runtime ticking now routes the leaf move through the
+        world collision callback, removes on `onGround`, removes on horizontal
+        axis blocking after the first tick, and preserves the vanilla first-tick
+        horizontal-block grace.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -6498,8 +6500,10 @@ When an agent does any of the following, update this file in the same slice:
         tinted `ColorParticleOption` ARGB command decode with renderer RGB
         tinting and default alpha preservation, gravity
         `fallAcceleration * 1.2 * 0.0025`, flow/swirl acceleration, and roll
-        spin acceleration. On-ground / blocked-axis removal remains deferred
-        until world-coupled particle collision state is represented.
+        spin acceleration. Runtime ticking now routes the leaf move through the
+        world collision callback, removes on `onGround`, removes on horizontal
+        axis blocking after the first tick, and preserves the vanilla first-tick
+        horizontal-block grace.
       - particle descriptors map
         `FlyStraightTowardsParticle.OminousSpawnProvider` for
         `ominous_spawning` to random sprites, command velocity, initial

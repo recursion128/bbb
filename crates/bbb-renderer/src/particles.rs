@@ -1315,7 +1315,7 @@ impl ParticleInstance {
                 }
             }
             ParticleTickMotionDescriptor::FallingLeaves => {
-                self.tick_falling_leaves_without_collision();
+                self.tick_falling_leaves(collide);
             }
             ParticleTickMotionDescriptor::FallingDust => {
                 if self.on_ground {
@@ -1408,7 +1408,10 @@ impl ParticleInstance {
         }
     }
 
-    fn tick_falling_leaves_without_collision(&mut self) {
+    fn tick_falling_leaves<F>(&mut self, collide: &mut F)
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
         let Some(motion) = self.falling_leaves_motion.as_mut() else {
             return;
         };
@@ -1436,9 +1439,13 @@ impl ParticleInstance {
         motion.rot_speed += motion.spin_acceleration / 20.0;
         self.previous_roll = self.roll;
         self.roll += motion.rot_speed / 20.0;
-        self.position[0] += self.velocity[0];
-        self.position[1] += self.velocity[1];
-        self.position[2] += self.velocity[2];
+        self.move_particle(self.velocity, collide);
+        if self.on_ground
+            || (alive_ticks > 1 && (self.velocity[0] == 0.0 || self.velocity[2] == 0.0))
+        {
+            self.removed = true;
+            return;
+        }
         let friction = f64::from(self.friction);
         self.velocity[0] *= friction;
         self.velocity[1] *= friction;
@@ -4332,6 +4339,68 @@ mod tests {
         assert_close_f64(tinted.position[1], -0.02121);
         assert_close_f64(tinted.velocity[1], -0.02121);
         assert!(tinted.position[0] != 0.0 || tinted.position[2] != 0.0);
+    }
+
+    #[test]
+    fn particle_runtime_falling_leaves_removes_on_ground_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = falling_leaves_instance("minecraft:cherry_leaves", 11);
+        instance.position = [0.0, 1.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, -0.2, 0.1];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            movement[1] = 0.0;
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+    }
+
+    #[test]
+    fn particle_runtime_falling_leaves_keeps_first_tick_horizontal_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = falling_leaves_instance("minecraft:cherry_leaves", 13);
+        instance.position = [0.0, 1.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.0, 0.1];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            movement[0] = 0.0;
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert!(!instance.on_ground);
+        assert_eq!(instance.velocity[0], 0.0);
+    }
+
+    #[test]
+    fn particle_runtime_falling_leaves_removes_on_later_horizontal_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = falling_leaves_instance("minecraft:cherry_leaves", 17);
+        instance.age_ticks = 1;
+        instance.position = [0.0, 1.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.0, 0.1];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            movement[0] = 0.0;
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
     }
 
     #[test]
@@ -7767,6 +7836,11 @@ mod tests {
             option_item: None,
             atlas_uv_sub_rect: None,
         }
+    }
+
+    fn falling_leaves_instance(particle_id: &str, seed: i64) -> ParticleInstance {
+        let mut random = ParticleRandom::new(seed);
+        ParticleInstance::from_spawn_command(spawn_command(particle_id, 1.0), &mut random)
     }
 
     fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
