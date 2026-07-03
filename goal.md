@@ -275,9 +275,6 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   像素级视觉校验。
 - First-person viewmodel：
   - 玩家手臂与截图级视觉校验。
-- Combat / held item arm pose：
-  - third-person hand-use sway。
-  - kinetic weapon / ticksUsingItem。
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
 
