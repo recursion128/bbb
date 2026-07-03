@@ -1276,8 +1276,9 @@
     `0.02` post-move damping, lifetimes `100`,
     `64 / (random * 0.8 + 0.2)`, and
     `128 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
-    `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, local
-    drip sound, and on-ground collision remain in the world-coupled
+    `0.06`. The falling provider now removes on `onGround` through the
+    collision-backed `move` path. Hang-to-fall child spawning, fall-to-land
+    child spawning, and local drip sound remain in the world-coupled
     particle/audio follow-up.
   - [x] `DripParticle.ObsidianTearHangProvider` /
     `ObsidianTearFallProvider` / `ObsidianTearLandProvider`：renderer
@@ -1288,8 +1289,10 @@
     damping, glowing block-light override, lifetimes `100`,
     `64 / (random * 0.8 + 0.2)`, and
     `28 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
-    `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, and
-    on-ground collision remain in the world-coupled particle/audio follow-up.
+    `0.06`. The falling provider now removes on `onGround` through the
+    collision-backed `move` path. Hang-to-fall child spawning and
+    fall-to-land child spawning remain in the world-coupled particle/audio
+    follow-up.
   - [x] `DripParticle.LavaHangProvider` / `LavaFallProvider` /
     `LavaLandProvider`：renderer descriptor now maps `dripping_lava`,
     `falling_lava`, and `landing_lava` to random sprites, vanilla
@@ -1299,18 +1302,18 @@
     `CoolingDripHangParticle.preMoveUpdate` RGB formula, hang-particle `0.02`
     post-move damping, lifetimes `40`, `64 / (random * 0.8 + 0.2)`, and
     `16 / (random * 0.8 + 0.2)`, with gravity `0.0012`, `0.06`, and `0.06`.
-    Hang-to-fall child spawning, fall-to-land child spawning, lava-fluid
-    removal, and on-ground collision remain in the world-coupled particle/audio
-    follow-up.
+    The falling provider now removes on `onGround` through the collision-backed
+    `move` path. Hang-to-fall child spawning, fall-to-land child spawning, and
+    lava-fluid removal remain in the world-coupled particle/audio follow-up.
   - [x] `DripParticle.WaterHangProvider` / `WaterFallProvider`：renderer
     descriptor now maps `dripping_water` and `falling_water` to random sprites,
     vanilla DripParticle opaque layer, zero initial velocity, physics metadata,
     fixed blue tint, non-glowing world light, `0.98` friction, direct gravity
     motion, hang-particle `0.02` post-move damping, lifetimes `40` and
     `64 / (random * 0.8 + 0.2)`, with gravity `0.0012` and `0.06`.
-    Hang-to-fall child spawning, fall-to-splash child spawning, water-fluid
-    removal, and on-ground collision remain in the world-coupled particle/audio
-    follow-up.
+    The falling provider now removes on `onGround` through the collision-backed
+    `move` path. Hang-to-fall child spawning, fall-to-splash child spawning, and
+    water-fluid removal remain in the world-coupled particle/audio follow-up.
   - [x] `DripParticle.DripstoneLavaHangProvider` /
     `DripstoneLavaFallProvider` / `DripstoneWaterHangProvider` /
     `DripstoneWaterFallProvider`：renderer descriptor now maps
@@ -1321,9 +1324,10 @@
     hang-particle `0.02` post-move damping, lava cooling hang RGB runtime
     formula, water fixed blue tint, lava falling tint, lifetimes `40` for hang
     and `64 / (random * 0.8 + 0.2)` for falling, with gravity `0.0012` and
-    `0.06`. Hang-to-fall child spawning, fall-to-land/splash child spawning,
-    dripstone local sound, fluid removal, and on-ground collision remain in the
-    world-coupled particle/audio follow-up.
+    `0.06`. The falling providers now remove on `onGround` through the
+    collision-backed `move` path. Hang-to-fall child spawning,
+    fall-to-land/splash child spawning, dripstone local sound, and fluid
+    removal remain in the world-coupled particle/audio follow-up.
   - [x] `SuspendedParticle.CrimsonSporeProvider` /
     `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
     sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size
@@ -2331,6 +2335,13 @@
     calls the collision-backed vanilla `move` path and removes the active
     particle when `onGround` becomes true. Tests cover the descriptor mapping
     and runtime removal via a collision callback.
+  - [x] drip fall-and-land on-ground removal：`falling_honey`,
+    `falling_obsidian_tear`, `falling_lava`, `falling_water`, and both
+    dripstone falling variants now use a dedicated `DripFallAndLand` tick
+    motion that calls the collision-backed vanilla `move` path and removes the
+    active particle when `onGround` becomes true. The landing child particles,
+    drip sounds, and fluid removal gates remain deferred; tests cover descriptor
+    mapping and runtime removal via a collision callback.
 
 ## P2：Terrain / Block Render Presentation
 

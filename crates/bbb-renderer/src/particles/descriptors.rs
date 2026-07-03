@@ -43,6 +43,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DripHang,
     CoolingDripHang,
     DripFalling,
+    DripFallAndLand,
     DustPlume,
     WaterDrop,
     Wake,
@@ -1997,14 +1998,16 @@ impl ParticleDescriptor {
                 ParticleTickMotionDescriptor::DripFalling
             }
             "DripParticle.HoneyFallProvider"
-            | "DripParticle.HoneyLandProvider"
             | "DripParticle.ObsidianTearFallProvider"
-            | "DripParticle.ObsidianTearLandProvider"
             | "DripParticle.LavaFallProvider"
-            | "DripParticle.LavaLandProvider"
             | "DripParticle.WaterFallProvider"
             | "DripParticle.DripstoneLavaFallProvider"
-            | "DripParticle.DripstoneWaterFallProvider" => ParticleTickMotionDescriptor::WaterDrop,
+            | "DripParticle.DripstoneWaterFallProvider" => {
+                ParticleTickMotionDescriptor::DripFallAndLand
+            }
+            "DripParticle.HoneyLandProvider"
+            | "DripParticle.ObsidianTearLandProvider"
+            | "DripParticle.LavaLandProvider" => ParticleTickMotionDescriptor::WaterDrop,
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -3610,7 +3613,7 @@ mod tests {
                 },
                 [0.582, 0.448, 0.082],
                 0.01,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
             (
                 "minecraft:landing_honey",
@@ -3665,7 +3668,7 @@ mod tests {
                     span_tenths: 8,
                 },
                 0.01,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
             (
                 "minecraft:landing_obsidian_tear",
@@ -3726,7 +3729,7 @@ mod tests {
                 },
                 [1.0, 0.285_714_3, 0.083_333_336],
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
             (
                 "minecraft:landing_lava",
@@ -3782,7 +3785,7 @@ mod tests {
                     span_tenths: 8,
                 },
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
         ] {
             assert_descriptor(
@@ -3832,7 +3835,7 @@ mod tests {
                 },
                 [1.0, 0.285_714_3, 0.083_333_336],
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
             (
                 "minecraft:dripping_dripstone_water",
@@ -3852,7 +3855,7 @@ mod tests {
                 },
                 [0.2, 0.3, 1.0],
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripFallAndLand,
             ),
         ] {
             assert_descriptor(

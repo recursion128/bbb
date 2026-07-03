@@ -657,8 +657,9 @@ When an agent does any of the following, update this file in the same slice:
         post-move damping, lifetimes `100`,
         `64 / (random * 0.8 + 0.2)`, and
         `128 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`,
-        and `0.06`. Hang-to-fall child spawning, fall-to-land child spawning,
-        local drip sound, and on-ground collision remain deferred with
+        and `0.06`. The falling provider now removes on `onGround` through the
+        collision-backed `move` path. Hang-to-fall child spawning,
+        fall-to-land child spawning, and local drip sound remain deferred with
         world-coupled particle/audio work.
       - `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` use random
@@ -667,9 +668,10 @@ When an agent does any of the following, update this file in the same slice:
         motion, hang-particle `0.02` post-move damping, glowing block-light
         override, lifetimes `100`, `64 / (random * 0.8 + 0.2)`, and
         `28 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
-        `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, and
-        on-ground collision remain deferred with world-coupled particle/audio
-        work.
+        `0.06`. The falling provider now removes on `onGround` through the
+        collision-backed `move` path. Hang-to-fall child spawning and
+        fall-to-land child spawning remain deferred with world-coupled
+        particle/audio work.
       - `DripParticle.LavaHangProvider`, `LavaFallProvider`, and
         `LavaLandProvider` use random sprite selection, zero initial velocity,
         DripParticle opaque layer, physics metadata, `0.98` friction, direct
@@ -679,18 +681,20 @@ When an agent does any of the following, update this file in the same slice:
         `0.06`. The hang provider starts at the vanilla default white and
         updates RGB during runtime with `CoolingDripHangParticle.preMoveUpdate`
         before applying hang-particle `0.02` post-move damping. Hang-to-fall
-        child spawning, fall-to-land child spawning, lava-fluid removal, and
-        on-ground collision remain deferred with world-coupled particle/audio
-        work.
+        child spawning, fall-to-land child spawning, and lava-fluid removal
+        remain deferred with world-coupled particle/audio work; the falling
+        provider now removes on `onGround` through the collision-backed `move`
+        path.
       - `DripParticle.WaterHangProvider` and `WaterFallProvider` use random
         sprite selection, zero initial velocity, DripParticle opaque layer,
         physics metadata, fixed blue tint, non-glowing world light, `0.98`
         friction, direct gravity motion, hang-particle `0.02` post-move
         damping, and lifetimes `40` and
         `64 / (random * 0.8 + 0.2)`, with gravity `0.0012` and `0.06`.
-        Hang-to-fall child spawning, fall-to-splash child spawning,
-        water-fluid removal, and on-ground collision remain deferred with
-        world-coupled particle/audio work.
+        Hang-to-fall child spawning, fall-to-splash child spawning, and
+        water-fluid removal remain deferred with world-coupled particle/audio
+        work; the falling provider now removes on `onGround` through the
+        collision-backed `move` path.
       - `DripParticle.DripstoneLavaHangProvider`,
         `DripstoneLavaFallProvider`, `DripstoneWaterHangProvider`, and
         `DripstoneWaterFallProvider` use random sprite selection, zero initial
@@ -699,9 +703,10 @@ When an agent does any of the following, update this file in the same slice:
         `0.02` post-move damping, lava cooling hang RGB runtime formula, water
         fixed blue tint, lava falling tint, hang lifetime `40`, falling
         lifetime `64 / (random * 0.8 + 0.2)`, hang gravity `0.0012`, and
-        falling gravity `0.06`. Hang-to-fall child spawning, fall-to-land/splash
-        child spawning, dripstone local sound, fluid removal, and on-ground
-        collision remain deferred with world-coupled particle/audio work.
+        falling gravity `0.06`. The falling providers now remove on `onGround`
+        through the collision-backed `move` path. Hang-to-fall child spawning,
+        fall-to-land/splash child spawning, dripstone local sound, and fluid
+        removal remain deferred with world-coupled particle/audio work.
       - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
         use random sprite selection, `y - 0.125` initial position,
         `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`
@@ -6383,9 +6388,10 @@ When an agent does any of the following, update this file in the same slice:
         fixed honey tints, `0.98` friction, direct gravity motion,
         hang-particle `0.02` post-move damping, lifetimes `100`,
         `64/(random*.8+.2)`, and `128/(random*.8+.2)`, with gravity
-        `0.000012`, `0.01`, and `0.06`. Hang-to-fall child spawning,
-        fall-to-land child spawning, local drip sound, and on-ground collision
-        remain deferred to the world-coupled particle/audio follow-up.
+        `0.000012`, `0.01`, and `0.06`. The falling provider now removes on
+        `onGround` through the collision-backed `move` path. Hang-to-fall child
+        spawning, fall-to-land child spawning, and local drip sound remain
+        deferred to the world-coupled particle/audio follow-up.
       - particle descriptors map `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` for
         `dripping_obsidian_tear`, `falling_obsidian_tear`, and
@@ -6394,9 +6400,10 @@ When an agent does any of the following, update this file in the same slice:
         `0.98` friction, direct gravity motion, hang-particle `0.02`
         post-move damping, glowing block-light override, lifetimes `100`,
         `64/(random*.8+.2)`, and `28/(random*.8+.2)`, with gravity
-        `0.000012`, `0.01`, and `0.06`. Hang-to-fall child spawning,
-        fall-to-land child spawning, and on-ground collision remain deferred
-        to the world-coupled particle/audio follow-up.
+        `0.000012`, `0.01`, and `0.06`. The falling provider now removes on
+        `onGround` through the collision-backed `move` path. Hang-to-fall child
+        spawning and fall-to-land child spawning remain deferred to the
+        world-coupled particle/audio follow-up.
       - particle descriptors map `BubblePopParticle.Provider` to fixed lifetime
         `4`, age sprites, command velocity, default `SingleQuadParticle` white
         tint / quad-size sampling, gravity `0.008`, and its custom tick path

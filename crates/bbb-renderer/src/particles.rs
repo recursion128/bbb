@@ -1134,6 +1134,18 @@ impl ParticleInstance {
                     self.velocity[2] *= friction;
                 }
             }
+            ParticleTickMotionDescriptor::DripFallAndLand => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.move_particle(self.velocity, collide);
+                if self.on_ground {
+                    self.removed = true;
+                } else {
+                    let friction = f64::from(self.friction);
+                    self.velocity[0] *= friction;
+                    self.velocity[1] *= friction;
+                    self.velocity[2] *= friction;
+                }
+            }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -2680,6 +2692,29 @@ mod tests {
     fn particle_runtime_drip_falling_removes_on_ground_collision() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:falling_nectar", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_drip_fall_and_land_removes_on_ground_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_honey", 20);
         instance.position = [0.0, 0.05, 0.0];
         instance.previous_position = instance.position;
         instance.velocity = [0.0, -0.1, 0.0];
@@ -4387,7 +4422,7 @@ mod tests {
         assert_eq!(falling_honey.gravity, 0.01);
         assert_eq!(
             falling_honey.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(falling_honey.render_layer, ParticleRenderLayer::Opaque);
 
@@ -4457,7 +4492,7 @@ mod tests {
         assert_eq!(falling_obsidian.gravity, 0.01);
         assert_eq!(
             falling_obsidian.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
             falling_obsidian.light_emission,
@@ -4529,7 +4564,7 @@ mod tests {
         assert_eq!(falling_lava.gravity, 0.06);
         assert_eq!(
             falling_lava.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
             falling_lava.light_emission,
@@ -4595,7 +4630,7 @@ mod tests {
         assert_eq!(falling_water.gravity, 0.06);
         assert_eq!(
             falling_water.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
             falling_water.light_emission,
@@ -4651,7 +4686,7 @@ mod tests {
         assert_eq!(falling_dripstone_lava.gravity, 0.06);
         assert_eq!(
             falling_dripstone_lava.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
             falling_dripstone_lava.light_emission,
@@ -4707,7 +4742,7 @@ mod tests {
         assert_eq!(falling_dripstone_water.gravity, 0.06);
         assert_eq!(
             falling_dripstone_water.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
             falling_dripstone_water.light_emission,
