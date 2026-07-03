@@ -771,8 +771,8 @@ pub(super) enum SelectProperty {
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and `Z`/`X`/`x`
-    /// offsets).
+    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and
+    /// `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1517,6 +1517,7 @@ fn format_local_time_field(
         }
         'X' => iso8601_offset(fields.offset_seconds, count, true),
         'x' => iso8601_offset(fields.offset_seconds, count, false),
+        'O' => localized_gmt_offset(fields.offset_seconds, count, locale),
         'E' => {
             if count <= 3 {
                 english_text(locale, short_weekday_name(fields.weekday))
@@ -1559,6 +1560,25 @@ fn offset_parts(offset_seconds: i32) -> (char, i32, i32) {
     let sign = if offset_seconds < 0 { '-' } else { '+' };
     let total_minutes = offset_seconds.abs() / 60;
     (sign, total_minutes / 60, total_minutes % 60)
+}
+
+fn localized_gmt_offset(offset_seconds: i32, width: usize, locale: &str) -> Option<String> {
+    let prefix = english_text(locale, "GMT")?;
+    if offset_seconds == 0 {
+        return Some(prefix);
+    }
+    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    match width {
+        1..=3 => {
+            if minutes == 0 {
+                Some(format!("{prefix}{sign}{hours}"))
+            } else {
+                Some(format!("{prefix}{sign}{hours}:{minutes:02}"))
+            }
+        }
+        4 => Some(format!("{prefix}{sign}{hours:02}:{minutes:02}")),
+        _ => None,
+    }
 }
 
 fn padded_i32(value: i32, width: usize) -> String {

@@ -6913,6 +6913,26 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(5), uv("quarter_clock_fallback"));
 
+    // ICU localized GMT offset: `O`..`OOO` use the short form, `OOOO`
+    // uses the zero-padded long form.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(6), uv("localized_gmt_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(6), uv("localized_gmt_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12500,6 +12520,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "utc_offset_clock",
             "date_field_clock",
             "quarter_clock",
+            "localized_gmt_clock",
         ],
     );
     write_json(
@@ -12610,6 +12631,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("localized_gmt_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd O OO OOO OOOO",
+                    "time_zone": "UTC+02:30",
+                    "cases": [
+                        {
+                            "when": "2026-01-01 GMT+2:30 GMT+2:30 GMT+2:30 GMT+02:30",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/localized_gmt_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/localized_gmt_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -12622,6 +12661,8 @@ fn write_local_time_select_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "date_field_clock_fallback", &[40, 20, 60, 255]);
     write_flat_item_model_and_texture(&assets, "quarter_clock_match", &[40, 180, 160, 255]);
     write_flat_item_model_and_texture(&assets, "quarter_clock_fallback", &[60, 30, 80, 255]);
+    write_flat_item_model_and_texture(&assets, "localized_gmt_clock_match", &[180, 180, 60, 255]);
+    write_flat_item_model_and_texture(&assets, "localized_gmt_clock_fallback", &[40, 50, 90, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {
