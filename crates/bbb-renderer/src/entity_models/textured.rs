@@ -57,7 +57,7 @@ use super::{
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
         ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
         ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -179,6 +179,14 @@ pub(super) struct EntityModelCustomGeometrySubmission {
 pub(crate) struct ElderGuardianParticleRenderInstance {
     pub(crate) transform: Mat4,
     pub(crate) tint: [f32; 4],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ExperienceOrbPickupParticleRenderInstance {
+    pub(crate) transform: Mat4,
+    pub(crate) icon: i32,
+    pub(crate) age_ticks: f32,
+    pub(crate) light: [f32; 2],
 }
 
 #[derive(Clone, Copy)]
@@ -1013,6 +1021,94 @@ pub(super) fn elder_guardian_particle_textured_meshes(
     }
     meshes.flush_sorted_uploads();
     meshes
+}
+
+pub(super) fn experience_orb_pickup_particle_textured_mesh(
+    instances: &[ExperienceOrbPickupParticleRenderInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMesh {
+    let mut mesh = EntityModelTexturedMesh::new();
+    let Some(entry) = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == EXPERIENCE_ORB_TEXTURE_REF)
+    else {
+        return mesh;
+    };
+
+    for instance in instances {
+        append_experience_orb_pickup_particle_quad(&mut mesh, *instance, entry.uv);
+    }
+    mesh
+}
+
+fn append_experience_orb_pickup_particle_quad(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: ExperienceOrbPickupParticleRenderInstance,
+    texture_uv: EntityModelUvRect,
+) {
+    let icon = instance.icon.clamp(0, 10);
+    let icon_u0 = (icon % 4 * 16) as f32 / 64.0;
+    let icon_u1 = (icon % 4 * 16 + 16) as f32 / 64.0;
+    let icon_v0 = (icon / 4 * 16) as f32 / 64.0;
+    let icon_v1 = (icon / 4 * 16 + 16) as f32 / 64.0;
+    let tint = experience_orb_pickup_particle_tint(instance.age_ticks);
+    let normal = instance
+        .transform
+        .transform_vector3(Vec3::Y)
+        .normalize_or_zero()
+        .to_array();
+    let corners = [
+        Vec3::new(-0.5, -0.25, 0.0),
+        Vec3::new(0.5, -0.25, 0.0),
+        Vec3::new(0.5, 0.75, 0.0),
+        Vec3::new(-0.5, 0.75, 0.0),
+    ];
+    let uvs = [
+        [icon_u0, icon_v1],
+        [icon_u1, icon_v1],
+        [icon_u1, icon_v0],
+        [icon_u0, icon_v0],
+    ];
+    let base = mesh.vertices.len() as u32;
+    mesh.vertices.extend(
+        corners
+            .iter()
+            .copied()
+            .zip(uvs.iter().copied())
+            .map(|(corner, uv)| EntityModelTexturedVertex {
+                position: (instance.transform * corner.extend(1.0))
+                    .truncate()
+                    .to_array(),
+                uv: normalized_entity_texture_uv(uv, texture_uv),
+                tint,
+                light: instance.light,
+                overlay: ENTITY_VERTEX_NO_OVERLAY,
+                normal,
+            }),
+    );
+    mesh.indices
+        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    mesh.cutout_faces += 1;
+}
+
+fn normalized_entity_texture_uv(uv: [f32; 2], rect: EntityModelUvRect) -> [f32; 2] {
+    [
+        rect.min[0] + uv[0] * (rect.max[0] - rect.min[0]),
+        rect.min[1] + uv[1] * (rect.max[1] - rect.min[1]),
+    ]
+}
+
+fn experience_orb_pickup_particle_tint(age_ticks: f32) -> [f32; 4] {
+    let rr = age_ticks / 2.0;
+    let red = (((rr).sin() + 1.0) * 0.5 * 255.0) as i32;
+    let blue = (((rr + std::f32::consts::PI * 4.0 / 3.0).sin() + 1.0) * 0.1 * 255.0) as i32;
+    [
+        red.clamp(0, 255) as f32 / 255.0,
+        1.0,
+        blue.clamp(0, 255) as f32 / 255.0,
+        128.0 / 255.0,
+    ]
 }
 
 pub(super) fn first_person_player_arm_textured_meshes(

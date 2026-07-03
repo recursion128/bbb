@@ -28,7 +28,10 @@ use super::{
         EntityModelTexturedVertex, EntityModelVertex,
     },
     instances::EntityModelInstance,
-    textured::{elder_guardian_particle_textured_meshes, ElderGuardianParticleRenderInstance},
+    textured::{
+        elder_guardian_particle_textured_meshes, experience_orb_pickup_particle_textured_mesh,
+        ElderGuardianParticleRenderInstance, ExperienceOrbPickupParticleRenderInstance,
+    },
 };
 
 pub(crate) struct EntityModelMeshGpu {
@@ -2853,6 +2856,25 @@ pub(crate) fn upload_elder_guardian_particle_textured_mesh(
 ) -> Option<u32> {
     let mut meshes = elder_guardian_particle_textured_meshes(instances, atlas);
     let mesh = std::mem::replace(&mut meshes.translucent, EntityModelTexturedMesh::new());
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let index_count = u32::try_from(mesh.indices.len()).expect("particle index count fits in u32");
+    let vertices_uploaded =
+        vertex_buffer.upload(device, queue, bytemuck::cast_slice(&mesh.vertices));
+    let indices_uploaded = index_buffer.upload(device, queue, bytemuck::cast_slice(&mesh.indices));
+    (vertices_uploaded && indices_uploaded).then_some(index_count)
+}
+
+pub(crate) fn upload_experience_orb_pickup_particle_textured_mesh(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    vertex_buffer: &mut FrameDataBuffer,
+    index_buffer: &mut FrameDataBuffer,
+    instances: &[ExperienceOrbPickupParticleRenderInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> Option<u32> {
+    let mesh = experience_orb_pickup_particle_textured_mesh(instances, atlas);
     if mesh.vertices.is_empty() || mesh.indices.is_empty() {
         return None;
     }

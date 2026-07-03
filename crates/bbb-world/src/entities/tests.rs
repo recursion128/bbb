@@ -12320,6 +12320,91 @@ fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
 }
 
 #[test]
+fn experience_orb_icon_thresholds_match_vanilla() {
+    let cases = [
+        (-1, 0),
+        (0, 0),
+        (2, 0),
+        (3, 1),
+        (6, 1),
+        (7, 2),
+        (16, 2),
+        (17, 3),
+        (36, 3),
+        (37, 4),
+        (72, 4),
+        (73, 5),
+        (148, 5),
+        (149, 6),
+        (306, 6),
+        (307, 7),
+        (616, 7),
+        (617, 8),
+        (1236, 8),
+        (1237, 9),
+        (2476, 9),
+        (2477, 10),
+    ];
+    for (value, icon) in cases {
+        assert_eq!(experience_orb_icon(value), icon, "value {value}");
+    }
+}
+
+#[test]
+fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(149),
+        }],
+    }));
+
+    let state = store
+        .take_item_entity_pickup_particle_state(10, 20)
+        .expect("experience orb pickup particle state");
+
+    assert_eq!(state.item_entity_id, 10);
+    assert_eq!(
+        state.item_entity_type_id,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID
+    );
+    assert_eq!(state.item_stack, None);
+    assert_eq!(state.experience_orb_icon, Some(6));
+    assert_eq!(
+        take_item_entity_pickup_light(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            TerrainLight { block: 6, sky: 12 }
+        ),
+        TerrainLight { block: 13, sky: 12 }
+    );
+    assert_eq!(
+        take_item_entity_pickup_light(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            TerrainLight { block: 14, sky: 3 }
+        ),
+        TerrainLight { block: 15, sky: 3 }
+    );
+    assert_eq!(
+        take_item_entity_pickup_light(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            TerrainLight { block: 6, sky: 12 }
+        ),
+        TerrainLight { block: 6, sky: 12 }
+    );
+}
+
+#[test]
 fn tracks_entity_transient_events() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(123));

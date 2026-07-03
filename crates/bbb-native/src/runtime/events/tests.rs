@@ -1458,6 +1458,7 @@ fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
     assert_eq!(state.target_position.z, 8.0);
     assert_close(state.target_eye_height, 1.62);
     assert_eq!(state.item_stack, Some(item_stack(42, 5)));
+    assert_eq!(state.experience_orb_icon, None);
     assert!(world.probe_entity(10).is_none());
     assert_eq!(world.counters().take_item_entities_removed, 1);
 }

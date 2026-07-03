@@ -347,6 +347,8 @@ pub struct TakeItemEntityPickupParticleState {
     pub target_eye_height: f32,
     #[serde(default)]
     pub item_stack: Option<ProtocolItemStackSummary>,
+    #[serde(default)]
+    pub experience_orb_icon: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1628,9 +1630,49 @@ pub enum WolfArmorCrackiness {
 /// chunk light is unavailable so it renders bright rather than dark, matching
 /// the `EntityRenderState.lightCoords` default.
 pub(crate) const ENTITY_LIGHT_PROBE_FULL_BRIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
+/// Vanilla `ExperienceOrb.DATA_VALUE`: `ExperienceOrb` extends base `Entity`,
+/// whose synced data ids occupy `0..=7`.
+pub(crate) const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 
 fn entity_model_source_full_bright_light() -> TerrainLight {
     ENTITY_LIGHT_PROBE_FULL_BRIGHT
+}
+
+pub(crate) fn experience_orb_icon(value: i32) -> i32 {
+    if value >= 2477 {
+        10
+    } else if value >= 1237 {
+        9
+    } else if value >= 617 {
+        8
+    } else if value >= 307 {
+        7
+    } else if value >= 149 {
+        6
+    } else if value >= 73 {
+        5
+    } else if value >= 37 {
+        4
+    } else if value >= 17 {
+        3
+    } else if value >= 7 {
+        2
+    } else if value >= 3 {
+        1
+    } else {
+        0
+    }
+}
+
+fn take_item_entity_pickup_light(entity_type_id: i32, light: TerrainLight) -> TerrainLight {
+    if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+        TerrainLight {
+            block: light.block.saturating_add(7).min(15),
+            sky: light.sky,
+        }
+    } else {
+        light
+    }
 }
 
 /// Vanilla default `LivingEntity.getScale` (the unmodified `SCALE` attribute) used
@@ -1847,14 +1889,25 @@ impl WorldStore {
         let item_stack = (item.entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
             .then(|| self.entities.item_stack_for_entity(item_entity_id))
             .flatten();
+        let experience_orb_icon = if item.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+            Some(
+                self.entities
+                    .experience_orb_icon_for_entity(item_entity_id)
+                    .unwrap_or(0),
+            )
+        } else {
+            None
+        };
         let item_age_ticks = self
             .entities
             .entity_age_ticks(item_entity_id)
             .map(|age| age as f32 + 1.0)
             .unwrap_or(1.0);
-        let item_light = self
-            .sample_block_light(entity_light_block_pos(item.position))
-            .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        let item_light = take_item_entity_pickup_light(
+            item.entity_type_id,
+            self.sample_block_light(entity_light_block_pos(item.position))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT),
+        );
 
         Some(TakeItemEntityPickupParticleState {
             item_entity_id,
@@ -1867,6 +1920,7 @@ impl WorldStore {
             target_position: target.1,
             target_eye_height: target.2,
             item_stack,
+            experience_orb_icon,
         })
     }
 

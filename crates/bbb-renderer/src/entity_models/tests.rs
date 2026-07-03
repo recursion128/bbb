@@ -28,6 +28,7 @@ mod enderman;
 mod endermite;
 mod equine;
 mod evoker_fangs;
+mod experience_orb;
 mod feline;
 mod fox;
 mod frog;

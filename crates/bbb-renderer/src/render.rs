@@ -7,7 +7,8 @@ use crate::frame_buffers::FrameDataBuffer;
 use crate::{
     clouds::CloudShape,
     entity_models::{
-        upload_elder_guardian_particle_textured_mesh, EntityModelLayerRenderType,
+        upload_elder_guardian_particle_textured_mesh,
+        upload_experience_orb_pickup_particle_textured_mesh, EntityModelLayerRenderType,
         EntityModelMeshGpu, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
         EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
         EntityModelTranslucentDrawRange,
@@ -1022,6 +1023,21 @@ impl Renderer {
             &item_pickup_glint_translucent_vertices,
             &item_pickup_glint_translucent_indices,
         );
+        let experience_orb_pickup_particles =
+            self.collect_experience_orb_pickup_particle_render_instances();
+        let experience_orb_pickup_particle_index_count =
+            if let Some(atlas) = &self.entity_model_texture_atlas {
+                upload_experience_orb_pickup_particle_textured_mesh(
+                    &self.device,
+                    &self.queue,
+                    &mut self.frame_experience_orb_pickup_particle_vertices,
+                    &mut self.frame_experience_orb_pickup_particle_indices,
+                    &experience_orb_pickup_particles,
+                    &atlas.layout,
+                )
+            } else {
+                None
+            };
         let elder_guardian_particles = self.collect_elder_guardian_particle_render_instances();
         let elder_guardian_particle_index_count =
             if let Some(atlas) = &self.entity_model_texture_atlas {
@@ -1149,6 +1165,31 @@ impl Renderer {
                 );
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;
+            }
+            if let (Some(index_count), Some(atlas)) = (
+                experience_orb_pickup_particle_index_count,
+                self.entity_model_texture_atlas.as_ref(),
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(
+                    0,
+                    self.frame_experience_orb_pickup_particle_vertices
+                        .buffer()
+                        .expect("experience orb pickup particle vertices uploaded")
+                        .slice(..),
+                );
+                pass.set_index_buffer(
+                    self.frame_experience_orb_pickup_particle_indices
+                        .buffer()
+                        .expect("experience orb pickup particle indices uploaded")
+                        .slice(..),
+                    wgpu::IndexFormat::Uint32,
+                );
+                pass.draw_indexed(0..index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
             }
             if let (Some(index_count), Some(atlas)) = (
                 elder_guardian_particle_index_count,
@@ -3280,7 +3321,7 @@ mod tests {
     }
 
     #[test]
-    fn item_pickup_item_models_draw_in_particle_group_before_elder_guardians() {
+    fn item_pickup_item_models_and_experience_orbs_draw_before_elder_guardians() {
         let source = include_str!("render.rs");
         let target = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
@@ -3297,15 +3338,20 @@ mod tests {
             .find("&item_pickup_flat_buffers")
             .map(|index| pickup_block + index)
             .expect("item-pickup flat item meshes draw in particle target");
-        let elder_guardian = source[pickup_flat..]
-            .find("elder_guardian_particle_index_count")
+        let experience_orb = source[pickup_flat..]
+            .find("experience_orb_pickup_particle_index_count")
             .map(|index| pickup_flat + index)
+            .expect("experience-orb pickup billboard draws in item-pickup group");
+        let elder_guardian = source[experience_orb..]
+            .find("elder_guardian_particle_index_count")
+            .map(|index| experience_orb + index)
             .expect("elder guardian particle group follows item-pickup group");
 
         assert!(
             translucent_particles < pickup_block
                 && pickup_block < pickup_flat
-                && pickup_flat < elder_guardian,
+                && pickup_flat < experience_orb
+                && experience_orb < elder_guardian,
             "vanilla particle group order is SINGLE_QUADS, ITEM_PICKUP, ELDER_GUARDIANS"
         );
     }
@@ -4221,6 +4267,10 @@ mod tests {
             .map(|index| particle_fn + index)
             .expect("particle target pass label is used");
         let copy_depth = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
+        let experience_orb_upload = source[particle_fn..target]
+            .find("upload_experience_orb_pickup_particle_textured_mesh(")
+            .map(|index| particle_fn + index)
+            .expect("experience orb pickup particle mesh is uploaded before the render pass");
         let elder_upload = source[particle_fn..target]
             .find("upload_elder_guardian_particle_textured_mesh(")
             .map(|index| particle_fn + index)
@@ -4241,9 +4291,20 @@ mod tests {
             .find("&particle_vertex_batches.translucent")
             .map(|index| translucent_particle_pipeline + index)
             .expect("translucent particle vertex batch is drawn into the target");
-        let elder_particle_pipeline = source[translucent_particle_draw..particle_fn_end]
-            .find("pass.set_pipeline(&self.entity_model_translucent_pipeline)")
+        let experience_orb_particle_pipeline = source[translucent_particle_draw..particle_fn_end]
+            .find("pass.set_pipeline(&self.entity_model_translucent_cull_pipeline)")
             .map(|index| translucent_particle_draw + index)
+            .expect(
+                "experience orb pickup particles draw through the entity translucent-cull pipeline",
+            );
+        let experience_orb_particle_draw = source
+            [experience_orb_particle_pipeline..particle_fn_end]
+            .find("pass.draw_indexed(0..index_count, 0, 0..1)")
+            .map(|index| experience_orb_particle_pipeline + index)
+            .expect("experience orb pickup particle draw follows its pipeline");
+        let elder_particle_pipeline = source[experience_orb_particle_draw..particle_fn_end]
+            .find("pass.set_pipeline(&self.entity_model_translucent_pipeline)")
+            .map(|index| experience_orb_particle_draw + index)
             .expect("elder guardian particles draw through the entity translucent pipeline");
         let elder_particle_draw = source[elder_particle_pipeline..particle_fn_end]
             .find("pass.draw_indexed(0..index_count, 0, 0..1)")
@@ -4274,21 +4335,44 @@ mod tests {
         assert!(
             copy_depth < entity_translucent_features
                 && entity_translucent_features < target
+                && experience_orb_upload < target
+                && experience_orb_upload < elder_upload
                 && elder_upload < target
                 && target < opaque_particle_pipeline
                 && opaque_particle_pipeline < opaque_particle_draw
                 && opaque_particle_pipeline < translucent_particle_pipeline
                 && translucent_particle_pipeline < translucent_particle_draw
-                && translucent_particle_draw < elder_particle_pipeline
+                && translucent_particle_draw < experience_orb_particle_pipeline
+                && experience_orb_particle_pipeline < experience_orb_particle_draw
+                && experience_orb_particle_draw < elder_particle_pipeline
                 && elder_particle_pipeline < elder_particle_draw
                 && elder_particle_draw < combine,
             "particle target copies main depth, clears transparent, draws opaque then translucent particles, then transparency combine consumes it"
+        );
+        assert!(
+            source[experience_orb_upload..target]
+                .contains("frame_experience_orb_pickup_particle_vertices")
+                && source[experience_orb_upload..target]
+                    .contains("frame_experience_orb_pickup_particle_indices")
+                && source[experience_orb_upload..target].contains("&atlas.layout"),
+            "experience orb pickup particles upload into renderer-owned frame buffers with the entity atlas layout"
         );
         assert!(
             source[elder_upload..target].contains("frame_elder_guardian_particle_vertices")
                 && source[elder_upload..target].contains("frame_elder_guardian_particle_indices")
                 && source[elder_upload..target].contains("&atlas.layout"),
             "elder guardian particles upload into renderer-owned frame buffers with the entity atlas layout"
+        );
+        assert!(
+            source[experience_orb_particle_pipeline..experience_orb_particle_draw]
+                .contains("pass.set_bind_group(0, &atlas.bind_group, &[])")
+                && source[experience_orb_particle_pipeline..experience_orb_particle_draw]
+                    .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+                && source[experience_orb_particle_pipeline..experience_orb_particle_draw]
+                    .contains("self.frame_experience_orb_pickup_particle_vertices")
+                && source[experience_orb_particle_pipeline..experience_orb_particle_draw]
+                    .contains("self.frame_experience_orb_pickup_particle_indices"),
+            "experience orb pickup particles bind the entity atlas, lightmap, and persistent frame buffers before drawing"
         );
         assert!(
             source[elder_particle_pipeline..elder_particle_draw]

@@ -123,6 +123,7 @@ mod tests {
                 "textures/entity/player/wide/steve.png",
                 "textures/entity/player/wide/sunny.png",
                 "textures/entity/player/wide/zuri.png",
+                "textures/entity/experience/experience_orb.png",
                 "textures/entity/sheep/sheep.png",
                 "textures/entity/sheep/sheep_baby.png",
                 "textures/entity/sheep/sheep_wool_undercoat.png",

@@ -1864,6 +1864,7 @@ fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> Part
         option_item_pickup_source_entity_id: None,
         option_item_pickup_age_ticks: None,
         option_item_pickup_light: None,
+        option_item_pickup_experience_orb_icon: None,
         option_firework_trail: false,
         option_firework_twinkle: false,
         option_firework_half_lifetime_age: false,

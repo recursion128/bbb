@@ -152,6 +152,8 @@ pub struct Renderer {
     pub(super) translucent_particle_pipeline: wgpu::RenderPipeline,
     pub(super) frame_opaque_particle_vertices: FrameDataBuffer,
     pub(super) frame_translucent_particle_vertices: FrameDataBuffer,
+    pub(super) frame_experience_orb_pickup_particle_vertices: FrameDataBuffer,
+    pub(super) frame_experience_orb_pickup_particle_indices: FrameDataBuffer,
     pub(super) frame_elder_guardian_particle_vertices: FrameDataBuffer,
     pub(super) frame_elder_guardian_particle_indices: FrameDataBuffer,
     pub(super) frame_weather_vertices: FrameDataBuffer,
@@ -958,6 +960,12 @@ impl Renderer {
             ),
             frame_translucent_particle_vertices: FrameDataBuffer::vertex(
                 "bbb-translucent-particle-frame-vertices",
+            ),
+            frame_experience_orb_pickup_particle_vertices: FrameDataBuffer::vertex(
+                "bbb-experience-orb-pickup-particle-frame-vertices",
+            ),
+            frame_experience_orb_pickup_particle_indices: FrameDataBuffer::index(
+                "bbb-experience-orb-pickup-particle-frame-indices",
             ),
             frame_elder_guardian_particle_vertices: FrameDataBuffer::vertex(
                 "bbb-elder-guardian-particle-frame-vertices",

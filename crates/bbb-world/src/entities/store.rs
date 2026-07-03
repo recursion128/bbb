@@ -37,7 +37,8 @@ use super::{
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -2475,6 +2476,26 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         Some(client_animations.animations.age_ticks)
+    }
+
+    pub(crate) fn experience_orb_icon_for_entity(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let value = self
+            .ecs
+            .get::<&EntityMetadata>(entity)
+            .ok()
+            .and_then(|metadata| {
+                metadata
+                    .data_values
+                    .iter()
+                    .find(|value| value.data_id == VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID)
+                    .and_then(|value| match &value.value {
+                        EntityDataValueKind::Int(value) => Some(*value),
+                        _ => None,
+                    })
+            })
+            .unwrap_or(0);
+        Some(super::experience_orb_icon(value))
     }
 
     /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the

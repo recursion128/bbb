@@ -2452,6 +2452,7 @@ impl ParticleCommandResolver {
                 option_item_pickup_source_entity_id: Some(state.item_entity_id),
                 option_item_pickup_age_ticks: Some(state.item_age_ticks),
                 option_item_pickup_light: Some(particle_shader_light(state.item_light)),
+                option_item_pickup_experience_orb_icon: state.experience_orb_icon,
                 option_firework_trail: false,
                 option_firework_twinkle: false,
                 option_firework_half_lifetime_age: false,
@@ -2838,6 +2839,7 @@ impl ParticleCommandResolver {
             option_item_pickup_source_entity_id: None,
             option_item_pickup_age_ticks: None,
             option_item_pickup_light: None,
+            option_item_pickup_experience_orb_icon: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,
@@ -5227,6 +5229,7 @@ mod tests {
                 count: 5,
                 component_patch: Default::default(),
             }),
+            experience_orb_icon: None,
         };
 
         let batch = resolver.take_item_entity_pickup_particle_batch(&state);
@@ -5257,6 +5260,7 @@ mod tests {
             command.option_item_pickup_light,
             Some([6.0 / 15.0, 12.0 / 15.0])
         );
+        assert_eq!(command.option_item_pickup_experience_orb_icon, None);
         assert_eq!(
             command.option_item,
             Some(ParticleItemOptionState {
@@ -5265,6 +5269,45 @@ mod tests {
                 component_patch_len: 0,
             })
         );
+    }
+
+    #[test]
+    fn take_item_entity_pickup_batch_preserves_experience_orb_icon() {
+        let mut resolver = test_resolver(0);
+        let state = TakeItemEntityPickupParticleState {
+            item_entity_id: 11,
+            item_entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            item_position: bbb_world::EntityVec3 {
+                x: 2.0,
+                y: 65.0,
+                z: -3.0,
+            },
+            item_delta_movement: bbb_world::EntityVec3 {
+                x: 0.0,
+                y: 0.1,
+                z: 0.0,
+            },
+            item_age_ticks: 4.5,
+            item_light: TerrainLight { block: 15, sky: 9 },
+            target_entity_id: 20,
+            target_position: bbb_world::EntityVec3 {
+                x: 4.0,
+                y: 70.0,
+                z: 8.0,
+            },
+            target_eye_height: 1.62,
+            item_stack: None,
+            experience_orb_icon: Some(8),
+        };
+
+        let batch = resolver.take_item_entity_pickup_particle_batch(&state);
+
+        let command = &batch.commands[0];
+        assert_eq!(command.option_item, None);
+        assert_eq!(command.option_item_pickup_source_entity_id, Some(11));
+        assert_eq!(command.option_item_pickup_age_ticks, Some(4.5));
+        assert_eq!(command.option_item_pickup_light, Some([1.0, 9.0 / 15.0]));
+        assert_eq!(command.option_item_pickup_experience_orb_icon, Some(8));
     }
 
     #[test]
