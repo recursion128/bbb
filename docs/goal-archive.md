@@ -947,11 +947,11 @@
     and removed item-model component behavior.
   - [x] `minecraft:local_time` item-model select now resolves from wall-clock
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
-    root/en plus en_US/en_GB week-data ICU `SimpleDateFormat` subset
-    (`y`/`u` year, root/en/en_US/en_GB `Y` week-year, `G` era, `Q`/`q`
+    root/en plus selected English regional week-data ICU `SimpleDateFormat`
+    subset (`y`/`u` year, supported-English `Y` week-year, `G` era, `Q`/`q`
     quarter, root/en `M`/`L` month widths 1..=5, `d`, `D` day-of-year,
-    root/en/en_US/en_GB `w`/`W` week-of-year / week-of-month, `F`
-    day-of-week-in-month, root/en/en_US/en_GB `E`/`e`/`c` weekdays, 24/12-hour
+    supported-English `w`/`W` week-of-year / week-of-month, `F`
+    day-of-week-in-month, supported-English `E`/`e`/`c` weekdays, 24/12-hour
     `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
     AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
     localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
@@ -979,19 +979,21 @@
     `ZZZZ` uses the long localized-GMT form, `ZZZZZ` and `XXXXX` use
     extended ISO8601 with `Z` for UTC in the uppercase fields, and
     `XXXX`/`xxxx` use the basic form.
-    `w`/`W` mirror ICU root/en/en_US/en_GB locale week fields: root/en use
-    Monday/minimal-days=1, en_US uses Sunday/minimal-days=1, and en_GB uses
+    `w`/`W` mirror ICU week fields for selected English locale groups:
+    root/en/en_AU/en_NZ use Monday/minimal-days=1,
+    en_US/en_CA/en_IN/en_ZA use Sunday/minimal-days=1, and en_GB/en_IE use
     Monday/minimal-days=4. Pattern width controls numeric padding; `w` keeps
     late December dates in the current calendar year's final week until Jan 1,
-    while en_GB Jan 1 dates before the first full week can stay in the previous
-    week-year's final week.
-    `Y` mirrors the ICU root/en/en_US/en_GB week-year for that same week data,
-    with normal year width formatting (`YY` is two-digit, `YYYYY` is zero-padded).
+    while en_GB/en_IE Jan 1 dates before the first full week can stay in the
+    previous week-year's final week.
+    `Y` mirrors the ICU week-year for those same week-data groups, with normal
+    year width formatting (`YY` is two-digit, `YYYYY` is zero-padded).
     `F` mirrors ICU day-of-week-in-month as `(day - 1) / 7 + 1`, with pattern
     width controlling numeric padding.
     `e`/`c` use the same locale week data for local weekday numbers
-    (`Monday=1` for root/en/en_GB, `Sunday=1` for en_US) and ICU weekday text
-    widths 3..=6; `E` now follows those root/en/en_US/en_GB text widths too.
+    (`Monday=1` for Monday-first groups, `Sunday=1` for Sunday-first groups)
+    and ICU weekday text widths 3..=6; `E` now follows those selected English
+    text widths too.
     `z` zone names use the active TZDB abbreviation for explicit IANA zones,
     RFC-822-style fixed-offset short names, and fixed/UTC long names; `VV`
     emits the explicit zone id, while `VVV` emits the IANA zone's exemplar city.
@@ -1001,15 +1003,16 @@
     `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, `A`
     milliseconds-in-day branch, root/en `a` narrow AM/PM branch, `O`
     localized-GMT branch, `F`
-    day-of-week-in-month branch, root/en/en_US/en_GB `Y` week-year branch, and
-    root/en/en_US/en_GB `w`/`W` week branch including the year-end `w`
-    boundary, en_US Sunday-first branch, and en_GB Jan 1 previous-week-year /
-    previous-month `W` branch from vanilla `LocalTime.get`, plus
-    root/en/en_US/en_GB `e`/`c` local weekday branches, a short `z` / `VV` /
-    `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC /
+    day-of-week-in-month branch, selected-English `Y` week-year branch, and
+    selected-English `w`/`W` week branch including the year-end `w` boundary,
+    Sunday-first regional branch, and Monday/minimal-days=4 Jan 1
+    previous-week-year / previous-month `W` branch from vanilla
+    `LocalTime.get`, plus selected-English `e`/`c` local weekday branches, a
+    short `z` / `VV` / `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC /
     `UTC+02:30` width-4/5 offset branches. IANA long `z`, generic `v`,
     one- and four-letter `V` widths,
-    locale-specific week data beyond root/en/en_US/en_GB, and non-English locales remain
+    locale-specific week data beyond the selected English regional groups, and
+    non-English locales remain
     follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,

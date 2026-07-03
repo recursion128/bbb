@@ -686,6 +686,41 @@ mod tests {
     }
 
     #[test]
+    fn local_time_english_week_data_locale_aliases() {
+        let millis = |year, month, day| {
+            chrono::Utc
+                .with_ymd_and_hms(year, month, day, 0, 0, 0)
+                .single()
+                .unwrap()
+                .timestamp_millis()
+        };
+        let formatted = |epoch_millis, locale| {
+            local_time_select_value(epoch_millis, "yyyy-MM-dd Y w W e E", locale, Some("UTC"))
+                .unwrap()
+        };
+
+        // en_CA follows the same Sunday-first/minimal-days=1 week data as
+        // en_US: Sunday 2026-01-04 is week 2 and local weekday 1.
+        assert_eq!(
+            formatted(millis(2026, 1, 4), "en_CA"),
+            "2026-01-04 2026 2 2 1 Sun"
+        );
+
+        // en_AU follows the same Monday-first/minimal-days=1 week data as root/en.
+        assert_eq!(
+            formatted(millis(2026, 1, 4), "en_AU"),
+            "2026-01-04 2026 1 1 7 Sun"
+        );
+
+        // en_IE follows the same Monday-first/minimal-days=4 week data as en_GB:
+        // 2027-01-01 belongs to week-year 2026 week 53, with month week 5.
+        assert_eq!(
+            formatted(millis(2027, 1, 1), "en_IE"),
+            "2027-01-01 2026 53 5 5 Fri"
+        );
+    }
+
+    #[test]
     fn custom_data_predicate_accepts_snbt_compound_strings() {
         let value = Value::String(
             r#"{owner:"Alex",level:7,nested:{flag:true},lore:["two"],bytes:[B;1b,2b]}"#.to_string(),
@@ -771,11 +806,11 @@ pub(super) enum SelectProperty {
     /// against the owner entity type resource key.
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
-    /// wall-clock date/time pattern (root/en plus en_US/en_GB week-data ICU
-    /// subset: `y`/`u` year, root/en/en_US/en_GB `Y` week-year, `G` era,
-    /// `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day, `D`
-    /// day-of-year, root/en/en_US/en_GB `w`/`W` week numbers, `F`
-    /// day-of-week-in-month, root/en/en_US/en_GB `E`/`e`/`c` weekdays,
+    /// wall-clock date/time pattern (root/en plus selected English regional
+    /// week-data ICU subset: `y`/`u` year, supported-English `Y` week-year,
+    /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
+    /// day, `D` day-of-year, supported-English `w`/`W` week numbers, `F`
+    /// day-of-week-in-month, supported-English `E`/`e`/`c` weekdays,
     /// `H`/`k`/`K`/`h` hour,
     /// `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a` AM/PM widths
     /// 1..=5, `z` zone names,
@@ -1813,16 +1848,33 @@ fn english_week_data(locale: &str) -> Option<EnglishWeekData> {
         });
     }
     let locale_lower = locale.to_ascii_lowercase();
-    if locale_lower == "en_us" || locale_lower.starts_with("en_us_") {
+    if matches!(locale_lower.as_str(), "en_us" | "en_ca" | "en_in" | "en_za")
+        || locale_lower.starts_with("en_us_")
+        || locale_lower.starts_with("en_ca_")
+        || locale_lower.starts_with("en_in_")
+        || locale_lower.starts_with("en_za_")
+    {
         return Some(EnglishWeekData {
             first_weekday: Weekday::Sun,
             minimal_days: 1,
         });
     }
-    if locale_lower == "en_gb" || locale_lower.starts_with("en_gb_") {
+    if matches!(locale_lower.as_str(), "en_gb" | "en_ie")
+        || locale_lower.starts_with("en_gb_")
+        || locale_lower.starts_with("en_ie_")
+    {
         return Some(EnglishWeekData {
             first_weekday: Weekday::Mon,
             minimal_days: 4,
+        });
+    }
+    if matches!(locale_lower.as_str(), "en_au" | "en_nz")
+        || locale_lower.starts_with("en_au_")
+        || locale_lower.starts_with("en_nz_")
+    {
+        return Some(EnglishWeekData {
+            first_weekday: Weekday::Mon,
+            minimal_days: 1,
         });
     }
     None
