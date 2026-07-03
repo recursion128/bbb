@@ -47,12 +47,12 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos, ChunkPos, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LocalPlayerPoseState, RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, WitchMagicParticleState,
-    WorldBlockSoundProfile, WorldStore,
+    advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
+    ArrowEffectParticleState, BlockPos, ChunkPos, FireworkRocketExplosionParticleState,
+    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
+    RegistryPacketEntry, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    ThrownEggHitParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2805,7 +2805,7 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
 }
 
 #[test]
-fn animal_love_entity_event_emits_particle_state() {
+fn love_entity_event_emits_animal_and_allay_particle_states() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(128, VANILLA_ENTITY_TYPE_COW_ID),
@@ -2859,7 +2859,15 @@ fn animal_love_entity_event_emits_particle_state() {
     assert_eq!(state.position.z, -2.0);
     assert_close(state.width, 0.9);
     assert_close(state.height, 1.4);
-    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(particles.allay_duplication_states.len(), 1);
+    let state = particles.allay_duplication_states[0];
+    assert_eq!(state.entity_id, 129);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 0.35);
+    assert_close(state.height, 0.6);
+    assert_eq!(particles.batches.len(), 2);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
@@ -8879,6 +8887,7 @@ struct RecordingParticleSink {
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     arrow_effect_states: Vec<ArrowEffectParticleState>,
     animal_love_states: Vec<AnimalLoveParticleState>,
+    allay_duplication_states: Vec<AllayDuplicationParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
     thrown_egg_hit_states: Vec<ThrownEggHitParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
@@ -9061,6 +9070,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: AnimalLoveParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.animal_love_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_allay_duplication_particles(
+        &mut self,
+        state: AllayDuplicationParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.allay_duplication_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

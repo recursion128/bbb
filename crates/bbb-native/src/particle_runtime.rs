@@ -22,12 +22,12 @@ use bbb_renderer::{
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
-    block_name_should_spawn_terrain_particles, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, WitchMagicParticleState,
+    block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
+    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
+    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TerrainLight, ThrownEggHitParticleState, VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -106,6 +106,10 @@ pub(crate) trait ParticleEventSink {
     ) -> ParticleSpawnBatch;
     fn spawn_animal_love_particles(&mut self, state: AnimalLoveParticleState)
         -> ParticleSpawnBatch;
+    fn spawn_allay_duplication_particles(
+        &mut self,
+        state: AllayDuplicationParticleState,
+    ) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
         state: SnowballHitParticleState,
@@ -397,6 +401,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: AnimalLoveParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.animal_love_particle_batch(state)
+    }
+
+    fn spawn_allay_duplication_particles(
+        &mut self,
+        state: AllayDuplicationParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.allay_duplication_particle_batch(state)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2748,6 +2759,33 @@ impl ParticleCommandResolver {
     }
 
     fn animal_love_particle_batch(&mut self, state: AnimalLoveParticleState) -> ParticleSpawnBatch {
+        self.heart_particle_batch(
+            state.position,
+            state.width,
+            state.height,
+            ANIMAL_LOVE_PARTICLE_COUNT,
+        )
+    }
+
+    fn allay_duplication_particle_batch(
+        &mut self,
+        state: AllayDuplicationParticleState,
+    ) -> ParticleSpawnBatch {
+        self.heart_particle_batch(
+            state.position,
+            state.width,
+            state.height,
+            ALLAY_DUPLICATION_PARTICLE_COUNT,
+        )
+    }
+
+    fn heart_particle_batch(
+        &mut self,
+        entity_position: bbb_world::EntityVec3,
+        entity_width: f32,
+        entity_height: f32,
+        count: usize,
+    ) -> ParticleSpawnBatch {
         let template = match self.simple_particle_template(HEART_PARTICLE_TYPE_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
@@ -2756,18 +2794,18 @@ impl ParticleCommandResolver {
             missing_sprite_count: template.missing_sprite_count,
             ..ParticleSpawnBatch::default()
         };
-        let width = f64::from(state.width.max(0.0));
-        let height = f64::from(state.height.max(0.0));
-        for _ in 0..ANIMAL_LOVE_PARTICLE_COUNT {
+        let width = f64::from(entity_width.max(0.0));
+        let height = f64::from(entity_height.max(0.0));
+        for _ in 0..count {
             let velocity = Vec3d {
                 x: self.random.next_gaussian() * 0.02,
                 y: self.random.next_gaussian() * 0.02,
                 z: self.random.next_gaussian() * 0.02,
             };
             let position = Vec3d {
-                x: state.position.x + width * (2.0 * self.random.next_f64() - 1.0),
-                y: state.position.y + height * self.random.next_f64() + 0.5,
-                z: state.position.z + width * (2.0 * self.random.next_f64() - 1.0),
+                x: entity_position.x + width * (2.0 * self.random.next_f64() - 1.0),
+                y: entity_position.y + height * self.random.next_f64() + 0.5,
+                z: entity_position.z + width * (2.0 * self.random.next_f64() - 1.0),
             };
             batch
                 .commands
@@ -5366,6 +5404,7 @@ const POTION_BREAK_ITEM_PARTICLE_COUNT: i32 = ITEM_BREAK_PARTICLE_COUNT;
 const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
 const ARROW_EFFECT_PARTICLE_COUNT: usize = 20;
 const ANIMAL_LOVE_PARTICLE_COUNT: usize = 7;
+const ALLAY_DUPLICATION_PARTICLE_COUNT: usize = 3;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
@@ -6173,6 +6212,48 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.velocity != [0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn allay_duplication_batch_matches_vanilla_event_particles() {
+        let mut resolver = test_resolver(0);
+        let state = AllayDuplicationParticleState {
+            entity_id: 81,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.35,
+            height: 0.6,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+        ];
+        let expected_position = [
+            state.position.x + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+            state.position.y + f64::from(state.height) * expected_random.next_f64() + 0.5,
+            state.position.z + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+        ];
+
+        let batch = resolver.allay_duplication_particle_batch(state);
+
+        assert_eq!(batch.len(), ALLAY_DUPLICATION_PARTICLE_COUNT);
+        assert_particle_command(
+            &batch.commands[0],
+            HEART_PARTICLE_TYPE_ID,
+            "minecraft:heart",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:heart"));
     }
 
     #[test]

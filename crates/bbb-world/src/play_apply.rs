@@ -14,13 +14,14 @@ use bbb_protocol::packets::{
 use crate::{
     advance_cobweb_place_particle_randoms,
     advance_vault_activation_particle_randoms_with_connections,
-    advance_vault_deactivation_particle_randoms, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos, ChunkPos, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    JukeboxLevelEventState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
-    RavagerRoarParticleState, SnowballHitParticleState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
-    VehicleMoveReport, WitchMagicParticleState, WorldStore,
+    advance_vault_deactivation_particle_randoms, AllayDuplicationParticleState,
+    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
+    FireworkRocketExplosionParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
+    SnowballHitParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VehicleMoveReport,
+    WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -151,6 +152,12 @@ pub trait PlayApplyEffects {
     }
     fn arrow_effect_particles(&mut self, _world: &WorldStore, _state: ArrowEffectParticleState) {}
     fn animal_love_particles(&mut self, _world: &WorldStore, _state: AnimalLoveParticleState) {}
+    fn allay_duplication_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: AllayDuplicationParticleState,
+    ) {
+    }
     fn snowball_hit_particles(&mut self, _world: &WorldStore, _state: SnowballHitParticleState) {}
     fn thrown_egg_hit_particles(&mut self, _world: &WorldStore, _state: ThrownEggHitParticleState) {
     }
@@ -379,6 +386,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let allay_duplication_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
+                    self.allay_duplication_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let snowball_hit_particles = if update.event_id == THROWN_ITEM_HIT_EVENT_ID {
                     self.snowball_hit_particle_state(update.entity_id)
                 } else {
@@ -465,6 +477,9 @@ impl WorldStore {
                     }
                     if let Some(state) = animal_love_particles {
                         effects.animal_love_particles(self, state);
+                    }
+                    if let Some(state) = allay_duplication_particles {
+                        effects.allay_duplication_particles(self, state);
                     }
                     if let Some(state) = snowball_hit_particles {
                         effects.snowball_hit_particles(self, state);
@@ -1426,6 +1441,7 @@ mod tests {
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
         arrow_effect_particles: Vec<ArrowEffectParticleState>,
         animal_love_particles: Vec<AnimalLoveParticleState>,
+        allay_duplication_particles: Vec<AllayDuplicationParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
         thrown_egg_hit_particles: Vec<ThrownEggHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
@@ -1479,6 +1495,14 @@ mod tests {
 
         fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
             self.animal_love_particles.push(state);
+        }
+
+        fn allay_duplication_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: AllayDuplicationParticleState,
+        ) {
+            self.allay_duplication_particles.push(state);
         }
 
         fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
@@ -2482,7 +2506,7 @@ mod tests {
     }
 
     #[test]
-    fn animal_love_event_forwards_particle_state_for_animal_types() {
+    fn love_event_forwards_animal_and_allay_particle_states() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut effects = RecordingEffects::default();
@@ -2536,6 +2560,19 @@ mod tests {
         );
         assert!((state.width - 0.9).abs() < 1.0e-6);
         assert!((state.height - 1.4).abs() < 1.0e-6);
+        assert_eq!(effects.allay_duplication_particles.len(), 1);
+        let state = effects.allay_duplication_particles[0];
+        assert_eq!(state.entity_id, 129);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 3.0,
+                y: 66.0,
+                z: -5.0,
+            }
+        );
+        assert!((state.width - 0.35).abs() < 1.0e-6);
+        assert!((state.height - 0.6).abs() < 1.0e-6);
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

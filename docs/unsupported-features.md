@@ -326,8 +326,12 @@ When an agent does any of the following, update this file in the same slice:
         particles from `Animal.handleEntityEvent`: 7 commands with gaussian
         `*0.02` velocity and `getRandomX(1.0)`, `getRandomY()+0.5`,
         `getRandomZ(1.0)` position sampling from the current animal AABB. This
-        is gated to classes inheriting `Animal`; Allay's separate 3-heart
-        event-18 branch remains a separate slice.
+        is gated to classes inheriting `Animal`.
+      - Allay entity event `18` now emits the vanilla duplication
+        `minecraft:heart` burst: 3 commands from `Allay.handleEntityEvent`, using
+        the same `spawnHeartParticle` gaussian `*0.02` velocity and
+        `getRandomX(1.0)`, `getRandomY()+0.5`, `getRandomZ(1.0)` current-AABB
+        sampling as vanilla.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -336,9 +340,8 @@ When an agent does any of the following, update this file in the same slice:
       - remaining deferred work is broader collision clipping parity for
         special contexts, player-coupled particle emitters beyond the currently
         covered scoped cases, and remaining entity-event families such as
-        `TamableAnimal` events `6`/`7`, Allay event `18`, Villager events
-        `12`/`13`/`14`/`42`, Dolphin event `38`, and tick-driven stun/fang
-        particle state
+        `TamableAnimal` events `6`/`7`, Villager events `12`/`13`/`14`/`42`,
+        Dolphin event `38`, and tick-driven stun/fang particle state
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -535,6 +538,10 @@ When an agent does any of the following, update this file in the same slice:
       particles from `Animal.handleEntityEvent`: 7 commands with gaussian
       `0.02` velocity and current-animal AABB position sampling via
       `getRandomX(1.0)`, `getRandomY()+0.5`, and `getRandomZ(1.0)`.
+      Native Allay event `18` now emits the vanilla duplication
+      `minecraft:heart` burst from `Allay.handleEntityEvent`: 3 commands with
+      the same gaussian `0.02` velocity and current-allay AABB position
+      sampling.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

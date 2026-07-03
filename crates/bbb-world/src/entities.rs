@@ -412,6 +412,14 @@ pub struct AnimalLoveParticleState {
     pub height: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AllayDuplicationParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SnowballHitParticleState {
     pub entity_id: i32,
@@ -2106,6 +2114,23 @@ impl WorldStore {
         }
         let bounds = self.probe_entity_pick_bounds(entity_id)?;
         Some(AnimalLoveParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    pub fn allay_duplication_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<AllayDuplicationParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_ALLAY_ID {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(AllayDuplicationParticleState {
             entity_id,
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
