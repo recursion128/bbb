@@ -951,10 +951,10 @@
     `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`, `D`
     day-of-year, root/en `w`/`W` week-of-year / week-of-month, `F`
     day-of-week-in-month, root/en `E`/`e`/`c` weekdays, 24/12-hour
-    `H`/`k`/`K`/`h`, `m`/`s`/`S`, root/en `a` AM/PM widths 1..=5,
-    `Z`/`X`/`x` offset fields through width 5, localized-GMT `O` offsets,
-    short `z` zone abbreviations, `VV` zone IDs, `VVV` exemplar cities, and
-    quoted literals),
+    `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
+    AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
+    localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
+    `VVV` exemplar cities, and quoted literals),
     using fixed `GMT`/UTC offset and IANA `time_zone` IDs when present or the
     system local zone otherwise. `G`/`u`/`D` follow Java
     `DateTimeFormatter`/`IsoChronology`
@@ -966,6 +966,8 @@
     `M`/`L` mirror ICU root/en month widths 1..=5: numeric, zero-padded,
     abbreviated, wide, and narrow (`A` for August), treating format and
     stand-alone month names identically for the supported locale subset.
+    `A` mirrors ICU milliseconds-in-day with pattern width as the minimum
+    numeric padding.
     `a` mirrors ICU root/en AM/PM marker widths 1..=5: widths 1..=4 use
     `AM`/`PM`, while width 5 uses narrow `a`/`p`.
     `O` mirrors ICU localized GMT offset widths for root/en: `O`..`OOO` use
@@ -989,8 +991,9 @@
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
-    `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, root/en `a`
-    narrow AM/PM branch, `O` localized-GMT branch, `F`
+    `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, `A`
+    milliseconds-in-day branch, root/en `a` narrow AM/PM branch, `O`
+    localized-GMT branch, `F`
     day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
     `LocalTime.get`, plus root/en `e`/`c` local weekday branches, a short
     `z` / `VV` / `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC

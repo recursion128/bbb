@@ -6744,8 +6744,9 @@ When an agent does any of the following, update this file in the same slice:
       includes `u` proleptic year, `G` era, `D` day-of-year, and `Q`/`q`
       quarter fields, root/en `M`/`L` month widths 1..=5, `F`
       day-of-week-in-month, root/en `w`/`W` week numbers, root/en `e`/`c`
-      local weekdays, root/en `a` AM/PM widths 1..=5, plus localized-GMT `O`
-      offsets, `Z`/`X`/`x` offset widths 1..=5, short `z` zone
+      local weekdays, `A` milliseconds-in-day, root/en `a` AM/PM widths
+      1..=5, plus localized-GMT `O` offsets, `Z`/`X`/`x` offset widths
+      1..=5, short `z` zone
       abbreviations, `VV` zone IDs, and `VVV` exemplar cities, plus
       fixed/UTC long `z` names): full localized symbols
       and long-tail ICU pattern fields (locale-specific week data beyond
@@ -7091,10 +7092,10 @@ When an agent does any of the following, update this file in the same slice:
       text, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day,
       `D` day-of-year, root/en `w`/`W` week-of-year / week-of-month, `F`
       day-of-week-in-month, root/en `E`/`e`/`c` weekdays, 24/12-hour
-      `H`/`k`/`K`/`h`, `m`/`s`/`S`, root/en `a` AM/PM widths 1..=5,
-      `Z`/`X`/`x` offset fields through width 5, localized-GMT `O` offsets,
-      short `z` zone abbreviations, `VV` zone IDs, `VVV` exemplar cities,
-      fixed/UTC long `z` names, and quoted literals).
+      `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
+      AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
+      localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
+      `VVV` exemplar cities, fixed/UTC long `z` names, and quoted literals).
       Explicit `GMT`/UTC offset and IANA `time_zone` IDs use that zone; absent
       `time_zone` uses the system local timezone like vanilla.
       Tests pin GMT `12-25` selecting the Christmas branch, `12-27` selecting
@@ -7102,10 +7103,11 @@ When an agent does any of the following, update this file in the same slice:
       weekday / AM-PM branches, UTC `X`/`x` zero-offset formatting,
       `uuuu-DDD-G` proleptic-year / day-of-year / era, `Q`/`q` quarter,
       root/en narrow `M`/`L` month symbols, localized-GMT `O`, `F`
-      day-of-week-in-month, root/en `a` narrow AM/PM, and root/en `w`/`W`
-      week plus `e`/`c` local weekday branches, and an IANA-zone short `z` /
-      `VV` / `VVV` branch plus fixed-offset `zzzz`; UTC and `UTC+02:30`
-      offset branches now pin `Z`/`X`/`x` width 4/5 output as well.
+      day-of-week-in-month, `A` milliseconds-in-day, root/en `a` narrow
+      AM/PM, and root/en `w`/`W` week plus `e`/`c` local weekday branches, and
+      an IANA-zone short `z` / `VV` / `VVV` branch plus fixed-offset `zzzz`;
+      UTC and `UTC+02:30` offset branches now pin `Z`/`X`/`x` width 4/5 output
+      as well.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla

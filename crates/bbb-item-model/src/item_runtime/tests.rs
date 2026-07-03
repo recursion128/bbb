@@ -7094,6 +7094,26 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(14), uv("ampm_width_clock_fallback"));
 
+    // ICU `A`: milliseconds in day, padded to the requested minimum width.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 1, 1, 2, 3)
+            .single()
+            .unwrap()
+            .timestamp_millis()
+            + 4,
+    );
+    assert_eq!(selected(15), uv("millis_day_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(15), uv("millis_day_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12690,6 +12710,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "offset_width_clock",
             "narrow_month_clock",
             "ampm_width_clock",
+            "millis_day_clock",
         ],
     );
     write_json(
@@ -12962,6 +12983,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("millis_day_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "HH:mm:ss.SSS A AA AAAAAAAA",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "01:02:03.004 3723004 3723004 03723004",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/millis_day_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/millis_day_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -13008,6 +13047,8 @@ fn write_local_time_select_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "narrow_month_clock_fallback", &[45, 75, 105, 255]);
     write_flat_item_model_and_texture(&assets, "ampm_width_clock_match", &[165, 200, 230, 255]);
     write_flat_item_model_and_texture(&assets, "ampm_width_clock_fallback", &[50, 80, 110, 255]);
+    write_flat_item_model_and_texture(&assets, "millis_day_clock_match", &[175, 205, 235, 255]);
+    write_flat_item_model_and_texture(&assets, "millis_day_clock_fallback", &[55, 85, 115, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {

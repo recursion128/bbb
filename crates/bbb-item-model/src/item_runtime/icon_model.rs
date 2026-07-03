@@ -775,7 +775,8 @@ pub(super) enum SelectProperty {
     /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
     /// day, `D` day-of-year, `w`/`W` week numbers, `F`
     /// day-of-week-in-month, `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
-    /// `m`/`s`/`S`, root/en `a` AM/PM widths 1..=5, `z` zone names,
+    /// `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a` AM/PM widths
+    /// 1..=5, `z` zone names,
     /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
     /// 1..=5, and localized-GMT `O` offsets).
     LocalTime {
@@ -1531,6 +1532,7 @@ fn format_local_time_field(
         'm' => Some(padded_u32(fields.minute, count)),
         's' => Some(padded_u32(fields.second, count)),
         'S' => Some(fractional_second(fields.millisecond, count)),
+        'A' => Some(padded_u32(milliseconds_in_day(fields), count)),
         'a' => format_ampm_marker(fields.hour, count, locale),
         'Z' => {
             if (1..=3).contains(&count) {
@@ -1699,6 +1701,10 @@ fn fractional_second(millisecond: u32, width: usize) -> String {
         digits.extend(std::iter::repeat('0').take(width - 3));
     }
     digits
+}
+
+fn milliseconds_in_day(fields: &LocalTimeFields) -> u32 {
+    (((fields.hour * 60 + fields.minute) * 60 + fields.second) * 1_000) + fields.millisecond
 }
 
 fn english_text(locale: &str, value: &str) -> Option<String> {
