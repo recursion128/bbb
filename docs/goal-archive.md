@@ -1227,6 +1227,13 @@
     selection, charged hold movement, override precedence, and exact matrix
     order/formula. Quick Charge-adjusted duration remains a narrower
     enchantment-effect refinement.
+  - [x] first-person spyglass idle/scoping visibility：local vanilla 26.1
+    `ItemInHandRenderer.renderArmWithItem` is guarded by `!player.isScoping()`,
+    so an idle spyglass still renders as a regular first-person hand item, while
+    using/scoping with a spyglass hides both hands/items. Native now allows
+    `minecraft:spyglass` through first-person item rendering when idle and keeps
+    the existing scoping early-return for the local player. Tests cover idle
+    spyglass rendering and scoping hiding an otherwise visible offhand item.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

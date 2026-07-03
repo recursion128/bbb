@@ -1268,7 +1268,7 @@ fn supported_first_person_item_stack(
     let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
         return true;
     };
-    !matches!(resource_id, "minecraft:filled_map" | "minecraft:spyglass")
+    !matches!(resource_id, "minecraft:filled_map")
 }
 
 fn first_person_stack_block_use_kind(
@@ -3773,7 +3773,7 @@ mod tests {
     #[test]
     fn first_person_item_models_skip_using_and_special_paths() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
-        write_flat_item_runtime_fixture(&root, &["hand_item", "spyglass"]);
+        write_flat_item_runtime_fixture(&root, &["hand_item", "filled_map"]);
         let item_runtime =
             NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
         let hand_item = ItemStackSummary {
@@ -3781,8 +3781,8 @@ mod tests {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
-        let spyglass = ItemStackSummary {
-            item_id: item_runtime.item_protocol_id("minecraft:spyglass"),
+        let filled_map = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:filled_map"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
@@ -3812,7 +3812,7 @@ mod tests {
         let mut special_world = WorldStore::new();
         special_world.apply_set_player_inventory(SetPlayerInventory {
             slot: 0,
-            item: spyglass,
+            item: filled_map,
         });
         assert!(first_person_item_models(
             &special_world,
@@ -3823,6 +3823,68 @@ mod tests {
         )
         .flat_meshes
         .is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_render_idle_spyglass_and_hide_when_scoping() {
+        let root = unique_item_model_temp_dir("first-person-spyglass-use");
+        write_flat_item_runtime_fixture(&root, &["spyglass", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let spyglass = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:spyglass"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let off_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:off_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: spyglass.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut scoping_world = WorldStore::new();
+        scoping_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: spyglass,
+        });
+        scoping_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: off_item,
+        });
+        scoping_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        assert!(
+            first_person_item_models(
+                &scoping_world,
+                Some(&item_runtime),
+                &TerrainTextureState::default(),
+                camera,
+                1.0,
+            )
+            .flat_meshes
+            .is_empty(),
+            "vanilla ItemInHandRenderer skips hands/items while player.isScoping"
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
