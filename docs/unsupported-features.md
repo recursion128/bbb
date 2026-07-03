@@ -1192,8 +1192,12 @@ When an agent does any of the following, update this file in the same slice:
     base-arm use pose, brush `BRUSH` `applyBrushTransform`, and bundle `BUNDLE`
     `swingArm`, trident `TRIDENT` throw-charge use pose, and bow `BOW` draw use
     pose with used-hand selection, plus crossbow uncharged draw / charged idle
-    poses and spyglass idle/scoping visibility; remaining non-EAT/DRINK use and
-    special consumers remain item presentation follow-ups. Standalone
+    poses and spyglass idle/scoping visibility. First-person generated item
+    consumers now also pass the local active-use tick context into
+    `minecraft:use_duration` / `minecraft:use_cycle` item-model range-dispatch
+    properties, matching vanilla's owner-backed `ItemModelResolver` path.
+    Remaining item presentation follow-ups are screenshot-level viewmodel
+    refinements, combat arm poses, and custom ground transforms. Standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -3006,8 +3010,10 @@ When an agent does any of the following, update this file in the same slice:
         sprites project SPECIAL foil through the vanilla GUI sheeted-decal UV
         scale. GUI 3D block-item stacks now also split translucent base quads and
         matching `glintTranslucent` into the same depth-isolated GUI item pass
-        after the solid base/glint draw. First-person consumers remain deferred
-        with their presentation surfaces.
+        after the solid base/glint draw. First-person generated consumers now
+        have their ordinary and active-use hand pass; remaining first-person
+        refinements are screenshot-level viewmodel parity rather than a missing
+        item-model consumer.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.
@@ -7477,9 +7483,10 @@ When an agent does any of the following, update this file in the same slice:
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick
     Charge-modified crossbow charge duration when the enchantment registry is
-    available. Ordinary first-person generated item stacks now render in the
-    depth-cleared hand pass, but active-use first-person generated item
-    properties remain documented follow-up.
+    available. Ordinary and active-use first-person generated item stacks now
+    render in the depth-cleared hand pass, and the active-use path passes the
+    local active-use tick context into `minecraft:use_duration` /
+    `minecraft:use_cycle` item-model range-dispatch properties.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
