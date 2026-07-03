@@ -370,7 +370,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     时移除；
     BaseAshSmoke 系 provider 的 `speedUpWhenYMotionIsBlocked` 也已通过
     default tick 的 world collision callback 覆盖；
-    剩余 gravity/collision/player-coupled work 是特殊 context 和
+    `EndRodParticle` 保留 `hasPhysics=true` 元数据但按 vanilla 覆写走
+    collision-free `move`；
+    剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
@@ -417,7 +419,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：on-ground roll reset 和三轴
     block-shape collision clipping 已通过 native world collision 回调接入；
-    special-context collision / player-coupled physics 仍属上一节 deferred work。
+    EndRod collision-free move 已覆盖，其他 special-context collision /
+    player-coupled physics 仍属上一节 deferred work。
     Renderer GPU draw ranges now bind particle / terrain / item atlas textures
     once concrete sprite UVs are available; native terrain atlas upload supplies
     block sprite UVs and native item atlas upload supplies item sprite UVs to

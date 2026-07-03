@@ -2379,6 +2379,11 @@
     carry vanilla `speedUpWhenYMotionIsBlocked=true`; runtime default ticking now
     has focused coverage that a world collision callback blocking Y motion
     applies the vanilla X/Z `1.1` speed-up before friction and ground damping.
+  - [x] EndRod collision-free move：`EndRodParticle.Provider` keeps vanilla
+    `hasPhysics=true` descriptor metadata for snapshots, but renderer runtime
+    marks it as moving without collision so the default tick's gravity/friction
+    path skips the world collision callback and mirrors the vanilla
+    `EndRodParticle.move` bounding-box translation override.
 
 ## P2：Terrain / Block Render Presentation
 

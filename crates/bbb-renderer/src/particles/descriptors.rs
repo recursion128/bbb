@@ -2051,6 +2051,10 @@ impl ParticleDescriptor {
         }
     }
 
+    pub(crate) fn moves_without_collision(self) -> bool {
+        matches!(self.provider, "EndRodParticle.Provider")
+    }
+
     pub(crate) fn falling_leaves(self) -> Option<FallingLeavesDescriptor> {
         match self.provider {
             "FallingLeavesParticle.CherryProvider" => Some(cherry_falling_leaves_descriptor()),

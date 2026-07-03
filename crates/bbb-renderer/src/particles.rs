@@ -227,6 +227,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
+    #[serde(default)]
+    pub(crate) moves_without_collision: bool,
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
     #[serde(default = "default_particle_collision_width")]
     pub(crate) collision_width: f32,
@@ -950,6 +952,7 @@ impl ParticleInstance {
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
+            moves_without_collision: descriptor.moves_without_collision(),
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
             collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
@@ -1375,6 +1378,7 @@ impl ParticleInstance {
 
         let mut adjusted = movement;
         if self.has_physics
+            && !self.moves_without_collision
             && movement.iter().any(|value| *value != 0.0)
             && motion_length_squared(movement) < 10_000.0
         {
@@ -3931,6 +3935,33 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_end_rod_move_ignores_collision_callback() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:end_rod", 60);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        assert!(instance.has_physics);
+        assert!(instance.moves_without_collision);
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |_query| {
+            collision_queries += 1;
+            [0.0, 0.0, 0.0]
+        });
+
+        assert_eq!(collision_queries, 0);
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(!instance.on_ground);
+        assert!(!instance.stopped_by_collision);
+        assert_close3(instance.position, [1.2, 1.5995, 2.4]);
+        assert_close3(instance.velocity, [0.182, -0.364455, -0.546]);
+    }
+
+    #[test]
     fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
@@ -5803,6 +5834,7 @@ mod tests {
         assert_eq!(end_rod.friction, 0.91);
         assert_eq!(end_rod.gravity, 0.0125);
         assert!(end_rod.has_physics);
+        assert!(end_rod.moves_without_collision);
         assert_eq!(end_rod.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(end_rod.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
         assert_eq!(
@@ -7704,6 +7736,7 @@ mod tests {
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
+            moves_without_collision: descriptor.moves_without_collision(),
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
             collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
