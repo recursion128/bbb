@@ -35,6 +35,13 @@ impl ItemEntityBillboardLayer {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ItemEntityBillboardOrientation {
+    #[default]
+    CameraFacing,
+    FireworkShotAtAngle,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemEntityBillboard {
     pub position: [f32; 3],
@@ -42,6 +49,9 @@ pub struct ItemEntityBillboard {
     /// sprite scale (the dropped item and the unit-scale `ThrownItemRenderer` projectiles use `1.0`; the
     /// large fireball uses `3.0`, the small fireball `0.75`).
     pub scale: f32,
+    /// Local item-model pose after the camera-facing transform. Vanilla firework rockets apply
+    /// `Z+180`, `Y+180`, `X+90` when `FireworkRocketRenderState.isShotAtAngle` is true.
+    pub orientation: ItemEntityBillboardOrientation,
     /// Shader-space `[block, sky]` light sampled from vanilla `EntityRenderState.lightCoords`.
     pub light: [f32; 2],
     pub layers: Vec<ItemEntityBillboardLayer>,
@@ -52,6 +62,7 @@ impl ItemEntityBillboard {
         Self {
             position,
             scale: 1.0,
+            orientation: ItemEntityBillboardOrientation::CameraFacing,
             light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
             layers: vec![ItemEntityBillboardLayer::new(uv, ITEM_ENTITY_TINT_WHITE)],
         }
@@ -371,6 +382,7 @@ fn sanitize_item_entity_billboard(billboard: ItemEntityBillboard) -> Option<Item
     (!layers.is_empty()).then_some(ItemEntityBillboard {
         position: billboard.position,
         scale,
+        orientation: billboard.orientation,
         light: sanitize_item_entity_light(billboard.light),
         layers,
     })
@@ -419,6 +431,7 @@ fn sanitize_item_entity_light(light: [f32; 2]) -> [f32; 2] {
 
 #[derive(Debug, Clone, Copy)]
 struct ItemEntityBillboardAxes {
+    forward: Vec3,
     right: Vec3,
     up: Vec3,
 }
@@ -442,6 +455,7 @@ fn camera_billboard_axes(pose: crate::CameraPose) -> ItemEntityBillboardAxes {
     };
     let up = forward.cross(right).normalize_or_zero();
     ItemEntityBillboardAxes {
+        forward,
         right,
         up: if up.length_squared() > 0.0 {
             up
@@ -459,6 +473,7 @@ fn item_entity_billboard_vertices(
     let mut vertices = Vec::new();
     for billboard in billboards {
         let size = base_size * billboard.scale;
+        let axes = item_entity_layer_axes(axes, billboard.orientation);
         for layer in &billboard.layers {
             vertices.extend(item_entity_layer_vertices(
                 billboard.position,
@@ -470,6 +485,20 @@ fn item_entity_billboard_vertices(
         }
     }
     vertices
+}
+
+fn item_entity_layer_axes(
+    axes: ItemEntityBillboardAxes,
+    orientation: ItemEntityBillboardOrientation,
+) -> ItemEntityBillboardAxes {
+    match orientation {
+        ItemEntityBillboardOrientation::CameraFacing => axes,
+        ItemEntityBillboardOrientation::FireworkShotAtAngle => ItemEntityBillboardAxes {
+            forward: axes.up,
+            right: axes.right,
+            up: -axes.forward,
+        },
+    }
 }
 
 fn item_entity_layer_vertices(
@@ -536,6 +565,7 @@ mod tests {
         let billboard = ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
             scale: 3.0,
+            orientation: ItemEntityBillboardOrientation::CameraFacing,
             light: [1.25, f32::NAN],
             layers: vec![
                 ItemEntityBillboardLayer::new(
@@ -560,6 +590,7 @@ mod tests {
             Some(ItemEntityBillboard {
                 position: [1.0, 2.0, 3.0],
                 scale: 3.0,
+                orientation: ItemEntityBillboardOrientation::CameraFacing,
                 light: [1.0, 1.0],
                 layers: vec![ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -578,6 +609,7 @@ mod tests {
             let billboard = ItemEntityBillboard {
                 position: [0.0, 0.0, 0.0],
                 scale: bad_scale,
+                orientation: ItemEntityBillboardOrientation::CameraFacing,
                 light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
                 layers: vec![ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -600,6 +632,7 @@ mod tests {
         let billboards = [ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
             scale: 1.0,
+            orientation: ItemEntityBillboardOrientation::CameraFacing,
             light: [0.4, 0.8],
             layers: vec![
                 ItemEntityBillboardLayer::new(
@@ -622,6 +655,7 @@ mod tests {
         let vertices = item_entity_billboard_vertices(
             &billboards,
             ItemEntityBillboardAxes {
+                forward: Vec3::Z,
                 right: Vec3::X,
                 up: Vec3::Y,
             },
@@ -650,6 +684,7 @@ mod tests {
         let make = |scale: f32| ItemEntityBillboard {
             position: [0.0, 0.0, 0.0],
             scale,
+            orientation: ItemEntityBillboardOrientation::CameraFacing,
             light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
             layers: vec![ItemEntityBillboardLayer::new(
                 ItemEntityUvRect {
@@ -660,6 +695,7 @@ mod tests {
             )],
         };
         let axes = ItemEntityBillboardAxes {
+            forward: Vec3::Z,
             right: Vec3::X,
             up: Vec3::Y,
         };
@@ -669,6 +705,40 @@ mod tests {
         // Bottom-left corner: half-size 0.25 at unit scale, 0.75 at ×3.
         assert_close3_f32(unit[0].position, [-0.25, -0.25, 0.0]);
         assert_close3_f32(triple[0].position, [-0.75, -0.75, 0.0]);
+    }
+
+    #[test]
+    fn item_entity_billboard_firework_shot_at_angle_applies_vanilla_post_camera_pose() {
+        let billboards = [ItemEntityBillboard {
+            position: [0.0, 0.0, 0.0],
+            scale: 1.0,
+            orientation: ItemEntityBillboardOrientation::FireworkShotAtAngle,
+            light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
+            layers: vec![ItemEntityBillboardLayer::new(
+                ItemEntityUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                ITEM_ENTITY_TINT_WHITE,
+            )],
+        }];
+
+        let vertices = item_entity_billboard_vertices(
+            &billboards,
+            ItemEntityBillboardAxes {
+                forward: Vec3::Z,
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            0.5,
+        );
+
+        // FireworkEntityRenderer applies camera orientation and then Z+180, Y+180, X+90. For the local
+        // item quad this leaves X on camera-right and rotates local Y onto negative camera-forward.
+        assert_close3_f32(vertices[0].position, [-0.25, 0.0, 0.25]);
+        assert_close3_f32(vertices[1].position, [0.25, 0.0, 0.25]);
+        assert_close3_f32(vertices[2].position, [0.25, 0.0, -0.25]);
+        assert_close3_f32(vertices[5].position, [-0.25, 0.0, -0.25]);
     }
 
     #[test]

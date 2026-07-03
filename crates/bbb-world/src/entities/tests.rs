@@ -11978,6 +11978,75 @@ fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
 }
 
 #[test]
+fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
+    // Vanilla `FireworkRocketEntity` declares the item stack at id 8, attached target at id 9
+    // (`OptionalInt`/`OptionalUnsignedInt`), and the shot-at-angle pose flag at id 10.
+    const FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
+    const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![item_stack_entity_data(item_stack(900, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 71,
+        values: vec![
+            item_stack_entity_data(item_stack(901, 1)),
+            protocol_bool_data(FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, true),
+        ],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 72,
+        values: vec![
+            item_stack_entity_data(item_stack(902, 1)),
+            protocol_optional_unsigned_int_data(
+                FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID,
+                Some(5)
+            ),
+            protocol_bool_data(FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, true),
+        ],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 73,
+        values: vec![item_stack_entity_data(item_stack(903, 1))],
+    }));
+
+    let fireworks = store.firework_rocket_item_states();
+    assert_eq!(
+        fireworks
+            .iter()
+            .map(|firework| firework.entity_id)
+            .collect::<Vec<_>>(),
+        vec![70, 71]
+    );
+    assert_eq!(fireworks[0].stack, item_stack(900, 1));
+    assert!(!fireworks[0].shot_at_angle);
+    assert_eq!(fireworks[1].stack, item_stack(901, 1));
+    assert!(fireworks[1].shot_at_angle);
+    assert!(fireworks
+        .iter()
+        .all(|firework| firework.light == ENTITY_LIGHT_PROBE_FULL_BRIGHT));
+}
+
+#[test]
 fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

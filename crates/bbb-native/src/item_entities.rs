@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
-use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
-use bbb_world::{ItemEntityStackState, TerrainLight, WorldStore};
+use bbb_renderer::{
+    ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
+};
+use bbb_world::{FireworkRocketItemState, ItemEntityStackState, TerrainLight, WorldStore};
 
 use crate::entity_scene::THROWN_ITEM_PROJECTILE_BILLBOARDS;
 use bbb_item_model::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
@@ -11,6 +13,7 @@ use bbb_item_model::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeI
 /// use no offset.
 const DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET: f32 = 0.25;
 const THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET: f32 = 0.0;
+const FIREWORK_ROCKET_BILLBOARD_Y_OFFSET: f32 = 0.0;
 
 pub(crate) fn item_entity_billboards_from_world(
     world: &WorldStore,
@@ -34,6 +37,7 @@ pub(crate) fn item_entity_billboards_from_world(
                 icon,
                 DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
                 1.0,
+                ItemEntityBillboardOrientation::CameraFacing,
             ))
         })
         .collect();
@@ -48,8 +52,17 @@ pub(crate) fn item_entity_billboards_from_world(
                     icon,
                     THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
                     scale,
+                    ItemEntityBillboardOrientation::CameraFacing,
                 ));
             }
+        }
+    }
+
+    // Firework rockets use vanilla `FireworkEntityRenderer`: a camera-facing `ItemStackRenderState`
+    // with an extra post-camera rotation when `FireworkRocketRenderState.isShotAtAngle` is true.
+    for state in world.firework_rocket_item_states() {
+        if let Some(icon) = item_runtime.icon_for_stack(&state.stack) {
+            billboards.push(firework_rocket_billboard_from_icon(&state, icon));
         }
     }
 
@@ -61,6 +74,7 @@ fn item_entity_billboard_from_icon(
     icon: ItemAtlasIcon,
     y_offset: f32,
     scale: f32,
+    orientation: ItemEntityBillboardOrientation,
 ) -> ItemEntityBillboard {
     ItemEntityBillboard {
         position: [
@@ -69,6 +83,32 @@ fn item_entity_billboard_from_icon(
             state.position.z as f32,
         ],
         scale,
+        orientation,
+        light: shader_light(state.light),
+        layers: icon
+            .layers
+            .into_iter()
+            .map(item_entity_billboard_layer)
+            .collect(),
+    }
+}
+
+fn firework_rocket_billboard_from_icon(
+    state: &FireworkRocketItemState,
+    icon: ItemAtlasIcon,
+) -> ItemEntityBillboard {
+    ItemEntityBillboard {
+        position: [
+            state.position.x as f32,
+            state.position.y as f32 + FIREWORK_ROCKET_BILLBOARD_Y_OFFSET,
+            state.position.z as f32,
+        ],
+        scale: 1.0,
+        orientation: if state.shot_at_angle {
+            ItemEntityBillboardOrientation::FireworkShotAtAngle
+        } else {
+            ItemEntityBillboardOrientation::CameraFacing
+        },
         light: shader_light(state.light),
         layers: icon
             .layers
@@ -152,11 +192,16 @@ mod tests {
             icon,
             DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
             1.0,
+            ItemEntityBillboardOrientation::CameraFacing,
         );
 
         // The dropped item is lifted 0.25 above its ground position.
         assert_eq!(billboard.position, [1.5, 64.25, -2.25]);
         assert_eq!(billboard.scale, 1.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::CameraFacing
+        );
         assert_eq!(billboard.light, [5.0 / 15.0, 12.0 / 15.0]);
         assert_eq!(billboard.layers.len(), 2);
         assert_eq!(
@@ -215,11 +260,56 @@ mod tests {
             icon,
             THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
             3.0,
+            ItemEntityBillboardOrientation::CameraFacing,
         );
 
         assert_eq!(billboard.position, [2.0, 70.5, -4.0]);
         assert_eq!(billboard.scale, 3.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::CameraFacing
+        );
         assert_eq!(billboard.light, [1.0, 7.0 / 15.0]);
+        assert_eq!(billboard.layers.len(), 1);
+    }
+
+    #[test]
+    fn firework_rocket_billboard_projects_shot_at_angle_orientation() {
+        let state = FireworkRocketItemState {
+            entity_id: 12,
+            position: EntityVec3 {
+                x: -1.0,
+                y: 68.25,
+                z: 3.5,
+            },
+            light: TerrainLight { sky: 9, block: 4 },
+            stack: ItemStackSummary {
+                item_id: Some(42),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            shot_at_angle: true,
+        };
+        let icon = ItemAtlasIcon {
+            layers: vec![ItemAtlasIconLayer {
+                uv: ItemAtlasUvRect {
+                    min: [0.25, 0.0],
+                    max: [0.5, 0.25],
+                },
+                tint: [0.8, 0.7, 0.6, 1.0],
+                translucent: false,
+            }],
+        };
+
+        let billboard = firework_rocket_billboard_from_icon(&state, icon);
+
+        assert_eq!(billboard.position, [-1.0, 68.25, 3.5]);
+        assert_eq!(billboard.scale, 1.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::FireworkShotAtAngle
+        );
+        assert_eq!(billboard.light, [4.0 / 15.0, 9.0 / 15.0]);
         assert_eq!(billboard.layers.len(), 1);
     }
 }

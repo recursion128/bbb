@@ -6190,6 +6190,15 @@ When an agent does any of the following, update this file in the same slice:
       entity dispatch position followed by `translate(-0.5, 0, -0.5)`. More exact
       `MovingBlockRenderState` biome/cardinal/random-seed details remain later
       visual parity work.
+    - firework rockets now use the vanilla 26.1 `FireworkEntityRenderer` item
+      model path instead of a placeholder bounds box. `WorldStore` reads the
+      firework item stack (entity-data id 8), attached-target optional unsigned
+      int (id 9), and shot-at-angle boolean (id 10), skips attached elytra-boost
+      rockets to mirror `shouldRender`, and native submits the stack through the
+      item atlas billboard layer with entity light. The renderer-owned billboard
+      orientation carries the vanilla post-camera `Z+180 / Y+180 / X+90` pose
+      for `isShotAtAngle`. Firework explosion / Starter child particles remain
+      deferred to particle presentation work.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -6197,12 +6206,12 @@ When an agent does any of the following, update this file in the same slice:
       named placeholder bounds for remaining entity types
     - simple non-display placeholder bounds are no longer guessed `todo_*`
       model keys when vanilla `EntityType.sized(width, height)` gives the exact
-      box: dragon fireball (1.0), experience orb (0.5), and firework
-      rocket/fishing bobber/item/ominous item spawner (0.25) now use
+      box: dragon fireball (1.0), experience orb (0.5), and
+      fishing bobber/item/ominous item spawner (0.25) now use
       source-verified `*_entity_type_bounds` keys. The actual dedicated
       renderers remain deferred presentation work: dragon-fireball /
-      fishing-hook / experience-orb textured camera quads, firework and
-      ominous-spawner item model clusters,
+      fishing-hook / experience-orb textured camera quads, ominous-spawner item
+      model clusters,
       and their renderer-specific lighting/tint/line behavior.
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,

@@ -78,7 +78,9 @@ pub use crate::hud::{
     HudItemFoil, HudItemIcon, HudUvRect, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT,
     HUD_ASCII_LAST_GLYPH, HUD_HOTBAR_SLOTS,
 };
-pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
+pub use crate::item_entities::{
+    ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
+};
 pub use crate::item_models::{
     bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
     bake_item_frame_map_text_surface, bake_item_model_mesh, bake_item_model_mesh_with_light,

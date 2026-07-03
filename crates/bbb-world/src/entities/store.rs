@@ -19,12 +19,13 @@ use super::{
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
-    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    MinecartDisplayBlockState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
     VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
     VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
@@ -108,6 +109,11 @@ const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 /// Vanilla `PrimedTnt.DATA_BLOCK_STATE_ID` block-state metadata, declared after fuse.
 const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
 const DEFAULT_PRIMED_TNT_FUSE: i32 = 80;
+/// Vanilla `FireworkRocketEntity.DATA_ATTACHED_TO_TARGET` optional unsigned int, after the firework
+/// item stack at id 8. Present rockets are attached to an elytra user and `shouldRender` returns false.
+const FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
+/// Vanilla `FireworkRocketEntity.DATA_SHOT_AT_ANGLE` boolean, declared after attached-target.
+const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 
 fn wolf_armor_crackiness(
     item: &ItemStackSummary,
@@ -2461,6 +2467,44 @@ impl EntityStore {
         items
     }
 
+    /// Collects the firework rocket item render state. Vanilla
+    /// `FireworkRocketEntity.DATA_ID_FIREWORKS_ITEM` uses item-stack metadata id 8, followed by
+    /// `DATA_ATTACHED_TO_TARGET` (id 9) and `DATA_SHOT_AT_ANGLE` (id 10).
+    pub(crate) fn firework_rocket_item_states(&self) -> Vec<FireworkRocketItemState> {
+        let mut items = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+                continue;
+            };
+            if firework_rocket_attached_to_entity(&metadata.data_values) {
+                continue;
+            }
+            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+                continue;
+            };
+            items.push(FireworkRocketItemState {
+                entity_id: identity.id,
+                position: transform.position,
+                light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
+                stack: stack.clone(),
+                shot_at_angle: firework_rocket_shot_at_angle(&metadata.data_values),
+            });
+        }
+        items
+    }
+
     #[cfg(test)]
     pub(crate) fn metadata(&self, id: i32) -> Option<EntityMetadata> {
         let entity = self.by_protocol_id.get(&id).copied()?;
@@ -3304,6 +3348,25 @@ fn item_entity_render_stack(
         } else {
             None
         }
+    })
+}
+
+fn firework_rocket_attached_to_entity(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    data_values.iter().any(|value| {
+        value.data_id == FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID
+            && matches!(
+                &value.value,
+                EntityDataValueKind::OptionalUnsignedInt(Some(_))
+            )
+    })
+}
+
+fn firework_rocket_shot_at_angle(data_values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    data_values.iter().any(|value| {
+        value.data_id == FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID
+            && matches!(&value.value, EntityDataValueKind::Boolean(true))
     })
 }
 

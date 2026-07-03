@@ -533,9 +533,10 @@
   - [x] simple EntityType-sized placeholder bounds batch：native entity scene
     now uses source-verified `*_entity_type_bounds` keys for dragon fireball
     (`1.0`), falling block / TNT (`0.98`, both later replaced by block-model
-    attachment slices below), firework rocket / fishing bobber / item entity /
-    ominous item spawner (`0.25`), and keeps the prior XP orb `0.5` key on the
-    same helper. Tests pin every id, key, and
+    attachment slices below), firework rocket (later replaced by the item-billboard
+    renderer slice below), fishing bobber / item entity / ominous item spawner
+    (`0.25`), and keeps the prior XP orb `0.5` key on the same helper. Tests pin
+    every id, key, and
     `EntityType.sized(width, height)` box. Display entities, painting, and the
     unknown future-id placeholder stay deferred because their current boxes are not
     direct vanilla `EntityType.sized` renderer boxes.
@@ -559,6 +560,19 @@
     `blockState != level.getBlockState(entity.blockPosition())` visibility gate.
     Tests cover spawn-data projection, invisible falling-block body submission,
     missing-chunk rendering, and loaded same-block skip.
+  - [x] firework rocket item billboard renderer：native entity scene now maps
+    vanilla firework rockets to `EntityModelKind::NoRender` instead of the prior
+    source-verified placeholder bounds. `WorldStore` reads
+    `FireworkRocketEntity.DATA_ID_FIREWORKS_ITEM` (id 8),
+    `DATA_ATTACHED_TO_TARGET` (id 9, optional unsigned int), and
+    `DATA_SHOT_AT_ANGLE` (id 10), skips attached elytra-boost rockets to mirror
+    `shouldRender`, and samples entity light for the item layer. Native submits
+    the rocket stack through the existing item atlas billboard path, with the
+    vanilla post-camera `Z+180 / Y+180 / X+90` pose represented by
+    `ItemEntityBillboardOrientation::FireworkShotAtAngle`. Tests cover metadata
+    projection, attached-target suppression, scene `NoRender`, native billboard
+    orientation, and renderer vertex axes. Firework explosion / Starter child
+    particles remain tracked with particle presentation work.
 
 ## P1-3：物品、Frame 与第一人称表现
 

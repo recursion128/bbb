@@ -5,8 +5,8 @@ pub use crate::entities::{
     EnderDragonAnimationState, EnderDragonBeamSource, EntityAttachmentFace, EntityBlockModelState,
     EntityCameraPoseState, EntityClientAnimationState, EntityModelSourceState,
     EntityPickTargetState, EntityState, EntityStatusProbeState, EntityTransformState, EntityVec3,
-    GuardianBeamSource, HurtingProjectileState, ItemEntityStackState, ItemFrameFacing,
-    ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
+    FireworkRocketItemState, GuardianBeamSource, HurtingProjectileState, ItemEntityStackState,
+    ItemFrameFacing, ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
     PolarBearStandingAnimationState, ProjectilePowerUpdateState, VehicleMoveReport,
     WolfArmorCrackiness,
 };

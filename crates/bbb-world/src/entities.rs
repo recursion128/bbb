@@ -177,6 +177,17 @@ pub struct ItemEntityStackState {
     pub stack: ProtocolItemStackSummary,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FireworkRocketItemState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    #[serde(default = "entity_model_source_full_bright_light")]
+    pub light: TerrainLight,
+    pub stack: ProtocolItemStackSummary,
+    #[serde(default)]
+    pub shot_at_angle: bool,
+}
+
 /// The wall the front of an item frame faces (vanilla `ItemFrame.getDirection`). Drives the frame's
 /// render orientation: horizontal facings rotate the frame about Y, vertical facings tilt it about X.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2264,6 +2275,19 @@ impl WorldStore {
     /// the same billboard path. The caller (which owns the vanilla type ids) passes the projectile set.
     pub fn item_stacks_for_entity_types(&self, type_ids: &[i32]) -> Vec<ItemEntityStackState> {
         self.item_stacks_with_sampled_light(self.entities.item_stacks_for_entity_types(type_ids))
+    }
+
+    /// The item-model render state for firework rocket entities (vanilla `FireworkEntityRenderer`).
+    /// Attached elytra-boost rockets intentionally do not render, matching
+    /// `FireworkRocketEntity.shouldRender` / `shouldRenderAtSqrDistance`.
+    pub fn firework_rocket_item_states(&self) -> Vec<FireworkRocketItemState> {
+        let mut items = self.entities.firework_rocket_item_states();
+        for item in &mut items {
+            item.light = self
+                .sample_block_light(entity_light_block_pos(item.position))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        }
+        items
     }
 
     fn item_stacks_with_sampled_light(

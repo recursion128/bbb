@@ -6893,12 +6893,6 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             0.5,
         ),
         (
-            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-            "firework_rocket_entity_type_bounds",
-            0.25,
-            0.25,
-        ),
-        (
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
             "fishing_bobber_entity_type_bounds",
             0.25,
@@ -6943,6 +6937,14 @@ fn primed_tnt_uses_block_attachment_renderer_not_placeholder_bounds() {
 fn falling_block_uses_block_attachment_renderer_not_placeholder_bounds() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, &[]),
+        EntityModelKind::NoRender
+    );
+}
+
+#[test]
+fn firework_rocket_uses_item_billboard_renderer_not_placeholder_bounds() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, &[]),
         EntityModelKind::NoRender
     );
 }

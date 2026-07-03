@@ -276,9 +276,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => EntityModelKind::NoRender,
         // The large fireball also renders as a (3× scaled) item sprite via the billboard layer.
         VANILLA_ENTITY_TYPE_FIREBALL_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
-            entity_type_bounds_placeholder("firework_rocket_entity_type_bounds", 0.25, 0.25)
-        }
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
         }
