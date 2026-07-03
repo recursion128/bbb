@@ -728,8 +728,9 @@ When an agent does any of the following, update this file in the same slice:
         `6 / (random * 0.8 + 0.2)` lifetime, `0.92` friction, zero gravity, and
         no-physics metadata plus full-bright light coords, translucent particle
         layer, and `SimpleAnimatedParticle` half-lifetime alpha fade updated on
-        runtime ticks and reused during vertex emission; in-air downward drift remains
-        deferred until particle ticking can query world block states
+        runtime ticks and reused during vertex emission; runtime ticks now
+        apply the vanilla post-`super.tick()` `yd -= 0.0074F` downward drift
+        when the post-move world block sample is air.
       - `SimpleVerticalParticle.PauseMobGrowthProvider` and
         `ResetMobGrowthProvider` random sprite selection, random `0.5..1.1`
         quad-size scaling, fixed lifetime `8`, command velocity with
@@ -6564,8 +6565,9 @@ When an agent does any of the following, update this file in the same slice:
         glow-ink tint, command velocity, `6/(random*.8+.2)` lifetime, friction
         `0.92`, zero gravity, no-physics metadata, and full-bright light coords.
         The translucent particle layer and `SimpleAnimatedParticle`
-        half-lifetime runtime alpha fade are represented; in-air downward drift
-        remains deferred until particle ticking can query world block states.
+        half-lifetime runtime alpha fade are represented. Runtime ticks now
+        apply the vanilla post-`super.tick()` `yd -= 0.0074F` downward drift
+        when the post-move world block sample is air.
       - particle descriptors map `SimpleVerticalParticle.PauseMobGrowthProvider`
         and `ResetMobGrowthProvider` to random sprites, random `0.5..1.1`
         quad-size scaling, fixed lifetime `8`, command velocity with

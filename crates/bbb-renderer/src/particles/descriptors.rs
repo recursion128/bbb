@@ -4,6 +4,7 @@ use super::ParticleFluidKind;
 
 pub(crate) const DEFAULT_PARTICLE_RANDOM_SEED: i64 = 0x5EED_2601;
 pub(crate) const END_ROD_FADE_COLOR: [f32; 3] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
+pub(crate) const SQUID_INK_AIR_DOWNWARD_ACCELERATION: f64 = 0.0074;
 pub(crate) const VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT: usize = 1000;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2053,6 +2054,15 @@ impl ParticleDescriptor {
 
     pub(crate) fn moves_without_collision(self) -> bool {
         matches!(self.provider, "EndRodParticle.Provider")
+    }
+
+    pub(crate) fn air_downward_acceleration(self) -> f64 {
+        match self.provider {
+            "SquidInkParticle.Provider" | "SquidInkParticle.GlowInkProvider" => {
+                SQUID_INK_AIR_DOWNWARD_ACCELERATION
+            }
+            _ => 0.0,
+        }
     }
 
     pub(crate) fn falling_leaves(self) -> Option<FallingLeavesDescriptor> {

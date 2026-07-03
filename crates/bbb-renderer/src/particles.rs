@@ -259,6 +259,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) required_fluid: Option<ParticleFluidKind>,
     #[serde(default)]
+    pub(crate) air_downward_acceleration: f64,
+    #[serde(default)]
     pub(crate) tick_angle: f32,
     #[serde(default)]
     pub(crate) particle_limit: Option<ParticleLimitDescriptor>,
@@ -974,6 +976,7 @@ impl ParticleInstance {
             tick_motion: descriptor.tick_motion(),
             drip_fluid: descriptor.drip_fluid(),
             required_fluid: descriptor.required_fluid(),
+            air_downward_acceleration: descriptor.air_downward_acceleration(),
             tick_angle: 0.0,
             particle_limit,
             child_emission,
@@ -1066,6 +1069,7 @@ impl ParticleInstance {
                     self.velocity[2] *= 0.7;
                 }
                 self.remove_if_outside_required_fluid(block_fluid_surface);
+                self.apply_air_downward_acceleration(block_fluid_surface);
             }
             ParticleTickMotionDescriptor::DirectGravityNoFriction => {
                 self.velocity[1] -= f64::from(self.gravity);
@@ -1388,6 +1392,21 @@ impl ParticleInstance {
         });
         if surface.fluid_kind != Some(required_fluid) {
             self.removed = true;
+        }
+    }
+
+    fn apply_air_downward_acceleration<S>(&mut self, block_fluid_surface: &mut S)
+    where
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        if self.removed || self.air_downward_acceleration == 0.0 {
+            return;
+        }
+        let surface = block_fluid_surface(ParticleBlockFluidSurfaceQuery {
+            position: self.position,
+        });
+        if surface.block_is_air {
+            self.velocity[1] -= self.air_downward_acceleration;
         }
     }
 
@@ -4018,6 +4037,61 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_squid_ink_drifts_downward_in_air_after_default_tick() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:squid_ink", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.2, -0.3];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample::default(),
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.position, [1.1, 2.2, 2.7]);
+        assert_close3(
+            instance.velocity,
+            [
+                0.092,
+                0.184 - descriptors::SQUID_INK_AIR_DOWNWARD_ACCELERATION,
+                -0.276,
+            ],
+        );
+    }
+
+    #[test]
+    fn particle_runtime_squid_ink_keeps_velocity_inside_non_air_block() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:glow_squid_ink", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.2, -0.3];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample {
+                block_is_air: false,
+                ..ParticleBlockFluidSurfaceSample::default()
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_close3(instance.position, [1.1, 2.2, 2.7]);
+        assert_close3(instance.velocity, [0.092, 0.184, -0.276]);
+    }
+
+    #[test]
     fn particle_runtime_end_rod_alpha_and_rgb_fade_after_half_lifetime() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:end_rod", 60);
@@ -5536,6 +5610,10 @@ mod tests {
         assert_eq!(squid_ink.friction, 0.92);
         assert_eq!(squid_ink.gravity, 0.0);
         assert!(!squid_ink.has_physics);
+        assert_close_f64(
+            squid_ink.air_downward_acceleration,
+            descriptors::SQUID_INK_AIR_DOWNWARD_ACCELERATION,
+        );
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(
             squid_ink.alpha_curve,
@@ -5552,6 +5630,10 @@ mod tests {
         assert_eq!(glow_ink.color, [0.2, 0.8, 0.6, 1.0]);
         assert!((6..=30).contains(&glow_ink.lifetime_ticks));
         assert!(!glow_ink.has_physics);
+        assert_close_f64(
+            glow_ink.air_downward_acceleration,
+            descriptors::SQUID_INK_AIR_DOWNWARD_ACCELERATION,
+        );
         assert_eq!(glow_ink.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(glow_ink.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
 
@@ -7910,6 +7992,7 @@ mod tests {
             tick_motion: descriptor.tick_motion(),
             drip_fluid: descriptor.drip_fluid(),
             required_fluid: descriptor.required_fluid(),
+            air_downward_acceleration: descriptor.air_downward_acceleration(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
             child_emission: descriptor.child_emission(),

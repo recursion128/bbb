@@ -2394,6 +2394,10 @@
     collision-backed vanilla `super.tick()` move path and then remove when the
     post-move block sample is non-air, while retaining the existing alpha fade
     and first-tick / 5% random speed reroll for air samples.
+  - [x] SquidInk in-air downward drift：`SquidInkParticle.Provider` /
+    `GlowInkProvider` runtime ticks now reuse the world block-air sample after
+    default `super.tick()` motion and apply the vanilla `yd -= 0.0074F` drift
+    only when the containing block state is air.
 
 ## P2：Terrain / Block Render Presentation
 
