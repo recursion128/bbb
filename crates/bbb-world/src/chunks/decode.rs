@@ -152,6 +152,7 @@ fn decode_block_entities(
             });
         }
         let sign_text = decode_sign_block_entity_text(&entity.raw_nbt)?;
+        let vault_shared_data = crate::chunks::decode_vault_shared_data(&entity.raw_nbt)?;
         out.push(BlockEntityRecord {
             local_x: entity.packed_xz >> 4,
             y: entity.y,
@@ -159,6 +160,7 @@ fn decode_block_entities(
             type_id: entity.block_entity_type_id,
             nbt,
             sign_text,
+            vault_shared_data,
         });
     }
     Ok(out)

@@ -15,7 +15,9 @@ use crate::{
     terrain::{classify_terrain_material, terrain_fluid_state},
     BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
     ChunkViewState, HeightmapData, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot,
-    TerrainLight, TerrainMaterialClass, WorldDecodeError, WorldDimension, WorldStore,
+    TerrainLight, TerrainMaterialClass, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState, WorldDecodeError, WorldDimension,
+    WorldStore,
 };
 
 use super::{
@@ -26,6 +28,8 @@ use super::{
 
 const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 = 4;
 const VANILLA_HEIGHTMAP_ENTRY_COUNT: usize = 16 * 16;
+// Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
+const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 
 impl WorldStore {
     pub fn insert_level_chunk_with_light(
@@ -128,6 +132,13 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let vault_shared_data = match crate::chunks::decode_vault_shared_data(&packet.raw_nbt) {
+            Ok(shared_data) => shared_data,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -140,6 +151,7 @@ impl WorldStore {
             type_id: packet.block_entity_type_id,
             nbt,
             sign_text,
+            vault_shared_data,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
@@ -293,6 +305,59 @@ impl WorldStore {
     }
 
     pub fn block_entity_type_id_at(&self, pos: BlockPos) -> Option<i32> {
+        self.block_entity_record_at(pos)
+            .map(|entity| entity.type_id)
+    }
+
+    pub fn vault_shared_data_at(&self, pos: BlockPos) -> Option<&VaultSharedDataState> {
+        self.block_entity_record_at(pos)?.vault_shared_data.as_ref()
+    }
+
+    pub fn vault_connection_particle_state(
+        &self,
+        pos: BlockPos,
+    ) -> Option<VaultConnectionParticleState> {
+        let record = self.block_entity_record_at(pos)?;
+        if record.type_id != VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID {
+            return None;
+        }
+        let shared_data = record.vault_shared_data.as_ref()?;
+        if shared_data.connected_players.is_empty() {
+            return None;
+        }
+        let probe = self.probe_block(pos)?;
+        if probe.block_name.as_deref() != Some("minecraft:vault") {
+            return None;
+        }
+        let (step_x, step_z) = vault_facing_steps(probe.block_properties.get("facing")?.as_str())?;
+        let origin = [
+            f64::from(pos.x) + 0.5 + step_x * 0.5,
+            f64::from(pos.y) + 1.75,
+            f64::from(pos.z) + 0.5 + step_z * 0.5,
+        ];
+        let targets = shared_data
+            .connected_players
+            .iter()
+            .filter_map(|uuid| {
+                let (entity_id, target_position) = self.entities.vault_connection_player_target(
+                    *uuid,
+                    pos,
+                    shared_data.connected_particles_range,
+                )?;
+                Some(VaultConnectionParticleTargetState {
+                    entity_id,
+                    uuid: *uuid,
+                    target_position,
+                })
+            })
+            .collect::<Vec<_>>();
+        if targets.is_empty() {
+            return None;
+        }
+        Some(VaultConnectionParticleState { origin, targets })
+    }
+
+    fn block_entity_record_at(&self, pos: BlockPos) -> Option<&BlockEntityRecord> {
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
@@ -304,7 +369,6 @@ impl WorldStore {
             .block_entities
             .iter()
             .find(|entity| entity.local_x == local_x && entity.y == y && entity.local_z == local_z)
-            .map(|entity| entity.type_id)
     }
 
     pub fn probe_block(&self, pos: BlockPos) -> Option<BlockProbe> {
@@ -822,6 +886,16 @@ fn set_heightmap_value(
     let raw = *cell as u64;
     *cell = ((raw & !(mask << bit_index)) | (value << bit_index)) as i64;
     true
+}
+
+fn vault_facing_steps(facing: &str) -> Option<(f64, f64)> {
+    match facing {
+        "north" => Some((0.0, -1.0)),
+        "south" => Some((0.0, 1.0)),
+        "west" => Some((-1.0, 0.0)),
+        "east" => Some((1.0, 0.0)),
+        _ => None,
+    }
 }
 
 fn is_empty_block_state_id(registries: &RegistrySet, block_state_id: i32) -> bool {

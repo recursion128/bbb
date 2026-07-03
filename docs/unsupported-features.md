@@ -630,10 +630,15 @@ When an agent does any of the following, update this file in the same slice:
       - event `3015`: vault activation `minecraft:smoke` plus
         `minecraft:small_flame` / `minecraft:soul_fire_flame` particles from
         `randomPosInsideCage`, gated on a loaded vault block entity at the event
-        position, followed by the vanilla distance-delayed
+        position. Loaded vaults now also parse `shared_data.connected_players`
+        and `connected_particles_range`, resolve in-range loaded player entities
+        by UUID, and emit vanilla `minecraft:vault_connection` particles from
+        the facing keyhole position before the cage particles using
+        `Mth.nextInt(random, 2, 5)` and `Vec3.offsetRandom(random, 1.0)`.
+        The event is followed by the vanilla distance-delayed
         `minecraft:block.vault.activate` sound using the post-particle random
-        pitch sequence; player connection particles remain deferred with broader
-        block-entity client effects
+        pitch sequence; broader idle/tick block-entity client effects remain
+        deferred.
       - event `3016`: vault deactivation `minecraft:small_flame` /
         `minecraft:soul_fire_flame` particles from `randomPosCenterOfCage`,
         with gaussian `0.02` velocity, followed by the vanilla

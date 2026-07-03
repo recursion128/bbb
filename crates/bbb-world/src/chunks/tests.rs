@@ -9,16 +9,19 @@ use crate::{
 
 use crate::LocalPlayerPoseState;
 use bbb_protocol::codec::Encoder;
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
 use bbb_protocol::packets::{
-    BlockChangedAck as ProtocolBlockChangedAck, BlockEntityData as ProtocolBlockEntityData,
-    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
-    ChunkBiomeData as ProtocolChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
-    ChunksBiomes as ProtocolChunksBiomes, LevelChunkBlockEntity, LevelChunkData,
-    LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
+    AddEntity as ProtocolAddEntity, BlockChangedAck as ProtocolBlockChangedAck,
+    BlockEntityData as ProtocolBlockEntityData, BlockPos as ProtocolBlockPos,
+    BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
+    ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
+    LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
     LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
     SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
     SetChunkCacheRadius as ProtocolSetChunkCacheRadius, Vec3d as ProtocolVec3d,
 };
+use std::collections::BTreeMap;
+use uuid::Uuid;
 
 mod terrain;
 mod terrain_fluids;
@@ -884,6 +887,7 @@ fn applies_block_entity_data_update() {
                 byte_len: raw_nbt.len(),
             }),
             sign_text: None,
+            vault_shared_data: None,
         }
     );
     assert_eq!(
@@ -1002,6 +1006,83 @@ fn applies_sign_block_entity_text_update() {
             "Back 4".to_string(),
         ])
     );
+}
+
+#[test]
+fn applies_vault_shared_data_and_projects_connection_particles() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let vault_pos = ProtocolBlockPos {
+        x: 33,
+        y: 7,
+        z: -46,
+    };
+    let connected_uuid = Uuid::from_u128(0x0011_2233_4455_6677_8899_aabb_ccdd_eeff);
+    let distant_uuid = Uuid::from_u128(0xffee_ddcc_bbaa_9988_7766_5544_3322_1100);
+    let raw_nbt = vault_shared_data_nbt(&[connected_uuid, distant_uuid], Some(3.0));
+
+    assert!(store
+        .apply_block_entity_data(ProtocolBlockEntityData {
+            pos: vault_pos,
+            block_entity_type_id: 45,
+            raw_nbt,
+        })
+        .unwrap());
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: vault_pos,
+        block_state_id: vault_block_state_id("east"),
+    }));
+    store.apply_add_entity(vault_test_player(
+        10,
+        connected_uuid,
+        ProtocolVec3d {
+            x: 35.2,
+            y: 7.0,
+            z: -46.0,
+        },
+    ));
+    store.apply_add_entity(vault_test_player(
+        11,
+        distant_uuid,
+        ProtocolVec3d {
+            x: 42.0,
+            y: 7.0,
+            z: -46.0,
+        },
+    ));
+
+    let shared_data = store
+        .vault_shared_data_at(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        })
+        .unwrap();
+    assert_eq!(
+        shared_data.connected_players,
+        vec![connected_uuid, distant_uuid]
+    );
+    assert_eq!(shared_data.connected_particles_range, 3.0);
+
+    let particles = store
+        .vault_connection_particle_state(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        })
+        .unwrap();
+    assert_eq!(particles.origin, [34.0, 8.75, -45.5]);
+    assert_eq!(particles.targets.len(), 1);
+    assert_eq!(particles.targets[0].entity_id, 10);
+    assert_eq!(particles.targets[0].uuid, connected_uuid);
+    assert_close_f64(particles.targets[0].target_position[0], 35.2);
+    assert_close_f64(particles.targets[0].target_position[1], 7.9);
+    assert_close_f64(particles.targets[0].target_position[2], -46.0);
 }
 
 #[test]
@@ -1179,6 +1260,28 @@ fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {
     payload
 }
 
+fn vault_shared_data_nbt(players: &[Uuid], connected_particles_range: Option<f64>) -> Vec<u8> {
+    let mut payload = vec![10, 10];
+    write_nbt_string(&mut payload, "shared_data");
+    if !players.is_empty() {
+        payload.push(9);
+        write_nbt_string(&mut payload, "connected_players");
+        payload.push(11);
+        payload.extend_from_slice(&(players.len() as i32).to_be_bytes());
+        for player in players {
+            write_nbt_uuid_int_array(&mut payload, *player);
+        }
+    }
+    if let Some(range) = connected_particles_range {
+        payload.push(6);
+        write_nbt_string(&mut payload, "connected_particles_range");
+        payload.extend_from_slice(&range.to_be_bytes());
+    }
+    payload.push(0);
+    payload.push(0);
+    payload
+}
+
 fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
     out.push(10);
     write_nbt_string(out, name);
@@ -1195,6 +1298,53 @@ fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
 fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(&(value.len() as u16).to_be_bytes());
     out.extend_from_slice(value.as_bytes());
+}
+
+fn write_nbt_uuid_int_array(out: &mut Vec<u8>, uuid: Uuid) {
+    let value = uuid.as_u128();
+    let ints = [
+        (value >> 96) as u32,
+        (value >> 64) as u32,
+        (value >> 32) as u32,
+        value as u32,
+    ];
+    out.extend_from_slice(&4i32.to_be_bytes());
+    for value in ints {
+        out.extend_from_slice(&(value as i32).to_be_bytes());
+    }
+}
+
+fn vault_block_state_id(facing: &str) -> i32 {
+    let properties = BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("ominous".to_string(), "false".to_string()),
+        ("vault_state".to_string(), "active".to_string()),
+    ]);
+    crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:vault", &properties)
+        .unwrap()
+        .id
+}
+
+fn vault_test_player(id: i32, uuid: Uuid, position: ProtocolVec3d) -> ProtocolAddEntity {
+    ProtocolAddEntity {
+        id,
+        uuid,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position,
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    }
+}
+
+fn assert_close_f64(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() <= 0.0001,
+        "expected {actual} to be close to {expected}"
+    );
 }
 
 fn pack_fixed_values(values: &[u64], bits_per_entry: usize) -> Vec<u64> {

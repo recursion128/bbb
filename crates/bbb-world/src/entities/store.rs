@@ -941,6 +941,46 @@ impl EntityStore {
         })
     }
 
+    pub(crate) fn vault_connection_player_target(
+        &self,
+        uuid: Uuid,
+        vault_pos: crate::BlockPos,
+        range: f64,
+    ) -> Option<(i32, [f64; 3])> {
+        if !range.is_finite() || range < 0.0 {
+            return None;
+        }
+        let range_sqr = range * range;
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let (entity_id, position) = {
+                let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                    continue;
+                };
+                if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID || identity.uuid != uuid
+                {
+                    continue;
+                }
+                let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                    return None;
+                };
+                (identity.id, transform.position)
+            };
+            if block_pos_dist_sqr(entity_block_pos(position), vault_pos) > range_sqr {
+                return None;
+            }
+            let bounds = self.pick_bounds(entity_id)?;
+            let height = f64::from(bounds.max[1] - bounds.min[1]);
+            return Some((
+                entity_id,
+                [position.x, position.y + height / 2.0, position.z],
+            ));
+        }
+        None
+    }
+
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
@@ -3419,6 +3459,21 @@ fn default_minecart_display_offset(entity_type_id: i32) -> i32 {
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => 1,
         _ => DEFAULT_MINECART_DISPLAY_OFFSET,
     }
+}
+
+fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
+    crate::BlockPos {
+        x: position.x.floor() as i32,
+        y: position.y.floor() as i32,
+        z: position.z.floor() as i32,
+    }
+}
+
+fn block_pos_dist_sqr(left: crate::BlockPos, right: crate::BlockPos) -> f64 {
+    let dx = f64::from(left.x) - f64::from(right.x);
+    let dy = f64::from(left.y) - f64::from(right.y);
+    let dz = f64::from(left.z) - f64::from(right.z);
+    dx * dx + dy * dy + dz * dz
 }
 
 fn add_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::EntityVec3 {

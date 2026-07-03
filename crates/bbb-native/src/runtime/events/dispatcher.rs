@@ -635,6 +635,7 @@ pub(super) fn level_event_particle_context(
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
         biome_id_at_event_pos: event_pos_biome_id_context(world, event),
         vault_block_entity_at_event_pos: vault_block_entity_at_event_pos_context(world, event),
+        vault_connection_particles: vault_connection_particle_context(world, event),
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
         growth_particles: growth_particle_context(world, event),
         in_block_particle_spread_height: in_block_particle_spread_height_context(world, event),
@@ -658,6 +659,15 @@ fn vault_block_entity_at_event_pos_context(
     event.event_type == VAULT_ACTIVATE_LEVEL_EVENT
         && world.block_entity_type_id_at(protocol_to_world_block_pos(event.pos))
             == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID)
+}
+
+fn vault_connection_particle_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<bbb_world::VaultConnectionParticleState> {
+    (event.event_type == VAULT_ACTIVATE_LEVEL_EVENT)
+        .then(|| world.vault_connection_particle_state(protocol_to_world_block_pos(event.pos)))
+        .flatten()
 }
 
 fn event_pos_block_state_id_context(

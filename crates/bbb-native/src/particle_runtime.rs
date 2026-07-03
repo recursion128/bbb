@@ -23,6 +23,7 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     LevelEventSoundRandomState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
+    VaultConnectionParticleState,
 };
 
 use crate::{
@@ -85,12 +86,13 @@ pub(crate) struct LevelParticleEntityPosition {
     pub(crate) position: [f64; 3],
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
     pub(crate) block_state_id_at_event_pos: Option<i32>,
     pub(crate) biome_id_at_event_pos: Option<i32>,
     pub(crate) vault_block_entity_at_event_pos: bool,
+    pub(crate) vault_connection_particles: Option<VaultConnectionParticleState>,
     pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
     pub(crate) in_block_particle_spread_height: Option<f64>,
@@ -1776,8 +1778,23 @@ impl ParticleCommandResolver {
         let mut batch = ParticleSpawnBatch::default();
         let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
         let flame = self.simple_particle_template(flame_particle_type_id);
+        let vault_connection = context
+            .vault_connection_particles
+            .as_ref()
+            .map(|_| self.simple_particle_template(VAULT_CONNECTION_PARTICLE_TYPE_ID));
         let smoke = self.append_template_result(&mut batch, smoke);
         let flame = self.append_template_result(&mut batch, flame);
+        let vault_connection =
+            vault_connection.and_then(|template| self.append_template_result(&mut batch, template));
+
+        if let Some(connection) = context.vault_connection_particles.as_ref() {
+            self.append_vault_connection_particles(
+                &mut batch,
+                connection,
+                vault_connection.as_ref(),
+                random,
+            );
+        }
 
         for _ in 0..20 {
             let position = Vec3d {
@@ -1804,6 +1821,40 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn append_vault_connection_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        connection: &VaultConnectionParticleState,
+        template: Option<&SimpleParticleTemplate>,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let position = Vec3d {
+            x: connection.origin[0],
+            y: connection.origin[1],
+            z: connection.origin[2],
+        };
+        for target in &connection.targets {
+            let direction = [
+                target.target_position[0] - connection.origin[0],
+                target.target_position[1] - connection.origin[1],
+                target.target_position[2] - connection.origin[2],
+            ];
+            let particle_count = random.next_int_bound(4) + 2;
+            for _ in 0..particle_count {
+                let velocity = Vec3d {
+                    x: direction[0] + f64::from(random.next_float() - 0.5),
+                    y: direction[1] + f64::from(random.next_float() - 0.5),
+                    z: direction[2] + f64::from(random.next_float() - 0.5),
+                };
+                if let Some(template) = template {
+                    batch
+                        .commands
+                        .push(self.command_from_template(template, position, velocity, false));
+                }
+            }
+        }
     }
 
     fn vault_deactivation_particle_batch(
@@ -4426,6 +4477,7 @@ const SHRIEK_PARTICLE_TYPE_ID: i32 = 105;
 const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
 const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
 const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
+const VAULT_CONNECTION_PARTICLE_TYPE_ID: i32 = 110;
 const DUST_PILLAR_PARTICLE_TYPE_ID: i32 = 111;
 const TRIAL_OMEN_PARTICLE_TYPE_ID: i32 = 114;
 const BLOCK_CRUMBLE_PARTICLE_TYPE_ID: i32 = 115;
@@ -10744,6 +10796,72 @@ mod tests {
             false,
         );
 
+        let connection_origin = [11.0, 65.75, -3.5];
+        let connection_target_position = [12.25, 66.9, -2.0];
+        let connection = VaultConnectionParticleState {
+            origin: connection_origin,
+            targets: vec![bbb_world::VaultConnectionParticleTargetState {
+                entity_id: 77,
+                uuid: uuid::Uuid::from_u128(0x0011_2233_4455_6677_8899_aabb_ccdd_eeff),
+                target_position: connection_target_position,
+            }],
+        };
+        let mut vault_connection_random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_connection_count = expected_random.next_int_bound(4) + 2;
+        let expected_connection_velocity = [
+            connection_target_position[0] - connection_origin[0]
+                + f64::from(expected_random.next_float() - 0.5),
+            connection_target_position[1] - connection_origin[1]
+                + f64::from(expected_random.next_float() - 0.5),
+            connection_target_position[2] - connection_origin[2]
+                + f64::from(expected_random.next_float() - 0.5),
+        ];
+        for _ in 1..expected_connection_count {
+            let _ = expected_random.next_float();
+            let _ = expected_random.next_float();
+            let _ = expected_random.next_float();
+        }
+        let expected_smoke_position_after_connection = [
+            10.0 + expected_random_between(&mut expected_random, 0.1, 0.9),
+            64.0 + expected_random_between(&mut expected_random, 0.25, 0.75),
+            -3.0 + expected_random_between(&mut expected_random, 0.1, 0.9),
+        ];
+        let vault_activation_with_connection = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent {
+                event_type: 3015,
+                data: 0,
+                ..level_event_packet(3015)
+            },
+            LevelEventParticleContext {
+                vault_block_entity_at_event_pos: true,
+                vault_connection_particles: Some(connection),
+                ..LevelEventParticleContext::default()
+            },
+            &mut vault_connection_random,
+        );
+        assert_eq!(
+            vault_activation_with_connection.len(),
+            usize::try_from(expected_connection_count).unwrap() + 40
+        );
+        assert_particle_command(
+            &vault_activation_with_connection.commands[0],
+            VAULT_CONNECTION_PARTICLE_TYPE_ID,
+            "minecraft:vault_connection",
+            connection_origin,
+            expected_connection_velocity,
+            true,
+        );
+        assert_particle_command(
+            &vault_activation_with_connection.commands
+                [usize::try_from(expected_connection_count).unwrap()],
+            SMOKE_PARTICLE_TYPE_ID,
+            "minecraft:smoke",
+            expected_smoke_position_after_connection,
+            [0.0, 0.0, 0.0],
+            false,
+        );
+
         let mut ominous_vault_activation_random = LevelEventSoundRandomState::with_seed(0);
         let ominous_vault_activation = resolver.resolve_level_event_particles_with_context(
             &LevelEvent {
@@ -11321,8 +11439,11 @@ mod tests {
         };
         let mut random = LevelEventSoundRandomState::with_seed(0);
 
-        let batch =
-            resolver.resolve_level_event_particles_with_context(&event, context, &mut random);
+        let batch = resolver.resolve_level_event_particles_with_context(
+            &event,
+            context.clone(),
+            &mut random,
+        );
 
         let expected = expected_smash_attack_particles(event.data);
         assert_eq!(batch.len(), 6);
@@ -12078,6 +12199,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:trial_spawner_detection_ominous_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("vault_connection.json"),
+            r#"{
+              "textures": [
+                "minecraft:vault_connection_0"
               ]
             }"#,
         );

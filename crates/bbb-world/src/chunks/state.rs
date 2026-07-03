@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::ChunkPos;
 
@@ -74,7 +75,7 @@ pub struct ChunkSection {
     pub biomes: PalettedContainerData,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockEntityRecord {
     pub local_x: u8,
     pub y: i16,
@@ -83,12 +84,33 @@ pub struct BlockEntityRecord {
     pub nbt: Option<NbtPayloadSummary>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sign_text: Option<SignBlockEntityTextState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_shared_data: Option<VaultSharedDataState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignBlockEntityTextState {
     pub front: [String; 4],
     pub back: [String; 4],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VaultSharedDataState {
+    pub connected_players: Vec<Uuid>,
+    pub connected_particles_range: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VaultConnectionParticleState {
+    pub origin: [f64; 3],
+    pub targets: Vec<VaultConnectionParticleTargetState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct VaultConnectionParticleTargetState {
+    pub entity_id: i32,
+    pub uuid: Uuid,
+    pub target_position: [f64; 3],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

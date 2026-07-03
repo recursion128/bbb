@@ -4090,6 +4090,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 block_state_id_at_event_pos: Some(1),
                 biome_id_at_event_pos: Some(7),
                 vault_block_entity_at_event_pos: false,
+                vault_connection_particles: None,
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
@@ -4100,6 +4101,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
                 block_state_id_at_event_pos: Some(0),
                 biome_id_at_event_pos: Some(7),
                 vault_block_entity_at_event_pos: false,
+                vault_connection_particles: None,
                 dripstone_drip_particle: None,
                 growth_particles: None,
                 in_block_particle_spread_height: None,
@@ -4211,6 +4213,83 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
     assert!(sound.distance_delay);
     assert_eq!(world.counters().level_events_received, 2);
     assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn vault_activation_level_event_threads_connection_particle_context() {
+    let event = LevelEvent {
+        event_type: 3015,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let player_uuid = Uuid::from_u128(0x0011_2233_4455_6677_8899_aabb_ccdd_eeff);
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
+        pos: event.pos,
+        block_state_id: vault_block_state_id("east"),
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
+        BlockEntityData {
+            pos: event.pos,
+            block_entity_type_id: 45,
+            raw_nbt: vault_shared_data_nbt(&[player_uuid], Some(3.0)),
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        vault_test_player(
+            77,
+            player_uuid,
+            ProtocolVec3d {
+                x: 18.25,
+                y: -64.0,
+                z: -32.0,
+            },
+        ),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    let context = particles.level_event_contexts[0].clone();
+    assert!(context.vault_block_entity_at_event_pos);
+    let connection = context.vault_connection_particles.unwrap();
+    assert_eq!(connection.origin, [17.0, -62.25, -31.5]);
+    assert_eq!(connection.targets.len(), 1);
+    assert_eq!(connection.targets[0].entity_id, 77);
+    assert_eq!(connection.targets[0].uuid, player_uuid);
+    assert_close64(connection.targets[0].target_position[0], 18.25);
+    assert_close64(connection.targets[0].target_position[1], -63.1);
+    assert_close64(connection.targets[0].target_position[2], -32.0);
 }
 
 #[test]
@@ -8027,7 +8106,14 @@ impl ParticleEventSink for RecordingParticleSink {
         } else if event.event_type == 1505 {
             advance_growth_randoms_for_context(event, &context, random);
         } else if event.event_type == 3015 && context.vault_block_entity_at_event_pos {
-            bbb_world::advance_vault_activation_particle_randoms(random);
+            bbb_world::advance_vault_activation_particle_randoms_with_connections(
+                random,
+                context
+                    .vault_connection_particles
+                    .as_ref()
+                    .map(|state| state.targets.len())
+                    .unwrap_or(0),
+            );
         } else if event.event_type == 3016 {
             bbb_world::advance_vault_deactivation_particle_randoms(random);
         }
@@ -8325,6 +8411,28 @@ fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {
     payload
 }
 
+fn vault_shared_data_nbt(players: &[Uuid], connected_particles_range: Option<f64>) -> Vec<u8> {
+    let mut payload = vec![10, 10];
+    write_nbt_string(&mut payload, "shared_data");
+    if !players.is_empty() {
+        payload.push(9);
+        write_nbt_string(&mut payload, "connected_players");
+        payload.push(11);
+        payload.extend_from_slice(&(players.len() as i32).to_be_bytes());
+        for player in players {
+            write_nbt_uuid_int_array(&mut payload, *player);
+        }
+    }
+    if let Some(range) = connected_particles_range {
+        payload.push(6);
+        write_nbt_string(&mut payload, "connected_particles_range");
+        payload.extend_from_slice(&range.to_be_bytes());
+    }
+    payload.push(0);
+    payload.push(0);
+    payload
+}
+
 fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
     out.push(10);
     write_nbt_string(out, name);
@@ -8341,6 +8449,46 @@ fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
 fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(&(value.len() as u16).to_be_bytes());
     out.extend_from_slice(value.as_bytes());
+}
+
+fn write_nbt_uuid_int_array(out: &mut Vec<u8>, uuid: Uuid) {
+    let value = uuid.as_u128();
+    let ints = [
+        (value >> 96) as u32,
+        (value >> 64) as u32,
+        (value >> 32) as u32,
+        value as u32,
+    ];
+    out.extend_from_slice(&4i32.to_be_bytes());
+    for value in ints {
+        out.extend_from_slice(&(value as i32).to_be_bytes());
+    }
+}
+
+fn vault_block_state_id(facing: &str) -> i32 {
+    let properties = BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("ominous".to_string(), "false".to_string()),
+        ("vault_state".to_string(), "active".to_string()),
+    ]);
+    bbb_world::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:vault", &properties)
+        .unwrap()
+        .id
+}
+
+fn vault_test_player(id: i32, uuid: Uuid, position: ProtocolVec3d) -> AddEntity {
+    AddEntity {
+        id,
+        uuid,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position,
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    }
 }
 
 fn assert_close(actual: f32, expected: f32) {

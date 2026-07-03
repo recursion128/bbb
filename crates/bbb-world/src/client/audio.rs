@@ -1206,6 +1206,21 @@ pub fn advance_cobweb_place_particle_randoms(random: &mut LevelEventSoundRandomS
 }
 
 pub fn advance_vault_activation_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    advance_vault_activation_particle_randoms_with_connections(random, 0);
+}
+
+pub fn advance_vault_activation_particle_randoms_with_connections(
+    random: &mut LevelEventSoundRandomState,
+    connected_player_targets: usize,
+) {
+    for _ in 0..connected_player_targets {
+        let particle_count = random.next_int_bound(4) + 2;
+        for _ in 0..particle_count {
+            let _ = random.next_float();
+            let _ = random.next_float();
+            let _ = random.next_float();
+        }
+    }
     for _ in 0..20 {
         let _ = random.next_double();
         let _ = random.next_double();

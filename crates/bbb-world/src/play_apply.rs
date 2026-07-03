@@ -12,7 +12,8 @@ use bbb_protocol::packets::{
 };
 
 use crate::{
-    advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
+    advance_cobweb_place_particle_randoms,
+    advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos, JukeboxLevelEventState,
     LevelEventSoundRandomState, LocalSoundEventState, RavagerRoarParticleState,
     SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
@@ -766,18 +767,32 @@ impl WorldStore {
             event.event_type,
             VAULT_ACTIVATE_LEVEL_EVENT | VAULT_DEACTIVATE_LEVEL_EVENT
         ) {
+            let event_pos = BlockPos {
+                x: event.pos.x,
+                y: event.pos.y,
+                z: event.pos.z,
+            };
             let vault_block_entity_at_event_pos = event.event_type == VAULT_ACTIVATE_LEVEL_EVENT
-                && self.block_entity_type_id_at(BlockPos {
-                    x: event.pos.x,
-                    y: event.pos.y,
-                    z: event.pos.z,
-                }) == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID);
+                && self.block_entity_type_id_at(event_pos)
+                    == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID);
+            let vault_connection_target_count = if vault_block_entity_at_event_pos {
+                self.vault_connection_particle_state(event_pos)
+                    .map(|state| state.targets.len())
+                    .unwrap_or(0)
+            } else {
+                0
+            };
             let should_advance_particle_random =
                 event.event_type == VAULT_DEACTIVATE_LEVEL_EVENT || vault_block_entity_at_event_pos;
             let particles_consumed_random = effects.level_event_particles(self, &event, random);
             if should_advance_particle_random && !particles_consumed_random {
                 match event.event_type {
-                    VAULT_ACTIVATE_LEVEL_EVENT => advance_vault_activation_particle_randoms(random),
+                    VAULT_ACTIVATE_LEVEL_EVENT => {
+                        advance_vault_activation_particle_randoms_with_connections(
+                            random,
+                            vault_connection_target_count,
+                        )
+                    }
                     VAULT_DEACTIVATE_LEVEL_EVENT => {
                         advance_vault_deactivation_particle_randoms(random)
                     }

@@ -459,6 +459,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     synced/default fuse 元数据提交：entity tick clock 推进后，post-decrement fuse
     仍为正的 TNT 每个 advanced tick 在 `x, y + 0.5, z` 生成一个
     `minecraft:smoke`，速度为 0；
+    vault activation event-3015 现在解析 vault block-entity
+    `shared_data.connected_players` / `connected_particles_range`，按方块
+    `facing` 的 keyhole 位置向 in-range loaded player 生成
+    `minecraft:vault_connection` 粒子，并在 cage 粒子和 activate sound 前保持
+    vanilla 随机消费顺序；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 TakeItemEntity `ItemPickupParticle` runtime/lifecycle、SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
