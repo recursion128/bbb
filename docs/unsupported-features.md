@@ -271,8 +271,12 @@ When an agent does any of the following, update this file in the same slice:
         current position, with `Entity.getSoundSource()`-shaped source mapping
       - `ClientboundTakeItemEntity` now records and dispatches vanilla item /
         experience-orb pickup sounds at the picked entity position before the
-        world removes or shrinks the entity; the vanilla `ItemPickupParticle`
-        remains part of the deferred player-coupled particle emitter work
+        world removes or shrinks the entity; native also submits the vanilla
+        `ItemPickupParticle` runtime command before that mutation, and the
+        renderer tracks its `ITEM_PICKUP` group order, 3-tick lifetime, target
+        midpoint following, and quadratic extract interpolation. Rendering the
+        carried `EntityRenderState` through the item-pickup group remains a
+        deferred GPU entity-submit slice.
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
@@ -425,7 +429,12 @@ When an agent does any of the following, update this file in the same slice:
       `Monster` / default `Entity` branches covered).
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
-      before world mutation removes or shrinks the entity.
+      before world mutation removes or shrinks the entity. The same packet now
+      emits a synthetic `minecraft:item_pickup` particle command with the
+      source entity position / delta movement, target midpoint source, and
+      pre-shrink item stack summary; renderer runtime keeps it in the vanilla
+      `ITEM_PICKUP` group and advances the 3-tick target-following lifetime.
+      GPU submission of the carried entity render state is still deferred.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant

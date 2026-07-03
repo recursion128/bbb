@@ -47,7 +47,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos, LocalPlayerPoseState,
-    RegistryPacketEntry, WorldBlockSoundProfile, WorldStore,
+    RegistryPacketEntry, TakeItemEntityPickupParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -1374,6 +1374,87 @@ fn take_item_entity_event_emits_pickup_sounds() {
         world.last_sound().unwrap().sound.location.as_deref(),
         Some("minecraft:entity.item.pickup")
     );
+}
+
+#[test]
+fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
+    let (tx, mut rx) = mpsc::channel(5);
+    let mut item = protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_ITEM_ID);
+    item.position = ProtocolVec3d {
+        x: 1.0,
+        y: 64.0,
+        z: -2.0,
+    };
+    item.delta_movement = ProtocolVec3d {
+        x: 0.1,
+        y: 0.2,
+        z: -0.3,
+    };
+    let mut target = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    target.position = ProtocolVec3d {
+        x: 4.0,
+        y: 70.0,
+        z: 8.0,
+    };
+    for packet in [
+        PlayClientbound::AddEntity(item),
+        PlayClientbound::SetEntityData(SetEntityData {
+            id: 10,
+            values: vec![EntityDataValue {
+                data_id: 8,
+                serializer_id: 7,
+                value: EntityDataValueKind::ItemStack(item_stack(42, 5)),
+            }],
+        }),
+        PlayClientbound::AddEntity(target),
+        PlayClientbound::TakeItemEntity(bbb_protocol::packets::TakeItemEntity {
+            item_id: 10,
+            player_id: 20,
+            amount: 5,
+        }),
+    ] {
+        tx.try_send(NetEvent::Play(packet)).unwrap();
+    }
+    drop(tx);
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut random,
+        ),
+        4
+    );
+
+    assert_eq!(particles.take_item_entity_pickup_states.len(), 1);
+    let state = &particles.take_item_entity_pickup_states[0];
+    assert_eq!(state.item_entity_id, 10);
+    assert_eq!(state.item_entity_type_id, VANILLA_ENTITY_TYPE_ITEM_ID);
+    assert_eq!(state.item_position.x, 1.0);
+    assert_eq!(state.item_position.y, 64.0);
+    assert_eq!(state.item_position.z, -2.0);
+    assert_eq!(state.item_delta_movement.x, 0.1);
+    assert_eq!(state.item_delta_movement.y, 0.2);
+    assert_eq!(state.item_delta_movement.z, -0.3);
+    assert_eq!(state.target_entity_id, 20);
+    assert_eq!(state.target_position.x, 4.0);
+    assert_eq!(state.target_position.y, 70.0);
+    assert_eq!(state.target_position.z, 8.0);
+    assert_close(state.target_eye_height, 1.62);
+    assert_eq!(state.item_stack, Some(item_stack(42, 5)));
+    assert!(world.probe_entity(10).is_none());
+    assert_eq!(world.counters().take_item_entities_removed, 1);
 }
 
 #[test]
@@ -7847,6 +7928,7 @@ struct RecordingParticleSink {
     firework_empty_explosion_positions: Vec<[f64; 3]>,
     firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
+    take_item_entity_pickup_states: Vec<TakeItemEntityPickupParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -7924,6 +8006,16 @@ impl ParticleEventSink for RecordingParticleSink {
             missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()
         };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_take_item_entity_pickup_particles(
+        &mut self,
+        state: &TakeItemEntityPickupParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.take_item_entity_pickup_states.push(state.clone());
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
     }

@@ -15,7 +15,7 @@ use crate::{
     advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos, JukeboxLevelEventState,
     LevelEventSoundRandomState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, VehicleMoveReport, WorldStore,
+    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -98,6 +98,12 @@ pub trait PlayApplyEffects {
         _entity_id: i32,
         _kind: EntityTrackingEmitterParticleKind,
         _lifetime_ticks: u32,
+    ) {
+    }
+    fn take_item_entity_pickup_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: &TakeItemEntityPickupParticleState,
     ) {
     }
     /// Spawn level-event particles through a sink. Return `true` when the sink
@@ -354,13 +360,15 @@ impl WorldStore {
                     .take_item_entity_pickup_sound_with_random(update.item_id, || {
                         random.next_float()
                     });
-                if self.apply_take_item_entity(update) {
-                    if let Some(state) =
-                        pickup_sound.map(|state| self.record_positioned_sound(state))
-                    {
-                        effects.positioned_sound(&state);
-                    }
+                let pickup_particles =
+                    self.take_item_entity_pickup_particle_state(update.item_id, update.player_id);
+                if let Some(state) = pickup_sound.map(|state| self.record_positioned_sound(state)) {
+                    effects.positioned_sound(&state);
                 }
+                if let Some(state) = pickup_particles.as_ref() {
+                    effects.take_item_entity_pickup_particles(self, state);
+                }
+                self.apply_take_item_entity(update);
             }
             PlayClientbound::SetPassengers(update) => {
                 self.apply_set_passengers(update);

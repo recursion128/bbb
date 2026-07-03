@@ -2401,6 +2401,12 @@ impl EntityStore {
         self.item_stacks_for_entity_types(&[VANILLA_ENTITY_TYPE_ITEM_ID])
     }
 
+    pub(crate) fn item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        item_entity_render_stack(&metadata.data_values).cloned()
+    }
+
     /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the
     /// facing wall, the `0..=7` item rotation, glow/invisible flags, the framed item, and framed map id.
     /// Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).

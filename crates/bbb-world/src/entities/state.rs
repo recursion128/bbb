@@ -8,5 +8,6 @@ pub use crate::entities::{
     FireworkRocketItemState, GuardianBeamSource, HurtingProjectileState, ItemEntityStackState,
     ItemFrameFacing, ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
     OminousItemSpawnerItemState, PolarBearStandingAnimationState, PrimedTntSmokeParticleState,
-    ProjectilePowerUpdateState, VehicleMoveReport, WolfArmorCrackiness,
+    ProjectilePowerUpdateState, TakeItemEntityPickupParticleState, VehicleMoveReport,
+    WolfArmorCrackiness,
 };

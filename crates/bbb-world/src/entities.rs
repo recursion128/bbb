@@ -321,6 +321,19 @@ pub struct EntityTransformState {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TakeItemEntityPickupParticleState {
+    pub item_entity_id: i32,
+    pub item_entity_type_id: i32,
+    pub item_position: EntityVec3,
+    pub item_delta_movement: EntityVec3,
+    pub target_entity_id: i32,
+    pub target_position: EntityVec3,
+    pub target_eye_height: f32,
+    #[serde(default)]
+    pub item_stack: Option<ProtocolItemStackSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
     pub entity_type_id: i32,
@@ -1789,6 +1802,40 @@ impl WorldStore {
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
         self.entities.transform_state(id)
+    }
+
+    pub fn take_item_entity_pickup_particle_state(
+        &self,
+        item_entity_id: i32,
+        target_entity_id: i32,
+    ) -> Option<TakeItemEntityPickupParticleState> {
+        let item = self.probe_entity_transform(item_entity_id)?;
+        let target = self
+            .probe_entity_camera_pose(target_entity_id)
+            .map(|pose| (pose.id, pose.position, pose.eye_height))
+            .or_else(|| {
+                let local_id = self.local_player_id()?;
+                let pose = self.local_player_pose()?;
+                Some((
+                    local_id,
+                    entity_vec3(pose.position),
+                    pose.eye_height() as f32,
+                ))
+            })?;
+        let item_stack = (item.entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
+            .then(|| self.entities.item_stack_for_entity(item_entity_id))
+            .flatten();
+
+        Some(TakeItemEntityPickupParticleState {
+            item_entity_id,
+            item_entity_type_id: item.entity_type_id,
+            item_position: item.position,
+            item_delta_movement: item.delta_movement,
+            target_entity_id: target.0,
+            target_position: target.1,
+            target_eye_height: target.2,
+            item_stack,
+        })
     }
 
     pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {

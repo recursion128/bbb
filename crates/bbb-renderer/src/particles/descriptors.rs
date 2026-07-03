@@ -57,6 +57,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     Firefly,
     FallingLeaves,
     FallingDust,
+    ItemPickup,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1927,6 +1928,17 @@ impl ParticleDescriptor {
                 "BreakingItemParticle.SnowballProvider",
                 ParticleInitialVelocityDescriptor::ParticleConstructorZero,
             ),
+            "minecraft:item_pickup" => Self {
+                provider: "ItemPickupParticle",
+                lifetime: ParticleLifetimeDescriptor::Fixed(3),
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             _ => Self {
                 provider: "Particle",
                 lifetime: ParticleLifetimeDescriptor::BaseParticle,
@@ -2026,6 +2038,7 @@ impl ParticleDescriptor {
                 ParticleTickMotionDescriptor::FallingLeaves
             }
             "FallingDustParticle.Provider" => ParticleTickMotionDescriptor::FallingDust,
+            "ItemPickupParticle" => ParticleTickMotionDescriptor::ItemPickup,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }

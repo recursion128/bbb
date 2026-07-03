@@ -32,6 +32,8 @@ const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
 const LAVA_CHILD_SMOKE_PARTICLE_ID: &str = "minecraft:smoke";
 const HUGE_EXPLOSION_CHILD_PARTICLE_ID: &str = "minecraft:explosion";
 const GUST_CHILD_PARTICLE_ID: &str = "minecraft:gust";
+const ITEM_PICKUP_PARTICLE_ID: &str = "minecraft:item_pickup";
+const ITEM_PICKUP_PARTICLE_LIFETIME_TICKS: u32 = 3;
 const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
 const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
 const FALLING_LEAVES_ACCELERATION_SCALE: f64 = 0.0025;
@@ -340,6 +342,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub(crate) option_item: Option<ParticleItemOptionState>,
+    #[serde(default)]
+    pub(crate) item_pickup_previous_target: Option<[f64; 3]>,
+    #[serde(default)]
+    pub(crate) item_pickup_target: Option<[f64; 3]>,
     #[serde(default)]
     pub(crate) atlas_uv_sub_rect: Option<ParticleAtlasUvSubRect>,
 }
@@ -1137,6 +1143,11 @@ impl ParticleInstance {
             DEFAULT_PARTICLE_COLLISION_WIDTH,
             DEFAULT_PARTICLE_COLLISION_HEIGHT,
         ]);
+        let item_pickup_target = if command.particle_id == ITEM_PICKUP_PARTICLE_ID {
+            command.option_target.or(Some(position))
+        } else {
+            None
+        };
         let mut instance = Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -1205,6 +1216,8 @@ impl ParticleInstance {
             option_roll: command.option_roll,
             option_block: command.option_block,
             option_item: command.option_item,
+            item_pickup_previous_target: item_pickup_target,
+            item_pickup_target,
             atlas_uv_sub_rect,
         };
         instance.apply_constructor_tick_on_spawn();
@@ -1612,6 +1625,9 @@ impl ParticleInstance {
                 self.move_particle(self.velocity, collide);
                 self.velocity[1] = (self.velocity[1] - 0.003).max(-0.14);
             }
+            ParticleTickMotionDescriptor::ItemPickup => {
+                self.tick_item_pickup(entity_target_contexts);
+            }
         }
     }
 
@@ -1763,6 +1779,21 @@ impl ParticleInstance {
         self.velocity[2] *= friction;
     }
 
+    fn tick_item_pickup(&mut self, entity_target_contexts: &[ParticleEntityTargetContext]) {
+        let current_target = self
+            .item_pickup_target
+            .or(self.option_target)
+            .unwrap_or(self.position);
+        self.item_pickup_previous_target = Some(current_target);
+        self.item_pickup_target = Some(
+            self.item_pickup_target_from_context(entity_target_contexts)
+                .unwrap_or(current_target),
+        );
+        if self.age_ticks.saturating_add(1) >= ITEM_PICKUP_PARTICLE_LIFETIME_TICKS {
+            self.removed = true;
+        }
+    }
+
     fn update_sprite_from_age(&mut self) {
         if self.sprite_selection != ParticleSpriteSelection::Age {
             return;
@@ -1853,6 +1884,49 @@ impl ParticleInstance {
                     context.position[2],
                 ]
             })
+    }
+
+    fn item_pickup_target_from_context(
+        &self,
+        contexts: &[ParticleEntityTargetContext],
+    ) -> Option<[f64; 3]> {
+        let source = self.option_entity_target_source?;
+        contexts
+            .iter()
+            .find(|context| context.entity_id == source.entity_id)
+            .map(|context| {
+                [
+                    context.position[0],
+                    context.position[1] + f64::from(source.y_offset),
+                    context.position[2],
+                ]
+            })
+    }
+
+    #[cfg(test)]
+    fn item_pickup_position_at_partial_tick(&self, partial_tick: f32) -> Option<[f64; 3]> {
+        if self.render_group != ParticleRenderGroup::ItemPickup {
+            return None;
+        }
+        let partial_tick = partial_tick.clamp(0.0, 1.0);
+        let time = ((self.age_ticks as f32 + partial_tick)
+            / ITEM_PICKUP_PARTICLE_LIFETIME_TICKS as f32)
+            .powi(2);
+        let previous_target = self
+            .item_pickup_previous_target
+            .or(self.item_pickup_target)
+            .or(self.option_target)?;
+        let target = self.item_pickup_target.or(self.option_target)?;
+        let target = [
+            lerp_f64(f64::from(partial_tick), previous_target[0], target[0]),
+            lerp_f64(f64::from(partial_tick), previous_target[1], target[1]),
+            lerp_f64(f64::from(partial_tick), previous_target[2], target[2]),
+        ];
+        Some([
+            lerp_f64(f64::from(time), self.start_position[0], target[0]),
+            lerp_f64(f64::from(time), self.start_position[1], target[1]),
+            lerp_f64(f64::from(time), self.start_position[2], target[2]),
+        ])
     }
 
     fn update_player_cloud_motion(&mut self, context: Option<ParticleLocalPlayerMotionContext>) {
@@ -2929,6 +3003,7 @@ fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32
 
 fn particle_render_group_for_particle(particle_id: &str) -> ParticleRenderGroup {
     match particle_id {
+        ITEM_PICKUP_PARTICLE_ID => ParticleRenderGroup::ItemPickup,
         "minecraft:elder_guardian" => ParticleRenderGroup::ElderGuardians,
         _ => ParticleRenderGroup::SingleQuads,
     }
@@ -3206,6 +3281,84 @@ mod tests {
         assert_eq!(summary.intaken_instances, 0);
         assert_eq!(summary.active_instances, 1);
         assert_eq!(particles.active_instances()[0].age_ticks, 3);
+    }
+
+    #[test]
+    fn particle_runtime_item_pickup_tracks_target_midpoint_and_expires_on_third_tick() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![item_pickup_spawn_command()],
+            ..ParticleSpawnBatch::default()
+        });
+        let intake = particles.advance(0);
+        assert_eq!(intake.intaken_instances, 1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.particle_id, ITEM_PICKUP_PARTICLE_ID);
+        assert_eq!(instance.render_group, ParticleRenderGroup::ItemPickup);
+        assert_eq!(
+            instance.tick_motion,
+            ParticleTickMotionDescriptor::ItemPickup
+        );
+        assert_eq!(instance.lifetime_ticks, ITEM_PICKUP_PARTICLE_LIFETIME_TICKS);
+        assert_eq!(instance.start_position, [1.0, 64.0, -2.0]);
+        assert_close3(
+            instance.item_pickup_previous_target.unwrap(),
+            [4.0, 70.8, 8.0],
+        );
+        assert_close3(instance.item_pickup_target.unwrap(), [4.0, 70.8, 8.0]);
+        assert_eq!(
+            instance.option_item,
+            Some(ParticleItemOptionState {
+                item_id: 42,
+                count: 5,
+                component_patch_len: 0,
+            })
+        );
+
+        particles.advance_with_world_and_particle_contexts(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            None,
+            &[ParticleEntityTargetContext {
+                entity_id: 20,
+                position: [6.0, 71.0, -4.0],
+            }],
+        );
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(
+            instance.item_pickup_previous_target.unwrap(),
+            [4.0, 70.8, 8.0],
+        );
+        assert_close3(
+            instance.item_pickup_target.unwrap(),
+            [6.0, 71.0 + f64::from(0.8_f32), -4.0],
+        );
+        let target = [
+            lerp_f64(0.5, 4.0, 6.0),
+            lerp_f64(0.5, 70.8, 71.0 + f64::from(0.8_f32)),
+            lerp_f64(0.5, 8.0, -4.0),
+        ];
+        let time = ((1.0_f64 + 0.5) / 3.0).powi(2);
+        assert_close3(
+            instance
+                .item_pickup_position_at_partial_tick(0.5)
+                .expect("item pickup particle has an extract position"),
+            [
+                lerp_f64(time, 1.0, target[0]),
+                lerp_f64(time, 64.0, target[1]),
+                lerp_f64(time, -2.0, target[2]),
+            ],
+        );
+
+        particles.advance(1);
+        assert_eq!(particles.active_instances()[0].age_ticks, 2);
+        let expired = particles.advance(1);
+        assert_eq!(expired.expired_instances, 1);
+        assert_eq!(expired.active_instances, 0);
     }
 
     #[test]
@@ -9125,6 +9278,8 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+            item_pickup_previous_target: None,
+            item_pickup_target: None,
             atlas_uv_sub_rect: None,
         }
     }
@@ -9157,6 +9312,26 @@ mod tests {
             option_block: None,
             option_item: None,
         }
+    }
+
+    fn item_pickup_spawn_command() -> ParticleSpawnCommand {
+        let mut command = spawn_command(ITEM_PICKUP_PARTICLE_ID, 1.0);
+        command.particle_type_id = -1;
+        command.sprite_ids.clear();
+        command.position = [1.0, 64.0, -2.0];
+        command.velocity = [0.1, 0.2, 0.3];
+        command.override_limiter = true;
+        command.option_target = Some([4.0, 70.8, 8.0]);
+        command.option_entity_target_source = Some(ParticleEntityTargetSource {
+            entity_id: 20,
+            y_offset: 0.8,
+        });
+        command.option_item = Some(ParticleItemOptionState {
+            item_id: 42,
+            count: 5,
+            component_patch_len: 0,
+        });
+        command
     }
 
     fn water_fluid_surface_sample() -> ParticleBlockFluidSurfaceSample {

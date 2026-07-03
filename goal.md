@@ -419,6 +419,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ClientPacketListener.handleAnimate` 生成 crit / enchanted-hit
     `TrackingEmitter`，默认 3 tick，每 tick 16 次单位球采样，并复用实体当前
     AABB width/height；
+    `ClientboundTakeItemEntity` 现在按 vanilla 在 shrink/remove 前创建
+    `ItemPickupParticle` runtime command：source 使用被拾取实体当前位置/速度，
+    target 使用目标 living entity 或本地玩家 fallback 的 `(feet + eyeY) / 2`
+    midpoint，item entity 传入 pre-shrink item stack；renderer 将其纳入
+    `ITEM_PICKUP` group，按 3 tick lifetime、target old/current 跟随和
+    `(life + partial) / 3` 平方插值推进。实际 carried `EntityRenderState` GPU
+    submit 仍是后续 entity-submit 渲染面；
     `ClientboundGameEvent` 的 elder-guardian effect 现在按 vanilla 在本地玩家
     脚部位置生成 `minecraft:elder_guardian` 粒子，并在 param floor 为 1 时播放
     `minecraft:entity.elder_guardian.curse`；同组 game event 的
@@ -448,7 +455,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     仍为正的 TNT 每个 advanced tick 在 `x, y + 0.5, z` 生成一个
     `minecraft:smoke`，速度为 0；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
-    player-coupled emitter（含 TakeItemEntity `ItemPickupParticle`；不含 SpellParticle、本地 PlayerCloud 牵引、
+    player-coupled emitter（不含 TakeItemEntity `ItemPickupParticle` runtime/lifecycle、SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
     GameEvent elder-guardian 粒子、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
     collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle

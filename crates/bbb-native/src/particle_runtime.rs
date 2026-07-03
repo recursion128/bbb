@@ -22,7 +22,7 @@ use bbb_renderer::{
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
-    LevelEventSoundRandomState,
+    LevelEventSoundRandomState, TakeItemEntityPickupParticleState,
 };
 
 use crate::{
@@ -31,6 +31,8 @@ use crate::{
 };
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
+const ITEM_PICKUP_PARTICLE_TYPE_ID: i32 = -1;
+const ITEM_PICKUP_PARTICLE_ID: &str = "minecraft:item_pickup";
 
 pub(crate) trait ParticleEventSink {
     fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
@@ -56,6 +58,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_tracking_emitter_particles(
         &mut self,
         state: TrackingEmitterParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_take_item_entity_pickup_particles(
+        &mut self,
+        state: &TakeItemEntityPickupParticleState,
     ) -> ParticleSpawnBatch;
 }
 
@@ -270,6 +276,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: TrackingEmitterParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.tracking_emitter_particle_batch(state)
+    }
+
+    fn spawn_take_item_entity_pickup_particles(
+        &mut self,
+        state: &TakeItemEntityPickupParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.take_item_entity_pickup_particle_batch(state)
     }
 }
 
@@ -1998,6 +2011,56 @@ impl ParticleCommandResolver {
         batch
     }
 
+    fn take_item_entity_pickup_particle_batch(
+        &mut self,
+        state: &TakeItemEntityPickupParticleState,
+    ) -> ParticleSpawnBatch {
+        let target_y_offset = state.target_eye_height * 0.5;
+        ParticleSpawnBatch {
+            commands: vec![ParticleSpawnCommand {
+                particle_type_id: ITEM_PICKUP_PARTICLE_TYPE_ID,
+                particle_id: ITEM_PICKUP_PARTICLE_ID.to_string(),
+                sprite_ids: Vec::new(),
+                position: [
+                    state.item_position.x,
+                    state.item_position.y,
+                    state.item_position.z,
+                ],
+                velocity: [
+                    state.item_delta_movement.x,
+                    state.item_delta_movement.y,
+                    state.item_delta_movement.z,
+                ],
+                override_limiter: true,
+                always_show: false,
+                raw_options_len: 0,
+                initial_delay_ticks: 0,
+                child_spawn_templates: Vec::new(),
+                option_color: None,
+                option_color_to: None,
+                option_scale: None,
+                option_power: None,
+                option_target: Some([
+                    state.target_position.x,
+                    state.target_position.y + f64::from(target_y_offset),
+                    state.target_position.z,
+                ]),
+                option_entity_target_source: Some(ParticleEntityTargetSource {
+                    entity_id: state.target_entity_id,
+                    y_offset: target_y_offset,
+                }),
+                option_duration_ticks: None,
+                option_roll: None,
+                option_block: None,
+                option_item: state
+                    .item_stack
+                    .as_ref()
+                    .and_then(particle_item_option_state_for_stack),
+            }],
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     fn particle_in_block_batch(
         &self,
         event: &LevelEvent,
@@ -2603,6 +2666,20 @@ struct ParticleOptionRenderState {
 pub(crate) struct VibrationEntityPositionSource {
     pub(crate) entity_id: i32,
     pub(crate) y_offset: f32,
+}
+
+fn particle_item_option_state_for_stack(
+    stack: &ItemStackSummary,
+) -> Option<ParticleItemOptionState> {
+    let item_id = stack.item_id?;
+    if item_id < 0 || stack.count <= 0 {
+        return None;
+    }
+    Some(ParticleItemOptionState {
+        item_id,
+        count: stack.count,
+        component_patch_len: usize::from(stack.component_patch != Default::default()),
+    })
 }
 
 fn particle_option_render_state(
@@ -4595,6 +4672,68 @@ mod tests {
             ],
             false,
             0,
+        );
+    }
+
+    #[test]
+    fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
+        let mut resolver = test_resolver(0);
+        let state = TakeItemEntityPickupParticleState {
+            item_entity_id: 10,
+            item_entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ITEM_ID,
+            item_position: bbb_world::EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            item_delta_movement: bbb_world::EntityVec3 {
+                x: 0.1,
+                y: 0.2,
+                z: -0.3,
+            },
+            target_entity_id: 20,
+            target_position: bbb_world::EntityVec3 {
+                x: 4.0,
+                y: 70.0,
+                z: 8.0,
+            },
+            target_eye_height: 1.62,
+            item_stack: Some(ItemStackSummary {
+                item_id: Some(42),
+                count: 5,
+                component_patch: Default::default(),
+            }),
+        };
+
+        let batch = resolver.take_item_entity_pickup_particle_batch(&state);
+
+        assert_eq!(batch.commands.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, ITEM_PICKUP_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, ITEM_PICKUP_PARTICLE_ID);
+        assert!(command.sprite_ids.is_empty());
+        assert_eq!(command.position, [1.0, 64.0, -2.0]);
+        assert_eq!(command.velocity, [0.1, 0.2, -0.3]);
+        assert!(command.override_limiter);
+        assert!(!command.always_show);
+        assert_eq!(command.raw_options_len, 0);
+        let target = command.option_target.expect("pickup target");
+        assert_eq!([target[0], target[2]], [4.0, 8.0]);
+        assert_close(target[1], 70.0 + f64::from(1.62_f32 * 0.5));
+        assert_eq!(
+            command.option_entity_target_source,
+            Some(ParticleEntityTargetSource {
+                entity_id: 20,
+                y_offset: 1.62 * 0.5,
+            })
+        );
+        assert_eq!(
+            command.option_item,
+            Some(ParticleItemOptionState {
+                item_id: 42,
+                count: 5,
+                component_patch_len: 0,
+            })
         );
     }
 
