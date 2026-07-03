@@ -1011,7 +1011,7 @@ pub(crate) fn first_person_item_models(
     if [main_stack, off_stack]
         .into_iter()
         .flatten()
-        .any(|stack| !ordinary_first_person_item_stack(stack, item_runtime))
+        .any(|stack| !supported_first_person_item_stack(stack, item_runtime))
     {
         return models;
     }
@@ -1045,8 +1045,14 @@ pub(crate) fn first_person_item_models(
             .map_or(0.0, |swing| swing.attack_anim);
         let mut attach =
             first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
-        if first_person_stack_uses_whack_swing(stack) {
-            attach = first_person_apply_whack_swing(attach, arm_left, attack);
+        match first_person_stack_swing_animation(stack, item_runtime) {
+            FirstPersonSwingAnimation::None => {}
+            FirstPersonSwingAnimation::Whack => {
+                attach = first_person_apply_whack_swing(attach, arm_left, attack);
+            }
+            FirstPersonSwingAnimation::Stab => {
+                attach = first_person_apply_stab_swing(attach, arm_left, attack);
+            }
         }
         bake_item_stack_at_transform(
             stack,
@@ -1079,19 +1085,18 @@ pub(crate) fn first_person_item_models(
     models
 }
 
-fn ordinary_first_person_item_stack(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FirstPersonSwingAnimation {
+    None,
+    Whack,
+    Stab,
+}
+
+fn supported_first_person_item_stack(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> bool {
     if stack.component_patch.map_id.is_some() {
-        return false;
-    }
-    if !first_person_stack_removes_swing_animation(stack)
-        && stack
-            .component_patch
-            .swing_animation
-            .is_some_and(|swing| swing.animation_type == SwingAnimationTypeSummary::Stab)
-    {
         return false;
     }
     let Some(item_id) = stack.item_id else {
@@ -1108,27 +1113,46 @@ fn ordinary_first_person_item_stack(
             | "minecraft:spyglass"
             | "minecraft:shield"
             | "minecraft:trident"
-            | "minecraft:wooden_spear"
-            | "minecraft:stone_spear"
-            | "minecraft:copper_spear"
-            | "minecraft:iron_spear"
-            | "minecraft:golden_spear"
-            | "minecraft:diamond_spear"
-            | "minecraft:netherite_spear"
             | "minecraft:brush"
             | "minecraft:bundle"
             | "minecraft:goat_horn"
     )
 }
 
-fn first_person_stack_uses_whack_swing(stack: &ItemStackSummary) -> bool {
+fn first_person_stack_swing_animation(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> FirstPersonSwingAnimation {
     if first_person_stack_removes_swing_animation(stack) {
-        return true;
+        return FirstPersonSwingAnimation::Whack;
     }
-    match stack.component_patch.swing_animation {
-        Some(swing_animation) => swing_animation.animation_type == SwingAnimationTypeSummary::Whack,
-        None => true,
+    if let Some(swing_animation) = stack.component_patch.swing_animation {
+        return match swing_animation.animation_type {
+            SwingAnimationTypeSummary::None => FirstPersonSwingAnimation::None,
+            SwingAnimationTypeSummary::Whack => FirstPersonSwingAnimation::Whack,
+            SwingAnimationTypeSummary::Stab => FirstPersonSwingAnimation::Stab,
+        };
     }
+    stack
+        .item_id
+        .and_then(|item_id| item_runtime.item_resource_id(item_id))
+        .filter(|resource_id| first_person_resource_id_is_spear(resource_id))
+        .map_or(FirstPersonSwingAnimation::Whack, |_| {
+            FirstPersonSwingAnimation::Stab
+        })
+}
+
+fn first_person_resource_id_is_spear(resource_id: &str) -> bool {
+    matches!(
+        resource_id,
+        "minecraft:wooden_spear"
+            | "minecraft:stone_spear"
+            | "minecraft:copper_spear"
+            | "minecraft:iron_spear"
+            | "minecraft:golden_spear"
+            | "minecraft:diamond_spear"
+            | "minecraft:netherite_spear"
+    )
 }
 
 fn first_person_stack_removes_swing_animation(stack: &ItemStackSummary) -> bool {
@@ -1187,6 +1211,49 @@ fn first_person_apply_whack_swing(transform: Mat4, arm_left: bool, attack: f32) 
         * Mat4::from_rotation_z((invert * xz_swing_rotation * -20.0).to_radians())
         * Mat4::from_rotation_x((xz_swing_rotation * -80.0).to_radians())
         * Mat4::from_rotation_y((invert * -45.0).to_radians())
+}
+
+fn first_person_apply_stab_swing(transform: Mat4, arm_left: bool, attack: f32) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let starting_amount = first_person_ease_in_out_sine(first_person_progress(attack, 0.0, 0.05));
+    let middle_amount = first_person_ease_out_back(first_person_progress(attack, 0.05, 0.2));
+    let ending_amount = first_person_ease_in_out_expo(first_person_progress(attack, 0.4, 1.0));
+
+    transform
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.1 * (starting_amount - middle_amount),
+            -0.075 * (starting_amount - ending_amount),
+            0.65 * (starting_amount - middle_amount),
+        ))
+        * Mat4::from_rotation_x((-70.0 * (starting_amount - ending_amount)).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, -0.25 * (ending_amount - middle_amount)))
+}
+
+fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
+    ((value - start) / (end - start)).clamp(0.0, 1.0)
+}
+
+fn first_person_ease_in_out_sine(value: f32) -> f32 {
+    -((std::f32::consts::PI * value).cos() - 1.0) / 2.0
+}
+
+fn first_person_ease_out_back(value: f32) -> f32 {
+    1.0 + 2.70158 * (value - 1.0).powi(3) + 1.70158 * (value - 1.0).powi(2)
+}
+
+fn first_person_ease_in_out_expo(value: f32) -> f32 {
+    if value < 0.5 {
+        if value == 0.0 {
+            0.0
+        } else {
+            2.0_f32.powf(20.0 * value - 10.0) / 2.0
+        }
+    } else if value == 1.0 {
+        1.0
+    } else {
+        (2.0 - 2.0_f32.powf(-20.0 * value + 10.0)) / 2.0
+    }
 }
 
 fn first_person_camera_world_transform(pose: CameraPose) -> Mat4 {
@@ -3180,7 +3247,7 @@ mod tests {
     #[test]
     fn first_person_item_models_skip_using_and_special_paths() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
-        write_flat_item_runtime_fixture(&root, &["hand_item", "bow", "stab_item", "wooden_spear"]);
+        write_flat_item_runtime_fixture(&root, &["hand_item", "bow"]);
         let item_runtime =
             NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
         let hand_item = ItemStackSummary {
@@ -3190,20 +3257,6 @@ mod tests {
         };
         let bow = ItemStackSummary {
             item_id: item_runtime.item_protocol_id("minecraft:bow"),
-            count: 1,
-            component_patch: DataComponentPatchSummary::default(),
-        };
-        let mut stab = ItemStackSummary {
-            item_id: item_runtime.item_protocol_id("minecraft:stab_item"),
-            count: 1,
-            component_patch: DataComponentPatchSummary::default(),
-        };
-        stab.component_patch.swing_animation = Some(SwingAnimationSummary {
-            animation_type: SwingAnimationTypeSummary::Stab,
-            duration: 13,
-        });
-        let spear = ItemStackSummary {
-            item_id: item_runtime.item_protocol_id("minecraft:wooden_spear"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
@@ -3241,36 +3294,71 @@ mod tests {
         )
         .flat_meshes
         .is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
-        let mut stab_world = WorldStore::new();
-        stab_world.apply_set_player_inventory(SetPlayerInventory {
-            slot: 0,
-            item: stab,
+    #[test]
+    fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
+        let root = unique_item_model_temp_dir("first-person-stab-swing");
+        write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut patched_stab = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:stab_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        patched_stab.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
         });
-        assert!(first_person_item_models(
-            &stab_world,
-            Some(&item_runtime),
-            &TerrainTextureState::default(),
-            camera,
-            1.0,
-        )
-        .flat_meshes
-        .is_empty());
+        let default_spear = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:wooden_spear"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+        let assert_stab_moves = |item: ItemStackSummary, label: &str| {
+            let mut world = world_with_level_dimension("minecraft:overworld");
+            world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+            world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item });
 
-        let mut spear_world = WorldStore::new();
-        spear_world.apply_set_player_inventory(SetPlayerInventory {
-            slot: 0,
-            item: spear,
-        });
-        assert!(first_person_item_models(
-            &spear_world,
-            Some(&item_runtime),
-            &TerrainTextureState::default(),
-            camera,
-            1.0,
-        )
-        .flat_meshes
-        .is_empty());
+            let still = first_person_item_models(
+                &world,
+                Some(&item_runtime),
+                &TerrainTextureState::default(),
+                camera,
+                1.0,
+            );
+            assert_eq!(still.flat_meshes.len(), 1, "{label} should render");
+
+            assert!(world.apply_entity_animation(EntityAnimation { id: 1, action: 0 }));
+            world.advance_entity_client_animations(2);
+            let swinging = first_person_item_models(
+                &world,
+                Some(&item_runtime),
+                &TerrainTextureState::default(),
+                camera,
+                1.0,
+            );
+            assert_eq!(
+                swinging.flat_meshes.len(),
+                1,
+                "{label} should keep rendering"
+            );
+            assert_ne!(
+                still.flat_meshes[0], swinging.flat_meshes[0],
+                "{label} should receive vanilla SpearAnimations.firstPersonAttack"
+            );
+        };
+        assert_stab_moves(patched_stab, "stack-patch STAB");
+        assert_stab_moves(default_spear, "default spear STAB");
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -3332,6 +3420,7 @@ mod tests {
             * Mat4::from_rotation_y((-45.0_f32).to_radians());
         assert!(swung.abs_diff_eq(expected, 1.0e-5));
 
+        let runtime = NativeItemRuntime::empty_for_test();
         let mut none_stack = ItemStackSummary {
             item_id: Some(1),
             count: 1,
@@ -3341,12 +3430,52 @@ mod tests {
             animation_type: SwingAnimationTypeSummary::None,
             duration: 6,
         });
-        assert!(!first_person_stack_uses_whack_swing(&none_stack));
+        assert_eq!(
+            first_person_stack_swing_animation(&none_stack, &runtime),
+            FirstPersonSwingAnimation::None
+        );
 
         none_stack.component_patch.removed_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+        assert_eq!(
+            first_person_stack_swing_animation(&none_stack, &runtime),
+            FirstPersonSwingAnimation::Whack,
+            "removing swing_animation falls back to vanilla SwingAnimation.DEFAULT WHACK",
+        );
+    }
+
+    #[test]
+    fn first_person_stab_swing_transform_matches_vanilla_first_person_attack() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let attack = 0.1_f32;
+        let swung = first_person_apply_stab_swing(base, false, attack);
+        let starting_amount =
+            -((std::f32::consts::PI * first_person_progress(attack, 0.0, 0.05)).cos() - 1.0) / 2.0;
+        let middle_progress = first_person_progress(attack, 0.05, 0.2);
+        let middle_amount = 1.0
+            + 2.70158 * (middle_progress - 1.0).powi(3)
+            + 1.70158 * (middle_progress - 1.0).powi(2);
+        let ending_amount = 0.0;
+
+        let expected = base
+            * Mat4::from_translation(Vec3::new(
+                0.1 * (starting_amount - middle_amount),
+                -0.075 * (starting_amount - ending_amount),
+                0.65 * (starting_amount - middle_amount),
+            ))
+            * Mat4::from_rotation_x((-70.0 * (starting_amount - ending_amount)).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, -0.25 * (ending_amount - middle_amount)));
+        assert!(swung.abs_diff_eq(expected, 1.0e-5));
+
+        let left = first_person_apply_stab_swing(
+            first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, true, 0.0),
+            true,
+            attack,
+        );
+        let right_origin = swung.transform_point3(Vec3::ZERO);
+        let left_origin = left.transform_point3(Vec3::ZERO);
         assert!(
-            first_person_stack_uses_whack_swing(&none_stack),
-            "removing swing_animation falls back to vanilla SwingAnimation.DEFAULT WHACK"
+            (right_origin.x + left_origin.x).abs() < 1.0e-4,
+            "STAB x translation mirrors between arms: {right_origin:?} vs {left_origin:?}"
         );
     }
 

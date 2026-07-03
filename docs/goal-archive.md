@@ -1119,6 +1119,16 @@
     for ordinary WHACK stacks, respects explicit `NONE`, and keeps `STAB` on
     the deferred special path. Tests cover local-player swing sampling, vanilla
     transform math, mesh movement under a main-hand swing, and STAB rejection.
+  - [x] first-person STAB attack item transform：local vanilla 26.1
+    `ItemInHandRenderer` still applies `applyItemArmTransform` in the non-using
+    branch, but `ItemStack.getSwingAnimation().type() == STAB` then calls
+    `SpearAnimations.firstPersonAttack` instead of the WHACK swing. Native now
+    classifies stack patch STAB and default 26.1 spear resource ids as supported
+    first-person attack items, applies the vanilla start / middle / ending
+    easing translation and X rotation, and keeps explicit removed
+    `swing_animation` on the default WHACK fallback. Tests cover the STAB matrix
+    math, stack-patch STAB mesh movement, default spear mesh movement, and
+    explicit `NONE` / removed-component swing classification.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
