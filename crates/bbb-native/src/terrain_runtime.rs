@@ -10,7 +10,9 @@ use bbb_world::{ChunkPos, WorldCardinalLighting, WorldStore};
 use crate::camera_pose::camera_pose_from_world;
 
 mod textures;
-pub(crate) use textures::{load_terrain_textures, BlockRenderPosition, TerrainTextureState};
+pub(crate) use textures::{
+    load_terrain_textures, BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
+};
 
 const MAX_TERRAIN_UPLOAD_CHUNKS: usize = 49;
 const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);

@@ -2153,6 +2153,15 @@
     through `ItemModelResolver.updateForTopItem(..., GROUND, ...)` before
     reading `ItemStackRenderState.pickParticleMaterial(random)`. Full component
     patch decoding remains with the wider item-particle material follow-up.
+  - [x] biome-aware per-spawn BlockColors for terrain particles：native
+    `LevelParticles` handling now passes a world-backed biome sampler into
+    particle command resolution. `TerrainParticle` providers and
+    non-FallingBlock `falling_dust` compute layer-0 `BlockColors` at each
+    actual spawn position using vanilla's `BlockPos.containing(x, y, z)` owner;
+    terrain particles emit `0.6 * colorAsTerrainParticle`, while
+    `falling_dust` emits the raw tint before falling back to static mapColor.
+    Tests cover count-randomized spawns crossing biome boundaries, falling-dust
+    foliage tint, and the lightweight terrain particle tint catalog.
 
 ## P2：Terrain / Block Render Presentation
 

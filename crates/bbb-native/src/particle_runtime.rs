@@ -17,12 +17,13 @@ use bbb_renderer::{
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
-    block_name_should_spawn_terrain_particles, LevelEventSoundRandomState,
+    block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
+    LevelEventSoundRandomState,
 };
 
 use crate::{
     particle_registry::{vanilla_particle_type, ParticleTypeInfo},
-    terrain_runtime::TerrainTextureState,
+    terrain_runtime::{BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState},
 };
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
@@ -34,6 +35,7 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnBatch;
     fn spawn_level_event_particles(
         &mut self,
@@ -41,6 +43,10 @@ pub(crate) trait ParticleEventSink {
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch;
+}
+
+pub(crate) trait ParticleBiomeSampler {
+    fn biome_id_at(&self, pos: WorldBlockPos) -> Option<i32>;
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -198,9 +204,10 @@ impl ParticleEventSink for NativeParticleRuntime {
         &mut self,
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnBatch {
         self.resolver
-            .resolve_level_particles_with_context(packet, context)
+            .resolve_level_particles_with_context(packet, context, biome_sampler)
     }
 
     fn spawn_level_event_particles(
@@ -221,6 +228,7 @@ struct ParticleCommandResolver {
     terrain_particle_sprite_ids: HashMap<i32, String>,
     terrain_particle_tint_colors: HashMap<i32, [f32; 4]>,
     falling_dust_block_tint_colors: HashMap<i32, [f32; 4]>,
+    terrain_particle_tint_catalog: TerrainParticleTintCatalog,
     default_item_particle_sprite_ids: HashMap<i32, Vec<String>>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
@@ -357,6 +365,7 @@ impl ParticleCommandResolver {
             terrain_particle_sprite_ids: HashMap::new(),
             terrain_particle_tint_colors: HashMap::new(),
             falling_dust_block_tint_colors: HashMap::new(),
+            terrain_particle_tint_catalog: TerrainParticleTintCatalog::default(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
@@ -390,6 +399,7 @@ impl ParticleCommandResolver {
                     .map(|color| (block_state.id, color))
             })
             .collect();
+        self.terrain_particle_tint_catalog = textures.particle_tint_catalog();
     }
 
     fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
@@ -412,6 +422,7 @@ impl ParticleCommandResolver {
             terrain_particle_sprite_ids: HashMap::new(),
             terrain_particle_tint_colors: HashMap::new(),
             falling_dust_block_tint_colors: HashMap::new(),
+            terrain_particle_tint_catalog: TerrainParticleTintCatalog::default(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),
@@ -420,13 +431,18 @@ impl ParticleCommandResolver {
     }
 
     fn resolve_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch {
-        self.resolve_level_particles_with_context(packet, LevelParticleSpawnContext::default())
+        self.resolve_level_particles_with_context(
+            packet,
+            LevelParticleSpawnContext::default(),
+            None,
+        )
     }
 
     fn resolve_level_particles_with_context(
         &mut self,
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnBatch {
         if packet.count < 0 {
             return ParticleSpawnBatch::default();
@@ -495,6 +511,7 @@ impl ParticleCommandResolver {
                     raw_options_len,
                     initial_delay_ticks,
                     option_state,
+                    biome_sampler,
                 ));
             }
         } else {
@@ -526,6 +543,7 @@ impl ParticleCommandResolver {
                         raw_options_len,
                         initial_delay_ticks,
                         option_state,
+                        biome_sampler,
                     ));
                 }
             }
@@ -945,6 +963,7 @@ impl ParticleCommandResolver {
                         raw_options_len,
                         0,
                         option_state,
+                        None,
                     ));
                 }
             }
@@ -1004,6 +1023,7 @@ impl ParticleCommandResolver {
                     0,
                     0,
                     option_state,
+                    None,
                 ));
             }
         }
@@ -1031,6 +1051,7 @@ impl ParticleCommandResolver {
                     0,
                     0,
                     option_state,
+                    None,
                 ));
             }
         }
@@ -1203,6 +1224,7 @@ impl ParticleCommandResolver {
                 0,
                 0,
                 ParticleOptionRenderState::default(),
+                None,
             ));
         }
         batch
@@ -1241,6 +1263,7 @@ impl ParticleCommandResolver {
                     roll: Some(roll),
                     ..ParticleOptionRenderState::default()
                 },
+                None,
             ));
         }
     }
@@ -1460,6 +1483,7 @@ impl ParticleCommandResolver {
                 0,
                 0,
                 option_state,
+                None,
             ));
         }
 
@@ -1565,6 +1589,7 @@ impl ParticleCommandResolver {
                 raw_options_len,
                 0,
                 option_state,
+                None,
             ));
         }
     }
@@ -2075,6 +2100,7 @@ impl ParticleCommandResolver {
             0,
             0,
             ParticleOptionRenderState::default(),
+            None,
         )
     }
 
@@ -2089,6 +2115,7 @@ impl ParticleCommandResolver {
         raw_options_len: usize,
         initial_delay_ticks: u32,
         option_state: ParticleOptionRenderState,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnCommand {
         self.command_for_type(
             particle_type,
@@ -2100,6 +2127,7 @@ impl ParticleCommandResolver {
             raw_options_len,
             initial_delay_ticks,
             option_state,
+            biome_sampler,
         )
     }
 
@@ -2114,12 +2142,13 @@ impl ParticleCommandResolver {
         raw_options_len: usize,
         initial_delay_ticks: u32,
         option_state: ParticleOptionRenderState,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
         let sprite_ids = self.sprite_ids_for_command(particle_type.id, sprite_ids, option_state);
-        let option_color = option_state
-            .color
-            .or_else(|| self.tint_color_for_command(particle_type.id, option_state));
+        let option_color = option_state.color.or_else(|| {
+            self.tint_color_for_command(particle_type.id, option_state, position, biome_sampler)
+        });
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
             particle_id: particle_type.name.to_string(),
@@ -2180,20 +2209,59 @@ impl ParticleCommandResolver {
         &self,
         particle_type_id: i32,
         option_state: ParticleOptionRenderState,
+        position: Vec3d,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> Option<[f32; 4]> {
         let block_state_id = option_state.block?.block_state_id;
+        let block_pos = block_pos_containing(position);
+        let render_position = BlockRenderPosition {
+            x: block_pos.x,
+            y: block_pos.y,
+            z: block_pos.z,
+        };
+        let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
         match particle_type_id {
             BLOCK_PARTICLE_TYPE_ID
             | DUST_PILLAR_PARTICLE_TYPE_ID
-            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => self
-                .terrain_particle_tint_colors
-                .get(&block_state_id)
-                .copied(),
-            FALLING_DUST_PARTICLE_TYPE_ID => self
-                .falling_dust_block_tint_colors
-                .get(&block_state_id)
-                .copied()
-                .or_else(|| falling_dust_map_color_for_block_state_id(block_state_id)),
+            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
+                if !self
+                    .terrain_particle_tint_colors
+                    .contains_key(&block_state_id)
+                {
+                    return None;
+                }
+                self.terrain_particle_tint_catalog
+                    .terrain_particle_tint_color_for_block_state(
+                        block_state_id,
+                        biome_id,
+                        Some(render_position),
+                    )
+                    .or_else(|| {
+                        self.terrain_particle_tint_colors
+                            .get(&block_state_id)
+                            .copied()
+                    })
+            }
+            FALLING_DUST_PARTICLE_TYPE_ID => {
+                let block_tint = self
+                    .falling_dust_block_tint_colors
+                    .contains_key(&block_state_id)
+                    .then(|| {
+                        self.terrain_particle_tint_catalog
+                            .falling_dust_block_tint_color_for_block_state(
+                                block_state_id,
+                                biome_id,
+                                Some(render_position),
+                            )
+                    })
+                    .flatten()
+                    .or_else(|| {
+                        self.falling_dust_block_tint_colors
+                            .get(&block_state_id)
+                            .copied()
+                    });
+                block_tint.or_else(|| falling_dust_map_color_for_block_state_id(block_state_id))
+            }
             _ => None,
         }
     }
@@ -2220,6 +2288,14 @@ impl ParticleCommandResolver {
                 }]
             })
             .unwrap_or_default()
+    }
+}
+
+fn block_pos_containing(position: Vec3d) -> WorldBlockPos {
+    WorldBlockPos {
+        x: position.x.floor() as i32,
+        y: position.y.floor() as i32,
+        z: position.z.floor() as i32,
     }
 }
 
@@ -4103,7 +4179,10 @@ impl LegacyRandom {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_pack::{SpriteAnimation, SpriteAnimationFrame};
+    use bbb_pack::{
+        BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, GrassColorModifier,
+        SpriteAnimation, SpriteAnimationFrame,
+    };
     use std::{
         path::{Path, PathBuf},
         sync::atomic::{AtomicU64, Ordering},
@@ -4351,6 +4430,96 @@ mod tests {
         let marker_batch = resolver.resolve_level_particles(&marker);
         assert_eq!(marker_batch.len(), 1);
         assert_eq!(marker_batch.commands[0].option_color, None);
+    }
+
+    #[test]
+    fn terrain_particle_tint_samples_biome_at_each_spawn_position() {
+        let mut resolver = test_resolver(0);
+        let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+            test_biome_color_profile(
+                11,
+                [100, 110, 120],
+                [130, 140, 150],
+                [160, 170, 180],
+                [4, 5, 6],
+            ),
+        ]));
+        resolver.set_terrain_particle_sprite_ids(&textures);
+        let short_grass_id = test_block_state_id("minecraft:short_grass", []);
+        let sampler = SplitXBiomeSampler {
+            split_x: 0,
+            left_biome_id: 7,
+            right_biome_id: 11,
+        };
+        let mut packet = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 4);
+        packet.position.x = 0.0;
+        packet.offset.x = 8.0;
+        packet.offset.y = 0.0;
+        packet.offset.z = 0.0;
+        packet.max_speed = 0.0;
+        packet.particle.raw_options = block_particle_options(short_grass_id);
+
+        let batch = resolver.resolve_level_particles_with_context(
+            &packet,
+            LevelParticleSpawnContext::default(),
+            Some(&sampler),
+        );
+
+        assert_eq!(batch.len(), 4);
+        let mut saw_left = false;
+        let mut saw_right = false;
+        for command in &batch.commands {
+            let block_pos = block_pos_containing(Vec3d {
+                x: command.position[0],
+                y: command.position[1],
+                z: command.position[2],
+            });
+            let expected_color = if block_pos.x < 0 {
+                saw_left = true;
+                rgb_option_06(10, 20, 30)
+            } else {
+                saw_right = true;
+                rgb_option_06(100, 110, 120)
+            };
+            assert_eq!(command.option_color, Some(expected_color));
+        }
+        assert!(saw_left);
+        assert!(saw_right);
+    }
+
+    #[test]
+    fn falling_dust_tint_samples_biome_foliage_color_at_spawn_position() {
+        let mut resolver = test_resolver(0);
+        let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            test_biome_color_profile(3, [10, 20, 30], [40, 50, 60], [70, 80, 90], [4, 5, 6]),
+        ]));
+        resolver.set_terrain_particle_sprite_ids(&textures);
+        let oak_leaves_id = test_block_state_id(
+            "minecraft:oak_leaves",
+            [
+                ("distance", "1"),
+                ("persistent", "false"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let sampler = SplitXBiomeSampler {
+            split_x: 0,
+            left_biome_id: 3,
+            right_biome_id: 3,
+        };
+        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        packet.position.x = -0.25;
+        packet.particle.raw_options = block_particle_options(oak_leaves_id);
+
+        let batch = resolver.resolve_level_particles_with_context(
+            &packet,
+            LevelParticleSpawnContext::default(),
+            Some(&sampler),
+        );
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.commands[0].option_color, Some(rgb_option(40, 50, 60)));
     }
 
     #[test]
@@ -8816,7 +8985,7 @@ mod tests {
         };
         let mut resolver = test_resolver(0);
 
-        let batch = resolver.resolve_level_particles_with_context(&packet, context);
+        let batch = resolver.resolve_level_particles_with_context(&packet, context, None);
 
         assert!(batch.commands.is_empty());
         assert_eq!(batch.missing_definition_count, 0);
@@ -8838,7 +9007,7 @@ mod tests {
         };
         let mut resolver = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
 
-        let batch = resolver.resolve_level_particles_with_context(&packet, context);
+        let batch = resolver.resolve_level_particles_with_context(&packet, context, None);
 
         assert_eq!(batch.len(), 1);
         assert_eq!(batch.commands[0].position, [33.0, 0.0, 0.0]);
@@ -8860,12 +9029,12 @@ mod tests {
             test_resolver_with_particle_status(2, ClientParticleStatus::Decreased);
 
         assert!(dropping_resolver
-            .resolve_level_particles_with_context(&packet, context)
+            .resolve_level_particles_with_context(&packet, context, None)
             .commands
             .is_empty());
         assert_eq!(
             keeping_resolver
-                .resolve_level_particles_with_context(&packet, context)
+                .resolve_level_particles_with_context(&packet, context, None)
                 .len(),
             1
         );
@@ -8883,7 +9052,7 @@ mod tests {
         let mut plain_minimal =
             test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
         assert!(plain_minimal
-            .resolve_level_particles_with_context(&packet, context)
+            .resolve_level_particles_with_context(&packet, context, None)
             .commands
             .is_empty());
 
@@ -8891,7 +9060,7 @@ mod tests {
         let mut promoted = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
         assert_eq!(
             promoted
-                .resolve_level_particles_with_context(&packet, context)
+                .resolve_level_particles_with_context(&packet, context, None)
                 .len(),
             1
         );
@@ -8899,7 +9068,7 @@ mod tests {
         let mut promoted_then_dropped =
             test_resolver_with_particle_status(42, ClientParticleStatus::Minimal);
         assert!(promoted_then_dropped
-            .resolve_level_particles_with_context(&packet, context)
+            .resolve_level_particles_with_context(&packet, context, None)
             .commands
             .is_empty());
     }
@@ -11406,6 +11575,48 @@ mod tests {
             f32::from(b) / 255.0 * 0.6,
             1.0,
         ]
+    }
+
+    fn test_biome_color_profile(
+        id: i32,
+        grass_color: [u8; 3],
+        foliage_color: [u8; 3],
+        dry_foliage_color: [u8; 3],
+        water_color: [u8; 3],
+    ) -> BiomeColorProfile {
+        BiomeColorProfile {
+            id,
+            name: format!("minecraft:test_biome_{id}"),
+            temperature: 0.5,
+            temperature_modifier: BiomeTemperatureModifier::None,
+            downfall: 0.5,
+            has_precipitation: true,
+            grass_color: Some(grass_color),
+            foliage_color: Some(foliage_color),
+            dry_foliage_color: Some(dry_foliage_color),
+            water_color: Some(water_color),
+            fog_color: None,
+            sky_color: None,
+            water_fog_color: None,
+            water_fog_end_distance: None,
+            grass_color_modifier: GrassColorModifier::None,
+        }
+    }
+
+    struct SplitXBiomeSampler {
+        split_x: i32,
+        left_biome_id: i32,
+        right_biome_id: i32,
+    }
+
+    impl ParticleBiomeSampler for SplitXBiomeSampler {
+        fn biome_id_at(&self, pos: WorldBlockPos) -> Option<i32> {
+            Some(if pos.x < self.split_x {
+                self.left_biome_id
+            } else {
+                self.right_biome_id
+            })
+        }
     }
 
     fn assert_sculk_charge_command(

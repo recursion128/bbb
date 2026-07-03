@@ -3,8 +3,8 @@ use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
-    LevelEventGrowthRandomMode, LevelEventSoundRandomState, PlayApplyEffects, TerrainFluidKind,
-    WorldStore,
+    BlockPos as WorldBlockPos, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+    PlayApplyEffects, TerrainFluidKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -13,7 +13,7 @@ use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::{
     LevelEventDripstoneDripParticle, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
     LevelEventGrowthParticleSupport, LevelEventParticleContext, LevelParticleSpawnContext,
-    ParticleEventSink,
+    ParticleBiomeSampler, ParticleEventSink,
 };
 
 use super::control_state::apply_control_projection_event;
@@ -249,11 +249,13 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         world: &WorldStore,
         packet: &bbb_protocol::packets::LevelParticles,
     ) {
+        let biome_sampler = WorldParticleBiomeSampler { world };
         emit_level_particles(
             self.particle_events,
             self.particle_renderer,
             packet,
             level_particle_spawn_context(world),
+            Some(&biome_sampler),
         );
     }
 
@@ -381,12 +383,23 @@ fn emit_level_particles(
     particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
     packet: &bbb_protocol::packets::LevelParticles,
     context: LevelParticleSpawnContext,
+    biome_sampler: Option<&dyn ParticleBiomeSampler>,
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
-        let batch = particle_events.spawn_level_particles(packet, context);
+        let batch = particle_events.spawn_level_particles(packet, context, biome_sampler);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
+    }
+}
+
+struct WorldParticleBiomeSampler<'a> {
+    world: &'a WorldStore,
+}
+
+impl ParticleBiomeSampler for WorldParticleBiomeSampler<'_> {
+    fn biome_id_at(&self, pos: WorldBlockPos) -> Option<i32> {
+        self.world.probe_block(pos).and_then(|probe| probe.biome_id)
     }
 }
 

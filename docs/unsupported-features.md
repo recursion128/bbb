@@ -262,8 +262,7 @@ When an agent does any of the following, update this file in the same slice:
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
       - remaining deferred work is component-driven item stack material
-        selection, biome-aware per-spawn terrain tint, collision/roll coupling,
-        and broader firework presentation
+        selection, collision/roll coupling, and broader firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -350,8 +349,7 @@ When an agent does any of the following, update this file in the same slice:
       commands. Generic `minecraft:item` particles with an empty component patch
       now resolve the default GROUND item particle material active-layer sprite
       ids and let the renderer randomly select one; full component-driven stack
-      material selection, biome-aware per-spawn BlockColors, and on-ground roll
-      reset remain follow-up work. Native spawn
+      material selection and on-ground roll reset remain follow-up work. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -418,9 +416,12 @@ When an agent does any of the following, update this file in the same slice:
       ore/deepslate/nether plus
       mineral/natural static block families, plus the final accepted vanilla
       static states covered by the registry-wide falling-dust color test.
-      Remaining color work is tied to deferred owners: biome-aware per-spawn
-      BlockColors and the broader firework `Starter` child-particle
-      presentation path.
+      Terrain particles and non-FallingBlock `falling_dust` now also sample
+      biome-aware `BlockColors` at each actual spawn position using vanilla's
+      `BlockPos.containing(x, y, z)` owner: packet-count random spawns query
+      their generated position through the world probe before native emits
+      `ParticleSpawnCommand.option_color`. Remaining adjacent color work is
+      tied to the broader firework `Starter` child-particle presentation path.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6514,7 +6515,8 @@ When an agent does any of the following, update this file in the same slice:
         brick fence, nether portal default NONE, stripped pale oak wood, and
         copper lantern weathering/waxed variants). Full mapColor catalog
         coverage is now pinned by the registry-wide falling-dust color test;
-        biome-aware per-spawn BlockColors and on-ground roll reset remain
+        biome-aware per-spawn BlockColors now use the same spawn-position
+        world probe path as terrain particles. On-ground roll reset remains
         deferred until particle ticking can query world block/collision state.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and

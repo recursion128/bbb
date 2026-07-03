@@ -994,6 +994,46 @@ fn particle_tint_uses_vanilla_block_colors_layer_zero() {
     );
 }
 
+#[test]
+fn particle_tint_catalog_samples_biome_profiles() {
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        BiomeColorProfile {
+            id: 42,
+            name: "minecraft:test_biome".to_string(),
+            temperature: 0.5,
+            temperature_modifier: bbb_pack::BiomeTemperatureModifier::None,
+            downfall: 0.5,
+            has_precipitation: true,
+            grass_color: Some([9, 18, 27]),
+            foliage_color: Some([36, 45, 54]),
+            dry_foliage_color: Some([63, 72, 81]),
+            water_color: Some([90, 99, 108]),
+            fog_color: None,
+            sky_color: None,
+            water_fog_color: None,
+            water_fog_end_distance: None,
+            grass_color_modifier: GrassColorModifier::None,
+        },
+    ]));
+    let catalog = textures.particle_tint_catalog();
+    let short_grass = block_state_id("minecraft:short_grass", []);
+    let water = block_state_id("minecraft:water", [("level", "0")]);
+    let position = Some(BlockRenderPosition { x: 4, y: 64, z: 8 });
+
+    assert_eq!(
+        catalog.terrain_particle_tint_color_for_block_state(short_grass, Some(42), position),
+        Some(rgb_06(9, 18, 27))
+    );
+    assert_eq!(
+        textures.terrain_particle_tint_color_for_block_state_at(short_grass, Some(42), position),
+        Some(rgb_06(9, 18, 27))
+    );
+    assert_eq!(
+        catalog.falling_dust_block_tint_color_for_block_state(water, Some(42), position),
+        Some(rgb(90, 99, 108))
+    );
+}
+
 fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
     entries
         .into_iter()

@@ -34,6 +34,18 @@ pub(crate) struct TerrainTextureState {
     animation: Option<TerrainTextureAnimation>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct TerrainParticleTintCatalog {
+    colormaps: Option<TerrainColorMaps>,
+    biome_colors: Option<BiomeColorCatalog>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TerrainTintContext<'a> {
+    colormaps: Option<&'a TerrainColorMaps>,
+    biome_colors: Option<&'a BiomeColorCatalog>,
+}
+
 impl Default for TerrainTextureState {
     fn default() -> Self {
         Self {
@@ -245,24 +257,59 @@ impl TerrainTextureState {
         }
     }
 
+    pub(crate) fn particle_tint_catalog(&self) -> TerrainParticleTintCatalog {
+        TerrainParticleTintCatalog {
+            colormaps: self.colormaps.clone(),
+            biome_colors: self.biome_colors.clone(),
+        }
+    }
+
     pub(crate) fn terrain_particle_tint_color_for_block_state(
         &self,
         block_state_id: i32,
     ) -> Option<[f32; 4]> {
+        self.terrain_particle_tint_color_for_block_state_at(block_state_id, None, None)
+    }
+
+    pub(crate) fn terrain_particle_tint_color_for_block_state_at(
+        &self,
+        block_state_id: i32,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> Option<[f32; 4]> {
         let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
         let block_state = block_states.by_id(block_state_id)?;
-        self.block_colors_layer0_terrain_particle_tint(&block_state.name, &block_state.properties)
-            .map(terrain_particle_rgb_06)
+        self.block_colors_layer0_terrain_particle_tint(
+            &block_state.name,
+            &block_state.properties,
+            biome_id,
+            position,
+        )
+        .map(terrain_particle_rgb_06)
     }
 
     pub(crate) fn falling_dust_block_tint_color_for_block_state(
         &self,
         block_state_id: i32,
     ) -> Option<[f32; 4]> {
+        self.falling_dust_block_tint_color_for_block_state_at(block_state_id, None, None)
+    }
+
+    pub(crate) fn falling_dust_block_tint_color_for_block_state_at(
+        &self,
+        block_state_id: i32,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> Option<[f32; 4]> {
         let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
         let block_state = block_states.by_id(block_state_id)?;
-        self.block_colors_layer0_terrain_particle_tint(&block_state.name, &block_state.properties)
-            .map(terrain_tint_particle_rgb)
+        self.block_colors_layer0_terrain_particle_tint(
+            &block_state.name,
+            &block_state.properties,
+            biome_id,
+            position,
+        )
+        .map(terrain_tint_particle_rgb)
     }
 
     pub(crate) fn destroy_stage_uv_rect(&self, stage: u8) -> Option<TerrainUvRect> {
@@ -1029,6 +1076,87 @@ impl TerrainTextureState {
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
     ) -> TerrainTint {
+        self.tint_context()
+            .block_tint(block_name, material, tint_index, biome_id, position)
+    }
+
+    fn block_colors_layer0_terrain_particle_tint(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> Option<TerrainTint> {
+        self.tint_context()
+            .block_colors_layer0_terrain_particle_tint(block_name, properties, biome_id, position)
+    }
+
+    fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {
+        self.biome_colors.as_ref()?.profile(biome_id?)
+    }
+
+    fn tint_context(&self) -> TerrainTintContext<'_> {
+        TerrainTintContext {
+            colormaps: self.colormaps.as_ref(),
+            biome_colors: self.biome_colors.as_ref(),
+        }
+    }
+}
+
+impl TerrainParticleTintCatalog {
+    pub(crate) fn terrain_particle_tint_color_for_block_state(
+        &self,
+        block_state_id: i32,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> Option<[f32; 4]> {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        let block_state = block_states.by_id(block_state_id)?;
+        self.tint_context()
+            .block_colors_layer0_terrain_particle_tint(
+                &block_state.name,
+                &block_state.properties,
+                biome_id,
+                position,
+            )
+            .map(terrain_particle_rgb_06)
+    }
+
+    pub(crate) fn falling_dust_block_tint_color_for_block_state(
+        &self,
+        block_state_id: i32,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> Option<[f32; 4]> {
+        let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+        let block_state = block_states.by_id(block_state_id)?;
+        self.tint_context()
+            .block_colors_layer0_terrain_particle_tint(
+                &block_state.name,
+                &block_state.properties,
+                biome_id,
+                position,
+            )
+            .map(terrain_tint_particle_rgb)
+    }
+
+    fn tint_context(&self) -> TerrainTintContext<'_> {
+        TerrainTintContext {
+            colormaps: self.colormaps.as_ref(),
+            biome_colors: self.biome_colors.as_ref(),
+        }
+    }
+}
+
+impl TerrainTintContext<'_> {
+    fn block_tint(
+        &self,
+        block_name: &str,
+        material: bbb_world::TerrainMaterialClass,
+        tint_index: Option<i32>,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> TerrainTint {
         if matches!(block_name, "minecraft:water" | "minecraft:water_cauldron") {
             return self.water_tint(biome_id);
         }
@@ -1060,6 +1188,8 @@ impl TerrainTextureState {
         &self,
         block_name: &str,
         properties: &BTreeMap<String, String>,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
     ) -> Option<TerrainTint> {
         match block_name {
             // Vanilla `BlockTintSources.grassBlock().colorAsTerrainParticle` returns -1.
@@ -1072,7 +1202,7 @@ impl TerrainTextureState {
             | "minecraft:short_grass"
             | "minecraft:potted_fern"
             | "minecraft:bush"
-            | "minecraft:sugar_cane" => Some(self.grass_tint(None, None)),
+            | "minecraft:sugar_cane" => Some(self.grass_tint(biome_id, position)),
             "minecraft:spruce_leaves" => Some(TerrainTint::from_rgb_u8(0x61, 0x99, 0x61)),
             "minecraft:birch_leaves" => Some(TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55)),
             "minecraft:oak_leaves"
@@ -1080,10 +1210,10 @@ impl TerrainTextureState {
             | "minecraft:acacia_leaves"
             | "minecraft:dark_oak_leaves"
             | "minecraft:vine"
-            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(None)),
-            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(None)),
+            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(biome_id)),
+            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(biome_id)),
             "minecraft:water_cauldron" | "minecraft:water" | "minecraft:bubble_column" => {
-                Some(self.water_tint(None))
+                Some(self.water_tint(biome_id))
             }
             "minecraft:redstone_wire" => Some(redstone_wire_tint(
                 properties
@@ -1112,7 +1242,7 @@ impl TerrainTextureState {
     ) -> TerrainTint {
         let profile = self.biome_profile(biome_id);
         let base = profile.and_then(|profile| profile.grass_color).or_else(|| {
-            self.colormaps.as_ref().map(|colormaps| {
+            self.colormaps.map(|colormaps| {
                 let (temperature, downfall) = biome_colormap_climate(profile);
                 colormaps
                     .grass
@@ -1136,7 +1266,7 @@ impl TerrainTextureState {
         profile
             .and_then(|profile| profile.foliage_color)
             .or_else(|| {
-                self.colormaps.as_ref().map(|colormaps| {
+                self.colormaps.map(|colormaps| {
                     let (temperature, downfall) = biome_colormap_climate(profile);
                     colormaps
                         .foliage
@@ -1153,7 +1283,6 @@ impl TerrainTextureState {
             .and_then(|profile| profile.dry_foliage_color)
             .or_else(|| {
                 self.colormaps
-                    .as_ref()
                     .and_then(|colormaps| colormaps.dry_foliage.as_ref())
                     .map(|colormap| {
                         let (temperature, downfall) = biome_colormap_climate(profile);
@@ -1172,7 +1301,7 @@ impl TerrainTextureState {
     }
 
     fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {
-        self.biome_colors.as_ref()?.profile(biome_id?)
+        self.biome_colors?.profile(biome_id?)
     }
 }
 

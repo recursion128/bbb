@@ -7307,6 +7307,7 @@ impl ParticleEventSink for RecordingParticleSink {
         &mut self,
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
+        _biome_sampler: Option<&dyn crate::particle_runtime::ParticleBiomeSampler>,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.packets.push(packet.clone());
         self.contexts.push(context);
