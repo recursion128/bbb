@@ -949,9 +949,10 @@
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
     root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era,
     `Q`/`q` quarter, `M`/`L`, `d`, `D` day-of-year, 24/12-hour
-    `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, `Z`/`X`/`x` offset fields,
-    localized-GMT `O` offsets, and quoted literals), using fixed `GMT`/UTC
-    offset and IANA `time_zone` IDs when present or the system local
+    `F` day-of-week-in-month, `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`,
+    `Z`/`X`/`x` offset fields, localized-GMT `O` offsets, and quoted
+    literals), using fixed `GMT`/UTC offset and IANA `time_zone` IDs when
+    present or the system local
     zone otherwise. `G`/`u`/`D` follow Java `DateTimeFormatter`/`IsoChronology`
     (`u` = proleptic year, identical to `y` for every CE epoch-millis date;
     era text gated on root/en locale; day-of-year zero-padded by pattern count).
@@ -961,12 +962,15 @@
     `O` mirrors ICU localized GMT offset widths for root/en: `O`..`OOO` use
     the short form (`GMT+2:30`) and `OOOO` uses the zero-padded long form
     (`GMT+02:30`).
+    `F` mirrors ICU day-of-week-in-month as `(day - 1) / 7 + 1`, with pattern
+    width controlling numeric padding.
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
-    `Q`/`q` quarter branch and `O` localized-GMT branch from vanilla
-    `LocalTime.get`. Localized week (`w`/`W`/`e`/`c`/`F`), zone-name
-    (`z`/`v`/`V`) fields and non-English locales remain follow-up.
+    `Q`/`q` quarter branch, `O` localized-GMT branch, and `F`
+    day-of-week-in-month branch from vanilla `LocalTime.get`. Localized week
+    (`w`/`W`/`e`/`c`), zone-name (`z`/`v`/`V`) fields and non-English locales
+    remain follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,
     matching vanilla `Time.get` target values from `EnvironmentAttributes` and

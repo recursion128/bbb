@@ -6742,9 +6742,10 @@ When an agent does any of the following, update this file in the same slice:
     - remaining `minecraft:local_time` coverage beyond the supported
       root/en-locale ICU numeric/date-time / timezone-offset subset (which now
       includes `u` proleptic year, `G` era, `D` day-of-year, and `Q`/`q`
-      quarter fields, plus localized-GMT `O` offsets): full
+      quarter fields, `F` day-of-week-in-month, plus localized-GMT `O`
+      offsets): full
       localized symbols and long-tail ICU pattern fields (locale week fields
-      `w`/`W`/`e`/`c`/`F` and zone-name fields `z`/`v`/`V`)
+      `w`/`W`/`e`/`c` and zone-name fields `z`/`v`/`V`)
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -7194,10 +7195,10 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector and common root/en-locale ICU date-time patterns from wall-clock
     time, including `y`/`u` year, `G` era, `D` day-of-year, `Q`/`q` quarter
-    widths 1..=5 for root/en, fixed-offset / IANA `time_zone` IDs,
-    `Z`/`X`/`x` offset fields, and localized-GMT `O` offset widths; full
-    localized symbols and long-tail ICU pattern fields (locale week fields and
-    zone-name symbols) remain follow-up.
+    widths 1..=5 for root/en, `F` day-of-week-in-month, fixed-offset / IANA
+    `time_zone` IDs, `Z`/`X`/`x` offset fields, and localized-GMT `O` offset
+    widths; full localized symbols and long-tail ICU pattern fields (locale
+    week fields and zone-name symbols) remain follow-up.
     GUI/HUD use-tick properties are wired for the local active stack,
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick

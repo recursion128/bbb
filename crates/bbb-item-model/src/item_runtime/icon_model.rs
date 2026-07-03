@@ -771,8 +771,8 @@ pub(super) enum SelectProperty {
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and
-    /// `Z`/`X`/`x`/`O` offsets).
+    /// `F` day-of-week-in-month, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E`
+    /// weekday, `a`, and `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1494,6 +1494,7 @@ fn format_local_time_field(
         },
         'd' => Some(padded_u32(fields.day, count)),
         'D' => Some(padded_u32(fields.day_of_year, count)),
+        'F' => Some(padded_u32((fields.day.saturating_sub(1) / 7) + 1, count)),
         'H' => Some(padded_u32(fields.hour, count)),
         'k' => {
             let hour = if fields.hour == 0 { 24 } else { fields.hour };
