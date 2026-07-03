@@ -1465,13 +1465,8 @@ fn format_local_time_field(
         // `y` is year-of-era and `u` is the proleptic year; they are identical
         // for every CE date (proleptic year >= 1), which covers every epoch-millis
         // timestamp, so both letters format the stored proleptic year here.
-        'y' | 'u' => {
-            if count == 2 {
-                Some(padded_u32(fields.year.rem_euclid(100) as u32, 2))
-            } else {
-                Some(padded_i32(fields.year, count))
-            }
-        }
+        'y' | 'u' => Some(format_year_number(fields.year, count)),
+        'Y' => root_locale_week_year(fields, count, locale),
         // Era text (`IsoChronology`: proleptic year >= 1 is CE, otherwise BCE).
         // `G`..`GGG` short, `GGGG` full, `GGGGG` narrow.
         'G' => {
@@ -1703,6 +1698,14 @@ fn fractional_second(millisecond: u32, width: usize) -> String {
     digits
 }
 
+fn format_year_number(year: i32, width: usize) -> String {
+    if width == 2 {
+        padded_u32(year.rem_euclid(100) as u32, 2)
+    } else {
+        padded_i32(year, width)
+    }
+}
+
 fn milliseconds_in_day(fields: &LocalTimeFields) -> u32 {
     (((fields.hour * 60 + fields.minute) * 60 + fields.second) * 1_000) + fields.millisecond
 }
@@ -1739,6 +1742,15 @@ fn format_ampm_marker(hour: u32, width: usize, locale: &str) -> Option<String> {
         5 => english_text(locale, if pm { "p" } else { "a" }),
         _ => None,
     }
+}
+
+fn root_locale_week_year(fields: &LocalTimeFields, width: usize, locale: &str) -> Option<String> {
+    if !root_english_week_locale(locale) {
+        return None;
+    }
+    // With the supported ICU root/en week data (Monday, minimal-days=1), the
+    // week-year stays aligned with the local calendar year at both boundaries.
+    Some(format_year_number(fields.year, width))
 }
 
 fn root_locale_week_of_year(
