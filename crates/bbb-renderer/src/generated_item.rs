@@ -149,6 +149,7 @@ pub fn bake_generated_item_quads(
     mask: &SpriteAlphaMask,
     rect: ItemSpriteRect,
     tint: [f32; 4],
+    translucent: bool,
 ) -> Vec<ItemModelQuad> {
     let mut quads = Vec::new();
     // Front (SOUTH) over the whole sprite, then back (NORTH) with its U mirrored.
@@ -159,6 +160,7 @@ pub fn bake_generated_item_quads(
         ItemFace::South,
         rect,
         tint,
+        translucent,
     ));
     quads.push(bake_face(
         [0.0, 0.0, MIN_Z],
@@ -167,8 +169,9 @@ pub fn bake_generated_item_quads(
         ItemFace::North,
         rect,
         tint,
+        translucent,
     ));
-    bake_side_faces(&mut quads, mask, rect, tint);
+    bake_side_faces(&mut quads, mask, rect, tint, translucent);
     quads
 }
 
@@ -179,6 +182,7 @@ fn bake_side_faces(
     mask: &SpriteAlphaMask,
     rect: ItemSpriteRect,
     tint: [f32; 4],
+    translucent: bool,
 ) {
     let x_scale = 16.0 / mask.width() as f32;
     let y_scale = 16.0 / mask.height() as f32;
@@ -222,7 +226,15 @@ fn bake_side_faces(
             SideDirection::Right => ([end_x, start_y, MIN_Z], [end_x, end_y, MAX_Z]),
         };
         let uvs = [u0 * x_scale, v0 * y_scale, u1 * x_scale, v1 * y_scale];
-        quads.push(bake_face(from, to, uvs, side.face(), rect, tint));
+        quads.push(bake_face(
+            from,
+            to,
+            uvs,
+            side.face(),
+            rect,
+            tint,
+            translucent,
+        ));
     }
 }
 
@@ -256,6 +268,7 @@ fn bake_face(
     facing: ItemFace,
     rect: ItemSpriteRect,
     tint: [f32; 4],
+    translucent: bool,
 ) -> ItemModelQuad {
     let select = |pick: [bool; 3]| {
         [
@@ -282,7 +295,7 @@ fn bake_face(
         tint,
         normal: facing.normal(),
         shade: facing.shade(),
-        translucent: false,
+        translucent,
     }
 }
 
@@ -306,7 +319,7 @@ mod tests {
 
     #[test]
     fn front_and_back_span_the_whole_slab() {
-        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, WHITE);
+        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, WHITE, false);
         // Front (SOUTH) at z = 8.5, back (NORTH) at z = 7.5.
         let front = quads[0];
         let back = quads[1];
@@ -336,7 +349,7 @@ mod tests {
 
     #[test]
     fn a_full_sprite_traces_only_its_outer_border() {
-        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, WHITE);
+        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, WHITE, false);
         // 2 flat faces + the outline: every edge pixel of a 16×16 solid borders the sprite edge, so each
         // of the four sides contributes 16 edge quads (corners contribute to two sides).
         let edge_quads = quads.len() - 2;
@@ -349,7 +362,7 @@ mod tests {
         let mut opaque = vec![false; 256];
         opaque[8 * 16 + 8] = true;
         let mask = SpriteAlphaMask::new(16, 16, opaque);
-        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE);
+        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE, false);
         assert_eq!(quads.len(), 2 + 4);
 
         // The side quads span the slab depth and carry their direction's shade.
@@ -374,7 +387,7 @@ mod tests {
         let mut opaque = vec![false; 256];
         opaque[8 * 16 + 8] = true;
         let mask = SpriteAlphaMask::new(16, 16, opaque);
-        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE);
+        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE, false);
         let mesh = bake_item_model_mesh(&quads, Mat4::IDENTITY);
 
         assert_mesh_triangles_face_submitted_normals(&mesh);
@@ -383,7 +396,7 @@ mod tests {
     #[test]
     fn empty_sprite_bakes_only_the_two_flat_faces() {
         let mask = SpriteAlphaMask::new(16, 16, vec![false; 256]);
-        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE);
+        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE, false);
         assert_eq!(quads.len(), 2);
     }
 
@@ -393,7 +406,7 @@ mod tests {
             min: [0.25, 0.5],
             max: [0.5, 1.0],
         };
-        let quads = bake_generated_item_quads(&full_16x16(), rect, WHITE);
+        let quads = bake_generated_item_quads(&full_16x16(), rect, WHITE, false);
         // Front top-left UV (0,0 sprite) → rect min; bottom-right (1,1 sprite) → rect max.
         assert_eq!(quads[0].uvs[0], [0.25, 0.5]);
         assert_eq!(quads[0].uvs[2], [0.5, 1.0]);
@@ -402,8 +415,14 @@ mod tests {
     #[test]
     fn tint_passes_through_to_every_quad() {
         let tint = [0.2, 0.4, 0.6, 1.0];
-        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, tint);
+        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, tint, false);
         assert!(quads.iter().all(|q| q.tint == tint));
+    }
+
+    #[test]
+    fn translucent_material_passes_through_to_every_quad() {
+        let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, WHITE, true);
+        assert!(quads.iter().all(|q| q.translucent));
     }
 
     fn assert_mesh_triangles_face_submitted_normals(mesh: &ItemModelMesh) {

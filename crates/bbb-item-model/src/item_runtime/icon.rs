@@ -211,12 +211,14 @@ pub(super) fn crossbow_charge_duration_ticks(
 pub(super) struct ItemIconTextureLayer {
     pub(super) texture_index: u32,
     pub(super) tint: ItemIconTint,
+    pub(super) translucent: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct ItemIconTextureRef {
     pub(super) texture_id: String,
     pub(super) tint: ItemIconTint,
+    pub(super) force_translucent: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -281,6 +283,14 @@ impl ItemTextureState {
             .unwrap_or(self.fallback_index)
     }
 
+    pub(super) fn texture_has_translucent(&self, texture_index: u32) -> bool {
+        self.atlas
+            .layout
+            .sprites
+            .get(texture_index as usize)
+            .is_some_and(|sprite| sprite.transparency.has_translucent)
+    }
+
     pub(super) fn texture_id(&self, texture_index: u32) -> Option<&str> {
         self.atlas
             .layout
@@ -341,13 +351,8 @@ pub(super) fn item_icon_texture_layers(
             models
                 .models
                 .iter()
-                .find_map(first_texture_id)
-                .map(|texture_id| {
-                    vec![ItemIconTextureRef {
-                        texture_id,
-                        tint: ItemIconTint::Static(ITEM_TINT_WHITE),
-                    }]
-                })
+                .find_map(first_texture_ref)
+                .map(|texture| vec![texture])
         })
         .unwrap_or_default()
 }
@@ -365,6 +370,7 @@ pub(super) fn generated_layer_texture_refs(
         };
         layers.push(ItemIconTextureRef {
             texture_id: texture.id.clone(),
+            force_translucent: texture.force_translucent,
             tint: tints
                 .and_then(|tints| tints.get(layer_index))
                 .map(|tint| item_tint_source(tint, colormaps))
@@ -374,17 +380,25 @@ pub(super) fn generated_layer_texture_refs(
     (!layers.is_empty()).then_some(layers)
 }
 
-pub(super) fn first_texture_id(model: &ItemCuboidModel) -> Option<String> {
+pub(super) fn first_texture_ref(model: &ItemCuboidModel) -> Option<ItemIconTextureRef> {
     model
         .texture_slots
         .values()
         .next()
-        .map(|texture| texture.id.clone())
+        .map(|texture| ItemIconTextureRef {
+            texture_id: texture.id.clone(),
+            force_translucent: texture.force_translucent,
+            tint: ItemIconTint::Static(ITEM_TINT_WHITE),
+        })
         .or_else(|| {
             model
                 .face_textures
                 .as_ref()
-                .map(|textures| textures.textures[0].clone())
+                .map(|textures| ItemIconTextureRef {
+                    texture_id: textures.textures[0].clone(),
+                    force_translucent: false,
+                    tint: ItemIconTint::Static(ITEM_TINT_WHITE),
+                })
         })
 }
 
@@ -507,6 +521,7 @@ pub(super) fn resolve_item_icon_texture_layer_tints(
         .map(|layer| ItemIconTextureLayer {
             texture_index: layer.texture_index,
             tint: ItemIconTint::Static(item_icon_tint_color(&layer.tint, component_patch)),
+            translucent: layer.translucent,
         })
         .collect()
 }
@@ -1021,6 +1036,7 @@ impl NativeItemRuntime {
                         max: layer.uv.max,
                     },
                     tint: layer.tint,
+                    translucent: layer.translucent,
                 })
             })
             .collect()
@@ -1673,6 +1689,7 @@ impl NativeItemRuntime {
                     .map(|uv| ItemAtlasIconLayer {
                         uv,
                         tint: item_icon_tint_color(&layer.tint, component_patch),
+                        translucent: layer.translucent,
                     })
             })
             .collect::<Vec<_>>();
@@ -1978,6 +1995,9 @@ impl NativeItemRuntime {
         vec![ItemIconTextureLayer {
             texture_index: self.textures.fallback_index(),
             tint: ItemIconTint::Static(ITEM_TINT_WHITE),
+            translucent: self
+                .textures
+                .texture_has_translucent(self.textures.fallback_index()),
         }]
     }
 }

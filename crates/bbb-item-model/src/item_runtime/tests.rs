@@ -199,7 +199,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                     "layer1": {
                         "sprite": "custom:item/missing_overlay",
                         "force_translucent": true
-                    }
+                    },
+                    "layer2": "minecraft:item/test_overlay"
                 }
             }"##,
     );
@@ -208,6 +209,15 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         1,
         1,
         &[255, 0, 0, 255],
+    );
+    write_test_rgba_png(
+        &assets
+            .join("textures")
+            .join("item")
+            .join("test_overlay.png"),
+        1,
+        1,
+        &[0, 255, 0, 127],
     );
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
@@ -223,7 +233,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     assert_eq!(runtime.resolved_model_count(), 1);
     assert_eq!(runtime.missing_model_count(), 1);
     assert_eq!(runtime.missing_texture_count(), 1);
-    assert_eq!(runtime.texture_count(), 2);
+    assert_eq!(runtime.texture_count(), 3);
     assert_eq!(runtime.icon_texture_count(), 1);
     assert_ne!(
         runtime.texture_index("minecraft:item/test_sword"),
@@ -248,19 +258,24 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             vec![
                 "minecraft:item/test_sword".to_string(),
                 MISSING_TEXTURE_ID.to_string(),
+                "minecraft:item/test_overlay".to_string(),
             ],
         )])
     );
     assert_eq!(runtime.icon_texture_index_for_protocol_id(1), None);
     let icon = runtime.icon_for_protocol_id(0).unwrap();
-    assert_eq!(icon.layers.len(), 2);
+    assert_eq!(icon.layers.len(), 3);
     assert_eq!(icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
     assert_eq!(icon.layers[1].tint, rgb_i32_tint(0xff_00_ff));
+    assert_eq!(icon.layers[2].tint, ITEM_TINT_WHITE);
     let sprite_uvs = runtime.atlas_sprite_uvs();
     assert_eq!(sprite_uvs.len(), runtime.texture_count());
     assert!(sprite_uvs
         .iter()
         .any(|sprite| sprite.id == "minecraft:item/test_sword" && sprite.uv == icon.layers[0].uv));
+    assert!(sprite_uvs
+        .iter()
+        .any(|sprite| sprite.id == "minecraft:item/test_overlay" && sprite.has_translucent));
     assert_eq!(
         icon.layers[1].uv,
         runtime
@@ -269,6 +284,19 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             .unwrap()
     );
     assert_eq!(runtime.icon_uv_for_protocol_id(0), Some(icon.layers[0].uv));
+    let generated_layers = runtime.generated_item_layers_for_stack_with_trim_materials(
+        &ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        },
+        BlockModelDisplayContext::Ground,
+        None,
+    );
+    assert_eq!(generated_layers.len(), 3);
+    assert!(!generated_layers[0].translucent);
+    assert!(generated_layers[1].translucent);
+    assert!(generated_layers[2].translucent);
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),

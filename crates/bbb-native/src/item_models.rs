@@ -365,6 +365,7 @@ pub(crate) fn dropped_item_models(
                 &layer.mask,
                 layer.rect,
                 layer.tint,
+                layer.translucent,
             ));
         }
         if quads.is_empty() {
@@ -1502,6 +1503,7 @@ fn bake_item_stack_at_transform(
             &layer.mask,
             layer.rect,
             layer.tint,
+            layer.translucent,
         ));
     }
     if quads.is_empty() {

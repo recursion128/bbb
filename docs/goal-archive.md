@@ -960,6 +960,13 @@
     base, and matching `glintTranslucent` inside the same depth-isolated
     `bbb-native-hud-item-pass`, preserving HUD base -> GUI item -> HUD overlay
     ordering while covering translucent 3D inventory icons.
+  - [x] generated item material translucency metadata：`GeneratedItemLayer`
+    now carries vanilla material translucency from `Material.force_translucent`
+    and atlas sprite translucent-pixel metadata into generated flat item slab
+    quads. Dropped, held, and item-frame generated item consumers reuse the
+    existing item-model solid / `item_translucent` and `glintTranslucent` mesh
+    splits, with tests pinning forced and sprite-derived translucent layers plus
+    generated-side quads.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

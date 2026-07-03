@@ -1208,9 +1208,11 @@ When an agent does any of the following, update this file in the same slice:
     order toward submitted normals and generated-item / block-item tests pinning
     that front-face output. Entity/model RenderTypes remain the GPU paths that apply the
     16x16 `OverlayTexture` red-row / white-row mix.
-    Flat/generated item material translucency metadata is still deferred to item
-    presentation because that material source is not modeled yet; it is no longer
-    a narrow render-pipeline path blocker. Remaining render-graph parity is now
+    Flat/generated item material translucency metadata is now modeled for item
+    presentation: generated item layers carry vanilla material
+    `force_translucent` plus atlas sprite translucent-pixel metadata into the
+    extruded slab quads, and existing item-model mesh splits route those quads
+    to solid or `item_translucent` buckets. Remaining render-graph parity is now
     classified as cross-target translucent feature / particle sorting plus finer
     target-resource polish. The only modeled text surface here is item-frame map
     label text, already drawn in the vanilla `order(1).submitText` phase; generic

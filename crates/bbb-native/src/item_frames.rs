@@ -234,6 +234,7 @@ pub(crate) fn item_frame_models(
                 &layer.mask,
                 layer.rect,
                 layer.tint,
+                layer.translucent,
             ));
         }
         if quads.is_empty() {

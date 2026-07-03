@@ -134,6 +134,7 @@ mod tests {
                         max: [0.5, 0.375],
                     },
                     tint: [0.25, 0.5, 0.75, 1.0],
+                    translucent: false,
                 },
                 ItemAtlasIconLayer {
                     uv: ItemAtlasUvRect {
@@ -141,6 +142,7 @@ mod tests {
                         max: [0.75, 0.75],
                     },
                     tint: [1.0, 1.0, 1.0, 0.5],
+                    translucent: false,
                 },
             ],
         };
@@ -204,6 +206,7 @@ mod tests {
                     max: [0.25, 0.25],
                 },
                 tint: [1.0, 1.0, 1.0, 1.0],
+                translucent: false,
             }],
         };
 

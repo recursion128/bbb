@@ -19,9 +19,9 @@ use chrono_tz::Tz;
 use serde_json::Value;
 
 use super::{
-    first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemIconTint, ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext,
-    ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
+    first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
+    ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
+    ItemTextureState,
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
@@ -1089,9 +1089,14 @@ impl ItemIconModelRef {
             Self::Layers(layers) => ItemIconModel::Layers(
                 layers
                     .into_iter()
-                    .map(|layer| ItemIconTextureLayer {
-                        texture_index: textures.texture_index(&layer.texture_id),
-                        tint: layer.tint,
+                    .map(|layer| {
+                        let texture_index = textures.texture_index(&layer.texture_id);
+                        ItemIconTextureLayer {
+                            texture_index,
+                            tint: layer.tint,
+                            translucent: layer.force_translucent
+                                || textures.texture_has_translucent(texture_index),
+                        }
                     })
                     .collect(),
             ),
@@ -2158,14 +2163,7 @@ fn item_icon_model_ref_for_model_id(
     };
     ItemIconModelRef::Layers(
         generated_layer_texture_refs(&model, model_tints, colormaps)
-            .or_else(|| {
-                first_texture_id(&model).map(|texture_id| {
-                    vec![ItemIconTextureRef {
-                        texture_id,
-                        tint: ItemIconTint::Static(ITEM_TINT_WHITE),
-                    }]
-                })
-            })
+            .or_else(|| first_texture_ref(&model).map(|texture| vec![texture]))
             .unwrap_or_default(),
     )
 }

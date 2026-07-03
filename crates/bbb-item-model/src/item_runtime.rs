@@ -457,12 +457,14 @@ pub struct GeneratedItemLayer {
     pub mask: SpriteAlphaMask,
     pub rect: ItemSpriteRect,
     pub tint: [f32; 4],
+    pub translucent: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemAtlasIconLayer {
     pub uv: ItemAtlasUvRect,
     pub tint: [f32; 4],
+    pub translucent: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
