@@ -775,7 +775,8 @@ pub(super) enum SelectProperty {
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
     /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
     /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` short zone
-    /// names, `VV` zone IDs, and `Z`/`X`/`x`/`O` offsets).
+    /// names, `VV` zone IDs, `VVV` exemplar cities, and `Z`/`X`/`x`/`O`
+    /// offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1606,11 +1607,22 @@ fn specific_short_zone_name(fields: &LocalTimeFields, width: usize) -> Option<St
 }
 
 fn time_zone_id(fields: &LocalTimeFields, width: usize) -> Option<String> {
-    if width == 2 {
-        fields.zone_id.clone()
-    } else {
-        None
+    match width {
+        2 => fields.zone_id.clone(),
+        3 => fields.zone_id.as_deref().and_then(time_zone_exemplar_city),
+        _ => None,
     }
+}
+
+fn time_zone_exemplar_city(zone_id: &str) -> Option<String> {
+    if fixed_time_zone_offset(zone_id).is_some() {
+        return None;
+    }
+    zone_id
+        .rsplit('/')
+        .next()
+        .filter(|city| !city.is_empty())
+        .map(|city| city.replace('_', " "))
 }
 
 fn fixed_time_zone_short_name(time_zone: &str, offset: FixedOffset) -> String {

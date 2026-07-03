@@ -6744,9 +6744,10 @@ When an agent does any of the following, update this file in the same slice:
       includes `u` proleptic year, `G` era, `D` day-of-year, and `Q`/`q`
       quarter fields, `F` day-of-week-in-month, root/en `w`/`W` week
       numbers, root/en `e`/`c` local weekdays, plus localized-GMT `O`
-      offsets, short `z` zone abbreviations, and `VV` zone IDs): full
-      localized symbols and long-tail ICU pattern fields (locale-specific week
-      data beyond root/en, long `z`, generic `v`, and non-`VV` `V` widths)
+      offsets, short `z` zone abbreviations, `VV` zone IDs, and `VVV`
+      exemplar cities): full localized symbols and long-tail ICU pattern fields
+      (locale-specific week data beyond root/en, long `z`, generic `v`, and
+      one-/four-letter `V` widths)
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -7090,16 +7091,16 @@ When an agent does any of the following, update this file in the same slice:
       day-of-week-in-month, root/en `E`/`e`/`c` weekdays, 24/12-hour
       `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`, `Z`/`X`/`x` offset fields,
       localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
-      and quoted literals). Explicit `GMT`/UTC offset and IANA `time_zone` IDs
-      use that zone; absent `time_zone` uses the system local timezone like
-      vanilla.
+      `VVV` exemplar cities, and quoted literals). Explicit `GMT`/UTC offset
+      and IANA `time_zone` IDs use that zone; absent `time_zone` uses the
+      system local timezone like vanilla.
       Tests pin GMT `12-25` selecting the Christmas branch, `12-27` selecting
       the fallback, cross-midnight `UTC+02:30` plus `Asia/Tokyo` date-time /
       weekday / AM-PM branches, UTC `X`/`x` zero-offset formatting,
       `uuuu-DDD-G` proleptic-year / day-of-year / era, `Q`/`q` quarter,
       localized-GMT `O`, `F` day-of-week-in-month, and root/en `w`/`W` week
       plus `e`/`c` local weekday branches, and an IANA-zone short `z` / `VV`
-      branch.
+      / `VVV` branch.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla
@@ -7206,9 +7207,9 @@ When an agent does any of the following, update this file in the same slice:
     numbers and `e`/`c` local weekdays, fixed-offset / IANA `time_zone` IDs,
     `Z`/`X`/`x` offset fields, and localized-GMT `O` offset widths; full
     localized symbols and long-tail ICU pattern fields (locale-specific week
-    data beyond root/en, long `z`, generic `v`, and non-`VV` `V` widths)
-    remain follow-up. Short `z` zone abbreviations and `VV` explicit zone IDs
-    now resolve for explicit zones.
+    data beyond root/en, long `z`, generic `v`, and one-/four-letter `V`
+    widths) remain follow-up. Short `z` zone abbreviations, `VV` explicit zone
+    IDs, and `VVV` exemplar cities now resolve for explicit zones.
     GUI/HUD use-tick properties are wired for the local active stack,
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick

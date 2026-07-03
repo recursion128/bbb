@@ -6993,7 +6993,8 @@ fn native_item_runtime_resolves_local_time_select_property() {
     assert_eq!(selected(9), uv("local_weekday_clock_fallback"));
 
     // Narrow zone-name support: ICU `z` widths 1..=3 use the active specific
-    // abbreviation and `VV` emits the explicit zone id.
+    // abbreviation, `VV` emits the explicit zone id, and `VVV` emits the
+    // exemplar city for IANA zones.
     runtime.set_local_time_epoch_millis_for_test(
         chrono::Utc
             .with_ymd_and_hms(2025, 12, 31, 15, 0, 0)
@@ -12792,11 +12793,11 @@ fn write_local_time_select_fixture(root: &Path) {
                 "model": {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
-                    "pattern": "yyyy-MM-dd z zzz VV",
+                    "pattern": "yyyy-MM-dd z zzz VV VVV",
                     "time_zone": "Asia/Tokyo",
                     "cases": [
                         {
-                            "when": "2026-01-01 JST JST Asia/Tokyo",
+                            "when": "2026-01-01 JST JST Asia/Tokyo Tokyo",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/zone_name_clock_match" }
                         }
                     ],

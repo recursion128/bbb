@@ -952,9 +952,10 @@
     week-of-year / week-of-month, `F` day-of-week-in-month, root/en
     `E`/`e`/`c` weekdays, 24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`,
     `Z`/`X`/`x` offset fields, localized-GMT `O` offsets, short `z` zone
-    abbreviations, `VV` zone IDs, and quoted literals), using fixed
-    `GMT`/UTC offset and IANA `time_zone` IDs when present or the system local
-    zone otherwise. `G`/`u`/`D` follow Java `DateTimeFormatter`/`IsoChronology`
+    abbreviations, `VV` zone IDs, `VVV` exemplar cities, and quoted literals),
+    using fixed `GMT`/UTC offset and IANA `time_zone` IDs when present or the
+    system local zone otherwise. `G`/`u`/`D` follow Java
+    `DateTimeFormatter`/`IsoChronology`
     (`u` = proleptic year, identical to `y` for every CE epoch-millis date;
     era text gated on root/en locale; day-of-year zero-padded by pattern count).
     `Q`/`q` mirror ICU quarter widths 1..=5 for root/en (`3`, `03`, `Q3`,
@@ -972,16 +973,16 @@
     weekday text widths 3..=6; `E` now follows those root/en text widths too.
     Short `z` zone names use the active TZDB abbreviation for explicit IANA
     zones and RFC-822-style fixed-offset names for fixed zones; `VV` emits the
-    explicit zone id.
+    explicit zone id, while `VVV` emits the IANA zone's exemplar city.
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
     `Q`/`q` quarter branch, `O` localized-GMT branch, `F`
     day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
     `LocalTime.get`, plus root/en `e`/`c` local weekday branches and a short
-    `z` / `VV` IANA-zone branch. Long `z`, generic `v`, non-`VV` `V` widths,
-    locale-specific week data beyond root/en, and non-English locales remain
-    follow-up.
+    `z` / `VV` / `VVV` IANA-zone branch. Long `z`, generic `v`, one- and
+    four-letter `V` widths, locale-specific week data beyond root/en, and
+    non-English locales remain follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,
     matching vanilla `Time.get` target values from `EnvironmentAttributes` and
