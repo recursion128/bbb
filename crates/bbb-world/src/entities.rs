@@ -245,6 +245,12 @@ pub struct OminousItemSpawnerItemState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct OminousItemSpawnerParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PrimedTntSmokeParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -2769,6 +2775,12 @@ impl WorldStore {
         &mut self,
     ) -> Vec<FireworkRocketTrailParticleState> {
         self.entities.take_firework_rocket_trail_particle_states()
+    }
+
+    pub fn take_ominous_item_spawner_particle_states(
+        &mut self,
+    ) -> Vec<OminousItemSpawnerParticleState> {
+        self.entities.take_ominous_item_spawner_particle_states()
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player

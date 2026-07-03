@@ -22,18 +22,18 @@ use super::{
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
     FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
     ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, RavagerRoarParticleState,
-    RavagerStunParticleState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
+    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
@@ -360,6 +360,7 @@ pub(crate) struct EntityStore {
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
+    pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
 }
 
 impl EntityStore {
@@ -948,6 +949,12 @@ impl EntityStore {
         &mut self,
     ) -> Vec<FireworkRocketTrailParticleState> {
         std::mem::take(&mut self.pending_firework_rocket_trail_particles)
+    }
+
+    pub(crate) fn take_ominous_item_spawner_particle_states(
+        &mut self,
+    ) -> Vec<OminousItemSpawnerParticleState> {
+        std::mem::take(&mut self.pending_ominous_item_spawner_particles)
     }
 
     pub(crate) fn ravager_roar_particle_state(&self, id: i32) -> Option<RavagerRoarParticleState> {
@@ -2784,6 +2791,28 @@ impl EntityStore {
         items
     }
 
+    pub(crate) fn append_ominous_item_spawner_particle_states(&mut self) {
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            self.pending_ominous_item_spawner_particles
+                .push(OminousItemSpawnerParticleState {
+                    entity_id: identity.id,
+                    position: transform.position,
+                });
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn metadata(&self, id: i32) -> Option<EntityMetadata> {
         let entity = self.by_protocol_id.get(&id).copied()?;
@@ -3429,6 +3458,7 @@ impl Default for EntityStore {
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_firework_rocket_trail_particles: Vec::new(),
+            pending_ominous_item_spawner_particles: Vec::new(),
         }
     }
 }
@@ -3495,6 +3525,8 @@ impl Clone for EntityStore {
             self.pending_evoker_fangs_crit_particles.clone();
         store.pending_firework_rocket_trail_particles =
             self.pending_firework_rocket_trail_particles.clone();
+        store.pending_ominous_item_spawner_particles =
+            self.pending_ominous_item_spawner_particles.clone();
         store
     }
 }

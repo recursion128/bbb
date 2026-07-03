@@ -574,12 +574,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `facing` 的 keyhole 位置向 in-range loaded player 生成
     `minecraft:vault_connection` 粒子，并在 cage 粒子和 activate sound 前保持
     vanilla 随机消费顺序；
+    `OminousItemSpawner.tickClient` 现在按 vanilla `level.gameTime % 5 == 0`
+    gate 在实体当前位置提交 `minecraft:ominous_spawning` 粒子：每次触发生成
+    `random.nextIntBetweenInclusive(1,3)` 个命令，速度为
+    `0.4*(gaussian-gaussian)` 三轴随机 offset 向量，并保留该 particle type 的
+    override-limiter 语义；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 TakeItemEntity `ItemPickupParticle` runtime/lifecycle、SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
     ravager event-69 roar poof/knockback、GameEvent elder-guardian 粒子与
     `ELDER_GUARDIANS` model submit、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
-    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke、Witch event-15 magic burst、LivingEntity event-60 poof burst、LivingEntity event-67 drown bubbles、LivingEntity event-46 portal burst、Snowball event-3 item burst、ThrownEgg event-3 item burst、Arrow event-0 entity-effect burst、Fox event-45 item burst、HoneyBlock event-53/54 block particles），以及 local sound（不含 DripParticle
+    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke、Witch event-15 magic burst、LivingEntity event-60 poof burst、LivingEntity event-67 drown bubbles、LivingEntity event-46 portal burst、Snowball event-3 item burst、ThrownEgg event-3 item burst、Arrow event-0 entity-effect burst、Fox event-45 item burst、HoneyBlock event-53/54 block particles、OminousItemSpawner tickClient ominous_spawning 粒子），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
     elder-guardian-curse 本地玩家位置声效、TakeItemEntity item / experience-orb

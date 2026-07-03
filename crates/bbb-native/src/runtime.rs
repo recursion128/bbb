@@ -35,10 +35,10 @@ use bbb_renderer::{
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, EvokerFangsCritParticleState,
     FireworkRocketTrailParticleState, ItemEquipmentSlot, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, PrimedTntSmokeParticleState,
-    RavagerStunParticleState, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
-    WorldWeatherState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
+    PrimedTntSmokeParticleState, RavagerStunParticleState, SoundEventState, SoundHolderState,
+    TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo,
+    WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -1472,6 +1472,7 @@ pub(crate) fn pump_network_and_terrain(
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
     submit_entity_client_tick_particles(renderer, world, &mut particle_events);
+    submit_ominous_item_spawner_particles(renderer, world, &mut particle_events);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
@@ -1863,6 +1864,22 @@ fn submit_entity_client_tick_particles(
     for state in firework_rocket_trail_particles {
         renderer
             .submit_particle_spawns(particle_events.spawn_firework_rocket_trail_particles(state));
+    }
+}
+
+fn submit_ominous_item_spawner_particles(
+    renderer: &mut Renderer,
+    world: &mut WorldStore,
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+) {
+    let ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState> =
+        world.take_ominous_item_spawner_particle_states();
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    for state in ominous_item_spawner_particles {
+        renderer
+            .submit_particle_spawns(particle_events.spawn_ominous_item_spawner_particles(state));
     }
 }
 

@@ -27,10 +27,10 @@ use bbb_world::{
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
     FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState,
+    LivingEntityPortalParticleState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainLight,
+    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -80,6 +80,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_firework_rocket_trail_particles(
         &mut self,
         state: FireworkRocketTrailParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_ominous_item_spawner_particles(
+        &mut self,
+        state: OminousItemSpawnerParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_tracking_emitter_particles(
         &mut self,
@@ -366,6 +370,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: FireworkRocketTrailParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.firework_rocket_trail_particle_batch(state)
+    }
+
+    fn spawn_ominous_item_spawner_particles(
+        &mut self,
+        state: OminousItemSpawnerParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.ominous_item_spawner_particle_batch(state)
     }
 
     fn spawn_tracking_emitter_particles(
@@ -2302,6 +2313,39 @@ impl ParticleCommandResolver {
             commands: vec![self.command_from_template(&template, position, velocity, false)],
             ..ParticleSpawnBatch::default()
         }
+    }
+
+    fn ominous_item_spawner_particle_batch(
+        &mut self,
+        state: OminousItemSpawnerParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(OMINOUS_SPAWNING_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let position = Vec3d {
+            x: state.position.x,
+            y: state.position.y,
+            z: state.position.z,
+        };
+        let particle_count = self.random.next_i32(3) + 1;
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..particle_count {
+            let velocity = Vec3d {
+                x: 0.4 * (self.random.next_gaussian() - self.random.next_gaussian()),
+                y: 0.4 * (self.random.next_gaussian() - self.random.next_gaussian()),
+                z: 0.4 * (self.random.next_gaussian() - self.random.next_gaussian()),
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+
+        batch
     }
 
     fn firework_blast_sound_event(
@@ -5584,6 +5628,7 @@ const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
 const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
 const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
 const VAULT_CONNECTION_PARTICLE_TYPE_ID: i32 = 110;
+const OMINOUS_SPAWNING_PARTICLE_TYPE_ID: i32 = 112;
 const FIREWORK_BLACK_COLOR: i32 = 1_973_019;
 const FIREWORK_CREEPER_PARTICLE_COORDS: &[[f64; 2]] = &[
     [0.0, 0.2],
@@ -5909,6 +5954,46 @@ mod tests {
         );
         assert!(!command.option_firework_trail);
         assert!(!command.option_firework_twinkle);
+    }
+
+    #[test]
+    fn ominous_item_spawner_batch_matches_vanilla_client_tick_particles() {
+        let mut resolver = test_resolver(0);
+        let state = OminousItemSpawnerParticleState {
+            entity_id: 11,
+            position: bbb_world::EntityVec3 {
+                x: -1.5,
+                y: 80.0,
+                z: 2.25,
+            },
+        };
+
+        let batch = resolver.ominous_item_spawner_particle_batch(state);
+
+        let mut expected_random = LegacyRandom::new(0);
+        let particle_count = expected_random.next_i32(3) + 1;
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_eq!(batch.commands.len(), particle_count as usize);
+        for command in &batch.commands {
+            let velocity = [
+                0.4 * (expected_random.next_gaussian() - expected_random.next_gaussian()),
+                0.4 * (expected_random.next_gaussian() - expected_random.next_gaussian()),
+                0.4 * (expected_random.next_gaussian() - expected_random.next_gaussian()),
+            ];
+            assert_particle_command(
+                command,
+                OMINOUS_SPAWNING_PARTICLE_TYPE_ID,
+                "minecraft:ominous_spawning",
+                [-1.5, 80.0, 2.25],
+                velocity,
+                true,
+            );
+            assert_eq!(
+                command.sprite_ids,
+                vec!["minecraft:ominous_spawning_0".to_string()]
+            );
+        }
     }
 
     #[test]
@@ -13917,6 +14002,7 @@ mod tests {
                 "firework_0",
                 "firework_1",
                 "gust_0",
+                "ominous_spawning_0",
                 "smoke_0",
                 "large_smoke_0",
                 "lava",
@@ -14342,6 +14428,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:vault_connection_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("ominous_spawning.json"),
+            r#"{
+              "textures": [
+                "minecraft:ominous_spawning_0"
               ]
             }"#,
         );

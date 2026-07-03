@@ -901,6 +901,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let entity_client_tick_particles = source
         .find("submit_entity_client_tick_particles(renderer, world, &mut particle_events);")
         .expect("pump should emit entity client tick particles before particle tick");
+    let ominous_item_spawner_particles = source
+        .find("submit_ominous_item_spawner_particles(renderer, world, &mut particle_events);")
+        .expect("pump should emit OminousItemSpawner client particles before particle tick");
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
         .expect("pump should advance particles");
@@ -955,6 +958,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         primed_tnt_smoke < entity_client_tick_particles && entity_client_tick_particles < particle_tick,
         "entity client-tick particles should be submitted before ParticleEngine.tick advances particles"
+    );
+    assert!(
+        entity_client_tick_particles < ominous_item_spawner_particles
+            && ominous_item_spawner_particles < particle_tick,
+        "OminousItemSpawner client particles should be submitted before ParticleEngine.tick advances particles"
     );
     assert!(
         particle_tick < particle_sound_drain && particle_sound_drain < particle_sound_emit,

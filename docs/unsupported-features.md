@@ -677,7 +677,12 @@ When an agent does any of the following, update this file in the same slice:
       far variant. FireworkRocketEntity client tick trail now submits one
       sprite-backed `minecraft:firework` particle per advanced client tick at
       the rocket's current world transform, with vanilla gaussian X/Z speed
-      `*0.05` and Y speed `-deltaMovement.y*0.5`.
+      `*0.05` and Y speed `-deltaMovement.y*0.5`. OminousItemSpawner client
+      tick now mirrors vanilla `level.gameTime % 5 == 0` by queuing
+      `random.nextIntBetweenInclusive(1,3)` sprite-backed
+      `minecraft:ominous_spawning` particles at the spawner position, with
+      velocity `0.4*(gaussian-gaussian)` on each axis and the particle type's
+      override-limiter behavior.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -6589,8 +6594,12 @@ When an agent does any of the following, update this file in the same slice:
       bounds box. `WorldStore` reads the `DATA_ITEM` item stack (entity-data id
       8) and entity `ageInTicks`; native bakes the stack with full-bright light,
       50-tick scale-in, Y rotation at 40 degrees per tick, and the shared
-      `ItemEntityRenderer.submitMultipleFromCount` cluster layout. Ominous
-      spawning particles and sounds remain deferred presentation work.
+      `ItemEntityRenderer.submitMultipleFromCount` cluster layout. Client-side
+      ominous spawning particles are covered: `WorldStore::advance_client_time`
+      queues the vanilla `gameTime % 5 == 0` tick side effect, and native emits
+      `minecraft:ominous_spawning` with 1..=3 commands and gaussian-difference
+      velocity. About-to-spawn / spawn sounds remain server or LevelEvent-owned
+      presentation work.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

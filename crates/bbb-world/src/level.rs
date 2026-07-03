@@ -297,6 +297,7 @@ impl WorldStore {
             return;
         };
 
+        let start_game_time = time.game_time;
         let game_time_delta = i64::from(ticks);
         time.game_time = time.game_time.saturating_add(game_time_delta);
         for clock in &mut time.clock_updates {
@@ -307,6 +308,15 @@ impl WorldStore {
             .first()
             .map(|clock| clock.total_ticks)
             .unwrap_or(time.game_time);
+
+        // Vanilla `Minecraft.tick` runs entity ticks before `ClientLevel.tickTime`,
+        // so entity tick side effects read the pre-increment gameTime for each tick.
+        for offset in 1..=ticks {
+            let game_time = start_game_time.saturating_add(i64::from(offset - 1));
+            if game_time % 5 == 0 {
+                self.entities.append_ominous_item_spawner_particle_states();
+            }
+        }
     }
 
     pub fn set_sky_flash_time(&mut self, ticks: i32) {

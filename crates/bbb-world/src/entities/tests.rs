@@ -718,6 +718,56 @@ fn firework_rocket_trail_particles_queue_once_per_client_tick() {
 }
 
 #[test]
+fn ominous_item_spawner_particles_queue_on_game_time_multiples_of_five() {
+    let mut store = WorldStore::new();
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 4,
+        clock_updates: Vec::new(),
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: -1.5,
+            y: 80.0,
+            z: 2.25,
+        },
+        ..protocol_add_entity_with_type(220, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        221,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    store.advance_client_time(6);
+
+    let states = store.take_ominous_item_spawner_particle_states();
+    assert_eq!(states.len(), 1);
+    assert!(states.iter().all(|state| state.entity_id == 220));
+    assert!(states.iter().all(|state| {
+        state.position
+            == EntityVec3 {
+                x: -1.5,
+                y: 80.0,
+                z: 2.25,
+            }
+    }));
+    assert!(store.take_ominous_item_spawner_particle_states().is_empty());
+
+    store.advance_client_time(1);
+
+    let states = store.take_ominous_item_spawner_particle_states();
+    assert_eq!(states.len(), 1);
+    assert_eq!(states[0].entity_id, 220);
+    assert_eq!(
+        states[0].position,
+        EntityVec3 {
+            x: -1.5,
+            y: 80.0,
+            z: 2.25,
+        }
+    );
+}
+
+#[test]
 fn update_attributes_ignores_non_living_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
