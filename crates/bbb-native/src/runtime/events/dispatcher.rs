@@ -487,12 +487,22 @@ pub(super) fn level_event_particle_context(
     LevelEventParticleContext {
         sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
         block_state_id_at_event_pos: event_pos_block_state_id_context(world, event),
+        biome_id_at_event_pos: event_pos_biome_id_context(world, event),
         vault_block_entity_at_event_pos: vault_block_entity_at_event_pos_context(world, event),
         dripstone_drip_particle: dripstone_drip_particle_context(world, event),
         growth_particles: growth_particle_context(world, event),
         in_block_particle_spread_height: in_block_particle_spread_height_context(world, event),
         composter_fill_center_shape_max_y: composter_fill_center_shape_max_y_context(world, event),
     }
+}
+
+fn event_pos_biome_id_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<i32> {
+    world
+        .probe_block(protocol_to_world_block_pos(event.pos))
+        .and_then(|probe| probe.biome_id)
 }
 
 fn vault_block_entity_at_event_pos_context(

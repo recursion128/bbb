@@ -2477,6 +2477,15 @@
     native particle runtime emits the poof batch while preserving
     `ParticleTypes.POOF` `overrideLimiter=true` behavior. Tests cover resolver
     randoms and dispatcher gating.
+  - [x] Destroy-block terrain particle tint：local vanilla 26.1
+    `ClientLevel.addDestroyBlockEffect` constructs `TerrainParticle` with the
+    event block position as the tint position, so tint sources use
+    `BlockTintSource.colorAsTerrainParticle(blockState, level, pos)` rather
+    than each particle's sampled position. Native level-event context now
+    carries the biome id at the event block position, and destroy-block /
+    brush-complete `minecraft:block` commands attach the same
+    `0.6 * colorAsTerrainParticle` option color used by terrain particles.
+    Tests cover resolver tint output and dispatcher biome context threading.
 
 ## P2：Terrain / Block Render Presentation
 

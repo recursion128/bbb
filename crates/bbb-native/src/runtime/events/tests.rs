@@ -3629,9 +3629,18 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
         data: 0,
         global: false,
     };
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::ChunksBiomes(
+        ChunksBiomes {
+            chunks: vec![ChunkBiomeData {
+                pos: ProtocolChunkPos { x: 1, z: -2 },
+                raw_biomes: single_biome_payload(7),
+            }],
+        },
     )))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
@@ -3664,7 +3673,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             None,
             &mut level_event_sound_random,
         ),
-        4
+        5
     );
 
     assert_eq!(
@@ -3687,6 +3696,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(true),
                 block_state_id_at_event_pos: Some(1),
+                biome_id_at_event_pos: Some(7),
                 vault_block_entity_at_event_pos: false,
                 dripstone_drip_particle: None,
                 growth_particles: None,
@@ -3696,6 +3706,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             LevelEventParticleContext {
                 sculk_charge_pop_full_block: Some(false),
                 block_state_id_at_event_pos: Some(0),
+                biome_id_at_event_pos: Some(7),
                 vault_block_entity_at_event_pos: false,
                 dripstone_drip_particle: None,
                 growth_particles: None,

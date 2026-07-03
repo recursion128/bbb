@@ -75,6 +75,7 @@ pub(crate) struct LevelParticleEntityPosition {
 pub(crate) struct LevelEventParticleContext {
     pub(crate) sculk_charge_pop_full_block: Option<bool>,
     pub(crate) block_state_id_at_event_pos: Option<i32>,
+    pub(crate) biome_id_at_event_pos: Option<i32>,
     pub(crate) vault_block_entity_at_event_pos: bool,
     pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
@@ -700,7 +701,7 @@ impl ParticleCommandResolver {
                 self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
             }
             DESTROY_BLOCK_PARTICLES_LEVEL_EVENT | BRUSH_BLOCK_COMPLETE_LEVEL_EVENT => {
-                self.destroy_block_particle_batch(event)
+                self.destroy_block_particle_batch(event, context)
             }
             BLAZE_SMOKE_LEVEL_EVENT => {
                 let mut batch = ParticleSpawnBatch::default();
@@ -915,7 +916,11 @@ impl ParticleCommandResolver {
         batch
     }
 
-    fn destroy_block_particle_batch(&self, event: &LevelEvent) -> ParticleSpawnBatch {
+    fn destroy_block_particle_batch(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+    ) -> ParticleSpawnBatch {
         let block_state_id = event.data;
         if block_state_id <= AIR_BLOCK_STATE_ID {
             return ParticleSpawnBatch::default();
@@ -937,8 +942,19 @@ impl ParticleCommandResolver {
             missing_sprite_count: template.missing_sprite_count,
             ..ParticleSpawnBatch::default()
         };
+        let event_pos = WorldBlockPos {
+            x: event.pos.x,
+            y: event.pos.y,
+            z: event.pos.z,
+        };
+        let option_color = self.terrain_particle_tint_color_for_block_position(
+            block_state_id,
+            event_pos,
+            context.biome_id_at_event_pos,
+        );
         let option_state = ParticleOptionRenderState {
             block: Some(ParticleBlockOptionState { block_state_id }),
+            color: option_color,
             ..ParticleOptionRenderState::default()
         };
         let raw_options_len = positive_var_i32_len(block_state_id);
@@ -2320,35 +2336,22 @@ impl ParticleCommandResolver {
     ) -> Option<[f32; 4]> {
         let block_state_id = option_state.block?.block_state_id;
         let block_pos = block_pos_containing(position);
-        let render_position = BlockRenderPosition {
-            x: block_pos.x,
-            y: block_pos.y,
-            z: block_pos.z,
-        };
         let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
         match particle_type_id {
             BLOCK_PARTICLE_TYPE_ID
             | DUST_PILLAR_PARTICLE_TYPE_ID
-            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
-                if !self
-                    .terrain_particle_tint_colors
-                    .contains_key(&block_state_id)
-                {
-                    return None;
-                }
-                self.terrain_particle_tint_catalog
-                    .terrain_particle_tint_color_for_block_state(
-                        block_state_id,
-                        biome_id,
-                        Some(render_position),
-                    )
-                    .or_else(|| {
-                        self.terrain_particle_tint_colors
-                            .get(&block_state_id)
-                            .copied()
-                    })
-            }
+            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => self
+                .terrain_particle_tint_color_for_block_position(
+                    block_state_id,
+                    block_pos,
+                    biome_id,
+                ),
             FALLING_DUST_PARTICLE_TYPE_ID => {
+                let render_position = BlockRenderPosition {
+                    x: block_pos.x,
+                    y: block_pos.y,
+                    z: block_pos.z,
+                };
                 let block_tint = self
                     .falling_dust_block_tint_colors
                     .contains_key(&block_state_id)
@@ -2370,6 +2373,36 @@ impl ParticleCommandResolver {
             }
             _ => None,
         }
+    }
+
+    fn terrain_particle_tint_color_for_block_position(
+        &self,
+        block_state_id: i32,
+        block_pos: WorldBlockPos,
+        biome_id: Option<i32>,
+    ) -> Option<[f32; 4]> {
+        if !self
+            .terrain_particle_tint_colors
+            .contains_key(&block_state_id)
+        {
+            return None;
+        }
+        let render_position = BlockRenderPosition {
+            x: block_pos.x,
+            y: block_pos.y,
+            z: block_pos.z,
+        };
+        self.terrain_particle_tint_catalog
+            .terrain_particle_tint_color_for_block_state(
+                block_state_id,
+                biome_id,
+                Some(render_position),
+            )
+            .or_else(|| {
+                self.terrain_particle_tint_colors
+                    .get(&block_state_id)
+                    .copied()
+            })
     }
 
     fn child_spawn_templates_for_type(
@@ -10888,6 +10921,44 @@ mod tests {
             moving_piston_id,
             [10.125, 64.125, -2.875],
             [-0.375, -0.375, -0.375],
+        );
+    }
+
+    #[test]
+    fn level_event_destroy_block_particles_use_event_pos_terrain_tint() {
+        let mut resolver = test_resolver(0);
+        let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+        ]));
+        resolver.set_terrain_particle_sprite_ids(&textures);
+        let short_grass_id = test_block_state_id("minecraft:short_grass", []);
+        let event = LevelEvent {
+            event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+            data: short_grass_id,
+            ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+        };
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        let batch = resolver.resolve_level_event_particles_with_context(
+            &event,
+            LevelEventParticleContext {
+                biome_id_at_event_pos: Some(7),
+                ..LevelEventParticleContext::default()
+            },
+            &mut random,
+        );
+
+        assert!(!batch.is_empty());
+        assert_eq!(
+            batch.commands[0].option_color,
+            Some(rgb_option_06(10, 20, 30))
+        );
+        assert_eq!(
+            batch
+                .commands
+                .last()
+                .and_then(|command| command.option_color),
+            Some(rgb_option_06(10, 20, 30))
         );
     }
 

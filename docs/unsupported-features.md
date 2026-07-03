@@ -509,8 +509,10 @@ When an agent does any of the following, update this file in the same slice:
         reject `moving_piston`. Event `3008` also records/plays the vanilla
         brushable completion sound for suspicious sand/gravel using
         `SoundSource.PLAYERS`, volume `1.0`, and pitch `1.0`; non-brushable
-        event-data states do not emit a sound. Terrain tint and terrain-atlas
-        GPU binding remain with broader terrain/block particle work
+        event-data states do not emit a sound. These block particles now sample
+        vanilla terrain tint at the event block position; any remaining
+        terrain/block particle GPU presentation refinements stay with broader
+        terrain/block particle work
       - events `2002` / `2007`: eight `minecraft:item` splash-potion break
         particles with vanilla `ItemParticleOption(Items.SPLASH_POTION)`,
         center position, and gaussian/upward velocity, followed by 100
@@ -6665,6 +6667,9 @@ When an agent does any of the following, update this file in the same slice:
         BlockTintSource.colorAsTerrainParticle` for vanilla layer-0 block color
         sources; `minecraft:block_marker` remains sprite-only, matching vanilla
         `BlockMarker`.
+        LevelEvent `addDestroyBlockEffect` / brush-complete `minecraft:block`
+        commands now reuse the same terrain tint catalog with the event block
+        position as the vanilla `TerrainParticle` tint position.
         `minecraft:block_marker` remains unfiltered, matching vanilla
         `BlockMarker.Provider`, and its spawn commands now carry the same
         block-state terrain particle material sprite id because vanilla
