@@ -3084,11 +3084,72 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
         particles.contexts,
         vec![LevelParticleSpawnContext {
             camera_position: Some([1.0, 3.62, 3.0]),
+            vibration_entity_position: None,
         }]
     );
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(world.last_level_particles().unwrap().count, 0);
+}
+
+#[test]
+fn level_particles_context_resolves_vibration_entity_position_source() {
+    let mut raw_options = vec![1, 123];
+    raw_options.extend_from_slice(&0.75_f32.to_be_bytes());
+    raw_options.push(27);
+    let packet = LevelParticles {
+        override_limiter: false,
+        always_show: true,
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        offset: ProtocolVec3d::default(),
+        max_speed: 0.0,
+        count: 0,
+        particle: ParticlePayload {
+            particle_type_id: 48,
+            raw_options,
+        },
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelParticles(
+        packet.clone(),
+    )))
+    .unwrap();
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(123));
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert_eq!(particles.packets, vec![packet]);
+    assert_eq!(
+        particles.contexts,
+        vec![LevelParticleSpawnContext {
+            camera_position: None,
+            vibration_entity_position: Some(crate::particle_runtime::LevelParticleEntityPosition {
+                entity_id: 123,
+                position: [1.0, 64.0, -2.0],
+            }),
+        }]
+    );
 }
 
 #[test]

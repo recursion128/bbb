@@ -12,8 +12,9 @@ use tokio::sync::mpsc;
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::{
-    LevelEventDripstoneDripParticle, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
-    LevelEventGrowthParticleSupport, LevelEventParticleContext, LevelParticleSpawnContext,
+    vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
+    LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
+    LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink,
 };
 
@@ -260,7 +261,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
             self.particle_events,
             self.particle_renderer,
             packet,
-            level_particle_spawn_context(world),
+            level_particle_spawn_context(world, packet),
             Some(&biome_sampler),
             self.item_runtime,
         );
@@ -412,10 +413,28 @@ impl ParticleBiomeSampler for WorldParticleBiomeSampler<'_> {
     }
 }
 
-fn level_particle_spawn_context(world: &WorldStore) -> LevelParticleSpawnContext {
+fn level_particle_spawn_context(
+    world: &WorldStore,
+    packet: &bbb_protocol::packets::LevelParticles,
+) -> LevelParticleSpawnContext {
     LevelParticleSpawnContext {
         camera_position: camera_audio_position_from_world(world)
             .map(|position| [position.x, position.y, position.z]),
+        vibration_entity_position: vibration_entity_position_source_from_options(
+            packet.particle.particle_type_id,
+            &packet.particle.raw_options,
+        )
+        .and_then(|source| {
+            let transform = world.probe_entity_transform(source.entity_id)?;
+            Some(LevelParticleEntityPosition {
+                entity_id: source.entity_id,
+                position: [
+                    transform.position.x,
+                    transform.position.y,
+                    transform.position.z,
+                ],
+            })
+        }),
     }
 }
 

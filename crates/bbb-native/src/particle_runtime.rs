@@ -56,6 +56,13 @@ pub(crate) trait ParticleBiomeSampler {
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct LevelParticleSpawnContext {
     pub(crate) camera_position: Option<[f64; 3]>,
+    pub(crate) vibration_entity_position: Option<LevelParticleEntityPosition>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct LevelParticleEntityPosition {
+    pub(crate) entity_id: i32,
+    pub(crate) position: [f64; 3],
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -483,8 +490,9 @@ impl ParticleCommandResolver {
             };
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
-        let option_state =
+        let mut option_state =
             particle_option_render_state(particle_type.id, &packet.particle.raw_options);
+        resolve_vibration_entity_target(&mut option_state, context);
         let provider_accepts_spawn =
             particle_provider_accepts_spawn(particle_type.id, &option_state);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
@@ -2430,6 +2438,13 @@ struct ParticleOptionRenderState {
     item: Option<ParticleItemOptionState>,
     item_stack: Option<ItemStackSummary>,
     item_component_patch_empty: bool,
+    vibration_entity_source: Option<VibrationEntityPositionSource>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct VibrationEntityPositionSource {
+    pub(crate) entity_id: i32,
+    pub(crate) y_offset: f32,
 }
 
 fn particle_option_render_state(
@@ -2571,7 +2586,7 @@ fn particle_option_render_state(
             }
         }
         VIBRATION_PARTICLE_TYPE_ID => {
-            let Ok(target) = decode_vibration_position_source_target(&mut decoder) else {
+            let Ok(source) = decode_vibration_position_source(&mut decoder) else {
                 return ParticleOptionRenderState::default();
             };
             let Ok(arrival_ticks) = decoder.read_var_i32() else {
@@ -2580,8 +2595,13 @@ fn particle_option_render_state(
             if !decoder.is_empty() {
                 return ParticleOptionRenderState::default();
             }
+            let (target, vibration_entity_source) = match source {
+                VibrationPositionSource::Block(target) => (Some(target), None),
+                VibrationPositionSource::Entity(source) => (None, Some(source)),
+            };
             ParticleOptionRenderState {
                 target,
+                vibration_entity_source,
                 duration_ticks: u32::try_from(arrival_ticks)
                     .ok()
                     .filter(|duration| *duration > 0),
@@ -3730,25 +3750,77 @@ fn destroy_block_effect_accepts_block_state(block_state_id: i32) -> bool {
         && block_name_should_spawn_terrain_particles(&block_state.name)
 }
 
-fn decode_vibration_position_source_target(
+pub(crate) fn vibration_entity_position_source_from_options(
+    particle_type_id: i32,
+    raw_options: &[u8],
+) -> Option<VibrationEntityPositionSource> {
+    if particle_type_id != VIBRATION_PARTICLE_TYPE_ID {
+        return None;
+    }
+    let mut decoder = Decoder::new(raw_options);
+    let source = decode_vibration_position_source(&mut decoder).ok()?;
+    decoder.read_var_i32().ok()?;
+    if !decoder.is_empty() {
+        return None;
+    }
+    match source {
+        VibrationPositionSource::Entity(source) => Some(source),
+        VibrationPositionSource::Block(_) => None,
+    }
+}
+
+fn resolve_vibration_entity_target(
+    option_state: &mut ParticleOptionRenderState,
+    context: LevelParticleSpawnContext,
+) {
+    if option_state.target.is_some() {
+        return;
+    }
+    let Some(source) = option_state.vibration_entity_source else {
+        return;
+    };
+    let Some(position) = context.vibration_entity_position else {
+        return;
+    };
+    if position.entity_id != source.entity_id {
+        return;
+    }
+    option_state.target = Some([
+        position.position[0],
+        position.position[1] + f64::from(source.y_offset),
+        position.position[2],
+    ]);
+}
+
+enum VibrationPositionSource {
+    Block([f64; 3]),
+    Entity(VibrationEntityPositionSource),
+}
+
+fn decode_vibration_position_source(
     decoder: &mut Decoder<'_>,
-) -> bbb_protocol::codec::Result<Option<[f64; 3]>> {
+) -> bbb_protocol::codec::Result<VibrationPositionSource> {
     match decoder.read_var_i32()? {
         0 => {
             let packed = decoder.read_i64()?;
             let x = (packed >> 38) as i32;
             let y = ((packed << 52) >> 52) as i32;
             let z = ((packed << 26) >> 38) as i32;
-            Ok(Some([
+            Ok(VibrationPositionSource::Block([
                 f64::from(x) + 0.5,
                 f64::from(y) + 0.5,
                 f64::from(z) + 0.5,
             ]))
         }
         1 => {
-            decoder.read_var_i32()?;
-            decoder.read_f32()?;
-            Ok(None)
+            let entity_id = decoder.read_var_i32()?;
+            let y_offset = decoder.read_f32()?;
+            Ok(VibrationPositionSource::Entity(
+                VibrationEntityPositionSource {
+                    entity_id,
+                    y_offset,
+                },
+            ))
         }
         other => Err(bbb_protocol::codec::ProtocolError::InvalidData(format!(
             "unknown position source type id {other}"
@@ -9114,6 +9186,45 @@ mod tests {
         assert_eq!(command.particle_id, "minecraft:vibration");
         assert_eq!(command.option_target, None);
         assert_eq!(command.option_duration_ticks, Some(27));
+        assert_eq!(
+            vibration_entity_position_source_from_options(
+                packet.particle.particle_type_id,
+                &packet.particle.raw_options
+            ),
+            Some(VibrationEntityPositionSource {
+                entity_id: 123,
+                y_offset: 0.75
+            })
+        );
+        assert_eq!(
+            vibration_entity_position_source_from_options(
+                CLOUD_PARTICLE_TYPE_ID,
+                &packet.particle.raw_options
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn vibration_particle_options_resolve_entity_source_with_spawn_context() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = vibration_particle_entity_options(123, 0.75, 27);
+        let context = LevelParticleSpawnContext {
+            vibration_entity_position: Some(LevelParticleEntityPosition {
+                entity_id: 123,
+                position: [4.0, 5.0, 6.0],
+            }),
+            ..LevelParticleSpawnContext::default()
+        };
+
+        let batch = resolver.resolve_level_particles_with_context(&packet, context, None, None);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:vibration");
+        assert_eq!(command.option_target, Some([4.0, 5.75, 6.0]));
+        assert_eq!(command.option_duration_ticks, Some(27));
     }
 
     #[test]
@@ -9210,6 +9321,7 @@ mod tests {
         };
         let context = LevelParticleSpawnContext {
             camera_position: Some([0.0, 0.0, 0.0]),
+            ..LevelParticleSpawnContext::default()
         };
         let mut resolver = test_resolver(0);
 
@@ -9232,6 +9344,7 @@ mod tests {
         };
         let context = LevelParticleSpawnContext {
             camera_position: Some([0.0, 0.0, 0.0]),
+            ..LevelParticleSpawnContext::default()
         };
         let mut resolver = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
 
@@ -9250,6 +9363,7 @@ mod tests {
         packet.position = Vec3d::default();
         let context = LevelParticleSpawnContext {
             camera_position: Some([0.0, 0.0, 0.0]),
+            ..LevelParticleSpawnContext::default()
         };
         let mut dropping_resolver =
             test_resolver_with_particle_status(0, ClientParticleStatus::Decreased);
@@ -9276,6 +9390,7 @@ mod tests {
         packet.position = Vec3d::default();
         let context = LevelParticleSpawnContext {
             camera_position: Some([0.0, 0.0, 0.0]),
+            ..LevelParticleSpawnContext::default()
         };
         let mut plain_minimal =
             test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);

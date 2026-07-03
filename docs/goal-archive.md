@@ -2428,6 +2428,15 @@
     after default motion, with focused coverage for near-player pull and
     far/lower-player no-op behavior. Broader remote-player nearest selection
     remains deferred with other player-coupled emitters.
+  - [x] Vibration entity PositionSource initial target：local vanilla 26.1
+    `EntityPositionSource.STREAM_CODEC` confirms entity sources are encoded as
+    VarInt entity id plus float `y_offset`, and `getPosition` returns
+    `entity.position().add(0, y_offset, 0)`. Native level-particle command
+    resolution now preserves entity id / offset for `minecraft:vibration` and
+    uses the current `WorldStore::probe_entity_transform` position to seed
+    renderer `option_target` when the entity is loaded; focused tests cover the
+    unresolved fallback, context resolution, and dispatcher world-context
+    projection. Vanilla's per-tick entity target re-query remains deferred.
 
 ## P2：Terrain / Block Render Presentation
 
