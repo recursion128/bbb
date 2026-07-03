@@ -6199,6 +6199,11 @@ When an agent does any of the following, update this file in the same slice:
       orientation carries the vanilla post-camera `Z+180 / Y+180 / X+90` pose
       for `isShotAtAngle`. Firework explosion / Starter child particles remain
       deferred to particle presentation work.
+    - dropped item entities now use the vanilla 26.1 `ItemEntityRenderer` item
+      stack path instead of a placeholder bounds box. Native entity scene maps
+      `minecraft:item` to `NoRender`; visible dropped items are submitted by the
+      existing block/3D dropped-item model path or the item atlas billboard path,
+      with handled entity ids suppressing duplicate flat billboards.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -6207,7 +6212,7 @@ When an agent does any of the following, update this file in the same slice:
     - simple non-display placeholder bounds are no longer guessed `todo_*`
       model keys when vanilla `EntityType.sized(width, height)` gives the exact
       box: dragon fireball (1.0), experience orb (0.5), and
-      fishing bobber/item/ominous item spawner (0.25) now use
+      fishing bobber/ominous item spawner (0.25) now use
       source-verified `*_entity_type_bounds` keys. The actual dedicated
       renderers remain deferred presentation work: dragon-fireball /
       fishing-hook / experience-orb textured camera quads, ominous-spawner item

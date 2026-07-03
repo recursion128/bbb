@@ -295,9 +295,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
         VANILLA_ENTITY_TYPE_INTERACTION_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_ITEM_ID => {
-            entity_type_bounds_placeholder("item_entity_type_bounds", 0.25, 0.25)
-        }
+        // Dropped item entities render through the item-model / item-billboard passes, not the
+        // entity-model scene (`ItemEntityRenderer` submits ItemStackRenderState clusters).
+        VANILLA_ENTITY_TYPE_ITEM_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
