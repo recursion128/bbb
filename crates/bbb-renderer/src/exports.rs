@@ -104,8 +104,8 @@ pub use crate::particles::{
     ParticleBlockFluidSurfaceQuery, ParticleBlockFluidSurfaceSample, ParticleBlockOptionState,
     ParticleChildSpawnTemplate, ParticleCollisionQuery, ParticleEntityTargetContext,
     ParticleEntityTargetSource, ParticleFluidKind, ParticleItemOptionState,
-    ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
+    ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext, ParticleScheduledSoundEvent,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };
 pub use crate::player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,

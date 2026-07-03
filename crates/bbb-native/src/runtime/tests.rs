@@ -835,9 +835,15 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let using_item_tick = source
         .find("world.advance_local_using_item_ticks(advanced_ticks);")
         .expect("pump should advance local use-item ticks before particle tick");
+    let particle_camera_pose = source
+        .find("let particle_camera_pose = camera_pose_from_world(world);")
+        .expect("pump should sample particle sound camera before particle tick");
     let particle_scope_context = source
         .find("let particle_scope_context =")
         .expect("pump should sample local scoping state before particle tick");
+    let particle_sound_camera_position = source
+        .find("let particle_sound_camera_position =")
+        .expect("pump should convert particle sound camera before particle tick");
     let particle_local_player_motion_context = source
         .find("let particle_local_player_motion_context =")
         .expect("pump should sample local player motion state before particle tick");
@@ -848,7 +854,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
     let particle_tick = source
-        .find("renderer.advance_particles_with_world_and_particle_contexts(")
+        .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
         .expect("pump should advance particles");
     let particle_sound_drain = source
         .find("let particle_sound_events = renderer.drain_particle_sound_events();")
@@ -878,6 +884,12 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         using_item_tick < particle_scope_context && particle_scope_context < particle_tick,
         "SpellParticle.tick samples post-input local scoping state during particle tick"
+    );
+    assert!(
+        using_item_tick < particle_camera_pose
+            && particle_camera_pose < particle_sound_camera_position
+            && particle_sound_camera_position < particle_tick,
+        "scheduled particle sounds choose far variants from the particle-tick camera"
     );
     assert!(
         using_item_tick < particle_local_player_motion_context

@@ -17,8 +17,8 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
-    ParticleItemOptionState, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    ParticleSpriteUv, ParticleUvRect, Renderer,
+    ParticleItemOptionState, ParticleScheduledSoundEvent, ParticleSoundEvent, ParticleSpawnBatch,
+    ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
@@ -41,6 +41,9 @@ const FIREWORK_ROCKET_LARGE_BLAST_SOUND_EVENT_ID: &str =
     "minecraft:entity.firework_rocket.large_blast";
 const FIREWORK_ROCKET_LARGE_BLAST_FAR_SOUND_EVENT_ID: &str =
     "minecraft:entity.firework_rocket.large_blast_far";
+const FIREWORK_ROCKET_TWINKLE_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.twinkle";
+const FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID: &str =
+    "minecraft:entity.firework_rocket.twinkle_far";
 
 pub(crate) trait ParticleEventSink {
     fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
@@ -2096,6 +2099,16 @@ impl ParticleCommandResolver {
             }
         }
 
+        if state
+            .explosions
+            .iter()
+            .any(|explosion| explosion.has_twinkle)
+        {
+            batch
+                .scheduled_sound_events
+                .push(self.firework_twinkle_sound_event(state));
+        }
+
         batch
     }
 
@@ -2129,6 +2142,26 @@ impl ParticleCommandResolver {
             pitch: 0.95 + self.random.next_float() * 0.1,
             seed: self.particle_level_random.next_i64(),
             distance_delay: true,
+        }
+    }
+
+    fn firework_twinkle_sound_event(
+        &mut self,
+        state: &FireworkRocketExplosionParticleState,
+    ) -> ParticleScheduledSoundEvent {
+        ParticleScheduledSoundEvent {
+            event: ParticleSoundEvent {
+                sound_event_id: FIREWORK_ROCKET_TWINKLE_SOUND_EVENT_ID.to_string(),
+                source: "ambient".to_string(),
+                position: [state.position.x, state.position.y, state.position.z],
+                volume: 20.0,
+                pitch: 0.9 + self.random.next_float() * 0.15,
+                seed: self.particle_level_random.next_i64(),
+                distance_delay: true,
+            },
+            delay_ticks: firework_twinkle_delay_ticks(state.explosions.len()),
+            far_sound_event_id: Some(FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID.to_string()),
+            far_distance_squared: Some(256.0),
         }
     }
 
@@ -4540,6 +4573,14 @@ fn firework_explosion_colors(explosion: &FireworkExplosionSummary) -> Vec<i32> {
         vec![FIREWORK_BLACK_COLOR]
     } else {
         explosion.colors.clone()
+    }
+}
+
+fn firework_twinkle_delay_ticks(explosion_count: usize) -> u32 {
+    if explosion_count == 0 {
+        0
+    } else {
+        (explosion_count as u32).saturating_mul(2) - 1 + 15
     }
 }
 
@@ -11379,6 +11420,24 @@ mod tests {
         let mut expected_level_random = LegacyRandom::new(0);
         assert_eq!(blast.seed, expected_level_random.next_i64());
         assert!(blast.distance_delay);
+        assert_eq!(firework_explosion.scheduled_sound_events.len(), 1);
+        let twinkle = &firework_explosion.scheduled_sound_events[0];
+        assert_eq!(
+            twinkle.event.sound_event_id,
+            FIREWORK_ROCKET_TWINKLE_SOUND_EVENT_ID
+        );
+        assert_eq!(twinkle.event.source, "ambient");
+        assert_eq!(twinkle.event.position, [10.0, 64.0, -3.0]);
+        assert_eq!(twinkle.event.volume, 20.0);
+        assert!((0.9_f32..1.05_f32).contains(&twinkle.event.pitch));
+        assert_eq!(twinkle.event.seed, expected_level_random.next_i64());
+        assert!(twinkle.event.distance_delay);
+        assert_eq!(twinkle.delay_ticks, 16);
+        assert_eq!(
+            twinkle.far_sound_event_id.as_deref(),
+            Some(FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID)
+        );
+        assert_eq!(twinkle.far_distance_squared, Some(256.0));
         assert_eq!(
             firework_explosion
                 .commands

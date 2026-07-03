@@ -1458,15 +1458,18 @@ pub(crate) fn pump_network_and_terrain(
         advanced_ticks,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
+    let particle_camera_pose = camera_pose_from_world(world);
     let particle_scope_context =
-        particle_local_player_scope_context(world, item_runtime, camera_pose_from_world(world));
+        particle_local_player_scope_context(world, item_runtime, particle_camera_pose);
+    let particle_sound_camera_position =
+        particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
     let particle_local_player_motion_context = particle_local_player_motion_context(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
-    renderer.advance_particles_with_world_and_particle_contexts(
+    renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(
         advanced_ticks,
         |query| {
             world.clip_particle_collision_movement(
@@ -1480,6 +1483,7 @@ pub(crate) fn pump_network_and_terrain(
         particle_scope_context,
         particle_local_player_motion_context,
         &particle_entity_target_contexts,
+        particle_sound_camera_position,
     );
     let particle_sound_events = renderer.drain_particle_sound_events();
     emit_particle_sound_events(&mut audio_events, particle_sound_events);

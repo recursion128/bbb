@@ -125,6 +125,16 @@ pub struct ParticleSoundEvent {
     pub distance_delay: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticleScheduledSoundEvent {
+    pub event: ParticleSoundEvent,
+    pub delay_ticks: u32,
+    #[serde(default)]
+    pub far_sound_event_id: Option<String>,
+    #[serde(default)]
+    pub far_distance_squared: Option<f64>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleCollisionQuery {
     pub position: [f64; 3],
@@ -207,6 +217,8 @@ pub struct ParticleSpawnBatch {
     #[serde(default)]
     pub sound_events: Vec<ParticleSoundEvent>,
     #[serde(default)]
+    pub scheduled_sound_events: Vec<ParticleScheduledSoundEvent>,
+    #[serde(default)]
     pub missing_definition_count: usize,
     #[serde(default)]
     pub missing_sprite_count: usize,
@@ -219,6 +231,7 @@ pub(crate) struct ParticleRuntimeState {
     pending_spawns: VecDeque<ParticleSpawnCommand>,
     active_instances: VecDeque<ParticleInstance>,
     pending_sound_events: VecDeque<ParticleSoundEvent>,
+    scheduled_sound_events: VecDeque<ParticleScheduledSoundEvent>,
     max_pending_spawns: usize,
     max_active_instances: usize,
     dropped_spawns: u64,
@@ -544,9 +557,28 @@ impl ParticleSpawnBatch {
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
             && self.sound_events.is_empty()
+            && self.scheduled_sound_events.is_empty()
             && self.missing_definition_count == 0
             && self.missing_sprite_count == 0
             && self.unknown_particle_type_count == 0
+    }
+}
+
+impl ParticleScheduledSoundEvent {
+    fn into_sound_event(mut self, camera_position: Option<[f64; 3]>) -> ParticleSoundEvent {
+        if let (Some(far_sound_event_id), Some(far_distance_squared), Some(camera_position)) = (
+            self.far_sound_event_id,
+            self.far_distance_squared,
+            camera_position,
+        ) {
+            let dx = self.event.position[0] - camera_position[0];
+            let dy = self.event.position[1] - camera_position[1];
+            let dz = self.event.position[2] - camera_position[2];
+            if dx * dx + dy * dy + dz * dz >= far_distance_squared {
+                self.event.sound_event_id = far_sound_event_id;
+            }
+        }
+        self.event
     }
 }
 
@@ -615,6 +647,7 @@ impl ParticleRuntimeState {
             pending_spawns: VecDeque::new(),
             active_instances: VecDeque::new(),
             pending_sound_events: VecDeque::new(),
+            scheduled_sound_events: VecDeque::new(),
             max_pending_spawns,
             max_active_instances,
             dropped_spawns: 0,
@@ -642,6 +675,8 @@ impl ParticleRuntimeState {
         let dropped_spawns_before = self.dropped_spawns;
 
         self.pending_sound_events.extend(batch.sound_events);
+        self.scheduled_sound_events
+            .extend(batch.scheduled_sound_events);
 
         for command in batch.commands {
             if self.queue_pending_spawn(command) {
@@ -758,11 +793,36 @@ impl ParticleRuntimeState {
     pub(crate) fn advance_with_world_and_particle_contexts<F, S>(
         &mut self,
         ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        entity_target_contexts: &[ParticleEntityTargetContext],
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        self.advance_with_world_and_particle_contexts_and_sound_camera(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+            local_player_motion_context,
+            entity_target_contexts,
+            None,
+        )
+    }
+
+    pub(crate) fn advance_with_world_and_particle_contexts_and_sound_camera<F, S>(
+        &mut self,
+        ticks: u32,
         mut collide: F,
         mut block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
         local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
         entity_target_contexts: &[ParticleEntityTargetContext],
+        sound_camera_position: Option<[f64; 3]>,
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -774,6 +834,7 @@ impl ParticleRuntimeState {
         let mut limited_particle_drops = 0;
 
         if ticks == 0 {
+            self.release_due_scheduled_sound_events(sound_camera_position);
             self.drain_pending_spawns(
                 &mut intaken_instances,
                 &mut dropped_active_instances,
@@ -789,6 +850,7 @@ impl ParticleRuntimeState {
                     local_player_motion_context,
                     entity_target_contexts,
                 );
+                self.advance_scheduled_sound_events(sound_camera_position);
                 self.drain_pending_spawns(
                     &mut intaken_instances,
                     &mut dropped_active_instances,
@@ -824,6 +886,34 @@ impl ParticleRuntimeState {
             total_dropped_active_instances: self.dropped_active_instances,
             total_limited_particle_drops: self.limited_particle_drops,
         }
+    }
+
+    fn release_due_scheduled_sound_events(&mut self, camera_position: Option<[f64; 3]>) {
+        self.update_scheduled_sound_events(camera_position, false);
+    }
+
+    fn advance_scheduled_sound_events(&mut self, camera_position: Option<[f64; 3]>) {
+        self.update_scheduled_sound_events(camera_position, true);
+    }
+
+    fn update_scheduled_sound_events(
+        &mut self,
+        camera_position: Option<[f64; 3]>,
+        decrement_ticks: bool,
+    ) {
+        let mut retained = VecDeque::with_capacity(self.scheduled_sound_events.len());
+        while let Some(mut scheduled) = self.scheduled_sound_events.pop_front() {
+            if decrement_ticks {
+                scheduled.delay_ticks = scheduled.delay_ticks.saturating_sub(1);
+            }
+            if scheduled.delay_ticks == 0 {
+                self.pending_sound_events
+                    .push_back(scheduled.into_sound_event(camera_position));
+            } else {
+                retained.push_back(scheduled);
+            }
+        }
+        self.scheduled_sound_events = retained;
     }
 
     fn tick_active_instances<F, S>(
@@ -2494,6 +2584,33 @@ impl Renderer {
         self.record_particle_advance_summary(summary);
     }
 
+    pub fn advance_particles_with_world_and_particle_contexts_and_sound_camera<F, S>(
+        &mut self,
+        ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        entity_target_contexts: &[ParticleEntityTargetContext],
+        sound_camera_position: Option<[f64; 3]>,
+    ) where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let summary = self
+            .particles
+            .advance_with_world_and_particle_contexts_and_sound_camera(
+                ticks,
+                collide,
+                block_fluid_surface,
+                scope_context,
+                local_player_motion_context,
+                entity_target_contexts,
+                sound_camera_position,
+            );
+        self.record_particle_advance_summary(summary);
+    }
+
     pub fn drain_particle_sound_events(&mut self) -> Vec<ParticleSoundEvent> {
         self.particles.drain_sound_events()
     }
@@ -3278,6 +3395,25 @@ mod tests {
         };
         assert_eq!(sound_only.len(), 0);
         assert!(!sound_only.is_empty());
+        let scheduled_only = ParticleSpawnBatch {
+            scheduled_sound_events: vec![ParticleScheduledSoundEvent {
+                event: ParticleSoundEvent {
+                    sound_event_id: "minecraft:test.delayed".to_string(),
+                    source: "ambient".to_string(),
+                    position: [1.0, 2.0, 3.0],
+                    volume: 4.0,
+                    pitch: 0.75,
+                    seed: 123,
+                    distance_delay: true,
+                },
+                delay_ticks: 2,
+                far_sound_event_id: None,
+                far_distance_squared: None,
+            }],
+            ..ParticleSpawnBatch::default()
+        };
+        assert_eq!(scheduled_only.len(), 0);
+        assert!(!scheduled_only.is_empty());
     }
 
     #[test]
@@ -3301,6 +3437,63 @@ mod tests {
         assert_eq!(summary.requested_spawns, 0);
         assert_eq!(summary.queued_spawns, 0);
         assert_eq!(particles.drain_sound_events(), vec![sound]);
+    }
+
+    #[test]
+    fn particle_runtime_scheduled_sound_events_release_with_current_camera_variant() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let near_sound = ParticleSoundEvent {
+            sound_event_id: "minecraft:entity.firework_rocket.twinkle".to_string(),
+            source: "ambient".to_string(),
+            position: [10.0, 64.0, -3.0],
+            volume: 20.0,
+            pitch: 0.95,
+            seed: 456,
+            distance_delay: true,
+        };
+
+        let summary = particles.submit_batch(ParticleSpawnBatch {
+            scheduled_sound_events: vec![ParticleScheduledSoundEvent {
+                event: near_sound,
+                delay_ticks: 2,
+                far_sound_event_id: Some(
+                    "minecraft:entity.firework_rocket.twinkle_far".to_string(),
+                ),
+                far_distance_squared: Some(256.0),
+            }],
+            ..ParticleSpawnBatch::default()
+        });
+        assert_eq!(summary.requested_spawns, 0);
+        assert!(particles.drain_sound_events().is_empty());
+
+        particles.advance_with_world_and_particle_contexts_and_sound_camera(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            None,
+            &[],
+            Some([10.0, 64.0, 0.0]),
+        );
+        assert!(particles.drain_sound_events().is_empty());
+
+        particles.advance_with_world_and_particle_contexts_and_sound_camera(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            None,
+            &[],
+            Some([10.0, 64.0, 14.0]),
+        );
+        let sounds = particles.drain_sound_events();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(
+            sounds[0].sound_event_id,
+            "minecraft:entity.firework_rocket.twinkle_far"
+        );
+        assert_eq!(sounds[0].position, [10.0, 64.0, -3.0]);
+        assert!(sounds[0].distance_delay);
     }
 
     #[test]

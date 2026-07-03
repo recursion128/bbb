@@ -413,7 +413,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     trail 子 spark 复制 / twinkle 可见性 gate；同一路径现在还按 vanilla life-0
     `Starter.tick()` 播放 local ambient blast / large_blast 声效，使用
     camera distance squared `>=256` 的 far 变体、volume `20.0`、
-    `0.95 + random * 0.1` pitch 和 `distanceDelay=true`；
+    `0.95 + random * 0.1` pitch 和 `distanceDelay=true`；含 twinkle 的
+    explosion 还会按 `explosions.size()*2 - 1 + 15` tick 延迟播放 local
+    ambient twinkle / twinkle_far 声效，释放时使用当前 camera distance
+    squared `>=256` 判定 far 变体、volume `20.0`、`0.9 + random * 0.15`
+    pitch 和 `distanceDelay=true`；
     `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
     local-player position / delta-movement context，覆盖 vanilla
     `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
@@ -519,8 +523,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla static states）。全量 mapColor catalog 与 biome-aware per-spawn
     BlockColors 已收敛；firework 非空 explosions 的基础 `Starter`
     spark/flash 与 per-spark fade-color 已由 firework event path 覆盖；
-    trail 子 spark 复制、twinkle 可见性 gate 与 life-0 blast 音效也已覆盖；
-    twinkle 移除延迟音频仍归属 firework 宽面。
+    trail 子 spark 复制、twinkle 可见性 gate、life-0 blast 音效与 twinkle
+    移除延迟音频也已覆盖。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：on-ground roll reset 和三轴
