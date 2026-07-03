@@ -10,7 +10,10 @@ use bbb_pack::{
     ParticleSpriteCatalog, SpriteImage,
 };
 use bbb_protocol::codec::Decoder;
-use bbb_protocol::packets::{BlockPos, ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
+use bbb_protocol::packets::{
+    decode_data_component_patch_summary, BlockPos, ClientParticleStatus, ItemStackSummary,
+    LevelEvent, LevelParticles, Vec3d,
+};
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
@@ -36,6 +39,7 @@ pub(crate) trait ParticleEventSink {
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_level_event_particles(
         &mut self,
@@ -205,9 +209,14 @@ impl ParticleEventSink for NativeParticleRuntime {
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
-        self.resolver
-            .resolve_level_particles_with_context(packet, context, biome_sampler)
+        self.resolver.resolve_level_particles_with_context(
+            packet,
+            context,
+            biome_sampler,
+            item_runtime,
+        )
     }
 
     fn spawn_level_event_particles(
@@ -435,6 +444,7 @@ impl ParticleCommandResolver {
             packet,
             LevelParticleSpawnContext::default(),
             None,
+            None,
         )
     }
 
@@ -443,6 +453,7 @@ impl ParticleCommandResolver {
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         if packet.count < 0 {
             return ParticleSpawnBatch::default();
@@ -475,7 +486,7 @@ impl ParticleCommandResolver {
         let option_state =
             particle_option_render_state(particle_type.id, &packet.particle.raw_options);
         let provider_accepts_spawn =
-            particle_provider_accepts_spawn(particle_type.id, option_state);
+            particle_provider_accepts_spawn(particle_type.id, &option_state);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
             particle_type.id,
             &packet.particle.raw_options,
@@ -510,8 +521,9 @@ impl ParticleCommandResolver {
                     override_limiter,
                     raw_options_len,
                     initial_delay_ticks,
-                    option_state,
+                    option_state.clone(),
                     biome_sampler,
+                    item_runtime,
                 ));
             }
         } else {
@@ -542,8 +554,9 @@ impl ParticleCommandResolver {
                         override_limiter,
                         raw_options_len,
                         initial_delay_ticks,
-                        option_state,
+                        option_state.clone(),
                         biome_sampler,
+                        item_runtime,
                     ));
                 }
             }
@@ -915,7 +928,7 @@ impl ParticleCommandResolver {
                 min,
                 max,
                 raw_options_len,
-                option_state,
+                option_state.clone(),
             );
         }
 
@@ -962,7 +975,8 @@ impl ParticleCommandResolver {
                         false,
                         raw_options_len,
                         0,
-                        option_state,
+                        option_state.clone(),
+                        None,
                         None,
                     ));
                 }
@@ -1022,7 +1036,8 @@ impl ParticleCommandResolver {
                     false,
                     0,
                     0,
-                    option_state,
+                    option_state.clone(),
+                    None,
                     None,
                 ));
             }
@@ -1050,7 +1065,8 @@ impl ParticleCommandResolver {
                     false,
                     0,
                     0,
-                    option_state,
+                    option_state.clone(),
+                    None,
                     None,
                 ));
             }
@@ -1225,6 +1241,7 @@ impl ParticleCommandResolver {
                 0,
                 ParticleOptionRenderState::default(),
                 None,
+                None,
             ));
         }
         batch
@@ -1263,6 +1280,7 @@ impl ParticleCommandResolver {
                     roll: Some(roll),
                     ..ParticleOptionRenderState::default()
                 },
+                None,
                 None,
             ));
         }
@@ -1484,6 +1502,7 @@ impl ParticleCommandResolver {
                 0,
                 option_state,
                 None,
+                None,
             ));
         }
 
@@ -1588,7 +1607,8 @@ impl ParticleCommandResolver {
                 false,
                 raw_options_len,
                 0,
-                option_state,
+                option_state.clone(),
+                None,
                 None,
             ));
         }
@@ -2101,6 +2121,7 @@ impl ParticleCommandResolver {
             0,
             ParticleOptionRenderState::default(),
             None,
+            None,
         )
     }
 
@@ -2116,6 +2137,7 @@ impl ParticleCommandResolver {
         initial_delay_ticks: u32,
         option_state: ParticleOptionRenderState,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnCommand {
         self.command_for_type(
             particle_type,
@@ -2128,6 +2150,7 @@ impl ParticleCommandResolver {
             initial_delay_ticks,
             option_state,
             biome_sampler,
+            item_runtime,
         )
     }
 
@@ -2143,11 +2166,13 @@ impl ParticleCommandResolver {
         initial_delay_ticks: u32,
         option_state: ParticleOptionRenderState,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
-        let sprite_ids = self.sprite_ids_for_command(particle_type.id, sprite_ids, option_state);
+        let sprite_ids =
+            self.sprite_ids_for_command(particle_type.id, sprite_ids, &option_state, item_runtime);
         let option_color = option_state.color.or_else(|| {
-            self.tint_color_for_command(particle_type.id, option_state, position, biome_sampler)
+            self.tint_color_for_command(particle_type.id, &option_state, position, biome_sampler)
         });
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
@@ -2176,7 +2201,8 @@ impl ParticleCommandResolver {
         &self,
         particle_type_id: i32,
         sprite_ids: &[String],
-        option_state: ParticleOptionRenderState,
+        option_state: &ParticleOptionRenderState,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> Vec<String> {
         if matches!(
             particle_type_id,
@@ -2193,6 +2219,13 @@ impl ParticleCommandResolver {
             }
         }
         if particle_type_id == ITEM_PARTICLE_TYPE_ID {
+            if let (Some(items), Some(stack)) = (item_runtime, option_state.item_stack.as_ref()) {
+                if let Some(sprite_ids) = items.item_particle_sprite_ids_for_stack(stack) {
+                    if !sprite_ids.is_empty() {
+                        return sprite_ids;
+                    }
+                }
+            }
             if option_state.item_component_patch_empty {
                 if let Some(sprite_ids) = option_state
                     .item
@@ -2208,7 +2241,7 @@ impl ParticleCommandResolver {
     fn tint_color_for_command(
         &self,
         particle_type_id: i32,
-        option_state: ParticleOptionRenderState,
+        option_state: &ParticleOptionRenderState,
         position: Vec3d,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> Option<[f32; 4]> {
@@ -2345,7 +2378,7 @@ fn positive_var_i32_len(value: i32) -> usize {
     len
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 struct ParticleOptionRenderState {
     color: Option<[f32; 4]>,
     color_to: Option<[f32; 4]>,
@@ -2356,6 +2389,7 @@ struct ParticleOptionRenderState {
     roll: Option<f32>,
     block: Option<ParticleBlockOptionState>,
     item: Option<ParticleItemOptionState>,
+    item_stack: Option<ItemStackSummary>,
     item_component_patch_empty: bool,
 }
 
@@ -2396,12 +2430,24 @@ fn particle_option_render_state(
             if item_id < 0 || count <= 0 {
                 return ParticleOptionRenderState::default();
             }
+            let component_patch_len = decoder.remaining_len();
             let component_patch_empty = decoder.remaining() == [0, 0];
+            let Ok(component_patch) = decode_data_component_patch_summary(&mut decoder) else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
             ParticleOptionRenderState {
                 item: Some(ParticleItemOptionState {
                     item_id,
                     count,
-                    component_patch_len: decoder.remaining_len(),
+                    component_patch_len,
+                }),
+                item_stack: Some(ItemStackSummary {
+                    item_id: Some(item_id),
+                    count,
+                    component_patch,
                 }),
                 item_component_patch_empty: component_patch_empty,
                 ..ParticleOptionRenderState::default()
@@ -2531,7 +2577,7 @@ fn particle_option_render_state(
 
 fn particle_provider_accepts_spawn(
     particle_type_id: i32,
-    option_state: ParticleOptionRenderState,
+    option_state: &ParticleOptionRenderState,
 ) -> bool {
     let Some(block) = option_state.block else {
         return true;
@@ -4464,6 +4510,7 @@ mod tests {
             &packet,
             LevelParticleSpawnContext::default(),
             Some(&sampler),
+            None,
         );
 
         assert_eq!(batch.len(), 4);
@@ -4516,6 +4563,7 @@ mod tests {
             &packet,
             LevelParticleSpawnContext::default(),
             Some(&sampler),
+            None,
         );
 
         assert_eq!(batch.len(), 1);
@@ -4556,6 +4604,9 @@ mod tests {
 
         let mut non_empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
         non_empty_patch.particle.raw_options = item_particle_options(5, 6, 1);
+        let non_empty_component_patch_len = non_empty_patch.particle.raw_options.len()
+            - positive_var_i32_len(5)
+            - positive_var_i32_len(6);
         let non_empty_batch = resolver.resolve_level_particles(&non_empty_patch);
 
         assert_eq!(non_empty_batch.len(), 1);
@@ -4565,9 +4616,45 @@ mod tests {
             Some(ParticleItemOptionState {
                 item_id: 5,
                 count: 6,
-                component_patch_len: EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN,
+                component_patch_len: non_empty_component_patch_len,
             })
         );
+    }
+
+    #[test]
+    fn generic_item_particle_uses_item_runtime_for_component_stack_sprite() {
+        let root = unique_temp_dir("particle-item-component-sprite");
+        write_item_particle_item_model_fixture(&root);
+        let items =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = item_particle_options(0, 1, 1);
+        let component_patch_len =
+            packet.particle.raw_options.len() - positive_var_i32_len(0) - positive_var_i32_len(1);
+
+        let batch = resolver.resolve_level_particles_with_context(
+            &packet,
+            LevelParticleSpawnContext::default(),
+            None,
+            Some(&items),
+        );
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(
+            batch.commands[0].sprite_ids,
+            vec!["minecraft:item/alternate_model_component".to_string()]
+        );
+        assert_eq!(
+            batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 0,
+                count: 1,
+                component_patch_len,
+            })
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -8985,7 +9072,7 @@ mod tests {
         };
         let mut resolver = test_resolver(0);
 
-        let batch = resolver.resolve_level_particles_with_context(&packet, context, None);
+        let batch = resolver.resolve_level_particles_with_context(&packet, context, None, None);
 
         assert!(batch.commands.is_empty());
         assert_eq!(batch.missing_definition_count, 0);
@@ -9007,7 +9094,7 @@ mod tests {
         };
         let mut resolver = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
 
-        let batch = resolver.resolve_level_particles_with_context(&packet, context, None);
+        let batch = resolver.resolve_level_particles_with_context(&packet, context, None, None);
 
         assert_eq!(batch.len(), 1);
         assert_eq!(batch.commands[0].position, [33.0, 0.0, 0.0]);
@@ -9029,12 +9116,12 @@ mod tests {
             test_resolver_with_particle_status(2, ClientParticleStatus::Decreased);
 
         assert!(dropping_resolver
-            .resolve_level_particles_with_context(&packet, context, None)
+            .resolve_level_particles_with_context(&packet, context, None, None)
             .commands
             .is_empty());
         assert_eq!(
             keeping_resolver
-                .resolve_level_particles_with_context(&packet, context, None)
+                .resolve_level_particles_with_context(&packet, context, None, None)
                 .len(),
             1
         );
@@ -9052,7 +9139,7 @@ mod tests {
         let mut plain_minimal =
             test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
         assert!(plain_minimal
-            .resolve_level_particles_with_context(&packet, context, None)
+            .resolve_level_particles_with_context(&packet, context, None, None)
             .commands
             .is_empty());
 
@@ -9060,7 +9147,7 @@ mod tests {
         let mut promoted = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
         assert_eq!(
             promoted
-                .resolve_level_particles_with_context(&packet, context, None)
+                .resolve_level_particles_with_context(&packet, context, None, None)
                 .len(),
             1
         );
@@ -9068,7 +9155,7 @@ mod tests {
         let mut promoted_then_dropped =
             test_resolver_with_particle_status(42, ClientParticleStatus::Minimal);
         assert!(promoted_then_dropped
-            .resolve_level_particles_with_context(&packet, context, None)
+            .resolve_level_particles_with_context(&packet, context, None, None)
             .commands
             .is_empty());
     }
@@ -11186,7 +11273,16 @@ mod tests {
         write_positive_var_i32(&mut out, count);
         write_positive_var_i32(&mut out, added_components);
         write_positive_var_i32(&mut out, 0);
+        for _ in 0..added_components {
+            write_positive_var_i32(&mut out, 10);
+            write_string(&mut out, "minecraft:alternate_model_component");
+        }
         out
+    }
+
+    fn write_string(out: &mut Vec<u8>, value: &str) {
+        write_positive_var_i32(out, value.len() as i32);
+        out.extend_from_slice(value.as_bytes());
     }
 
     fn trail_particle_options(target: [f64; 3], color: i32, duration: i32) -> Vec<u8> {
@@ -11828,6 +11924,102 @@ mod tests {
                 }
               ]
             }"#,
+        );
+    }
+
+    fn write_item_particle_item_model_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlas(&assets);
+        write_item_registry_source(root, "model_component");
+        write_json(
+            &assets.join("items").join("model_component.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/model_component"
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("alternate_model_component.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/alternate_model_component"
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "model_component");
+        write_flat_item_model_and_texture(&assets, "alternate_model_component");
+    }
+
+    fn write_item_atlas(assets_dir: &Path) {
+        write_json(
+            &assets_dir.join("atlases").join("items.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "item/",
+                        "source": "item"
+                    }
+                ]
+            }"#,
+        );
+        write_json(
+            &assets_dir.join("atlases").join("blocks.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "block/",
+                        "source": "block"
+                    }
+                ]
+            }"#,
+        );
+    }
+
+    fn write_item_registry_source(root: &Path, item_id: &str) {
+        let constant = item_id.to_ascii_uppercase();
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            &format!(
+                r#"public class Items {{
+                    public static final Item {constant} = registerItem("{item_id}");
+                }}"#,
+            ),
+        );
+    }
+
+    fn write_flat_item_model_and_texture(assets_dir: &Path, model_id: &str) {
+        write_json(
+            &assets_dir
+                .join("models")
+                .join("item")
+                .join(format!("{model_id}.json")),
+            &format!(
+                r#"{{
+                    "textures": {{
+                        "layer0": "minecraft:item/{model_id}"
+                    }}
+                }}"#
+            ),
+        );
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("item")
+                .join(format!("{model_id}.png")),
+            8,
+            8,
         );
     }
 

@@ -3073,6 +3073,7 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
             None,
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         1
@@ -3114,6 +3115,7 @@ fn level_event_smoke_particles_emit_particle_runtime_batch_and_world_counters() 
             &None,
             None,
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -3206,6 +3208,7 @@ fn post_sound_smoke_level_events_advance_particle_randoms_without_particle_sink(
                 &mut counters,
                 &None,
                 Some(&mut audio),
+                None,
                 None,
                 None,
                 &mut level_event_sound_random,
@@ -3376,6 +3379,7 @@ fn particle_only_level_events_advance_randoms_without_particle_sink_before_follo
                 Some(&mut audio),
                 None,
                 None,
+                None,
                 &mut level_event_sound_random,
             ),
             2
@@ -3445,6 +3449,7 @@ fn block_face_axis_level_events_advance_randoms_without_particle_sink_before_fol
                 &mut counters,
                 &None,
                 Some(&mut audio),
+                None,
                 None,
                 None,
                 &mut level_event_sound_random,
@@ -3523,6 +3528,7 @@ fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
             &None,
             None,
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -3626,6 +3632,7 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         4
@@ -3700,6 +3707,7 @@ fn vault_deactivation_level_event_emits_sound_after_particles() {
             &None,
             Some(&mut audio),
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -4295,6 +4303,7 @@ fn level_event_3008_emits_brushable_completion_sound_and_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         1
@@ -4354,6 +4363,7 @@ fn plant_growth_level_event_plays_bone_meal_sound_after_particles() {
             &None,
             Some(&mut audio),
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -4415,6 +4425,7 @@ fn plant_growth_level_event_audio_only_advances_particle_randoms_before_sound_se
             &mut counters,
             &None,
             Some(&mut audio),
+            None,
             None,
             None,
             &mut level_event_sound_random,
@@ -4649,6 +4660,7 @@ fn potion_break_level_event_plays_sound_after_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         1
@@ -4708,6 +4720,7 @@ fn dragon_fireball_level_event_plays_sound_after_particles() {
             &None,
             Some(&mut audio),
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -4942,6 +4955,7 @@ fn trial_spawner_audio_only_events_advance_post_sound_particle_randoms() {
                 Some(&mut audio),
                 None,
                 None,
+                None,
                 &mut level_event_sound_random,
             ),
             2
@@ -5006,6 +5020,7 @@ fn trial_spawner_level_event_emits_sound_and_particle_side_effects() {
             &None,
             Some(&mut audio),
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -5146,6 +5161,7 @@ fn sculk_charge_audio_only_charged_event_advances_particle_randoms() {
             Some(&mut audio),
             None,
             None,
+            None,
             &mut level_event_sound_random,
         ),
         2
@@ -5229,6 +5245,7 @@ fn sculk_charge_audio_only_pop_event_uses_full_block_particle_context() {
             &mut counters,
             &None,
             Some(&mut audio),
+            None,
             None,
             None,
             &mut level_event_sound_random,
@@ -5340,6 +5357,7 @@ fn sculk_shrieker_level_event_emits_waterlogged_gated_sound_after_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         5
@@ -5397,6 +5415,7 @@ fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         1
@@ -5445,6 +5464,7 @@ fn cobweb_place_level_event_emits_particles_before_distance_delayed_sound() {
             &None,
             Some(&mut audio),
             Some(&mut particles),
+            None,
             None,
             &mut level_event_sound_random,
         ),
@@ -5506,6 +5526,7 @@ fn wax_on_level_event_emits_vanilla_sound_and_particles() {
             Some(&mut audio),
             Some(&mut particles),
             None,
+            None,
             &mut level_event_sound_random,
         ),
         1
@@ -5560,6 +5581,7 @@ fn wax_on_level_event_audio_only_advances_particles_before_sound_seed() {
             &mut counters,
             &None,
             Some(&mut audio),
+            None,
             None,
             None,
             &mut level_event_sound_random,
@@ -7308,6 +7330,7 @@ impl ParticleEventSink for RecordingParticleSink {
         packet: &LevelParticles,
         context: LevelParticleSpawnContext,
         _biome_sampler: Option<&dyn crate::particle_runtime::ParticleBiomeSampler>,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.packets.push(packet.clone());
         self.contexts.push(context);

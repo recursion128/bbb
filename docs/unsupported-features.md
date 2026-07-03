@@ -261,8 +261,8 @@ When an agent does any of the following, update this file in the same slice:
         and `block_crumble`: air, `moving_piston`, and
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
-      - remaining deferred work is component-driven item stack material
-        selection, collision/roll coupling, and broader firework presentation
+      - remaining deferred work is collision/roll coupling and broader
+        firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -346,10 +346,12 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:block`, `minecraft:block_marker`, `minecraft:dust_pillar`,
       and `minecraft:block_crumble` block-state particle material sprite ids
       through the terrain block-model catalog and upload those ids in spawn
-      commands. Generic `minecraft:item` particles with an empty component patch
-      now resolve the default GROUND item particle material active-layer sprite
-      ids and let the renderer randomly select one; full component-driven stack
-      material selection and on-ground roll reset remain follow-up work. Native spawn
+      commands. Generic `minecraft:item` particles now decode the
+      `ItemStackTemplate` `DataComponentPatch` into the protocol component
+      summary and resolve the concrete GROUND item particle material
+      active-layer sprite ids through the native item runtime, including
+      component-driven root item-model changes; on-ground roll reset remains
+      deferred until particle ticking can query world collision state. Native spawn
       resolution also mirrors `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
@@ -6540,11 +6542,12 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:item_slime` -> `minecraft:item/slime_ball`,
         `minecraft:item_cobweb` -> `minecraft:block/cobweb`, and
         `minecraft:item_snowball` -> `minecraft:item/snowball`. The generic
-        `minecraft:item` provider now resolves default empty-component stacks
-        through the native item runtime's GROUND particle material active-layer
-        sprite ids, and the renderer uses random sprite selection for
-        `BreakingItemParticle` providers. Full component patch decoding remains
-        deferred.
+        `minecraft:item` provider now decodes the `ItemStackTemplate`
+        `DataComponentPatch` into the protocol component summary and resolves
+        concrete GROUND particle material active-layer sprite ids through the
+        native item runtime, including component-driven root item-model
+        changes. The renderer uses random sprite selection for
+        `BreakingItemParticle` providers.
       - renderer descriptor tests now cover the full vanilla 26.1
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are

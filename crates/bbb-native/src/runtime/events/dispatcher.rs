@@ -1,4 +1,5 @@
 use bbb_control::NetCounters;
+use bbb_item_model::NativeItemRuntime;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
@@ -44,6 +45,7 @@ pub(in crate::runtime) fn drain_net_events(
         None,
         None,
         None,
+        None,
         &mut level_event_sound_random,
     )
 }
@@ -65,6 +67,7 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
         audio_events,
         None,
         None,
+        None,
         &mut level_event_sound_random,
     )
 }
@@ -77,6 +80,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     mut audio_events: Option<&mut dyn AudioEventSink>,
     mut particle_events: Option<&mut dyn ParticleEventSink>,
     mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
+    item_runtime: Option<&NativeItemRuntime>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let mut drained = 0;
@@ -101,6 +105,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     audio_events: &mut audio_events,
                     particle_events: &mut particle_events,
                     particle_renderer: &mut particle_renderer,
+                    item_runtime,
                 };
                 // Connection-owned leftovers (movement responses, resource
                 // pack replies) are already handled by the event stream.
@@ -209,6 +214,7 @@ struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer> {
     audio_events: &'c mut Option<&'audio mut dyn AudioEventSink>,
     particle_events: &'c mut Option<&'particle mut dyn ParticleEventSink>,
     particle_renderer: &'c mut Option<&'renderer mut bbb_renderer::Renderer>,
+    item_runtime: Option<&'c NativeItemRuntime>,
 }
 
 impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
@@ -256,6 +262,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
             packet,
             level_particle_spawn_context(world),
             Some(&biome_sampler),
+            self.item_runtime,
         );
     }
 
@@ -384,9 +391,11 @@ fn emit_level_particles(
     packet: &bbb_protocol::packets::LevelParticles,
     context: LevelParticleSpawnContext,
     biome_sampler: Option<&dyn ParticleBiomeSampler>,
+    item_runtime: Option<&NativeItemRuntime>,
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
-        let batch = particle_events.spawn_level_particles(packet, context, biome_sampler);
+        let batch =
+            particle_events.spawn_level_particles(packet, context, biome_sampler, item_runtime);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }

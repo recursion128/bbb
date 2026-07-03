@@ -177,7 +177,7 @@ pub(super) fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<Ite
     })
 }
 
-pub(super) fn decode_data_component_patch_summary(
+pub fn decode_data_component_patch_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<DataComponentPatchSummary> {
     data_components::decode_data_component_patch_summary(decoder)

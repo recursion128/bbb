@@ -1376,6 +1376,7 @@ pub(crate) fn pump_network_and_terrain(
             audio_events_for_drain,
             particle_events_for_drain,
             Some(renderer),
+            item_runtime,
             level_event_sound_random,
         );
     }

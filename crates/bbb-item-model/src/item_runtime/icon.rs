@@ -672,6 +672,97 @@ impl NativeItemRuntime {
         Some(indices)
     }
 
+    fn icon_texture_indices_for_stack_with_context(
+        &self,
+        stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
+    ) -> Option<Vec<u32>> {
+        if item_stack_is_empty(stack) {
+            return None;
+        }
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
+        let default_max_stack_size_for_item =
+            |item_id| self.default_max_stack_size_for_protocol_id(item_id);
+        let default_max_damage_for_item =
+            |item_id| self.default_max_damage_for_protocol_id(item_id);
+        let default_item_name_translation_key =
+            self.default_item_name_translation_key_for_resource_id(item_id);
+        let default_attribute_modifiers =
+            self.default_attribute_modifiers_for_resource_id(item_id, None);
+        let default_attribute_modifiers_for_item =
+            |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, None);
+        let context = IconResolveContext {
+            component_patch: Some(&stack.component_patch),
+            stack_count: stack.count,
+            default_max_stack_size: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.max_stack_size(item_id)),
+            default_max_damage: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.max_damage(item_id)),
+            bundle_selected_item_index: None,
+            selected_item: false,
+            carried_item: false,
+            view_entity: false,
+            shift_down: false,
+            keybind_context: ItemModelKeybindContext::default(),
+            fishing_rod_cast: false,
+            using_item: false,
+            use_context: ItemModelUseContext::inactive(),
+            cooldown_progress: 0.0,
+            crossbow_charge: self.crossbow_charge_for(Some(&stack.component_patch)),
+            display_context: item_display_context_name(display_context),
+            item_model_seed: 0,
+            default_item_model_id: item_id,
+            default_item_name_translation_key: &default_item_name_translation_key,
+            main_hand_left: None,
+            context_dimension: None,
+            context_entity_type: None,
+            local_time_epoch_millis: self.local_time_epoch_millis(),
+            time_context: None,
+            stateful_model_id: item_model_id,
+            time_wobbler: None,
+            time_random: None,
+            compass_context: None,
+            compass_wobbler: None,
+            compass_no_target_rotation: None,
+            default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
+            default_max_damage_for_item: Some(&default_max_damage_for_item),
+            default_attribute_modifiers: &default_attribute_modifiers,
+            default_attribute_modifiers_for_item: Some(&default_attribute_modifiers_for_item),
+            item_resource_ids: self
+                .registry
+                .as_ref()
+                .map(ItemRegistryCatalog::resource_ids),
+            item_tags: self.item_tags.as_ref(),
+            enchantment_tags: self.enchantment_tags.as_ref(),
+            trim_material_tags: self.trim_material_tags.as_ref(),
+            trim_pattern_tags: self.trim_pattern_tags.as_ref(),
+            jukebox_song_tags: self.jukebox_song_tags.as_ref(),
+            potion_tags: self.potion_tags.as_ref(),
+            attribute_tags: self.attribute_tags.as_ref(),
+            villager_type_tags: self.villager_type_tags.as_ref(),
+            trim_material_keys: None,
+            enchantment_keys: None,
+            attribute_keys: None,
+        };
+        let mut indices = self
+            .item_icon_models
+            .get(item_model_id)
+            .map(|model| self.icon_layers_for_model(model, context, 0))
+            .unwrap_or_else(|| self.fallback_icon_texture_layers())
+            .into_iter()
+            .map(|layer| layer.texture_index)
+            .collect::<Vec<_>>();
+        if indices.is_empty() {
+            indices.push(self.textures.fallback_index());
+        }
+        Some(indices)
+    }
+
     /// Default, empty-component `BreakingItemParticle.Provider` active-layer sprite ids for vanilla
     /// `ItemDisplayContext.GROUND`. Vanilla resolves a stack into an `ItemStackRenderState` and samples
     /// one layer particle material by random index; this static map covers the common no-component stack
@@ -700,6 +791,25 @@ impl NativeItemRuntime {
                 (!sprite_ids.is_empty()).then_some((protocol_id, sprite_ids))
             })
             .collect()
+    }
+
+    /// `BreakingItemParticle.Provider` active-layer sprite ids for the concrete
+    /// `ItemStackTemplate` carried by `minecraft:item` particle options. Vanilla
+    /// resolves the stack with `ItemDisplayContext.GROUND` before randomly
+    /// choosing one of the resulting particle materials.
+    pub fn item_particle_sprite_ids_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+    ) -> Option<Vec<String>> {
+        Some(
+            self.icon_texture_indices_for_stack_with_context(
+                stack,
+                BlockModelDisplayContext::Ground,
+            )?
+            .into_iter()
+            .filter_map(|texture_index| self.textures.texture_id(texture_index).map(str::to_string))
+            .collect(),
+        )
     }
 
     #[cfg(test)]

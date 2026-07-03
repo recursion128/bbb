@@ -6225,6 +6225,14 @@ fn native_item_runtime_uses_item_model_component_as_root_model() {
             .uv,
         uv("alternate_model_component")
     );
+    assert_eq!(
+        runtime.item_particle_sprite_ids_for_stack(&stack(DataComponentPatchSummary {
+            added_type_ids: vec![10],
+            item_model: Some("minecraft:alternate_model_component".to_string()),
+            ..DataComponentPatchSummary::default()
+        })),
+        Some(vec!["minecraft:item/alternate_model_component".to_string()])
+    );
 
     // Removing ITEM_MODEL makes ItemStack.get(ITEM_MODEL) return null; the
     // vanilla resolver clears the output and appends no item layers.

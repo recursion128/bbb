@@ -1874,6 +1874,13 @@
     resolution records missing definitions, unknown particle types, and missing
     sprites without dropping otherwise renderable spawn commands; renderer
     batch/counter paths preserve those diagnostic counts.
+  - [x] component-driven generic item particle material：native now decodes
+    `minecraft:item` particle `ItemStackTemplate` options through the protocol
+    `DataComponentPatchSummary` decoder, passes item runtime context through
+    the online particle effect sink, and resolves GROUND
+    `BreakingItemParticle` material active-layer sprite ids for component-bearing
+    stacks, including `minecraft:item_model` root model overrides. The renderer
+    continues to randomly select among the resolved item atlas sprite ids.
 - LevelEvent particle side effects：
   - [x] ender-eye break portal ring：event `2003` now emits the vanilla
     double portal ring (`angle += PI / 20`, velocity radii `-5` and `-7`)
