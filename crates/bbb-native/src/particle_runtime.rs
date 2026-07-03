@@ -28,7 +28,8 @@ use bbb_world::{
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
     TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, WitchMagicParticleState,
+    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::{
@@ -115,6 +116,7 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         state: EntityTamingParticleState,
     ) -> ParticleSpawnBatch;
+    fn spawn_villager_particles(&mut self, state: VillagerParticleState) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
         state: SnowballHitParticleState,
@@ -420,6 +422,10 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: EntityTamingParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.entity_taming_particle_batch(state)
+    }
+
+    fn spawn_villager_particles(&mut self, state: VillagerParticleState) -> ParticleSpawnBatch {
+        self.resolver.villager_particle_batch(state)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2777,6 +2783,8 @@ impl ParticleCommandResolver {
             state.width,
             state.height,
             ANIMAL_LOVE_PARTICLE_COUNT,
+            ENTITY_EVENT_DEFAULT_Y_OFFSET,
+            ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
         )
     }
 
@@ -2790,6 +2798,8 @@ impl ParticleCommandResolver {
             state.width,
             state.height,
             ALLAY_DUPLICATION_PARTICLE_COUNT,
+            ENTITY_EVENT_DEFAULT_Y_OFFSET,
+            ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
         )
     }
 
@@ -2808,6 +2818,26 @@ impl ParticleCommandResolver {
             state.width,
             state.height,
             ENTITY_TAMING_PARTICLE_COUNT,
+            ENTITY_EVENT_DEFAULT_Y_OFFSET,
+            ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
+        )
+    }
+
+    fn villager_particle_batch(&mut self, state: VillagerParticleState) -> ParticleSpawnBatch {
+        let particle_type_id = match state.kind {
+            VillagerParticleKind::Heart => HEART_PARTICLE_TYPE_ID,
+            VillagerParticleKind::Angry => ANGRY_VILLAGER_PARTICLE_TYPE_ID,
+            VillagerParticleKind::Happy => HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            VillagerParticleKind::Splash => SPLASH_PARTICLE_TYPE_ID,
+        };
+        self.entity_event_aabb_particle_batch(
+            particle_type_id,
+            state.position,
+            state.width,
+            state.height,
+            VILLAGER_PARTICLE_COUNT,
+            VILLAGER_PARTICLE_Y_OFFSET,
+            ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
         )
     }
 
@@ -2818,6 +2848,8 @@ impl ParticleCommandResolver {
         entity_width: f32,
         entity_height: f32,
         count: usize,
+        y_offset: f64,
+        velocity_scale: f64,
     ) -> ParticleSpawnBatch {
         let template = match self.simple_particle_template(particle_type_id) {
             Ok(template) => template,
@@ -2831,13 +2863,13 @@ impl ParticleCommandResolver {
         let height = f64::from(entity_height.max(0.0));
         for _ in 0..count {
             let velocity = Vec3d {
-                x: self.random.next_gaussian() * 0.02,
-                y: self.random.next_gaussian() * 0.02,
-                z: self.random.next_gaussian() * 0.02,
+                x: self.random.next_gaussian() * velocity_scale,
+                y: self.random.next_gaussian() * velocity_scale,
+                z: self.random.next_gaussian() * velocity_scale,
             };
             let position = Vec3d {
                 x: entity_position.x + width * (2.0 * self.random.next_f64() - 1.0),
-                y: entity_position.y + height * self.random.next_f64() + 0.5,
+                y: entity_position.y + height * self.random.next_f64() + y_offset,
                 z: entity_position.z + width * (2.0 * self.random.next_f64() - 1.0),
             };
             batch
@@ -5313,6 +5345,7 @@ const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
 const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
+const ANGRY_VILLAGER_PARTICLE_TYPE_ID: i32 = 0;
 const BLOCK_PARTICLE_TYPE_ID: i32 = 1;
 const BLOCK_MARKER_PARTICLE_TYPE_ID: i32 = 2;
 const BUBBLE_PARTICLE_TYPE_ID: i32 = 3;
@@ -5439,6 +5472,10 @@ const ARROW_EFFECT_PARTICLE_COUNT: usize = 20;
 const ANIMAL_LOVE_PARTICLE_COUNT: usize = 7;
 const ALLAY_DUPLICATION_PARTICLE_COUNT: usize = 3;
 const ENTITY_TAMING_PARTICLE_COUNT: usize = 7;
+const VILLAGER_PARTICLE_COUNT: usize = 5;
+const ENTITY_EVENT_DEFAULT_Y_OFFSET: f64 = 0.5;
+const ENTITY_EVENT_PARTICLE_VELOCITY_SCALE: f64 = 0.02;
+const VILLAGER_PARTICLE_Y_OFFSET: f64 = 1.0;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
@@ -6346,6 +6383,76 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:smoke"));
+    }
+
+    #[test]
+    fn villager_event_batches_match_vanilla_particles() {
+        for (kind, particle_type_id, particle_name) in [
+            (
+                VillagerParticleKind::Heart,
+                HEART_PARTICLE_TYPE_ID,
+                "minecraft:heart",
+            ),
+            (
+                VillagerParticleKind::Angry,
+                ANGRY_VILLAGER_PARTICLE_TYPE_ID,
+                "minecraft:angry_villager",
+            ),
+            (
+                VillagerParticleKind::Happy,
+                HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                "minecraft:happy_villager",
+            ),
+            (
+                VillagerParticleKind::Splash,
+                SPLASH_PARTICLE_TYPE_ID,
+                "minecraft:splash",
+            ),
+        ] {
+            let state = VillagerParticleState {
+                entity_id: 83,
+                position: bbb_world::EntityVec3 {
+                    x: 10.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+                width: 0.6,
+                height: 1.95,
+                kind,
+            };
+            let mut expected_random = LegacyRandom::new(0);
+            let expected_velocity = [
+                expected_random.next_gaussian() * ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
+                expected_random.next_gaussian() * ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
+                expected_random.next_gaussian() * ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
+            ];
+            let expected_position = [
+                state.position.x
+                    + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+                state.position.y
+                    + f64::from(state.height) * expected_random.next_f64()
+                    + VILLAGER_PARTICLE_Y_OFFSET,
+                state.position.z
+                    + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+            ];
+            let mut resolver = test_resolver(0);
+
+            let batch = resolver.villager_particle_batch(state);
+
+            assert_eq!(batch.len(), VILLAGER_PARTICLE_COUNT);
+            assert_particle_command(
+                &batch.commands[0],
+                particle_type_id,
+                particle_name,
+                expected_position,
+                expected_velocity,
+                false,
+            );
+            assert!(batch
+                .commands
+                .iter()
+                .all(|command| command.particle_id == particle_name));
+        }
     }
 
     #[test]
@@ -13488,6 +13595,7 @@ mod tests {
                 "dripping_dripstone_water",
                 "bubble_0",
                 "poof_0",
+                "angry_villager_0",
                 "happy_villager_0",
                 "heart_0",
                 "composter_0",
@@ -13776,6 +13884,14 @@ mod tests {
                 "minecraft:generic_5",
                 "minecraft:generic_6",
                 "minecraft:generic_7"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("angry_villager.json"),
+            r#"{
+              "textures": [
+                "minecraft:angry_villager_0"
               ]
             }"#,
         );

@@ -52,8 +52,8 @@ use bbb_world::{
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
     RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, WitchMagicParticleState,
-    WorldBlockSoundProfile, WorldStore,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2948,6 +2948,81 @@ fn taming_entity_events_emit_tamable_and_horse_particle_states() {
     assert_close(state.height, 1.6);
     assert_eq!(particles.batches.len(), 2);
     assert_eq!(world.counters().entity_events_applied, 3);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn villager_entity_events_emit_particle_states() {
+    let (tx, mut rx) = mpsc::channel(8);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(133, VANILLA_ENTITY_TYPE_VILLAGER_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(134, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID),
+    )))
+    .unwrap();
+    for event_id in [12, 13, 14, 42] {
+        tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+            entity_id: 133,
+            event_id,
+        })))
+        .unwrap();
+    }
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 134,
+        event_id: 12,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 13,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        8
+    );
+
+    assert_eq!(particles.villager_states.len(), 4);
+    assert_eq!(
+        particles
+            .villager_states
+            .iter()
+            .map(|state| state.kind)
+            .collect::<Vec<_>>(),
+        vec![
+            VillagerParticleKind::Heart,
+            VillagerParticleKind::Angry,
+            VillagerParticleKind::Happy,
+            VillagerParticleKind::Splash,
+        ]
+    );
+    let state = particles.villager_states[0];
+    assert_eq!(state.entity_id, 133);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 0.6);
+    assert_close(state.height, 1.95);
+    assert_eq!(particles.batches.len(), 4);
+    assert_eq!(world.counters().entity_events_applied, 5);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8966,6 +9041,7 @@ struct RecordingParticleSink {
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     arrow_effect_states: Vec<ArrowEffectParticleState>,
     entity_taming_states: Vec<EntityTamingParticleState>,
+    villager_states: Vec<VillagerParticleState>,
     animal_love_states: Vec<AnimalLoveParticleState>,
     allay_duplication_states: Vec<AllayDuplicationParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
@@ -9150,6 +9226,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: EntityTamingParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.entity_taming_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_villager_particles(
+        &mut self,
+        state: VillagerParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.villager_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

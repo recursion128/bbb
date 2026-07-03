@@ -21,7 +21,8 @@ use crate::{
     LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
     RavagerRoarParticleState, SnowballHitParticleState, SoundEntityEventState, SoundEventState,
     StopSoundEventState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
-    VehicleMoveReport, WitchMagicParticleState, WorldStore,
+    VehicleMoveReport, VillagerParticleKind, VillagerParticleState, WitchMagicParticleState,
+    WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -64,8 +65,12 @@ const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
 const TAMING_FAILED_EVENT_ID: i8 = 6;
 const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
+const VILLAGER_HEART_EVENT_ID: i8 = 12;
+const VILLAGER_ANGRY_EVENT_ID: i8 = 13;
+const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
+const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
@@ -154,6 +159,7 @@ pub trait PlayApplyEffects {
     }
     fn arrow_effect_particles(&mut self, _world: &WorldStore, _state: ArrowEffectParticleState) {}
     fn entity_taming_particles(&mut self, _world: &WorldStore, _state: EntityTamingParticleState) {}
+    fn villager_particles(&mut self, _world: &WorldStore, _state: VillagerParticleState) {}
     fn animal_love_particles(&mut self, _world: &WorldStore, _state: AnimalLoveParticleState) {}
     fn allay_duplication_particles(
         &mut self,
@@ -391,6 +397,20 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let villager_particles =
+                    match update.event_id {
+                        VILLAGER_HEART_EVENT_ID => self
+                            .villager_particle_state(update.entity_id, VillagerParticleKind::Heart),
+                        VILLAGER_ANGRY_EVENT_ID => self
+                            .villager_particle_state(update.entity_id, VillagerParticleKind::Angry),
+                        VILLAGER_HAPPY_EVENT_ID => self
+                            .villager_particle_state(update.entity_id, VillagerParticleKind::Happy),
+                        VILLAGER_SPLASH_EVENT_ID => self.villager_particle_state(
+                            update.entity_id,
+                            VillagerParticleKind::Splash,
+                        ),
+                        _ => None,
+                    };
                 let animal_love_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
                     self.animal_love_particle_state(update.entity_id)
                 } else {
@@ -487,6 +507,9 @@ impl WorldStore {
                     }
                     if let Some(state) = entity_taming_particles {
                         effects.entity_taming_particles(self, state);
+                    }
+                    if let Some(state) = villager_particles {
+                        effects.villager_particles(self, state);
                     }
                     if let Some(state) = animal_love_particles {
                         effects.animal_love_particles(self, state);
@@ -1434,6 +1457,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
@@ -1455,6 +1479,7 @@ mod tests {
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
         arrow_effect_particles: Vec<ArrowEffectParticleState>,
         entity_taming_particles: Vec<EntityTamingParticleState>,
+        villager_particles: Vec<VillagerParticleState>,
         animal_love_particles: Vec<AnimalLoveParticleState>,
         allay_duplication_particles: Vec<AllayDuplicationParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
@@ -1514,6 +1539,10 @@ mod tests {
             state: EntityTamingParticleState,
         ) {
             self.entity_taming_particles.push(state);
+        }
+
+        fn villager_particles(&mut self, _world: &WorldStore, state: VillagerParticleState) {
+            self.villager_particles.push(state);
         }
 
         fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -2611,6 +2640,90 @@ mod tests {
         assert!((state.width - 1.396_484_4).abs() < 1.0e-6);
         assert!((state.height - 1.6).abs() < 1.0e-6);
         assert_eq!(store.counters().entity_events_applied, 3);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn villager_events_forward_particle_states() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                133,
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 65.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                134,
+                VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 66.0,
+                    z: -5.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 133,
+                event_id: VILLAGER_HEART_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 133,
+                event_id: VILLAGER_ANGRY_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 133,
+                event_id: VILLAGER_HAPPY_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 133,
+                event_id: VILLAGER_SPLASH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 134,
+                event_id: VILLAGER_HEART_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: VILLAGER_ANGRY_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.villager_particles.len(), 4);
+        assert_eq!(
+            effects
+                .villager_particles
+                .iter()
+                .map(|state| state.kind)
+                .collect::<Vec<_>>(),
+            vec![
+                VillagerParticleKind::Heart,
+                VillagerParticleKind::Angry,
+                VillagerParticleKind::Happy,
+                VillagerParticleKind::Splash,
+            ]
+        );
+        let state = effects.villager_particles[0];
+        assert_eq!(state.entity_id, 133);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 2.25,
+                y: 65.0,
+                z: -4.5,
+            }
+        );
+        assert!((state.width - 0.6).abs() < 1.0e-6);
+        assert!((state.height - 1.95).abs() < 1.0e-6);
+        assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

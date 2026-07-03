@@ -440,6 +440,23 @@ pub struct EntityTamingParticleState {
     pub success: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VillagerParticleKind {
+    Heart,
+    Angry,
+    Happy,
+    Splash,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct VillagerParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+    pub kind: VillagerParticleKind,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SnowballHitParticleState {
     pub entity_id: i32,
@@ -2174,6 +2191,25 @@ impl WorldStore {
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
             success,
+        })
+    }
+
+    pub fn villager_particle_state(
+        &self,
+        entity_id: i32,
+        kind: VillagerParticleKind,
+    ) -> Option<VillagerParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_VILLAGER_ID {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(VillagerParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+            kind,
         })
     }
 
