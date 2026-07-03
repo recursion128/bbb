@@ -35,10 +35,10 @@ pub(crate) use components::{
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
+pub(crate) use dimensions::vanilla_living_entity_type;
 pub use dimensions::EntityPickBoundsState;
 use dimensions::{
-    vanilla_client_position_for_entity_data, vanilla_is_cat, vanilla_living_entity_type,
-    VANILLA_POSE_SLEEPING_ID,
+    vanilla_client_position_for_entity_data, vanilla_is_cat, VANILLA_POSE_SLEEPING_ID,
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;

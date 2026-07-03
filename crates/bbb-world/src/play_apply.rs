@@ -351,6 +351,7 @@ impl WorldStore {
                 if applied {
                     if let Some(state) = ravager_roar_particles {
                         effects.ravager_roar_particles(self, state);
+                        let _ = self.apply_ravager_roar_knockback(update.entity_id);
                     }
                 }
                 if applied && update.event_id == 35 {
@@ -1279,11 +1280,13 @@ mod tests {
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, GameEvent,
-        LevelEvent, PlayTime, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, Vec3d,
+        LevelEvent, PlayTime, PlayerHealth, SoundEvent, SoundEventHolder, SoundSource,
+        TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1291,6 +1294,7 @@ mod tests {
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
         elder_guardian_effect_particles: Vec<Vec3d>,
+        ravager_roar_particles: Vec<RavagerRoarParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
 
@@ -1301,6 +1305,10 @@ mod tests {
 
         fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, position: Vec3d) {
             self.elder_guardian_effect_particles.push(position);
+        }
+
+        fn ravager_roar_particles(&mut self, _world: &WorldStore, state: RavagerRoarParticleState) {
+            self.ravager_roar_particles.push(state);
         }
 
         fn tracking_emitter_particles(
@@ -1336,6 +1344,76 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> Vec3d {
+        Vec3d { x, y, z }
+    }
+
+    fn assert_vec3_close(actual: Vec3d, expected: Vec3d) {
+        assert!(
+            (actual.x - expected.x).abs() < 1.0e-9,
+            "x: actual {:?}, expected {:?}",
+            actual,
+            expected
+        );
+        assert!(
+            (actual.y - expected.y).abs() < 1.0e-9,
+            "y: actual {:?}, expected {:?}",
+            actual,
+            expected
+        );
+        assert!(
+            (actual.z - expected.z).abs() < 1.0e-9,
+            "z: actual {:?}, expected {:?}",
+            actual,
+            expected
+        );
+    }
+
+    fn ravager_roar_world(
+        player_position: Vec3d,
+        delta_movement: Vec3d,
+        health: f32,
+    ) -> WorldStore {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(add_entity(
+            7,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            player_position,
+        ));
+        store.apply_add_entity(add_entity(
+            76,
+            VANILLA_ENTITY_TYPE_RAVAGER_ID,
+            vec3(0.0, 64.0, 0.0),
+        ));
+        store.local_player_id = Some(7);
+        store.apply_player_health(PlayerHealth {
+            health,
+            food: 20,
+            saturation: 5.0,
+        });
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: player_position,
+            delta_movement,
+            ..LocalPlayerPoseState::default()
+        });
+        store
+    }
+
+    fn apply_ravager_roar_entity_event(store: &mut WorldStore) -> RecordingEffects {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let leftover = store.apply_play_packet(
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 76,
+                event_id: RAVAGER_ROAR_EVENT_ID,
+            }),
+            &mut random,
+            &mut effects,
+        );
+        assert!(leftover.is_none());
+        effects
     }
 
     #[test]
@@ -1804,6 +1882,36 @@ mod tests {
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn ravager_roar_entity_event_knocks_back_local_authoritative_player() {
+        let mut store = ravager_roar_world(vec3(2.0, 64.0, 0.0), vec3(0.5, -0.25, 1.0), 20.0);
+
+        let effects = apply_ravager_roar_entity_event(&mut store);
+        assert_eq!(effects.ravager_roar_particles.len(), 1);
+        let pose = store.local_player_pose().unwrap();
+        assert_vec3_close(pose.delta_movement, vec3(2.5, -0.05, 1.0));
+    }
+
+    #[test]
+    fn ravager_roar_entity_event_does_not_knock_back_dead_local_player() {
+        let mut store = ravager_roar_world(vec3(2.0, 64.0, 0.0), vec3(0.5, -0.25, 1.0), 0.0);
+
+        let effects = apply_ravager_roar_entity_event(&mut store);
+        assert_eq!(effects.ravager_roar_particles.len(), 1);
+        let pose = store.local_player_pose().unwrap();
+        assert_eq!(pose.delta_movement, vec3(0.5, -0.25, 1.0));
+    }
+
+    #[test]
+    fn ravager_roar_entity_event_does_not_knock_back_out_of_range_local_player() {
+        let mut store = ravager_roar_world(vec3(6.0, 64.0, 0.0), vec3(0.5, -0.25, 1.0), 20.0);
+
+        let effects = apply_ravager_roar_entity_event(&mut store);
+        assert_eq!(effects.ravager_roar_particles.len(), 1);
+        let pose = store.local_player_pose().unwrap();
+        assert_eq!(pose.delta_movement, vec3(0.5, -0.25, 1.0));
     }
 
     #[test]

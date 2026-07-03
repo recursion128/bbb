@@ -4,7 +4,16 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::entities::{
+    vanilla_living_entity_type, EntityPickBoundsState, EntityVec3, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+};
+use crate::{LocalPlayerPoseState, WorldStore};
+
+const LOCAL_PLAYER_BODY_WIDTH: f64 = 0.6;
+const RAVAGER_ROAR_TARGET_INFLATE: f64 = 4.0;
+const RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE: f64 = 4.0;
+const RAVAGER_ROAR_KNOCKBACK_VERTICAL: f64 = 0.2;
+const RAVAGER_ROAR_MIN_HORIZONTAL_DISTANCE_SQUARED: f64 = 0.001;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientEffectsState {
@@ -77,6 +86,58 @@ impl WorldStore {
         state
     }
 
+    pub(crate) fn apply_ravager_roar_knockback(&mut self, ravager_id: i32) -> bool {
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+        if local_player_id == ravager_id || self.local_player_is_dead() {
+            return false;
+        }
+
+        let Some(local_identity) = self.entities.identity(local_player_id) else {
+            return false;
+        };
+        if local_identity.entity_type_id == VANILLA_ENTITY_TYPE_RAVAGER_ID
+            || !vanilla_living_entity_type(local_identity.entity_type_id)
+        {
+            return false;
+        }
+
+        let Some(ravager_identity) = self.entities.identity(ravager_id) else {
+            return false;
+        };
+        if ravager_identity.entity_type_id != VANILLA_ENTITY_TYPE_RAVAGER_ID {
+            return false;
+        }
+
+        let Some(mut pose) = self.local_player.pose else {
+            return false;
+        };
+        let Some(ravager_transform) = self.entities.transform(ravager_id) else {
+            return false;
+        };
+        let Some(ravager_bounds) = self.entities.pick_bounds(ravager_id) else {
+            return false;
+        };
+        let ravager_box = entity_pick_bounds_aabb(ravager_transform.position, ravager_bounds)
+            .inflate(RAVAGER_ROAR_TARGET_INFLATE);
+        if !ravager_box.intersects(local_player_pose_aabb(pose)) {
+            return false;
+        }
+
+        let xd = pose.position.x - ravager_transform.position.x;
+        let zd = pose.position.z - ravager_transform.position.z;
+        let dd = (xd * xd + zd * zd).max(RAVAGER_ROAR_MIN_HORIZONTAL_DISTANCE_SQUARED);
+        if !(xd.is_finite() && zd.is_finite() && dd.is_finite()) {
+            return false;
+        }
+        pose.delta_movement.x += xd / dd * RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE;
+        pose.delta_movement.y += RAVAGER_ROAR_KNOCKBACK_VERTICAL;
+        pose.delta_movement.z += zd / dd * RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE;
+        self.local_player.pose = Some(pose);
+        true
+    }
+
     pub fn client_effects(&self) -> &ClientEffectsState {
         &self.client_effects
     }
@@ -92,6 +153,69 @@ impl WorldStore {
 
 fn vec3_is_finite(vec: ProtocolVec3d) -> bool {
     vec.x.is_finite() && vec.y.is_finite() && vec.z.is_finite()
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WorldAabb {
+    min: [f64; 3],
+    max: [f64; 3],
+}
+
+impl WorldAabb {
+    fn inflate(self, value: f64) -> Self {
+        Self {
+            min: [
+                self.min[0] - value,
+                self.min[1] - value,
+                self.min[2] - value,
+            ],
+            max: [
+                self.max[0] + value,
+                self.max[1] + value,
+                self.max[2] + value,
+            ],
+        }
+    }
+
+    fn intersects(self, other: Self) -> bool {
+        self.min[0] < other.max[0]
+            && self.max[0] > other.min[0]
+            && self.min[1] < other.max[1]
+            && self.max[1] > other.min[1]
+            && self.min[2] < other.max[2]
+            && self.max[2] > other.min[2]
+    }
+}
+
+fn entity_pick_bounds_aabb(position: EntityVec3, bounds: EntityPickBoundsState) -> WorldAabb {
+    WorldAabb {
+        min: [
+            position.x + f64::from(bounds.min[0]),
+            position.y + f64::from(bounds.min[1]),
+            position.z + f64::from(bounds.min[2]),
+        ],
+        max: [
+            position.x + f64::from(bounds.max[0]),
+            position.y + f64::from(bounds.max[1]),
+            position.z + f64::from(bounds.max[2]),
+        ],
+    }
+}
+
+fn local_player_pose_aabb(pose: LocalPlayerPoseState) -> WorldAabb {
+    let half_width = LOCAL_PLAYER_BODY_WIDTH * 0.5;
+    WorldAabb {
+        min: [
+            pose.position.x - half_width,
+            pose.position.y,
+            pose.position.z - half_width,
+        ],
+        max: [
+            pose.position.x + half_width,
+            pose.position.y + pose.body_height(),
+            pose.position.z + half_width,
+        ],
+    }
 }
 
 #[cfg(test)]
