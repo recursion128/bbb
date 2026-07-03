@@ -274,8 +274,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   kinetic first-person use animation with local hit feedback, and first-person
   local-player empty-hand / filled-map player arms using vanilla
   `renderPlayerArm` / `renderMapHand` transforms, player skin sleeves,
-  `entityTranslucent`, local light, and dynamic skin atlas routing. 剩余是
-  截图级 viewmodel 视觉校验。
+  `entityTranslucent`, local light, and dynamic skin atlas routing, and
+  first-person generated item consumers now pass the local active-use tick
+  context into `minecraft:use_duration` / `minecraft:use_cycle` item-model
+  range-dispatch properties. 剩余是截图级 viewmodel 视觉校验。
 - First-person viewmodel：
   - 截图级视觉校验。
 - HUD / inventory：

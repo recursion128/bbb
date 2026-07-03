@@ -6966,8 +6966,7 @@ When an agent does any of the following, update this file in the same slice:
     `FIXED`, owner-backed third-person held generated items, and GUI/HUD icons
     now carry trim-material keys and direct enchantment keys; no-registry
     consumers still fall back.
-  - Thread the same use-tick context into first-person generated item consumers.
-    Vanilla Quick Charge-modified crossbow charge duration is now wired for
+  - Vanilla Quick Charge-modified crossbow charge duration is now wired for
     GUI/HUD local-player icons and owner-backed third-person generated held-item
     paths when the synced `minecraft:enchantment` registry identifies
     `minecraft:quick_charge`. The same registry projection now feeds direct-key

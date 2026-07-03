@@ -1299,8 +1299,8 @@ pub(crate) fn first_person_item_models(
             arm_left,
             Some(owner_main_hand_left),
             Some("minecraft:player"),
-            false,
-            0.0,
+            using_this_hand,
+            world.local_player().interaction.using_item_ticks as f32,
             enchantment_keys.as_deref(),
             trim_material_keys.as_deref(),
             attribute_keys.as_deref(),
@@ -5586,6 +5586,59 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_use_duration_range_dispatch_reads_local_use_ticks() {
+        // Vanilla `ItemInHandRenderer.renderArmWithItem` passes the local player
+        // as item owner for first-person stack rendering; `UseDuration.get` then
+        // reads that local player's active use item and elapsed ticks.
+        let root = unique_item_model_temp_dir("first-person-use-duration-range-dispatch");
+        write_use_duration_selector_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let stack = first_person_test_consumable_stack(
+            &item_runtime,
+            "minecraft:use_duration_selector",
+            ItemUseAnimationSummary::None,
+            2.0,
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+        let render = |using_ticks: Option<u32>| {
+            let mut world = WorldStore::new();
+            world.apply_set_player_inventory(SetPlayerInventory {
+                slot: 0,
+                item: stack.clone(),
+            });
+            if let Some(ticks) = using_ticks {
+                world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+                world.advance_local_using_item_ticks(ticks);
+            }
+            let mut models = first_person_item_models(
+                &world,
+                Some(&item_runtime),
+                &TerrainTextureState::default(),
+                camera,
+                0.5,
+            );
+            assert_eq!(models.flat_meshes.len(), 1);
+            models.flat_meshes.remove(0)
+        };
+
+        let idle = render(None);
+        let using_start = render(Some(0));
+        let using_mid = render(Some(13));
+        let using_full = render(Some(18));
+
+        assert_ne!(idle, using_start);
+        assert_ne!(using_start, using_mid);
+        assert_ne!(using_mid, using_full);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
         let root = unique_item_model_temp_dir("first-person-crossbow-use");
         write_flat_item_runtime_fixture(&root, &["crossbow", "off_item"]);
@@ -7483,6 +7536,42 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "bow_pulling_0", &[120, 80, 40, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_1", &[80, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_2", &[120, 40, 80, 255]);
+    }
+
+    fn write_use_duration_selector_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["use_duration_selector"]);
+        write_json(
+            &assets.join("items").join("use_duration_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/use_duration_selector" },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.65,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/use_duration_pulling_1" }
+                            },
+                            {
+                                "threshold": 0.9,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/use_duration_pulling_2" }
+                            }
+                        ],
+                        "fallback": { "type": "minecraft:model", "model": "minecraft:item/use_duration_pulling_0" }
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "use_duration_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "use_duration_pulling_0", &[120, 80, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "use_duration_pulling_1", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "use_duration_pulling_2", &[120, 40, 80, 255]);
     }
 
     fn write_crossbow_pull_item_runtime_fixture(root: &Path) {

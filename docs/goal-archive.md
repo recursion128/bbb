@@ -1318,6 +1318,18 @@
     constants, empty-hand and filled-map extraction, sleeve/light/skin
     metadata, static `entityTranslucent` submission, and ready dynamic skin
     atlas routing.
+  - [x] first-person generated item use-tick context：local vanilla 26.1
+    `UseDuration.get` / `UseCycle.get` read elapsed or remaining use ticks only
+    when the item owner is a living entity and `entity.getUseItem() == itemStack`;
+    otherwise the property value is `0.0`. Native first-person item extraction
+    already knows the local active hand and local `using_item_ticks`, so it now
+    passes those values into the shared generated-item bake path instead of
+    marking first-person stacks inactive. This lets first-person generated item
+    models resolve `minecraft:use_duration` and `minecraft:use_cycle`
+    range-dispatch branches the same way owner-backed third-person held items
+    already do. Tests use a constant-transform custom consumable with
+    `UseAnimation.NONE` to prove idle, start, mid, and full use-duration
+    branches produce distinct first-person meshes from local use ticks.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
