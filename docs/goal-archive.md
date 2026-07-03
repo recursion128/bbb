@@ -1096,6 +1096,18 @@
     existing item-model solid / `item_translucent` and `glintTranslucent` mesh
     splits, with tests pinning forced and sprite-derived translucent layers plus
     generated-side quads.
+  - [x] ordinary first-person hand item pass：local vanilla 26.1
+    `GameRenderer` clears the main depth target before `ItemInHandRenderer`
+    renders first-person hands, and the ordinary item path applies
+    `applyItemArmTransform` (`±0.56, -0.52, -0.72`) before resolving
+    `FIRST_PERSON_RIGHT_HAND` / `FIRST_PERSON_LEFT_HAND`. Native now projects
+    non-using, non-special local main/offhand stacks through those display
+    contexts into dedicated first-person block/generated item-model buckets,
+    and the renderer draws them after world transparency composite and before
+    HUD overlays with a depth-clear hand pass. Tests cover local-hand stack
+    baking, special/use-path rejection, hand transform constants, and renderer
+    pass ordering. Use/swing animation and map / bow / crossbow / spyglass /
+    shield special paths remain first-person follow-ups.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

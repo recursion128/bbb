@@ -1105,8 +1105,10 @@ When an agent does any of the following, update this file in the same slice:
     that draws after sprite layers and before decorations; clock /
     `ItemTags.COMPASSES` GUI sprites use the vanilla SPECIAL sheeted-decal UV
     scale. GUI 3D block-item icons now also split translucent base quads and
-    matching `glintTranslucent` inside the GUI item pass. First-person special
-    consumers remain item presentation follow-ups; standalone
+    matching `glintTranslucent` inside the GUI item pass. Ordinary
+    first-person hand item meshes now use the same item-model/glint buckets in a
+    depth-cleared hand pass; first-person special consumers remain item
+    presentation follow-ups. Standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2713,13 +2715,17 @@ When an agent does any of the following, update this file in the same slice:
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
-    - 3D Block-Model / Item-Model Rendering (all four consumers wired): a
+    - 3D Block-Model / Item-Model Rendering (main consumers wired): a
       renderer-owned baking layer turns parsed block/item models into 3D textured
-      quad meshes sampling the same blocks/items atlas as terrain, for all four
-      item consumers (dropped item entities, held items, item frames/armor-stand,
-      HUD 3D inventory icons) — every consumer is now implemented; the remaining
-      items are refinements (first-person viewmodel, combat arm poses, custom
-      ground transforms). Done:
+      quad meshes sampling the same blocks/items atlas as terrain, for dropped
+      item entities, third-person held items, item frames/armor-stand, HUD 3D
+      inventory icons, and the ordinary first-person local-player hand path.
+      The first-person path bakes ordinary non-using stacks through
+      `FIRST_PERSON_RIGHT_HAND` / `FIRST_PERSON_LEFT_HAND`, applies vanilla
+      `ItemInHandRenderer.applyItemArmTransform`, and draws in a depth-cleared
+      pass after world transparency is composited and before HUD overlays.
+      Remaining refinements are first-person use/swing/special paths, combat
+      arm poses, and custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,
@@ -3117,7 +3123,7 @@ When an agent does any of the following, update this file in the same slice:
         and zombie/zombified-piglin `STAB` skip/lunge parity are covered; ordinary piglin/brute
         non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
         swing-type parity remains separate custom-component work.
-      - remaining slices: held-item refinements (first-person viewmodel;
+      - remaining slices: held-item refinements (first-person use/swing/special viewmodel paths;
         broader non-profile dynamic texture loading; the
         `NONE` swing type). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
@@ -7341,7 +7347,9 @@ When an agent does any of the following, update this file in the same slice:
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick
     Charge-modified crossbow charge duration when the enchantment registry is
-    available. First-person generated item paths are still documented follow-up.
+    available. Ordinary first-person generated item stacks now render in the
+    depth-cleared hand pass, but active-use first-person generated item
+    properties remain documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is

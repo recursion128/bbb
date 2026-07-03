@@ -62,7 +62,8 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
     item_models::{
-        dropped_item_models, entity_block_models, held_item_models, ominous_item_spawner_models,
+        dropped_item_models, entity_block_models, first_person_item_models, held_item_models,
+        ominous_item_spawner_models,
     },
     particle_runtime::{ParticleEventSink, SMOKE_PARTICLE_TYPE_ID},
     terrain_runtime::{
@@ -1564,6 +1565,9 @@ pub(crate) fn pump_network_and_terrain(
         entity_model_instances_from_world_at_partial_tick(world, item_runtime, entity_partial_tick);
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    let camera_pose = camera_pose_from_world(world);
+    let first_person_item_models =
+        first_person_item_models(world, item_runtime, terrain_textures, camera_pose);
     // Item frames render their wooden border + framed item into the same two atlas draws.
     let item_frame_models = item_frame_models(
         world,
@@ -1622,7 +1626,6 @@ pub(crate) fn pump_network_and_terrain(
     let item_frame_map_decoration_textures = item_frame_models.map_decoration_textures;
     let item_frame_map_decoration_surfaces = item_frame_models.map_decoration_surfaces;
     let item_frame_map_text_surfaces = item_frame_models.map_text_surfaces;
-    let camera_pose = camera_pose_from_world(world);
     // Vanilla `LevelRenderer.renderLevel` samples `level.getGameTime()`, camera position, and the
     // frame partial tick for the cloud pass after the client tick has advanced the level clock.
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
@@ -1667,6 +1670,22 @@ pub(crate) fn pump_network_and_terrain(
             flat_item_model_translucent_meshes: flat_item_translucent_meshes,
             item_model_glint_meshes,
             item_model_glint_translucent_meshes,
+            first_person_block_item_model_meshes: first_person_item_models.block_meshes,
+            first_person_block_item_model_translucent_meshes: first_person_item_models
+                .block_translucent_meshes,
+            first_person_flat_item_model_meshes: first_person_item_models.flat_meshes,
+            first_person_flat_item_model_translucent_meshes: first_person_item_models
+                .flat_translucent_meshes,
+            first_person_item_model_glint_meshes: first_person_item_models
+                .block_glint_meshes
+                .into_iter()
+                .chain(first_person_item_models.flat_glint_meshes)
+                .collect(),
+            first_person_item_model_glint_translucent_meshes: first_person_item_models
+                .block_glint_translucent_meshes
+                .into_iter()
+                .chain(first_person_item_models.flat_glint_translucent_meshes)
+                .collect(),
             item_frame_map_textures,
             item_frame_map_surfaces,
             item_frame_map_decoration_textures,

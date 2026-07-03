@@ -48,6 +48,7 @@ const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass"
 const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
+const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 const TRANSPARENCY_BLIT_PASS_LABEL: &str = "bbb-native-transparency-blit-pass";
@@ -120,6 +121,7 @@ impl Renderer {
         self.weather_target_pass(&mut encoder, &mut stats);
         self.transparency_combine_pass(&mut encoder, &mut stats);
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
+        self.first_person_item_pass(&frame, &mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats);
         self.finish_frame(encoder, frame, screenshot, stats)
     }
@@ -1370,6 +1372,123 @@ impl Renderer {
         }
     }
 
+    fn first_person_item_pass(
+        &self,
+        frame: &wgpu::SurfaceTexture,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (block_vertices, block_indices) = self.collect_first_person_block_item_model_geometry();
+        let block_buffers = self.create_item_model_frame_buffers(&block_vertices, &block_indices);
+        let (block_translucent_vertices, block_translucent_indices) =
+            self.collect_first_person_block_item_model_translucent_geometry();
+        let block_translucent_buffers = self.create_item_model_frame_buffers(
+            &block_translucent_vertices,
+            &block_translucent_indices,
+        );
+        let (flat_vertices, flat_indices) = self.collect_first_person_flat_item_model_geometry();
+        let flat_buffers = self.create_item_model_frame_buffers(&flat_vertices, &flat_indices);
+        let (flat_translucent_vertices, flat_translucent_indices) =
+            self.collect_first_person_flat_item_model_translucent_geometry();
+        let flat_translucent_buffers = self
+            .create_item_model_frame_buffers(&flat_translucent_vertices, &flat_translucent_indices);
+        let (glint_vertices, glint_indices) = self.collect_first_person_item_model_glint_geometry();
+        let glint_buffers = self.create_item_model_frame_buffers(&glint_vertices, &glint_indices);
+        let (glint_translucent_vertices, glint_translucent_indices) =
+            self.collect_first_person_item_model_glint_translucent_geometry();
+        let glint_translucent_buffers = self.create_item_model_frame_buffers(
+            &glint_translucent_vertices,
+            &glint_translucent_indices,
+        );
+
+        if block_buffers.is_none()
+            && block_translucent_buffers.is_none()
+            && flat_buffers.is_none()
+            && flat_translucent_buffers.is_none()
+            && glint_buffers.is_none()
+            && glint_translucent_buffers.is_none()
+        {
+            return;
+        }
+
+        let surface_view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(FIRST_PERSON_ITEM_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+
+        if let Some(buffers) = &block_buffers {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &self.terrain_bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_buffers) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let Some(buffers) = &block_translucent_buffers {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_translucent_pipeline,
+                buffers,
+                &self.terrain_bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_translucent_buffers) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_translucent_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
+        {
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+    }
+
     fn hud_passes(
         &mut self,
         frame: &wgpu::SurfaceTexture,
@@ -2481,6 +2600,30 @@ mod tests {
                 .contains("pass.set_bind_group(0, &self.lightmap.bind_group, &[])"),
             "lightmap pass binds the standalone LightmapInfo uniform"
         );
+    }
+
+    #[test]
+    fn first_person_item_pass_runs_after_world_composite_and_before_hud() {
+        let source = include_str!("render.rs");
+        let blit = source
+            .find("self.transparency_blit_pass(&frame, &mut encoder, &mut stats);")
+            .expect("world transparency blit is scheduled");
+        let first_person = source
+            .find("self.first_person_item_pass(&frame, &mut encoder, &mut stats);")
+            .expect("first-person item pass is scheduled");
+        let hud = source
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .expect("HUD passes are scheduled");
+        let pass = source
+            .find("label: Some(FIRST_PERSON_ITEM_PASS_LABEL)")
+            .expect("first-person item pass label is used");
+        let depth_clear = source[pass..]
+            .find("load: wgpu::LoadOp::Clear(1.0)")
+            .map(|index| pass + index)
+            .expect("first-person item pass clears depth");
+
+        assert!(blit < first_person && first_person < hud);
+        assert!(first_person < pass && pass < depth_clear);
     }
 
     #[test]

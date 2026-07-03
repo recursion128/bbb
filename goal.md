@@ -255,10 +255,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   3D block-item icons now split translucent base quads and matching `glintTranslucent`
   inside the GUI item pass；generated flat item layers now carry vanilla
   material translucency (`force_translucent` or sprite translucent pixels) into
-  extruded item-model quads for dropped / held / item-frame consumers. 剩余是
-  first-person special consumers 与像素级视觉校验。
+  extruded item-model quads for dropped / held / item-frame consumers；普通
+  first-person local-player hand stacks now bake through `FIRST_PERSON_*_HAND`
+  display contexts into an after-world / before-HUD depth-cleared hand pass,
+  using vanilla `applyItemArmTransform` constants. 剩余是 first-person special
+  consumers / use-swing animation 与像素级视觉校验。
 - First-person viewmodel：
-  - hand transform。
   - use animation。
   - swing animation。
   - map / bow / crossbow / spyglass / shield 等特殊路径。

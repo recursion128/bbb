@@ -966,10 +966,11 @@ impl WorldStore {
         self.local_item_in_hand(hand).is_some()
     }
 
-    pub(crate) fn local_item_in_hand(
-        &self,
-        hand: InteractionHand,
-    ) -> Option<&ProtocolItemStackSummary> {
+    /// The non-empty stack currently held in the requested local-player hand.
+    ///
+    /// Main hand follows the selected hotbar slot, while off hand follows the
+    /// player-inventory offhand slot, matching vanilla `LocalPlayer.getItemInHand`.
+    pub fn local_item_in_hand(&self, hand: InteractionHand) -> Option<&ProtocolItemStackSummary> {
         match hand {
             InteractionHand::MainHand => {
                 let selected_slot = self.local_player.selected_hotbar_slot;

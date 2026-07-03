@@ -13,7 +13,7 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
-use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
+use bbb_protocol::packets::{EquipmentSlot, InteractionHand, ItemStackSummary};
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
     bake_item_model_mesh_with_light_and_overlay,
@@ -24,10 +24,10 @@ use bbb_renderer::{
     iron_golem_flower_block_transform, minecart_tnt_display_block_transform,
     mooshroom_mushroom_block_transforms, panda_held_item_transform, primed_tnt_block_transform,
     snow_golem_head_block_transform, villager_crossed_arms_item_transform,
-    witch_held_item_transform, EntityModelInstance, EntityModelKind, HumanoidModelFamily,
-    IllagerModelFamily, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
-    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    witch_held_item_transform, CameraPose, EntityModelInstance, EntityModelKind,
+    HumanoidModelFamily, IllagerModelFamily, ItemModelFoil, ItemModelMesh, ItemModelMeshSet,
+    ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
+    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -609,6 +609,33 @@ const GENERATED_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDi
     scale: [0.55, 0.55, 0.55],
 };
 
+/// Fallback first-person right-hand display transform for a block item
+/// (`minecraft:block/block`): rotation `[0, 45, 0]°`, translation `0`, scale `0.40`.
+const BLOCK_FIRST_PERSON_RIGHT_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 45.0, 0.0],
+    translation: [0.0, 0.0, 0.0],
+    scale: [0.40, 0.40, 0.40],
+};
+
+/// Fallback first-person left-hand display transform for a block item
+/// (`minecraft:block/block`): rotation `[0, 225, 0]°`, translation `0`, scale `0.40`.
+const BLOCK_FIRST_PERSON_LEFT_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 225.0, 0.0],
+    translation: [0.0, 0.0, 0.0],
+    scale: [0.40, 0.40, 0.40],
+};
+
+/// Fallback first-person display transform for a generated item
+/// (`minecraft:item/generated`): rotation `[0, -90, 25]°`, translation
+/// `[1.13, 3.2, 1.13]`/16, scale `0.68`. Vanilla copies this right-hand
+/// transform into the missing generated left-hand slot before applying the
+/// left-hand fix.
+const GENERATED_FIRST_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, -90.0, 25.0],
+    translation: [1.13 / 16.0, 3.2 / 16.0, 1.13 / 16.0],
+    scale: [0.68, 0.68, 0.68],
+};
+
 /// Fallback HEAD display transform for a block item whose model does not define one. Vanilla's
 /// `block/block` parent has no `head` entry, so the item transform is the identity centered on the
 /// model by [`display_matrix`].
@@ -688,6 +715,35 @@ pub(crate) struct HeldItemModels {
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+}
+
+/// The baked first-person local-player hand item meshes for this frame. This
+/// slice covers ordinary held stacks only; use/swing animation and special
+/// render paths are intentionally left out of this container.
+pub(crate) struct FirstPersonItemModels {
+    pub block_meshes: Vec<ItemModelMesh>,
+    pub block_translucent_meshes: Vec<ItemModelMesh>,
+    pub block_glint_meshes: Vec<ItemModelMesh>,
+    pub block_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub flat_meshes: Vec<ItemModelMesh>,
+    pub flat_translucent_meshes: Vec<ItemModelMesh>,
+    pub flat_glint_meshes: Vec<ItemModelMesh>,
+    pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+}
+
+impl FirstPersonItemModels {
+    fn empty() -> Self {
+        Self {
+            block_meshes: Vec::new(),
+            block_translucent_meshes: Vec::new(),
+            block_glint_meshes: Vec::new(),
+            block_glint_translucent_meshes: Vec::new(),
+            flat_meshes: Vec::new(),
+            flat_translucent_meshes: Vec::new(),
+            flat_glint_meshes: Vec::new(),
+            flat_glint_translucent_meshes: Vec::new(),
+        }
+    }
 }
 
 /// Bakes the third-person main- and off-hand held items for every humanoid entity that holds one
@@ -924,6 +980,164 @@ pub(crate) fn held_item_models(
         flat_glint_meshes,
         flat_glint_translucent_meshes,
     }
+}
+
+pub(crate) fn first_person_item_models(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+) -> FirstPersonItemModels {
+    let mut models = FirstPersonItemModels::empty();
+    let (Some(item_runtime), Some(camera_pose)) = (item_runtime, camera_pose) else {
+        return models;
+    };
+    if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
+        return models;
+    }
+    if world.local_player().interaction.using_item || local_player_is_scoping(world, item_runtime) {
+        return models;
+    }
+
+    let main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    if [main_stack, off_stack]
+        .into_iter()
+        .flatten()
+        .any(|stack| !ordinary_first_person_item_stack(stack, item_runtime))
+    {
+        return models;
+    }
+
+    let enchantment_keys = world_enchantment_keys(world);
+    let trim_material_keys = world_trim_material_keys(world);
+    let attribute_keys = world_attribute_keys(world);
+    let context_dimension = world.level_info().map(|level| level.dimension.as_str());
+    let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
+    let camera_world = first_person_camera_world_transform(camera_pose);
+
+    for (hand, stack) in [
+        (InteractionHand::MainHand, main_stack),
+        (InteractionHand::OffHand, off_stack),
+    ] {
+        let Some(stack) = stack else {
+            continue;
+        };
+        let arm_left = match hand {
+            InteractionHand::MainHand => owner_main_hand_left,
+            InteractionHand::OffHand => !owner_main_hand_left,
+        };
+        let context = if arm_left {
+            BlockModelDisplayContext::FirstPersonLeftHand
+        } else {
+            BlockModelDisplayContext::FirstPersonRightHand
+        };
+        let attach = first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
+        bake_item_stack_at_transform(
+            stack,
+            attach,
+            context,
+            arm_left,
+            Some(owner_main_hand_left),
+            Some("minecraft:player"),
+            false,
+            0.0,
+            enchantment_keys.as_deref(),
+            trim_material_keys.as_deref(),
+            attribute_keys.as_deref(),
+            context_dimension,
+            first_person_block_fallback(context),
+            GENERATED_FIRST_PERSON_FALLBACK,
+            item_runtime,
+            terrain_textures,
+            &mut models.block_meshes,
+            &mut models.block_translucent_meshes,
+            &mut models.block_glint_meshes,
+            &mut models.block_glint_translucent_meshes,
+            &mut models.flat_meshes,
+            &mut models.flat_translucent_meshes,
+            &mut models.flat_glint_meshes,
+            &mut models.flat_glint_translucent_meshes,
+        );
+    }
+
+    models
+}
+
+fn ordinary_first_person_item_stack(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
+    if stack.component_patch.map_id.is_some() {
+        return false;
+    }
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
+        return true;
+    };
+    !matches!(
+        resource_id,
+        "minecraft:filled_map"
+            | "minecraft:bow"
+            | "minecraft:crossbow"
+            | "minecraft:spyglass"
+            | "minecraft:shield"
+            | "minecraft:trident"
+            | "minecraft:brush"
+            | "minecraft:bundle"
+            | "minecraft:goat_horn"
+    )
+}
+
+fn local_player_is_scoping(world: &WorldStore, item_runtime: &NativeItemRuntime) -> bool {
+    world
+        .local_using_item_item_id()
+        .and_then(|item_id| item_runtime.item_resource_id(item_id))
+        == Some("minecraft:spyglass")
+}
+
+fn first_person_block_fallback(context: BlockModelDisplayContext) -> BlockModelDisplayTransform {
+    match context {
+        BlockModelDisplayContext::FirstPersonLeftHand => BLOCK_FIRST_PERSON_LEFT_FALLBACK,
+        BlockModelDisplayContext::FirstPersonRightHand => BLOCK_FIRST_PERSON_RIGHT_FALLBACK,
+        _ => BLOCK_FIRST_PERSON_RIGHT_FALLBACK,
+    }
+}
+
+fn first_person_item_arm_transform_from_camera_world(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    camera_world
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.56,
+            -0.52 + inverse_arm_height * -0.6,
+            -0.72,
+        ))
+}
+
+fn first_person_camera_world_transform(pose: CameraPose) -> Mat4 {
+    first_person_camera_view_matrix(pose).inverse()
+}
+
+fn first_person_camera_view_matrix(pose: CameraPose) -> Mat4 {
+    let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
+    let yaw = pose.y_rot.to_radians();
+    let pitch = pose.x_rot.to_radians();
+    let cos_pitch = pitch.cos();
+    let forward =
+        Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch).normalize_or_zero();
+    let target = eye
+        + if forward.length_squared() > 0.0 {
+            forward
+        } else {
+            Vec3::Z
+        };
+    Mat4::look_at_rh(eye, target, Vec3::Y)
 }
 
 fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
@@ -1970,7 +2184,7 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
         DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EquipmentSlotUpdate,
-        PlayLogin, SetEntityData, SetEquipment, Vec3d,
+        PlayLogin, SetEntityData, SetEquipment, SetPlayerInventory, Vec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -2811,6 +3025,116 @@ mod tests {
         );
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_bake_ordinary_local_hand_stack() {
+        let root = unique_item_model_temp_dir("first-person-basic-item");
+        write_flat_item_runtime_fixture(&root, &["hand_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:hand_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item });
+
+        let models = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            Some(CameraPose {
+                position: [4.0, 64.0, -2.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: CameraPose::STANDING_EYE_HEIGHT,
+            }),
+        );
+
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.flat_meshes.len(), 1);
+        assert!(!models.flat_meshes[0].is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_skip_using_and_special_paths() {
+        let root = unique_item_model_temp_dir("first-person-special-skip");
+        write_flat_item_runtime_fixture(&root, &["hand_item", "bow"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let hand_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:hand_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let bow = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:bow"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut using_world = WorldStore::new();
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: hand_item,
+        });
+        using_world.set_local_using_item(true);
+        assert!(first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+        )
+        .flat_meshes
+        .is_empty());
+
+        let mut special_world = WorldStore::new();
+        special_world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: bow });
+        assert!(first_person_item_models(
+            &special_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+        )
+        .flat_meshes
+        .is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_arm_transform_matches_vanilla_apply_item_arm_transform() {
+        let pose = CameraPose {
+            position: [10.0, 64.0, -5.0],
+            y_rot: 35.0,
+            x_rot: -15.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let view = first_person_camera_view_matrix(pose);
+        let camera_world = first_person_camera_world_transform(pose);
+        let right =
+            view * first_person_item_arm_transform_from_camera_world(camera_world, false, 0.0);
+        let left =
+            view * first_person_item_arm_transform_from_camera_world(camera_world, true, 0.0);
+        let right_origin = right.transform_point3(Vec3::ZERO);
+        let left_origin = left.transform_point3(Vec3::ZERO);
+
+        assert!(
+            right_origin.abs_diff_eq(Vec3::new(0.56, -0.52, -0.72), 1.0e-4),
+            "right origin {right_origin:?}"
+        );
+        assert!(
+            left_origin.abs_diff_eq(Vec3::new(-0.56, -0.52, -0.72), 1.0e-4),
+            "left origin {left_origin:?}"
+        );
     }
 
     #[test]

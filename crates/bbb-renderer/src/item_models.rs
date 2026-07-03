@@ -600,6 +600,43 @@ impl Renderer {
         self.item_model_glint_translucent_meshes = meshes;
     }
 
+    /// Sets first-person block-atlas item meshes. These are already transformed
+    /// into world space relative to the current camera and are drawn in the
+    /// depth-cleared hand pass before HUD overlays.
+    pub fn set_first_person_block_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.first_person_block_item_model_meshes = meshes;
+    }
+
+    pub fn set_first_person_block_item_model_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.first_person_block_item_model_translucent_meshes = meshes;
+    }
+
+    /// Sets first-person generated item meshes that sample the item atlas.
+    pub fn set_first_person_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.first_person_flat_item_model_meshes = meshes;
+    }
+
+    pub fn set_first_person_flat_item_model_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.first_person_flat_item_model_translucent_meshes = meshes;
+    }
+
+    pub fn set_first_person_item_model_glint_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.first_person_item_model_glint_meshes = meshes;
+    }
+
+    pub fn set_first_person_item_model_glint_translucent_meshes(
+        &mut self,
+        meshes: Vec<ItemModelMesh>,
+    ) {
+        self.first_person_item_model_glint_translucent_meshes = meshes;
+    }
+
     /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item foil draws. The same texture
     /// is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
     /// is used in scene item features, 3D inventory icons, and flat HUD/inventory sprite overlays.
@@ -666,6 +703,42 @@ impl Renderer {
         &self,
     ) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.item_model_glint_translucent_meshes)
+    }
+
+    pub(crate) fn collect_first_person_block_item_model_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_block_item_model_meshes)
+    }
+
+    pub(crate) fn collect_first_person_block_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_block_item_model_translucent_meshes)
+    }
+
+    pub(crate) fn collect_first_person_flat_item_model_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_flat_item_model_meshes)
+    }
+
+    pub(crate) fn collect_first_person_flat_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_flat_item_model_translucent_meshes)
+    }
+
+    pub(crate) fn collect_first_person_item_model_glint_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_item_model_glint_meshes)
+    }
+
+    pub(crate) fn collect_first_person_item_model_glint_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.first_person_item_model_glint_translucent_meshes)
     }
 }
 
