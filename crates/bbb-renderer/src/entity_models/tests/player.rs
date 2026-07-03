@@ -882,6 +882,85 @@ fn ready_dynamic_player_skin_body_uses_dynamic_cutout_atlas_submission() {
 }
 
 #[test]
+fn first_person_player_arm_submits_selected_arm_as_entity_translucent() {
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let transform = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+    let light = [5.0 / 15.0, 11.0 / 15.0];
+    let bare_arm = FirstPersonPlayerArm {
+        left: false,
+        skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        sleeve_visible: false,
+        transform,
+        light,
+    };
+    let sleeved_arm = FirstPersonPlayerArm {
+        sleeve_visible: true,
+        ..bare_arm
+    };
+
+    let bare = first_person_player_arm_textured_meshes(&[bare_arm], &atlas, None);
+    let sleeved = first_person_player_arm_textured_meshes(&[sleeved_arm], &atlas, None);
+
+    assert_eq!(bare.submissions.len(), 1);
+    let submit = bare.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_skin, None);
+    assert_eq!(submit.transform, transform);
+    assert_eq!(submit.light, light);
+    assert_eq!(submit.overlay, ENTITY_VERTEX_NO_OVERLAY);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(bare.cutout.vertices.is_empty());
+    assert_eq!(bare.translucent.vertices.len(), 24);
+    assert_eq!(bare.translucent.indices.len(), 36);
+    assert_eq!(sleeved.translucent.vertices.len(), 48);
+    assert_eq!(sleeved.translucent.indices.len(), 72);
+    assert_ne!(bare.translucent.vertices, sleeved.translucent.vertices);
+}
+
+#[test]
+fn first_person_ready_dynamic_player_arm_uses_dynamic_skin_translucent_bucket() {
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let dynamic_skin = EntityDynamicPlayerSkin {
+        handle: 8812,
+        fallback: EntityDefaultPlayerSkin::WideSteve,
+        model: EntityPlayerSkinModel::Slim,
+        status: EntityDynamicPlayerSkinStatus::Ready,
+    };
+    let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
+        handle: dynamic_skin.handle,
+        rgba: vec![0x7f; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let arm = FirstPersonPlayerArm {
+        left: true,
+        skin: EntityPlayerSkin::Dynamic(dynamic_skin),
+        sleeve_visible: true,
+        transform: Mat4::IDENTITY,
+        light: [1.0, 1.0],
+    };
+
+    let meshes = first_person_player_arm_textured_meshes(&[arm], &atlas, Some(&dynamic_atlas));
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_skin, Some(dynamic_skin));
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.dynamic_player_skin_translucent.vertices.len(), 48);
+    assert_eq!(meshes.dynamic_player_skin_translucent.indices.len(), 72);
+}
+
+#[test]
 fn dynamic_player_texture_atlas_stitches_variable_profile_textures() {
     let cape = dynamic_player_texture_image(20, [4, 2], 10);
     let elytra = dynamic_player_texture_image(10, [2, 3], 40);

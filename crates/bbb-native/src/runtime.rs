@@ -62,8 +62,8 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
     item_models::{
-        dropped_item_models, entity_block_models, first_person_item_models, held_item_models,
-        ominous_item_spawner_models,
+        dropped_item_models, entity_block_models, first_person_item_models,
+        first_person_player_arms, held_item_models, ominous_item_spawner_models,
     },
     particle_runtime::{ParticleEventSink, SMOKE_PARTICLE_TYPE_ID},
     terrain_runtime::{
@@ -1573,6 +1573,21 @@ pub(crate) fn pump_network_and_terrain(
         camera_pose,
         entity_partial_tick,
     );
+    // Vanilla `GameRenderer.renderItemInHand` samples the local player's visible arm state,
+    // held stacks, frame light, and partial-tick attack swing during the first-person hand pass,
+    // after the client tick has advanced input/use-item/entity animation state.
+    let local_player_model_instance = world.local_player_id().and_then(|id| {
+        entity_instances
+            .iter()
+            .find(|instance| instance.entity_id == id)
+    });
+    let first_person_player_arms = first_person_player_arms(
+        world,
+        item_runtime,
+        local_player_model_instance,
+        camera_pose,
+        entity_partial_tick,
+    );
     // Item frames render their wooden border + framed item into the same two atlas draws.
     let item_frame_models = item_frame_models(
         world,
@@ -1691,6 +1706,7 @@ pub(crate) fn pump_network_and_terrain(
                 .into_iter()
                 .chain(first_person_item_models.flat_glint_translucent_meshes)
                 .collect(),
+            first_person_player_arms,
             first_person_map_background_textures: first_person_item_models.map_background_textures,
             first_person_map_background_surfaces: first_person_item_models.map_background_surfaces,
             first_person_map_textures: first_person_item_models.map_textures,

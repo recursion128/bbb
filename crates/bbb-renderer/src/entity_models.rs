@@ -149,6 +149,7 @@ use textured::{
 };
 use textured::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
+    first_person_player_arm_textured_meshes,
 };
 pub(crate) use textured::{
     EntityModelLayerRenderType, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,

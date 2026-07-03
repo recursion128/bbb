@@ -17,10 +17,11 @@ use super::{
         EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
         EntityDynamicPlayerTextureAtlasEntry, EntityDynamicPlayerTextureAtlasLayout,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
-        EntityModelUvRect,
+        EntityModelUvRect, FirstPersonPlayerArm,
     },
     entity_model_colored_runtime_mesh,
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
+    first_person_player_arm_textured_meshes,
     geometry::{
         EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
         EntityModelTexturedVertex, EntityModelVertex,
@@ -1822,6 +1823,7 @@ impl Renderer {
             images,
         )?);
         self.rebuild_entity_model_meshes();
+        self.rebuild_first_person_player_arm_meshes();
         Ok(())
     }
 
@@ -1845,6 +1847,7 @@ impl Renderer {
             &self.entity_dynamic_player_skin_images,
         )?);
         self.rebuild_entity_model_meshes();
+        self.rebuild_first_person_player_arm_meshes();
         Ok(())
     }
 
@@ -1882,6 +1885,43 @@ impl Renderer {
 
         self.entity_model_instances = instances;
         self.rebuild_entity_model_meshes();
+    }
+
+    pub fn set_first_person_player_arms(&mut self, arms: Vec<FirstPersonPlayerArm>) {
+        if self.first_person_player_arms.as_slice() == arms.as_slice() {
+            return;
+        }
+
+        self.first_person_player_arms = arms;
+        self.rebuild_first_person_player_arm_meshes();
+    }
+
+    pub(crate) fn rebuild_first_person_player_arm_meshes(&mut self) {
+        if let Some(atlas) = &self.entity_model_texture_atlas {
+            let dynamic_player_skin_atlas = self
+                .entity_dynamic_player_skin_atlas
+                .as_ref()
+                .map(|atlas| &atlas.layout);
+            let meshes = first_person_player_arm_textured_meshes(
+                &self.first_person_player_arms,
+                &atlas.layout,
+                dynamic_player_skin_atlas,
+            );
+            self.first_person_player_arm_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.translucent,
+                "bbb-first-person-player-arm",
+            );
+            self.first_person_dynamic_player_arm_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_translucent,
+                    "bbb-first-person-dynamic-player-arm",
+                );
+        } else {
+            self.first_person_player_arm_mesh = None;
+            self.first_person_dynamic_player_arm_mesh = None;
+        }
     }
 
     pub(crate) fn rebuild_entity_model_meshes(&mut self) {

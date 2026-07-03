@@ -1424,6 +1424,8 @@ impl Renderer {
             && map_text_buffers.is_none()
             && glint_buffers.is_none()
             && glint_translucent_buffers.is_none()
+            && self.first_person_player_arm_mesh.is_none()
+            && self.first_person_dynamic_player_arm_mesh.is_none()
         {
             return;
         }
@@ -1452,6 +1454,33 @@ impl Renderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
+
+        if let (Some(mesh), Some(atlas)) = (
+            &self.first_person_player_arm_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            stats.pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            stats.entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.first_person_dynamic_player_arm_mesh,
+            &self.entity_dynamic_player_skin_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            stats.pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            stats.entity_model_draw_calls += 1;
+        }
 
         if let Some(buffers) = &block_buffers {
             self.draw_item_model_frame_buffers(

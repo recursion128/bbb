@@ -31,7 +31,7 @@ use bbb_renderer::{
     snow_golem_head_block_transform, villager_crossed_arms_item_transform,
     witch_held_item_transform, CameraPose, EntityModelInstance, EntityModelKind,
     FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
-    HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
+    FirstPersonPlayerArm, HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
     MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, SpearKineticWeapon,
@@ -1094,17 +1094,8 @@ pub(crate) fn first_person_item_models(
     let camera_x_rot = camera_pose.x_rot;
     let camera_world = first_person_camera_world_transform(camera_pose);
     let attack_swing = world.local_player_attack_swing(partial_ticks);
-    let only_render_using_hand = using_hand.filter(|hand| {
-        let stack = match hand {
-            InteractionHand::MainHand => main_stack,
-            InteractionHand::OffHand => off_stack,
-        };
-        stack
-            .and_then(|stack| first_person_stack_resource_id(stack, item_runtime))
-            .is_some_and(|resource_id| {
-                matches!(resource_id, "minecraft:bow" | "minecraft:crossbow")
-            })
-    });
+    let only_render_using_hand =
+        first_person_only_render_using_hand(item_runtime, main_stack, off_stack, using_hand);
 
     for (hand, stack) in [
         (InteractionHand::MainHand, main_stack),
@@ -1337,6 +1328,162 @@ pub(crate) fn first_person_item_models(
         models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
     }
     models
+}
+
+pub(crate) fn first_person_player_arms(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    local_player_instance: Option<&EntityModelInstance>,
+    camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
+) -> Vec<FirstPersonPlayerArm> {
+    let (Some(local_player_instance), Some(camera_pose)) = (local_player_instance, camera_pose)
+    else {
+        return Vec::new();
+    };
+    if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
+        return Vec::new();
+    }
+    if item_runtime.is_some_and(|item_runtime| local_player_is_scoping(world, item_runtime)) {
+        return Vec::new();
+    }
+    if local_player_instance.render_state.invisible {
+        return Vec::new();
+    }
+    let EntityModelKind::Player { skin, parts } = local_player_instance.kind else {
+        return Vec::new();
+    };
+
+    let main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let using_hand = world.local_player().interaction.using_item.then(|| {
+        world
+            .local_player()
+            .interaction
+            .using_item_hand
+            .unwrap_or(InteractionHand::MainHand)
+    });
+    let only_render_using_hand = item_runtime.and_then(|item_runtime| {
+        first_person_only_render_using_hand(item_runtime, main_stack, off_stack, using_hand)
+    });
+    let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
+    let camera_world = first_person_camera_world_transform(camera_pose);
+    let attack_swing = world.local_player_attack_swing(partial_ticks);
+    let hand_attack = |hand: InteractionHand| {
+        attack_swing
+            .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
+            .map_or(0.0, |swing| swing.attack_anim)
+    };
+    let light = first_person_player_arm_light(local_player_instance);
+    let mut arms = Vec::new();
+
+    if only_render_using_hand.is_none_or(|hand| hand == InteractionHand::MainHand)
+        && main_stack.is_none()
+    {
+        let arm_left = owner_main_hand_left;
+        let attack = hand_attack(InteractionHand::MainHand);
+        arms.push(FirstPersonPlayerArm {
+            left: arm_left,
+            skin,
+            sleeve_visible: if arm_left {
+                parts.left_sleeve
+            } else {
+                parts.right_sleeve
+            },
+            transform: first_person_render_player_arm_transform(
+                camera_world,
+                arm_left,
+                0.0,
+                attack,
+            ),
+            light,
+        });
+    }
+
+    for (hand, stack) in [
+        (InteractionHand::MainHand, main_stack),
+        (InteractionHand::OffHand, off_stack),
+    ] {
+        if only_render_using_hand.is_some_and(|only_hand| only_hand != hand) {
+            continue;
+        }
+        let Some(stack) = stack else {
+            continue;
+        };
+        if stack.component_patch.map_id.is_none() {
+            continue;
+        }
+        let attack = hand_attack(hand);
+        if hand == InteractionHand::MainHand && off_stack.is_none() {
+            for arm_left in [false, true] {
+                arms.push(FirstPersonPlayerArm {
+                    left: arm_left,
+                    skin,
+                    sleeve_visible: if arm_left {
+                        parts.left_sleeve
+                    } else {
+                        parts.right_sleeve
+                    },
+                    transform: first_person_two_handed_map_arm_transform(
+                        camera_world,
+                        camera_pose.x_rot,
+                        0.0,
+                        attack,
+                        arm_left,
+                    ),
+                    light,
+                });
+            }
+        } else {
+            let arm_left = match hand {
+                InteractionHand::MainHand => owner_main_hand_left,
+                InteractionHand::OffHand => !owner_main_hand_left,
+            };
+            arms.push(FirstPersonPlayerArm {
+                left: arm_left,
+                skin,
+                sleeve_visible: if arm_left {
+                    parts.left_sleeve
+                } else {
+                    parts.right_sleeve
+                },
+                transform: first_person_one_handed_map_arm_transform(
+                    camera_world,
+                    arm_left,
+                    0.0,
+                    attack,
+                ),
+                light,
+            });
+        }
+    }
+
+    arms
+}
+
+fn first_person_only_render_using_hand(
+    item_runtime: &NativeItemRuntime,
+    main_stack: Option<&ItemStackSummary>,
+    off_stack: Option<&ItemStackSummary>,
+    using_hand: Option<InteractionHand>,
+) -> Option<InteractionHand> {
+    using_hand.filter(|hand| {
+        let stack = match hand {
+            InteractionHand::MainHand => main_stack,
+            InteractionHand::OffHand => off_stack,
+        };
+        stack
+            .and_then(|stack| first_person_stack_resource_id(stack, item_runtime))
+            .is_some_and(|resource_id| {
+                matches!(resource_id, "minecraft:bow" | "minecraft:crossbow")
+            })
+    })
+}
+
+fn first_person_player_arm_light(instance: &EntityModelInstance) -> [f32; 2] {
+    let block = (instance.render_state.light_coords >> 4) & 0xF;
+    let sky = (instance.render_state.light_coords >> 20) & 0xF;
+    [block as f32 / 15.0, sky as f32 / 15.0]
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1682,6 +1829,83 @@ fn first_person_two_handed_map_transform(
         * Mat4::from_rotation_x((xz_swing_rotation * 20.0).to_radians())
         * Mat4::from_scale(Vec3::splat(2.0));
     first_person_apply_map_render_transform(map_pose)
+}
+
+fn first_person_render_player_arm_transform(
+    parent_transform: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let sqrt_attack = attack.sqrt();
+    let x_swing_position = -0.3 * (sqrt_attack * std::f32::consts::PI).sin();
+    let y_swing_position = 0.4 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.4 * (attack * std::f32::consts::PI).sin();
+    let z_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+    let y_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+
+    parent_transform
+        * Mat4::from_translation(Vec3::new(
+            invert * (x_swing_position + 0.64000005),
+            y_swing_position - 0.6 + inverse_arm_height * -0.6,
+            z_swing_position - 0.71999997,
+        ))
+        * Mat4::from_rotation_y((invert * 45.0_f32).to_radians())
+        * Mat4::from_rotation_y((invert * y_swing_rotation * 70.0).to_radians())
+        * Mat4::from_rotation_z((invert * z_swing_rotation * -20.0).to_radians())
+        * Mat4::from_translation(Vec3::new(invert * -1.0, 3.6, 3.5))
+        * Mat4::from_rotation_z((invert * 120.0_f32).to_radians())
+        * Mat4::from_rotation_x(200.0_f32.to_radians())
+        * Mat4::from_rotation_y((invert * -135.0_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(invert * 5.6, 0.0, 0.0))
+}
+
+fn first_person_one_handed_map_arm_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    first_person_render_player_arm_transform(
+        camera_world
+            * Mat4::from_translation(Vec3::new(invert * 0.125, -0.125, 0.0))
+            * Mat4::from_rotation_z((invert * 10.0_f32).to_radians()),
+        arm_left,
+        inverse_arm_height,
+        attack,
+    )
+}
+
+fn first_person_two_handed_map_arm_transform(
+    camera_world: Mat4,
+    x_rot: f32,
+    inverse_arm_height: f32,
+    attack: f32,
+    arm_left: bool,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let y_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let z_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let map_tilt = first_person_map_tilt(x_rot);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    camera_world
+        * Mat4::from_translation(Vec3::new(0.0, -y_swing_position / 2.0, z_swing_position))
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.04 + inverse_arm_height * -1.2 + map_tilt * -0.5,
+            -0.72,
+        ))
+        * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+        * Mat4::from_rotation_y(90.0_f32.to_radians())
+        * Mat4::from_rotation_y(92.0_f32.to_radians())
+        * Mat4::from_rotation_x(45.0_f32.to_radians())
+        * Mat4::from_rotation_z((invert * -41.0_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(invert * 0.3, -1.1, 0.45))
 }
 
 fn first_person_apply_map_render_transform(transform: Mat4) -> Mat4 {
@@ -3164,6 +3388,7 @@ mod tests {
         EntityEvent, EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData,
         SetEquipment, SetPlayerInventory, SwingAnimationSummary, Vec3d,
     };
+    use bbb_renderer::{EntityDefaultPlayerSkin, EntityPlayerSkin, PlayerModelPartVisibility};
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
         PalettedContainerData, WorldDimension,
@@ -4341,6 +4566,122 @@ mod tests {
             "offhand maps use vanilla's one-handed map branch"
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_parts() {
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 20.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let world = WorldStore::new();
+        let parts = PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::RIGHT_SLEEVE_MASK,
+        );
+        let skin = EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve);
+        let player = EntityModelInstance::player_with_skin(1, [0.0, 64.0, 0.0], 0.0, skin, parts)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20));
+
+        let arms = first_person_player_arms(&world, None, Some(&player), Some(pose), 1.0);
+
+        assert_eq!(arms.len(), 1);
+        assert!(!arms[0].left);
+        assert_eq!(arms[0].skin, skin);
+        assert!(arms[0].sleeve_visible);
+        assert_eq!(arms[0].light, [5.0 / 15.0, 11.0 / 15.0]);
+        assert!(arms[0].transform.abs_diff_eq(
+            first_person_render_player_arm_transform(
+                first_person_camera_world_transform(pose),
+                false,
+                0.0,
+                0.0,
+            ),
+            1.0e-5,
+        ));
+
+        assert!(
+            first_person_player_arms(
+                &world,
+                None,
+                Some(&player.with_invisible(true)),
+                Some(pose),
+                1.0,
+            )
+            .is_empty(),
+            "vanilla renderArmWithItem skips empty-hand player arms while invisible",
+        );
+        assert!(first_person_player_arms(&world, None, Some(&player), None, 1.0).is_empty());
+    }
+
+    #[test]
+    fn first_person_player_arms_render_two_handed_and_one_handed_map_arms() {
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 20.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let camera_world = first_person_camera_world_transform(pose);
+        let parts = PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::LEFT_SLEEVE_MASK
+                | PlayerModelPartVisibility::RIGHT_SLEEVE_MASK,
+        );
+        let player = EntityModelInstance::player_with_parts(1, [0.0, 64.0, 0.0], 0.0, false, parts);
+        let mut map = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        map.component_patch.map_id = Some(7);
+
+        let mut main_map_world = WorldStore::new();
+        main_map_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: map.clone(),
+        });
+        let main_map_arms =
+            first_person_player_arms(&main_map_world, None, Some(&player), Some(pose), 1.0);
+        assert_eq!(main_map_arms.len(), 2);
+        assert_eq!(
+            main_map_arms.iter().map(|arm| arm.left).collect::<Vec<_>>(),
+            vec![false, true],
+        );
+        assert!(main_map_arms[0].sleeve_visible);
+        assert!(main_map_arms[1].sleeve_visible);
+        assert!(main_map_arms[0].transform.abs_diff_eq(
+            first_person_two_handed_map_arm_transform(camera_world, pose.x_rot, 0.0, 0.0, false),
+            1.0e-5,
+        ));
+        assert!(main_map_arms[1].transform.abs_diff_eq(
+            first_person_two_handed_map_arm_transform(camera_world, pose.x_rot, 0.0, 0.0, true),
+            1.0e-5,
+        ));
+
+        let mut offhand_map_world = WorldStore::new();
+        offhand_map_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: map,
+        });
+        let offhand_map_arms =
+            first_person_player_arms(&offhand_map_world, None, Some(&player), Some(pose), 1.0);
+        assert_eq!(
+            offhand_map_arms
+                .iter()
+                .map(|arm| arm.left)
+                .collect::<Vec<_>>(),
+            vec![false, true],
+            "offhand maps leave the empty main hand visible and render one map hand",
+        );
+        assert!(offhand_map_arms[0].transform.abs_diff_eq(
+            first_person_render_player_arm_transform(camera_world, false, 0.0, 0.0),
+            1.0e-5,
+        ));
+        assert!(offhand_map_arms[1].transform.abs_diff_eq(
+            first_person_one_handed_map_arm_transform(camera_world, true, 0.0, 0.0),
+            1.0e-5,
+        ));
     }
 
     #[test]
@@ -5592,6 +5933,93 @@ mod tests {
             left_origin.abs_diff_eq(Vec3::new(-0.56, -0.52, -0.72), 1.0e-4),
             "left origin {left_origin:?}"
         );
+    }
+
+    #[test]
+    fn first_person_player_arm_transform_matches_vanilla_render_player_arm() {
+        let attack = 0.25_f32;
+        let inverse_arm_height = 0.2_f32;
+        let expected = |arm_left: bool| {
+            let invert = if arm_left { -1.0 } else { 1.0 };
+            let sqrt_attack = attack.sqrt();
+            let x_swing_position = -0.3 * (sqrt_attack * std::f32::consts::PI).sin();
+            let y_swing_position = 0.4 * (sqrt_attack * std::f32::consts::TAU).sin();
+            let z_swing_position = -0.4 * (attack * std::f32::consts::PI).sin();
+            let z_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+            let y_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+
+            Mat4::from_translation(Vec3::new(
+                invert * (x_swing_position + 0.64000005),
+                y_swing_position - 0.6 + inverse_arm_height * -0.6,
+                z_swing_position - 0.71999997,
+            )) * Mat4::from_rotation_y((invert * 45.0_f32).to_radians())
+                * Mat4::from_rotation_y((invert * y_swing_rotation * 70.0).to_radians())
+                * Mat4::from_rotation_z((invert * z_swing_rotation * -20.0).to_radians())
+                * Mat4::from_translation(Vec3::new(invert * -1.0, 3.6, 3.5))
+                * Mat4::from_rotation_z((invert * 120.0_f32).to_radians())
+                * Mat4::from_rotation_x(200.0_f32.to_radians())
+                * Mat4::from_rotation_y((invert * -135.0_f32).to_radians())
+                * Mat4::from_translation(Vec3::new(invert * 5.6, 0.0, 0.0))
+        };
+
+        assert!(first_person_render_player_arm_transform(
+            Mat4::IDENTITY,
+            false,
+            inverse_arm_height,
+            attack,
+        )
+        .abs_diff_eq(expected(false), 1.0e-5));
+        assert!(first_person_render_player_arm_transform(
+            Mat4::IDENTITY,
+            true,
+            inverse_arm_height,
+            attack,
+        )
+        .abs_diff_eq(expected(true), 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_map_arm_transform_matches_vanilla_render_map_hand() {
+        let attack = 0.25_f32;
+        let x_rot = 20.0_f32;
+        let inverse_arm_height = 0.2_f32;
+        let sqrt_attack = attack.sqrt();
+        let y_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+        let z_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+        let map_tilt = first_person_map_tilt(x_rot);
+        let base =
+            Mat4::from_translation(Vec3::new(0.0, -y_swing_position / 2.0, z_swing_position))
+                * Mat4::from_translation(Vec3::new(
+                    0.0,
+                    0.04 + inverse_arm_height * -1.2 + map_tilt * -0.5,
+                    -0.72,
+                ))
+                * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+                * Mat4::from_rotation_y(90.0_f32.to_radians());
+        let expected_map_hand = |arm_left: bool| {
+            let invert = if arm_left { -1.0 } else { 1.0 };
+            base * Mat4::from_rotation_y(92.0_f32.to_radians())
+                * Mat4::from_rotation_x(45.0_f32.to_radians())
+                * Mat4::from_rotation_z((invert * -41.0_f32).to_radians())
+                * Mat4::from_translation(Vec3::new(invert * 0.3, -1.1, 0.45))
+        };
+
+        assert!(first_person_two_handed_map_arm_transform(
+            Mat4::IDENTITY,
+            x_rot,
+            inverse_arm_height,
+            attack,
+            false,
+        )
+        .abs_diff_eq(expected_map_hand(false), 1.0e-5));
+        assert!(first_person_two_handed_map_arm_transform(
+            Mat4::IDENTITY,
+            x_rot,
+            inverse_arm_height,
+            attack,
+            true,
+        )
+        .abs_diff_eq(expected_map_hand(true), 1.0e-5));
     }
 
     #[test]

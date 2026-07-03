@@ -151,6 +151,15 @@ impl ModelPart {
             .unwrap_or_else(|| panic!("model part has no child named `{name}`"))
     }
 
+    /// Immutable counterpart to [`Self::child_mut`], returning `None` for optional render paths that
+    /// need to degrade gracefully when a model lacks the requested direct child.
+    pub(in crate::entity_models) fn try_child(&self, name: &str) -> Option<&ModelPart> {
+        self.children
+            .iter()
+            .find(|(child_name, _)| *child_name == name)
+            .map(|(_, child)| child)
+    }
+
     /// The posed transform that reaches a named direct child's frame from this part's parent frame:
     /// `self.local_transform() · child.local_transform()` — vanilla `translateToHand`'s
     /// `root.translateAndRotate · arm.translateAndRotate`. Used to attach a held item to a posed arm,

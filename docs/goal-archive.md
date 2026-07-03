@@ -1300,6 +1300,24 @@
     Tests cover default spear animation selection, consumable SPEAR duration,
     removal of the prototype kinetic component, the direct transform matrix,
     rendered first-person use movement, and local kinetic hit feedback.
+  - [x] first-person local-player arms：local vanilla 26.1
+    `ItemInHandRenderer.renderArmWithItem` renders `renderPlayerArm` for an
+    empty main hand when the player is visible, renders two `renderMapHand`
+    submissions for a main-hand filled map with an empty offhand, and renders a
+    one-handed map arm for other filled-map hands. `AvatarRenderer.renderRightHand`
+    / `renderLeftHand` reset the selected arm, apply the fixed arm z-rotation,
+    toggle the sleeve, and submit the arm with `RenderTypes.entityTranslucent`
+    plus `OverlayTexture.NO_OVERLAY` and the frame light coords. Native now
+    extracts first-person player arm submissions alongside first-person item
+    models, preserving the local player skin, sleeve visibility, packed light,
+    empty-hand and filled-map arm transforms, used-hand bow/crossbow selection,
+    invisibility/scoping/spectator/camera gates, and dynamic skin fallback
+    metadata. Renderer now bakes selected player arm parts into static or ready
+    dynamic-player-skin translucent buckets and draws them in the depth-cleared
+    hand pass before map/item surfaces. Tests cover vanilla arm/map-hand matrix
+    constants, empty-hand and filled-map extraction, sleeve/light/skin
+    metadata, static `entityTranslucent` submission, and ready dynamic skin
+    atlas routing.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

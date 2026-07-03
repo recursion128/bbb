@@ -7,9 +7,10 @@
 
 use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
-    FirstPersonMapBackgroundTexture, HudBlockItemModel, HudInventoryScreen, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
+    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudBlockItemModel, HudInventoryScreen,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
+    SelectionOutline,
 };
 
 use super::*;
@@ -628,6 +629,7 @@ pub(crate) struct RendererFrame {
     pub(crate) first_person_flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) first_person_player_arms: Vec<FirstPersonPlayerArm>,
     pub(crate) first_person_map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
     pub(crate) first_person_map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
     pub(crate) first_person_map_textures: Vec<ItemFrameMapTexture>,
@@ -686,6 +688,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_first_person_item_model_glint_translucent_meshes(
         frame.first_person_item_model_glint_translucent_meshes,
     );
+    renderer.set_first_person_player_arms(frame.first_person_player_arms);
     renderer.set_first_person_map_background_surfaces(
         frame.first_person_map_background_textures,
         frame.first_person_map_background_surfaces,

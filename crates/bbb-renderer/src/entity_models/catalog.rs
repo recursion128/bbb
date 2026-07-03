@@ -1,5 +1,7 @@
 mod selection;
 
+use glam::Mat4;
+
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
     horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref, mooshroom_texture_ref,
@@ -563,6 +565,18 @@ pub const PLAYER_MODEL_PARTS_ALL_VISIBLE: PlayerModelPartVisibility =
     PlayerModelPartVisibility::from_vanilla_mask(PlayerModelPartVisibility::ALL_MASK);
 pub const PLAYER_MODEL_PARTS_ALL_HIDDEN: PlayerModelPartVisibility =
     PlayerModelPartVisibility::from_vanilla_mask(0);
+
+/// One first-person local-player arm submission, matching vanilla
+/// `ItemInHandRenderer.renderPlayerArm` / `renderMapHand` plus
+/// `AvatarRenderer.renderRightHand` / `renderLeftHand`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FirstPersonPlayerArm {
+    pub left: bool,
+    pub skin: EntityPlayerSkin,
+    pub sleeve_visible: bool,
+    pub transform: Mat4,
+    pub light: [f32; 2],
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZombieVariantModelFamily {

@@ -20,9 +20,10 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HorseColorVariant, HorseMarkings, LlamaModelFamily, ParrotModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
-        ZombieVariantModelFamily,
+        FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LlamaModelFamily,
+        ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
+        UndeadHorseModelFamily, VillagerModelData, ZombieVariantModelFamily,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
     },
     entity_model_root_transform,
     geometry::{
@@ -974,6 +975,104 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
     }
     meshes.flush_sorted_uploads();
     meshes
+}
+
+pub(super) fn first_person_player_arm_textured_meshes(
+    arms: &[FirstPersonPlayerArm],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    for (index, arm) in arms.iter().copied().enumerate() {
+        render_first_person_player_arm(
+            &mut meshes,
+            arm,
+            index as u32,
+            atlas,
+            dynamic_player_skin_atlas,
+        );
+    }
+    meshes.flush_sorted_uploads();
+    meshes
+}
+
+fn render_first_person_player_arm(
+    meshes: &mut EntityModelTexturedMeshes,
+    arm: FirstPersonPlayerArm,
+    submit_sequence: u32,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    let arm_name = if arm.left { "left_arm" } else { "right_arm" };
+    let mut model = PlayerModel::new(arm.skin.is_slim());
+    let root = model.root_mut();
+    let selected = root.child_mut(arm_name);
+    selected.reset_pose();
+    selected.visible = true;
+    selected.pose.rotation[2] = if arm.left { -0.1 } else { 0.1 };
+    selected.child_mut("sleeve").visible = arm.sleeve_visible;
+
+    let texture = default_player_skin_texture_ref(arm.skin.fallback());
+    let mut pass = player_textured_layer_passes_with_texture(
+        arm.skin.is_slim(),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        texture,
+    )[0];
+    pass.render_type = EntityModelLayerRenderType::EntityTranslucent;
+    pass.submit_sequence = submit_sequence;
+    let submit = textured_layer_submission(meshes, pass, arm.transform)
+        .with_light(arm.light)
+        .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+    let Some(arm_part) = model.root().try_child(arm_name) else {
+        return;
+    };
+
+    if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = arm.skin {
+        let submit = submit.with_dynamic_player_skin(dynamic_player_skin);
+        if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
+            if let Some(entry) = dynamic_player_skin_atlas_entry(
+                dynamic_player_skin_atlas,
+                dynamic_player_skin.handle,
+            ) {
+                render_textured_dynamic_player_skin_submission(
+                    meshes,
+                    submit,
+                    entry,
+                    |mesh, entry| {
+                        arm_part.render_textured(
+                            mesh,
+                            submit.transform,
+                            submit.texture,
+                            entry.uv,
+                            submit.tint,
+                        );
+                    },
+                );
+                return;
+            }
+        }
+
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            arm_part.render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+        return;
+    }
+
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        arm_part.render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 pub(super) fn entity_model_water_mask_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {

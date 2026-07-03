@@ -271,10 +271,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   decorations/text plus map background/checkerboard quads, and custom
   consumable BOW/TRIDENT/BRUSH/BUNDLE plus generic no-switch
   NONE/CROSSBOW/SPYGLASS/TOOT_HORN first-person use animation, and SPEAR /
-  kinetic first-person use animation with local hit feedback. 剩余是玩家手臂等
-  像素级视觉校验。
+  kinetic first-person use animation with local hit feedback, and first-person
+  local-player empty-hand / filled-map player arms using vanilla
+  `renderPlayerArm` / `renderMapHand` transforms, player skin sleeves,
+  `entityTranslucent`, local light, and dynamic skin atlas routing. 剩余是
+  截图级 viewmodel 视觉校验。
 - First-person viewmodel：
-  - 玩家手臂与截图级视觉校验。
+  - 截图级视觉校验。
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
 

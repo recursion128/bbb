@@ -2785,14 +2785,19 @@ When an agent does any of the following, update this file in the same slice:
       decoration/text submits (`showOnlyFrame=false`) and the vanilla
       `textures/map/map_background*.png` background/checkerboard quads in the
       same depth-cleared hand pass, and
+      renders local-player empty-hand / filled-map first-person arms with the
+      vanilla `ItemInHandRenderer.renderPlayerArm` / `renderMapHand`
+      transforms, the current player skin sleeves, `entityTranslucent`,
+      local lightmap coordinates, and ready dynamic-player skin atlas routing,
+      and
       applies vanilla first-person use transforms for custom consumable
       BOW/TRIDENT/BRUSH/BUNDLE animations while preserving the generic
       no-switch base-arm behavior for NONE/CROSSBOW/SPYGLASS/TOOT_HORN, applies
       the vanilla SPEAR / kinetic first-person use transform with local kinetic
       hit feedback, and
       draws in a depth-cleared pass after world transparency is composited and
-      before HUD overlays. Remaining refinements are first-person player arms;
-      combat arm poses; and custom ground transforms. Done:
+      before HUD overlays. Remaining refinements are screenshot-level
+      viewmodel parity; combat arm poses; and custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,
@@ -3190,8 +3195,8 @@ When an agent does any of the following, update this file in the same slice:
         and zombie/zombified-piglin `STAB` skip/lunge parity are covered; ordinary piglin/brute
         non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
         swing-type parity remains separate custom-component work.
-      - remaining slices: held-item refinements (first-person player arms and
-        screenshot-level viewmodel parity;
+      - remaining slices: held-item refinements (screenshot-level viewmodel
+        parity;
         broader non-profile dynamic texture loading; the
         `NONE` swing type). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
