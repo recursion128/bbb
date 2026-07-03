@@ -322,21 +322,23 @@ When an agent does any of the following, update this file in the same slice:
         decoded from the synced color, and positions sampled from
         `getRandomX(0.5)` / `getRandomY()` / `getRandomZ(0.5)` over the current
         arrow AABB. Color `-1` emits no particles; color `0` emits black.
+      - Animal entity event `18` now emits vanilla love `minecraft:heart`
+        particles from `Animal.handleEntityEvent`: 7 commands with gaussian
+        `*0.02` velocity and `getRandomX(1.0)`, `getRandomY()+0.5`,
+        `getRandomZ(1.0)` position sampling from the current animal AABB. This
+        is gated to classes inheriting `Animal`; Allay's separate 3-heart
+        event-18 branch remains a separate slice.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
         `Blocks.HONEY_BLOCK.defaultBlockState()`, the entity position, and zero
         velocity.
       - remaining deferred work is broader collision clipping parity for
-        special contexts and player-coupled particle emitters beyond
-        `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
-        emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
-        magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
-        drown bubbles, LivingEntity event-46 portal burst, HoneyBlock
-        event-53/54 block particles, Snowball event-3 item burst, ThrownEgg
-        event-3 item burst, Arrow event-0 entity-effect burst, and the
-        GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
-        model submit
+        special contexts, player-coupled particle emitters beyond the currently
+        covered scoped cases, and remaining entity-event families such as
+        `TamableAnimal` events `6`/`7`, Allay event `18`, Villager events
+        `12`/`13`/`14`/`42`, Dolphin event `38`, and tick-driven stun/fang
+        particle state
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -529,6 +531,10 @@ When an agent does any of the following, update this file in the same slice:
       zero velocity, and current-arrow AABB position sampling via
       `getRandomX(0.5)`, `getRandomY()`, and `getRandomZ(0.5)`. Color `-1`
       emits no particles; color `0` emits black.
+      Native Animal event `18` now emits vanilla love `minecraft:heart`
+      particles from `Animal.handleEntityEvent`: 7 commands with gaussian
+      `0.02` velocity and current-animal AABB position sampling via
+      `getRandomX(1.0)`, `getRandomY()+0.5`, and `getRandomZ(1.0)`.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

@@ -35,8 +35,8 @@ pub(crate) use components::{
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
-pub(crate) use dimensions::vanilla_living_entity_type;
 pub use dimensions::EntityPickBoundsState;
+pub(crate) use dimensions::{vanilla_animal_entity_type, vanilla_living_entity_type};
 use dimensions::{
     vanilla_client_position_for_entity_data, vanilla_is_cat, VANILLA_POSE_SLEEPING_ID,
 };
@@ -402,6 +402,14 @@ pub struct ArrowEffectParticleState {
     pub width: f32,
     pub height: f32,
     pub color_rgb: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AnimalLoveParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2088,6 +2096,20 @@ impl WorldStore {
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
             color_rgb: color as u32 & 0x00ff_ffff,
+        })
+    }
+
+    pub fn animal_love_particle_state(&self, entity_id: i32) -> Option<AnimalLoveParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !vanilla_animal_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(AnimalLoveParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
         })
     }
 

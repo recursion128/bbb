@@ -7,12 +7,13 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{
-    ArrowEffectParticleState, BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventGrowthRandomMode,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    ThrownEggHitParticleState, WitchMagicParticleState, WorldStore,
+    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
+    EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState,
+    HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
+    WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -368,6 +369,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
         emit_arrow_effect_particles(self.particle_events, self.particle_renderer, state);
+    }
+
+    fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
+        emit_animal_love_particles(self.particle_events, self.particle_renderer, state);
     }
 
     fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
@@ -754,6 +759,20 @@ fn emit_arrow_effect_particles(
         return;
     };
     let batch = particle_events.spawn_arrow_effect_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_animal_love_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: AnimalLoveParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_animal_love_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

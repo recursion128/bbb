@@ -47,10 +47,10 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, ArrowEffectParticleState, BlockPos, ChunkPos,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
-    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    advance_cobweb_place_particle_randoms, AnimalLoveParticleState, ArrowEffectParticleState,
+    BlockPos, ChunkPos, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LocalPlayerPoseState, RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
     TakeItemEntityPickupParticleState, ThrownEggHitParticleState, WitchMagicParticleState,
     WorldBlockSoundProfile, WorldStore,
 };
@@ -2801,6 +2801,66 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
     assert_eq!(particles.arrow_effect_states[1].color_rgb, 0);
     assert_eq!(particles.batches.len(), 2);
     assert_eq!(world.counters().entity_events_applied, 4);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn animal_love_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(128, VANILLA_ENTITY_TYPE_COW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(129, VANILLA_ENTITY_TYPE_ALLAY_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 128,
+        event_id: 18,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 129,
+        event_id: 18,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 18,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    assert_eq!(particles.animal_love_states.len(), 1);
+    let state = particles.animal_love_states[0];
+    assert_eq!(state.entity_id, 128);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 0.9);
+    assert_close(state.height, 1.4);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8818,6 +8878,7 @@ struct RecordingParticleSink {
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     arrow_effect_states: Vec<ArrowEffectParticleState>,
+    animal_love_states: Vec<AnimalLoveParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
     thrown_egg_hit_states: Vec<ThrownEggHitParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
@@ -8990,6 +9051,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: ArrowEffectParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.arrow_effect_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_animal_love_particles(
+        &mut self,
+        state: AnimalLoveParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.animal_love_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
