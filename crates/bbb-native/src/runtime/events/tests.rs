@@ -48,10 +48,10 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
-    ArrowEffectParticleState, BlockPos, ChunkPos, EntityTamingParticleState,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
-    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    ArrowEffectParticleState, BlockPos, ChunkPos, DolphinHappyParticleState,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LocalPlayerPoseState, RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
     TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
     VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
@@ -3023,6 +3023,66 @@ fn villager_entity_events_emit_particle_states() {
     assert_close(state.height, 1.95);
     assert_eq!(particles.batches.len(), 4);
     assert_eq!(world.counters().entity_events_applied, 5);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn dolphin_happy_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(135, VANILLA_ENTITY_TYPE_DOLPHIN_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(136, VANILLA_ENTITY_TYPE_COW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 135,
+        event_id: 38,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 136,
+        event_id: 38,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 38,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    assert_eq!(particles.dolphin_happy_states.len(), 1);
+    let state = particles.dolphin_happy_states[0];
+    assert_eq!(state.entity_id, 135);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 0.9);
+    assert_close(state.height, 0.6);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -9042,6 +9102,7 @@ struct RecordingParticleSink {
     arrow_effect_states: Vec<ArrowEffectParticleState>,
     entity_taming_states: Vec<EntityTamingParticleState>,
     villager_states: Vec<VillagerParticleState>,
+    dolphin_happy_states: Vec<DolphinHappyParticleState>,
     animal_love_states: Vec<AnimalLoveParticleState>,
     allay_duplication_states: Vec<AllayDuplicationParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
@@ -9236,6 +9297,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: VillagerParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.villager_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_dolphin_happy_particles(
+        &mut self,
+        state: DolphinHappyParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.dolphin_happy_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

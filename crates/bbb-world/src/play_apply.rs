@@ -16,13 +16,13 @@ use crate::{
     advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
-    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    JukeboxLevelEventState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
-    RavagerRoarParticleState, SnowballHitParticleState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
-    VehicleMoveReport, VillagerParticleKind, VillagerParticleState, WitchMagicParticleState,
-    WorldStore,
+    DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
+    HoneyBlockParticleState, JukeboxLevelEventState, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LocalSoundEventState, RavagerRoarParticleState, SnowballHitParticleState,
+    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -70,6 +70,7 @@ const VILLAGER_ANGRY_EVENT_ID: i8 = 13;
 const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
+const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
@@ -160,6 +161,7 @@ pub trait PlayApplyEffects {
     fn arrow_effect_particles(&mut self, _world: &WorldStore, _state: ArrowEffectParticleState) {}
     fn entity_taming_particles(&mut self, _world: &WorldStore, _state: EntityTamingParticleState) {}
     fn villager_particles(&mut self, _world: &WorldStore, _state: VillagerParticleState) {}
+    fn dolphin_happy_particles(&mut self, _world: &WorldStore, _state: DolphinHappyParticleState) {}
     fn animal_love_particles(&mut self, _world: &WorldStore, _state: AnimalLoveParticleState) {}
     fn allay_duplication_particles(
         &mut self,
@@ -411,6 +413,11 @@ impl WorldStore {
                         ),
                         _ => None,
                     };
+                let dolphin_happy_particles = if update.event_id == DOLPHIN_HAPPY_EVENT_ID {
+                    self.dolphin_happy_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let animal_love_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
                     self.animal_love_particle_state(update.entity_id)
                 } else {
@@ -510,6 +517,9 @@ impl WorldStore {
                     }
                     if let Some(state) = villager_particles {
                         effects.villager_particles(self, state);
+                    }
+                    if let Some(state) = dolphin_happy_particles {
+                        effects.dolphin_happy_particles(self, state);
                     }
                     if let Some(state) = animal_love_particles {
                         effects.animal_love_particles(self, state);
@@ -1453,7 +1463,7 @@ mod tests {
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
@@ -1480,6 +1490,7 @@ mod tests {
         arrow_effect_particles: Vec<ArrowEffectParticleState>,
         entity_taming_particles: Vec<EntityTamingParticleState>,
         villager_particles: Vec<VillagerParticleState>,
+        dolphin_happy_particles: Vec<DolphinHappyParticleState>,
         animal_love_particles: Vec<AnimalLoveParticleState>,
         allay_duplication_particles: Vec<AllayDuplicationParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
@@ -1543,6 +1554,14 @@ mod tests {
 
         fn villager_particles(&mut self, _world: &WorldStore, state: VillagerParticleState) {
             self.villager_particles.push(state);
+        }
+
+        fn dolphin_happy_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: DolphinHappyParticleState,
+        ) {
+            self.dolphin_happy_particles.push(state);
         }
 
         fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -2724,6 +2743,65 @@ mod tests {
         assert!((state.width - 0.6).abs() < 1.0e-6);
         assert!((state.height - 1.95).abs() < 1.0e-6);
         assert_eq!(store.counters().entity_events_applied, 5);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn dolphin_happy_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                135,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 65.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                136,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 66.0,
+                    z: -5.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 135,
+                event_id: DOLPHIN_HAPPY_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 136,
+                event_id: DOLPHIN_HAPPY_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: DOLPHIN_HAPPY_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.dolphin_happy_particles.len(), 1);
+        let state = effects.dolphin_happy_particles[0];
+        assert_eq!(state.entity_id, 135);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 2.25,
+                y: 65.0,
+                z: -4.5,
+            }
+        );
+        assert!((state.width - 0.9).abs() < 1.0e-6);
+        assert!((state.height - 0.6).abs() < 1.0e-6);
+        assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

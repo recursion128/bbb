@@ -344,6 +344,10 @@ When an agent does any of the following, update this file in the same slice:
         `getRandomZ(1.0)` current-AABB sampling; ids map to
         `minecraft:heart`, `minecraft:angry_villager`,
         `minecraft:happy_villager`, and `minecraft:splash`.
+      - Dolphin entity event `38` now emits vanilla
+        `minecraft:happy_villager` particles from `Dolphin.handleEntityEvent`:
+        7 commands with gaussian `*0.01` velocity and `getRandomX(1.0)`,
+        `getRandomY()+0.2`, `getRandomZ(1.0)` current-AABB sampling.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -352,7 +356,7 @@ When an agent does any of the following, update this file in the same slice:
       - remaining deferred work is broader collision clipping parity for
         special contexts, player-coupled particle emitters beyond the currently
         covered scoped cases, and remaining entity-event families such as
-        Dolphin event `38` and tick-driven stun/fang particle state
+        tick-driven stun/fang particle state
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -563,6 +567,10 @@ When an agent does any of the following, update this file in the same slice:
       velocity and current-villager AABB position sampling with `+1.0` Y
       offset, mapped to `minecraft:heart`, `minecraft:angry_villager`,
       `minecraft:happy_villager`, and `minecraft:splash`.
+      Native Dolphin event `38` now emits vanilla `minecraft:happy_villager`
+      particles from `Dolphin.handleEntityEvent`: 7 commands with gaussian
+      `0.01` velocity and current-dolphin AABB position sampling with `+0.2`
+      Y offset.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

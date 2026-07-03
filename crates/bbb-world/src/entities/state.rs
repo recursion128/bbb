@@ -2,11 +2,11 @@ pub use crate::entities::dimensions::EntityPickBoundsState;
 pub use crate::entities::status::{EntityDamageEventState, ItemCooldownState, MobEffectState};
 pub use crate::entities::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArmorMaterialKind,
-    ArrowEffectParticleState, DragonFlightHistorySample, DragonFlightHistoryState,
-    EndCrystalBeamSource, EnderDragonAnimationState, EnderDragonBeamSource, EntityAttachmentFace,
-    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityModelSourceState, EntityPickTargetState, EntityState, EntityStatusProbeState,
-    EntityTamingParticleState, EntityTransformState, EntityVec3,
+    ArrowEffectParticleState, DolphinHappyParticleState, DragonFlightHistorySample,
+    DragonFlightHistoryState, EndCrystalBeamSource, EnderDragonAnimationState,
+    EnderDragonBeamSource, EntityAttachmentFace, EntityBlockModelState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityModelSourceState, EntityPickTargetState, EntityState,
+    EntityStatusProbeState, EntityTamingParticleState, EntityTransformState, EntityVec3,
     FireworkRocketExplosionParticleState, FireworkRocketItemState, GuardianBeamSource,
     HoneyBlockParticleState, HurtingProjectileState, ItemEntityStackState, ItemFrameFacing,
     ItemFrameRenderState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,

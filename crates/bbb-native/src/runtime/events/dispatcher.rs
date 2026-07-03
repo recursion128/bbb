@@ -8,12 +8,13 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, EntityTamingParticleState, EntityTrackingEmitterParticleKind,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventGrowthRandomMode,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
+    BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
+    EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState,
+    HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
+    VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -377,6 +378,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn villager_particles(&mut self, _world: &WorldStore, state: VillagerParticleState) {
         emit_villager_particles(self.particle_events, self.particle_renderer, state);
+    }
+
+    fn dolphin_happy_particles(&mut self, _world: &WorldStore, state: DolphinHappyParticleState) {
+        emit_dolphin_happy_particles(self.particle_events, self.particle_renderer, state);
     }
 
     fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -803,6 +808,20 @@ fn emit_villager_particles(
         return;
     };
     let batch = particle_events.spawn_villager_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_dolphin_happy_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: DolphinHappyParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_dolphin_happy_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

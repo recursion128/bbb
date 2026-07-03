@@ -24,12 +24,12 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
-    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState,
+    DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
+    HoneyBlockParticleState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainLight,
+    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -117,6 +117,10 @@ pub(crate) trait ParticleEventSink {
         state: EntityTamingParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_villager_particles(&mut self, state: VillagerParticleState) -> ParticleSpawnBatch;
+    fn spawn_dolphin_happy_particles(
+        &mut self,
+        state: DolphinHappyParticleState,
+    ) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
         state: SnowballHitParticleState,
@@ -426,6 +430,13 @@ impl ParticleEventSink for NativeParticleRuntime {
 
     fn spawn_villager_particles(&mut self, state: VillagerParticleState) -> ParticleSpawnBatch {
         self.resolver.villager_particle_batch(state)
+    }
+
+    fn spawn_dolphin_happy_particles(
+        &mut self,
+        state: DolphinHappyParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.dolphin_happy_particle_batch(state)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2838,6 +2849,21 @@ impl ParticleCommandResolver {
             VILLAGER_PARTICLE_COUNT,
             VILLAGER_PARTICLE_Y_OFFSET,
             ENTITY_EVENT_PARTICLE_VELOCITY_SCALE,
+        )
+    }
+
+    fn dolphin_happy_particle_batch(
+        &mut self,
+        state: DolphinHappyParticleState,
+    ) -> ParticleSpawnBatch {
+        self.entity_event_aabb_particle_batch(
+            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            state.position,
+            state.width,
+            state.height,
+            DOLPHIN_HAPPY_PARTICLE_COUNT,
+            DOLPHIN_HAPPY_PARTICLE_Y_OFFSET,
+            DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE,
         )
     }
 
@@ -5473,9 +5499,12 @@ const ANIMAL_LOVE_PARTICLE_COUNT: usize = 7;
 const ALLAY_DUPLICATION_PARTICLE_COUNT: usize = 3;
 const ENTITY_TAMING_PARTICLE_COUNT: usize = 7;
 const VILLAGER_PARTICLE_COUNT: usize = 5;
+const DOLPHIN_HAPPY_PARTICLE_COUNT: usize = 7;
 const ENTITY_EVENT_DEFAULT_Y_OFFSET: f64 = 0.5;
 const ENTITY_EVENT_PARTICLE_VELOCITY_SCALE: f64 = 0.02;
 const VILLAGER_PARTICLE_Y_OFFSET: f64 = 1.0;
+const DOLPHIN_HAPPY_PARTICLE_Y_OFFSET: f64 = 0.2;
+const DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE: f64 = 0.01;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
@@ -6453,6 +6482,50 @@ mod tests {
                 .iter()
                 .all(|command| command.particle_id == particle_name));
         }
+    }
+
+    #[test]
+    fn dolphin_happy_batch_matches_vanilla_event_particles() {
+        let state = DolphinHappyParticleState {
+            entity_id: 84,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.9,
+            height: 0.6,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            expected_random.next_gaussian() * DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE,
+            expected_random.next_gaussian() * DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE,
+            expected_random.next_gaussian() * DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE,
+        ];
+        let expected_position = [
+            state.position.x + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+            state.position.y
+                + f64::from(state.height) * expected_random.next_f64()
+                + DOLPHIN_HAPPY_PARTICLE_Y_OFFSET,
+            state.position.z + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+        ];
+        let mut resolver = test_resolver(0);
+
+        let batch = resolver.dolphin_happy_particle_batch(state);
+
+        assert_eq!(batch.len(), DOLPHIN_HAPPY_PARTICLE_COUNT);
+        assert_particle_command(
+            &batch.commands[0],
+            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            "minecraft:happy_villager",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:happy_villager"));
     }
 
     #[test]
