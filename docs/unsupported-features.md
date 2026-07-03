@@ -836,7 +836,9 @@ When an agent does any of the following, update this file in the same slice:
         preserve entity id / `y_offset`, and native level-particle command
         resolution queries the current world entity transform to seed
         `option_target=entity.position + (0, y_offset, 0)` when the entity is
-        loaded; dynamic per-tick entity target refresh remains deferred.
+        loaded; renderer particle ticks now receive native entity target
+        contexts, refresh the vibration target each tick, and remove the
+        particle when the source entity is missing.
         `sculk_charge` now carries decoded `SculkChargeParticleOptions.roll`
         through to billboard roll rotation.
         `trial_spawner_detection` and `_ominous` now map to

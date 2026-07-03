@@ -98,7 +98,8 @@ pub use crate::item_models::{
 };
 pub use crate::particles::{
     ParticleBlockFluidSurfaceQuery, ParticleBlockFluidSurfaceSample, ParticleBlockOptionState,
-    ParticleChildSpawnTemplate, ParticleCollisionQuery, ParticleFluidKind, ParticleItemOptionState,
+    ParticleChildSpawnTemplate, ParticleCollisionQuery, ParticleEntityTargetContext,
+    ParticleEntityTargetSource, ParticleFluidKind, ParticleItemOptionState,
     ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext, ParticleSpawnBatch,
     ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };

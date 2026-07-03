@@ -15,8 +15,9 @@ use bbb_protocol::packets::{
     LevelEvent, LevelParticles, Vec3d,
 };
 use bbb_renderer::{
-    ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleItemOptionState,
-    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
+    ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
+    ParticleItemOptionState, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv,
+    ParticleUvRect, Renderer,
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
@@ -2198,6 +2199,12 @@ impl ParticleCommandResolver {
             option_scale: option_state.scale,
             option_power: option_state.power,
             option_target: option_state.target,
+            option_entity_target_source: option_state.vibration_entity_source.map(|source| {
+                ParticleEntityTargetSource {
+                    entity_id: source.entity_id,
+                    y_offset: source.y_offset,
+                }
+            }),
             option_duration_ticks: option_state.duration_ticks,
             option_roll: option_state.roll,
             option_block: option_state.block,
@@ -9168,6 +9175,7 @@ mod tests {
         assert_eq!(command.particle_id, "minecraft:vibration");
         assert_eq!(command.sprite_ids, vec!["minecraft:vibration".to_string()]);
         assert_eq!(command.option_target, Some([1.5, 64.5, -1.5]));
+        assert_eq!(command.option_entity_target_source, None);
         assert_eq!(command.option_duration_ticks, Some(27));
         assert_eq!(command.option_color, None);
         assert_eq!(command.option_power, None);
@@ -9185,6 +9193,13 @@ mod tests {
         let command = &batch.commands[0];
         assert_eq!(command.particle_id, "minecraft:vibration");
         assert_eq!(command.option_target, None);
+        assert_eq!(
+            command.option_entity_target_source,
+            Some(ParticleEntityTargetSource {
+                entity_id: 123,
+                y_offset: 0.75
+            })
+        );
         assert_eq!(command.option_duration_ticks, Some(27));
         assert_eq!(
             vibration_entity_position_source_from_options(
@@ -9224,6 +9239,13 @@ mod tests {
         let command = &batch.commands[0];
         assert_eq!(command.particle_id, "minecraft:vibration");
         assert_eq!(command.option_target, Some([4.0, 5.75, 6.0]));
+        assert_eq!(
+            command.option_entity_target_source,
+            Some(ParticleEntityTargetSource {
+                entity_id: 123,
+                y_offset: 0.75
+            })
+        );
         assert_eq!(command.option_duration_ticks, Some(27));
     }
 

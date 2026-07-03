@@ -390,11 +390,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
-    生成 `entity.position + (0, yOffset, 0)` 初始 target；dynamic per-tick
-    entity target refresh 仍留在特殊 context 后续工作；
+    生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
+    tick 现在接收 native entity target context，每 tick 重算 entity target 并在
+    source entity 缺失时移除；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
-    player-coupled emitter（不含 SpellParticle 与本地 PlayerCloud 牵引），以及
-    local sound / block-state removal gates。
+    player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引与
+    vibration entity target refresh），以及 local sound / block-state removal
+    gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

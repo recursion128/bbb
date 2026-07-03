@@ -158,6 +158,27 @@ fn particle_local_player_motion_context_tracks_local_player_pose() {
 }
 
 #[test]
+fn particle_entity_target_contexts_track_world_entity_positions() {
+    let mut world = WorldStore::new();
+    assert!(particle_entity_target_contexts(&world).is_empty());
+
+    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+
+    let contexts = particle_entity_target_contexts(&world);
+
+    assert_eq!(contexts.len(), 2);
+    assert!(contexts.contains(&ParticleEntityTargetContext {
+        entity_id: 42,
+        position: [1.0, 2.0, 3.0],
+    }));
+    assert!(contexts.contains(&ParticleEntityTargetContext {
+        entity_id: 77,
+        position: [1.0, 2.0, 3.0],
+    }));
+}
+
+#[test]
 fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
@@ -746,8 +767,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_local_player_motion_context = source
         .find("let particle_local_player_motion_context =")
         .expect("pump should sample local player motion state before particle tick");
+    let particle_entity_target_contexts = source
+        .find("let particle_entity_target_contexts =")
+        .expect("pump should sample entity target state before particle tick");
     let particle_tick = source
-        .find("renderer.advance_particles_with_world_and_player_context(")
+        .find("renderer.advance_particles_with_world_and_particle_contexts(")
         .expect("pump should advance particles");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
@@ -776,6 +800,10 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         using_item_tick < particle_local_player_motion_context
             && particle_local_player_motion_context < particle_tick,
         "player-coupled particles sample post-input local player motion during particle tick"
+    );
+    assert!(
+        particle_entity_target_contexts < particle_tick,
+        "entity-target particles sample world entity positions during particle tick"
     );
     assert!(
         particle_tick < particle_light_refresh,

@@ -20,11 +20,11 @@ use bbb_renderer::{
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleFluidKind,
-    ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext,
+    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -1456,10 +1456,11 @@ pub(crate) fn pump_network_and_terrain(
     let particle_scope_context =
         particle_local_player_scope_context(world, item_runtime, camera_pose_from_world(world));
     let particle_local_player_motion_context = particle_local_player_motion_context(world);
+    let particle_entity_target_contexts = particle_entity_target_contexts(world);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
-    renderer.advance_particles_with_world_and_player_context(
+    renderer.advance_particles_with_world_and_particle_contexts(
         advanced_ticks,
         |query| {
             world.clip_particle_collision_movement(
@@ -1472,6 +1473,7 @@ pub(crate) fn pump_network_and_terrain(
         |query| renderer_particle_block_fluid_surface_sample(world, query.position),
         particle_scope_context,
         particle_local_player_motion_context,
+        &particle_entity_target_contexts,
     );
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
@@ -5671,6 +5673,21 @@ fn particle_local_player_motion_context(
             pose.delta_movement.z,
         ],
     })
+}
+
+fn particle_entity_target_contexts(world: &WorldStore) -> Vec<ParticleEntityTargetContext> {
+    world
+        .entity_transforms()
+        .into_iter()
+        .map(|transform| ParticleEntityTargetContext {
+            entity_id: transform.id,
+            position: [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ],
+        })
+        .collect()
 }
 
 fn camera_forward_vector(camera: CameraPose) -> [f32; 3] {

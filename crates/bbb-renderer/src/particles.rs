@@ -70,6 +70,8 @@ pub struct ParticleSpawnCommand {
     #[serde(default)]
     pub option_target: Option<[f64; 3]>,
     #[serde(default)]
+    pub option_entity_target_source: Option<ParticleEntityTargetSource>,
+    #[serde(default)]
     pub option_duration_ticks: Option<u32>,
     #[serde(default)]
     pub option_roll: Option<f32>,
@@ -90,6 +92,18 @@ pub struct ParticleLocalPlayerScopeContext {
 pub struct ParticleLocalPlayerMotionContext {
     pub position: [f64; 3],
     pub delta_movement: [f64; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ParticleEntityTargetSource {
+    pub entity_id: i32,
+    pub y_offset: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleEntityTargetContext {
+    pub entity_id: i32,
+    pub position: [f64; 3],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -301,6 +315,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_power: Option<f32>,
     #[serde(default)]
     pub(crate) option_target: Option<[f64; 3]>,
+    #[serde(default)]
+    pub(crate) option_entity_target_source: Option<ParticleEntityTargetSource>,
     #[serde(default)]
     pub(crate) option_duration_ticks: Option<u32>,
     #[serde(default)]
@@ -649,7 +665,14 @@ impl ParticleRuntimeState {
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
-        self.advance_with_world_and_player_context(ticks, collide, block_fluid_surface, None, None)
+        self.advance_with_world_and_particle_contexts(
+            ticks,
+            collide,
+            block_fluid_surface,
+            None,
+            None,
+            &[],
+        )
     }
 
     pub(crate) fn advance_with_world_and_scope_context<F, S>(
@@ -675,10 +698,33 @@ impl ParticleRuntimeState {
     pub(crate) fn advance_with_world_and_player_context<F, S>(
         &mut self,
         ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        self.advance_with_world_and_particle_contexts(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+            local_player_motion_context,
+            &[],
+        )
+    }
+
+    pub(crate) fn advance_with_world_and_particle_contexts<F, S>(
+        &mut self,
+        ticks: u32,
         mut collide: F,
         mut block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
         local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        entity_target_contexts: &[ParticleEntityTargetContext],
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -703,6 +749,7 @@ impl ParticleRuntimeState {
                     &mut block_fluid_surface,
                     scope_context,
                     local_player_motion_context,
+                    entity_target_contexts,
                 );
                 self.drain_pending_spawns(
                     &mut intaken_instances,
@@ -747,6 +794,7 @@ impl ParticleRuntimeState {
         block_fluid_surface: &mut S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
         local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        entity_target_contexts: &[ParticleEntityTargetContext],
     ) -> usize
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -769,7 +817,12 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.tick_motion(&mut self.random, collide, block_fluid_surface);
+            instance.tick_motion(
+                &mut self.random,
+                collide,
+                block_fluid_surface,
+                entity_target_contexts,
+            );
             if instance.removed {
                 self.enqueue_removed_child_spawns_from(
                     &instance,
@@ -1103,6 +1156,7 @@ impl ParticleInstance {
             option_scale,
             option_power: command.option_power,
             option_target: command.option_target,
+            option_entity_target_source: command.option_entity_target_source,
             option_duration_ticks: command.option_duration_ticks,
             option_roll: command.option_roll,
             option_block: command.option_block,
@@ -1149,9 +1203,12 @@ impl ParticleInstance {
 
     #[cfg(test)]
     fn tick_motion_without_collision(&mut self, random: &mut ParticleRandom) {
-        self.tick_motion(random, &mut |query| query.movement, &mut |_| {
-            ParticleBlockFluidSurfaceSample::default()
-        });
+        self.tick_motion(
+            random,
+            &mut |query| query.movement,
+            &mut |_| ParticleBlockFluidSurfaceSample::default(),
+            &[],
+        );
     }
 
     fn tick_motion<F, S>(
@@ -1159,6 +1216,7 @@ impl ParticleInstance {
         random: &mut ParticleRandom,
         collide: &mut F,
         block_fluid_surface: &mut S,
+        entity_target_contexts: &[ParticleEntityTargetContext],
     ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
@@ -1240,9 +1298,11 @@ impl ParticleInstance {
                 ];
             }
             ParticleTickMotionDescriptor::VibrationSignal => {
-                let Some(target) = self.option_target else {
+                let Some(target) = self.vibration_target(entity_target_contexts) else {
+                    self.removed = true;
                     return;
                 };
+                self.option_target = Some(target);
                 let next_age = self.age_ticks.saturating_add(1);
                 let ticks_remaining = self.lifetime_ticks.saturating_sub(next_age);
                 if ticks_remaining == 0 {
@@ -1695,6 +1755,22 @@ impl ParticleInstance {
         dx * dx + dy * dy + dz * dz <= 9.0
     }
 
+    fn vibration_target(&self, contexts: &[ParticleEntityTargetContext]) -> Option<[f64; 3]> {
+        let Some(source) = self.option_entity_target_source else {
+            return self.option_target;
+        };
+        contexts
+            .iter()
+            .find(|context| context.entity_id == source.entity_id)
+            .map(|context| {
+                [
+                    context.position[0],
+                    context.position[1] + f64::from(source.y_offset),
+                    context.position[2],
+                ]
+            })
+    }
+
     fn update_player_cloud_motion(&mut self, context: Option<ParticleLocalPlayerMotionContext>) {
         if !matches!(
             self.provider.as_str(),
@@ -1805,6 +1881,7 @@ impl ParticleInstance {
             option_scale: None,
             option_power: None,
             option_target: None,
+            option_entity_target_source: None,
             option_duration_ticks: None,
             option_roll: None,
             option_block: None,
@@ -1869,6 +1946,7 @@ impl ParticleInstance {
             option_scale: None,
             option_power: None,
             option_target: None,
+            option_entity_target_source: None,
             option_duration_ticks: None,
             option_roll: None,
             option_block: None,
@@ -1916,6 +1994,7 @@ impl ParticleInstance {
                     option_scale: None,
                     option_power: None,
                     option_target: None,
+                    option_entity_target_source: None,
                     option_duration_ticks: None,
                     option_roll: None,
                     option_block: None,
@@ -1972,6 +2051,7 @@ impl ParticleInstance {
                     option_scale: None,
                     option_power: None,
                     option_target: None,
+                    option_entity_target_source: None,
                     option_duration_ticks: None,
                     option_roll: None,
                     option_block: None,
@@ -2110,12 +2190,35 @@ impl Renderer {
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
-        let summary = self.particles.advance_with_world_and_player_context(
+        self.advance_particles_with_world_and_particle_contexts(
             ticks,
             collide,
             block_fluid_surface,
             scope_context,
             local_player_motion_context,
+            &[],
+        );
+    }
+
+    pub fn advance_particles_with_world_and_particle_contexts<F, S>(
+        &mut self,
+        ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        entity_target_contexts: &[ParticleEntityTargetContext],
+    ) where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let summary = self.particles.advance_with_world_and_particle_contexts(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+            local_player_motion_context,
+            entity_target_contexts,
         );
         self.record_particle_advance_summary(summary);
     }
@@ -4325,6 +4428,68 @@ mod tests {
             .position
             .iter()
             .all(|coordinate| coordinate.is_finite()));
+    }
+
+    #[test]
+    fn particle_runtime_vibration_refreshes_entity_target_each_tick() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:vibration", 5);
+        instance.position = [0.0, 0.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.option_target = Some([4.0, 8.0, 12.0]);
+        instance.option_entity_target_source = Some(ParticleEntityTargetSource {
+            entity_id: 77,
+            y_offset: 0.5,
+        });
+        particles.active_instances.push_back(instance);
+        let entity_targets = [ParticleEntityTargetContext {
+            entity_id: 77,
+            position: [8.0, 10.0, 12.0],
+        }];
+
+        let summary = particles.advance_with_world_and_particle_contexts(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            None,
+            &entity_targets,
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        let target = [8.0, 10.5, 12.0];
+        let (yaw, pitch) = vibration_particle_angles([2.0, 2.625, 3.0], target);
+        assert_eq!(instance.option_target, Some(target));
+        assert_close3(instance.previous_position, [0.0, 0.0, 0.0]);
+        assert_close3(instance.position, [2.0, 2.625, 3.0]);
+        assert_close_f32(instance.yaw, yaw);
+        assert_close_f32(instance.pitch, pitch);
+    }
+
+    #[test]
+    fn particle_runtime_vibration_entity_target_missing_removes_particle() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:vibration", 5);
+        instance.option_target = Some([4.0, 8.0, 12.0]);
+        instance.option_entity_target_source = Some(ParticleEntityTargetSource {
+            entity_id: 77,
+            y_offset: 0.5,
+        });
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world_and_particle_contexts(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            None,
+            &[],
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
     }
 
     #[test]
@@ -8587,6 +8752,7 @@ mod tests {
             option_scale: None,
             option_power: None,
             option_target: None,
+            option_entity_target_source: None,
             option_duration_ticks: None,
             option_roll: None,
             option_block: None,
@@ -8617,6 +8783,7 @@ mod tests {
             option_scale: None,
             option_power: None,
             option_target: None,
+            option_entity_target_source: None,
             option_duration_ticks: None,
             option_roll: None,
             option_block: None,

@@ -2437,6 +2437,16 @@
     renderer `option_target` when the entity is loaded; focused tests cover the
     unresolved fallback, context resolution, and dispatcher world-context
     projection. Vanilla's per-tick entity target re-query remains deferred.
+  - [x] Vibration entity PositionSource per-tick refresh：local vanilla 26.1
+    `VibrationSignalParticle.tick` re-queries `target.getPosition(level)` each
+    tick and removes the particle when the target position is absent. Renderer
+    `ParticleSpawnCommand` / `ParticleInstance` now preserve entity target
+    source id plus `y_offset`; native particle ticks project current world
+    entity positions into renderer entity-target contexts, and renderer
+    vibration ticks refresh `option_target` each tick or remove the particle
+    when the source entity is missing. Focused renderer tests cover dynamic
+    target refresh, interpolation/rotation against the refreshed target, and
+    missing-entity removal.
 
 ## P2：Terrain / Block Render Presentation
 
