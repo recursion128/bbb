@@ -18,8 +18,9 @@ use bbb_protocol::packets::{
     ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
-    allay_hand_attach_transform, bake_first_person_map_decoration_surface,
-    bake_first_person_map_text_surface, bake_generated_item_quads, bake_item_frame_map_surface,
+    allay_hand_attach_transform, bake_first_person_map_background_surface,
+    bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
+    bake_generated_item_quads, bake_item_frame_map_surface,
     bake_item_model_mesh_with_light_and_overlay,
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
@@ -29,6 +30,7 @@ use bbb_renderer::{
     mooshroom_mushroom_block_transforms, panda_held_item_transform, primed_tnt_block_transform,
     snow_golem_head_block_transform, villager_crossed_arms_item_transform,
     witch_held_item_transform, CameraPose, EntityModelInstance, EntityModelKind,
+    FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
@@ -763,6 +765,8 @@ pub(crate) struct FirstPersonItemModels {
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
+    pub map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
     pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -781,6 +785,8 @@ impl FirstPersonItemModels {
             flat_translucent_meshes: Vec::new(),
             flat_glint_meshes: Vec::new(),
             flat_glint_translucent_meshes: Vec::new(),
+            map_background_textures: Vec::new(),
+            map_background_surfaces: Vec::new(),
             map_textures: Vec::new(),
             map_surfaces: Vec::new(),
             map_decoration_textures: Vec::new(),
@@ -1116,15 +1122,28 @@ pub(crate) fn first_person_item_models(
             .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
             .map_or(0.0, |swing| swing.attack_anim);
         if let Some(map_id) = stack.component_patch.map_id {
-            if let Some(map) = world.map_item(map_id) {
+            let map = world.map_item(map_id);
+            let map_transform = if hand == InteractionHand::MainHand && off_stack.is_none() {
+                first_person_two_handed_map_transform(camera_world, camera_x_rot, 0.0, attack)
+            } else {
+                first_person_one_handed_map_transform(camera_world, arm_left, 0.0, attack)
+            };
+            let background_kind = if map.is_some() {
+                FirstPersonMapBackgroundKind::Checkerboard
+            } else {
+                FirstPersonMapBackgroundKind::Plain
+            };
+            models
+                .map_background_surfaces
+                .push(bake_first_person_map_background_surface(
+                    background_kind,
+                    map_transform,
+                    ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                ));
+            if let Some(map) = map {
                 map_textures
                     .entry(map.id)
                     .or_insert_with(|| map_item_texture(map));
-                let map_transform = if hand == InteractionHand::MainHand && off_stack.is_none() {
-                    first_person_two_handed_map_transform(camera_world, camera_x_rot, 0.0, attack)
-                } else {
-                    first_person_one_handed_map_transform(camera_world, arm_left, 0.0, attack)
-                };
                 models.map_surfaces.push(bake_item_frame_map_surface(
                     map.id,
                     map_transform,
@@ -1289,6 +1308,9 @@ pub(crate) fn first_person_item_models(
         );
     }
 
+    if !models.map_background_surfaces.is_empty() {
+        models.map_background_textures = item_runtime.map_background_textures().to_vec();
+    }
     models.map_textures = map_textures.into_values().collect();
     if !models.map_decoration_surfaces.is_empty() {
         models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
@@ -3984,6 +4006,18 @@ mod tests {
         )
         .map_surfaces
         .is_empty());
+        let missing_map = first_person_item_models(
+            &special_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(missing_map.map_background_surfaces.len(), 1);
+        assert_eq!(
+            missing_map.map_background_surfaces[0].submission.kind,
+            FirstPersonMapBackgroundKind::Plain
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -4027,6 +4061,20 @@ mod tests {
 
         assert!(models.block_meshes.is_empty());
         assert!(models.flat_meshes.is_empty());
+        assert_eq!(models.map_background_surfaces.len(), 1);
+        assert_eq!(
+            models.map_background_surfaces[0].submission.kind,
+            FirstPersonMapBackgroundKind::Checkerboard
+        );
+        assert_eq!(
+            models.map_background_surfaces[0].submission.transform,
+            first_person_two_handed_map_transform(
+                first_person_camera_world_transform(pose),
+                pose.x_rot,
+                0.0,
+                0.0,
+            )
+        );
         assert_eq!(models.map_textures.len(), 1);
         assert_eq!(models.map_textures[0].map_id, 7);
         assert_eq!(
@@ -4094,6 +4142,11 @@ mod tests {
         );
 
         assert!(models.flat_meshes.is_empty());
+        assert_eq!(models.map_background_surfaces.len(), 1);
+        assert_eq!(
+            models.map_background_surfaces[0].submission.kind,
+            FirstPersonMapBackgroundKind::Checkerboard
+        );
         assert_eq!(models.map_surfaces.len(), 1);
         let expected = first_person_one_handed_map_transform(
             first_person_camera_world_transform(pose),
@@ -4170,6 +4223,11 @@ mod tests {
         );
 
         assert_eq!(models.map_surfaces.len(), 1);
+        assert_eq!(models.map_background_surfaces.len(), 1);
+        assert_eq!(
+            models.map_background_surfaces[0].submission.kind,
+            FirstPersonMapBackgroundKind::Checkerboard
+        );
         assert_eq!(models.map_decoration_surfaces.len(), 2);
         assert_eq!(models.map_text_surfaces.len(), 2);
         let player = &models.map_decoration_surfaces[0];

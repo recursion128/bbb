@@ -1392,6 +1392,10 @@ impl Renderer {
             self.collect_first_person_flat_item_model_translucent_geometry();
         let flat_translucent_buffers = self
             .create_item_model_frame_buffers(&flat_translucent_vertices, &flat_translucent_indices);
+        let (map_background_vertices, map_background_indices) =
+            self.collect_first_person_map_background_geometry();
+        let map_background_buffers =
+            self.create_item_model_frame_buffers(&map_background_vertices, &map_background_indices);
         let (map_vertices, map_indices) = self.collect_first_person_map_geometry();
         let map_buffers = self.create_item_model_frame_buffers(&map_vertices, &map_indices);
         let (map_decoration_vertices, map_decoration_indices) =
@@ -1414,6 +1418,7 @@ impl Renderer {
             && block_translucent_buffers.is_none()
             && flat_buffers.is_none()
             && flat_translucent_buffers.is_none()
+            && map_background_buffers.is_none()
             && map_buffers.is_none()
             && map_decoration_buffers.is_none()
             && map_text_buffers.is_none()
@@ -1459,6 +1464,19 @@ impl Renderer {
             stats.item_model_draw_calls += 1;
         }
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_buffers) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) = (
+            &self.first_person_map_background_atlas,
+            &map_background_buffers,
+        ) {
             self.draw_item_model_frame_buffers(
                 &mut pass,
                 &self.item_model_pipeline,

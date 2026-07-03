@@ -1262,6 +1262,20 @@
     first-person label text, submit order/sequence, and the native hand-path
     integration. Background/checkerboard and first-person player arms remain
     pixel-level follow-ups.
+  - [x] first-person filled-map background/checkerboard：local vanilla 26.1
+    `ItemInHandRenderer.renderMap` submits `textures/map/map_background.png`
+    when `MapItemSavedData` is absent and
+    `textures/map/map_background_checkerboard.png` when decoded map data is
+    present, using the same first-person map transform as the dynamic map
+    content and the `(-7,135)..(135,-7)` border quad. `bbb-render-types` now
+    carries the two background texture payloads, item runtime loads them from
+    the resource stack, native first-person extraction emits plain backgrounds
+    even for missing map data and checkerboards for decoded maps, and the
+    renderer draws the background atlas before the dynamic map/decor/text
+    surfaces in the depth-cleared hand pass. Tests cover the vanilla quad
+    coordinates, atlas filtering/remapping, missing-data plain background, and
+    decoded-map checkerboard selection. First-person player arms and
+    screenshot-level visual parity remain follow-ups.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

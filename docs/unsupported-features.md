@@ -2743,14 +2743,15 @@ When an agent does any of the following, update this file in the same slice:
       renders filled-map stacks with decoded `MapItemData` as dynamic
       `minecraft:map/<id>` base surfaces using vanilla one-handed / two-handed
       first-person map transforms plus first-person `MapRenderer`
-      decoration/text submits (`showOnlyFrame=false`) in the same depth-cleared
-      hand pass, and
+      decoration/text submits (`showOnlyFrame=false`) and the vanilla
+      `textures/map/map_background*.png` background/checkerboard quads in the
+      same depth-cleared hand pass, and
       draws in a depth-cleared pass after world transparency is composited and
       before HUD overlays. Remaining refinements are first-person
       non-EAT/DRINK use/special paths beyond goat horn, brush, bundle, trident,
-      bow, crossbow, spyglass, and decoded filled-map base surfaces with
-      decorations/text, map background/checkerboard, first-person player arms,
-      combat arm poses, and custom ground transforms. Done:
+      bow, crossbow, spyglass, and decoded filled-map base/decorations/text/
+      background/checkerboard; first-person player arms; combat arm poses; and
+      custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,
@@ -3149,8 +3150,8 @@ When an agent does any of the following, update this file in the same slice:
         non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
         swing-type parity remains separate custom-component work.
       - remaining slices: held-item refinements (remaining first-person
-        non-EAT/DRINK use paths, map background/checkerboard, player arms, and
-        screenshot-level viewmodel parity;
+        non-EAT/DRINK use paths, player arms, and screenshot-level viewmodel
+        parity;
         broader non-profile dynamic texture loading; the
         `NONE` swing type). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:

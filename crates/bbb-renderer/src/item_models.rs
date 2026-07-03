@@ -24,17 +24,20 @@ use crate::{
 
 mod map;
 pub use map::{
-    bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
-    bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
-    bake_item_frame_map_text_surface, item_frame_map_decoration_type, item_frame_map_text_width,
-    ItemFrameMapDecorationSubmission, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapDecorationTextureRef, ItemFrameMapDecorationType, ItemFrameMapRenderType,
-    ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTextSubmission,
-    ItemFrameMapTextSurface, ItemFrameMapTextTextureRef, ItemFrameMapTexture,
-    ItemFrameMapTextureRef,
+    bake_first_person_map_background_surface, bake_first_person_map_decoration_surface,
+    bake_first_person_map_text_surface, bake_item_frame_map_decoration_surface,
+    bake_item_frame_map_surface, bake_item_frame_map_text_surface, item_frame_map_decoration_type,
+    item_frame_map_text_width, FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSubmission,
+    FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
+    FirstPersonMapBackgroundTextureRef, ItemFrameMapDecorationSubmission,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapDecorationTextureRef,
+    ItemFrameMapDecorationType, ItemFrameMapRenderType, ItemFrameMapSubmission,
+    ItemFrameMapSurface, ItemFrameMapTextSubmission, ItemFrameMapTextSurface,
+    ItemFrameMapTextTextureRef, ItemFrameMapTexture, ItemFrameMapTextureRef,
 };
 pub(crate) use map::{
-    ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu, ItemFrameMapTextFontAtlasGpu,
+    FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
+    ItemFrameMapTextFontAtlasGpu,
 };
 
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.

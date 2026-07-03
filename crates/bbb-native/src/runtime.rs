@@ -1691,6 +1691,8 @@ pub(crate) fn pump_network_and_terrain(
                 .into_iter()
                 .chain(first_person_item_models.flat_glint_translucent_meshes)
                 .collect(),
+            first_person_map_background_textures: first_person_item_models.map_background_textures,
+            first_person_map_background_surfaces: first_person_item_models.map_background_surfaces,
             first_person_map_textures: first_person_item_models.map_textures,
             first_person_map_surfaces: first_person_item_models.map_surfaces,
             first_person_map_decoration_textures: first_person_item_models.map_decoration_textures,

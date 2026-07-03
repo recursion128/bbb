@@ -268,13 +268,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   selection, crossbow uncharged draw / charged idle poses, and spyglass idle /
   scoping visibility, and filled-map decoded base surfaces via the vanilla
   one-handed / two-handed map branches plus first-person `MapRenderer`
-  decorations/text. 剩余是 first-person special consumers / other non-EAT/DRINK
-  use animation 与地图 background/checkerboard、玩家手臂等像素级视觉校验。
+  decorations/text plus map background/checkerboard quads. 剩余是
+  first-person special consumers / other non-EAT/DRINK use animation 与玩家手臂等
+  像素级视觉校验。
 - First-person viewmodel：
   - remaining non-EAT/DRINK use animation beyond goat horn `TOOT_HORN` and
     brush `BRUSH` / bundle `BUNDLE` / trident `TRIDENT` / bow `BOW` /
     crossbow `CROSSBOW` / spyglass scoping。
-  - map background/checkerboard、玩家手臂与截图级视觉校验。
+  - 玩家手臂与截图级视觉校验。
 - Combat / held item arm pose：
   - third-person hand-use sway。
   - kinetic weapon / ticksUsingItem。

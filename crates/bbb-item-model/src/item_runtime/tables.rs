@@ -190,6 +190,10 @@ pub(super) fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMini
 }
 
 impl NativeItemRuntime {
+    pub fn map_background_textures(&self) -> &[FirstPersonMapBackgroundTexture] {
+        &self.map_background_textures
+    }
+
     pub fn map_decoration_textures(&self) -> &[ItemFrameMapDecorationTexture] {
         &self.map_decoration_textures
     }

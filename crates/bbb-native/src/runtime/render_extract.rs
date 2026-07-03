@@ -6,10 +6,10 @@
 //! effects; everything GPU-facing stays in bbb-renderer.
 
 use bbb_renderer::{
-    BlockDestroyOverlay, EntityModelInstance, HudBlockItemModel, HudInventoryScreen,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline,
+    BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
+    FirstPersonMapBackgroundTexture, HudBlockItemModel, HudInventoryScreen, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
 };
 
 use super::*;
@@ -628,6 +628,8 @@ pub(crate) struct RendererFrame {
     pub(crate) first_person_flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) first_person_map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
+    pub(crate) first_person_map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
     pub(crate) first_person_map_textures: Vec<ItemFrameMapTexture>,
     pub(crate) first_person_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(crate) first_person_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -683,6 +685,10 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_first_person_item_model_glint_meshes(frame.first_person_item_model_glint_meshes);
     renderer.set_first_person_item_model_glint_translucent_meshes(
         frame.first_person_item_model_glint_translucent_meshes,
+    );
+    renderer.set_first_person_map_background_surfaces(
+        frame.first_person_map_background_textures,
+        frame.first_person_map_background_surfaces,
     );
     let mut map_textures = frame.item_frame_map_textures;
     map_textures.extend(frame.first_person_map_textures);

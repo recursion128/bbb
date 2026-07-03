@@ -10,7 +10,9 @@ use crate::{
 
 use super::{ItemModelMesh, ItemModelVertex};
 
-pub use bbb_render_types::ItemFrameMapDecorationTexture;
+pub use bbb_render_types::{
+    FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, ItemFrameMapDecorationTexture,
+};
 
 const ITEM_FRAME_MAP_SIZE: u32 = 128;
 const ITEM_FRAME_MAP_RGBA_LEN: usize =
@@ -18,6 +20,8 @@ const ITEM_FRAME_MAP_RGBA_LEN: usize =
 const ITEM_FRAME_MAP_DECORATION_ATLAS_PATH: &str = "minecraft:textures/atlas/map_decorations.png";
 const ITEM_FRAME_MAP_TEXT_FONT_PATH: &str = "minecraft:textures/font/ascii.png";
 const ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH: u8 = b'?';
+const FIRST_PERSON_MAP_BACKGROUND_BORDER: f32 = 7.0;
+const FIRST_PERSON_MAP_BACKGROUND_SIZE: f32 = 142.0;
 
 /// Decoded RGBA pixels for vanilla's dynamic `minecraft:map/<id>` texture. The renderer packs these
 /// 128x128 textures into a per-frame map atlas and draws item-frame maps as textured quads, matching
@@ -26,6 +30,17 @@ const ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH: u8 = b'?';
 pub struct ItemFrameMapTexture {
     pub map_id: i32,
     pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FirstPersonMapBackgroundTextureRef {
+    pub kind: FirstPersonMapBackgroundKind,
+}
+
+impl FirstPersonMapBackgroundTextureRef {
+    pub fn vanilla_path(self) -> &'static str {
+        self.kind.vanilla_path()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,6 +72,18 @@ pub struct ItemFrameMapSubmission {
     pub map_id: i32,
     pub render_type: ItemFrameMapRenderType,
     pub texture: ItemFrameMapTextureRef,
+    pub tint: [f32; 4],
+    pub transform: Mat4,
+    pub light: [f32; 2],
+    pub order: u32,
+    pub submit_sequence: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FirstPersonMapBackgroundSubmission {
+    pub kind: FirstPersonMapBackgroundKind,
+    pub render_type: ItemFrameMapRenderType,
+    pub texture: FirstPersonMapBackgroundTextureRef,
     pub tint: [f32; 4],
     pub transform: Mat4,
     pub light: [f32; 2],
@@ -135,7 +162,27 @@ pub struct ItemFrameMapSurface {
     mesh: ItemModelMesh,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct FirstPersonMapBackgroundSurface {
+    pub submission: FirstPersonMapBackgroundSubmission,
+    mesh: ItemModelMesh,
+}
+
 impl ItemFrameMapSurface {
+    pub fn is_empty(&self) -> bool {
+        self.mesh.is_empty()
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.mesh.vertices.len()
+    }
+
+    pub fn index_count(&self) -> usize {
+        self.mesh.indices.len()
+    }
+}
+
+impl FirstPersonMapBackgroundSurface {
     pub fn is_empty(&self) -> bool {
         self.mesh.is_empty()
     }
@@ -221,6 +268,21 @@ pub(crate) struct ItemFrameMapAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) layout: ItemFrameMapAtlasLayout,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FirstPersonMapBackgroundAtlasLayout {
+    width: u32,
+    height: u32,
+    rects: BTreeMap<FirstPersonMapBackgroundKind, ItemFrameMapUvRect>,
+}
+
+pub(crate) struct FirstPersonMapBackgroundAtlasGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) layout: FirstPersonMapBackgroundAtlasLayout,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -331,6 +393,53 @@ pub fn bake_item_frame_map_surface(
             map_id,
             render_type: ItemFrameMapRenderType::Text,
             texture: ItemFrameMapTextureRef { map_id },
+            tint: [1.0, 1.0, 1.0, 1.0],
+            transform,
+            light,
+            order: 0,
+            submit_sequence: 0,
+        },
+        mesh,
+    }
+}
+
+/// Bakes vanilla `ItemInHandRenderer.renderMap`'s first-person map-background submit:
+/// `RenderTypes.text(textures/map/map_background*.png)`, white tint, and the four
+/// `(-7,135,0)..(-7,-7,0)` vertices with UVs 0..1 under the same map render transform used by the
+/// dynamic 128x128 `MapRenderer` surface.
+pub fn bake_first_person_map_background_surface(
+    kind: FirstPersonMapBackgroundKind,
+    transform: Mat4,
+    light: [f32; 2],
+) -> FirstPersonMapBackgroundSurface {
+    let min = -FIRST_PERSON_MAP_BACKGROUND_BORDER;
+    let max = FIRST_PERSON_MAP_BACKGROUND_SIZE - FIRST_PERSON_MAP_BACKGROUND_BORDER;
+    let mut mesh = ItemModelMesh::new();
+    let corners = [
+        transform
+            .transform_point3(Vec3::new(min, max, 0.0))
+            .to_array(),
+        transform
+            .transform_point3(Vec3::new(max, max, 0.0))
+            .to_array(),
+        transform
+            .transform_point3(Vec3::new(max, min, 0.0))
+            .to_array(),
+        transform
+            .transform_point3(Vec3::new(min, min, 0.0))
+            .to_array(),
+    ];
+    mesh.append_raw_textured_quad(
+        corners,
+        [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+        [1.0, 1.0, 1.0, 1.0],
+        light,
+    );
+    FirstPersonMapBackgroundSurface {
+        submission: FirstPersonMapBackgroundSubmission {
+            kind,
+            render_type: ItemFrameMapRenderType::Text,
+            texture: FirstPersonMapBackgroundTextureRef { kind },
             tint: [1.0, 1.0, 1.0, 1.0],
             transform,
             light,
@@ -642,6 +751,27 @@ pub(crate) fn merge_item_frame_map_surfaces(
     (vertices, indices)
 }
 
+pub(crate) fn merge_first_person_map_background_surfaces(
+    surfaces: &[FirstPersonMapBackgroundSurface],
+    atlas: &FirstPersonMapBackgroundAtlasLayout,
+) -> (Vec<ItemModelVertex>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for surface in surfaces {
+        let Some(rect) = atlas.rects.get(&surface.submission.kind).copied() else {
+            continue;
+        };
+        let base =
+            u32::try_from(vertices.len()).expect("first-person map background vertex count fits");
+        vertices.extend(surface.mesh.vertices.iter().copied().map(|mut vertex| {
+            vertex.uv = rect.map(vertex.uv);
+            vertex
+        }));
+        indices.extend(surface.mesh.indices.iter().map(|index| index + base));
+    }
+    (vertices, indices)
+}
+
 pub(crate) fn merge_item_frame_map_text_surfaces(
     surfaces: &[ItemFrameMapTextSurface],
 ) -> (Vec<ItemModelVertex>, Vec<u32>) {
@@ -682,6 +812,36 @@ pub(crate) fn merge_item_frame_map_decoration_surfaces(
 }
 
 impl Renderer {
+    pub fn set_first_person_map_background_surfaces(
+        &mut self,
+        textures: Vec<FirstPersonMapBackgroundTexture>,
+        surfaces: Vec<FirstPersonMapBackgroundSurface>,
+    ) {
+        self.first_person_map_background_atlas = build_first_person_map_background_atlas(&textures)
+            .map(|(layout, rgba)| {
+                create_first_person_map_background_atlas_gpu(
+                    &self.device,
+                    &self.queue,
+                    &self.terrain_bind_group_layout,
+                    &self.camera_buffer,
+                    layout,
+                    &rgba,
+                )
+            });
+        self.first_person_map_background_surfaces = if let Some(atlas) =
+            &self.first_person_map_background_atlas
+        {
+            surfaces
+                .into_iter()
+                .filter(|surface| {
+                    !surface.is_empty() && atlas.layout.rects.contains_key(&surface.submission.kind)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+    }
+
     /// Sets this frame's filled-map item-frame submissions and their dynamic 128x128 map textures. The
     /// textures are packed into a transient atlas for the existing item-model shader; surfaces whose map
     /// texture is absent or malformed are skipped.
@@ -848,6 +1008,18 @@ impl Renderer {
         merge_item_frame_map_surfaces(&self.item_frame_map_surfaces, &atlas.layout)
     }
 
+    pub(crate) fn collect_first_person_map_background_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        let Some(atlas) = &self.first_person_map_background_atlas else {
+            return (Vec::new(), Vec::new());
+        };
+        merge_first_person_map_background_surfaces(
+            &self.first_person_map_background_surfaces,
+            &atlas.layout,
+        )
+    }
+
     pub(crate) fn collect_first_person_map_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         let Some(atlas) = &self.item_frame_map_atlas else {
             return (Vec::new(), Vec::new());
@@ -893,6 +1065,143 @@ impl Renderer {
             return (Vec::new(), Vec::new());
         }
         merge_item_frame_map_text_surfaces(&self.first_person_map_text_surfaces)
+    }
+}
+
+fn build_first_person_map_background_atlas(
+    textures: &[FirstPersonMapBackgroundTexture],
+) -> Option<(FirstPersonMapBackgroundAtlasLayout, Vec<u8>)> {
+    let mut by_kind: BTreeMap<FirstPersonMapBackgroundKind, &FirstPersonMapBackgroundTexture> =
+        BTreeMap::new();
+    for texture in textures {
+        let expected_len = texture
+            .width
+            .checked_mul(texture.height)
+            .and_then(|pixels| pixels.checked_mul(4))
+            .and_then(|len| usize::try_from(len).ok());
+        if texture.width > 0 && texture.height > 0 && expected_len == Some(texture.rgba.len()) {
+            by_kind.insert(texture.kind, texture);
+        }
+    }
+    if by_kind.is_empty() {
+        return None;
+    }
+    let width = by_kind.values().map(|texture| texture.width).max()?;
+    let height = by_kind
+        .values()
+        .try_fold(0u32, |height, texture| height.checked_add(texture.height))?;
+    let atlas_len = width
+        .checked_mul(height)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .and_then(|len| usize::try_from(len).ok())?;
+    let mut atlas_rgba = vec![0; atlas_len];
+    let mut rects = BTreeMap::new();
+    let mut y_offset = 0u32;
+    for (kind, texture) in by_kind {
+        for y in 0..texture.height {
+            let src = usize::try_from((y * texture.width) * 4).ok()?;
+            let dst = usize::try_from(((y_offset + y) * width) * 4).ok()?;
+            let row_len = usize::try_from(texture.width * 4).ok()?;
+            atlas_rgba[dst..dst + row_len].copy_from_slice(&texture.rgba[src..src + row_len]);
+        }
+        rects.insert(
+            kind,
+            ItemFrameMapUvRect {
+                min: [0.0, y_offset as f32 / height as f32],
+                max: [
+                    texture.width as f32 / width as f32,
+                    (y_offset + texture.height) as f32 / height as f32,
+                ],
+            },
+        );
+        y_offset += texture.height;
+    }
+    Some((
+        FirstPersonMapBackgroundAtlasLayout {
+            width,
+            height,
+            rects,
+        },
+        atlas_rgba,
+    ))
+}
+
+fn create_first_person_map_background_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    layout: FirstPersonMapBackgroundAtlasLayout,
+    rgba: &[u8],
+) -> FirstPersonMapBackgroundAtlasGpu {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-first-person-map-background-atlas-texture"),
+        size: wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(layout.width * 4),
+            rows_per_image: Some(layout.height),
+        },
+        wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-first-person-map-background-atlas-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-first-person-map-background-atlas-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+    FirstPersonMapBackgroundAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+        layout,
     }
 }
 
@@ -1342,6 +1651,87 @@ mod tests {
             vertices.is_empty() && indices.is_empty(),
             "malformed dynamic map texture must not fold stale map geometry"
         );
+    }
+
+    #[test]
+    fn first_person_map_background_surface_uses_vanilla_render_map_geometry() {
+        let light = ITEM_MODEL_FULL_BRIGHT_LIGHT;
+        let surface = bake_first_person_map_background_surface(
+            FirstPersonMapBackgroundKind::Checkerboard,
+            Mat4::IDENTITY,
+            light,
+        );
+
+        assert_eq!(surface.vertex_count(), 4);
+        assert_eq!(surface.index_count(), 6);
+        assert_eq!(
+            surface.submission.kind,
+            FirstPersonMapBackgroundKind::Checkerboard
+        );
+        assert_eq!(surface.submission.render_type, ItemFrameMapRenderType::Text);
+        assert_eq!(
+            surface.submission.texture.vanilla_path(),
+            "minecraft:textures/map/map_background_checkerboard.png"
+        );
+        assert_eq!(surface.submission.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(surface.submission.light, light);
+        assert_eq!(
+            surface
+                .mesh
+                .vertices
+                .iter()
+                .map(|vertex| vertex.position)
+                .collect::<Vec<_>>(),
+            vec![
+                [-7.0, 135.0, 0.0],
+                [135.0, 135.0, 0.0],
+                [135.0, -7.0, 0.0],
+                [-7.0, -7.0, 0.0],
+            ]
+        );
+    }
+
+    #[test]
+    fn first_person_map_background_atlas_filters_and_remaps_uvs() {
+        let (atlas, rgba) = build_first_person_map_background_atlas(&[
+            FirstPersonMapBackgroundTexture {
+                kind: FirstPersonMapBackgroundKind::Checkerboard,
+                width: 1,
+                height: 1,
+                rgba: vec![40, 41, 42, 255],
+            },
+            FirstPersonMapBackgroundTexture {
+                kind: FirstPersonMapBackgroundKind::Plain,
+                width: 2,
+                height: 1,
+                rgba: vec![10, 11, 12, 255, 13, 14, 15, 255],
+            },
+            FirstPersonMapBackgroundTexture {
+                kind: FirstPersonMapBackgroundKind::Plain,
+                width: 1,
+                height: 1,
+                rgba: vec![1, 2, 3],
+            },
+        ])
+        .expect("valid map background atlas");
+
+        assert_eq!(atlas.width, 2);
+        assert_eq!(atlas.height, 2);
+        assert_eq!(
+            rgba,
+            vec![10, 11, 12, 255, 13, 14, 15, 255, 40, 41, 42, 255, 0, 0, 0, 0,]
+        );
+        assert_eq!(atlas.rects.len(), 2);
+        let surface = bake_first_person_map_background_surface(
+            FirstPersonMapBackgroundKind::Checkerboard,
+            Mat4::IDENTITY,
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        );
+        let (vertices, indices) = merge_first_person_map_background_surfaces(&[surface], &atlas);
+        assert_eq!(vertices.len(), 4);
+        assert_eq!(indices.len(), 6);
+        assert_eq!(vertices[0].uv, [0.0, 1.0]);
+        assert_eq!(vertices[2].uv, [0.5, 0.5]);
     }
 
     #[test]

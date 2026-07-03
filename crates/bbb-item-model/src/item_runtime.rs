@@ -38,8 +38,9 @@ use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, HudAsciiGlyph,
-    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask, HUD_ASCII_GLYPH_COUNT,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
+    FirstPersonMapBackgroundTexture, HudAsciiGlyph, ItemFrameMapDecorationTexture, ItemSpriteRect,
+    SpriteAlphaMask, HUD_ASCII_GLYPH_COUNT,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
@@ -137,6 +138,29 @@ fn load_map_decoration_textures(roots: &PackRoots) -> Result<Vec<ItemFrameMapDec
         })
         .collect();
     Ok(textures)
+}
+
+fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapBackgroundTexture>> {
+    [
+        FirstPersonMapBackgroundKind::Plain,
+        FirstPersonMapBackgroundKind::Checkerboard,
+    ]
+    .into_iter()
+    .map(|kind| {
+        let location = ResourceLocation::parse(kind.vanilla_path())?;
+        let resource = roots
+            .resource_stack()
+            .get_resource(&location)
+            .with_context(|| format!("missing map background texture {}", kind.vanilla_path()))?;
+        let image = SpriteImage::from_png_file(kind.vanilla_path(), resource.path)?;
+        Ok(FirstPersonMapBackgroundTexture {
+            kind,
+            width: image.width,
+            height: image.height,
+            rgba: image.rgba,
+        })
+    })
+    .collect()
 }
 
 fn load_map_text_glyphs(roots: &PackRoots) -> Result<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
@@ -263,6 +287,7 @@ pub struct NativeItemRuntime {
     villager_type_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
+    map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
     textures: ItemTextureState,
@@ -660,6 +685,13 @@ impl NativeItemRuntime {
                 err
             })
             .unwrap_or_default();
+        let map_background_textures = load_map_background_textures(roots)
+            .context("load map background textures")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native map background textures");
+                err
+            })
+            .unwrap_or_default();
         let map_text_glyphs = load_map_text_glyphs(roots)
             .context("load map label font metrics")
             .map_err(|err| {
@@ -679,6 +711,7 @@ impl NativeItemRuntime {
             recipe_specific_crafting_remainder_item_ids,
             equipment_assets,
             language,
+            map_background_textures,
             map_decoration_textures,
             map_text_glyphs,
             item_tags,
@@ -705,6 +738,7 @@ impl NativeItemRuntime {
         recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
         equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
+        map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
         map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
         map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
         item_tags: Option<TagCatalog>,
@@ -802,6 +836,7 @@ impl NativeItemRuntime {
             villager_type_tags,
             equipment_assets,
             language,
+            map_background_textures,
             map_decoration_textures,
             map_text_glyphs,
             textures,
@@ -847,6 +882,20 @@ impl NativeItemRuntime {
             villager_type_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
+            map_background_textures: vec![
+                FirstPersonMapBackgroundTexture {
+                    kind: FirstPersonMapBackgroundKind::Plain,
+                    width: 1,
+                    height: 1,
+                    rgba: vec![0x70, 0x54, 0x34, 0xff],
+                },
+                FirstPersonMapBackgroundTexture {
+                    kind: FirstPersonMapBackgroundKind::Checkerboard,
+                    width: 1,
+                    height: 1,
+                    rgba: vec![0x88, 0x88, 0x88, 0xff],
+                },
+            ],
             map_decoration_textures: Vec::new(),
             map_text_glyphs: Some(test_map_text_glyphs()),
             textures: ItemTextureState::from_images(vec![missing])
