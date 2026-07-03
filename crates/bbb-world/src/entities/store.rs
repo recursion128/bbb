@@ -19,19 +19,19 @@ use super::{
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
-    FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    RavagerRoarParticleState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    FireworkRocketExplosionParticleState, FireworkRocketItemState, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, RavagerRoarParticleState,
+    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
@@ -2616,26 +2616,33 @@ impl EntityStore {
         items
     }
 
-    pub(crate) fn firework_rocket_empty_explosions_position(
+    pub(crate) fn firework_rocket_explosion_particle_state(
         &self,
         id: i32,
-    ) -> Option<super::EntityVec3> {
+    ) -> Option<FireworkRocketExplosionParticleState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         if identity.entity_type_id != VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
             return None;
         }
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
-        let has_explosions = self
+        let stack = self
             .ecs
             .get::<&EntityMetadata>(entity)
             .ok()
-            .and_then(|metadata| item_entity_render_stack(&metadata.data_values).cloned())
-            .is_some_and(|stack| firework_rocket_stack_has_explosions(&stack));
-        if has_explosions {
-            return None;
-        }
-        Some(transform.position)
+            .and_then(|metadata| item_entity_render_stack(&metadata.data_values).cloned());
+        let has_explosions = stack
+            .as_ref()
+            .is_some_and(firework_rocket_stack_has_explosions);
+        Some(FireworkRocketExplosionParticleState {
+            entity_id: identity.id,
+            position: transform.position,
+            delta_movement: transform.delta_movement,
+            has_explosions,
+            explosions: stack
+                .map(|stack| stack.component_patch.fireworks_explosions)
+                .unwrap_or_default(),
+        })
     }
 
     /// Collects the ominous item spawner item-cluster render state. Vanilla

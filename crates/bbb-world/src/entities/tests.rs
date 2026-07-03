@@ -9,9 +9,10 @@ use bbb_protocol::packets::{
     EntityDataEnumSerializer, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-    GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
-    GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, InteractionHand,
-    ItemEnchantmentSummary, ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
+    FireworkExplosionShapeSummary, FireworkExplosionSummary, GameEvent as ProtocolGameEvent,
+    GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
+    HurtAnimation as ProtocolHurtAnimation, InteractionHand, ItemEnchantmentSummary,
+    ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
     LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep, MobEffectFlags,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
@@ -12116,6 +12117,103 @@ fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
     assert!(fireworks
         .iter()
         .all(|firework| firework.light == ENTITY_LIGHT_PROBE_FULL_BRIGHT));
+}
+
+#[test]
+fn firework_rocket_explosion_particle_state_projects_event_context() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        76,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 75,
+        delta_movement: ProtocolVec3d {
+            x: 0.2,
+            y: 0.4,
+            z: -0.6,
+        },
+    }));
+
+    let mut empty_stack = item_stack(904, 1);
+    empty_stack.component_patch = DataComponentPatchSummary {
+        fireworks_explosions_count: Some(0),
+        ..DataComponentPatchSummary::default()
+    };
+    let explosion = FireworkExplosionSummary {
+        shape: FireworkExplosionShapeSummary::Burst,
+        colors: vec![0x112233],
+        fade_colors: vec![0x445566],
+        has_trail: true,
+        has_twinkle: false,
+    };
+    let mut decoded_stack = item_stack(905, 1);
+    decoded_stack.component_patch = DataComponentPatchSummary {
+        fireworks_explosions_count: Some(1),
+        fireworks_explosions: vec![explosion.clone()],
+        ..DataComponentPatchSummary::default()
+    };
+    let mut declared_only_stack = item_stack(906, 1);
+    declared_only_stack.component_patch = DataComponentPatchSummary {
+        fireworks_explosions_count: Some(1),
+        ..DataComponentPatchSummary::default()
+    };
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 74,
+        values: vec![item_stack_entity_data(empty_stack)],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 75,
+        values: vec![item_stack_entity_data(decoded_stack)],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 76,
+        values: vec![item_stack_entity_data(declared_only_stack)],
+    }));
+
+    let empty = store.firework_rocket_explosion_particle_state(74).unwrap();
+    assert_eq!(empty.entity_id, 74);
+    assert_eq!(
+        empty.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert!(!empty.has_explosions);
+    assert!(empty.explosions.is_empty());
+
+    let decoded = store.firework_rocket_explosion_particle_state(75).unwrap();
+    assert_eq!(decoded.entity_id, 75);
+    assert_eq!(
+        decoded.delta_movement,
+        EntityVec3 {
+            x: 0.2,
+            y: 0.4,
+            z: -0.6,
+        }
+    );
+    assert!(decoded.has_explosions);
+    assert_eq!(decoded.explosions, vec![explosion]);
+
+    let declared_only = store.firework_rocket_explosion_particle_state(76).unwrap();
+    assert!(declared_only.has_explosions);
+    assert!(declared_only.explosions.is_empty());
+    assert!(store.firework_rocket_explosion_particle_state(77).is_none());
 }
 
 #[test]

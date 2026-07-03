@@ -4,6 +4,7 @@ use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EquipmentSlot as ProtocolEquipmentSlot, EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    FireworkExplosionSummary as ProtocolFireworkExplosionSummary,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
     RemoveEntities as ProtocolRemoveEntities, TakeItemEntity as ProtocolTakeItemEntity,
 };
@@ -197,6 +198,17 @@ pub struct FireworkRocketItemState {
     pub stack: ProtocolItemStackSummary,
     #[serde(default)]
     pub shot_at_angle: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FireworkRocketExplosionParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub delta_movement: EntityVec3,
+    #[serde(default)]
+    pub has_explosions: bool,
+    #[serde(default)]
+    pub explosions: Vec<ProtocolFireworkExplosionSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2376,11 +2388,14 @@ impl WorldStore {
         items
     }
 
-    /// Firework rocket event `17` uses `ClientLevel.createFireworks`; when the
-    /// rocket stack has no `minecraft:fireworks` explosions, vanilla emits only
-    /// local `poof` particles at the rocket position.
-    pub fn firework_rocket_empty_explosions_position(&self, id: i32) -> Option<EntityVec3> {
-        self.entities.firework_rocket_empty_explosions_position(id)
+    /// Firework rocket event `17` uses `ClientLevel.createFireworks` with the
+    /// rocket's current position, delta movement, and decoded `minecraft:fireworks`
+    /// explosion list.
+    pub fn firework_rocket_explosion_particle_state(
+        &self,
+        id: i32,
+    ) -> Option<FireworkRocketExplosionParticleState> {
+        self.entities.firework_rocket_explosion_particle_state(id)
     }
 
     /// The item-cluster render state for ominous item spawner entities (vanilla

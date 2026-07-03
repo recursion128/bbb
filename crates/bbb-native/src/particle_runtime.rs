@@ -11,8 +11,9 @@ use bbb_pack::{
 };
 use bbb_protocol::codec::Decoder;
 use bbb_protocol::packets::{
-    decode_data_component_patch_summary, BlockPos, ClientParticleStatus, ItemStackSummary,
-    LevelEvent, LevelParticles, Vec3d,
+    decode_data_component_patch_summary, BlockPos, ClientParticleStatus,
+    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemStackSummary, LevelEvent,
+    LevelParticles, Vec3d,
 };
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
@@ -22,8 +23,8 @@ use bbb_renderer::{
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
-    LevelEventSoundRandomState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
-    VaultConnectionParticleState,
+    FireworkRocketExplosionParticleState, LevelEventSoundRandomState, RavagerRoarParticleState,
+    TakeItemEntityPickupParticleState, VaultConnectionParticleState,
 };
 
 use crate::{
@@ -54,6 +55,11 @@ pub(crate) trait ParticleEventSink {
     fn spawn_firework_empty_explosion_particles(
         &mut self,
         position: [f64; 3],
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch;
+    fn spawn_firework_explosion_particles(
+        &mut self,
+        state: &FireworkRocketExplosionParticleState,
         camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch;
     fn spawn_tracking_emitter_particles(
@@ -275,6 +281,15 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .firework_empty_explosion_particle_batch(position, camera_position)
+    }
+
+    fn spawn_firework_explosion_particles(
+        &mut self,
+        state: &FireworkRocketExplosionParticleState,
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .firework_explosion_particle_batch(state, camera_position)
     }
 
     fn spawn_tracking_emitter_particles(
@@ -2031,6 +2046,242 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn firework_explosion_particle_batch(
+        &mut self,
+        state: &FireworkRocketExplosionParticleState,
+        _camera_position: Option<[f64; 3]>,
+    ) -> ParticleSpawnBatch {
+        let firework = self.simple_particle_template(FIREWORK_PARTICLE_TYPE_ID);
+        let flash = self.simple_particle_template(FLASH_PARTICLE_TYPE_ID);
+        let mut batch = ParticleSpawnBatch::default();
+        let firework = self.append_template_result(&mut batch, firework);
+        let flash = self.append_template_result(&mut batch, flash);
+        let position = Vec3d {
+            x: state.position.x,
+            y: state.position.y,
+            z: state.position.z,
+        };
+        let movement = Vec3d {
+            x: state.delta_movement.x,
+            y: state.delta_movement.y,
+            z: state.delta_movement.z,
+        };
+
+        for explosion in &state.explosions {
+            if let Some(firework) = firework.as_ref() {
+                self.append_firework_explosion_sparks(
+                    &mut batch, firework, position, movement, explosion,
+                );
+            }
+            if let Some(flash) = flash.as_ref() {
+                let colors = firework_explosion_colors(explosion);
+                let mut command =
+                    self.command_from_template(flash, position, Vec3d::default(), false);
+                command.option_color = Some(firework_flash_color(colors[0]));
+                batch.commands.push(command);
+            }
+        }
+
+        batch
+    }
+
+    fn append_firework_explosion_sparks(
+        &mut self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        movement: Vec3d,
+        explosion: &FireworkExplosionSummary,
+    ) {
+        let colors = firework_explosion_colors(explosion);
+        match explosion.shape {
+            FireworkExplosionShapeSummary::SmallBall => {
+                self.append_firework_particle_ball(
+                    batch, template, position, 0.25, 2, &colors, explosion,
+                );
+            }
+            FireworkExplosionShapeSummary::LargeBall => {
+                self.append_firework_particle_ball(
+                    batch, template, position, 0.5, 4, &colors, explosion,
+                );
+            }
+            FireworkExplosionShapeSummary::Star => {
+                self.append_firework_particle_shape(
+                    batch,
+                    template,
+                    position,
+                    0.5,
+                    FIREWORK_STAR_PARTICLE_COORDS,
+                    &colors,
+                    explosion,
+                    false,
+                );
+            }
+            FireworkExplosionShapeSummary::Creeper => {
+                self.append_firework_particle_shape(
+                    batch,
+                    template,
+                    position,
+                    0.5,
+                    FIREWORK_CREEPER_PARTICLE_COORDS,
+                    &colors,
+                    explosion,
+                    true,
+                );
+            }
+            FireworkExplosionShapeSummary::Burst => {
+                self.append_firework_particle_burst(
+                    batch, template, position, movement, &colors, explosion,
+                );
+            }
+        }
+    }
+
+    fn append_firework_particle_ball(
+        &mut self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        base_speed: f64,
+        steps: i32,
+        colors: &[i32],
+        explosion: &FireworkExplosionSummary,
+    ) {
+        for y_step in -steps..=steps {
+            for x_step in -steps..=steps {
+                let mut z_step = -steps;
+                while z_step <= steps {
+                    let xa =
+                        f64::from(x_step) + (self.random.next_f64() - self.random.next_f64()) * 0.5;
+                    let ya =
+                        f64::from(y_step) + (self.random.next_f64() - self.random.next_f64()) * 0.5;
+                    let za =
+                        f64::from(z_step) + (self.random.next_f64() - self.random.next_f64()) * 0.5;
+                    let len = (xa * xa + ya * ya + za * za).sqrt() / base_speed
+                        + self.random.next_gaussian() * 0.05;
+                    let velocity = Vec3d {
+                        x: xa / len,
+                        y: ya / len,
+                        z: za / len,
+                    };
+                    self.append_firework_spark(
+                        batch, template, position, velocity, colors, explosion,
+                    );
+                    if y_step != -steps && y_step != steps && x_step != -steps && x_step != steps {
+                        z_step += steps * 2 - 1;
+                    }
+                    z_step += 1;
+                }
+            }
+        }
+    }
+
+    fn append_firework_particle_shape(
+        &mut self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        base_speed: f64,
+        coords: &[[f64; 2]],
+        colors: &[i32],
+        explosion: &FireworkExplosionSummary,
+        flat: bool,
+    ) {
+        let sx = coords[0][0];
+        let sy = coords[0][1];
+        self.append_firework_spark(
+            batch,
+            template,
+            position,
+            Vec3d {
+                x: sx * base_speed,
+                y: sy * base_speed,
+                z: 0.0,
+            },
+            colors,
+            explosion,
+        );
+        let base_angle = f64::from(self.random.next_float()) * std::f64::consts::PI;
+        let angle_mod = if flat { 0.034 } else { 0.34 };
+
+        for angle_step in 0..3 {
+            let angle = base_angle + f64::from(angle_step) * std::f64::consts::PI * angle_mod;
+            let mut ox = sx;
+            let mut oy = sy;
+            for coord in coords.iter().skip(1) {
+                let tx = coord[0];
+                let ty = coord[1];
+                for sub_step_index in 1..=4 {
+                    let sub_step = f64::from(sub_step_index) * 0.25;
+                    let mut xa = lerp_f64(sub_step, ox, tx) * base_speed;
+                    let ya = lerp_f64(sub_step, oy, ty) * base_speed;
+                    let za = xa * angle.sin();
+                    xa *= angle.cos();
+                    for flip in [-1.0, 1.0] {
+                        self.append_firework_spark(
+                            batch,
+                            template,
+                            position,
+                            Vec3d {
+                                x: xa * flip,
+                                y: ya,
+                                z: za * flip,
+                            },
+                            colors,
+                            explosion,
+                        );
+                    }
+                }
+                ox = tx;
+                oy = ty;
+            }
+        }
+    }
+
+    fn append_firework_particle_burst(
+        &mut self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        movement: Vec3d,
+        colors: &[i32],
+        explosion: &FireworkExplosionSummary,
+    ) {
+        let base_off_x = self.random.next_gaussian() * 0.05;
+        let base_off_z = self.random.next_gaussian() * 0.05;
+        for _ in 0..70 {
+            let velocity = Vec3d {
+                x: movement.x * 0.5 + self.random.next_gaussian() * 0.15 + base_off_x,
+                y: movement.y * 0.5 + self.random.next_f64() * 0.5,
+                z: movement.z * 0.5 + self.random.next_gaussian() * 0.15 + base_off_z,
+            };
+            self.append_firework_spark(batch, template, position, velocity, colors, explosion);
+        }
+    }
+
+    fn append_firework_spark(
+        &mut self,
+        batch: &mut ParticleSpawnBatch,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        velocity: Vec3d,
+        colors: &[i32],
+        explosion: &FireworkExplosionSummary,
+    ) {
+        let mut command = self.command_from_template(template, position, velocity, false);
+        command.option_color = Some(firework_spark_color(random_firework_color(
+            colors,
+            &mut self.random,
+        )));
+        if !explosion.fade_colors.is_empty() {
+            command.option_color_to = Some(firework_spark_fade_color(random_firework_color(
+                &explosion.fade_colors,
+                &mut self.random,
+            )));
+        }
+        batch.commands.push(command);
     }
 
     fn tracking_emitter_particle_batch(
@@ -4230,6 +4481,46 @@ fn destroy_block_shape_boxes(block_state_id: i32) -> Vec<([f64; 3], [f64; 3])> {
         .unwrap_or_else(|| vec![([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])])
 }
 
+fn firework_explosion_colors(explosion: &FireworkExplosionSummary) -> Vec<i32> {
+    if explosion.colors.is_empty() {
+        vec![FIREWORK_BLACK_COLOR]
+    } else {
+        explosion.colors.clone()
+    }
+}
+
+fn random_firework_color(colors: &[i32], random: &mut LegacyRandom) -> i32 {
+    let index = random.next_i32(colors.len() as i32) as usize;
+    colors[index]
+}
+
+fn firework_spark_color(rgb: i32) -> [f32; 4] {
+    let [red, green, blue, _] = firework_argb_color(rgb);
+    [red, green, blue, 0.99]
+}
+
+fn firework_spark_fade_color(rgb: i32) -> [f32; 4] {
+    let [red, green, blue, _] = firework_argb_color(rgb);
+    [red, green, blue, 1.0]
+}
+
+fn firework_flash_color(argb: i32) -> [f32; 4] {
+    firework_argb_color(argb)
+}
+
+fn firework_argb_color(argb: i32) -> [f32; 4] {
+    [
+        ((argb >> 16) & 0xff) as f32 / 255.0,
+        ((argb >> 8) & 0xff) as f32 / 255.0,
+        (argb & 0xff) as f32 / 255.0,
+        ((argb >> 24) & 0xff) as f32 / 255.0,
+    ]
+}
+
+fn lerp_f64(alpha: f64, from: f64, to: f64) -> f64 {
+    from + (to - from) * alpha
+}
+
 fn block_face_particle(
     event: &LevelEvent,
     (step_x, step_y, step_z): (i32, i32, i32),
@@ -4435,6 +4726,7 @@ const GUST_PARTICLE_TYPE_ID: i32 = 24;
 const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
 const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
 const FALLING_DUST_PARTICLE_TYPE_ID: i32 = 29;
+const FIREWORK_PARTICLE_TYPE_ID: i32 = 30;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const TINTED_LEAVES_PARTICLE_TYPE_ID: i32 = 36;
 const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
@@ -4478,6 +4770,29 @@ const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
 const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
 const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
 const VAULT_CONNECTION_PARTICLE_TYPE_ID: i32 = 110;
+const FIREWORK_BLACK_COLOR: i32 = 1_973_019;
+const FIREWORK_CREEPER_PARTICLE_COORDS: &[[f64; 2]] = &[
+    [0.0, 0.2],
+    [0.2, 0.2],
+    [0.2, 0.6],
+    [0.6, 0.6],
+    [0.6, 0.2],
+    [0.2, 0.2],
+    [0.2, 0.0],
+    [0.4, 0.0],
+    [0.4, -0.6],
+    [0.2, -0.6],
+    [0.2, -0.4],
+    [0.0, -0.4],
+];
+const FIREWORK_STAR_PARTICLE_COORDS: &[[f64; 2]] = &[
+    [0.0, 1.0],
+    [0.3455, 0.309],
+    [0.9511, 0.309],
+    [0.3795918367346939, -0.12653061224489795],
+    [0.6122448979591837, -0.8040816326530612],
+    [0.0, -0.35918367346938773],
+];
 const DUST_PILLAR_PARTICLE_TYPE_ID: i32 = 111;
 const TRIAL_OMEN_PARTICLE_TYPE_ID: i32 = 114;
 const BLOCK_CRUMBLE_PARTICLE_TYPE_ID: i32 = 115;
@@ -10964,6 +11279,82 @@ mod tests {
             true,
         );
 
+        let mut firework_resolver = test_resolver(0);
+        let firework_explosion = firework_resolver.firework_explosion_particle_batch(
+            &FireworkRocketExplosionParticleState {
+                entity_id: 7,
+                position: bbb_world::EntityVec3 {
+                    x: 10.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+                delta_movement: bbb_world::EntityVec3 {
+                    x: 0.1,
+                    y: 0.2,
+                    z: -0.3,
+                },
+                has_explosions: true,
+                explosions: vec![FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::Star,
+                    colors: vec![0x112233, 0x445566],
+                    fade_colors: vec![0x778899],
+                    has_trail: true,
+                    has_twinkle: true,
+                }],
+            },
+            None,
+        );
+        assert_eq!(firework_explosion.len(), 122);
+        assert_eq!(
+            firework_explosion
+                .commands
+                .iter()
+                .filter(|command| command.particle_id == "minecraft:firework")
+                .count(),
+            121
+        );
+        let first_spark = &firework_explosion.commands[0];
+        assert_eq!(first_spark.particle_type_id, FIREWORK_PARTICLE_TYPE_ID);
+        assert_eq!(first_spark.particle_id, "minecraft:firework");
+        assert_eq!(first_spark.position, [10.0, 64.0, -3.0]);
+        let first_spark_color = first_spark.option_color.unwrap();
+        assert!([
+            [
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                0.99,
+            ],
+            [
+                0x44 as f32 / 255.0,
+                0x55 as f32 / 255.0,
+                0x66 as f32 / 255.0,
+                0.99,
+            ],
+        ]
+        .contains(&first_spark_color));
+        assert_eq!(
+            first_spark.option_color_to,
+            Some([
+                0x77 as f32 / 255.0,
+                0x88 as f32 / 255.0,
+                0x99 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        let flash = firework_explosion.commands.last().unwrap();
+        assert_eq!(flash.particle_type_id, FLASH_PARTICLE_TYPE_ID);
+        assert_eq!(flash.particle_id, "minecraft:flash");
+        assert_eq!(
+            flash.option_color,
+            Some([
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                0.0,
+            ])
+        );
+
         let mut bee_growth_random = LevelEventSoundRandomState::with_seed(0);
         let bee_growth = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -11967,6 +12358,15 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("firework.json"),
+            r#"{
+              "textures": [
+                "minecraft:firework_0",
+                "minecraft:firework_1"
               ]
             }"#,
         );

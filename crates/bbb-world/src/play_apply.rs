@@ -14,10 +14,10 @@ use bbb_protocol::packets::{
 use crate::{
     advance_cobweb_place_particle_randoms,
     advance_vault_activation_particle_randoms_with_connections,
-    advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos, JukeboxLevelEventState,
-    LevelEventSoundRandomState, LocalSoundEventState, RavagerRoarParticleState,
-    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
-    VehicleMoveReport, WorldStore,
+    advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos,
+    FireworkRocketExplosionParticleState, JukeboxLevelEventState, LevelEventSoundRandomState,
+    LocalSoundEventState, RavagerRoarParticleState, SoundEntityEventState, SoundEventState,
+    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -94,6 +94,12 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
+    fn firework_explosion_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: &FireworkRocketExplosionParticleState,
+    ) {
+    }
     fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, _position: ProtocolVec3d) {}
     fn tracking_emitter_particles(
         &mut self,
@@ -319,9 +325,8 @@ impl WorldStore {
                 self.apply_explosion(update);
             }
             PlayClientbound::EntityEvent(update) => {
-                let firework_empty_explosions_position = if update.event_id == 17 {
-                    self.firework_rocket_empty_explosions_position(update.entity_id)
-                        .map(|position| [position.x, position.y, position.z])
+                let firework_explosion_particles = if update.event_id == 17 {
+                    self.firework_rocket_explosion_particle_state(update.entity_id)
                 } else {
                     None
                 };
@@ -331,8 +336,17 @@ impl WorldStore {
                     None
                 };
                 let applied = self.apply_entity_event(update);
-                if let Some(position) = firework_empty_explosions_position {
-                    effects.firework_empty_explosion_particles(self, position);
+                if let Some(state) = firework_explosion_particles {
+                    if state.has_explosions {
+                        if !state.explosions.is_empty() {
+                            effects.firework_explosion_particles(self, &state);
+                        }
+                    } else {
+                        effects.firework_empty_explosion_particles(
+                            self,
+                            [state.position.x, state.position.y, state.position.z],
+                        );
+                    }
                 }
                 if applied {
                     if let Some(state) = ravager_roar_particles {

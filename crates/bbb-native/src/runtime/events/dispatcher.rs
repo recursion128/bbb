@@ -7,9 +7,10 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{
-    BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind, LevelEventGrowthRandomMode,
-    LevelEventSoundRandomState, PlayApplyEffects, RavagerRoarParticleState,
-    TakeItemEntityPickupParticleState, TerrainFluidKind, WorldStore,
+    BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind,
+    FireworkRocketExplosionParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+    PlayApplyEffects, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
+    TerrainFluidKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -283,6 +284,20 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn firework_explosion_particles(
+        &mut self,
+        world: &WorldStore,
+        state: &FireworkRocketExplosionParticleState,
+    ) {
+        emit_firework_explosion_particles(
+            self.particle_events,
+            self.particle_renderer,
+            state,
+            camera_audio_position_from_world(world)
+                .map(|position| [position.x, position.y, position.z]),
+        );
+    }
+
     fn elder_guardian_effect_particles(&mut self, world: &WorldStore, position: ProtocolVec3d) {
         emit_elder_guardian_effect_particles(
             self.particle_events,
@@ -466,6 +481,20 @@ fn emit_firework_empty_explosion_particles(
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch =
             particle_events.spawn_firework_empty_explosion_particles(position, camera_position);
+        if let Some(renderer) = particle_renderer.as_deref_mut() {
+            renderer.submit_particle_spawns(batch);
+        }
+    }
+}
+
+fn emit_firework_explosion_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: &FireworkRocketExplosionParticleState,
+    camera_position: Option<[f64; 3]>,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let batch = particle_events.spawn_firework_explosion_particles(state, camera_position);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }

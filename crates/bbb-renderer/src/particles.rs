@@ -1139,6 +1139,14 @@ impl ParticleInstance {
         let atlas_uv_sub_rect =
             particle_atlas_uv_sub_rect_for_particle(&command.particle_id, random);
         let original_alpha = color[3];
+        let color_fade_target = if descriptor.provider == "FireworkParticles.SparkProvider" {
+            command
+                .option_color_to
+                .map(|color| [color[0], color[1], color[2]])
+                .or_else(|| descriptor.color_fade_target())
+        } else {
+            descriptor.color_fade_target()
+        };
         let [collision_width, collision_height] = descriptor.collision_size().unwrap_or([
             DEFAULT_PARTICLE_COLLISION_WIDTH,
             DEFAULT_PARTICLE_COLLISION_HEIGHT,
@@ -1170,7 +1178,7 @@ impl ParticleInstance {
             base_quad_size: visual.base_quad_size,
             color,
             original_alpha,
-            color_fade_target: descriptor.color_fade_target(),
+            color_fade_target,
             color_transition_target,
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
@@ -5559,6 +5567,18 @@ mod tests {
             "minecraft:firework_2".to_string(),
         ];
         command.velocity = [0.1, 0.2, 0.3];
+        command.option_color = Some([
+            0x11 as f32 / 255.0,
+            0x22 as f32 / 255.0,
+            0x33 as f32 / 255.0,
+            0.99,
+        ]);
+        command.option_color_to = Some([
+            0x77 as f32 / 255.0,
+            0x88 as f32 / 255.0,
+            0x99 as f32 / 255.0,
+            1.0,
+        ]);
 
         let firework = ParticleInstance::from_spawn_command(command, &mut random);
 
@@ -5570,7 +5590,23 @@ mod tests {
         );
         assert_range_f32(firework.base_quad_size, 0.075, 0.15);
         assert!((48..=59).contains(&firework.lifetime_ticks));
-        assert_eq!(firework.color, [1.0, 1.0, 1.0, 0.99]);
+        assert_eq!(
+            firework.color,
+            [
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                0.99,
+            ]
+        );
+        assert_eq!(
+            firework.color_fade_target,
+            Some([
+                0x77 as f32 / 255.0,
+                0x88 as f32 / 255.0,
+                0x99 as f32 / 255.0,
+            ])
+        );
         assert_eq!(firework.velocity, [0.1, 0.2, 0.3]);
         assert_eq!(firework.friction, 0.91);
         assert_eq!(firework.gravity, 0.1);

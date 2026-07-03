@@ -501,8 +501,9 @@ When an agent does any of the following, update this file in the same slice:
       biome-aware `BlockColors` at each actual spawn position using vanilla's
       `BlockPos.containing(x, y, z)` owner: packet-count random spawns query
       their generated position through the world probe before native emits
-      `ParticleSpawnCommand.option_color`. Remaining adjacent color work is
-      tied to the broader firework `Starter` child-particle presentation path.
+      `ParticleSpawnCommand.option_color`. Firework non-empty explosion spark
+      fade-colors are now threaded as per-command fade targets; remaining
+      firework presentation work is trail/twinkle child duplication and audio.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -910,8 +911,11 @@ When an agent does any of the following, update this file in the same slice:
         fixed initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and
         the half-lifetime alpha fade formula. Firework rocket entity event `17`
         with empty/no explosions now emits vanilla `minecraft:poof` particles;
-        non-empty `Starter` trail/twinkle child spawning and audio remain part
-        of the broader firework rocket / level-event presentation follow-up.
+        non-empty explosions now project `FireworkParticles.Starter` small /
+        large ball, star, creeper, and burst base spark shapes, center `flash`,
+        and per-spark fade-colors. Trail/twinkle child duplication and blast /
+        twinkle audio remain part of the broader firework rocket / level-event
+        presentation follow-up.
         `trail` now maps to `TrailParticle.Provider` with decoded target / RGB
         color / duration, vanilla random color scaling, target interpolation,
         full-bright light, and opaque layer. `vibration` now maps block
@@ -6385,8 +6389,9 @@ When an agent does any of the following, update this file in the same slice:
       item atlas billboard layer with entity light. The renderer-owned billboard
       orientation carries the vanilla post-camera `Z+180 / Y+180 / X+90` pose
       for `isShotAtAngle`. Empty/no-explosion entity event `17` poof particles
-      are covered; non-empty explosion / Starter child particles remain
-      deferred to particle presentation work.
+      are covered; non-empty explosions now project Starter base spark shapes,
+      center `flash`, and fade-colors. Trail/twinkle duplication and audio
+      remain deferred to particle presentation work.
     - dropped item entities now use the vanilla 26.1 `ItemEntityRenderer` item
       stack path instead of a placeholder bounds box. Native entity scene maps
       `minecraft:item` to `NoRender`; visible dropped items are submitted by the
@@ -6558,8 +6563,11 @@ When an agent does any of the following, update this file in the same slice:
         initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and the
         half-lifetime alpha fade formula. Firework rocket entity event `17`
         with empty/no explosions now emits vanilla `minecraft:poof` particles;
-        non-empty `Starter` trail/twinkle child spawning and audio remain
-        deferred to the broader firework rocket / level-event presentation slice.
+        non-empty explosions now project `FireworkParticles.Starter` small /
+        large ball, star, creeper, and burst base spark shapes, center `flash`,
+        and per-spark fade-colors. Trail/twinkle child duplication and blast /
+        twinkle audio remain deferred to the broader firework rocket /
+        level-event presentation slice.
       - particle descriptors map `DripParticle.HoneyHangProvider`,
         `HoneyFallProvider`, and `HoneyLandProvider` for `dripping_honey`,
         `falling_honey`, and `landing_honey` to random sprites, vanilla
