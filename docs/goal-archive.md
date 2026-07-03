@@ -2350,6 +2350,13 @@
     `DripParticle` move/friction behavior without the WaterDrop random ground
     removal branch. Block/fluid in-block removal remains deferred to
     world-query-backed particle ticking.
+  - [x] water-drop block/fluid in-block removal：`WaterDropParticle` ticks now
+    query a world-backed block/fluid surface height after movement, mirroring
+    vanilla `max(collisionShape.max(Y, localX, localZ), fluidState.height)`,
+    and remove `rain` / `splash` when the particle Y is below that containing
+    block's surface. Native wires the query beside the existing particle
+    collision callback; world tests cover slab collision and source-water
+    fluid heights.
 
 ## P2：Terrain / Block Render Presentation
 

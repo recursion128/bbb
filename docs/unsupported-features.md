@@ -847,8 +847,9 @@ When an agent does any of the following, update this file in the same slice:
         gravity; `splash` uses `0.04` gravity and the horizontal command
         branch `(xa, 0.1, za)`. Runtime ticks now use the collision-backed
         `move` path and apply vanilla `onGround` 50% random removal plus X/Z
-        ground damping; block/fluid in-block removal remains deferred until
-        particle ticks can query world block/fluid state.
+        ground damping. Block/fluid in-block removal now queries the world
+        surface height as `max(collisionShape.max(Y, localX, localZ),
+        fluidState.height)` and removes `rain` / `splash` below that surface.
         `fishing` now maps to `WakeParticle.Provider` with first sprite
         initialization, vanilla single-quad size, `8 / (random * 0.8 + 0.2)`
         lifetime, command velocity, opaque layer, physics metadata, `0.98`
@@ -6473,8 +6474,9 @@ When an agent does any of the following, update this file in the same slice:
         `splash` uses `0.04` gravity and the vanilla horizontal command
         branch `(xa, 0.1, za)`. Runtime ticks now use collision-backed `move`
         and apply vanilla `onGround` 50% random removal plus X/Z ground damping;
-        block/fluid in-block removal remains deferred until particle ticks can
-        query world block/fluid state.
+        block/fluid in-block removal now queries the world surface height as
+        `max(collisionShape.max(Y, localX, localZ), fluidState.height)` and
+        removes `rain` / `splash` below that surface.
       - particle descriptors map `WakeParticle.Provider` for `fishing` to
         first sprite initialization, vanilla single-quad size,
         `8/(random*.8+.2)` lifetime, command velocity, opaque particle layer,

@@ -87,6 +87,11 @@ pub struct ParticleCollisionQuery {
     pub height: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleBlockFluidSurfaceQuery {
+    pub position: [f64; 3],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParticleBlockOptionState {
     pub block_state_id: i32,
@@ -560,10 +565,23 @@ impl ParticleRuntimeState {
     pub(crate) fn advance_with_collision<F>(
         &mut self,
         ticks: u32,
-        mut collide: F,
+        collide: F,
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
+        self.advance_with_world(ticks, collide, |_| 0.0)
+    }
+
+    pub(crate) fn advance_with_world<F, S>(
+        &mut self,
+        ticks: u32,
+        mut collide: F,
+        mut block_fluid_surface_height: S,
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
     {
         let mut intaken_instances = 0;
         let mut expired_instances = 0;
@@ -578,7 +596,8 @@ impl ParticleRuntimeState {
             );
         } else {
             for _ in 0..ticks {
-                expired_instances += self.tick_active_instances(&mut collide);
+                expired_instances +=
+                    self.tick_active_instances(&mut collide, &mut block_fluid_surface_height);
                 self.drain_pending_spawns(
                     &mut intaken_instances,
                     &mut dropped_active_instances,
@@ -615,9 +634,14 @@ impl ParticleRuntimeState {
         }
     }
 
-    fn tick_active_instances<F>(&mut self, collide: &mut F) -> usize
+    fn tick_active_instances<F, S>(
+        &mut self,
+        collide: &mut F,
+        block_fluid_surface_height: &mut S,
+    ) -> usize
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
     {
         let mut expired_instances = 0;
         let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
@@ -632,7 +656,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.tick_motion(&mut self.random, collide);
+            instance.tick_motion(&mut self.random, collide, block_fluid_surface_height);
             if instance.removed {
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
@@ -971,12 +995,17 @@ impl ParticleInstance {
 
     #[cfg(test)]
     fn tick_motion_without_collision(&mut self, random: &mut ParticleRandom) {
-        self.tick_motion(random, &mut |query| query.movement);
+        self.tick_motion(random, &mut |query| query.movement, &mut |_| 0.0);
     }
 
-    fn tick_motion<F>(&mut self, random: &mut ParticleRandom, collide: &mut F)
-    where
+    fn tick_motion<F, S>(
+        &mut self,
+        random: &mut ParticleRandom,
+        collide: &mut F,
+        block_fluid_surface_height: &mut S,
+    ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
     {
         self.previous_position = self.position;
         match self.tick_motion {
@@ -1179,6 +1208,15 @@ impl ParticleInstance {
                     }
                     self.velocity[0] *= 0.7;
                     self.velocity[2] *= 0.7;
+                }
+                let surface_height = block_fluid_surface_height(ParticleBlockFluidSurfaceQuery {
+                    position: self.position,
+                });
+                if surface_height.is_finite() && surface_height > 0.0 {
+                    let block_y = self.position[1].floor();
+                    if self.position[1] < block_y + surface_height {
+                        self.removed = true;
+                    }
                 }
             }
             ParticleTickMotionDescriptor::Wake => {
@@ -1627,6 +1665,21 @@ impl Renderer {
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
     {
         let summary = self.particles.advance_with_collision(ticks, collide);
+        self.record_particle_advance_summary(summary);
+    }
+
+    pub fn advance_particles_with_world<F, S>(
+        &mut self,
+        ticks: u32,
+        collide: F,
+        block_fluid_surface_height: S,
+    ) where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
+    {
+        let summary = self
+            .particles
+            .advance_with_world(ticks, collide, block_fluid_surface_height);
         self.record_particle_advance_summary(summary);
     }
 
@@ -2719,6 +2772,30 @@ mod tests {
             }
             movement
         });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_water_drop_removes_inside_block_or_fluid_surface() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:rain", 20);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, 0.0, 0.0];
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |query| {
+                assert_close3(query.position, [0.5, 0.25, 0.5]);
+                0.5
+            },
+        );
 
         assert_eq!(summary.expired_instances, 1);
         assert_eq!(summary.active_instances, 0);

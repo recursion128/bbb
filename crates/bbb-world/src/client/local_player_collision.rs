@@ -80,6 +80,30 @@ impl WorldStore {
         )
     }
 
+    pub fn particle_block_fluid_surface_height(&self, position: [f64; 3]) -> f64 {
+        if !position.iter().all(|value| value.is_finite()) {
+            return 0.0;
+        }
+        let pos = BlockPos {
+            x: block_floor(position[0]),
+            y: block_floor(position[1]),
+            z: block_floor(position[2]),
+        };
+        let Some(block) = self.probe_block(pos) else {
+            return 0.0;
+        };
+        let local_x = position[0] - f64::from(pos.x);
+        let local_z = position[2] - f64::from(pos.z);
+        let block_height = block_collision_shape(&block, pos)
+            .map(|shape| shape.max_y_at(local_x, local_z))
+            .unwrap_or(0.0);
+        let fluid_height = block
+            .fluid
+            .map(|fluid| crate::fluid::fluid_height_at(self, pos, fluid))
+            .unwrap_or(0.0);
+        block_height.max(fluid_height)
+    }
+
     pub fn clip_particle_collision_movement(
         &self,
         position: [f64; 3],
@@ -2116,6 +2140,13 @@ impl BlockCollisionShape {
         matches!(boxes.next(), Some(BlockCollisionBox::FULL)) && boxes.next().is_none()
     }
 
+    fn max_y_at(self, local_x: f64, local_z: f64) -> f64 {
+        self.boxes()
+            .filter(|shape_box| shape_box.contains_xz(local_x, local_z))
+            .map(|shape_box| shape_box.max_y)
+            .fold(0.0, f64::max)
+    }
+
     fn invert_y(self) -> Self {
         Self {
             boxes: self
@@ -2755,11 +2786,23 @@ impl BlockCollisionBox {
         }
         rotated
     }
+
+    fn contains_xz(self, local_x: f64, local_z: f64) -> bool {
+        local_x >= self.min_x
+            && local_x < self.max_x
+            && local_z >= self.min_z
+            && local_z < self.max_z
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::{
+        ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension,
+    };
 
     #[test]
     fn cocoa_shape_matches_vanilla_age_and_facing() {
@@ -3012,12 +3055,116 @@ mod tests {
         );
     }
 
+    #[test]
+    fn particle_block_fluid_surface_height_uses_block_collision_shape() {
+        let mut world = empty_world();
+        let bottom_slab_id = vanilla_block_state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        );
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, bottom_slab_id);
+
+        assert_f64_near(
+            world.particle_block_fluid_surface_height([0.5, 0.25, 0.5]),
+            0.5,
+        );
+    }
+
+    #[test]
+    fn particle_block_fluid_surface_height_uses_fluid_height() {
+        let mut world = empty_world();
+        let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, water_id);
+
+        assert_f64_near(
+            world.particle_block_fluid_surface_height([0.5, 0.25, 0.5]),
+            8.0 / 9.0,
+        );
+    }
+
+    #[test]
+    fn particle_block_fluid_surface_height_is_empty_for_unloaded_or_nonfinite_position() {
+        let world = empty_world();
+
+        assert_f64_near(
+            world.particle_block_fluid_surface_height([32.5, 0.25, 0.5]),
+            0.0,
+        );
+        assert_f64_near(
+            world.particle_block_fluid_surface_height([f64::NAN, 0.25, 0.5]),
+            0.0,
+        );
+    }
+
     fn axis_name(axis: CollisionAxis) -> &'static str {
         match axis {
             CollisionAxis::X => "x",
             CollisionAxis::Y => "y",
             CollisionAxis::Z => "z",
         }
+    }
+
+    fn empty_world() -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        world
+    }
+
+    fn single_value_container(
+        domain: PaletteDomain,
+        entry_count: usize,
+        global_id: i32,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
+    }
+
+    fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: bbb_protocol::packets::BlockPos {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                },
+                block_state_id,
+            })
+        );
+    }
+
+    fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+        crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties(name, &string_props(props))
+            .unwrap_or_else(|| panic!("vanilla 26.1 block state exists for {name}"))
+            .id
+    }
+
+    fn string_props<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect()
     }
 
     fn assert_f64_near(actual: f64, expected: f64) {

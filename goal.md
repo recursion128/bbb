@@ -358,9 +358,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla 50% 随机移除与 X/Z damping；honey / obsidian tear / lava
     landing providers 现在拆成 `DripLand` tick，使用 vanilla `DripParticle`
     move/friction 而不套用 `WaterDropParticle` 的随机落地移除；
+    `WaterDropParticle` in-block removal 现在查询 world block/fluid surface，
+    按 vanilla `collisionShape.max(Y, localX, localZ)` 与 fluid height 的 max
+    删除落入方块/流体内部的 `rain` / `splash`；
     剩余 gravity/collision/player-coupled work 是特殊 context 和
-    player-coupled emitter，以及需要 world block/fluid 查询的 in-block
-    particle removal。
+    player-coupled emitter，以及非 WaterDrop provider 的 fluid / block-state
+    removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
