@@ -2847,6 +2847,20 @@ impl EntityStore {
         })
     }
 
+    pub(crate) fn ticks_since_kinetic_hit_feedback(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            animations
+                .animations
+                .ticks_since_kinetic_hit_feedback(partial_ticks),
+        )
+    }
+
     pub(crate) fn refresh_client_animation_swing_duration(
         &mut self,
         id: i32,

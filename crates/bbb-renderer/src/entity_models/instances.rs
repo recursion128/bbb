@@ -23,7 +23,7 @@ pub struct SpearKineticWeapon {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct SpearKineticUseParams {
+pub struct SpearKineticUseParams {
     pub raise_progress: f32,
     pub raise_progress_start: f32,
     pub raise_progress_middle: f32,
@@ -37,7 +37,7 @@ pub(crate) struct SpearKineticUseParams {
 }
 
 impl SpearKineticWeapon {
-    pub(crate) fn use_params(self, time: f32) -> SpearKineticUseParams {
+    pub fn use_params(self, time: f32) -> SpearKineticUseParams {
         let finish_raising_tick = self.delay_ticks;
         let finish_swaying_tick = self.dismount_duration_ticks + finish_raising_tick;
         let start_swaying_tick = finish_swaying_tick - 20.0;

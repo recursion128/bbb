@@ -1285,8 +1285,21 @@
     first-person transforms already used by the vanilla item special cases and
     keeps generic BOW from using the `Items.BOW` / `Items.CROSSBOW`
     used-hand-only selection path. Tests cover all mapped animations, generic
-    no-switch base-arm cases, and leave SPEAR unsupported for the kinetic
-    `SpearAnimations.firstPersonUse` slice.
+    no-switch base-arm cases, and generic SPEAR without readable kinetic
+    weapon data.
+  - [x] first-person SPEAR / kinetic use animation：local vanilla 26.1
+    `Item.getUseAnimation` falls through to `KINETIC_WEAPON` after consumables,
+    and `ItemInHandRenderer.renderArmWithItem` skips `applyItemArmTransform`
+    for `SPEAR`, applies only the base hand translation, then calls
+    `SpearAnimations.firstPersonUse` with `timeHeld` and
+    `getTicksSinceLastKineticHitFeedback(partialTick)`. Native now resolves the
+    default tool-material spear `KineticWeapon` timings, exposes the shared
+    renderer `SpearKineticWeapon::use_params` timing data to native, applies
+    the vanilla first-person translate / rotateAround / hit-feedback transform,
+    and samples the local player kinetic feedback state from `WorldStore`.
+    Tests cover default spear animation selection, consumable SPEAR duration,
+    removal of the prototype kinetic component, the direct transform matrix,
+    rendered first-person use movement, and local kinetic hit feedback.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -34,12 +34,13 @@ use bbb_renderer::{
     HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
-    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, SpearKineticWeapon,
+    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
+use crate::entity_scene::default_spear_kinetic_weapon_for_resource_id;
 use crate::map_textures::map_item_texture;
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
@@ -71,6 +72,9 @@ const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
 const POPPY_BLOCK_ID: &str = "minecraft:poppy";
 const RED_MUSHROOM_BLOCK_ID: &str = "minecraft:red_mushroom";
 const BROWN_MUSHROOM_BLOCK_ID: &str = "minecraft:brown_mushroom";
+/// Vanilla `DataComponents.KINETIC_WEAPON` network type id, used by item-stack
+/// patches to remove a spear's prototype kinetic weapon component.
+const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
 /// Vanilla `DataComponents.SWING_ANIMATION` network type id, used by item-stack
 /// patches to remove prototype STAB/NONE data and fall back to
 /// `SwingAnimation.DEFAULT` (WHACK, 6 ticks).
@@ -94,6 +98,9 @@ const VANILLA_CROSSBOW_USE_DURATION_TICKS: f32 = 72_000.0;
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 /// Vanilla `TridentItem.getUseDuration`.
 const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla base `Item.getUseDuration`: stacks with `DataComponents.KINETIC_WEAPON`
+/// and no consumable use the long charged-use timer.
+const VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS: f32 = 72_000.0;
 /// Vanilla `ItemInHandRenderer.renderMap`: after the hand/map pose, the map is flipped, scaled to
 /// `0.38`, centered, and converted from 128x128 map pixels into model units.
 const VANILLA_FIRST_PERSON_MAP_SCALE: f32 = 0.38;
@@ -1262,6 +1269,20 @@ pub(crate) fn first_person_item_models(
                         );
                     }
                 }
+                FirstPersonUseAnimation::Spear {
+                    kinetic_weapon,
+                    use_duration_ticks,
+                } => {
+                    attach = first_person_apply_spear_use_transform(
+                        camera_world,
+                        arm_left,
+                        kinetic_weapon,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                        world.local_player_ticks_since_kinetic_hit_feedback(partial_ticks),
+                    );
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1352,6 +1373,10 @@ enum FirstPersonUseAnimation {
         use_duration_ticks: f32,
         charge_duration_ticks: f32,
     },
+    Spear {
+        kinetic_weapon: SpearKineticWeapon,
+        use_duration_ticks: f32,
+    },
 }
 
 fn supported_first_person_item_stack(
@@ -1439,8 +1464,17 @@ fn first_person_stack_supported_use_animation(
                 Some(FirstPersonUseAnimation::Brush { use_duration_ticks })
             }
             ItemUseAnimationSummary::Bundle => Some(FirstPersonUseAnimation::Bundle),
-            ItemUseAnimationSummary::Spear => None,
+            ItemUseAnimationSummary::Spear => Some(FirstPersonUseAnimation::Spear {
+                kinetic_weapon: first_person_stack_spear_kinetic_weapon(stack, item_runtime)?,
+                use_duration_ticks,
+            }),
         };
+    }
+    if let Some(kinetic_weapon) = first_person_stack_spear_kinetic_weapon(stack, item_runtime) {
+        return Some(FirstPersonUseAnimation::Spear {
+            kinetic_weapon,
+            use_duration_ticks: VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
+        });
     }
     first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
 }
@@ -1529,6 +1563,21 @@ fn first_person_stack_swing_animation(
         .map_or(FirstPersonSwingAnimation::Whack, |_| {
             FirstPersonSwingAnimation::Stab
         })
+}
+
+fn first_person_stack_spear_kinetic_weapon(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<SpearKineticWeapon> {
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_KINETIC_WEAPON_COMPONENT_ID)
+    {
+        return None;
+    }
+    let resource_id = first_person_stack_resource_id(stack, item_runtime)?;
+    default_spear_kinetic_weapon_for_resource_id(resource_id)
 }
 
 fn first_person_resource_id_is_spear(resource_id: &str) -> bool {
@@ -1920,11 +1969,92 @@ fn first_person_crossbow_use_transform(
         * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
 }
 
+fn first_person_apply_spear_use_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    kinetic_weapon: SpearKineticWeapon,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+    ticks_since_kinetic_hit_feedback: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    camera_world
+        * Mat4::from_translation(Vec3::new(invert * 0.56, -0.52, -0.72))
+        * first_person_spear_use_transform(
+            arm_left,
+            kinetic_weapon,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+            ticks_since_kinetic_hit_feedback,
+        )
+}
+
+fn first_person_spear_use_transform(
+    arm_left: bool,
+    kinetic_weapon: SpearKineticWeapon,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+    ticks_since_kinetic_hit_feedback: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let params = kinetic_weapon.use_params(time_held);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let x_rotation_degrees = -65.0 * first_person_ease_in_out_back(params.raise_progress)
+        - 35.0 * params.lower_progress
+        + 100.0 * params.raise_back_progress
+        - 0.5 * params.sway_scale_fast;
+    let y_negative_axis_rotation_degrees = invert
+        * (-90.0 * first_person_progress(params.raise_progress, 0.5, 0.55)
+            + 90.0 * params.sway_progress
+            + 2.0 * params.sway_scale_slow);
+
+    Mat4::from_translation(Vec3::new(
+        invert
+            * (params.raise_progress * 0.15
+                + params.raise_progress_end * -0.05
+                + params.sway_progress * -0.1
+                + params.sway_scale_slow * 0.005),
+        params.raise_progress * -0.075
+            + params.raise_progress_middle * 0.075
+            + params.sway_scale_fast * 0.01,
+        params.raise_progress_start * 0.05
+            + params.raise_progress_end * -0.05
+            + params.sway_scale_slow * 0.005,
+    )) * first_person_rotate_around(
+        Vec3::new(0.0, 0.1, 0.0),
+        Mat4::from_rotation_x(x_rotation_degrees.to_radians()),
+    ) * first_person_rotate_around(
+        Vec3::new(invert * 0.15, 0.0, 0.0),
+        Mat4::from_rotation_y((-y_negative_axis_rotation_degrees).to_radians()),
+    ) * Mat4::from_translation(Vec3::new(
+        0.0,
+        -first_person_spear_kinetic_hit_feedback_amount(ticks_since_kinetic_hit_feedback),
+        0.0,
+    ))
+}
+
 fn first_person_apply_charged_crossbow_idle_transform(transform: Mat4, arm_left: bool) -> Mat4 {
     let invert = if arm_left { -1.0 } else { 1.0 };
     transform
         * Mat4::from_translation(Vec3::new(invert * -0.641864, 0.0, 0.0))
         * Mat4::from_rotation_y((invert * 10.0_f32).to_radians())
+}
+
+fn first_person_rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
+}
+
+fn first_person_spear_kinetic_hit_feedback_amount(ticks_since_feedback_start: f32) -> f32 {
+    0.4 * (first_person_ease_out_quart(first_person_progress(ticks_since_feedback_start, 1.0, 3.0))
+        - first_person_ease_in_out_sine(first_person_progress(
+            ticks_since_feedback_start,
+            3.0,
+            10.0,
+        )))
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -1935,8 +2065,21 @@ fn first_person_ease_in_out_sine(value: f32) -> f32 {
     -((std::f32::consts::PI * value).cos() - 1.0) / 2.0
 }
 
+fn first_person_ease_out_quart(value: f32) -> f32 {
+    1.0 - (1.0 - value).powi(4)
+}
+
 fn first_person_ease_out_back(value: f32) -> f32 {
     1.0 + 2.70158 * (value - 1.0).powi(3) + 1.70158 * (value - 1.0).powi(2)
+}
+
+fn first_person_ease_in_out_back(value: f32) -> f32 {
+    if value < 0.5 {
+        4.0 * value * value * (7.189819 * value - 2.5949094) / 2.0
+    } else {
+        let delta = 2.0 * value - 2.0;
+        (delta * delta * (3.5949094 * delta + 2.5949094) + 2.0) / 2.0
+    }
 }
 
 fn first_person_ease_in_out_expo(value: f32) -> f32 {
@@ -3018,8 +3161,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
         DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind,
-        EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData, SetEquipment,
-        SetPlayerInventory, SwingAnimationSummary, Vec3d,
+        EntityEvent, EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData,
+        SetEquipment, SetPlayerInventory, SwingAnimationSummary, Vec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -5209,6 +5352,157 @@ mod tests {
     }
 
     #[test]
+    fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
+        let root = unique_item_model_temp_dir("first-person-spear-use-animation");
+        write_flat_item_runtime_fixture(&root, &["wooden_spear", "snack"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let kinetic_weapon = SpearKineticWeapon {
+            delay_ticks: 15.0,
+            dismount_duration_ticks: 100.0,
+            knockback_duration_ticks: 200.0,
+            damage_duration_ticks: 300.0,
+            forward_movement: 0.38,
+        };
+        let wooden_spear = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:wooden_spear"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        assert_eq!(
+            first_person_stack_supported_use_animation(&wooden_spear, &item_runtime),
+            Some(FirstPersonUseAnimation::Spear {
+                kinetic_weapon,
+                use_duration_ticks: VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
+            })
+        );
+
+        let mut removed_kinetic = wooden_spear.clone();
+        removed_kinetic
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_KINETIC_WEAPON_COMPONENT_ID);
+        assert_eq!(
+            first_person_stack_supported_use_animation(&removed_kinetic, &item_runtime),
+            None,
+            "removing the prototype KINETIC_WEAPON component disables vanilla SPEAR use"
+        );
+
+        let snack_spear = first_person_test_consumable_stack(
+            &item_runtime,
+            "minecraft:snack",
+            ItemUseAnimationSummary::Spear,
+            1.6,
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(&snack_spear, &item_runtime),
+            None,
+            "generic SPEAR consumables need readable kinetic weapon data"
+        );
+
+        let wooden_spear_consumable = first_person_test_consumable_stack(
+            &item_runtime,
+            "minecraft:wooden_spear",
+            ItemUseAnimationSummary::Spear,
+            1.6,
+        );
+        assert_eq!(
+            first_person_stack_supported_use_animation(&wooden_spear_consumable, &item_runtime),
+            Some(FirstPersonUseAnimation::Spear {
+                kinetic_weapon,
+                use_duration_ticks: 32.0,
+            }),
+            "consumable SPEAR keeps the consumable use duration while using the item kinetic component"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_apply_spear_kinetic_use_pose_and_feedback() {
+        let root = unique_item_model_temp_dir("first-person-spear-kinetic-use");
+        write_flat_item_runtime_fixture(&root, &["wooden_spear"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let wooden_spear = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:wooden_spear"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+        let mut idle_world = world_with_level_dimension("minecraft:overworld");
+        idle_world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: wooden_spear.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut using_world = world_with_level_dimension("minecraft:overworld");
+        using_world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: wooden_spear.clone(),
+        });
+        using_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        using_world.advance_local_using_item_ticks(20);
+        let using = first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(using.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], using.flat_meshes[0],
+            "SPEAR use skips applyItemArmTransform and applies SpearAnimations.firstPersonUse"
+        );
+
+        let mut feedback_world = world_with_level_dimension("minecraft:overworld");
+        feedback_world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        feedback_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: wooden_spear,
+        });
+        feedback_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        feedback_world.advance_local_using_item_ticks(20);
+        assert!(feedback_world.apply_entity_event(EntityEvent {
+            entity_id: 1,
+            event_id: 2,
+        }));
+        feedback_world.advance_entity_client_animations(2);
+        let feedback = first_person_item_models(
+            &feedback_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(feedback.flat_meshes.len(), 1);
+        assert_eq!(
+            feedback_world.local_player_ticks_since_kinetic_hit_feedback(0.5),
+            2.5
+        );
+        assert_ne!(
+            using.flat_meshes[0], feedback.flat_meshes[0],
+            "local kinetic hit feedback contributes the vanilla first-person spear kick"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -5610,6 +5904,64 @@ mod tests {
             * Mat4::from_translation(Vec3::new(-0.641864, 0.0, 0.0))
             * Mat4::from_rotation_y(10.0_f32.to_radians());
         assert!(charged.abs_diff_eq(expected_charged, 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_spear_use_transform_matches_vanilla_kinetic_use() {
+        let kinetic_weapon = SpearKineticWeapon {
+            delay_ticks: 15.0,
+            dismount_duration_ticks: 100.0,
+            knockback_duration_ticks: 200.0,
+            damage_duration_ticks: 300.0,
+            forward_movement: 0.38,
+        };
+        let transformed = first_person_apply_spear_use_transform(
+            Mat4::IDENTITY,
+            false,
+            kinetic_weapon,
+            VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
+            20.0,
+            0.5,
+            2.5,
+        );
+        let remaining_ticks = VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS - 20.0;
+        let time_held = VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS - (remaining_ticks - 0.5 + 1.0);
+        let params = kinetic_weapon.use_params(time_held);
+        let x_rotation_degrees = -65.0 * first_person_ease_in_out_back(params.raise_progress)
+            - 35.0 * params.lower_progress
+            + 100.0 * params.raise_back_progress
+            - 0.5 * params.sway_scale_fast;
+        let y_negative_axis_rotation_degrees = -90.0
+            * first_person_progress(params.raise_progress, 0.5, 0.55)
+            + 90.0 * params.sway_progress
+            + 2.0 * params.sway_scale_slow;
+        let expected = Mat4::from_translation(Vec3::new(0.56, -0.52, -0.72))
+            * Mat4::from_translation(Vec3::new(
+                params.raise_progress * 0.15
+                    + params.raise_progress_end * -0.05
+                    + params.sway_progress * -0.1
+                    + params.sway_scale_slow * 0.005,
+                params.raise_progress * -0.075
+                    + params.raise_progress_middle * 0.075
+                    + params.sway_scale_fast * 0.01,
+                params.raise_progress_start * 0.05
+                    + params.raise_progress_end * -0.05
+                    + params.sway_scale_slow * 0.005,
+            ))
+            * first_person_rotate_around(
+                Vec3::new(0.0, 0.1, 0.0),
+                Mat4::from_rotation_x(x_rotation_degrees.to_radians()),
+            )
+            * first_person_rotate_around(
+                Vec3::new(0.15, 0.0, 0.0),
+                Mat4::from_rotation_y((-y_negative_axis_rotation_degrees).to_radians()),
+            )
+            * Mat4::from_translation(Vec3::new(
+                0.0,
+                -first_person_spear_kinetic_hit_feedback_amount(2.5),
+                0.0,
+            ));
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
     }
 
     #[test]

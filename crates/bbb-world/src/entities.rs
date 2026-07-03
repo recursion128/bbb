@@ -2364,6 +2364,15 @@ impl WorldStore {
             .attack_swing_state(self.local_player_id?, partial_ticks)
     }
 
+    pub fn local_player_ticks_since_kinetic_hit_feedback(&self, partial_ticks: f32) -> f32 {
+        self.local_player_id
+            .and_then(|id| {
+                self.entities
+                    .ticks_since_kinetic_hit_feedback(id, partial_ticks)
+            })
+            .unwrap_or(0.0)
+    }
+
     /// The fishing bobber currently owned by the local player, if any. Vanilla
     /// `FishingHook.getAddEntityPacket` stores the owner id in
     /// `ClientboundAddEntityPacket.data`, and `FishingHook.setOwner` writes it

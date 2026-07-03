@@ -432,5 +432,11 @@ use instance::*;
 use kind::*;
 use variants::*;
 
+pub(crate) fn default_spear_kinetic_weapon_for_resource_id(
+    resource_id: &str,
+) -> Option<SpearKineticWeapon> {
+    hands::spear_kinetic_weapon_for_resource_id(resource_id)
+}
+
 #[cfg(test)]
 mod tests;
