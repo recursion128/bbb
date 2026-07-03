@@ -179,6 +179,34 @@ fn particle_entity_target_contexts_track_world_entity_positions() {
 }
 
 #[test]
+fn particle_sound_event_state_preserves_positioned_sound_metadata() {
+    let state = particle_sound_event_state(ParticleSoundEvent {
+        sound_event_id: "minecraft:block.pointed_dripstone.drip_water".to_string(),
+        source: "block".to_string(),
+        position: [1.25, 2.5, -3.75],
+        volume: 0.65,
+        pitch: 1.0,
+        seed: 12345,
+        distance_delay: false,
+    });
+
+    assert_eq!(state.sound.kind, "direct");
+    assert_eq!(
+        state.sound.location.as_deref(),
+        Some("minecraft:block.pointed_dripstone.drip_water")
+    );
+    assert_eq!(state.sound.registry_id, None);
+    assert_eq!(state.source, "block");
+    assert_eq!(state.position.x, 1.25);
+    assert_eq!(state.position.y, 2.5);
+    assert_eq!(state.position.z, -3.75);
+    assert_eq!(state.volume, 0.65);
+    assert_eq!(state.pitch, 1.0);
+    assert_eq!(state.seed, 12345);
+    assert!(!state.distance_delay);
+}
+
+#[test]
 fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
@@ -773,6 +801,12 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts(")
         .expect("pump should advance particles");
+    let particle_sound_drain = source
+        .find("let particle_sound_events = renderer.drain_particle_sound_events();")
+        .expect("pump should drain particle sound events after particle tick");
+    let particle_sound_emit = source
+        .find("emit_particle_sound_events(&mut audio_events, particle_sound_events);")
+        .expect("pump should emit particle sound events");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
         .expect("pump should bind frame camera pose before particle light refresh");
@@ -804,6 +838,14 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         particle_entity_target_contexts < particle_tick,
         "entity-target particles sample world entity positions during particle tick"
+    );
+    assert!(
+        particle_tick < particle_sound_drain && particle_sound_drain < particle_sound_emit,
+        "particle-local sounds should drain after particle tick and emit through audio sink"
+    );
+    assert!(
+        particle_sound_emit < particle_light_refresh,
+        "particle-local sounds should emit before render light extraction"
     );
     assert!(
         particle_tick < particle_light_refresh,

@@ -106,6 +106,17 @@ pub struct ParticleEntityTargetContext {
     pub position: [f64; 3],
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticleSoundEvent {
+    pub sound_event_id: String,
+    pub source: String,
+    pub position: [f64; 3],
+    pub volume: f32,
+    pub pitch: f32,
+    pub seed: i64,
+    pub distance_delay: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleCollisionQuery {
     pub position: [f64; 3],
@@ -197,6 +208,7 @@ pub struct ParticleSpawnBatch {
 pub(crate) struct ParticleRuntimeState {
     pending_spawns: VecDeque<ParticleSpawnCommand>,
     active_instances: VecDeque<ParticleInstance>,
+    pending_sound_events: VecDeque<ParticleSoundEvent>,
     max_pending_spawns: usize,
     max_active_instances: usize,
     dropped_spawns: u64,
@@ -206,6 +218,7 @@ pub(crate) struct ParticleRuntimeState {
     limited_particle_drops: u64,
     limited_particle_counts: BTreeMap<ParticleLimitDescriptor, usize>,
     random: ParticleRandom,
+    sound_random: ParticleRandom,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -580,6 +593,7 @@ impl ParticleRuntimeState {
         Self {
             pending_spawns: VecDeque::new(),
             active_instances: VecDeque::new(),
+            pending_sound_events: VecDeque::new(),
             max_pending_spawns,
             max_active_instances,
             dropped_spawns: 0,
@@ -589,6 +603,7 @@ impl ParticleRuntimeState {
             limited_particle_drops: 0,
             limited_particle_counts: BTreeMap::new(),
             random,
+            sound_random: ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED.wrapping_add(1)),
         }
     }
 
@@ -813,6 +828,10 @@ impl ParticleRuntimeState {
                     &instance,
                     ParticleRemovalReason::LifetimeExpired,
                 );
+                self.enqueue_removed_sound_events_from(
+                    &instance,
+                    ParticleRemovalReason::LifetimeExpired,
+                );
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
                 continue;
@@ -825,6 +844,10 @@ impl ParticleRuntimeState {
             );
             if instance.removed {
                 self.enqueue_removed_child_spawns_from(
+                    &instance,
+                    ParticleRemovalReason::RemovedDuringTick,
+                );
+                self.enqueue_removed_sound_events_from(
                     &instance,
                     ParticleRemovalReason::RemovedDuringTick,
                 );
@@ -858,6 +881,16 @@ impl ParticleRuntimeState {
     ) {
         for command in instance.removal_child_spawn_commands(reason) {
             self.queue_pending_spawn(command);
+        }
+    }
+
+    fn enqueue_removed_sound_events_from(
+        &mut self,
+        instance: &ParticleInstance,
+        reason: ParticleRemovalReason,
+    ) {
+        if let Some(event) = instance.removal_sound_event(reason, &mut self.sound_random) {
+            self.pending_sound_events.push_back(event);
         }
     }
 
@@ -935,6 +968,10 @@ impl ParticleRuntimeState {
             let sampled_light = sanitize_particle_light(light_at_position(instance.position));
             instance.light = particle_light_with_emission(instance, sampled_light);
         }
+    }
+
+    pub(crate) fn drain_sound_events(&mut self) -> Vec<ParticleSoundEvent> {
+        self.pending_sound_events.drain(..).collect()
     }
 
     #[cfg(test)]
@@ -1853,6 +1890,31 @@ impl ParticleInstance {
         }
     }
 
+    fn removal_sound_event(
+        &self,
+        reason: ParticleRemovalReason,
+        random: &mut ParticleRandom,
+    ) -> Option<ParticleSoundEvent> {
+        if reason != ParticleRemovalReason::RemovedDuringTick || !self.on_ground {
+            return None;
+        }
+        let sound_event_id = match self.particle_id.as_str() {
+            "minecraft:falling_honey" => "minecraft:block.beehive.drip",
+            "minecraft:falling_dripstone_lava" => "minecraft:block.pointed_dripstone.drip_lava",
+            "minecraft:falling_dripstone_water" => "minecraft:block.pointed_dripstone.drip_water",
+            _ => return None,
+        };
+        Some(ParticleSoundEvent {
+            sound_event_id: sound_event_id.to_string(),
+            source: "block".to_string(),
+            position: self.position,
+            volume: 0.3 + random.next_f32() * 0.7,
+            pitch: 1.0,
+            seed: random.next_i64(),
+            distance_delay: false,
+        })
+    }
+
     fn lava_child_smoke_spawn_command(
         &self,
         random: &mut ParticleRandom,
@@ -2221,6 +2283,10 @@ impl Renderer {
             entity_target_contexts,
         );
         self.record_particle_advance_summary(summary);
+    }
+
+    pub fn drain_particle_sound_events(&mut self) -> Vec<ParticleSoundEvent> {
+        self.particles.drain_sound_events()
     }
 
     fn record_particle_advance_summary(&mut self, summary: ParticleAdvanceSummary) {
@@ -3632,6 +3698,55 @@ mod tests {
         assert_close3(child.position, [0.0, 0.0, 0.0]);
         assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
         assert!(child.child_spawn_templates.is_empty());
+
+        let sounds = particles.drain_sound_events();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].sound_event_id, "minecraft:block.beehive.drip");
+        assert_eq!(sounds[0].source, "block");
+        assert_close3(sounds[0].position, [0.0, 0.0, 0.0]);
+        assert!((0.3..=1.0).contains(&sounds[0].volume));
+        assert_close_f32(sounds[0].pitch, 1.0);
+        assert!(!sounds[0].distance_delay);
+    }
+
+    #[test]
+    fn particle_runtime_dripstone_ground_hit_emits_local_sound() {
+        for (particle_id, expected_sound) in [
+            (
+                "minecraft:falling_dripstone_lava",
+                "minecraft:block.pointed_dripstone.drip_lava",
+            ),
+            (
+                "minecraft:falling_dripstone_water",
+                "minecraft:block.pointed_dripstone.drip_water",
+            ),
+        ] {
+            let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+            let mut instance = test_instance_with_lifetime(particle_id, 20);
+            instance.position = [1.0, 2.05, 3.0];
+            instance.previous_position = instance.position;
+            instance.velocity = [0.0, -0.1, 0.0];
+            instance.gravity = 0.0;
+            particles.active_instances.push_back(instance);
+
+            let summary = particles.advance_with_collision(1, |query| {
+                let mut movement = query.movement;
+                if movement[1] < 0.0 && query.position[1] + movement[1] < 2.0 {
+                    movement[1] = 2.0 - query.position[1];
+                }
+                movement
+            });
+
+            assert_eq!(summary.expired_instances, 1, "{particle_id}");
+            let sounds = particles.drain_sound_events();
+            assert_eq!(sounds.len(), 1, "{particle_id}");
+            assert_eq!(sounds[0].sound_event_id, expected_sound);
+            assert_eq!(sounds[0].source, "block");
+            assert_close3(sounds[0].position, [1.0, 2.0, 3.0]);
+            assert!((0.3..=1.0).contains(&sounds[0].volume));
+            assert_close_f32(sounds[0].pitch, 1.0);
+            assert!(!sounds[0].distance_delay);
+        }
     }
 
     #[test]

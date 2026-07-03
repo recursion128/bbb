@@ -10,7 +10,9 @@ use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
-    packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
+    packets::{
+        ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary, Vec3d,
+    },
 };
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
@@ -22,18 +24,19 @@ use bbb_renderer::{
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext,
-    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    ParticleSoundEvent, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
+    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
-    WorldWeatherState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -1475,6 +1478,8 @@ pub(crate) fn pump_network_and_terrain(
         particle_local_player_motion_context,
         &particle_entity_target_contexts,
     );
+    let particle_sound_events = renderer.drain_particle_sound_events();
+    emit_particle_sound_events(&mut audio_events, particle_sound_events);
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
@@ -1709,6 +1714,40 @@ fn renderer_particle_block_fluid_surface_sample(
             TerrainFluidKind::Lava => ParticleFluidKind::Lava,
         }),
         block_is_air: sample.block_is_air,
+    }
+}
+
+fn emit_particle_sound_events(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    sound_events: Vec<ParticleSoundEvent>,
+) {
+    let Some(audio_events) = audio_events.as_deref_mut() else {
+        return;
+    };
+    for event in sound_events {
+        let state = particle_sound_event_state(event);
+        audio_events.play_positioned_sound(&state);
+    }
+}
+
+fn particle_sound_event_state(event: ParticleSoundEvent) -> SoundEventState {
+    SoundEventState {
+        sound: SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(event.sound_event_id),
+            fixed_range: None,
+        },
+        source: event.source,
+        position: Vec3d {
+            x: event.position[0],
+            y: event.position[1],
+            z: event.position[2],
+        },
+        volume: event.volume,
+        pitch: event.pitch,
+        seed: event.seed,
+        distance_delay: event.distance_delay,
     }
 }
 

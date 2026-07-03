@@ -395,8 +395,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     source entity 缺失时移除；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引与
-    vibration entity target refresh），以及 local sound / block-state removal
-    gates。
+    vibration entity target refresh），以及 local sound（不含 DripParticle
+    honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

@@ -2863,6 +2863,12 @@ impl ParticleRandom {
         self.next_bits(1) != 0
     }
 
+    pub(crate) fn next_i64(&mut self) -> i64 {
+        let high = (self.next_bits(32) as i32 as i64) << 32;
+        let low = self.next_bits(32) as i32 as i64;
+        high.wrapping_add(low)
+    }
+
     fn next_gaussian(&mut self) -> f64 {
         if let Some(next) = self.next_next_gaussian.take() {
             return next;

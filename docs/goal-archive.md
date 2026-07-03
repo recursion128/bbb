@@ -2447,6 +2447,18 @@
     when the source entity is missing. Focused renderer tests cover dynamic
     target refresh, interpolation/rotation against the refreshed target, and
     missing-entity removal.
+  - [x] DripParticle fall-and-land local sounds：local vanilla 26.1
+    `DripParticle.HoneyFallAndLandParticle.postMoveUpdate` plays
+    `SoundEvents.BEEHIVE_DRIP` on ground hit, and
+    `DripstoneFallAndLandParticle.postMoveUpdate` plays the pointed dripstone
+    lava/water drip sounds after spawning the landing particle. Renderer
+    particle ticks now enqueue `ParticleSoundEvent`s for falling honey and
+    falling dripstone lava/water ground hits with `SoundSource.BLOCKS`, pitch
+    `1.0`, and vanilla `0.3..1.0` volume range; native drains those events
+    after particle tick and submits existing positioned audio commands. Focused
+    renderer tests cover honey plus dripstone lava/water sound ids, and native
+    tests cover positioned sound-state projection plus pump ordering before
+    particle light extraction.
 
 ## P2：Terrain / Block Render Presentation
 

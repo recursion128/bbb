@@ -669,8 +669,11 @@ When an agent does any of the following, update this file in the same slice:
         collision-backed `DripParticle` move/friction path without
         `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
         and fall-to-land child spawning now use vanilla lifetime/on-ground
-        triggers through renderer child templates. Local drip sound remains
-        deferred with world-coupled particle/audio work.
+        triggers through renderer child templates. Falling honey ground hits
+        now emit renderer particle sound events for
+        `minecraft:block.beehive.drip` with `SoundSource.BLOCKS`, pitch `1.0`,
+        and vanilla `0.3..1.0` volume range; native drains those events after
+        particle tick and submits positioned audio commands.
       - `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` use random
         sprite selection, zero initial velocity, DripParticle opaque layer,
@@ -723,8 +726,13 @@ When an agent does any of the following, update this file in the same slice:
         through the collision-backed `move` path and remove when matching
         water/lava fluid surfaces contain the particle. Hang-to-fall and
         fall-to-land/splash child spawning now use vanilla lifetime/on-ground
-        triggers through renderer child templates. Dripstone local sound remains
-        deferred with world-coupled particle/audio work.
+        triggers through renderer child templates. Dripstone fall-and-land
+        ground hits now emit renderer particle sound events for
+        `minecraft:block.pointed_dripstone.drip_lava` /
+        `minecraft:block.pointed_dripstone.drip_water` with
+        `SoundSource.BLOCKS`, pitch `1.0`, and vanilla `0.3..1.0` volume range;
+        native drains those events after particle tick and submits positioned
+        audio commands.
       - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
         use random sprite selection, `y - 0.125` initial position,
         `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`
@@ -6429,8 +6437,9 @@ When an agent does any of the following, update this file in the same slice:
         provider now uses collision-backed `DripParticle` move/friction without
         `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
         and fall-to-land child spawning now use vanilla lifetime/on-ground
-        triggers through renderer child templates. Local drip sound remains
-        deferred to the world-coupled particle/audio follow-up.
+        triggers through renderer child templates. Falling honey ground hits
+        now emit positioned audio through renderer particle sound events for
+        `minecraft:block.beehive.drip`.
       - particle descriptors map `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` for
         `dripping_obsidian_tear`, `falling_obsidian_tear`, and
