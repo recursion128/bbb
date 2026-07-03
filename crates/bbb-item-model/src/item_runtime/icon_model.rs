@@ -1750,20 +1750,14 @@ fn root_locale_week_of_year(
         return None;
     }
     let year_start = NaiveDate::from_ymd_opt(fields.year, 1, 1)?;
-    let week_one_start = first_week_start(year_start, Weekday::Mon, 1)?;
-    let next_year_start = NaiveDate::from_ymd_opt(fields.year + 1, 1, 1)?;
-    let next_week_one_start = first_week_start(next_year_start, Weekday::Mon, 1)?;
-
-    let anchor = if fields.date >= next_week_one_start {
-        next_week_one_start
-    } else if fields.date < week_one_start {
-        let previous_year_start = NaiveDate::from_ymd_opt(fields.year - 1, 1, 1)?;
-        first_week_start(previous_year_start, Weekday::Mon, 1)?
-    } else {
-        week_one_start
-    };
-
-    Some(padded_u32(week_number_since(anchor, fields.date)?, width))
+    // ICU root/en week data uses Monday as first day and minimal-days=1:
+    // the week containing Jan 1 is week 1 for that calendar year, so late
+    // December does not roll into next year's week 1 before Jan 1.
+    let week_one_start = start_of_week(year_start, Weekday::Mon)?;
+    Some(padded_u32(
+        week_number_since(week_one_start, fields.date)?,
+        width,
+    ))
 }
 
 fn root_locale_week_of_month(

@@ -6748,7 +6748,8 @@ When an agent does any of the following, update this file in the same slice:
       1..=5, plus localized-GMT `O` offsets, `Z`/`X`/`x` offset widths
       1..=5, short `z` zone
       abbreviations, `VV` zone IDs, and `VVV` exemplar cities, plus
-      fixed/UTC long `z` names): full localized symbols
+      fixed/UTC long `z` names, with root/en `w` year-end boundary coverage):
+      full localized symbols
       and long-tail ICU pattern fields (locale-specific week data beyond
       root/en, IANA long `z`, generic `v`, and one-/four-letter `V` widths)
   - Audit remaining item consumers that vanilla renders with a living owner and
@@ -7105,9 +7106,9 @@ When an agent does any of the following, update this file in the same slice:
       root/en narrow `M`/`L` month symbols, localized-GMT `O`, `F`
       day-of-week-in-month, `A` milliseconds-in-day, root/en `a` narrow
       AM/PM, and root/en `w`/`W` week plus `e`/`c` local weekday branches, and
-      an IANA-zone short `z` / `VV` / `VVV` branch plus fixed-offset `zzzz`;
-      UTC and `UTC+02:30` offset branches now pin `Z`/`X`/`x` width 4/5 output
-      as well.
+      a root/en `w` year-end boundary branch, an IANA-zone short `z` / `VV` /
+      `VVV` branch plus fixed-offset `zzzz`; UTC and `UTC+02:30` offset
+      branches now pin `Z`/`X`/`x` width 4/5 output as well.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla
@@ -7212,8 +7213,9 @@ When an agent does any of the following, update this file in the same slice:
     time, including `y`/`u` year, `G` era, `D` day-of-year, `Q`/`q` quarter
     widths 1..=5 for root/en, `F` day-of-week-in-month, root/en `w`/`W` week
     numbers and `e`/`c` local weekdays, fixed-offset / IANA `time_zone` IDs,
-    `Z`/`X`/`x` offset fields, and localized-GMT `O` offset widths; full
-    localized symbols and long-tail ICU pattern fields (locale-specific week
+    `Z`/`X`/`x` offset fields, localized-GMT `O` offset widths, and the
+    root/en `w` year-end boundary; full localized symbols and long-tail ICU
+    pattern fields (locale-specific week
     data beyond root/en, IANA long `z`, generic `v`, and one-/four-letter `V`
     widths) remain follow-up. Short `z` zone abbreviations, `VV` explicit zone
     IDs, `VVV` exemplar cities, and fixed/UTC long `z` names now resolve for

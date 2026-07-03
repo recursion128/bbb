@@ -980,7 +980,8 @@
     `XXXX`/`xxxx` use the basic form.
     `w`/`W` mirror ICU root/en locale week fields using Monday as first day of
     week and minimal-days-in-first-week = 1, with pattern width controlling
-    numeric padding.
+    numeric padding; `w` keeps late December dates in the current calendar
+    year's final week until Jan 1.
     `F` mirrors ICU day-of-week-in-month as `(day - 1) / 7 + 1`, with pattern
     width controlling numeric padding.
     `e`/`c` use the same root/en local weekday number (`Monday=1`) and ICU
@@ -994,10 +995,11 @@
     `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, `A`
     milliseconds-in-day branch, root/en `a` narrow AM/PM branch, `O`
     localized-GMT branch, `F`
-    day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
-    `LocalTime.get`, plus root/en `e`/`c` local weekday branches, a short
-    `z` / `VV` / `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC
-    / `UTC+02:30` width-4/5 offset branches. IANA long `z`, generic `v`,
+    day-of-week-in-month branch, and root/en `w`/`W` week branch including the
+    year-end `w` boundary from vanilla `LocalTime.get`, plus root/en `e`/`c`
+    local weekday branches, a short `z` / `VV` / `VVV` IANA-zone branch,
+    fixed-offset `zzzz` branch, and UTC / `UTC+02:30` width-4/5 offset
+    branches. IANA long `z`, generic `v`,
     one- and four-letter `V` widths,
     locale-specific week data beyond root/en, and non-English locales remain
     follow-up.
