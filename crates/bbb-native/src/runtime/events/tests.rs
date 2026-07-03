@@ -1252,6 +1252,131 @@ fn take_item_entity_event_updates_world_counter() {
 }
 
 #[test]
+fn take_item_entity_event_emits_pickup_sounds() {
+    let (tx, mut rx) = mpsc::channel(7);
+    let add_entity_at = |id: i32, entity_type_id: i32, position: ProtocolVec3d| {
+        let mut entity = protocol_add_entity_with_type(id, entity_type_id);
+        entity.position = position;
+        PlayClientbound::AddEntity(entity)
+    };
+    for packet in [
+        add_entity_at(
+            10,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+        ),
+        add_entity_at(
+            20,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            ProtocolVec3d {
+                x: 4.0,
+                y: 70.0,
+                z: 8.0,
+            },
+        ),
+        add_entity_at(
+            30,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d {
+                x: -6.0,
+                y: 65.0,
+                z: 9.0,
+            },
+        ),
+        PlayClientbound::TakeItemEntity(bbb_protocol::packets::TakeItemEntity {
+            item_id: 10,
+            player_id: 99,
+            amount: 1,
+        }),
+        PlayClientbound::TakeItemEntity(bbb_protocol::packets::TakeItemEntity {
+            item_id: 20,
+            player_id: 99,
+            amount: 1,
+        }),
+        PlayClientbound::TakeItemEntity(bbb_protocol::packets::TakeItemEntity {
+            item_id: 30,
+            player_id: 99,
+            amount: 1,
+        }),
+        PlayClientbound::TakeItemEntity(bbb_protocol::packets::TakeItemEntity {
+            item_id: 404,
+            player_id: 99,
+            amount: 1,
+        }),
+    ] {
+        tx.try_send(NetEvent::Play(packet)).unwrap();
+    }
+    drop(tx);
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_item_pitch =
+        (expected_random.next_float() - expected_random.next_float()) * 1.4 + 2.0;
+    let expected_orb_pitch =
+        (expected_random.next_float() - expected_random.next_float()) * 0.35 + 0.9;
+    let expected_zombie_pitch =
+        (expected_random.next_float() - expected_random.next_float()) * 1.4 + 2.0;
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        7
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 3);
+    let expected = [
+        (
+            "minecraft:entity.item.pickup",
+            AudioCategory::Players,
+            [1.0, 64.0, -2.0],
+            0.2,
+            expected_item_pitch,
+        ),
+        (
+            "minecraft:entity.experience_orb.pickup",
+            AudioCategory::Players,
+            [4.0, 70.0, 8.0],
+            0.1,
+            expected_orb_pitch,
+        ),
+        (
+            "minecraft:entity.item.pickup",
+            AudioCategory::Players,
+            [-6.0, 65.0, 9.0],
+            0.2,
+            expected_zombie_pitch,
+        ),
+    ];
+    for (command, (event_id, category, position, volume, pitch)) in
+        audio.commands.iter().zip(expected)
+    {
+        let AudioCommand::PlayPositionedSound(command) = command else {
+            panic!("expected positioned sound, got {command:?}");
+        };
+        assert_eq!(command.sound.event_id, event_id);
+        assert_eq!(command.category, category);
+        assert_eq!(command.position, position);
+        assert_close(command.packet_volume, volume);
+        assert_close(command.packet_pitch, pitch);
+        assert_eq!(command.seed, 0);
+        assert!(!command.distance_delay);
+    }
+    assert_eq!(world.counters().take_item_entities_received, 4);
+    assert_eq!(world.counters().take_item_entities_applied, 3);
+    assert_eq!(world.counters().take_item_entities_ignored, 1);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:entity.item.pickup")
+    );
+}
+
+#[test]
 fn clear_titles_event_updates_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::SetTitlesAnimation(
@@ -7824,6 +7949,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.totem.use": {
                 "sounds": ["item/totem/use"]
+            },
+            "entity.item.pickup": {
+                "sounds": ["random/pop"]
+            },
+            "entity.experience_orb.pickup": {
+                "sounds": ["random/orb"]
             },
             "entity.arrow.hit_player": {
                 "sounds": ["random/bowhit"]

@@ -2776,6 +2776,16 @@
     synthetic single-particle `minecraft:elder_guardian` command through the
     existing particle resolver. Tests cover pose gating, eye/feet positions,
     sound categories, param flooring, and particle packet/context plumbing.
+  - [x] TakeItemEntity pickup sounds：local vanilla 26.1
+    `ClientPacketListener.handleTakeItemEntity` plays
+    `SoundEvents.EXPERIENCE_ORB_PICKUP` for experience orbs and
+    `SoundEvents.ITEM_PICKUP` for all other picked entities, both at the picked
+    entity position with `SoundSource.PLAYERS`, before shrinking/removing the
+    entity. `WorldStore::apply_play_packet` now snapshots the picked entity
+    transform before applying `TakeItemEntity`, records the matching positioned
+    pickup sound only when the entity exists, and native dispatches it through
+    the existing audio sink. Tests cover item, experience-orb, non-item entity,
+    and missing-entity cases plus vanilla random pitch consumption order.
 
 ## P2：Terrain / Block Render Presentation
 

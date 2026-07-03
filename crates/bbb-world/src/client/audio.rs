@@ -32,6 +32,8 @@ const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
+const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
+const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -314,6 +316,41 @@ impl WorldStore {
             distance_delay: false,
         };
         Some(self.record_positioned_sound(state))
+    }
+
+    pub fn take_item_entity_pickup_sound_with_random(
+        &self,
+        item_id: i32,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(item_id)?;
+        let (sound, volume, pitch) =
+            if transform.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+                (
+                    EXPERIENCE_ORB_PICKUP_SOUND_EVENT,
+                    0.1,
+                    (next_float() - next_float()) * 0.35 + 0.9,
+                )
+            } else {
+                (
+                    ITEM_PICKUP_SOUND_EVENT,
+                    0.2,
+                    (next_float() - next_float()) * 1.4 + 2.0,
+                )
+            };
+        Some(SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: SoundSource::Players.as_str().to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume,
+            pitch,
+            seed: 0,
+            distance_delay: false,
+        })
     }
 
     pub fn game_event_positioned_sound(

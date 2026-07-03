@@ -269,6 +269,10 @@ When an agent does any of the following, update this file in the same slice:
       - entity event `35` now also records and dispatches vanilla
         `minecraft:item.totem.use` as a positioned local sound at the entity's
         current position, with `Entity.getSoundSource()`-shaped source mapping
+      - `ClientboundTakeItemEntity` now records and dispatches vanilla item /
+        experience-orb pickup sounds at the picked entity position before the
+        world removes or shrinks the entity; the vanilla `ItemPickupParticle`
+        remains part of the deferred player-coupled particle emitter work
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
@@ -419,6 +423,9 @@ When an agent does any of the following, update this file in the same slice:
       positioned local sound at the current entity position, with source
       mapping derived from vanilla `Entity.getSoundSource()` (`Player` /
       `Monster` / default `Entity` branches covered).
+      Native TakeItemEntity handling now also emits vanilla item /
+      experience-orb pickup positioned sounds at the picked entity position
+      before world mutation removes or shrinks the entity.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant

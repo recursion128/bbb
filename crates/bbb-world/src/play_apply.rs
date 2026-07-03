@@ -350,7 +350,17 @@ impl WorldStore {
                 self.apply_set_equipment(update);
             }
             PlayClientbound::TakeItemEntity(update) => {
-                self.apply_take_item_entity(update);
+                let pickup_sound = self
+                    .take_item_entity_pickup_sound_with_random(update.item_id, || {
+                        random.next_float()
+                    });
+                if self.apply_take_item_entity(update) {
+                    if let Some(state) =
+                        pickup_sound.map(|state| self.record_positioned_sound(state))
+                    {
+                        effects.positioned_sound(&state);
+                    }
+                }
             }
             PlayClientbound::SetPassengers(update) => {
                 self.apply_set_passengers(update);
@@ -1218,11 +1228,12 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, GameEvent,
-        LevelEvent, PlayTime, SoundEvent, SoundEventHolder, SoundSource, Vec3d,
+        LevelEvent, PlayTime, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1374,6 +1385,130 @@ mod tests {
         assert!(leftover.is_none());
         assert_eq!(effects.positioned_sounds.len(), 1);
         assert_eq!(effects.positioned_sounds[0].seed, 42);
+    }
+
+    #[test]
+    fn take_item_entity_forwards_pickup_sounds() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_item_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 1.4 + 2.0;
+        let expected_orb_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.35 + 0.9;
+        let expected_zombie_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 1.4 + 2.0;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                10,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                Vec3d {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                20,
+                VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                30,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: -6.0,
+                    y: 65.0,
+                    z: 9.0,
+                },
+            )),
+            PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 10,
+                player_id: 99,
+                amount: 1,
+            }),
+            PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 20,
+                player_id: 99,
+                amount: 1,
+            }),
+            PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 30,
+                player_id: 99,
+                amount: 1,
+            }),
+            PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 404,
+                player_id: 99,
+                amount: 1,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 3);
+        assert_eq!(
+            effects.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:entity.item.pickup")
+        );
+        assert_eq!(effects.positioned_sounds[0].source, "player");
+        assert_eq!(
+            effects.positioned_sounds[0].position,
+            Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[0].volume, 0.2);
+        assert_eq!(effects.positioned_sounds[0].pitch, expected_item_pitch);
+        assert_eq!(
+            effects.positioned_sounds[1].sound.location.as_deref(),
+            Some("minecraft:entity.experience_orb.pickup")
+        );
+        assert_eq!(effects.positioned_sounds[1].source, "player");
+        assert_eq!(
+            effects.positioned_sounds[1].position,
+            Vec3d {
+                x: 4.0,
+                y: 70.0,
+                z: 8.0,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[1].volume, 0.1);
+        assert_eq!(effects.positioned_sounds[1].pitch, expected_orb_pitch);
+        assert_eq!(
+            effects.positioned_sounds[2].sound.location.as_deref(),
+            Some("minecraft:entity.item.pickup")
+        );
+        assert_eq!(effects.positioned_sounds[2].source, "player");
+        assert_eq!(
+            effects.positioned_sounds[2].position,
+            Vec3d {
+                x: -6.0,
+                y: 65.0,
+                z: 9.0,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[2].volume, 0.2);
+        assert_eq!(effects.positioned_sounds[2].pitch, expected_zombie_pitch);
+        for sound in &effects.positioned_sounds {
+            assert_eq!(sound.seed, 0);
+            assert_eq!(sound.distance_delay, false);
+        }
+        assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[2]));
+        assert_eq!(store.counters().take_item_entities_received, 4);
+        assert_eq!(store.counters().take_item_entities_applied, 3);
+        assert_eq!(store.counters().take_item_entities_ignored, 1);
+        assert_eq!(store.counters().take_item_entities_removed, 2);
+        assert_eq!(store.entity_count(), 1);
     }
 
     #[test]

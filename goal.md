@@ -443,13 +443,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     仍为正的 TNT 每个 advanced tick 在 `x, y + 0.5, z` 生成一个
     `minecraft:smoke`，速度为 0；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
-    player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
+    player-coupled emitter（含 TakeItemEntity `ItemPickupParticle`；不含 SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
     GameEvent elder-guardian 粒子、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
     collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
-    elder-guardian-curse 本地玩家位置声效）/ block-state removal gates。
+    elder-guardian-curse 本地玩家位置声效、TakeItemEntity item / experience-orb
+    pickup 本地位置声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
