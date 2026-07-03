@@ -61,8 +61,8 @@ pub use crate::entity_models::{
 pub use crate::entity_models::{
     allay_hand_attach_transform, copper_golem_antenna_block_transform,
     copper_golem_hand_attach_transform, custom_head_item_transform, custom_head_item_transforms,
-    dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
-    humanoid_hand_attach_transform, humanoid_hand_attach_transforms,
+    dolphin_carried_item_transform, enderman_carried_block_transform, falling_block_transform,
+    fox_held_item_transform, humanoid_hand_attach_transform, humanoid_hand_attach_transforms,
     iron_golem_flower_block_transform, minecart_display_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, primed_tnt_block_transform, snow_golem_head_block_transform,

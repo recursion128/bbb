@@ -6179,6 +6179,17 @@ When an agent does any of the following, update this file in the same slice:
       final-10-tick fourth-power scale pulse, and white-strobe overlay. The
       smoke particle emitted while fuse remains positive is still deferred to
       the particle runtime.
+    - falling blocks now use the vanilla 26.1 `FallingBlockRenderer` block-model
+      attachment path instead of a placeholder bounds box. `WorldStore` resolves
+      the add-entity packet `data` field with the vanilla block-state registry
+      (`Block.stateById(packet.getData())`), treats air or unknown state ids as
+      non-rendered, and native mirrors `shouldRender` by skipping the attachment
+      when the loaded world block at `entity.blockPosition()` has the same
+      block-state id. Missing chunks keep rendering the falling block, matching
+      the client-side no-block-data case. Renderer-owned placement uses the
+      entity dispatch position followed by `translate(-0.5, 0, -0.5)`. More exact
+      `MovingBlockRenderState` biome/cardinal/random-seed details remain later
+      visual parity work.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -6186,12 +6197,12 @@ When an agent does any of the following, update this file in the same slice:
       named placeholder bounds for remaining entity types
     - simple non-display placeholder bounds are no longer guessed `todo_*`
       model keys when vanilla `EntityType.sized(width, height)` gives the exact
-      box: dragon fireball (1.0), experience orb (0.5), falling block (0.98),
-      and firework rocket/fishing bobber/item/ominous item spawner (0.25)
-      now use source-verified `*_entity_type_bounds` keys. The actual
-      dedicated renderers remain deferred presentation work: dragon-fireball /
-      fishing-hook / experience-orb textured camera quads, falling-block
-      block-model submission, firework and ominous-spawner item model clusters,
+      box: dragon fireball (1.0), experience orb (0.5), and firework
+      rocket/fishing bobber/item/ominous item spawner (0.25) now use
+      source-verified `*_entity_type_bounds` keys. The actual dedicated
+      renderers remain deferred presentation work: dragon-fireball /
+      fishing-hook / experience-orb textured camera quads, firework and
+      ominous-spawner item model clusters,
       and their renderer-specific lighting/tint/line behavior.
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,

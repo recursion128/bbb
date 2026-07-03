@@ -6893,12 +6893,6 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             0.5,
         ),
         (
-            VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-            "falling_block_entity_type_bounds",
-            0.98,
-            0.98,
-        ),
-        (
             VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
             "firework_rocket_entity_type_bounds",
             0.25,
@@ -6941,6 +6935,14 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
 fn primed_tnt_uses_block_attachment_renderer_not_placeholder_bounds() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_TNT_ID, &[]),
+        EntityModelKind::NoRender
+    );
+}
+
+#[test]
+fn falling_block_uses_block_attachment_renderer_not_placeholder_bounds() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, &[]),
         EntityModelKind::NoRender
     );
 }

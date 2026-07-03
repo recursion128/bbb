@@ -387,6 +387,12 @@ pub struct EntityBlockModelState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FallingBlockModelState {
+    pub block_state_id: i32,
+    pub block: EntityBlockModelState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MinecartDisplayBlockState {
     pub block: EntityBlockModelState,
     pub display_offset: i32,
@@ -2151,6 +2157,11 @@ impl WorldStore {
     ) -> Option<MinecartDisplayBlockState> {
         self.entities
             .minecart_display_block_state(entity_id, &self.registries)
+    }
+
+    pub fn falling_block_state(&self, entity_id: i32) -> Option<FallingBlockModelState> {
+        self.entities
+            .falling_block_state(entity_id, &self.registries)
     }
 
     pub fn primed_tnt_block_state(&self, entity_id: i32) -> Option<EntityBlockModelState> {

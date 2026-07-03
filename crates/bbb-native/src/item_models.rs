@@ -19,15 +19,16 @@ use bbb_renderer::{
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
     custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
-    fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
-    minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
-    panda_held_item_transform, primed_tnt_block_transform, snow_golem_head_block_transform,
-    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
-    EntityModelKind, HumanoidModelFamily, IllagerModelFamily, ItemModelFoil, ItemModelMesh,
-    ItemModelMeshSet, ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
-    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    falling_block_transform, fox_held_item_transform, humanoid_hand_attach_transforms,
+    iron_golem_flower_block_transform, minecart_tnt_display_block_transform,
+    mooshroom_mushroom_block_transforms, panda_held_item_transform, primed_tnt_block_transform,
+    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
+    witch_held_item_transform, EntityModelInstance, EntityModelKind, HumanoidModelFamily,
+    IllagerModelFamily, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
-use bbb_world::{TerrainLight, WorldStore};
+use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::terrain_runtime::TerrainTextureState;
@@ -103,6 +104,25 @@ fn primed_tnt_block_overlay(fuse_remaining_in_ticks: f32) -> [f32; 2] {
         [15.0, 10.0]
     } else {
         ITEM_MODEL_NO_OVERLAY
+    }
+}
+
+fn falling_block_should_render(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    block_state_id: i32,
+) -> bool {
+    match world.probe_block(falling_block_block_pos(instance)) {
+        Some(block) => block.block_state_id != block_state_id,
+        None => true,
+    }
+}
+
+fn falling_block_block_pos(instance: &EntityModelInstance) -> BlockPos {
+    BlockPos {
+        x: instance.position[0].floor() as i32,
+        y: instance.position[1].floor() as i32,
+        z: instance.position[2].floor() as i32,
     }
 }
 
@@ -215,6 +235,20 @@ fn entity_block_attachments(
                     overlay: primed_tnt_block_overlay(fuse),
                     outline_only: entity_block_attachment_outline_only(instance),
                 });
+            }
+        }
+        if let Some(falling) = world.falling_block_state(instance.entity_id) {
+            if falling_block_should_render(instance, world, falling.block_state_id) {
+                if let Some(transform) = falling_block_transform(instance) {
+                    attachments.push(EntityBlockAttachment {
+                        block_id: Cow::Owned(falling.block.name),
+                        properties: falling.block.properties,
+                        transform,
+                        light: entity_render_state_shader_light(instance),
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        outline_only: false,
+                    });
+                }
             }
         }
         if let Some((variant, transforms)) = mooshroom_mushroom_block_transforms(instance) {
@@ -1771,8 +1805,13 @@ impl LegacyRandom {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary, EntityDataValue,
-        EntityDataValueKind, EquipmentSlotUpdate, PlayLogin, SetEntityData, SetEquipment, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
+        DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EquipmentSlotUpdate,
+        PlayLogin, SetEntityData, SetEquipment, Vec3d,
+    };
+    use bbb_world::{
+        ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension,
     };
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1781,6 +1820,7 @@ mod tests {
     const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
     const BLOCK_STATE_SERIALIZER_ID: i32 = 14;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
+    const AIR_BLOCK_STATE_ID: i32 = 0;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
 
     fn unit_block_quads() -> Vec<ItemModelQuad> {
@@ -1943,6 +1983,68 @@ mod tests {
             values,
         }));
         world
+    }
+
+    fn world_with_falling_block(
+        entity_id: i32,
+        block_state_id: i32,
+        position: [f64; 3],
+    ) -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        let mut add = protocol_add_entity(entity_id, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID);
+        add.data = block_state_id;
+        add.position = Vec3d {
+            x: position[0],
+            y: position[1],
+            z: position[2],
+        };
+        world.apply_add_entity(add);
+        world
+    }
+
+    fn insert_entity_block_test_chunk(world: &mut WorldStore) {
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+    }
+
+    fn single_value_container(
+        domain: PaletteDomain,
+        entry_count: usize,
+        global_id: i32,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
+    }
+
+    fn set_entity_block_test_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        }));
     }
 
     #[test]
@@ -2178,6 +2280,63 @@ mod tests {
             BTreeMap::from([("unstable".to_string(), "false".to_string())])
         );
         assert_eq!(default_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
+    }
+
+    #[test]
+    fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
+        let entity_id = 135;
+        let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+        let mut world = world_with_falling_block(entity_id, GRASS_BLOCK_STATE_ID, [1.5, 4.0, 2.5]);
+        let light_coords = (7_u32 << 4) | (11_u32 << 20);
+        let falling = EntityModelInstance::no_render(entity_id, [1.5, 4.0, 2.5], 90.0)
+            .with_light_coords(light_coords);
+
+        let attachments = entity_block_attachments(&[falling], &world, None, 1.0);
+
+        assert_eq!(attachments.len(), 1);
+        assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
+        assert_eq!(attachments[0].properties, grass_props);
+        assert_eq!(attachments[0].light, [7.0 / 15.0, 11.0 / 15.0]);
+        assert_eq!(attachments[0].overlay, ITEM_MODEL_NO_OVERLAY);
+        assert_eq!(
+            attachments[0].transform,
+            falling_block_transform(&falling).unwrap()
+        );
+        assert!(!attachments[0].outline_only);
+
+        let hidden_outline = falling.with_invisible(true).with_appears_glowing(true);
+        let hidden_attachments = entity_block_attachments(&[hidden_outline], &world, None, 1.0);
+        assert_eq!(hidden_attachments.len(), 1);
+        assert!(
+            !hidden_attachments[0].outline_only,
+            "vanilla FallingBlockRenderer.submit does not gate the body on isInvisible"
+        );
+
+        assert!(falling_block_should_render(
+            &falling,
+            &world,
+            GRASS_BLOCK_STATE_ID
+        ));
+        insert_entity_block_test_chunk(&mut world);
+        let feet = BlockPos { x: 1, y: 4, z: 2 };
+        set_entity_block_test_block(&mut world, feet, GRASS_BLOCK_STATE_ID);
+        assert!(!falling_block_should_render(
+            &falling,
+            &world,
+            GRASS_BLOCK_STATE_ID
+        ));
+        assert!(entity_block_attachments(&[falling], &world, None, 1.0).is_empty());
+
+        set_entity_block_test_block(&mut world, feet, AIR_BLOCK_STATE_ID);
+        assert!(falling_block_should_render(
+            &falling,
+            &world,
+            GRASS_BLOCK_STATE_ID
+        ));
+        assert_eq!(
+            entity_block_attachments(&[falling], &world, None, 1.0).len(),
+            1
+        );
     }
 
     #[test]

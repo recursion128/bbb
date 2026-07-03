@@ -1381,6 +1381,54 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 }
 
 #[test]
+fn falling_block_state_projects_add_entity_block_state_data() {
+    let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+    let grass_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:grass_block", &grass_props)
+        .expect("vanilla 26.1 grass block state exists")
+        .id;
+    let air_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:air", &BTreeMap::new())
+        .expect("vanilla 26.1 air block state exists")
+        .id;
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        131,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        grass_id,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        132,
+        VANILLA_ENTITY_TYPE_COW_ID,
+        grass_id,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        133,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        air_id,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        134,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        -1,
+    ));
+
+    assert_eq!(
+        store.falling_block_state(131),
+        Some(FallingBlockModelState {
+            block_state_id: grass_id,
+            block: EntityBlockModelState {
+                name: "minecraft:grass_block".to_string(),
+                properties: grass_props,
+            },
+        })
+    );
+    assert_eq!(store.falling_block_state(132), None);
+    assert_eq!(store.falling_block_state(133), None);
+    assert_eq!(store.falling_block_state(134), None);
+}
+
+#[test]
 fn primed_tnt_projects_block_state_and_fuse_metadata() {
     const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
     const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;

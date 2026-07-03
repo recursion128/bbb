@@ -18,19 +18,20 @@ use super::{
     EntityBlockModelState, EntityCameraPoseState, EntityClientAnimations, EntityDamage,
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
-    EntityTransform, EntityTransformState, EntityTransientEvents, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState, WolfArmorCrackiness,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
+    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
@@ -802,6 +803,28 @@ impl EntityStore {
         Some(MinecartDisplayBlockState {
             block,
             display_offset,
+        })
+    }
+
+    pub(crate) fn falling_block_state(
+        &self,
+        id: i32,
+        registries: &RegistrySet,
+    ) -> Option<FallingBlockModelState> {
+        let identity = self.identity(id)?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID {
+            return None;
+        }
+        let state = registries.block_state(identity.data)?;
+        if state.name == "minecraft:air" {
+            return None;
+        }
+        Some(FallingBlockModelState {
+            block_state_id: identity.data,
+            block: EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            },
         })
     }
 

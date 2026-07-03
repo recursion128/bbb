@@ -94,6 +94,21 @@ pub fn iron_golem_flower_block_transform(instance: &EntityModelInstance) -> Opti
     )
 }
 
+/// World transform for vanilla `FallingBlockRenderer.submit`.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla entity dispatch
+/// has already translated to the falling block entity position; the renderer then translates the block
+/// model by `(-0.5, 0, -0.5)` before submitting `MovingBlockRenderState`.
+pub fn falling_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::NoRender) {
+        return None;
+    }
+    Some(
+        Mat4::from_translation(Vec3::from_array(instance.position))
+            * Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5)),
+    )
+}
+
 /// World transforms for vanilla `MushroomCowMushroomLayer`'s three mushroom block models.
 ///
 /// The returned matrices expect block quads normalized to the `0..1` unit cube. The first two
@@ -401,6 +416,29 @@ mod tests {
             entity_model_root_transform(walking) * flower_from_arm,
             "held poppy uses the same renderer root wobble as the golem body"
         );
+    }
+
+    #[test]
+    fn falling_block_transform_matches_submit_translation_and_ignores_visibility() {
+        let falling = EntityModelInstance::no_render(51, [1.25, 64.0, -2.75], 0.0);
+        let expected = Mat4::from_translation(Vec3::new(1.25, 64.0, -2.75))
+            * Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5));
+
+        assert_close_transform(falling_block_transform(&falling).unwrap(), expected);
+        assert_close_transform(
+            falling_block_transform(&falling.with_invisible(true)).unwrap(),
+            expected,
+        );
+        assert_close_transform(
+            falling_block_transform(&falling.with_appears_glowing(true)).unwrap(),
+            expected,
+        );
+        let turned = EntityModelInstance::no_render(51, [1.25, 64.0, -2.75], 90.0);
+        assert_close_transform(falling_block_transform(&turned).unwrap(), expected);
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [1.25, 64.0, -2.75], 0.0);
+        assert!(falling_block_transform(&creeper).is_none());
     }
 
     #[test]

@@ -273,9 +273,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         // The eye of ender also renders as an item sprite via the billboard layer (see above).
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
-            entity_type_bounds_placeholder("falling_block_entity_type_bounds", 0.98, 0.98)
-        }
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => EntityModelKind::NoRender,
         // The large fireball also renders as a (3× scaled) item sprite via the billboard layer.
         VANILLA_ENTITY_TYPE_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
