@@ -410,6 +410,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     构造时立即 tick、总计 30 tick，每 tick 做 16 次单位球采样，并按实体当前
     AABB width/height 在实体周围生成 `minecraft:totem_of_undying` 粒子，使用
     velocity `(xa, ya + 0.2, za)` 与 delay `0..29` 提交给 renderer；
+    `ClientboundAnimate` 动作 `4`/`5` 现在按 vanilla
+    `ClientPacketListener.handleAnimate` 生成 crit / enchanted-hit
+    `TrackingEmitter`，默认 3 tick，每 tick 16 次单位球采样，并复用实体当前
+    AABB width/height；
     同一 event `35` 现在还按 vanilla `SoundEvents.TOTEM_USE` 在实体当前位置
     播放 `minecraft:item.totem.use` 本地位置声效，source 来自当前实体的
     `getSoundSource()` 映射（player/hostile/default neutral 等）；
@@ -435,9 +439,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:smoke`，速度为 0；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
-    totem event-35 TrackingEmitter、vibration entity target refresh、
-    DragonBreath hit-ground motion 与 SuspendedTown collision-free move、Crit
-    constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
+    totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
+    vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
+    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /

@@ -47,6 +47,10 @@ const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
+const CRITICAL_HIT_ANIMATION_ACTION: u8 = 4;
+const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
+const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
+const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 
 /// Growth level-event particle spawn mode; only the random-consumption shape
 /// matters for callers without a particle sink.
@@ -54,6 +58,13 @@ const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 pub enum LevelEventGrowthRandomMode {
     InBlock,
     WideNoFloating,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityTrackingEmitterParticleKind {
+    Crit,
+    EnchantedHit,
+    TotemOfUndying,
 }
 
 /// Runtime side effects of applying a play packet.
@@ -78,7 +89,14 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
-    fn totem_tracking_emitter_particles(&mut self, _world: &WorldStore, _entity_id: i32) {}
+    fn tracking_emitter_particles(
+        &mut self,
+        _world: &WorldStore,
+        _entity_id: i32,
+        _kind: EntityTrackingEmitterParticleKind,
+        _lifetime_ticks: u32,
+    ) {
+    }
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
     /// deterministic random stream in the sink's place.
@@ -116,6 +134,20 @@ pub struct NoPlayApplyEffects;
 
 impl PlayApplyEffects for NoPlayApplyEffects {}
 
+fn tracking_emitter_for_entity_animation(action: u8) -> Option<EntityTrackingEmitterParticleKind> {
+    match action {
+        // Vanilla `ClientPacketListener.handleAnimate`: action 4 calls
+        // `createTrackingEmitter(entity, ParticleTypes.CRIT)`.
+        CRITICAL_HIT_ANIMATION_ACTION => Some(EntityTrackingEmitterParticleKind::Crit),
+        // Vanilla action 5 calls
+        // `createTrackingEmitter(entity, ParticleTypes.ENCHANTED_HIT)`.
+        MAGIC_CRITICAL_HIT_ANIMATION_ACTION => {
+            Some(EntityTrackingEmitterParticleKind::EnchantedHit)
+        }
+        _ => None,
+    }
+}
+
 impl WorldStore {
     /// Applies a clientbound play packet's canonical world mutation.
     ///
@@ -137,7 +169,16 @@ impl WorldStore {
                 self.apply_add_entity(entity);
             }
             PlayClientbound::EntityAnimation(update) => {
-                self.apply_entity_animation(update);
+                let tracking_emitter = tracking_emitter_for_entity_animation(update.action);
+                let applied = self.apply_entity_animation(update);
+                if let (true, Some(kind)) = (applied, tracking_emitter) {
+                    effects.tracking_emitter_particles(
+                        self,
+                        update.id,
+                        kind,
+                        TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS,
+                    );
+                }
             }
             PlayClientbound::AwardStats(update) => {
                 self.apply_award_stats(update);
@@ -276,7 +317,12 @@ impl WorldStore {
                     effects.firework_empty_explosion_particles(self, position);
                 }
                 if applied && update.event_id == 35 {
-                    effects.totem_tracking_emitter_particles(self, update.entity_id);
+                    effects.tracking_emitter_particles(
+                        self,
+                        update.entity_id,
+                        EntityTrackingEmitterParticleKind::TotemOfUndying,
+                        TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
+                    );
                     if let Some(state) = self.totem_use_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
@@ -1156,19 +1202,31 @@ mod tests {
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityEvent, LevelEvent, PlayTime, SoundEvent,
-        SoundEventHolder, SoundSource, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, LevelEvent,
+        PlayTime, SoundEvent, SoundEventHolder, SoundSource, Vec3d,
     };
     use uuid::Uuid;
 
     #[derive(Default)]
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
+        tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
 
     impl PlayApplyEffects for RecordingEffects {
         fn positioned_sound(&mut self, state: &SoundEventState) {
             self.positioned_sounds.push(state.clone());
+        }
+
+        fn tracking_emitter_particles(
+            &mut self,
+            _world: &WorldStore,
+            entity_id: i32,
+            kind: EntityTrackingEmitterParticleKind,
+            lifetime_ticks: u32,
+        ) {
+            self.tracking_emitters
+                .push((entity_id, kind, lifetime_ticks));
         }
     }
 
@@ -1295,6 +1353,50 @@ mod tests {
     }
 
     #[test]
+    fn entity_animation_forwards_crit_tracking_emitters() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                10,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+            )),
+            PlayClientbound::EntityAnimation(EntityAnimation { id: 10, action: 4 }),
+            PlayClientbound::EntityAnimation(EntityAnimation { id: 10, action: 5 }),
+            PlayClientbound::EntityAnimation(EntityAnimation { id: 10, action: 0 }),
+            PlayClientbound::EntityAnimation(EntityAnimation { id: 404, action: 4 }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(
+            effects.tracking_emitters,
+            vec![
+                (
+                    10,
+                    EntityTrackingEmitterParticleKind::Crit,
+                    TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS,
+                ),
+                (
+                    10,
+                    EntityTrackingEmitterParticleKind::EnchantedHit,
+                    TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS,
+                ),
+            ]
+        );
+        assert_eq!(store.counters().entity_animation_updates_applied, 3);
+        assert_eq!(store.counters().entity_animation_updates_ignored, 1);
+    }
+
+    #[test]
     fn totem_entity_event_forwards_positioned_use_sound_with_entity_source() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
@@ -1363,6 +1465,21 @@ mod tests {
         assert_eq!(effects.positioned_sounds[0].pitch, 1.0);
         assert_eq!(effects.positioned_sounds[0].seed, 0);
         assert_eq!(effects.positioned_sounds[0].distance_delay, false);
+        assert_eq!(
+            effects.tracking_emitters,
+            vec![
+                (
+                    10,
+                    EntityTrackingEmitterParticleKind::TotemOfUndying,
+                    TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
+                ),
+                (
+                    11,
+                    EntityTrackingEmitterParticleKind::TotemOfUndying,
+                    TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
+                ),
+            ]
+        );
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);

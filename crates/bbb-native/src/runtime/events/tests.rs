@@ -2056,6 +2056,65 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
 }
 
 #[test]
+fn entity_animation_emits_crit_tracking_emitter_particles() {
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(123, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 123, action: 4 },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 123, action: 5 },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityAnimation(
+        EntityAnimation { id: 999, action: 4 },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert_eq!(particles.tracking_emitter_states.len(), 2);
+    assert_eq!(
+        particles.tracking_emitter_states[0].particle_type_id,
+        crate::particle_runtime::CRIT_PARTICLE_TYPE_ID
+    );
+    assert_eq!(
+        particles.tracking_emitter_states[1].particle_type_id,
+        crate::particle_runtime::ENCHANTED_HIT_PARTICLE_TYPE_ID
+    );
+    for state in &particles.tracking_emitter_states {
+        assert_eq!(state.position, [1.0, 64.0, -2.0]);
+        assert_close(state.width, 0.6);
+        assert_close(state.height, 1.95);
+        assert_eq!(state.lifetime_ticks, 3);
+    }
+    assert_eq!(world.counters().entity_animation_updates_applied, 2);
+    assert_eq!(world.counters().entity_animation_updates_ignored, 1);
+}
+
+#[test]
 fn entity_events_materialize_ender_dragon_part_pick_targets() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 

@@ -5,8 +5,8 @@ pub use crate::maps::*;
 pub use crate::play_apply::{
     advance_dragon_fireball_explode_level_event_particle_randoms,
     advance_growth_level_event_particle_randoms, advance_potion_break_level_event_particle_randoms,
-    advance_wax_on_level_event_particle_randoms, LevelEventGrowthRandomMode, NoPlayApplyEffects,
-    PlayApplyEffects,
+    advance_wax_on_level_event_particle_randoms, EntityTrackingEmitterParticleKind,
+    LevelEventGrowthRandomMode, NoPlayApplyEffects, PlayApplyEffects,
 };
 pub use crate::recipe_book::*;
 pub use crate::recipes::*;

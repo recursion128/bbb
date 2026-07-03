@@ -2753,6 +2753,17 @@
     post-decrement fuse gate, spawn position, zero velocity, and particle-tick
     ordering. Full local TNT physics/fuse simulation remains broader entity
     parity work.
+  - [x] Animate crit TrackingEmitter particles：local vanilla 26.1
+    `ClientboundAnimatePacket` defines action `4` as `CRITICAL_HIT` and action
+    `5` as `MAGIC_CRITICAL_HIT`; `ClientPacketListener.handleAnimate` maps
+    them to `ParticleEngine.createTrackingEmitter(entity, ParticleTypes.CRIT)`
+    and `ParticleTypes.ENCHANTED_HIT`. The default `TrackingEmitter`
+    constructor uses lifetime `3`, and each tick performs 16 unit-sphere
+    samples around the entity's current AABB width/height. `WorldStore` now
+    forwards applied animate actions `4`/`5` as semantic tracking-emitter side
+    effects, and native maps them to `minecraft:crit` / `minecraft:enchanted_hit`
+    delayed batches. Tests cover world forwarding, missing-entity gating, native
+    particle ids, entity bounds, and the 3-tick lifetime.
 
 ## P2：Terrain / Block Render Presentation
 

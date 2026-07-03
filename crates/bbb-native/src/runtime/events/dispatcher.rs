@@ -4,8 +4,8 @@ use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{
-    BlockPos as WorldBlockPos, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
-    PlayApplyEffects, TerrainFluidKind, WorldStore,
+    BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind, LevelEventGrowthRandomMode,
+    LevelEventSoundRandomState, PlayApplyEffects, TerrainFluidKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -15,8 +15,8 @@ use crate::particle_runtime::{
     vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
-    ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
-    TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+    ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState, CRIT_PARTICLE_TYPE_ID,
+    ENCHANTED_HIT_PARTICLE_TYPE_ID, TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
 };
 
 use super::control_state::apply_control_projection_event;
@@ -30,7 +30,6 @@ const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
-const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -279,12 +278,20 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
-    fn totem_tracking_emitter_particles(&mut self, world: &WorldStore, entity_id: i32) {
-        emit_totem_tracking_emitter_particles(
+    fn tracking_emitter_particles(
+        &mut self,
+        world: &WorldStore,
+        entity_id: i32,
+        kind: EntityTrackingEmitterParticleKind,
+        lifetime_ticks: u32,
+    ) {
+        emit_tracking_emitter_particles(
             self.particle_events,
             self.particle_renderer,
             world,
             entity_id,
+            kind,
+            lifetime_ticks,
         );
     }
 
@@ -439,11 +446,13 @@ fn emit_firework_empty_explosion_particles(
     }
 }
 
-fn emit_totem_tracking_emitter_particles(
+fn emit_tracking_emitter_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
     particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
     world: &WorldStore,
     entity_id: i32,
+    kind: EntityTrackingEmitterParticleKind,
+    lifetime_ticks: u32,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
@@ -454,8 +463,13 @@ fn emit_totem_tracking_emitter_particles(
     let Some(bounds) = world.probe_entity_pick_bounds(entity_id) else {
         return;
     };
+    let particle_type_id = match kind {
+        EntityTrackingEmitterParticleKind::Crit => CRIT_PARTICLE_TYPE_ID,
+        EntityTrackingEmitterParticleKind::EnchantedHit => ENCHANTED_HIT_PARTICLE_TYPE_ID,
+        EntityTrackingEmitterParticleKind::TotemOfUndying => TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+    };
     let state = TrackingEmitterParticleState {
-        particle_type_id: TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+        particle_type_id,
         position: [
             transform.position.x,
             transform.position.y,
@@ -463,7 +477,7 @@ fn emit_totem_tracking_emitter_particles(
         ],
         width: bounds.max[0] - bounds.min[0],
         height: bounds.max[1] - bounds.min[1],
-        lifetime_ticks: TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
+        lifetime_ticks,
     };
     let batch = particle_events.spawn_tracking_emitter_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
