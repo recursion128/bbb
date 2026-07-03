@@ -98,11 +98,23 @@ pub enum ParticleFluidKind {
     Lava,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleBlockFluidSurfaceSample {
     pub block_collision_height: f64,
     pub fluid_height: f64,
     pub fluid_kind: Option<ParticleFluidKind>,
+    pub block_is_air: bool,
+}
+
+impl Default for ParticleBlockFluidSurfaceSample {
+    fn default() -> Self {
+        Self {
+            block_collision_height: 0.0,
+            fluid_height: 0.0,
+            fluid_kind: None,
+            block_is_air: true,
+        }
+    }
 }
 
 impl ParticleBlockFluidSurfaceSample {
@@ -1298,13 +1310,24 @@ impl ParticleInstance {
             ParticleTickMotionDescriptor::Firefly => {
                 let next_age = self.age_ticks.saturating_add(1);
                 self.velocity[1] -= 0.04 * f64::from(self.gravity);
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                let previous_y = self.position[1];
+                self.move_particle(self.velocity, collide);
+                if self.speed_up_when_y_motion_is_blocked && self.position[1] == previous_y {
+                    self.velocity[0] *= 1.1;
+                    self.velocity[2] *= 1.1;
+                }
                 let friction = f64::from(self.friction);
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
+                if self.on_ground {
+                    self.velocity[0] *= 0.7;
+                    self.velocity[2] *= 0.7;
+                }
+                self.remove_if_inside_non_air_block(block_fluid_surface);
+                if self.removed {
+                    return;
+                }
 
                 if random.next_f32() > 0.95 || next_age == 1 {
                     self.velocity = [
@@ -1364,6 +1387,18 @@ impl ParticleInstance {
             position: self.position,
         });
         if surface.fluid_kind != Some(required_fluid) {
+            self.removed = true;
+        }
+    }
+
+    fn remove_if_inside_non_air_block<S>(&mut self, block_fluid_surface: &mut S)
+    where
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let surface = block_fluid_surface(ParticleBlockFluidSurfaceQuery {
+            position: self.position,
+        });
+        if !surface.block_is_air {
             self.removed = true;
         }
     }
@@ -2905,6 +2940,7 @@ mod tests {
                     block_collision_height: 0.5,
                     fluid_height: 0.0,
                     fluid_kind: None,
+                    block_is_air: false,
                 }
             },
         );
@@ -3047,6 +3083,7 @@ mod tests {
                 block_collision_height: 0.0,
                 fluid_height: 8.0 / 9.0,
                 fluid_kind: Some(ParticleFluidKind::Water),
+                block_is_air: false,
             },
         );
 
@@ -3071,6 +3108,7 @@ mod tests {
                 block_collision_height: 0.0,
                 fluid_height: 8.0 / 9.0,
                 fluid_kind: Some(ParticleFluidKind::Lava),
+                block_is_air: false,
             },
         );
 
@@ -3095,6 +3133,7 @@ mod tests {
                 block_collision_height: 0.0,
                 fluid_height: 8.0 / 9.0,
                 fluid_kind: Some(ParticleFluidKind::Lava),
+                block_is_air: false,
             },
         );
 
@@ -3119,6 +3158,7 @@ mod tests {
                 block_collision_height: 0.0,
                 fluid_height: 8.0 / 9.0,
                 fluid_kind: Some(ParticleFluidKind::Water),
+                block_is_air: false,
             },
         );
 
@@ -3463,6 +3503,61 @@ mod tests {
         assert_range_f64(instance.velocity[1], -0.05, 0.05);
         assert_range_f64(instance.velocity[2], -0.05, 0.05);
         assert_close_f32(instance.color[3], firefly_fade_amount(0.01, 0.3, 0.5));
+    }
+
+    #[test]
+    fn particle_runtime_firefly_removes_inside_non_air_block() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:firefly", 100);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |query| {
+                assert_close3(query.position, [1.0, 2.0, 3.0]);
+                ParticleBlockFluidSurfaceSample {
+                    block_is_air: false,
+                    ..ParticleBlockFluidSurfaceSample::default()
+                }
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+    }
+
+    #[test]
+    fn particle_runtime_firefly_uses_collision_backed_default_move() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:firefly", 100);
+        instance.age_ticks = 1;
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        instance.friction = 0.5;
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| {
+                let mut movement = query.movement;
+                movement[1] = 0.0;
+                movement
+            },
+            |_query| ParticleBlockFluidSurfaceSample::default(),
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(instance.on_ground);
+        assert!(instance.stopped_by_collision);
+        assert_close3(instance.position, [1.2, 2.0, 2.4]);
+        assert_close3(instance.velocity, [0.077, -0.2, -0.231]);
     }
 
     #[test]
@@ -7872,6 +7967,7 @@ mod tests {
             block_collision_height: 0.0,
             fluid_height: 8.0 / 9.0,
             fluid_kind: Some(ParticleFluidKind::Water),
+            block_is_air: false,
         }
     }
 

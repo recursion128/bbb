@@ -876,8 +876,9 @@ When an agent does any of the following, update this file in the same slice:
         `yAux`) through the vanilla `Particle` constructor followed by `*0.8`,
         `0.75 * scale(1.5)` quad-size path, first-tick / 5% random speed
         reroll, alpha fade (`0.3` / `0.5`) and direct smooth block-light fade
-        (`0.1` / `0.3`). The in-block removal gate remains deferred until
-        particle ticking can query world block state.
+        (`0.1` / `0.3`). Runtime ticks now use the collision-backed vanilla
+        `super.tick()` move path and remove when the post-move world block
+        sample is not air.
         `cherry_leaves`, `pale_oak_leaves`, and `tinted_leaves` now map to
         `FallingLeavesParticle.CherryProvider` / `PaleOakProvider` /
         `TintedLeavesProvider` with random sprites, fixed `300` lifetime,

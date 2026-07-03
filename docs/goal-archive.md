@@ -2389,6 +2389,11 @@
     removes on `onGround`, removes when X or Z velocity is zeroed by collision
     after the first tick (`lifetime < 299`), and keeps the first-tick
     horizontal-block grace.
+  - [x] Firefly in-block removal：particle world samples now expose whether the
+    containing block state is air; `FireflyParticle` runtime ticks use the
+    collision-backed vanilla `super.tick()` move path and then remove when the
+    post-move block sample is non-air, while retaining the existing alpha fade
+    and first-tick / 5% random speed reroll for air samples.
 
 ## P2：Terrain / Block Render Presentation
 

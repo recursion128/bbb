@@ -1699,6 +1699,7 @@ fn renderer_particle_block_fluid_surface_sample(
             TerrainFluidKind::Water => ParticleFluidKind::Water,
             TerrainFluidKind::Lava => ParticleFluidKind::Lava,
         }),
+        block_is_air: sample.block_is_air,
     }
 }
 
