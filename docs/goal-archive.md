@@ -1211,6 +1211,22 @@
     vanilla draw transform, and hides the other hand while using bow/crossbow
     items. Tests cover non-skipped idle/using rendering, used-hand selection,
     mesh movement, override precedence, and exact matrix order/formula.
+  - [x] first-person crossbow CROSSBOW use/hold pose：local vanilla 26.1
+    `CrossbowItem.getUseAnimation` returns `ItemUseAnimation.CROSSBOW`,
+    `CrossbowItem.getUseDuration` returns `72000`, and base
+    `CrossbowItem.getChargeDuration` is 25 ticks. `ItemInHandRenderer` has a
+    dedicated crossbow branch: uncharged use applies the draw translate /
+    X-Y-Z rotations, charge shake, Z scale, and `Axis.YN` 45 degree rotation;
+    charged idle main-hand crossbows add the `-0.641864` X hold offset and
+    10 degree Y rotation when attack is idle. Native now allows
+    `minecraft:crossbow` through first-person item rendering, classifies
+    crossbow use before generic stack `CONSUMABLE` data, uses
+    `charged_projectiles_items` for charged detection, reuses the bow/crossbow
+    used-hand selection, and applies the vanilla uncharged draw / charged idle
+    transforms. Tests cover non-skipped idle/using rendering, used-hand
+    selection, charged hold movement, override precedence, and exact matrix
+    order/formula. Quick Charge-adjusted duration remains a narrower
+    enchantment-effect refinement.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

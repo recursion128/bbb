@@ -14,8 +14,8 @@ use std::{
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{
-    ConsumableSummary, EquipmentSlot, InteractionHand, ItemStackSummary, ItemUseAnimationSummary,
-    SwingAnimationTypeSummary,
+    ConsumableSummary, EquipmentSlot, InteractionHand, ItemStackSummary, ItemStackTemplateSummary,
+    ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
@@ -82,6 +82,10 @@ const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
 /// Vanilla `BowItem.getUseDuration`.
 const VANILLA_BOW_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla `CrossbowItem.getUseDuration`.
+const VANILLA_CROSSBOW_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla base `CrossbowItem.getChargeDuration`: 1.25 seconds * 20 TPS.
+const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 /// Vanilla `TridentItem.getUseDuration`.
 const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
 
@@ -1144,6 +1148,28 @@ pub(crate) fn first_person_item_models(
                         partial_ticks,
                     );
                 }
+                FirstPersonUseAnimation::Crossbow {
+                    use_duration_ticks,
+                    charge_duration_ticks,
+                } => {
+                    if first_person_stack_is_charged_crossbow(stack, item_runtime) {
+                        attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                        if hand == InteractionHand::MainHand && attack < 0.001 {
+                            attach = first_person_apply_charged_crossbow_idle_transform(
+                                attach, arm_left,
+                            );
+                        }
+                    } else {
+                        attach = first_person_apply_crossbow_use_transform(
+                            attach,
+                            arm_left,
+                            use_duration_ticks,
+                            charge_duration_ticks,
+                            world.local_player().interaction.using_item_ticks as f32,
+                            partial_ticks,
+                        );
+                    }
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1154,6 +1180,12 @@ pub(crate) fn first_person_item_models(
                 FirstPersonSwingAnimation::Stab => {
                     attach = first_person_apply_stab_swing(attach, arm_left, attack);
                 }
+            }
+            if first_person_stack_is_charged_crossbow(stack, item_runtime)
+                && hand == InteractionHand::MainHand
+                && attack < 0.001
+            {
+                attach = first_person_apply_charged_crossbow_idle_transform(attach, arm_left);
             }
         }
         bake_item_stack_at_transform(
@@ -1203,12 +1235,24 @@ enum FirstPersonBlockUseKind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FirstPersonUseAnimation {
     None,
-    EatDrink { use_duration_ticks: f32 },
+    EatDrink {
+        use_duration_ticks: f32,
+    },
     Block(FirstPersonBlockUseKind),
-    Brush { use_duration_ticks: f32 },
+    Brush {
+        use_duration_ticks: f32,
+    },
     Bundle,
-    Trident { use_duration_ticks: f32 },
-    Bow { use_duration_ticks: f32 },
+    Trident {
+        use_duration_ticks: f32,
+    },
+    Bow {
+        use_duration_ticks: f32,
+    },
+    Crossbow {
+        use_duration_ticks: f32,
+        charge_duration_ticks: f32,
+    },
 }
 
 fn supported_first_person_item_stack(
@@ -1224,10 +1268,7 @@ fn supported_first_person_item_stack(
     let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
         return true;
     };
-    !matches!(
-        resource_id,
-        "minecraft:filled_map" | "minecraft:crossbow" | "minecraft:spyglass"
-    )
+    !matches!(resource_id, "minecraft:filled_map" | "minecraft:spyglass")
 }
 
 fn first_person_stack_block_use_kind(
@@ -1277,6 +1318,12 @@ fn first_person_stack_supported_use_animation(
                 use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
             });
         }
+        Some("minecraft:crossbow") => {
+            return Some(FirstPersonUseAnimation::Crossbow {
+                use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
+                charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
+            });
+        }
         _ => {}
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
@@ -1303,6 +1350,14 @@ fn first_person_stack_resource_id<'a>(
     stack
         .item_id
         .and_then(|item_id| item_runtime.item_resource_id(item_id))
+}
+
+fn first_person_stack_is_charged_crossbow(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
+    first_person_stack_resource_id(stack, item_runtime) == Some("minecraft:crossbow")
+        && !stack.component_patch.charged_projectiles_items.is_empty()
 }
 
 fn first_person_stack_consumable_summary(
@@ -1644,6 +1699,61 @@ fn first_person_bow_use_transform(
         * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
         * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
         * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+fn first_person_apply_crossbow_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    charge_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_crossbow_use_transform(
+            arm_left,
+            use_duration_ticks,
+            charge_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_crossbow_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    charge_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let mut power = time_held / charge_duration_ticks.max(1.0);
+    if power > 1.0 {
+        power = 1.0;
+    }
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.4785682, -0.094387, 0.05731531))
+        * Mat4::from_rotation_x((-11.935_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 65.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+fn first_person_apply_charged_crossbow_idle_transform(transform: Mat4, arm_left: bool) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    transform
+        * Mat4::from_translation(Vec3::new(invert * -0.641864, 0.0, 0.0))
+        * Mat4::from_rotation_y((invert * 10.0_f32).to_radians())
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -3663,7 +3773,7 @@ mod tests {
     #[test]
     fn first_person_item_models_skip_using_and_special_paths() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
-        write_flat_item_runtime_fixture(&root, &["hand_item", "crossbow"]);
+        write_flat_item_runtime_fixture(&root, &["hand_item", "spyglass"]);
         let item_runtime =
             NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
         let hand_item = ItemStackSummary {
@@ -3671,8 +3781,8 @@ mod tests {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
-        let crossbow = ItemStackSummary {
-            item_id: item_runtime.item_protocol_id("minecraft:crossbow"),
+        let spyglass = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:spyglass"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
@@ -3702,7 +3812,7 @@ mod tests {
         let mut special_world = WorldStore::new();
         special_world.apply_set_player_inventory(SetPlayerInventory {
             slot: 0,
-            item: crossbow,
+            item: spyglass,
         });
         assert!(first_person_item_models(
             &special_world,
@@ -4305,6 +4415,113 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
+        let root = unique_item_model_temp_dir("first-person-crossbow-use");
+        write_flat_item_runtime_fixture(&root, &["crossbow", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let crossbow = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:crossbow"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let off_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:off_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut edible_crossbow = crossbow.clone();
+        edible_crossbow.component_patch.added = 1;
+        edible_crossbow.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        edible_crossbow.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        assert_eq!(
+            first_person_stack_supported_use_animation(&edible_crossbow, &item_runtime),
+            Some(FirstPersonUseAnimation::Crossbow {
+                use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
+                charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
+            }),
+            "CrossbowItem.getUseAnimation overrides stack CONSUMABLE data"
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: crossbow.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut using_world = WorldStore::new();
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: crossbow.clone(),
+        });
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: off_item,
+        });
+        using_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        using_world.advance_local_using_item_ticks(12);
+        let using = first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(
+            using.flat_meshes.len(),
+            1,
+            "vanilla renders only the used hand while drawing a crossbow"
+        );
+        assert_ne!(
+            idle.flat_meshes[0], using.flat_meshes[0],
+            "uncharged CROSSBOW use applies ItemInHandRenderer's draw transform"
+        );
+
+        let mut charged_crossbow = crossbow;
+        charged_crossbow.component_patch.charged_projectiles_items =
+            vec![ItemStackTemplateSummary {
+                item_id: 99,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }];
+        let mut charged_world = WorldStore::new();
+        charged_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: charged_crossbow,
+        });
+        let charged = first_person_item_models(
+            &charged_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(charged.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], charged.flat_meshes[0],
+            "charged main-hand crossbows apply the vanilla idle hold offset"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -4615,6 +4832,39 @@ mod tests {
             * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
             * Mat4::from_rotation_y((-45.0_f32).to_radians());
         assert!(transformed.abs_diff_eq(expected, 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_crossbow_transforms_match_vanilla_draw_and_charged_hold() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let transformed = first_person_apply_crossbow_use_transform(
+            base,
+            false,
+            VANILLA_CROSSBOW_USE_DURATION_TICKS,
+            VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
+            12.0,
+            0.5,
+        );
+        let remaining_ticks = VANILLA_CROSSBOW_USE_DURATION_TICKS - 12.0;
+        let time_held = VANILLA_CROSSBOW_USE_DURATION_TICKS - (remaining_ticks - 0.5 + 1.0);
+        let power = time_held / VANILLA_CROSSBOW_CHARGE_DURATION_TICKS;
+        let shake = ((time_held - 0.1) * 1.3).sin() * (power - 0.1);
+        let expected_draw = base
+            * Mat4::from_translation(Vec3::new(-0.4785682, -0.094387, 0.05731531))
+            * Mat4::from_rotation_x((-11.935_f32).to_radians())
+            * Mat4::from_rotation_y(65.3_f32.to_radians())
+            * Mat4::from_rotation_z((-9.785_f32).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
+            * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+            * Mat4::from_rotation_y((-45.0_f32).to_radians());
+        assert!(transformed.abs_diff_eq(expected_draw, 1.0e-5));
+
+        let charged = first_person_apply_charged_crossbow_idle_transform(base, false);
+        let expected_charged = base
+            * Mat4::from_translation(Vec3::new(-0.641864, 0.0, 0.0))
+            * Mat4::from_rotation_y(10.0_f32.to_radians());
+        assert!(charged.abs_diff_eq(expected_charged, 1.0e-5));
     }
 
     #[test]
