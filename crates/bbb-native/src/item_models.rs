@@ -68,6 +68,14 @@ const BROWN_MUSHROOM_BLOCK_ID: &str = "minecraft:brown_mushroom";
 /// patches to remove prototype STAB/NONE data and fall back to
 /// `SwingAnimation.DEFAULT` (WHACK, 6 ticks).
 const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
+/// Vanilla `DataComponents.CONSUMABLE` network type id. `Item.getUseAnimation`
+/// checks this before `BLOCKS_ATTACKS`, so consumable stacks do not use the
+/// BLOCK first-person transform even when a patch also adds `blocks_attacks`.
+const VANILLA_CONSUMABLE_COMPONENT_ID: i32 = 24;
+/// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id. Non-consumable
+/// stacks carrying it use `ItemUseAnimation.BLOCK`; the vanilla shield has it as
+/// a prototype component.
+const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -1002,12 +1010,30 @@ pub(crate) fn first_person_item_models(
     if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
         return models;
     }
-    if world.local_player().interaction.using_item || local_player_is_scoping(world, item_runtime) {
+    if local_player_is_scoping(world, item_runtime) {
         return models;
     }
 
     let main_stack = world.local_item_in_hand(InteractionHand::MainHand);
     let off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let using_hand = world.local_player().interaction.using_item.then(|| {
+        world
+            .local_player()
+            .interaction
+            .using_item_hand
+            .unwrap_or(InteractionHand::MainHand)
+    });
+    if let Some(hand) = using_hand {
+        let stack = match hand {
+            InteractionHand::MainHand => main_stack,
+            InteractionHand::OffHand => off_stack,
+        };
+        if !stack
+            .is_some_and(|stack| first_person_stack_block_use_kind(stack, item_runtime).is_some())
+        {
+            return models;
+        }
+    }
     if [main_stack, off_stack]
         .into_iter()
         .flatten()
@@ -1045,13 +1071,23 @@ pub(crate) fn first_person_item_models(
             .map_or(0.0, |swing| swing.attack_anim);
         let mut attach =
             first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
-        match first_person_stack_swing_animation(stack, item_runtime) {
-            FirstPersonSwingAnimation::None => {}
-            FirstPersonSwingAnimation::Whack => {
-                attach = first_person_apply_whack_swing(attach, arm_left, attack);
+        let using_this_hand = using_hand == Some(hand);
+        if let Some(kind) = using_this_hand
+            .then(|| first_person_stack_block_use_kind(stack, item_runtime))
+            .flatten()
+        {
+            if kind == FirstPersonBlockUseKind::NonShieldBlock {
+                attach = first_person_apply_block_use_transform(attach, arm_left);
             }
-            FirstPersonSwingAnimation::Stab => {
-                attach = first_person_apply_stab_swing(attach, arm_left, attack);
+        } else {
+            match first_person_stack_swing_animation(stack, item_runtime) {
+                FirstPersonSwingAnimation::None => {}
+                FirstPersonSwingAnimation::Whack => {
+                    attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                }
+                FirstPersonSwingAnimation::Stab => {
+                    attach = first_person_apply_stab_swing(attach, arm_left, attack);
+                }
             }
         }
         bake_item_stack_at_transform(
@@ -1092,6 +1128,12 @@ enum FirstPersonSwingAnimation {
     Stab,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FirstPersonBlockUseKind {
+    Shield,
+    NonShieldBlock,
+}
+
 fn supported_first_person_item_stack(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
@@ -1111,12 +1153,44 @@ fn supported_first_person_item_stack(
             | "minecraft:bow"
             | "minecraft:crossbow"
             | "minecraft:spyglass"
-            | "minecraft:shield"
             | "minecraft:trident"
             | "minecraft:brush"
             | "minecraft:bundle"
             | "minecraft:goat_horn"
     )
+}
+
+fn first_person_stack_block_use_kind(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonBlockUseKind> {
+    let Some(item_id) = stack.item_id else {
+        return None;
+    };
+    if first_person_stack_has_added_component(stack, VANILLA_CONSUMABLE_COMPONENT_ID) {
+        return None;
+    }
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+    {
+        return None;
+    }
+    let is_shield = item_runtime.item_resource_id(item_id) == Some("minecraft:shield");
+    if is_shield {
+        return Some(FirstPersonBlockUseKind::Shield);
+    }
+    first_person_stack_has_added_component(stack, VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+        .then_some(FirstPersonBlockUseKind::NonShieldBlock)
+}
+
+fn first_person_stack_has_added_component(stack: &ItemStackSummary, component_id: i32) -> bool {
+    stack.component_patch.added_type_ids.contains(&component_id)
+        && !stack
+            .component_patch
+            .removed_type_ids
+            .contains(&component_id)
 }
 
 fn first_person_stack_swing_animation(
@@ -1228,6 +1302,15 @@ fn first_person_apply_stab_swing(transform: Mat4, arm_left: bool, attack: f32) -
         ))
         * Mat4::from_rotation_x((-70.0 * (starting_amount - ending_amount)).to_radians())
         * Mat4::from_translation(Vec3::new(0.0, 0.0, -0.25 * (ending_amount - middle_amount)))
+}
+
+fn first_person_apply_block_use_transform(transform: Mat4, arm_left: bool) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    transform
+        * Mat4::from_translation(Vec3::new(invert * -0.14142136, 0.08, 0.14142136))
+        * Mat4::from_rotation_x((-102.25_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 13.365_f32).to_radians())
+        * Mat4::from_rotation_z((invert * 78.05_f32).to_radians())
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -3298,6 +3381,110 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks() {
+        let root = unique_item_model_temp_dir("first-person-block-use");
+        write_flat_item_runtime_fixture(&root, &["shield", "guard_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut shield = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:shield"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        shield.component_patch.added = 1;
+        shield.component_patch.added_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+        shield.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::None,
+            duration: 0,
+        });
+        let mut guard_item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:guard_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        guard_item.component_patch.added = 1;
+        guard_item.component_patch.added_type_ids = vec![VANILLA_BLOCKS_ATTACKS_COMPONENT_ID];
+        let mut consumable_guard = guard_item.clone();
+        consumable_guard
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_CONSUMABLE_COMPONENT_ID);
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut shield_world = WorldStore::new();
+        shield_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: shield,
+        });
+        let idle_shield = first_person_item_models(
+            &shield_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(idle_shield.flat_meshes.len(), 1);
+        shield_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        let blocking_shield = first_person_item_models(
+            &shield_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(blocking_shield.flat_meshes.len(), 1);
+        assert_eq!(
+            idle_shield.flat_meshes[0], blocking_shield.flat_meshes[0],
+            "vanilla ShieldItem BLOCK use keeps only the base arm transform"
+        );
+
+        let mut idle_guard_world = WorldStore::new();
+        idle_guard_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: guard_item.clone(),
+        });
+        let idle_guard = first_person_item_models(
+            &idle_guard_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(idle_guard.flat_meshes.len(), 1);
+
+        let mut blocking_guard_world = WorldStore::new();
+        blocking_guard_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: guard_item,
+        });
+        blocking_guard_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        let blocking_guard = first_person_item_models(
+            &blocking_guard_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(blocking_guard.flat_meshes.len(), 1);
+        assert_ne!(
+            idle_guard.flat_meshes[0], blocking_guard.flat_meshes[0],
+            "non-shield BLOCK use applies ItemInHandRenderer's fixed BLOCK transform"
+        );
+
+        assert_eq!(
+            first_person_stack_block_use_kind(&consumable_guard, &item_runtime),
+            None,
+            "CONSUMABLE wins over BLOCKS_ATTACKS in Item.getUseAnimation"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -3476,6 +3663,29 @@ mod tests {
         assert!(
             (right_origin.x + left_origin.x).abs() < 1.0e-4,
             "STAB x translation mirrors between arms: {right_origin:?} vs {left_origin:?}"
+        );
+    }
+
+    #[test]
+    fn first_person_block_use_transform_matches_vanilla_non_shield_block_case() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let transformed = first_person_apply_block_use_transform(base, false);
+        let expected = base
+            * Mat4::from_translation(Vec3::new(-0.14142136, 0.08, 0.14142136))
+            * Mat4::from_rotation_x((-102.25_f32).to_radians())
+            * Mat4::from_rotation_y(13.365_f32.to_radians())
+            * Mat4::from_rotation_z(78.05_f32.to_radians());
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
+
+        let left = first_person_apply_block_use_transform(
+            first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, true, 0.0),
+            true,
+        );
+        let right_origin = transformed.transform_point3(Vec3::ZERO);
+        let left_origin = left.transform_point3(Vec3::ZERO);
+        assert!(
+            (right_origin.x + left_origin.x).abs() < 1.0e-4,
+            "BLOCK use x translation mirrors between arms: {right_origin:?} vs {left_origin:?}"
         );
     }
 

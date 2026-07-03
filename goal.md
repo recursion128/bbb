@@ -260,11 +260,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   display contexts into an after-world / before-HUD depth-cleared hand pass,
   using vanilla `applyItemArmTransform` constants and ordinary WHACK `swingArm`
   plus STAB `SpearAnimations.firstPersonAttack` from the local player's
-  `attackAnim` / `swingingArm`. 剩余是 first-person special consumers / use
-  animation 与像素级视觉校验。
+  `attackAnim` / `swingingArm`, and first-person BLOCK/shield use pose.
+  剩余是 first-person special consumers / non-BLOCK use animation 与像素级视觉校验。
 - First-person viewmodel：
-  - use animation。
-  - map / bow / crossbow / spyglass / shield 等特殊路径。
+  - non-BLOCK use animation。
+  - map / bow / crossbow / spyglass 等特殊路径。
 - Combat / held item arm pose：
   - third-person hand-use sway。
   - kinetic weapon / ticksUsingItem。

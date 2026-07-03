@@ -1129,6 +1129,17 @@
     `swing_animation` on the default WHACK fallback. Tests cover the STAB matrix
     math, stack-patch STAB mesh movement, default spear mesh movement, and
     explicit `NONE` / removed-component swing classification.
+  - [x] first-person BLOCK/shield use pose：local vanilla 26.1
+    `ItemInHandRenderer.renderArmWithItem` enters the using-item branch for the
+    used hand, applies `applyItemArmTransform` when the use animation has no
+    custom arm transform, and for `ItemUseAnimation.BLOCK` only applies the
+    fixed translate / X/Y/Z rotations when the item is not a `ShieldItem`.
+    Native now allows first-person rendering while the local player uses a
+    BLOCK item, classifies shield defaults and patch-granted `blocks_attacks`
+    with `CONSUMABLE` precedence, keeps shields on the base arm transform, and
+    applies the vanilla non-shield BLOCK transform. Tests cover shield rendering
+    while using, non-shield mesh movement, consumable precedence, and transform
+    matrix order.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
