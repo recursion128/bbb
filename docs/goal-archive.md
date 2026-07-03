@@ -2501,6 +2501,14 @@
     egg-crack providers as `moves_without_collision`, and runtime tests assert
     the collision callback is not invoked while velocity still damps by vanilla
     friction.
+  - [x] Crit constructor tick：local vanilla 26.1 `CritParticle` calls
+    `tick()` at the end of its constructor before `DamageIndicatorProvider`
+    overrides lifetime or `MagicProvider` applies color scaling. Renderer spawn
+    now applies that constructor-time motion for the crit provider family:
+    initial age becomes `1`, previous position remains the command position,
+    position advances by velocity after gravity, and velocity is damped by
+    vanilla `0.7` friction. Tests cover spawn-state motion and provider
+    sampling.
 
 ## P2：Terrain / Block Render Presentation
 

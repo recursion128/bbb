@@ -407,11 +407,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SuspendedTownParticle` 系 provider（happy_villager / composter /
     dolphin / mycelium / egg_crack）现在表达 vanilla 覆写的 collision-free
     `move`；
+    `CritParticle` 系 provider 现在覆盖 vanilla 构造函数尾部立即 `tick()` 的
+    spawn-time age/position/velocity 推进；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
     vibration entity target refresh、DragonBreath hit-ground motion 与
-    SuspendedTown collision-free move），以及 local sound（不含 DripParticle
-    honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
+    SuspendedTown collision-free move、Crit constructor tick），以及 local
+    sound（不含 DripParticle honey/dripstone fall-and-land 落地本地声效）/
+    block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

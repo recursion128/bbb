@@ -781,7 +781,9 @@ When an agent does any of the following, update this file in the same slice:
         `0.4` command velocity, the damage-indicator `yAux + 1.0` offset,
         crit lifetime or fixed damage lifetime, grow-to-base size curve,
         initial random gray / magic color multipliers, `0.7` friction, `0.5`
-        gravity, and no-physics metadata
+        gravity, no-physics metadata, and the vanilla constructor-time `tick()`
+        that advances age/position and damps velocity before the particle
+        enters the runtime list
       - `BubbleParticle.Provider` command velocity scaled by `0.2` plus
         random `+-0.02` velocity, random `0.2..0.8` quad-size scaling,
         `8 / (random * 0.8 + 0.2)` lifetime, `0.85` friction, and upward

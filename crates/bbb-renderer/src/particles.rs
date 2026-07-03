@@ -1207,8 +1207,25 @@ impl ParticleInstance {
             option_item: command.option_item,
             atlas_uv_sub_rect,
         };
+        instance.apply_constructor_tick_on_spawn();
         instance.apply_spell_scope_alpha_on_spawn(scope_context);
         instance
+    }
+
+    fn apply_constructor_tick_on_spawn(&mut self) {
+        if !self.provider.starts_with("CritParticle.") {
+            return;
+        }
+        self.previous_position = self.position;
+        self.velocity[1] -= 0.04 * f64::from(self.gravity);
+        self.position[0] += self.velocity[0];
+        self.position[1] += self.velocity[1];
+        self.position[2] += self.velocity[2];
+        let friction = f64::from(self.friction);
+        self.velocity[0] *= friction;
+        self.velocity[1] *= friction;
+        self.velocity[2] *= friction;
+        self.age_ticks = self.age_ticks.saturating_add(1);
     }
 
     fn render_quad_size(&self) -> f32 {
@@ -5095,6 +5112,27 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_crit_constructor_tick_advances_spawn_state() {
+        let mut random = ParticleRandom::new(56);
+        let mut command = spawn_command("minecraft:crit", 1.0);
+        command.velocity = [0.5, 0.25, -0.5];
+
+        let crit = ParticleInstance::from_spawn_command(command, &mut random);
+
+        assert_eq!(crit.provider, "CritParticle.Provider");
+        assert_eq!(crit.age_ticks, 1);
+        assert_close3(crit.previous_position, [1.0, 0.0, 0.0]);
+        assert_range_f64(crit.position[0], 1.19, 1.21);
+        assert_range_f64(crit.position[1], 0.08, 0.10);
+        assert_range_f64(crit.position[2], -0.21, -0.19);
+        assert_range_f64(crit.velocity[0], 0.133, 0.147);
+        assert_range_f64(crit.velocity[1], 0.056, 0.070);
+        assert_range_f64(crit.velocity[2], -0.147, -0.133);
+        assert!(!crit.on_ground);
+        assert!(!crit.stopped_by_collision);
+    }
+
+    #[test]
     fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
@@ -6912,9 +6950,13 @@ mod tests {
         assert_eq!(crit.friction, 0.7);
         assert_eq!(crit.gravity, 0.5);
         assert!(!crit.has_physics);
-        assert_range_f64(crit.velocity[0], 0.19, 0.21);
-        assert_range_f64(crit.velocity[1], 0.10, 0.12);
-        assert_range_f64(crit.velocity[2], -0.21, -0.19);
+        assert_eq!(crit.age_ticks, 1);
+        assert_range_f64(crit.position[0], 1.19, 1.21);
+        assert_range_f64(crit.position[1], 0.08, 0.10);
+        assert_range_f64(crit.position[2], -0.21, -0.19);
+        assert_range_f64(crit.velocity[0], 0.133, 0.147);
+        assert_range_f64(crit.velocity[1], 0.056, 0.070);
+        assert_range_f64(crit.velocity[2], -0.147, -0.133);
 
         let mut damage_random = ParticleRandom::new(57);
         let mut damage_command = spawn_command("minecraft:damage_indicator", 1.0);
@@ -6922,7 +6964,8 @@ mod tests {
         let damage = ParticleInstance::from_spawn_command(damage_command, &mut damage_random);
         assert_eq!(damage.provider, "CritParticle.DamageIndicatorProvider");
         assert_eq!(damage.lifetime_ticks, 20);
-        assert_range_f64(damage.velocity[1], 0.40, 0.43);
+        assert_eq!(damage.age_ticks, 1);
+        assert_range_f64(damage.velocity[1], 0.266, 0.287);
 
         let mut magic_random = ParticleRandom::new(58);
         let magic = ParticleInstance::from_spawn_command(
@@ -6930,6 +6973,7 @@ mod tests {
             &mut magic_random,
         );
         assert_eq!(magic.provider, "CritParticle.MagicProvider");
+        assert_eq!(magic.age_ticks, 1);
         assert_range_f32(magic.color[0], 0.18, 0.27);
         assert!(magic.color[1] > magic.color[0]);
         assert!(magic.color[2] > magic.color[1]);
