@@ -140,6 +140,17 @@ pub(crate) fn is_vanilla_abstract_nautilus_type(entity_type_id: i32) -> bool {
     )
 }
 
+pub(crate) fn is_vanilla_taming_particle_entity_type(entity_type_id: i32) -> bool {
+    is_vanilla_abstract_horse_type(entity_type_id)
+        || is_vanilla_abstract_nautilus_type(entity_type_id)
+        || matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_CAT_ID
+                | VANILLA_ENTITY_TYPE_PARROT_ID
+                | VANILLA_ENTITY_TYPE_WOLF_ID
+        )
+}
+
 pub(crate) fn is_vanilla_can_equip_saddle_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -418,6 +429,15 @@ pub struct AllayDuplicationParticleState {
     pub position: EntityVec3,
     pub width: f32,
     pub height: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityTamingParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+    pub success: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2135,6 +2155,25 @@ impl WorldStore {
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    pub fn entity_taming_particle_state(
+        &self,
+        entity_id: i32,
+        success: bool,
+    ) -> Option<EntityTamingParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !is_vanilla_taming_particle_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(EntityTamingParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+            success,
         })
     }
 

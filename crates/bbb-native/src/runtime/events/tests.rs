@@ -48,11 +48,12 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
-    ArrowEffectParticleState, BlockPos, ChunkPos, FireworkRocketExplosionParticleState,
-    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
-    RegistryPacketEntry, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    ThrownEggHitParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    ArrowEffectParticleState, BlockPos, ChunkPos, EntityTamingParticleState,
+    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
+    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, WitchMagicParticleState,
+    WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2869,6 +2870,84 @@ fn love_entity_event_emits_animal_and_allay_particle_states() {
     assert_close(state.height, 0.6);
     assert_eq!(particles.batches.len(), 2);
     assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn taming_entity_events_emit_tamable_and_horse_particle_states() {
+    let (tx, mut rx) = mpsc::channel(7);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(130, VANILLA_ENTITY_TYPE_CAT_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(131, VANILLA_ENTITY_TYPE_HORSE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(132, VANILLA_ENTITY_TYPE_COW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 130,
+        event_id: 7,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 131,
+        event_id: 6,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 132,
+        event_id: 7,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 6,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        7
+    );
+
+    assert_eq!(particles.entity_taming_states.len(), 2);
+    let state = particles.entity_taming_states[0];
+    assert_eq!(state.entity_id, 130);
+    assert!(state.success);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 0.6);
+    assert_close(state.height, 0.7);
+    let state = particles.entity_taming_states[1];
+    assert_eq!(state.entity_id, 131);
+    assert!(!state.success);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_close(state.width, 1.396_484_4);
+    assert_close(state.height, 1.6);
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().entity_events_applied, 3);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8886,6 +8965,7 @@ struct RecordingParticleSink {
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     arrow_effect_states: Vec<ArrowEffectParticleState>,
+    entity_taming_states: Vec<EntityTamingParticleState>,
     animal_love_states: Vec<AnimalLoveParticleState>,
     allay_duplication_states: Vec<AllayDuplicationParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
@@ -9060,6 +9140,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: ArrowEffectParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.arrow_effect_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_entity_taming_particles(
+        &mut self,
+        state: EntityTamingParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.entity_taming_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

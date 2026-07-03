@@ -24,10 +24,11 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TerrainLight, ThrownEggHitParticleState, VaultConnectionParticleState, WitchMagicParticleState,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainLight, ThrownEggHitParticleState,
+    VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -109,6 +110,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_allay_duplication_particles(
         &mut self,
         state: AllayDuplicationParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_entity_taming_particles(
+        &mut self,
+        state: EntityTamingParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
@@ -408,6 +413,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: AllayDuplicationParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.allay_duplication_particle_batch(state)
+    }
+
+    fn spawn_entity_taming_particles(
+        &mut self,
+        state: EntityTamingParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.entity_taming_particle_batch(state)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2759,7 +2771,8 @@ impl ParticleCommandResolver {
     }
 
     fn animal_love_particle_batch(&mut self, state: AnimalLoveParticleState) -> ParticleSpawnBatch {
-        self.heart_particle_batch(
+        self.entity_event_aabb_particle_batch(
+            HEART_PARTICLE_TYPE_ID,
             state.position,
             state.width,
             state.height,
@@ -2771,7 +2784,8 @@ impl ParticleCommandResolver {
         &mut self,
         state: AllayDuplicationParticleState,
     ) -> ParticleSpawnBatch {
-        self.heart_particle_batch(
+        self.entity_event_aabb_particle_batch(
+            HEART_PARTICLE_TYPE_ID,
             state.position,
             state.width,
             state.height,
@@ -2779,14 +2793,33 @@ impl ParticleCommandResolver {
         )
     }
 
-    fn heart_particle_batch(
+    fn entity_taming_particle_batch(
         &mut self,
+        state: EntityTamingParticleState,
+    ) -> ParticleSpawnBatch {
+        let particle_type_id = if state.success {
+            HEART_PARTICLE_TYPE_ID
+        } else {
+            SMOKE_PARTICLE_TYPE_ID
+        };
+        self.entity_event_aabb_particle_batch(
+            particle_type_id,
+            state.position,
+            state.width,
+            state.height,
+            ENTITY_TAMING_PARTICLE_COUNT,
+        )
+    }
+
+    fn entity_event_aabb_particle_batch(
+        &mut self,
+        particle_type_id: i32,
         entity_position: bbb_world::EntityVec3,
         entity_width: f32,
         entity_height: f32,
         count: usize,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(HEART_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(particle_type_id) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -5405,6 +5438,7 @@ const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
 const ARROW_EFFECT_PARTICLE_COUNT: usize = 20;
 const ANIMAL_LOVE_PARTICLE_COUNT: usize = 7;
 const ALLAY_DUPLICATION_PARTICLE_COUNT: usize = 3;
+const ENTITY_TAMING_PARTICLE_COUNT: usize = 7;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
@@ -6254,6 +6288,64 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:heart"));
+    }
+
+    #[test]
+    fn entity_taming_batch_matches_vanilla_success_and_failure_particles() {
+        let state = EntityTamingParticleState {
+            entity_id: 82,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.6,
+            height: 0.7,
+            success: true,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+            expected_random.next_gaussian() * 0.02,
+        ];
+        let expected_position = [
+            state.position.x + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+            state.position.y + f64::from(state.height) * expected_random.next_f64() + 0.5,
+            state.position.z + f64::from(state.width) * (2.0 * expected_random.next_f64() - 1.0),
+        ];
+
+        let mut success_resolver = test_resolver(0);
+        let success_batch = success_resolver.entity_taming_particle_batch(state);
+        let mut failure_resolver = test_resolver(0);
+        let failure_batch =
+            failure_resolver.entity_taming_particle_batch(EntityTamingParticleState {
+                success: false,
+                ..state
+            });
+
+        assert_eq!(success_batch.len(), ENTITY_TAMING_PARTICLE_COUNT);
+        assert_particle_command(
+            &success_batch.commands[0],
+            HEART_PARTICLE_TYPE_ID,
+            "minecraft:heart",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert_eq!(failure_batch.len(), ENTITY_TAMING_PARTICLE_COUNT);
+        assert_particle_command(
+            &failure_batch.commands[0],
+            SMOKE_PARTICLE_TYPE_ID,
+            "minecraft:smoke",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert!(failure_batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:smoke"));
     }
 
     #[test]

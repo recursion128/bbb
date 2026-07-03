@@ -332,6 +332,12 @@ When an agent does any of the following, update this file in the same slice:
         the same `spawnHeartParticle` gaussian `*0.02` velocity and
         `getRandomX(1.0)`, `getRandomY()+0.5`, `getRandomZ(1.0)` current-AABB
         sampling as vanilla.
+      - TamableAnimal and AbstractHorse entity events `6`/`7` now emit vanilla
+        taming feedback particles: event `7` success uses 7
+        `minecraft:heart` commands, event `6` failure uses 7
+        `minecraft:smoke` commands, both with gaussian `*0.02` velocity and
+        `getRandomX(1.0)`, `getRandomY()+0.5`, `getRandomZ(1.0)` current-AABB
+        sampling from `spawnTamingParticles`.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -340,8 +346,8 @@ When an agent does any of the following, update this file in the same slice:
       - remaining deferred work is broader collision clipping parity for
         special contexts, player-coupled particle emitters beyond the currently
         covered scoped cases, and remaining entity-event families such as
-        `TamableAnimal` events `6`/`7`, Villager events `12`/`13`/`14`/`42`,
-        Dolphin event `38`, and tick-driven stun/fang particle state
+        Villager events `12`/`13`/`14`/`42`, Dolphin event `38`, and
+        tick-driven stun/fang particle state
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -542,6 +548,11 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:heart` burst from `Allay.handleEntityEvent`: 3 commands with
       the same gaussian `0.02` velocity and current-allay AABB position
       sampling.
+      Native TamableAnimal and AbstractHorse events `6`/`7` now emit vanilla
+      taming feedback particles from `spawnTamingParticles`: event `7` success
+      uses 7 `minecraft:heart` commands and event `6` failure uses 7
+      `minecraft:smoke` commands with gaussian `0.02` velocity and current-AABB
+      position sampling.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

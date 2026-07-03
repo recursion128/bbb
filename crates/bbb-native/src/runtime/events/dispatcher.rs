@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind,
+    BlockPos as WorldBlockPos, EntityTamingParticleState, EntityTrackingEmitterParticleKind,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventGrowthRandomMode,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
@@ -369,6 +369,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
         emit_arrow_effect_particles(self.particle_events, self.particle_renderer, state);
+    }
+
+    fn entity_taming_particles(&mut self, _world: &WorldStore, state: EntityTamingParticleState) {
+        emit_entity_taming_particles(self.particle_events, self.particle_renderer, state);
     }
 
     fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -767,6 +771,20 @@ fn emit_arrow_effect_particles(
         return;
     };
     let batch = particle_events.spawn_arrow_effect_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_entity_taming_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: EntityTamingParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_entity_taming_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

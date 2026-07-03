@@ -16,12 +16,12 @@ use crate::{
     advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
-    FireworkRocketExplosionParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    SnowballHitParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VehicleMoveReport,
-    WitchMagicParticleState, WorldStore,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
+    JukeboxLevelEventState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
+    RavagerRoarParticleState, SnowballHitParticleState, SoundEntityEventState, SoundEventState,
+    StopSoundEventState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
+    VehicleMoveReport, WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -62,6 +62,8 @@ const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
+const TAMING_FAILED_EVENT_ID: i8 = 6;
+const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
@@ -151,6 +153,7 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn arrow_effect_particles(&mut self, _world: &WorldStore, _state: ArrowEffectParticleState) {}
+    fn entity_taming_particles(&mut self, _world: &WorldStore, _state: EntityTamingParticleState) {}
     fn animal_love_particles(&mut self, _world: &WorldStore, _state: AnimalLoveParticleState) {}
     fn allay_duplication_particles(
         &mut self,
@@ -381,6 +384,13 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let entity_taming_particles = if update.event_id == TAMING_SUCCEEDED_EVENT_ID {
+                    self.entity_taming_particle_state(update.entity_id, true)
+                } else if update.event_id == TAMING_FAILED_EVENT_ID {
+                    self.entity_taming_particle_state(update.entity_id, false)
+                } else {
+                    None
+                };
                 let animal_love_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
                     self.animal_love_particle_state(update.entity_id)
                 } else {
@@ -474,6 +484,9 @@ impl WorldStore {
                     }
                     if let Some(state) = arrow_effect_particles {
                         effects.arrow_effect_particles(self, state);
+                    }
+                    if let Some(state) = entity_taming_particles {
+                        effects.entity_taming_particles(self, state);
                     }
                     if let Some(state) = animal_love_particles {
                         effects.animal_love_particles(self, state);
@@ -1416,8 +1429,9 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -1440,6 +1454,7 @@ mod tests {
         living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
         arrow_effect_particles: Vec<ArrowEffectParticleState>,
+        entity_taming_particles: Vec<EntityTamingParticleState>,
         animal_love_particles: Vec<AnimalLoveParticleState>,
         allay_duplication_particles: Vec<AllayDuplicationParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
@@ -1491,6 +1506,14 @@ mod tests {
 
         fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
             self.arrow_effect_particles.push(state);
+        }
+
+        fn entity_taming_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: EntityTamingParticleState,
+        ) {
+            self.entity_taming_particles.push(state);
         }
 
         fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -2502,6 +2525,92 @@ mod tests {
         assert_eq!(effects.arrow_effect_particles[1].entity_id, 119);
         assert_eq!(effects.arrow_effect_particles[1].color_rgb, 0);
         assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn taming_events_forward_tamable_and_horse_particle_states() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                130,
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 65.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                131,
+                VANILLA_ENTITY_TYPE_HORSE_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 66.0,
+                    z: -5.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                132,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 67.0,
+                    z: -6.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 130,
+                event_id: TAMING_SUCCEEDED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 131,
+                event_id: TAMING_FAILED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 132,
+                event_id: TAMING_SUCCEEDED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: TAMING_FAILED_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.entity_taming_particles.len(), 2);
+        let state = effects.entity_taming_particles[0];
+        assert_eq!(state.entity_id, 130);
+        assert!(state.success);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 2.25,
+                y: 65.0,
+                z: -4.5,
+            }
+        );
+        assert!((state.width - 0.6).abs() < 1.0e-6);
+        assert!((state.height - 0.7).abs() < 1.0e-6);
+        let state = effects.entity_taming_particles[1];
+        assert_eq!(state.entity_id, 131);
+        assert!(!state.success);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 3.0,
+                y: 66.0,
+                z: -5.0,
+            }
+        );
+        assert!((state.width - 1.396_484_4).abs() < 1.0e-6);
+        assert!((state.height - 1.6).abs() < 1.0e-6);
+        assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
