@@ -378,6 +378,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `super.tick()` 后的非 air block removal，并走 collision-backed default move；
     `SquidInkParticle` / `GlowInkProvider` 现在通过同一 block-air sample 覆盖
     vanilla post-`super.tick()` in-air downward drift；
+    `AshParticle` / `WhiteAshParticle` 的源码核对确认 vanilla `hasPhysics=false`，
+    不存在额外 collision removal 待办；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。

@@ -4323,6 +4323,34 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_ash_no_physics_ignores_collision_callback() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:ash", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        instance.friction = 0.5;
+        instance.gravity = 0.0;
+        assert!(!instance.has_physics);
+        assert!(instance.speed_up_when_y_motion_is_blocked);
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |_query| {
+            collision_queries += 1;
+            [0.0, 0.0, 0.0]
+        });
+
+        assert_eq!(collision_queries, 0);
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(!instance.on_ground);
+        assert_close3(instance.position, [1.2, 1.6, 2.4]);
+        assert_close3(instance.velocity, [0.1, -0.2, -0.3]);
+    }
+
+    #[test]
     fn dust_plume_provider_adds_command_velocity_and_y_offset_to_per_axis_base_spread() {
         // DustPlumeParticle.Provider passes the command velocity xAux/yAux/zAux as
         // xa/ya/za; DustPlumeParticle calls

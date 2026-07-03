@@ -6472,8 +6472,8 @@ When an agent does any of the following, update this file in the same slice:
         ignores the command velocity and adds its own
         `xa = rand*-1.9*rand*.1`, `ya = rand*-0.5*rand*.1*5.0`,
         `za = rand*-1.9*rand*.1` with fixed `ARGB(0xBAB1C2)` tint and
-        `0.0125` gravity. World-coupled collision removal remains deferred with
-        broader particle collision/physics work.
+        `0.0125` gravity. Vanilla passes `hasPhysics=false` for both providers,
+        so there is no provider-specific collision removal path.
       - particle descriptors map `WaterDropParticle.Provider` and
         `SplashParticle.Provider` for `rain` / `splash` to random sprites,
         vanilla single-quad size, `8/(random*.8+.2)` lifetime, opaque

@@ -2398,6 +2398,11 @@
     `GlowInkProvider` runtime ticks now reuse the world block-air sample after
     default `super.tick()` motion and apply the vanilla `yd -= 0.0074F` drift
     only when the containing block state is air.
+  - [x] Ash / WhiteAsh collision-removal audit：local vanilla 26.1
+    `AshParticle` and `WhiteAshParticle` only inherit `BaseAshSmokeParticle.tick`
+    and both pass `hasPhysics=false`; renderer focused coverage now pins that
+    ash uses default ticking without invoking the world collision callback, so
+    the old collision-removal deferred note was stale.
 
 ## P2：Terrain / Block Render Presentation
 
