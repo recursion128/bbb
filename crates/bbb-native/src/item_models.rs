@@ -18,7 +18,7 @@ use bbb_protocol::packets::{
     ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
-    allay_hand_attach_transform, bake_generated_item_quads,
+    allay_hand_attach_transform, bake_generated_item_quads, bake_item_frame_map_surface,
     bake_item_model_mesh_with_light_and_overlay,
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
@@ -28,13 +28,15 @@ use bbb_renderer::{
     mooshroom_mushroom_block_transforms, panda_held_item_transform, primed_tnt_block_transform,
     snow_golem_head_block_transform, villager_crossed_arms_item_transform,
     witch_held_item_transform, CameraPose, EntityModelInstance, EntityModelKind,
-    HumanoidModelFamily, IllagerModelFamily, ItemModelFoil, ItemModelMesh, ItemModelMeshSet,
-    ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
-    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    HumanoidModelFamily, IllagerModelFamily, ItemFrameMapSurface, ItemFrameMapTexture,
+    ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant,
+    PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
+use crate::map_textures::map_item_texture;
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
@@ -88,6 +90,10 @@ const VANILLA_CROSSBOW_USE_DURATION_TICKS: f32 = 72_000.0;
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 /// Vanilla `TridentItem.getUseDuration`.
 const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla `ItemInHandRenderer.renderMap`: after the hand/map pose, the map is flipped, scaled to
+/// `0.38`, centered, and converted from 128x128 map pixels into model units.
+const VANILLA_FIRST_PERSON_MAP_SCALE: f32 = 0.38;
+const VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE: f32 = 1.0 / 128.0;
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -743,9 +749,9 @@ pub(crate) struct HeldItemModels {
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
 }
 
-/// The baked first-person local-player hand item meshes for this frame. This
-/// slice covers ordinary held stacks only; use/swing animation and special
-/// render paths are intentionally left out of this container.
+/// The baked first-person local-player hand item submissions for this frame. Ordinary items use
+/// block/flat item-model meshes; filled maps use vanilla `ItemInHandRenderer.renderMap` dynamic-map
+/// surfaces in the same depth-cleared hand pass.
 pub(crate) struct FirstPersonItemModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
@@ -755,6 +761,8 @@ pub(crate) struct FirstPersonItemModels {
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub map_textures: Vec<ItemFrameMapTexture>,
+    pub map_surfaces: Vec<ItemFrameMapSurface>,
 }
 
 impl FirstPersonItemModels {
@@ -768,6 +776,8 @@ impl FirstPersonItemModels {
             flat_translucent_meshes: Vec::new(),
             flat_glint_meshes: Vec::new(),
             flat_glint_translucent_meshes: Vec::new(),
+            map_textures: Vec::new(),
+            map_surfaces: Vec::new(),
         }
     }
 }
@@ -1058,7 +1068,9 @@ pub(crate) fn first_person_item_models(
     let trim_material_keys = world_trim_material_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
+    let mut map_textures = BTreeMap::new();
     let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
+    let camera_x_rot = camera_pose.x_rot;
     let camera_world = first_person_camera_world_transform(camera_pose);
     let attack_swing = world.local_player_attack_swing(partial_ticks);
     let only_render_using_hand = using_hand.filter(|hand| {
@@ -1095,6 +1107,24 @@ pub(crate) fn first_person_item_models(
         let attack = attack_swing
             .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
             .map_or(0.0, |swing| swing.attack_anim);
+        if let Some(map_id) = stack.component_patch.map_id {
+            if let Some(map) = world.map_item(map_id) {
+                map_textures
+                    .entry(map.id)
+                    .or_insert_with(|| map_item_texture(map));
+                let map_transform = if hand == InteractionHand::MainHand && off_stack.is_none() {
+                    first_person_two_handed_map_transform(camera_world, camera_x_rot, 0.0, attack)
+                } else {
+                    first_person_one_handed_map_transform(camera_world, arm_left, 0.0, attack)
+                };
+                models.map_surfaces.push(bake_item_frame_map_surface(
+                    map.id,
+                    map_transform,
+                    ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                ));
+            }
+            continue;
+        }
         let mut attach =
             first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
         let using_this_hand = using_hand == Some(hand);
@@ -1216,6 +1246,7 @@ pub(crate) fn first_person_item_models(
         );
     }
 
+    models.map_textures = map_textures.into_values().collect();
     models
 }
 
@@ -1257,18 +1288,9 @@ enum FirstPersonUseAnimation {
 
 fn supported_first_person_item_stack(
     stack: &ItemStackSummary,
-    item_runtime: &NativeItemRuntime,
+    _item_runtime: &NativeItemRuntime,
 ) -> bool {
-    if stack.component_patch.map_id.is_some() {
-        return false;
-    }
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
-        return true;
-    };
-    !matches!(resource_id, "minecraft:filled_map")
+    stack.item_id.is_some()
 }
 
 fn first_person_stack_block_use_kind(
@@ -1476,6 +1498,75 @@ fn first_person_item_arm_transform_from_camera_world(
             -0.52 + inverse_arm_height * -0.6,
             -0.72,
         ))
+}
+
+fn first_person_one_handed_map_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let x_swing = (sqrt_attack * std::f32::consts::PI).sin();
+    let x_swing_position = -0.5 * x_swing;
+    let y_swing_position = 0.4 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.3 * (attack * std::f32::consts::PI).sin();
+    let map_pose = camera_world
+        * Mat4::from_translation(Vec3::new(invert * 0.125, -0.125, 0.0))
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.51,
+            -0.08 + inverse_arm_height * -1.2,
+            -0.75,
+        ))
+        * Mat4::from_translation(Vec3::new(
+            invert * x_swing_position,
+            y_swing_position - 0.3 * x_swing,
+            z_swing_position,
+        ))
+        * Mat4::from_rotation_x((x_swing * -45.0).to_radians())
+        * Mat4::from_rotation_y((invert * x_swing * -30.0).to_radians());
+    first_person_apply_map_render_transform(map_pose)
+}
+
+fn first_person_two_handed_map_transform(
+    camera_world: Mat4,
+    x_rot: f32,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let y_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let z_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let map_tilt = first_person_map_tilt(x_rot);
+    let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+    let map_pose = camera_world
+        * Mat4::from_translation(Vec3::new(0.0, -y_swing_position / 2.0, z_swing_position))
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.04 + inverse_arm_height * -1.2 + map_tilt * -0.5,
+            -0.72,
+        ))
+        * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+        * Mat4::from_rotation_x((xz_swing_rotation * 20.0).to_radians())
+        * Mat4::from_scale(Vec3::splat(2.0));
+    first_person_apply_map_render_transform(map_pose)
+}
+
+fn first_person_apply_map_render_transform(transform: Mat4) -> Mat4 {
+    transform
+        * Mat4::from_rotation_y(180.0_f32.to_radians())
+        * Mat4::from_rotation_z(180.0_f32.to_radians())
+        * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_SCALE))
+        * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.0))
+        * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE))
+}
+
+fn first_person_map_tilt(x_rot: f32) -> f32 {
+    let tilt = (1.0 - x_rot / 45.0 + 0.1).clamp(0.0, 1.0);
+    -(tilt * std::f32::consts::PI).cos() * 0.5 + 0.5
 }
 
 fn first_person_apply_whack_swing(transform: Mat4, arm_left: bool, attack: f32) -> Mat4 {
@@ -2843,11 +2934,12 @@ impl LegacyRandom {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::map_textures::map_color_rgba8;
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
         DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind,
-        EquipmentSlotUpdate, PlayLogin, SetEntityData, SetEquipment, SetPlayerInventory,
-        SwingAnimationSummary, Vec3d,
+        EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData, SetEquipment,
+        SetPlayerInventory, SwingAnimationSummary, Vec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -2942,6 +3034,19 @@ mod tests {
             enforces_secure_chat: false,
         });
         world
+    }
+
+    fn first_person_test_map_stack(
+        item_runtime: &NativeItemRuntime,
+        map_id: i32,
+    ) -> ItemStackSummary {
+        let mut item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:filled_map"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        item.component_patch.map_id = Some(map_id);
+        item
     }
 
     fn protocol_optional_block_state_data(
@@ -3771,7 +3876,7 @@ mod tests {
     }
 
     #[test]
-    fn first_person_item_models_skip_using_and_special_paths() {
+    fn first_person_item_models_skip_unsupported_using_and_missing_map_data() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
         write_flat_item_runtime_fixture(&root, &["hand_item", "filled_map"]);
         let item_runtime =
@@ -3781,11 +3886,12 @@ mod tests {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
-        let filled_map = ItemStackSummary {
+        let mut filled_map = ItemStackSummary {
             item_id: item_runtime.item_protocol_id("minecraft:filled_map"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
+        filled_map.component_patch.map_id = Some(7);
         let camera = Some(CameraPose {
             position: [0.0, 64.0, 0.0],
             y_rot: 0.0,
@@ -3823,6 +3929,143 @@ mod tests {
         )
         .flat_meshes
         .is_empty());
+        assert!(first_person_item_models(
+            &special_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        )
+        .map_surfaces
+        .is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_render_two_handed_filled_map_surface() {
+        let root = unique_item_model_temp_dir("first-person-map-two-handed");
+        write_flat_item_runtime_fixture(&root, &["filled_map"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let packed_grass_high = (1 << 2) | 2;
+        let map = first_person_test_map_stack(&item_runtime, 7);
+        let pose = CameraPose {
+            position: [2.0, 65.0, -4.0],
+            y_rot: 35.0,
+            x_rot: -15.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: map });
+        assert!(world.apply_map_item_data(MapItemData {
+            map_id: 7,
+            scale: 0,
+            locked: false,
+            decorations: Some(Vec::new()),
+            color_patch: Some(MapColorPatch {
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+                colors: vec![packed_grass_high],
+            }),
+        }));
+
+        let models = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            Some(pose),
+            1.0,
+        );
+
+        assert!(models.block_meshes.is_empty());
+        assert!(models.flat_meshes.is_empty());
+        assert_eq!(models.map_textures.len(), 1);
+        assert_eq!(models.map_textures[0].map_id, 7);
+        assert_eq!(
+            &models.map_textures[0].rgba[0..4],
+            &map_color_rgba8(packed_grass_high)
+        );
+        assert_eq!(models.map_surfaces.len(), 1);
+        let surface = &models.map_surfaces[0];
+        assert!(!surface.is_empty());
+        assert_eq!(surface.vertex_count(), 4);
+        assert_eq!(surface.index_count(), 6);
+        assert_eq!(surface.submission.map_id, 7);
+        assert_eq!(surface.submission.texture.vanilla_path(), "minecraft:map/7");
+        assert_eq!(surface.submission.light, ITEM_MODEL_FULL_BRIGHT_LIGHT);
+        assert_eq!(
+            surface.submission.transform,
+            first_person_two_handed_map_transform(
+                first_person_camera_world_transform(pose),
+                pose.x_rot,
+                0.0,
+                0.0,
+            )
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_render_one_handed_offhand_filled_map_surface() {
+        let root = unique_item_model_temp_dir("first-person-map-one-handed");
+        write_flat_item_runtime_fixture(&root, &["filled_map"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let map = first_person_test_map_stack(&item_runtime, 8);
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 20.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: map,
+        });
+        assert!(world.apply_map_item_data(MapItemData {
+            map_id: 8,
+            scale: 0,
+            locked: false,
+            decorations: Some(Vec::new()),
+            color_patch: Some(MapColorPatch {
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+                colors: vec![(2 << 2) | 1],
+            }),
+        }));
+
+        let models = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            Some(pose),
+            1.0,
+        );
+
+        assert!(models.flat_meshes.is_empty());
+        assert_eq!(models.map_surfaces.len(), 1);
+        let expected = first_person_one_handed_map_transform(
+            first_person_camera_world_transform(pose),
+            true,
+            0.0,
+            0.0,
+        );
+        assert_eq!(models.map_surfaces[0].submission.transform, expected);
+        assert_ne!(
+            models.map_surfaces[0].submission.transform,
+            first_person_two_handed_map_transform(
+                first_person_camera_world_transform(pose),
+                pose.x_rot,
+                0.0,
+                0.0,
+            ),
+            "offhand maps use vanilla's one-handed map branch"
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -4673,6 +4916,64 @@ mod tests {
             left_origin.abs_diff_eq(Vec3::new(-0.56, -0.52, -0.72), 1.0e-4),
             "left origin {left_origin:?}"
         );
+    }
+
+    #[test]
+    fn first_person_map_tilt_matches_vanilla_calculate_map_tilt() {
+        assert!((first_person_map_tilt(0.0) - 1.0).abs() < 1.0e-6);
+        let mid_tilt = 1.0 - 45.0 / 45.0 + 0.1;
+        let expected_mid = -(mid_tilt * std::f32::consts::PI).cos() * 0.5 + 0.5;
+        assert!((first_person_map_tilt(45.0) - expected_mid).abs() < 1.0e-6);
+        assert!((first_person_map_tilt(90.0) - 0.0).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn first_person_one_handed_map_transform_matches_vanilla_render_one_handed_map() {
+        let attack = 0.25_f32;
+        let invert = -1.0_f32;
+        let sqrt_attack = attack.sqrt();
+        let x_swing = (sqrt_attack * std::f32::consts::PI).sin();
+        let expected = Mat4::from_translation(Vec3::new(invert * 0.125, -0.125, 0.0))
+            * Mat4::from_translation(Vec3::new(invert * 0.51, -0.08, -0.75))
+            * Mat4::from_translation(Vec3::new(
+                invert * -0.5 * x_swing,
+                0.4 * (sqrt_attack * std::f32::consts::TAU).sin() - 0.3 * x_swing,
+                -0.3 * (attack * std::f32::consts::PI).sin(),
+            ))
+            * Mat4::from_rotation_x((x_swing * -45.0).to_radians())
+            * Mat4::from_rotation_y((invert * x_swing * -30.0).to_radians())
+            * Mat4::from_rotation_y(180.0_f32.to_radians())
+            * Mat4::from_rotation_z(180.0_f32.to_radians())
+            * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_SCALE))
+            * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.0))
+            * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE));
+        let transformed = first_person_one_handed_map_transform(Mat4::IDENTITY, true, 0.0, attack);
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_two_handed_map_transform_matches_vanilla_render_two_handed_map() {
+        let attack = 0.25_f32;
+        let x_rot = 20.0_f32;
+        let sqrt_attack = attack.sqrt();
+        let map_tilt = first_person_map_tilt(x_rot);
+        let expected = Mat4::from_translation(Vec3::new(
+            0.0,
+            -(-0.2 * (attack * std::f32::consts::PI).sin()) / 2.0,
+            -0.4 * (sqrt_attack * std::f32::consts::PI).sin(),
+        )) * Mat4::from_translation(Vec3::new(0.0, 0.04 + map_tilt * -0.5, -0.72))
+            * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+            * Mat4::from_rotation_x(
+                ((sqrt_attack * std::f32::consts::PI).sin() * 20.0).to_radians(),
+            )
+            * Mat4::from_scale(Vec3::splat(2.0))
+            * Mat4::from_rotation_y(180.0_f32.to_radians())
+            * Mat4::from_rotation_z(180.0_f32.to_radians())
+            * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_SCALE))
+            * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.0))
+            * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE));
+        let transformed = first_person_two_handed_map_transform(Mat4::IDENTITY, x_rot, 0.0, attack);
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
     }
 
     #[test]

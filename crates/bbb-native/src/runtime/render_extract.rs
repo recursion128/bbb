@@ -628,6 +628,8 @@ pub(crate) struct RendererFrame {
     pub(crate) first_person_flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
+    pub(crate) first_person_map_textures: Vec<ItemFrameMapTexture>,
+    pub(crate) first_person_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(crate) item_frame_map_textures: Vec<ItemFrameMapTexture>,
     pub(crate) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -679,8 +681,13 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_first_person_item_model_glint_translucent_meshes(
         frame.first_person_item_model_glint_translucent_meshes,
     );
-    renderer
-        .set_item_frame_map_surfaces(frame.item_frame_map_textures, frame.item_frame_map_surfaces);
+    let mut map_textures = frame.item_frame_map_textures;
+    map_textures.extend(frame.first_person_map_textures);
+    renderer.set_map_surfaces(
+        map_textures,
+        frame.item_frame_map_surfaces,
+        frame.first_person_map_surfaces,
+    );
     renderer.set_item_frame_map_decoration_surfaces(
         frame.item_frame_map_decoration_textures,
         frame.item_frame_map_decoration_surfaces,

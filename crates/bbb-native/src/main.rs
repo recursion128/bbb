@@ -28,6 +28,7 @@ mod input;
 mod item_entities;
 mod item_frames;
 mod item_models;
+mod map_textures;
 mod particle_registry;
 mod particle_runtime;
 mod runtime;

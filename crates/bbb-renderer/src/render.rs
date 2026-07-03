@@ -1392,6 +1392,8 @@ impl Renderer {
             self.collect_first_person_flat_item_model_translucent_geometry();
         let flat_translucent_buffers = self
             .create_item_model_frame_buffers(&flat_translucent_vertices, &flat_translucent_indices);
+        let (map_vertices, map_indices) = self.collect_first_person_map_geometry();
+        let map_buffers = self.create_item_model_frame_buffers(&map_vertices, &map_indices);
         let (glint_vertices, glint_indices) = self.collect_first_person_item_model_glint_geometry();
         let glint_buffers = self.create_item_model_frame_buffers(&glint_vertices, &glint_indices);
         let (glint_translucent_vertices, glint_translucent_indices) =
@@ -1405,6 +1407,7 @@ impl Renderer {
             && block_translucent_buffers.is_none()
             && flat_buffers.is_none()
             && flat_translucent_buffers.is_none()
+            && map_buffers.is_none()
             && glint_buffers.is_none()
             && glint_translucent_buffers.is_none()
         {
@@ -1447,6 +1450,16 @@ impl Renderer {
             stats.item_model_draw_calls += 1;
         }
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_buffers) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) = (&self.item_frame_map_atlas, &map_buffers) {
             self.draw_item_model_frame_buffers(
                 &mut pass,
                 &self.item_model_pipeline,

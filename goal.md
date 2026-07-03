@@ -266,13 +266,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   `applyBrushTransform` use pose, bundle `BUNDLE` use `swingArm`, and trident
   `TRIDENT` throw-charge use pose, and bow `BOW` draw use pose / used-hand
   selection, crossbow uncharged draw / charged idle poses, and spyglass idle /
-  scoping visibility. 剩余是 first-person special consumers / other
-  non-EAT/DRINK use animation 与像素级视觉校验。
+  scoping visibility, and filled-map decoded base surfaces via the vanilla
+  one-handed / two-handed map branches. 剩余是 first-person special consumers /
+  other non-EAT/DRINK use animation 与地图 background/decorations/text、玩家手臂
+  等像素级视觉校验。
 - First-person viewmodel：
   - remaining non-EAT/DRINK use animation beyond goat horn `TOOT_HORN` and
     brush `BRUSH` / bundle `BUNDLE` / trident `TRIDENT` / bow `BOW` /
     crossbow `CROSSBOW` / spyglass scoping。
-  - map 特殊路径。
+  - map background/checkerboard、decorations/text、玩家手臂与截图级视觉校验。
 - Combat / held item arm pose：
   - third-person hand-use sway。
   - kinetic weapon / ticksUsingItem。

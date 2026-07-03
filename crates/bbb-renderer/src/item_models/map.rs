@@ -592,6 +592,18 @@ impl Renderer {
         textures: Vec<ItemFrameMapTexture>,
         surfaces: Vec<ItemFrameMapSurface>,
     ) {
+        self.set_map_surfaces(textures, surfaces, Vec::new());
+    }
+
+    /// Sets all decoded-map base surfaces that sample the transient dynamic map atlas. World-space
+    /// item-frame maps and depth-cleared first-person maps share the atlas upload but draw in their
+    /// respective render passes.
+    pub fn set_map_surfaces(
+        &mut self,
+        textures: Vec<ItemFrameMapTexture>,
+        item_frame_surfaces: Vec<ItemFrameMapSurface>,
+        first_person_surfaces: Vec<ItemFrameMapSurface>,
+    ) {
         self.item_frame_map_atlas = build_item_frame_map_atlas(&textures).map(|(layout, rgba)| {
             create_item_frame_map_atlas_gpu(
                 &self.device,
@@ -603,7 +615,18 @@ impl Renderer {
             )
         });
         self.item_frame_map_surfaces = if let Some(atlas) = &self.item_frame_map_atlas {
-            surfaces
+            item_frame_surfaces
+                .into_iter()
+                .filter(|surface| {
+                    !surface.is_empty()
+                        && atlas.layout.rects.contains_key(&surface.submission.map_id)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        self.first_person_map_surfaces = if let Some(atlas) = &self.item_frame_map_atlas {
+            first_person_surfaces
                 .into_iter()
                 .filter(|surface| {
                     !surface.is_empty()
@@ -682,6 +705,13 @@ impl Renderer {
             return (Vec::new(), Vec::new());
         };
         merge_item_frame_map_surfaces(&self.item_frame_map_surfaces, &atlas.layout)
+    }
+
+    pub(crate) fn collect_first_person_map_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        let Some(atlas) = &self.item_frame_map_atlas else {
+            return (Vec::new(), Vec::new());
+        };
+        merge_item_frame_map_surfaces(&self.first_person_map_surfaces, &atlas.layout)
     }
 
     pub(crate) fn collect_item_frame_map_decoration_geometry(

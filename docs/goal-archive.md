@@ -1234,6 +1234,20 @@
     `minecraft:spyglass` through first-person item rendering when idle and keeps
     the existing scoping early-return for the local player. Tests cover idle
     spyglass rendering and scoping hiding an otherwise visible offhand item.
+  - [x] first-person filled-map base surface：local vanilla 26.1
+    `ItemInHandRenderer.renderArmWithItem` checks `DataComponents.MAP_ID` before
+    ordinary item rendering, uses `renderTwoHandedMap` only for a main-hand map
+    with an empty offhand, and otherwise uses `renderOneHandedMap`; both call
+    `renderMap` with the Y/Z flips, `0.38` scale, centering, and `1/128` map
+    pixel scale. Native now lets `map_id` stacks through first-person
+    extraction, skips the ordinary item-model fallback for map stacks, uploads
+    decoded `MapItemData` via the shared dynamic `minecraft:map/<id>` texture
+    helper, and submits the map base quad to the depth-cleared hand pass using
+    the vanilla one-handed / two-handed transforms. Tests cover decoded map
+    texture pixels, surface metadata, missing-map-data non-fallback behavior,
+    and exact map tilt / one-handed / two-handed matrix formulas. Background /
+    checkerboard, map decorations/text, and first-person player arms remain
+    pixel-level follow-ups.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
