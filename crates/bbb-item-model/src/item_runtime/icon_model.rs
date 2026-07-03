@@ -771,11 +771,12 @@ pub(super) enum SelectProperty {
     /// against the owner entity type resource key.
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
-    /// wall-clock date/time pattern (root/en plus en_US-week-data ICU subset:
-    /// `y`/`u` year, root/en/en_US `Y` week-year, `G` era, `Q`/`q` quarter,
-    /// root/en `M`/`L` month widths 1..=5, `d` day, `D` day-of-year,
-    /// root/en/en_US `w`/`W` week numbers, `F` day-of-week-in-month,
-    /// root/en/en_US `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
+    /// wall-clock date/time pattern (root/en plus en_US/en_GB week-data ICU
+    /// subset: `y`/`u` year, root/en/en_US/en_GB `Y` week-year, `G` era,
+    /// `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day, `D`
+    /// day-of-year, root/en/en_US/en_GB `w`/`W` week numbers, `F`
+    /// day-of-week-in-month, root/en/en_US/en_GB `E`/`e`/`c` weekdays,
+    /// `H`/`k`/`K`/`h` hour,
     /// `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a` AM/PM widths
     /// 1..=5, `z` zone names,
     /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
@@ -1750,10 +1751,9 @@ fn english_locale_week_year(
     width: usize,
     locale: &str,
 ) -> Option<String> {
-    english_week_data(locale)?;
-    // With the supported English week data (minimal-days=1), the week-year
-    // stays aligned with the local calendar year at both boundaries.
-    Some(format_year_number(fields.year, width))
+    let week_data = english_week_data(locale)?;
+    let (week_year, _) = week_year_anchor(fields, week_data)?;
+    Some(format_year_number(week_year, width))
 }
 
 fn english_locale_week_of_year(
@@ -1762,11 +1762,7 @@ fn english_locale_week_of_year(
     locale: &str,
 ) -> Option<String> {
     let week_data = english_week_data(locale)?;
-    let year_start = NaiveDate::from_ymd_opt(fields.year, 1, 1)?;
-    // Supported English week data uses minimal-days=1:
-    // the week containing Jan 1 is week 1 for that calendar year, so late
-    // December does not roll into next year's week 1 before Jan 1.
-    let week_one_start = start_of_week(year_start, week_data.first_weekday)?;
+    let (_, week_one_start) = week_year_anchor(fields, week_data)?;
     Some(padded_u32(
         week_number_since(week_one_start, fields.date)?,
         width,
@@ -1779,14 +1775,8 @@ fn english_locale_week_of_month(
     locale: &str,
 ) -> Option<String> {
     let week_data = english_week_data(locale)?;
-    let month_start = NaiveDate::from_ymd_opt(fields.year, fields.month, 1)?;
-    let week_one_start =
-        first_week_start(month_start, week_data.first_weekday, week_data.minimal_days)?;
-    let week = if fields.date < week_one_start {
-        0
-    } else {
-        week_number_since(week_one_start, fields.date)?
-    };
+    let week_one_start = week_month_anchor(fields, week_data)?;
+    let week = week_number_since(week_one_start, fields.date)?;
     Some(padded_u32(week, width))
 }
 
@@ -1829,7 +1819,59 @@ fn english_week_data(locale: &str) -> Option<EnglishWeekData> {
             minimal_days: 1,
         });
     }
+    if locale_lower == "en_gb" || locale_lower.starts_with("en_gb_") {
+        return Some(EnglishWeekData {
+            first_weekday: Weekday::Mon,
+            minimal_days: 4,
+        });
+    }
     None
+}
+
+fn week_year_anchor(
+    fields: &LocalTimeFields,
+    week_data: EnglishWeekData,
+) -> Option<(i32, NaiveDate)> {
+    let year_start = NaiveDate::from_ymd_opt(fields.year, 1, 1)?;
+    let week_one_start =
+        first_week_start(year_start, week_data.first_weekday, week_data.minimal_days)?;
+    if fields.date < week_one_start {
+        let previous_year = fields.year.checked_sub(1)?;
+        let previous_year_start = NaiveDate::from_ymd_opt(previous_year, 1, 1)?;
+        let previous_week_one_start = first_week_start(
+            previous_year_start,
+            week_data.first_weekday,
+            week_data.minimal_days,
+        )?;
+        Some((previous_year, previous_week_one_start))
+    } else {
+        Some((fields.year, week_one_start))
+    }
+}
+
+fn week_month_anchor(fields: &LocalTimeFields, week_data: EnglishWeekData) -> Option<NaiveDate> {
+    let month_start = NaiveDate::from_ymd_opt(fields.year, fields.month, 1)?;
+    let week_one_start =
+        first_week_start(month_start, week_data.first_weekday, week_data.minimal_days)?;
+    if fields.date < week_one_start {
+        let (previous_year, previous_month) = previous_month(fields.year, fields.month)?;
+        let previous_month_start = NaiveDate::from_ymd_opt(previous_year, previous_month, 1)?;
+        first_week_start(
+            previous_month_start,
+            week_data.first_weekday,
+            week_data.minimal_days,
+        )
+    } else {
+        Some(week_one_start)
+    }
+}
+
+fn previous_month(year: i32, month: u32) -> Option<(i32, u32)> {
+    if month == 1 {
+        Some((year.checked_sub(1)?, 12))
+    } else {
+        Some((year, month.checked_sub(1)?))
+    }
 }
 
 fn first_week_start(

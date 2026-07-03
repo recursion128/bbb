@@ -6740,20 +6740,23 @@ When an agent does any of the following, update this file in the same slice:
       gains a real living owner but is not routed through the current
       owner-backed generated held-item path
     - remaining `minecraft:local_time` coverage beyond the supported
-      root/en plus en_US-week-data ICU numeric/date-time / timezone-offset
-      subset (which now includes `u` proleptic year, root/en/en_US `Y`
-      week-year, `G` era, `D` day-of-year, and `Q`/`q` quarter fields, root/en
-      `M`/`L` month widths 1..=5, `F` day-of-week-in-month, root/en/en_US
-      `w`/`W` week numbers, root/en/en_US `e`/`c` local weekdays, `A`
-      milliseconds-in-day, root/en `a` AM/PM widths
+      root/en plus en_US/en_GB week-data ICU numeric/date-time /
+      timezone-offset subset (which now includes `u` proleptic year,
+      root/en/en_US/en_GB `Y` week-year, `G` era, `D` day-of-year, and
+      `Q`/`q` quarter fields, root/en `M`/`L` month widths 1..=5, `F`
+      day-of-week-in-month, root/en/en_US/en_GB `w`/`W` week numbers,
+      root/en/en_US/en_GB `e`/`c` local weekdays, `A` milliseconds-in-day,
+      root/en `a` AM/PM widths
       1..=5, plus localized-GMT `O` offsets, `Z`/`X`/`x` offset widths
       1..=5, short `z` zone
       abbreviations, `VV` zone IDs, and `VVV` exemplar cities, plus
-      fixed/UTC long `z` names, with root/en `w` year-end boundary coverage
-      and en_US Sunday-first week coverage):
+      fixed/UTC long `z` names, with root/en `w` year-end boundary coverage,
+      en_US Sunday-first week coverage, and en_GB Jan 1 previous-week-year /
+      previous-month `W` coverage):
       full localized symbols
       and long-tail ICU pattern fields (locale-specific week data beyond
-      root/en/en_US, IANA long `z`, generic `v`, and one-/four-letter `V` widths)
+      root/en/en_US/en_GB, IANA long `z`, generic `v`, and one-/four-letter
+      `V` widths)
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -7091,11 +7094,11 @@ When an agent does any of the following, update this file in the same slice:
       follow-up.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector plus a
-      root/en plus en_US-week-data ICU `SimpleDateFormat` subset (`y`/`u`
-      year, root/en/en_US `Y` week-year, `G` era text, `Q`/`q` quarter,
-      root/en `M`/`L` month widths 1..=5, `d` day, `D` day-of-year,
-      root/en/en_US `w`/`W` week-of-year / week-of-month, `F`
-      day-of-week-in-month, root/en/en_US `E`/`e`/`c` weekdays, 24/12-hour
+      root/en plus en_US/en_GB week-data ICU `SimpleDateFormat` subset
+      (`y`/`u` year, root/en/en_US/en_GB `Y` week-year, `G` era text,
+      `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day, `D`
+      day-of-year, root/en/en_US/en_GB `w`/`W` week-of-year / week-of-month,
+      `F` day-of-week-in-month, root/en/en_US/en_GB `E`/`e`/`c` weekdays, 24/12-hour
       `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
       AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
       localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
@@ -7108,11 +7111,12 @@ When an agent does any of the following, update this file in the same slice:
       `uuuu-DDD-G` proleptic-year / day-of-year / era, `Q`/`q` quarter,
       root/en narrow `M`/`L` month symbols, localized-GMT `O`, `F`
       day-of-week-in-month, `A` milliseconds-in-day, root/en `a` narrow
-      AM/PM, root/en/en_US `Y` week-year, and root/en/en_US `w`/`W` week plus
-      `e`/`c` local weekday branches, a root/en `w` year-end boundary branch,
-      and an en_US Sunday-first branch; an IANA-zone short `z` / `VV` / `VVV`
-      branch plus fixed-offset `zzzz`; UTC and `UTC+02:30` offset branches now
-      pin `Z`/`X`/`x` width 4/5 output as well.
+      AM/PM, root/en/en_US/en_GB `Y` week-year, and root/en/en_US/en_GB
+      `w`/`W` week plus `e`/`c` local weekday branches, a root/en `w`
+      year-end boundary branch, an en_US Sunday-first branch, and an en_GB
+      Jan 1 previous-week-year / previous-month `W` branch; an IANA-zone short
+      `z` / `VV` / `VVV` branch plus fixed-offset `zzzz`; UTC and
+      `UTC+02:30` offset branches now pin `Z`/`X`/`x` width 4/5 output as well.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla
@@ -7213,16 +7217,18 @@ When an agent does any of the following, update this file in the same slice:
     from world time, applies the default `wobble=true` standard wobbler, and
     advances per-property `source=random` state instead of falling back.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
-    selector and common root/en plus en_US-week-data ICU date-time patterns
-    from wall-clock time, including `y`/`u` year, root/en/en_US `Y`
-    week-year, `G` era, `D` day-of-year, `Q`/`q` quarter widths 1..=5 for
-    root/en, `F` day-of-week-in-month, root/en/en_US `w`/`W` week numbers and
-    `e`/`c` local weekdays, fixed-offset / IANA `time_zone` IDs, `Z`/`X`/`x`
-    offset fields, localized-GMT `O` offset widths, the root/en `w` year-end
-    boundary, and the en_US Sunday-first week branch; full localized symbols
-    and long-tail ICU pattern fields (locale-specific week data beyond
-    root/en/en_US, IANA long `z`, generic `v`, and one-/four-letter `V` widths)
-    remain follow-up. Short `z` zone abbreviations, `VV` explicit zone
+    selector and common root/en plus en_US/en_GB week-data ICU date-time
+    patterns from wall-clock time, including `y`/`u` year,
+    root/en/en_US/en_GB `Y` week-year, `G` era, `D` day-of-year, `Q`/`q`
+    quarter widths 1..=5 for root/en, `F` day-of-week-in-month,
+    root/en/en_US/en_GB `w`/`W` week numbers and `e`/`c` local weekdays,
+    fixed-offset / IANA `time_zone` IDs, `Z`/`X`/`x` offset fields,
+    localized-GMT `O` offset widths, the root/en `w` year-end boundary, the
+    en_US Sunday-first week branch, and the en_GB Jan 1 previous-week-year /
+    previous-month `W` branch; full localized symbols and long-tail ICU
+    pattern fields (locale-specific week data beyond root/en/en_US/en_GB,
+    IANA long `z`, generic `v`, and one-/four-letter `V` widths) remain
+    follow-up. Short `z` zone abbreviations, `VV` explicit zone
     IDs, `VVV` exemplar cities, and fixed/UTC long `z` names now resolve for
     explicit zones.
     GUI/HUD use-tick properties are wired for the local active stack,

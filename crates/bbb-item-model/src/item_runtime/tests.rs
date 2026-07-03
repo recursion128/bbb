@@ -7175,6 +7175,27 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(18), uv("us_week_clock_fallback"));
 
+    // ICU en_GB week data is Monday-first with minimal-days=4: 2027-01-01 is
+    // still week 53 of week-year 2026, and `W` reports the previous month's
+    // final week because January's first week starts on 2027-01-04.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(19), uv("gb_week_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2027, 1, 4, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(19), uv("gb_week_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12775,6 +12796,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "year_end_week_clock",
             "week_year_clock",
             "us_week_clock",
+            "gb_week_clock",
         ],
     );
     write_json(
@@ -13120,6 +13142,25 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("gb_week_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd Y w ww W e c E",
+                    "locale": "en_GB",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "2027-01-01 2026 53 53 5 5 5 Fri",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/gb_week_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/gb_week_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -13174,6 +13215,8 @@ fn write_local_time_select_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "week_year_clock_fallback", &[65, 95, 125, 255]);
     write_flat_item_model_and_texture(&assets, "us_week_clock_match", &[205, 220, 245, 255]);
     write_flat_item_model_and_texture(&assets, "us_week_clock_fallback", &[70, 100, 130, 255]);
+    write_flat_item_model_and_texture(&assets, "gb_week_clock_match", &[210, 225, 245, 255]);
+    write_flat_item_model_and_texture(&assets, "gb_week_clock_fallback", &[75, 105, 135, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {
