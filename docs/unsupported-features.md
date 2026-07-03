@@ -310,7 +310,8 @@ When an agent does any of the following, update this file in the same slice:
         and `block_crumble`: air, `moving_piston`, and
         `shouldSpawnTerrainParticles=false` block states are rejected after
         packet sample RNG is consumed; `block_marker` does not use this filter
-      - remaining deferred work is broader firework presentation
+      - remaining deferred work is delayed firework twinkle audio and broader
+        firework presentation
     - LevelEvent particle and audio side effects are now covered for the
       vanilla 26.1 `LevelEventHandler` switch cases that emit particles,
       positioned sounds, local ambience, global sounds, or jukebox start/stop.
@@ -503,8 +504,11 @@ When an agent does any of the following, update this file in the same slice:
       their generated position through the world probe before native emits
       `ParticleSpawnCommand.option_color`. Firework non-empty explosion spark
       fade-colors are now threaded as per-command fade targets, and
-      trail/twinkle child behavior is handled by the renderer runtime; remaining
-      firework presentation work is blast/twinkle audio.
+      trail/twinkle child behavior is handled by the renderer runtime. Native
+      firework batches now also queue the vanilla life-0 local ambient blast /
+      large_blast sound, including far variants, volume, pitch range, seed, and
+      distance-delay metadata; remaining firework presentation work is delayed
+      twinkle audio.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -915,8 +919,9 @@ When an agent does any of the following, update this file in the same slice:
         non-empty explosions now project `FireworkParticles.Starter` small /
         large ball, star, creeper, and burst base spark shapes, center `flash`,
         per-spark fade-colors, trail child spark duplication, and twinkle
-        visibility gating. Blast / twinkle audio remains part of the broader
-        firework rocket / level-event presentation follow-up.
+        visibility gating, plus the life-0 blast / large_blast local ambient
+        sound. Delayed twinkle audio remains part of the broader firework
+        rocket / level-event presentation follow-up.
         `trail` now maps to `TrailParticle.Provider` with decoded target / RGB
         color / duration, vanilla random color scaling, target interpolation,
         full-bright light, and opaque layer. `vibration` now maps block
@@ -6392,8 +6397,9 @@ When an agent does any of the following, update this file in the same slice:
       for `isShotAtAngle`. Empty/no-explosion entity event `17` poof particles
       are covered; non-empty explosions now project Starter base spark shapes,
       center `flash`, fade-colors, trail child spark duplication, and twinkle
-      visibility gating. Blast / twinkle audio remains deferred to particle
-      presentation work.
+      visibility gating, plus the life-0 blast / large_blast local ambient
+      sound. Delayed twinkle audio remains deferred to particle presentation
+      work.
     - dropped item entities now use the vanilla 26.1 `ItemEntityRenderer` item
       stack path instead of a placeholder bounds box. Native entity scene maps
       `minecraft:item` to `NoRender`; visible dropped items are submitted by the
@@ -6568,8 +6574,9 @@ When an agent does any of the following, update this file in the same slice:
         non-empty explosions now project `FireworkParticles.Starter` small /
         large ball, star, creeper, and burst base spark shapes, center `flash`,
         per-spark fade-colors, trail child spark duplication, and twinkle
-        visibility gating. Blast / twinkle audio remains deferred to the broader
-        firework rocket / level-event presentation slice.
+        visibility gating, plus the life-0 blast / large_blast local ambient
+        sound. Delayed twinkle audio remains deferred to the broader firework
+        rocket / level-event presentation slice.
       - particle descriptors map `DripParticle.HoneyHangProvider`,
         `HoneyFallProvider`, and `HoneyLandProvider` for `dripping_honey`,
         `falling_honey`, and `landing_honey` to random sprites, vanilla

@@ -205,6 +205,8 @@ pub struct ParticleSpawnBatch {
     #[serde(default)]
     pub commands: Vec<ParticleSpawnCommand>,
     #[serde(default)]
+    pub sound_events: Vec<ParticleSoundEvent>,
+    #[serde(default)]
     pub missing_definition_count: usize,
     #[serde(default)]
     pub missing_sprite_count: usize,
@@ -541,6 +543,7 @@ impl ParticleSpawnBatch {
 
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
+            && self.sound_events.is_empty()
             && self.missing_definition_count == 0
             && self.missing_sprite_count == 0
             && self.unknown_particle_type_count == 0
@@ -637,6 +640,8 @@ impl ParticleRuntimeState {
         let requested_spawns = batch.commands.len();
         let mut queued_spawns = 0;
         let dropped_spawns_before = self.dropped_spawns;
+
+        self.pending_sound_events.extend(batch.sound_events);
 
         for command in batch.commands {
             if self.queue_pending_spawn(command) {
@@ -3259,6 +3264,43 @@ mod tests {
             ..ParticleSpawnBatch::default()
         }
         .is_empty());
+        let sound_only = ParticleSpawnBatch {
+            sound_events: vec![ParticleSoundEvent {
+                sound_event_id: "minecraft:test.sound".to_string(),
+                source: "ambient".to_string(),
+                position: [1.0, 2.0, 3.0],
+                volume: 4.0,
+                pitch: 0.75,
+                seed: 123,
+                distance_delay: true,
+            }],
+            ..ParticleSpawnBatch::default()
+        };
+        assert_eq!(sound_only.len(), 0);
+        assert!(!sound_only.is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_submit_batch_queues_batch_sound_events() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let sound = ParticleSoundEvent {
+            sound_event_id: "minecraft:entity.firework_rocket.blast".to_string(),
+            source: "ambient".to_string(),
+            position: [10.0, 64.0, -3.0],
+            volume: 20.0,
+            pitch: 1.0,
+            seed: 123,
+            distance_delay: true,
+        };
+
+        let summary = particles.submit_batch(ParticleSpawnBatch {
+            sound_events: vec![sound.clone()],
+            ..ParticleSpawnBatch::default()
+        });
+
+        assert_eq!(summary.requested_spawns, 0);
+        assert_eq!(summary.queued_spawns, 0);
+        assert_eq!(particles.drain_sound_events(), vec![sound]);
     }
 
     #[test]

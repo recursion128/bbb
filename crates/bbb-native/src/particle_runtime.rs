@@ -17,8 +17,8 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
-    ParticleItemOptionState, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv,
-    ParticleUvRect, Renderer,
+    ParticleItemOptionState, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    ParticleSpriteUv, ParticleUvRect, Renderer,
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
@@ -35,6 +35,12 @@ use crate::{
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 const ITEM_PICKUP_PARTICLE_TYPE_ID: i32 = -1;
 const ITEM_PICKUP_PARTICLE_ID: &str = "minecraft:item_pickup";
+const FIREWORK_ROCKET_BLAST_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.blast";
+const FIREWORK_ROCKET_BLAST_FAR_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.blast_far";
+const FIREWORK_ROCKET_LARGE_BLAST_SOUND_EVENT_ID: &str =
+    "minecraft:entity.firework_rocket.large_blast";
+const FIREWORK_ROCKET_LARGE_BLAST_FAR_SOUND_EVENT_ID: &str =
+    "minecraft:entity.firework_rocket.large_blast_far";
 
 pub(crate) trait ParticleEventSink {
     fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
@@ -2051,7 +2057,7 @@ impl ParticleCommandResolver {
     fn firework_explosion_particle_batch(
         &mut self,
         state: &FireworkRocketExplosionParticleState,
-        _camera_position: Option<[f64; 3]>,
+        camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch {
         let firework = self.simple_particle_template(FIREWORK_PARTICLE_TYPE_ID);
         let flash = self.simple_particle_template(FLASH_PARTICLE_TYPE_ID);
@@ -2069,6 +2075,12 @@ impl ParticleCommandResolver {
             z: state.delta_movement.z,
         };
 
+        if !state.explosions.is_empty() {
+            batch
+                .sound_events
+                .push(self.firework_blast_sound_event(state, camera_position));
+        }
+
         for explosion in &state.explosions {
             if let Some(firework) = firework.as_ref() {
                 self.append_firework_explosion_sparks(
@@ -2085,6 +2097,39 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn firework_blast_sound_event(
+        &mut self,
+        state: &FireworkRocketExplosionParticleState,
+        camera_position: Option<[f64; 3]>,
+    ) -> ParticleSoundEvent {
+        let far_effect = camera_position.is_some_and(|camera| {
+            let dx = state.position.x - camera[0];
+            let dy = state.position.y - camera[1];
+            let dz = state.position.z - camera[2];
+            dx * dx + dy * dy + dz * dz >= 256.0
+        });
+        let large_explosion = state.explosions.len() >= 3
+            || state
+                .explosions
+                .iter()
+                .any(|explosion| explosion.shape == FireworkExplosionShapeSummary::LargeBall);
+        let sound_event_id = match (large_explosion, far_effect) {
+            (true, true) => FIREWORK_ROCKET_LARGE_BLAST_FAR_SOUND_EVENT_ID,
+            (true, false) => FIREWORK_ROCKET_LARGE_BLAST_SOUND_EVENT_ID,
+            (false, true) => FIREWORK_ROCKET_BLAST_FAR_SOUND_EVENT_ID,
+            (false, false) => FIREWORK_ROCKET_BLAST_SOUND_EVENT_ID,
+        };
+        ParticleSoundEvent {
+            sound_event_id: sound_event_id.to_string(),
+            source: "ambient".to_string(),
+            position: [state.position.x, state.position.y, state.position.z],
+            volume: 20.0,
+            pitch: 0.95 + self.random.next_float() * 0.1,
+            seed: self.particle_level_random.next_i64(),
+            distance_delay: true,
+        }
     }
 
     fn append_firework_explosion_sparks(
@@ -4451,6 +4496,7 @@ fn argb_particle_color(color: i32) -> [f32; 4] {
 
 fn append_particle_batch(batch: &mut ParticleSpawnBatch, mut other: ParticleSpawnBatch) {
     batch.commands.append(&mut other.commands);
+    batch.sound_events.append(&mut other.sound_events);
     batch.missing_definition_count += other.missing_definition_count;
     batch.missing_sprite_count += other.missing_sprite_count;
     batch.unknown_particle_type_count += other.unknown_particle_type_count;
@@ -4993,6 +5039,12 @@ impl LegacyRandom {
 
     fn next_float(&mut self) -> f32 {
         self.next_bits(24) as f32 / (1_u32 << 24) as f32
+    }
+
+    fn next_i64(&mut self) -> i64 {
+        let high = self.next_bits(32) as i32 as i64;
+        let low = self.next_bits(32) as i32 as i64;
+        (high << 32).wrapping_add(low)
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
@@ -11313,6 +11365,20 @@ mod tests {
             None,
         );
         assert_eq!(firework_explosion.len(), 122);
+        assert_eq!(firework_explosion.sound_events.len(), 1);
+        let blast = &firework_explosion.sound_events[0];
+        assert_eq!(blast.sound_event_id, FIREWORK_ROCKET_BLAST_SOUND_EVENT_ID);
+        assert_eq!(blast.source, "ambient");
+        assert_eq!(blast.position, [10.0, 64.0, -3.0]);
+        assert_eq!(blast.volume, 20.0);
+        let mut expected_starter_random = LegacyRandom::new(0);
+        assert!(
+            (blast.pitch - (0.95 + expected_starter_random.next_float() * 0.1)).abs()
+                < f32::EPSILON
+        );
+        let mut expected_level_random = LegacyRandom::new(0);
+        assert_eq!(blast.seed, expected_level_random.next_i64());
+        assert!(blast.distance_delay);
         assert_eq!(
             firework_explosion
                 .commands
@@ -11363,6 +11429,36 @@ mod tests {
                 0x33 as f32 / 255.0,
                 0.0,
             ])
+        );
+
+        let mut large_far_resolver = test_resolver(0);
+        let large_far_sound = large_far_resolver.firework_blast_sound_event(
+            &FireworkRocketExplosionParticleState {
+                entity_id: 8,
+                position: bbb_world::EntityVec3 {
+                    x: 10.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+                delta_movement: bbb_world::EntityVec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                has_explosions: true,
+                explosions: vec![FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::LargeBall,
+                    colors: vec![0xffffff],
+                    fade_colors: Vec::new(),
+                    has_trail: false,
+                    has_twinkle: false,
+                }],
+            },
+            Some([10.0, 64.0, 14.0]),
+        );
+        assert_eq!(
+            large_far_sound.sound_event_id,
+            FIREWORK_ROCKET_LARGE_BLAST_FAR_SOUND_EVENT_ID
         );
 
         let mut bee_growth_random = LevelEventSoundRandomState::with_seed(0);
