@@ -747,9 +747,9 @@ When an agent does any of the following, update this file in the same slice:
         grow-to-base curve, random gray (`smoke` / `large_smoke`) or fixed
         `0xBAB1C2` (`white_smoke`) tint, `8 / (random * 0.8 + 0.2) * scale`
         lifetime (`scale` `1.0` for `smoke` / `white_smoke`, `2.5` for
-        `large_smoke`), `0.96` friction, `-0.1` gravity, and physics metadata.
-        The `speedUpWhenYMotionIsBlocked` block-collision speed-up itself
-        remains deferred with world-coupled particle physics.
+        `large_smoke`), `0.96` friction, `-0.1` gravity, physics metadata, and
+        the vanilla `speedUpWhenYMotionIsBlocked` X/Z speed-up when Y movement
+        is blocked by the world collision callback.
       - `CritParticle.Provider`, `DamageIndicatorProvider`, and
         `MagicProvider` constructor-random initial speed scaled by `0.1` plus
         `0.4` command velocity, the damage-indicator `yAux + 1.0` offset,

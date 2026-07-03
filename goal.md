@@ -368,6 +368,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `BubbleParticle` / `BubbleColumnUpParticle` / `WaterCurrentDownParticle`
     现在按 vanilla `FluidTags.WATER` gate 在当前位置格子不含 water fluid
     时移除；
+    BaseAshSmoke 系 provider 的 `speedUpWhenYMotionIsBlocked` 也已通过
+    default tick 的 world collision callback 覆盖；
     剩余 gravity/collision/player-coupled work 是特殊 context 和
     player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。

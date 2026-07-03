@@ -2764,6 +2764,32 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_base_ash_smoke_speeds_up_when_y_motion_is_blocked() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:smoke", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        instance.friction = 0.5;
+        instance.gravity = 0.0;
+        assert!(instance.speed_up_when_y_motion_is_blocked);
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            movement[1] = 0.0;
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(instance.on_ground);
+        assert_close3(instance.position, [1.2, 2.0, 2.4]);
+        assert_close3(instance.velocity, [0.077, -0.2, -0.231]);
+    }
+
+    #[test]
     fn particle_runtime_falling_dust_resets_roll_after_ground_collision() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:falling_dust", 20);

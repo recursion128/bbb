@@ -2374,6 +2374,11 @@
     uses the no-physics `move` path before the water check; focused tests cover
     bubble removal outside water, bubble-column survival in water, current-down
     removal outside water, and descriptor/runtime field sampling.
+  - [x] BaseAshSmoke Y-blocked speed-up：`SmokeParticle` / `LargeSmokeParticle`
+    / `WhiteSmokeParticle` and related `BaseAshSmokeParticle` descriptors already
+    carry vanilla `speedUpWhenYMotionIsBlocked=true`; runtime default ticking now
+    has focused coverage that a world collision callback blocking Y motion
+    applies the vanilla X/Z `1.1` speed-up before friction and ground damping.
 
 ## P2：Terrain / Block Render Presentation
 
