@@ -6992,6 +6992,26 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(9), uv("local_weekday_clock_fallback"));
 
+    // Narrow zone-name support: ICU `z` widths 1..=3 use the active specific
+    // abbreviation and `VV` emits the explicit zone id.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2025, 12, 31, 15, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(10), uv("zone_name_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 1, 15, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(10), uv("zone_name_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12583,6 +12603,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "weekday_in_month_clock",
             "week_clock",
             "local_weekday_clock",
+            "zone_name_clock",
         ],
     );
     write_json(
@@ -12765,6 +12786,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("zone_name_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd z zzz VV",
+                    "time_zone": "Asia/Tokyo",
+                    "cases": [
+                        {
+                            "when": "2026-01-01 JST JST Asia/Tokyo",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/zone_name_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/zone_name_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -12793,6 +12832,8 @@ fn write_local_time_select_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "week_clock_fallback", &[45, 35, 85, 255]);
     write_flat_item_model_and_texture(&assets, "local_weekday_clock_match", &[80, 190, 140, 255]);
     write_flat_item_model_and_texture(&assets, "local_weekday_clock_fallback", &[35, 55, 90, 255]);
+    write_flat_item_model_and_texture(&assets, "zone_name_clock_match", &[150, 185, 230, 255]);
+    write_flat_item_model_and_texture(&assets, "zone_name_clock_fallback", &[30, 60, 100, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {

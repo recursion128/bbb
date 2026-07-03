@@ -17,7 +17,7 @@ use bbb_protocol::packets::{
 use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
-use chrono_tz::Tz;
+use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
 use super::{
@@ -774,8 +774,8 @@ pub(super) enum SelectProperty {
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
     /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
-    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, and
-    /// `Z`/`X`/`x`/`O` offsets).
+    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` short zone
+    /// names, `VV` zone IDs, and `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1351,10 +1351,17 @@ fn local_time_select_value(
         Some(time_zone) => {
             let utc = Utc.timestamp_millis_opt(epoch_millis).single()?;
             if let Some(offset) = fixed_time_zone_offset(time_zone) {
-                LocalTimeFields::from_datetime(utc.with_timezone(&offset))
+                let mut fields = LocalTimeFields::from_datetime(utc.with_timezone(&offset));
+                fields.zone_id = Some(time_zone.to_string());
+                fields.zone_abbreviation = Some(fixed_time_zone_short_name(time_zone, offset));
+                fields
             } else {
                 let time_zone = time_zone.parse::<Tz>().ok()?;
-                LocalTimeFields::from_datetime(utc.with_timezone(&time_zone))
+                let zoned = utc.with_timezone(&time_zone);
+                let mut fields = LocalTimeFields::from_datetime(zoned);
+                fields.zone_id = Some(zoned.offset().tz_id().to_string());
+                fields.zone_abbreviation = zoned.offset().abbreviation().map(str::to_string);
+                fields
             }
         }
         None => {
@@ -1377,6 +1384,8 @@ struct LocalTimeFields {
     millisecond: u32,
     weekday: Weekday,
     offset_seconds: i32,
+    zone_id: Option<String>,
+    zone_abbreviation: Option<String>,
 }
 
 impl LocalTimeFields {
@@ -1393,6 +1402,8 @@ impl LocalTimeFields {
             millisecond: date.nanosecond() / 1_000_000,
             weekday: date.weekday(),
             offset_seconds: date.offset().fix().local_minus_utc(),
+            zone_id: None,
+            zone_abbreviation: None,
         }
     }
 }
@@ -1527,6 +1538,8 @@ fn format_local_time_field(
         'X' => iso8601_offset(fields.offset_seconds, count, true),
         'x' => iso8601_offset(fields.offset_seconds, count, false),
         'O' => localized_gmt_offset(fields.offset_seconds, count, locale),
+        'z' => specific_short_zone_name(fields, count),
+        'V' => time_zone_id(fields, count),
         'E' => format_weekday_name(fields.weekday, count, locale),
         _ => None,
     }
@@ -1581,6 +1594,30 @@ fn localized_gmt_offset(offset_seconds: i32, width: usize, locale: &str) -> Opti
         }
         4 => Some(format!("{prefix}{sign}{hours:02}:{minutes:02}")),
         _ => None,
+    }
+}
+
+fn specific_short_zone_name(fields: &LocalTimeFields, width: usize) -> Option<String> {
+    if (1..=3).contains(&width) {
+        fields.zone_abbreviation.clone()
+    } else {
+        None
+    }
+}
+
+fn time_zone_id(fields: &LocalTimeFields, width: usize) -> Option<String> {
+    if width == 2 {
+        fields.zone_id.clone()
+    } else {
+        None
+    }
+}
+
+fn fixed_time_zone_short_name(time_zone: &str, offset: FixedOffset) -> String {
+    match time_zone {
+        "GMT" => "GMT".to_string(),
+        "UTC" | "Etc/UTC" | "Z" if offset.local_minus_utc() == 0 => "UTC".to_string(),
+        _ => rfc822_offset(offset.local_minus_utc()),
     }
 }
 
