@@ -370,6 +370,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     时移除；
     BaseAshSmoke 系 provider 的 `speedUpWhenYMotionIsBlocked` 也已通过
     default tick 的 world collision callback 覆盖；
+    `CampfireSmokeParticle` 现在使用 vanilla `setSize(0.25F, 0.25F)` 的
+    0.25x0.25 AABB，通过 collision-backed `move` 路径移动，并在 alpha 已经
+    `<= 0` 时跳过运动直接移除；
     `EndRodParticle` 保留 `hasPhysics=true` 元数据但按 vanilla 覆写走
     collision-free `move`；
     `FallingLeavesParticle` 现在通过 world collision callback 覆盖落地移除、

@@ -2459,6 +2459,14 @@
     renderer tests cover honey plus dripstone lava/water sound ids, and native
     tests cover positioned sound-state projection plus pump ordering before
     particle light extraction.
+  - [x] CampfireSmoke collision-backed move：local vanilla 26.1
+    `CampfireSmokeParticle` confirms constructor `setSize(0.25F, 0.25F)`, tick
+    removal when alpha is already `<= 0`, random x/z drift, `yd -= gravity`,
+    and `move(xd, yd, zd)`. Renderer campfire smoke instances now use the
+    vanilla 0.25x0.25 collision AABB and route ticks through the existing
+    collision-backed particle move path; focused tests cover query dimensions,
+    ground/stopped collision state, retained Y velocity, and alpha-zero
+    removal before motion.
 
 ## P2：Terrain / Block Render Presentation
 

@@ -1131,6 +1131,10 @@ impl ParticleInstance {
         let atlas_uv_sub_rect =
             particle_atlas_uv_sub_rect_for_particle(&command.particle_id, random);
         let original_alpha = color[3];
+        let [collision_width, collision_height] = descriptor.collision_size().unwrap_or([
+            DEFAULT_PARTICLE_COLLISION_WIDTH,
+            DEFAULT_PARTICLE_COLLISION_HEIGHT,
+        ]);
         let mut instance = Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -1169,8 +1173,8 @@ impl ParticleInstance {
             has_physics: descriptor.has_physics,
             moves_without_collision: descriptor.moves_without_collision(),
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
-            collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
-            collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
+            collision_width,
+            collision_height,
             on_ground: false,
             stopped_by_collision: false,
             removed: false,
@@ -1373,12 +1377,14 @@ impl ParticleInstance {
                 );
             }
             ParticleTickMotionDescriptor::CampfireSmoke => {
+                if self.color[3] <= 0.0 {
+                    self.removed = true;
+                    return;
+                }
                 self.velocity[0] += f64::from(random.next_f32()) / 5000.0 * random_sign(random);
                 self.velocity[2] += f64::from(random.next_f32()) / 5000.0 * random_sign(random);
                 self.velocity[1] -= f64::from(self.gravity);
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                self.move_particle(self.velocity, collide);
                 let next_age = self.age_ticks.saturating_add(1);
                 if next_age >= self.lifetime_ticks.saturating_sub(60) && self.color[3] > 0.01 {
                     self.color[3] -= 0.015;
@@ -3978,6 +3984,57 @@ mod tests {
         assert_close_f64(instance.velocity[1], 0.002 - 3.0E-6);
         assert_close_f64(instance.position[1], 2.0 + 0.002 - 3.0E-6);
         assert_close_f32(instance.color[3], 0.885);
+    }
+
+    #[test]
+    fn particle_runtime_campfire_smoke_uses_collision_backed_move() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
+        instance.position = [1.0, 0.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.05, 0.0];
+        instance.gravity = 0.0;
+        instance.color = [1.0, 1.0, 1.0, 0.9];
+        particles.active_instances.push_back(instance);
+
+        let mut queries = Vec::new();
+        let summary = particles.advance_with_collision(1, |query| {
+            queries.push(query);
+            [query.movement[0], 0.0, query.movement[2]]
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert_eq!(queries.len(), 1);
+        assert_close_f64(queries[0].half_width, 0.125);
+        assert_close_f64(queries[0].height, 0.25);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close_f64(instance.position[1], 0.0);
+        assert_close_f64(instance.velocity[1], -0.05);
+        assert!(instance.on_ground);
+        assert!(instance.stopped_by_collision);
+    }
+
+    #[test]
+    fn particle_runtime_campfire_smoke_alpha_zero_removes_before_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.2, 0.3];
+        instance.color = [1.0, 1.0, 1.0, 0.0];
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |query| {
+            collision_queries += 1;
+            query.movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert_eq!(collision_queries, 0);
     }
 
     #[test]
@@ -8805,6 +8862,10 @@ mod tests {
 
     fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
         let descriptor = ParticleDescriptor::for_particle(particle_id);
+        let [collision_width, collision_height] = descriptor.collision_size().unwrap_or([
+            DEFAULT_PARTICLE_COLLISION_WIDTH,
+            DEFAULT_PARTICLE_COLLISION_HEIGHT,
+        ]);
         ParticleInstance {
             particle_type_id: 0,
             particle_id: particle_id.to_string(),
@@ -8843,8 +8904,8 @@ mod tests {
             has_physics: descriptor.has_physics,
             moves_without_collision: descriptor.moves_without_collision(),
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
-            collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
-            collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
+            collision_width,
+            collision_height,
             on_ground: false,
             stopped_by_collision: false,
             removed: false,

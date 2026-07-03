@@ -2030,6 +2030,15 @@ impl ParticleDescriptor {
         }
     }
 
+    pub(crate) fn collision_size(self) -> Option<[f32; 2]> {
+        match self.provider {
+            "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
+                Some([0.25, 0.25])
+            }
+            _ => None,
+        }
+    }
+
     pub(crate) fn drip_fluid(self) -> Option<ParticleFluidKind> {
         match self.provider {
             "DripParticle.WaterHangProvider"
@@ -4913,6 +4922,7 @@ mod tests {
                 ParticleTickMotionDescriptor::CampfireSmoke,
                 "{particle_id}"
             );
+            assert_eq!(descriptor.collision_size(), Some([0.25, 0.25]));
         }
         assert_descriptor(
             "minecraft:smoke",
