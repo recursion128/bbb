@@ -419,6 +419,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ClientPacketListener.handleAnimate` 生成 crit / enchanted-hit
     `TrackingEmitter`，默认 3 tick，每 tick 16 次单位球采样，并复用实体当前
     AABB width/height；
+    ravager entity event `69` 现在按 vanilla `Ravager.handleEntityEvent`
+    的 `addRoarParticleEffects` 生成 40 个 `minecraft:poof`：位置为 ravager
+    AABB center，速度为 vanilla gaussian `* 0.2` 三轴采样，并保留
+    `ParticleTypes.POOF` 的 `overrideLimiter=true`；同事件的本地 authoritative
+    living-entity knockback 仍留给 movement/control parity；
     `ClientboundTakeItemEntity` 现在按 vanilla 在 shrink/remove 前创建
     `ItemPickupParticle` runtime command：source 使用被拾取实体当前位置/速度，
     target 使用目标 living entity 或本地玩家 fallback 的 `(feet + eyeY) / 2`
@@ -457,7 +462,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 TakeItemEntity `ItemPickupParticle` runtime/lifecycle、SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
-    GameEvent elder-guardian 粒子、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
+    ravager event-69 roar poof 粒子、GameEvent elder-guardian 粒子、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
     collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /

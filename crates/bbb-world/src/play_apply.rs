@@ -14,8 +14,9 @@ use bbb_protocol::packets::{
 use crate::{
     advance_cobweb_place_particle_randoms, advance_vault_activation_particle_randoms,
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos, JukeboxLevelEventState,
-    LevelEventSoundRandomState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport, WorldStore,
+    LevelEventSoundRandomState, LocalSoundEventState, RavagerRoarParticleState,
+    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    VehicleMoveReport, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -31,6 +32,7 @@ const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
+const RAVAGER_ROAR_EVENT_ID: i8 = 69;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
@@ -106,6 +108,7 @@ pub trait PlayApplyEffects {
         _state: &TakeItemEntityPickupParticleState,
     ) {
     }
+    fn ravager_roar_particles(&mut self, _world: &WorldStore, _state: RavagerRoarParticleState) {}
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
     /// deterministic random stream in the sink's place.
@@ -321,9 +324,19 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let ravager_roar_particles = if update.event_id == RAVAGER_ROAR_EVENT_ID {
+                    self.ravager_roar_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let applied = self.apply_entity_event(update);
                 if let Some(position) = firework_empty_explosions_position {
                     effects.firework_empty_explosion_particles(self, position);
+                }
+                if applied {
+                    if let Some(state) = ravager_roar_particles {
+                        effects.ravager_roar_particles(self, state);
+                    }
                 }
                 if applied && update.event_id == 35 {
                     effects.tracking_emitter_particles(

@@ -8,8 +8,8 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind, LevelEventGrowthRandomMode,
-    LevelEventSoundRandomState, PlayApplyEffects, TakeItemEntityPickupParticleState,
-    TerrainFluidKind, WorldStore,
+    LevelEventSoundRandomState, PlayApplyEffects, RavagerRoarParticleState,
+    TakeItemEntityPickupParticleState, TerrainFluidKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -317,6 +317,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         emit_take_item_entity_pickup_particles(self.particle_events, self.particle_renderer, state);
     }
 
+    fn ravager_roar_particles(&mut self, _world: &WorldStore, state: RavagerRoarParticleState) {
+        emit_ravager_roar_particles(self.particle_events, self.particle_renderer, state);
+    }
+
     fn level_event_particles(
         &mut self,
         world: &WorldStore,
@@ -551,6 +555,20 @@ fn emit_take_item_entity_pickup_particles(
         return;
     };
     let batch = particle_events.spawn_take_item_entity_pickup_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_ravager_roar_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: RavagerRoarParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_ravager_roar_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

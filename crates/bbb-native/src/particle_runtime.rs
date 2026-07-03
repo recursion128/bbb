@@ -22,7 +22,7 @@ use bbb_renderer::{
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
-    LevelEventSoundRandomState, TakeItemEntityPickupParticleState,
+    LevelEventSoundRandomState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
 };
 
 use crate::{
@@ -62,6 +62,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_take_item_entity_pickup_particles(
         &mut self,
         state: &TakeItemEntityPickupParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_ravager_roar_particles(
+        &mut self,
+        state: RavagerRoarParticleState,
     ) -> ParticleSpawnBatch;
 }
 
@@ -283,6 +287,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: &TakeItemEntityPickupParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.take_item_entity_pickup_particle_batch(state)
+    }
+
+    fn spawn_ravager_roar_particles(
+        &mut self,
+        state: RavagerRoarParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.ravager_roar_particle_batch(state)
     }
 }
 
@@ -2059,6 +2070,36 @@ impl ParticleCommandResolver {
             }],
             ..ParticleSpawnBatch::default()
         }
+    }
+
+    fn ravager_roar_particle_batch(
+        &mut self,
+        state: RavagerRoarParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let position = Vec3d {
+            x: state.center.x,
+            y: state.center.y,
+            z: state.center.z,
+        };
+        for _ in 0..40 {
+            let velocity = Vec3d {
+                x: self.random.next_gaussian() * 0.2,
+                y: self.random.next_gaussian() * 0.2,
+                z: self.random.next_gaussian() * 0.2,
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
     }
 
     fn particle_in_block_batch(
@@ -4735,6 +4776,41 @@ mod tests {
                 component_patch_len: 0,
             })
         );
+    }
+
+    #[test]
+    fn ravager_roar_batch_spawns_poof_at_aabb_center_with_gaussian_velocity() {
+        let mut resolver = test_resolver(0);
+        let state = RavagerRoarParticleState {
+            entity_id: 77,
+            center: bbb_world::EntityVec3 {
+                x: 1.0,
+                y: 65.1,
+                z: -2.0,
+            },
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            expected_random.next_gaussian() * 0.2,
+            expected_random.next_gaussian() * 0.2,
+            expected_random.next_gaussian() * 0.2,
+        ];
+
+        let batch = resolver.ravager_roar_particle_batch(state);
+
+        assert_eq!(batch.len(), 40);
+        assert_particle_command(
+            &batch.commands[0],
+            POOF_PARTICLE_TYPE_ID,
+            "minecraft:poof",
+            [1.0, 65.1, -2.0],
+            expected_velocity,
+            true,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.position == [1.0, 65.1, -2.0]));
     }
 
     #[test]

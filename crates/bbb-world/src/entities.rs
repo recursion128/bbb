@@ -333,6 +333,12 @@ pub struct TakeItemEntityPickupParticleState {
     pub item_stack: Option<ProtocolItemStackSummary>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct RavagerRoarParticleState {
+    pub entity_id: i32,
+    pub center: EntityVec3,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
@@ -1836,6 +1842,10 @@ impl WorldStore {
             target_eye_height: target.2,
             item_stack,
         })
+    }
+
+    pub fn ravager_roar_particle_state(&self, entity_id: i32) -> Option<RavagerRoarParticleState> {
+        self.entities.ravager_roar_particle_state(entity_id)
     }
 
     pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {

@@ -21,16 +21,17 @@ use super::{
     EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
     FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    RavagerRoarParticleState, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
@@ -915,6 +916,29 @@ impl EntityStore {
             });
         }
         states
+    }
+
+    pub(crate) fn ravager_roar_particle_state(&self, id: i32) -> Option<RavagerRoarParticleState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_RAVAGER_ID {
+            return None;
+        }
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let bounds = self.pick_bounds(id)?;
+        let center_offset = [
+            f64::from((bounds.min[0] + bounds.max[0]) * 0.5),
+            f64::from((bounds.min[1] + bounds.max[1]) * 0.5),
+            f64::from((bounds.min[2] + bounds.max[2]) * 0.5),
+        ];
+        Some(RavagerRoarParticleState {
+            entity_id: id,
+            center: super::EntityVec3 {
+                x: transform.position.x + center_offset[0],
+                y: transform.position.y + center_offset[1],
+                z: transform.position.z + center_offset[2],
+            },
+        })
     }
 
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {

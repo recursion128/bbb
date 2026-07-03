@@ -277,6 +277,12 @@ When an agent does any of the following, update this file in the same slice:
         midpoint following, and quadratic extract interpolation. Rendering the
         carried `EntityRenderState` through the item-pickup group remains a
         deferred GPU entity-submit slice.
+      - Ravager entity event `69` now emits vanilla roar `minecraft:poof`
+        particles: 40 commands at the ravager AABB center with gaussian
+        velocity scaled by `0.2`, preserving the particle type's
+        `overrideLimiter=true`. The local-authoritative living-entity knockback
+        half of `Ravager.applyRoarKnockbackClient` remains deferred to the
+        movement/control owner.
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
@@ -435,6 +441,9 @@ When an agent does any of the following, update this file in the same slice:
       pre-shrink item stack summary; renderer runtime keeps it in the vanilla
       `ITEM_PICKUP` group and advances the 3-tick target-following lifetime.
       GPU submission of the carried entity render state is still deferred.
+      Native ravager event `69` now emits the vanilla roar `minecraft:poof`
+      burst from the ravager AABB center with gaussian `0.2` velocity; client
+      roar knockback remains deferred.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant
@@ -2362,8 +2371,9 @@ When an agent does any of the following, update this file in the same slice:
     ((1 + triangleWave(tick, 10))·0.5)³·12`) and snaps the jaw in two phases; otherwise a
     `stunnedTicksRemaining` tilts the neck (`xRot = 0.21991149`), side-shakes it (`neck.x =
     sin(stunned/40·10)·3`) and opens the jaw `π·0.05`, or a `roarAnimation` (`(20 - roarTick +
-    partial)/20`) gapes it (`mouth.xRot = π/2·sin(roar·π/4)`). Only the roar particle/knockback
-    effects (event `69`) are deferred. The spider and cave spider (`emit_spider_model` /
+    partial)/20`) gapes it (`mouth.xRot = π/2·sin(roar·π/4)`). Event `69`
+    now emits the vanilla roar `minecraft:poof` burst at the ravager AABB center;
+    only the local-authoritative roar knockback remains deferred. The spider and cave spider (`emit_spider_model` /
     `emit_cave_spider_model` colored and `emit_spider_textured_model` textured, both base
     and eyes passes) use a dedicated `spider_leg_swing_pose`: `SpiderModel` is a custom
     `EntityModel` whose `setupAnim` accumulates onto each of the eight legs a horizontal
@@ -3902,8 +3912,9 @@ When an agent does any of the following, update this file in the same slice:
       `cos(pos * 0.6662 [+ π])` at the shorter `0.4` amplitude, legs `[2, 3, 4, 5]`,
       `xRot` only so the neck/head subtree is untouched) plus the event-driven attack
       neck-lunge, stunned neck shake, and roar mouth-gape poses (`apply_ravager_combat`
-      — see the ravager note above) on both render paths; only the roar
-      particle/knockback effects remain unsupported. Ravager-specific
+      — see the ravager note above) on both render paths; event `69` roar
+      particles are native, and only the local client knockback remains
+      unsupported. Ravager-specific
       light/overlay submission metadata is covered here; global LightTexture /
       gamma parity is tracked by the completed P0 lighting pipeline rather than
       as a ravager renderer gap

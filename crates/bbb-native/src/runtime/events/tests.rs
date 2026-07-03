@@ -47,7 +47,8 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos, LocalPlayerPoseState,
-    RegistryPacketEntry, TakeItemEntityPickupParticleState, WorldBlockSoundProfile, WorldStore,
+    RavagerRoarParticleState, RegistryPacketEntry, TakeItemEntityPickupParticleState,
+    WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2258,6 +2259,64 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
         other => panic!("expected totem positioned sound command, got {other:?}"),
     }
     assert_eq!(world.counters().entity_events_applied, 1);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn ravager_roar_entity_event_emits_poof_particle_state() {
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(77, VANILLA_ENTITY_TYPE_RAVAGER_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 77,
+        event_id: 69,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(78, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 78,
+        event_id: 69,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 69,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    assert_eq!(particles.ravager_roar_states.len(), 1);
+    let state = particles.ravager_roar_states[0];
+    assert_eq!(state.entity_id, 77);
+    assert_eq!(state.center.x, 1.0);
+    assert_close64(state.center.y, 65.1);
+    assert_eq!(state.center.z, -2.0);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -7929,6 +7988,7 @@ struct RecordingParticleSink {
     firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
     tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
     take_item_entity_pickup_states: Vec<TakeItemEntityPickupParticleState>,
+    ravager_roar_states: Vec<RavagerRoarParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -8015,6 +8075,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: &TakeItemEntityPickupParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.take_item_entity_pickup_states.push(state.clone());
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_ravager_roar_particles(
+        &mut self,
+        state: RavagerRoarParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.ravager_roar_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
@@ -8274,6 +8344,13 @@ fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
 }
 
 fn assert_close(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 1.0e-6,
+        "expected {expected}, got {actual}"
+    );
+}
+
+fn assert_close64(actual: f64, expected: f64) {
     assert!(
         (actual - expected).abs() < 1.0e-6,
         "expected {expected}, got {actual}"
