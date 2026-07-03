@@ -2409,6 +2409,15 @@
     `onGround`; native particle commands now carry the corresponding child
     templates and renderer runtime tests cover lifetime-expire and ground-hit
     child intake. Honey / dripstone local sound remains separate audio work.
+  - [x] SpellParticle scoping alpha：local vanilla 26.1 `SpellParticle`
+    confirms `isCloseToScopingPlayer` checks local player eye distance squared
+    `<= 9.0`, first-person camera, and `player.isScoping()`. Native now builds
+    the renderer particle scope context from post-input local use-item state,
+    the selected/offhand item registry id `minecraft:spyglass`, and the frame
+    camera eye position; renderer intake/tick preserves `originalAlpha`, hides
+    close first-person spyglass Spell particles at alpha `0.0`, keeps
+    `MobEffectProvider`'s constructor-overridden initial alpha, and lerps back
+    toward provider alpha by `0.05` when the scope gate clears.
 
 ## P2：Terrain / Block Render Presentation
 

@@ -5,8 +5,8 @@ use std::{
 };
 
 use bbb_pack::{
-    BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, FloatAttributeModifier,
-    FloatAttributeModifierKind, GrassColorModifier,
+    BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
+    FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
@@ -80,6 +80,56 @@ fn particle_light_block_pos_uses_block_pos_containing_floor() {
     assert_eq!(
         particle_light_block_pos([1.99, 64.0, -0.01]),
         BlockPos { x: 1, y: 64, z: -1 }
+    );
+}
+
+#[test]
+fn particle_scope_context_tracks_local_spyglass_use() {
+    let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        serde_json::from_value::<ItemRegistryCatalog>(serde_json::json!({
+            "resource_ids": ["minecraft:spyglass", "minecraft:stone"],
+            "protocol_ids": {"minecraft:spyglass": 0, "minecraft:stone": 1}
+        }))
+        .unwrap(),
+        EquipmentAssetCatalog::default(),
+    );
+    let mut world = WorldStore::new();
+    let pose = LocalPlayerPoseState {
+        position: bbb_protocol::packets::Vec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        ..LocalPlayerPoseState::default()
+    };
+    world.set_local_player_pose(pose);
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(0, 1),
+    });
+    world.set_local_using_item(true);
+
+    let context =
+        particle_local_player_scope_context(&world, Some(&runtime), camera_pose_from_world(&world))
+            .unwrap();
+    assert_eq!(
+        context.eye_position,
+        camera_eye_position(camera_pose_from_world(&world).unwrap()).map(f64::from)
+    );
+    assert!(context.first_person);
+    assert!(context.scoping);
+
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(1, 1),
+    });
+    assert_eq!(
+        particle_local_player_scope_context(&world, Some(&runtime), camera_pose_from_world(&world)),
+        None
+    );
+    assert_eq!(
+        particle_local_player_scope_context(&world, None, camera_pose_from_world(&world)),
+        None
     );
 }
 
@@ -666,8 +716,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let using_item_tick = source
         .find("world.advance_local_using_item_ticks(advanced_ticks);")
         .expect("pump should advance local use-item ticks before particle tick");
+    let particle_scope_context = source
+        .find("let particle_scope_context =")
+        .expect("pump should sample local scoping state before particle tick");
     let particle_tick = source
-        .find("renderer.advance_particles_with_world(")
+        .find("renderer.advance_particles_with_world_and_scope_context(")
         .expect("pump should advance particles");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
@@ -688,6 +741,10 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
             "vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`"
         );
     }
+    assert!(
+        using_item_tick < particle_scope_context && particle_scope_context < particle_tick,
+        "SpellParticle.tick samples post-input local scoping state during particle tick"
+    );
     assert!(
         particle_tick < particle_light_refresh,
         "particle lights should sample positions after particle tick"

@@ -80,6 +80,13 @@ pub struct ParticleSpawnCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleLocalPlayerScopeContext {
+    pub eye_position: [f64; 3],
+    pub first_person: bool,
+    pub scoping: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleCollisionQuery {
     pub position: [f64; 3],
     pub movement: [f64; 3],
@@ -215,6 +222,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) base_quad_size: f32,
     #[serde(default = "default_particle_color")]
     pub(crate) color: [f32; 4],
+    #[serde(default = "default_particle_original_alpha")]
+    pub(crate) original_alpha: f32,
     #[serde(default)]
     pub(crate) color_fade_target: Option<[f32; 3]>,
     #[serde(default)]
@@ -501,6 +510,10 @@ fn default_particle_color() -> [f32; 4] {
     [1.0, 1.0, 1.0, 1.0]
 }
 
+fn default_particle_original_alpha() -> f32 {
+    1.0
+}
+
 fn default_particle_light() -> [f32; 2] {
     DEFAULT_PARTICLE_LIGHT
 }
@@ -623,8 +636,22 @@ impl ParticleRuntimeState {
     pub(crate) fn advance_with_world<F, S>(
         &mut self,
         ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        self.advance_with_world_and_scope_context(ticks, collide, block_fluid_surface, None)
+    }
+
+    pub(crate) fn advance_with_world_and_scope_context<F, S>(
+        &mut self,
+        ticks: u32,
         mut collide: F,
         mut block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -640,15 +667,20 @@ impl ParticleRuntimeState {
                 &mut intaken_instances,
                 &mut dropped_active_instances,
                 &mut limited_particle_drops,
+                scope_context,
             );
         } else {
             for _ in 0..ticks {
-                expired_instances +=
-                    self.tick_active_instances(&mut collide, &mut block_fluid_surface);
+                expired_instances += self.tick_active_instances(
+                    &mut collide,
+                    &mut block_fluid_surface,
+                    scope_context,
+                );
                 self.drain_pending_spawns(
                     &mut intaken_instances,
                     &mut dropped_active_instances,
                     &mut limited_particle_drops,
+                    scope_context,
                 );
             }
         }
@@ -681,7 +713,12 @@ impl ParticleRuntimeState {
         }
     }
 
-    fn tick_active_instances<F, S>(&mut self, collide: &mut F, block_fluid_surface: &mut S) -> usize
+    fn tick_active_instances<F, S>(
+        &mut self,
+        collide: &mut F,
+        block_fluid_surface: &mut S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+    ) -> usize
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
@@ -716,6 +753,7 @@ impl ParticleRuntimeState {
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
+            instance.update_spell_scope_alpha(scope_context);
             instance.update_color_fade_from_age();
             self.enqueue_child_spawns_from(&instance);
             active_instances.push_back(instance);
@@ -745,13 +783,22 @@ impl ParticleRuntimeState {
         intaken_instances: &mut usize,
         dropped_active_instances: &mut usize,
         limited_particle_drops: &mut usize,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
     ) {
         while let Some(command) = self.pending_spawns.pop_front() {
             if self.max_active_instances == 0 {
                 *dropped_active_instances += 1;
                 continue;
             }
-            let instance = ParticleInstance::from_spawn_command(command, &mut self.random);
+            let instance = if scope_context.is_some() {
+                ParticleInstance::from_spawn_command_with_scope_context(
+                    command,
+                    &mut self.random,
+                    scope_context,
+                )
+            } else {
+                ParticleInstance::from_spawn_command(command, &mut self.random)
+            };
             if !self.has_space_in_particle_limit(instance.particle_limit) {
                 *limited_particle_drops += 1;
                 continue;
@@ -820,6 +867,14 @@ impl ParticleRuntimeState {
 
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
+        Self::from_spawn_command_with_scope_context(command, random, None)
+    }
+
+    fn from_spawn_command_with_scope_context(
+        command: ParticleSpawnCommand,
+        random: &mut ParticleRandom,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+    ) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
         let child_emission = descriptor.child_emission();
         let particle_limit = particle_limit_for_particle(&command.particle_id);
@@ -955,7 +1010,8 @@ impl ParticleInstance {
             };
         let atlas_uv_sub_rect =
             particle_atlas_uv_sub_rect_for_particle(&command.particle_id, random);
-        Self {
+        let original_alpha = color[3];
+        let mut instance = Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
             sprite_ids: command.sprite_ids,
@@ -976,6 +1032,7 @@ impl ParticleInstance {
             pitch,
             base_quad_size: visual.base_quad_size,
             color,
+            original_alpha,
             color_fade_target: descriptor.color_fade_target(),
             color_transition_target,
             light: DEFAULT_PARTICLE_LIGHT,
@@ -1021,7 +1078,9 @@ impl ParticleInstance {
             option_block: command.option_block,
             option_item: command.option_item,
             atlas_uv_sub_rect,
-        }
+        };
+        instance.apply_spell_scope_alpha_on_spawn(scope_context);
+        instance
     }
 
     fn render_quad_size(&self) -> f32 {
@@ -1569,6 +1628,43 @@ impl ParticleInstance {
         }
     }
 
+    fn apply_spell_scope_alpha_on_spawn(
+        &mut self,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+    ) {
+        if self.provider == "SpellParticle.MobEffectProvider" || !self.is_spell_particle() {
+            return;
+        }
+        if scope_context.is_some_and(|context| self.is_close_to_scoping_player(context)) {
+            self.color[3] = 0.0;
+        }
+    }
+
+    fn update_spell_scope_alpha(&mut self, scope_context: Option<ParticleLocalPlayerScopeContext>) {
+        if !self.is_spell_particle() {
+            return;
+        }
+        if scope_context.is_some_and(|context| self.is_close_to_scoping_player(context)) {
+            self.color[3] = 0.0;
+        } else {
+            self.color[3] = lerp_f32(0.05, self.color[3], self.original_alpha);
+        }
+    }
+
+    fn is_spell_particle(&self) -> bool {
+        self.provider.starts_with("SpellParticle.")
+    }
+
+    fn is_close_to_scoping_player(&self, context: ParticleLocalPlayerScopeContext) -> bool {
+        if !context.first_person || !context.scoping {
+            return false;
+        }
+        let dx = context.eye_position[0] - self.position[0];
+        let dy = context.eye_position[1] - self.position[1];
+        let dz = context.eye_position[2] - self.position[2];
+        dx * dx + dy * dy + dz * dz <= 9.0
+    }
+
     fn update_color_fade_from_age(&mut self) {
         let Some(target) = self.color_fade_target else {
             return;
@@ -1931,6 +2027,25 @@ impl Renderer {
         let summary = self
             .particles
             .advance_with_world(ticks, collide, block_fluid_surface);
+        self.record_particle_advance_summary(summary);
+    }
+
+    pub fn advance_particles_with_world_and_scope_context<F, S>(
+        &mut self,
+        ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+    ) where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let summary = self.particles.advance_with_world_and_scope_context(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+        );
         self.record_particle_advance_summary(summary);
     }
 
@@ -2967,6 +3082,51 @@ mod tests {
         assert!(instance.on_ground);
         assert_close3(instance.position, [1.2, 2.0, 2.4]);
         assert_close3(instance.velocity, [0.077, -0.2, -0.231]);
+    }
+
+    #[test]
+    fn particle_runtime_spell_alpha_tracks_scoping_player_context() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 61);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![spawn_command("minecraft:infested", 1.0)],
+            ..ParticleSpawnBatch::default()
+        });
+        let near_scoping = Some(ParticleLocalPlayerScopeContext {
+            eye_position: [0.0, 0.0, 0.0],
+            first_person: true,
+            scoping: true,
+        });
+        let far_scoping = Some(ParticleLocalPlayerScopeContext {
+            eye_position: [100.0, 0.0, 0.0],
+            first_person: true,
+            scoping: true,
+        });
+
+        let intake = particles.advance_with_world_and_scope_context(
+            0,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            near_scoping,
+        );
+        assert_eq!(intake.intaken_instances, 1);
+        assert_eq!(particles.active_instances()[0].color[3], 0.0);
+        assert_eq!(particles.active_instances()[0].original_alpha, 1.0);
+
+        particles.advance_with_world_and_scope_context(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            far_scoping,
+        );
+        assert_close_f32(particles.active_instances()[0].color[3], 0.05);
+
+        particles.advance_with_world_and_scope_context(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            near_scoping,
+        );
+        assert_eq!(particles.active_instances()[0].color[3], 0.0);
     }
 
     #[test]
@@ -6013,6 +6173,20 @@ mod tests {
         assert_range_f64(spell.velocity[0].abs(), 0.0, 0.008);
         assert_range_f64(spell.velocity[1], 0.0, 0.06);
         assert_range_f64(spell.velocity[2].abs(), 0.0, 0.008);
+        assert_eq!(spell.original_alpha, 1.0);
+
+        let mut scoped_spell_random = ParticleRandom::new(61);
+        let scoped_spell = ParticleInstance::from_spawn_command_with_scope_context(
+            spawn_command("minecraft:infested", 1.0),
+            &mut scoped_spell_random,
+            Some(ParticleLocalPlayerScopeContext {
+                eye_position: [0.0, 0.0, 0.0],
+                first_person: true,
+                scoping: true,
+            }),
+        );
+        assert_eq!(scoped_spell.color[3], 0.0);
+        assert_eq!(scoped_spell.original_alpha, 1.0);
 
         let mut base_effect_random = ParticleRandom::new(63);
         let mut base_effect_command = spawn_command("minecraft:effect", 1.0);
@@ -6050,7 +6224,27 @@ mod tests {
         assert_eq!(entity_effect.provider, "SpellParticle.MobEffectProvider");
         assert_eq!(entity_effect.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(entity_effect.color, [0.1, 0.2, 0.3, 0.4]);
+        assert_eq!(entity_effect.original_alpha, 0.4);
         assert_eq!(entity_effect.option_power, None);
+
+        let mut scoped_entity_effect_random = ParticleRandom::new(64);
+        let mut scoped_entity_effect_command = spawn_command("minecraft:entity_effect", 1.0);
+        scoped_entity_effect_command.option_color = Some([0.1, 0.2, 0.3, 0.4]);
+        let scoped_entity_effect = ParticleInstance::from_spawn_command_with_scope_context(
+            scoped_entity_effect_command,
+            &mut scoped_entity_effect_random,
+            Some(ParticleLocalPlayerScopeContext {
+                eye_position: [0.0, 0.0, 0.0],
+                first_person: true,
+                scoping: true,
+            }),
+        );
+        assert_eq!(
+            scoped_entity_effect.provider,
+            "SpellParticle.MobEffectProvider"
+        );
+        assert_eq!(scoped_entity_effect.color, [0.1, 0.2, 0.3, 0.4]);
+        assert_eq!(scoped_entity_effect.original_alpha, 0.4);
 
         let mut instant_effect_random = ParticleRandom::new(65);
         let mut instant_effect_command = spawn_command("minecraft:instant_effect", 1.0);
@@ -8210,6 +8404,7 @@ mod tests {
             pitch: 0.0,
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
+            original_alpha: 1.0,
             color_fade_target: descriptor.color_fade_target(),
             color_transition_target: None,
             light: DEFAULT_PARTICLE_LIGHT,

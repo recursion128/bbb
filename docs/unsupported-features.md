@@ -249,8 +249,11 @@ When an agent does any of the following, update this file in the same slice:
         three axes with vanilla Y-first / largest-horizontal axis order, applies
         `Particle.onGround` X/Z damping, and resets
         `FallingDustParticle` roll on the tick after ground contact
-      - remaining deferred work is broader collision clipping parity
-        for special contexts and player-coupled particle emitters
+      - `SpellParticle` alpha now receives a native local-player scoping
+        context and mirrors vanilla close-to-first-person-spyglass behavior
+      - remaining deferred work is broader collision clipping parity for
+        special contexts and player-coupled particle emitters beyond
+        `SpellParticle`
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -803,7 +806,11 @@ When an agent does any of the following, update this file in the same slice:
         decoded command metadata: `effect` / `instant_effect` use
         `SpellParticle.InstantProvider` RGB color plus `setPower(power)`, and
         `entity_effect` uses `SpellParticle.MobEffectProvider` ARGB color /
-        alpha. `flash` now maps to `FireworkParticles.FlashProvider` with
+        alpha. Spell particles now also track vanilla `originalAlpha` and
+        sample native local-player scope context so particles within distance
+        squared `9.0` of a first-person spyglass user render with alpha `0.0`,
+        then lerp back toward the provider alpha by `0.05` when the scope gate
+        clears. `flash` now maps to `FireworkParticles.FlashProvider` with
         decoded ARGB color, fixed lifetime `4`, translucent layer, and the
         vanilla overlay size / render-alpha formulas. `firework` now maps to
         `FireworkParticles.SparkProvider` with age sprites, vanilla

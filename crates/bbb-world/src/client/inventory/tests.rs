@@ -914,6 +914,33 @@ fn local_using_item_use_effects_removed_component_falls_back_to_vanilla_default(
 }
 
 #[test]
+fn local_using_item_item_id_reads_selected_hand() {
+    let mut store = WorldStore::new();
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 40,
+        item: item_stack(99, 1),
+    });
+
+    assert_eq!(store.local_using_item_item_id(), None);
+
+    store.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+    assert_eq!(store.local_using_item_item_id(), Some(42));
+
+    store.set_local_using_item_with_hand(true, InteractionHand::OffHand);
+    assert_eq!(store.local_using_item_item_id(), Some(99));
+
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 40,
+        item: ProtocolItemStackSummary::empty(),
+    });
+    assert_eq!(store.local_using_item_item_id(), None);
+}
+
+#[test]
 fn drop_local_selected_hotbar_item_drops_one_and_updates_menu_view() {
     let mut store = WorldStore::new();
     assert!(store.set_local_selected_hotbar_slot(2));

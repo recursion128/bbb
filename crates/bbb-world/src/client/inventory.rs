@@ -1051,6 +1051,19 @@ impl WorldStore {
         item_stack_use_effects(item, &self.items.default_item_use_effects)
     }
 
+    pub fn local_using_item_item_id(&self) -> Option<i32> {
+        if !self.local_player.interaction.using_item {
+            return None;
+        }
+        let hand = self
+            .local_player
+            .interaction
+            .using_item_hand
+            .unwrap_or(InteractionHand::MainHand);
+        self.local_item_in_hand(hand)
+            .and_then(|item| item.item_id.filter(|item_id| *item_id >= 0))
+    }
+
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
         let selected_slot = self.local_player.selected_hotbar_slot;
         if selected_slot > 8 {
