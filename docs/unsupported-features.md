@@ -6742,9 +6742,10 @@ When an agent does any of the following, update this file in the same slice:
     - remaining `minecraft:local_time` coverage beyond the supported
       root/en-locale ICU numeric/date-time / timezone-offset subset (which now
       includes `u` proleptic year, `G` era, `D` day-of-year, and `Q`/`q`
-      quarter fields, `F` day-of-week-in-month, root/en `w`/`W` week
-      numbers, root/en `e`/`c` local weekdays, plus localized-GMT `O`
-      offsets, `Z`/`X`/`x` offset widths 1..=5, short `z` zone
+      quarter fields, root/en `M`/`L` month widths 1..=5, `F`
+      day-of-week-in-month, root/en `w`/`W` week numbers, root/en `e`/`c`
+      local weekdays, plus localized-GMT `O` offsets, `Z`/`X`/`x` offset
+      widths 1..=5, short `z` zone
       abbreviations, `VV` zone IDs, and `VVV` exemplar cities, plus
       fixed/UTC long `z` names): full localized symbols
       and long-tail ICU pattern fields (locale-specific week data beyond
@@ -7087,8 +7088,8 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector plus a
       root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era
-      text, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-      root/en `w`/`W` week-of-year / week-of-month, `F`
+      text, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day,
+      `D` day-of-year, root/en `w`/`W` week-of-year / week-of-month, `F`
       day-of-week-in-month, root/en `E`/`e`/`c` weekdays, 24/12-hour
       `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`, `Z`/`X`/`x` offset fields through
       width 5, localized-GMT `O` offsets, short `z` zone abbreviations, `VV`
@@ -7100,10 +7101,11 @@ When an agent does any of the following, update this file in the same slice:
       the fallback, cross-midnight `UTC+02:30` plus `Asia/Tokyo` date-time /
       weekday / AM-PM branches, UTC `X`/`x` zero-offset formatting,
       `uuuu-DDD-G` proleptic-year / day-of-year / era, `Q`/`q` quarter,
-      localized-GMT `O`, `F` day-of-week-in-month, and root/en `w`/`W` week
-      plus `e`/`c` local weekday branches, and an IANA-zone short `z` / `VV`
-      / `VVV` branch plus fixed-offset `zzzz`; UTC and `UTC+02:30` offset
-      branches now pin `Z`/`X`/`x` width 4/5 output as well.
+      root/en narrow `M`/`L` month symbols, localized-GMT `O`, `F`
+      day-of-week-in-month, and root/en `w`/`W` week plus `e`/`c` local
+      weekday branches, and an IANA-zone short `z` / `VV` / `VVV` branch plus
+      fixed-offset `zzzz`; UTC and `UTC+02:30` offset branches now pin
+      `Z`/`X`/`x` width 4/5 output as well.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context. Native projects the `daytime` target
       from the overworld sun angle and `moon_phase` from the vanilla

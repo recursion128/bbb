@@ -948,9 +948,10 @@
   - [x] `minecraft:local_time` item-model select now resolves from wall-clock
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
     root/en-locale ICU `SimpleDateFormat` subset (`y`/`u` year, `G` era,
-    `Q`/`q` quarter, `M`/`L`, `d`, `D` day-of-year, root/en `w`/`W`
-    week-of-year / week-of-month, `F` day-of-week-in-month, root/en
-    `E`/`e`/`c` weekdays, 24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`,
+    `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`, `D`
+    day-of-year, root/en `w`/`W` week-of-year / week-of-month, `F`
+    day-of-week-in-month, root/en `E`/`e`/`c` weekdays, 24/12-hour
+    `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`,
     `Z`/`X`/`x` offset fields through width 5, localized-GMT `O` offsets,
     short `z` zone abbreviations, `VV` zone IDs, `VVV` exemplar cities, and
     quoted literals),
@@ -962,6 +963,9 @@
     `Q`/`q` mirror ICU quarter widths 1..=5 for root/en (`3`, `03`, `Q3`,
     `3rd quarter`, `3`), treating format and stand-alone quarter identically
     for the supported locale subset.
+    `M`/`L` mirror ICU root/en month widths 1..=5: numeric, zero-padded,
+    abbreviated, wide, and narrow (`A` for August), treating format and
+    stand-alone month names identically for the supported locale subset.
     `O` mirrors ICU localized GMT offset widths for root/en: `O`..`OOO` use
     the short form (`GMT+2:30`) and `OOOO` uses the zero-padded long form
     (`GMT+02:30`).
@@ -983,9 +987,10 @@
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
-    `Q`/`q` quarter branch, `O` localized-GMT branch, `F`
-    day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
-    `LocalTime.get`, plus root/en `e`/`c` local weekday branches, a short
+    `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, `O`
+    localized-GMT branch, `F` day-of-week-in-month branch, and root/en
+    `w`/`W` week branch from vanilla `LocalTime.get`, plus root/en `e`/`c`
+    local weekday branches, a short
     `z` / `VV` / `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC
     / `UTC+02:30` width-4/5 offset branches. IANA long `z`, generic `v`,
     one- and four-letter `V` widths,

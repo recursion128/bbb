@@ -772,9 +772,10 @@ pub(super) enum SelectProperty {
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
-    /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-    /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
-    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` zone names,
+    /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
+    /// day, `D` day-of-year, `w`/`W` week numbers, `F`
+    /// day-of-week-in-month, `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
+    /// `m`/`s`/`S`, `a`, `z` zone names,
     /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
     /// 1..=5, and localized-GMT `O` offsets).
     LocalTime {
@@ -1507,7 +1508,9 @@ fn format_local_time_field(
             1 => Some(fields.month.to_string()),
             2 => Some(padded_u32(fields.month, 2)),
             3 => english_text(locale, short_month_name(fields.month)),
-            _ => english_text(locale, long_month_name(fields.month)),
+            4 => english_text(locale, long_month_name(fields.month)),
+            5 => english_text(locale, narrow_month_name(fields.month)),
+            _ => None,
         },
         'w' => root_locale_week_of_year(fields, count, locale),
         'W' => root_locale_week_of_month(fields, count, locale),
@@ -1885,6 +1888,24 @@ fn long_month_name(month: u32) -> &'static str {
         10 => "October",
         11 => "November",
         12 => "December",
+        _ => "",
+    }
+}
+
+fn narrow_month_name(month: u32) -> &'static str {
+    match month {
+        1 => "J",
+        2 => "F",
+        3 => "M",
+        4 => "A",
+        5 => "M",
+        6 => "J",
+        7 => "J",
+        8 => "A",
+        9 => "S",
+        10 => "O",
+        11 => "N",
+        12 => "D",
         _ => "",
     }
 }
