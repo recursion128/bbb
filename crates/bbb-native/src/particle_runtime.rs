@@ -53,6 +53,10 @@ pub(crate) trait ParticleEventSink {
         position: [f64; 3],
         camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch;
+    fn spawn_tracking_emitter_particles(
+        &mut self,
+        state: TrackingEmitterParticleState,
+    ) -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -81,6 +85,15 @@ pub(crate) struct LevelEventParticleContext {
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
     pub(crate) in_block_particle_spread_height: Option<f64>,
     pub(crate) composter_fill_center_shape_max_y: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct TrackingEmitterParticleState {
+    pub(crate) particle_type_id: i32,
+    pub(crate) position: [f64; 3],
+    pub(crate) width: f32,
+    pub(crate) height: f32,
+    pub(crate) lifetime_ticks: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -250,6 +263,13 @@ impl ParticleEventSink for NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .firework_empty_explosion_particle_batch(position, camera_position)
+    }
+
+    fn spawn_tracking_emitter_particles(
+        &mut self,
+        state: TrackingEmitterParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.tracking_emitter_particle_batch(state)
     }
 }
 
@@ -1935,6 +1955,46 @@ impl ParticleCommandResolver {
             }
         }
 
+        batch
+    }
+
+    fn tracking_emitter_particle_batch(
+        &mut self,
+        state: TrackingEmitterParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(state.particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let width = f64::from(state.width.max(0.0));
+        let height = f64::from(state.height.max(0.0));
+        for initial_delay_ticks in 0..state.lifetime_ticks {
+            for _ in 0..16 {
+                let xa = f64::from(self.random.next_float()) * 2.0 - 1.0;
+                let ya = f64::from(self.random.next_float()) * 2.0 - 1.0;
+                let za = f64::from(self.random.next_float()) * 2.0 - 1.0;
+                if xa * xa + ya * ya + za * za > 1.0 {
+                    continue;
+                }
+                let position = Vec3d {
+                    x: state.position[0] + width * (xa / 4.0),
+                    y: state.position[1] + height * (0.5 + ya / 4.0),
+                    z: state.position[2] + width * (za / 4.0),
+                };
+                let velocity = Vec3d {
+                    x: xa,
+                    y: ya + 0.2,
+                    z: za,
+                };
+                let mut command = self.command_from_template(&template, position, velocity, false);
+                command.initial_delay_ticks = initial_delay_ticks;
+                batch.commands.push(command);
+            }
+        }
         batch
     }
 
@@ -4225,6 +4285,7 @@ const POOF_PARTICLE_TYPE_ID: i32 = 59;
 const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
 pub(crate) const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
+pub(crate) const TOTEM_OF_UNDYING_PARTICLE_TYPE_ID: i32 = 68;
 const SPLASH_PARTICLE_TYPE_ID: i32 = 70;
 const DRIPPING_HONEY_PARTICLE_TYPE_ID: i32 = 79;
 const FALLING_HONEY_PARTICLE_TYPE_ID: i32 = 80;
@@ -4435,6 +4496,10 @@ impl LegacyRandom {
         }
     }
 
+    fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 / (1_u32 << 24) as f32
+    }
+
     fn next_bits(&mut self, bits: u32) -> u32 {
         self.seed = self
             .seed
@@ -4466,6 +4531,69 @@ mod tests {
         assert_close(random.next_gaussian(), 0.8025330637390305);
         assert_close(random.next_gaussian(), -0.9015460884175122);
         assert_close(random.next_gaussian(), 2.080920790428163);
+    }
+
+    #[test]
+    fn legacy_random_float_matches_java_samples() {
+        let mut random = LegacyRandom::new(0);
+        assert_close_f32(random.next_float(), 0.730_967_76);
+        assert_close_f32(random.next_float(), 0.831_441);
+        assert_close_f32(random.next_float(), 0.240_536_39);
+    }
+
+    #[test]
+    fn tracking_emitter_batch_spawns_totem_particles_around_entity_bounds() {
+        let mut resolver = test_resolver(0);
+        let batch = resolver.tracking_emitter_particle_batch(TrackingEmitterParticleState {
+            particle_type_id: TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+            position: [10.0, 64.0, -3.0],
+            width: 0.6,
+            height: 1.8,
+            lifetime_ticks: 2,
+        });
+
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+        assert_eq!(batch.unknown_particle_type_count, 0);
+        assert!(!batch.commands.is_empty());
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_type_id == TOTEM_OF_UNDYING_PARTICLE_TYPE_ID));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:totem_of_undying"));
+        assert!(batch
+            .commands
+            .iter()
+            .any(|command| command.initial_delay_ticks == 0));
+        assert!(batch
+            .commands
+            .iter()
+            .any(|command| command.initial_delay_ticks == 1));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.initial_delay_ticks <= 1));
+
+        assert_particle_command_with_delay(
+            &batch.commands[0],
+            TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+            "minecraft:totem_of_undying",
+            [
+                10.069_290_330_779_168,
+                65.198_296_854_938_49,
+                -3.077_839_085_572_524,
+            ],
+            [
+                0.461_935_520_172_119_14,
+                0.862_881_970_405_578_6,
+                -0.518_927_216_529_846_2,
+            ],
+            false,
+            0,
+        );
     }
 
     #[test]
@@ -11370,6 +11498,7 @@ mod tests {
                 "poof_0",
                 "happy_villager_0",
                 "composter_0",
+                "totem_0",
                 "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
@@ -11652,6 +11781,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:composter_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("totem_of_undying.json"),
+            r#"{
+              "textures": [
+                "minecraft:totem_0"
               ]
             }"#,
         );
@@ -12587,6 +12724,13 @@ mod tests {
     fn assert_close(actual: f64, expected: f64) {
         assert!(
             (actual - expected).abs() < 1.0e-12,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_close_f32(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
         );
     }

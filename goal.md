@@ -406,6 +406,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
     local-player position / delta-movement context，覆盖 vanilla
     `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
+    entity event `35` 的 totem `TrackingEmitter` 现在按 vanilla
+    构造时立即 tick、总计 30 tick，每 tick 做 16 次单位球采样，并按实体当前
+    AABB width/height 在实体周围生成 `minecraft:totem_of_undying` 粒子，使用
+    velocity `(xa, ya + 0.2, za)` 与 delay `0..29` 提交给 renderer；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
@@ -428,9 +432,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:smoke`，速度为 0；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
-    vibration entity target refresh、DragonBreath hit-ground motion 与
-    SuspendedTown collision-free move、Crit constructor tick、Flame/Portal
-    collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
+    totem event-35 TrackingEmitter、vibration entity target refresh、
+    DragonBreath hit-ground motion 与 SuspendedTown collision-free move、Crit
+    constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、

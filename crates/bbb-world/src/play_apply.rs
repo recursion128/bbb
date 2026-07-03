@@ -78,6 +78,7 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
+    fn totem_tracking_emitter_particles(&mut self, _world: &WorldStore, _entity_id: i32) {}
     /// Spawn level-event particles through a sink. Return `true` when the sink
     /// consumed the particle randoms; `false` lets the world advance the
     /// deterministic random stream in the sink's place.
@@ -270,9 +271,12 @@ impl WorldStore {
                 } else {
                     None
                 };
-                self.apply_entity_event(update);
+                let applied = self.apply_entity_event(update);
                 if let Some(position) = firework_empty_explosions_position {
                     effects.firework_empty_explosion_particles(self, position);
+                }
+                if applied && update.event_id == 35 {
+                    effects.totem_tracking_emitter_particles(self, update.entity_id);
                 }
             }
             PlayClientbound::HurtAnimation(update) => {

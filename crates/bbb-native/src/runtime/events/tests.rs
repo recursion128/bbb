@@ -1988,6 +1988,58 @@ fn firework_entity_event_with_empty_explosions_emits_poof_particles() {
 }
 
 #[test]
+fn totem_entity_event_emits_tracking_emitter_particles() {
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(123, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 123,
+        event_id: 35,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 35,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        3
+    );
+
+    assert_eq!(particles.tracking_emitter_states.len(), 1);
+    let state = particles.tracking_emitter_states[0];
+    assert_eq!(
+        state.particle_type_id,
+        crate::particle_runtime::TOTEM_OF_UNDYING_PARTICLE_TYPE_ID
+    );
+    assert_eq!(state.position, [1.0, 64.0, -2.0]);
+    assert_close(state.width, 0.6);
+    assert_close(state.height, 1.95);
+    assert_eq!(state.lifetime_ticks, 30);
+    assert_eq!(world.counters().entity_events_applied, 1);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
 fn entity_events_materialize_ender_dragon_part_pick_targets() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 
@@ -7483,6 +7535,7 @@ struct RecordingParticleSink {
     level_event_contexts: Vec<LevelEventParticleContext>,
     firework_empty_explosion_positions: Vec<[f64; 3]>,
     firework_empty_explosion_camera_positions: Vec<Option<[f64; 3]>>,
+    tracking_emitter_states: Vec<crate::particle_runtime::TrackingEmitterParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -7543,6 +7596,19 @@ impl ParticleEventSink for RecordingParticleSink {
         self.firework_empty_explosion_positions.push(position);
         self.firework_empty_explosion_camera_positions
             .push(camera_position);
+        let batch = bbb_renderer::ParticleSpawnBatch {
+            missing_sprite_count: 1,
+            ..bbb_renderer::ParticleSpawnBatch::default()
+        };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_tracking_emitter_particles(
+        &mut self,
+        state: crate::particle_runtime::TrackingEmitterParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.tracking_emitter_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()

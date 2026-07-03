@@ -2632,6 +2632,17 @@
     after default motion, with focused coverage for near-player pull and
     far/lower-player no-op behavior. Broader remote-player nearest selection
     remains deferred with other player-coupled emitters.
+  - [x] Totem TrackingEmitter entity event：local vanilla 26.1
+    `ClientPacketListener.handleEntityEvent(35)` creates a
+    `TrackingEmitter(entity, ParticleTypes.TOTEM_OF_UNDYING, 30)`, whose
+    constructor immediately ticks and whose tick emits up to 16 particles from
+    unit-sphere samples around `entity.getX(xa/4)`, `getY(0.5+ya/4)`, and
+    `getZ(za/4)` with velocity `(xa, ya + 0.2, za)`. World/native event
+    handling now turns applied entity event `35` into a native tracking-emitter
+    batch, sampling current entity AABB width/height and submitting delayed
+    `minecraft:totem_of_undying` commands for 30 ticks. Focused tests cover the
+    Java `nextFloat` random stream, first command position/velocity, delay
+    distribution, and dispatcher gating for missing entities.
   - [x] Vibration entity PositionSource initial target：local vanilla 26.1
     `EntityPositionSource.STREAM_CODEC` confirms entity sources are encoded as
     VarInt entity id plus float `y_offset`, and `getPosition` returns

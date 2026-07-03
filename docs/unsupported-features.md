@@ -255,9 +255,14 @@ When an agent does any of the following, update this file in the same slice:
         local-player position / delta-movement context and mirror the vanilla
         post-`super.tick()` 2-block Y / Y-velocity pull when the cloud is above
         the local player's feet
+      - entity event `35` now feeds vanilla totem
+        `TrackingEmitter` particles through native, using the entity's current
+        AABB width/height, 16 unit-sphere samples per tick, 30 ticks, and
+        `minecraft:totem_of_undying` delayed spawn commands
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
-        `SpellParticle` and local PlayerCloud pull
+        `SpellParticle`, local PlayerCloud pull, and the totem event-35
+        tracking emitter
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -387,6 +392,10 @@ When an agent does any of the following, update this file in the same slice:
       Renderer tests enumerate every id registered by vanilla 26.1
       `ParticleResources.registerProviders()` and assert it maps to an explicit
       vanilla provider descriptor rather than the generic `Particle` fallback.
+      Native entity event handling now expands vanilla totem event `35` into a
+      `TrackingEmitter` batch: 30 delayed ticks, 16 unit-sphere samples per
+      tick, entity AABB width/height position sampling, and
+      `minecraft:totem_of_undying` child particles.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant

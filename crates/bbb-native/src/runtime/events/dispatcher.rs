@@ -15,7 +15,8 @@ use crate::particle_runtime::{
     vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
-    ParticleBiomeSampler, ParticleEventSink,
+    ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
+    TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
 };
 
 use super::control_state::apply_control_projection_event;
@@ -29,6 +30,7 @@ const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
+const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -277,6 +279,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn totem_tracking_emitter_particles(&mut self, world: &WorldStore, entity_id: i32) {
+        emit_totem_tracking_emitter_particles(
+            self.particle_events,
+            self.particle_renderer,
+            world,
+            entity_id,
+        );
+    }
+
     fn level_event_particles(
         &mut self,
         world: &WorldStore,
@@ -425,6 +436,38 @@ fn emit_firework_empty_explosion_particles(
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
+    }
+}
+
+fn emit_totem_tracking_emitter_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    world: &WorldStore,
+    entity_id: i32,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let Some(transform) = world.probe_entity_transform(entity_id) else {
+        return;
+    };
+    let Some(bounds) = world.probe_entity_pick_bounds(entity_id) else {
+        return;
+    };
+    let state = TrackingEmitterParticleState {
+        particle_type_id: TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+        position: [
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+        ],
+        width: bounds.max[0] - bounds.min[0],
+        height: bounds.max[1] - bounds.min[1],
+        lifetime_ticks: TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
+    };
+    let batch = particle_events.spawn_tracking_emitter_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
     }
 }
 
