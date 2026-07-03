@@ -392,6 +392,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `WaterDropParticle` in-block removal 现在查询 world block/fluid surface，
     按 vanilla `collisionShape.max(Y, localX, localZ)` 与 fluid height 的 max
     删除落入方块/流体内部的 `rain` / `splash`；
+    `WakeParticle.Provider` (`fishing`) 现在使用 vanilla
+    `setSize(0.01F, 0.01F)` collision AABB，并在 0.98 friction 与 wake
+    sprite cycle 前走 collision-backed `move(xd, yd, zd)`；
     DripParticle 的 water/lava matching-fluid removal 现在同样通过 world
     fluid kind/height sample 覆盖 `dripping_*`、`falling_*` 与 lava landing
     provider，`Fluids.EMPTY` 的 honey / obsidian tear / nectar / spore
@@ -615,8 +618,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - 粒子 sorting：
   - terrain/item particle atlas rendering：on-ground roll reset 和三轴
     block-shape collision clipping 已通过 native world collision 回调接入；
-    EndRod collision-free move 已覆盖，其他 special-context collision /
-    player-coupled physics 仍属上一节 deferred work。
+    EndRod collision-free move 与 WakeParticle (`fishing`) collision-backed
+    `move` 已覆盖，其他 special-context collision / player-coupled physics
+    仍属上一节 deferred work。
     Renderer GPU draw ranges now bind particle / terrain / item atlas textures
     once concrete sprite UVs are available; native terrain atlas upload supplies
     block sprite UVs and native item atlas upload supplies item sprite UVs to

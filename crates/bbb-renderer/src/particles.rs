@@ -1694,9 +1694,7 @@ impl ParticleInstance {
                 let life =
                     60_u32.saturating_sub(self.lifetime_ticks.saturating_sub(self.age_ticks));
                 self.velocity[1] -= f64::from(self.gravity);
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                self.move_particle(self.velocity, collide);
                 let friction = f64::from(self.friction);
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
@@ -4857,6 +4855,37 @@ mod tests {
             instance.current_sprite_id.as_deref(),
             Some("minecraft:wake_1")
         );
+    }
+
+    #[test]
+    fn particle_runtime_wake_uses_collision_backed_move() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:fishing", 39);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.3, -0.4];
+        instance.gravity = 0.0;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |query| {
+            collision_queries += 1;
+            assert_close3(query.position, [1.0, 2.0, 3.0]);
+            assert_close3(query.movement, [0.2, -0.3, -0.4]);
+            assert_close_f64(query.half_width, 0.005);
+            assert_close_f64(query.height, 0.01);
+            [query.movement[0], 0.0, query.movement[2]]
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(collision_queries, 1);
+        let instance = &particles.active_instances()[0];
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.2, 2.0, 2.6]);
+        assert_close3(instance.velocity, [0.196, -0.294, -0.392]);
+        assert!(instance.on_ground);
+        assert!(instance.stopped_by_collision);
     }
 
     #[test]

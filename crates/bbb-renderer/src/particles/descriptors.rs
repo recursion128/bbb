@@ -2048,6 +2048,7 @@ impl ParticleDescriptor {
             "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
                 Some([0.25, 0.25])
             }
+            "WakeParticle.Provider" => Some([0.01, 0.01]),
             _ => None,
         }
     }
@@ -3429,6 +3430,7 @@ mod tests {
             ParticleInitialVelocityDescriptor::Command
         );
         assert_eq!(wake.tick_motion(), ParticleTickMotionDescriptor::Wake);
+        assert_eq!(wake.collision_size(), Some([0.01, 0.01]));
 
         assert_descriptor(
             "minecraft:ominous_spawning",

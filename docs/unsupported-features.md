@@ -364,10 +364,14 @@ When an agent does any of the following, update this file in the same slice:
         where it reaches `14` enqueues the 12 `minecraft:crit` particles with
         vanilla `width*0.5`, `1.05 + random`, and `0.3..0.6` Y-velocity ranges
         before the renderer particle engine advances.
+      - `WakeParticle.Provider` (`minecraft:fishing`) now uses vanilla
+        `setSize(0.01F, 0.01F)` collision bounds and the collision-backed
+        `Particle.move` path before `0.98` friction and wake sprite cycling.
       - remaining deferred work is broader collision clipping parity for
-        special contexts, player-coupled particle emitters beyond the currently
-        covered scoped cases, and broader entity-event particle/audio parity
-        outside the currently covered families.
+        special contexts beyond the covered WakeParticle case, player-coupled
+        particle emitters beyond the currently covered scoped cases, and broader
+        entity-event particle/audio parity outside the currently covered
+        families.
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -1117,9 +1121,9 @@ When an agent does any of the following, update this file in the same slice:
         `fishing` now maps to `WakeParticle.Provider` with first sprite
         initialization, vanilla single-quad size, `8 / (random * 0.8 + 0.2)`
         lifetime, command velocity, opaque layer, physics metadata, `0.98`
-        friction, zero gravity, direct motion, damping, and the vanilla wake
-        sprite cycle using `SpriteSet.get((60 - lifetime) % 4, 4)` during
-        ticks.
+        friction, zero gravity, `setSize(0.01F, 0.01F)` collision bounds,
+        collision-backed `move`, damping, and the vanilla wake sprite cycle using
+        `SpriteSet.get((60 - lifetime) % 4, 4)` during ticks.
         `ominous_spawning` now maps to
         `FlyStraightTowardsParticle.OminousSpawnProvider` with random sprites,
         command velocity, initial position at `spawn + velocity` while keeping
@@ -6817,9 +6821,10 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `WakeParticle.Provider` for `fishing` to
         first sprite initialization, vanilla single-quad size,
         `8/(random*.8+.2)` lifetime, command velocity, opaque particle layer,
-        physics metadata, `0.98` friction, zero gravity, direct motion,
-        damping, and wake sprite cycling via `SpriteSet.get((60-lifetime)%4,
-        4)` during runtime ticks.
+        physics metadata, `0.98` friction, zero gravity,
+        `setSize(0.01F,0.01F)` collision bounds, collision-backed `move`,
+        damping, and wake sprite cycling via `SpriteSet.get((60-lifetime)%4, 4)`
+        during runtime ticks.
       - particle descriptors map `FallingLeavesParticle.CherryProvider`,
         `PaleOakProvider`, and `TintedLeavesProvider` for `cherry_leaves` /
         `pale_oak_leaves` / `tinted_leaves` to random sprites, fixed `300`
