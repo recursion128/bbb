@@ -2418,6 +2418,16 @@
     close first-person spyglass Spell particles at alpha `0.0`, keeps
     `MobEffectProvider`'s constructor-overridden initial alpha, and lerps back
     toward provider alpha by `0.05` when the scope gate clears.
+  - [x] PlayerCloud local-player pull：local vanilla 26.1
+    `PlayerCloudParticle.tick` confirms the provider runs `super.tick()`, then
+    queries a player within `2.0` blocks and, when the cloud is above the
+    player's feet, moves particle Y and Y velocity 20% toward player Y /
+    `getDeltaMovement().y`. Native now projects post-input local-player
+    position and delta movement into renderer particle ticks; renderer
+    `PlayerCloudParticle.Provider` and `SneezeProvider` consume that context
+    after default motion, with focused coverage for near-player pull and
+    far/lower-player no-op behavior. Broader remote-player nearest selection
+    remains deferred with other player-coupled emitters.
 
 ## P2：Terrain / Block Render Presentation
 

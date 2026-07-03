@@ -87,6 +87,12 @@ pub struct ParticleLocalPlayerScopeContext {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleLocalPlayerMotionContext {
+    pub position: [f64; 3],
+    pub delta_movement: [f64; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleCollisionQuery {
     pub position: [f64; 3],
     pub movement: [f64; 3],
@@ -643,15 +649,36 @@ impl ParticleRuntimeState {
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
-        self.advance_with_world_and_scope_context(ticks, collide, block_fluid_surface, None)
+        self.advance_with_world_and_player_context(ticks, collide, block_fluid_surface, None, None)
     }
 
     pub(crate) fn advance_with_world_and_scope_context<F, S>(
         &mut self,
         ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        self.advance_with_world_and_player_context(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+            None,
+        )
+    }
+
+    pub(crate) fn advance_with_world_and_player_context<F, S>(
+        &mut self,
+        ticks: u32,
         mut collide: F,
         mut block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -675,6 +702,7 @@ impl ParticleRuntimeState {
                     &mut collide,
                     &mut block_fluid_surface,
                     scope_context,
+                    local_player_motion_context,
                 );
                 self.drain_pending_spawns(
                     &mut intaken_instances,
@@ -718,6 +746,7 @@ impl ParticleRuntimeState {
         collide: &mut F,
         block_fluid_surface: &mut S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
     ) -> usize
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -750,6 +779,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
+            instance.update_player_cloud_motion(local_player_motion_context);
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
@@ -1665,6 +1695,26 @@ impl ParticleInstance {
         dx * dx + dy * dy + dz * dz <= 9.0
     }
 
+    fn update_player_cloud_motion(&mut self, context: Option<ParticleLocalPlayerMotionContext>) {
+        if !matches!(
+            self.provider.as_str(),
+            "PlayerCloudParticle.Provider" | "PlayerCloudParticle.SneezeProvider"
+        ) {
+            return;
+        }
+        let Some(context) = context else {
+            return;
+        };
+        let dx = context.position[0] - self.position[0];
+        let dy = context.position[1] - self.position[1];
+        let dz = context.position[2] - self.position[2];
+        if dx * dx + dy * dy + dz * dz > 4.0 || self.position[1] <= context.position[1] {
+            return;
+        }
+        self.position[1] += (context.position[1] - self.position[1]) * 0.2;
+        self.velocity[1] += (context.delta_movement[1] - self.velocity[1]) * 0.2;
+    }
+
     fn update_color_fade_from_age(&mut self) {
         let Some(target) = self.color_fade_target else {
             return;
@@ -2045,6 +2095,27 @@ impl Renderer {
             collide,
             block_fluid_surface,
             scope_context,
+        );
+        self.record_particle_advance_summary(summary);
+    }
+
+    pub fn advance_particles_with_world_and_player_context<F, S>(
+        &mut self,
+        ticks: u32,
+        collide: F,
+        block_fluid_surface: S,
+        scope_context: Option<ParticleLocalPlayerScopeContext>,
+        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+    ) where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let summary = self.particles.advance_with_world_and_player_context(
+            ticks,
+            collide,
+            block_fluid_surface,
+            scope_context,
+            local_player_motion_context,
         );
         self.record_particle_advance_summary(summary);
     }
@@ -3127,6 +3198,77 @@ mod tests {
             near_scoping,
         );
         assert_eq!(particles.active_instances()[0].color[3], 0.0);
+    }
+
+    #[test]
+    fn particle_runtime_player_cloud_tracks_nearby_local_player_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
+        instance.position = [0.0, 3.0, 0.0];
+        instance.velocity = [0.0, 0.4, 0.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world_and_player_context(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            Some(ParticleLocalPlayerMotionContext {
+                position: [0.0, 2.0, 0.0],
+                delta_movement: [0.0, -0.2, 0.0],
+            }),
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_close3(instance.position, [0.0, 3.12, 0.0]);
+        assert_close3(instance.velocity, [0.0, 0.2672, 0.0]);
+    }
+
+    #[test]
+    fn particle_runtime_player_cloud_ignores_far_or_lower_local_player() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut far = test_instance_with_lifetime("minecraft:cloud", 20);
+        far.position = [3.0, 3.0, 0.0];
+        far.velocity = [0.0, 0.4, 0.0];
+        particles.active_instances.push_back(far);
+
+        particles.advance_with_world_and_player_context(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            Some(ParticleLocalPlayerMotionContext {
+                position: [0.0, 2.0, 0.0],
+                delta_movement: [0.0, -0.2, 0.0],
+            }),
+        );
+
+        let far = &particles.active_instances()[0];
+        assert_close3(far.position, [3.0, 3.4, 0.0]);
+        assert_close3(far.velocity, [0.0, 0.384, 0.0]);
+
+        let mut lower = test_instance_with_lifetime("minecraft:cloud", 20);
+        lower.position = [0.0, 1.0, 0.0];
+        lower.velocity = [0.0, 0.4, 0.0];
+        particles.active_instances.clear();
+        particles.active_instances.push_back(lower);
+
+        particles.advance_with_world_and_player_context(
+            1,
+            |query| query.movement,
+            |_| ParticleBlockFluidSurfaceSample::default(),
+            None,
+            Some(ParticleLocalPlayerMotionContext {
+                position: [0.0, 2.0, 0.0],
+                delta_movement: [0.0, -0.2, 0.0],
+            }),
+        );
+
+        let lower = &particles.active_instances()[0];
+        assert_close3(lower.position, [0.0, 1.4, 0.0]);
+        assert_close3(lower.velocity, [0.0, 0.384, 0.0]);
     }
 
     #[test]

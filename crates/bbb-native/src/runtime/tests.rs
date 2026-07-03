@@ -134,6 +134,30 @@ fn particle_scope_context_tracks_local_spyglass_use() {
 }
 
 #[test]
+fn particle_local_player_motion_context_tracks_local_player_pose() {
+    let mut world = WorldStore::new();
+    assert_eq!(particle_local_player_motion_context(&world), None);
+
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: bbb_protocol::packets::Vec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        delta_movement: bbb_protocol::packets::Vec3d {
+            x: -0.1,
+            y: 0.25,
+            z: 0.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+
+    let context = particle_local_player_motion_context(&world).unwrap();
+    assert_eq!(context.position, [1.0, 2.0, 3.0]);
+    assert_eq!(context.delta_movement, [-0.1, 0.25, 0.5]);
+}
+
+#[test]
 fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
@@ -719,8 +743,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_scope_context = source
         .find("let particle_scope_context =")
         .expect("pump should sample local scoping state before particle tick");
+    let particle_local_player_motion_context = source
+        .find("let particle_local_player_motion_context =")
+        .expect("pump should sample local player motion state before particle tick");
     let particle_tick = source
-        .find("renderer.advance_particles_with_world_and_scope_context(")
+        .find("renderer.advance_particles_with_world_and_player_context(")
         .expect("pump should advance particles");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
@@ -744,6 +771,11 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         using_item_tick < particle_scope_context && particle_scope_context < particle_tick,
         "SpellParticle.tick samples post-input local scoping state during particle tick"
+    );
+    assert!(
+        using_item_tick < particle_local_player_motion_context
+            && particle_local_player_motion_context < particle_tick,
+        "player-coupled particles sample post-input local player motion during particle tick"
     );
     assert!(
         particle_tick < particle_light_refresh,

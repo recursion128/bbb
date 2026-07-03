@@ -251,9 +251,13 @@ When an agent does any of the following, update this file in the same slice:
         `FallingDustParticle` roll on the tick after ground contact
       - `SpellParticle` alpha now receives a native local-player scoping
         context and mirrors vanilla close-to-first-person-spyglass behavior
+      - `PlayerCloudParticle.Provider` / `SneezeProvider` now receive native
+        local-player position / delta-movement context and mirror the vanilla
+        post-`super.tick()` 2-block Y / Y-velocity pull when the cloud is above
+        the local player's feet
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
-        `SpellParticle`
+        `SpellParticle` and local PlayerCloud pull
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -742,8 +746,9 @@ When an agent does any of the following, update this file in the same slice:
         `-0.03` / `+0.03` y offset, default `0.98` friction, zero gravity, and
         physics metadata plus vanilla opaque particle layer
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
-        speed plus command velocity, and `SneezeProvider` fixed green tint /
-        alpha override on the player-cloud curve
+        speed plus command velocity, post-tick local-player Y / Y-velocity
+        pull within 2 blocks when above the player's feet, and `SneezeProvider`
+        fixed green tint / alpha override on the player-cloud curve
       - `SmokeParticle.Provider`, `LargeSmokeParticle.Provider`, and
         `WhiteSmokeParticle.Provider` share the vanilla `BaseAshSmokeParticle`
         constructor-random initial speed scaled by `0.1` plus command velocity

@@ -385,9 +385,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SpellParticle` scoping alpha 现在接收 native local-player eye position /
     first-person spyglass context，覆盖近距 alpha=0 与离开后按 0.05 lerp 回
     `originalAlpha` 的 tick 行为；
+    `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
+    local-player position / delta-movement context，覆盖 vanilla
+    `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
-    player-coupled emitter（不含 SpellParticle），以及 local sound /
-    block-state removal gates。
+    player-coupled emitter（不含 SpellParticle 与本地 PlayerCloud 牵引），以及
+    local sound / block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

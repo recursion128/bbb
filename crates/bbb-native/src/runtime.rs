@@ -21,13 +21,13 @@ use bbb_renderer::{
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
@@ -1455,10 +1455,11 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_local_using_item_ticks(advanced_ticks);
     let particle_scope_context =
         particle_local_player_scope_context(world, item_runtime, camera_pose_from_world(world));
+    let particle_local_player_motion_context = particle_local_player_motion_context(world);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
-    // extraction samples light from the particle positions advanced here. `SpellParticle.tick`
-    // also samples the same post-input local scoping state.
-    renderer.advance_particles_with_world_and_scope_context(
+    // extraction samples light from the particle positions advanced here. Player-coupled
+    // particles sample the same post-input local player state during particle tick.
+    renderer.advance_particles_with_world_and_player_context(
         advanced_ticks,
         |query| {
             world.clip_particle_collision_movement(
@@ -1470,6 +1471,7 @@ pub(crate) fn pump_network_and_terrain(
         },
         |query| renderer_particle_block_fluid_surface_sample(world, query.position),
         particle_scope_context,
+        particle_local_player_motion_context,
     );
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
@@ -5654,6 +5656,20 @@ fn particle_local_player_scope_context(
         eye_position,
         first_person: world.local_player().camera.follows_player,
         scoping,
+    })
+}
+
+fn particle_local_player_motion_context(
+    world: &WorldStore,
+) -> Option<ParticleLocalPlayerMotionContext> {
+    let pose = world.local_player_pose()?;
+    Some(ParticleLocalPlayerMotionContext {
+        position: [pose.position.x, pose.position.y, pose.position.z],
+        delta_movement: [
+            pose.delta_movement.x,
+            pose.delta_movement.y,
+            pose.delta_movement.z,
+        ],
     })
 }
 
