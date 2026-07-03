@@ -14,7 +14,9 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
-use chrono::{Datelike, FixedOffset, Local, Offset, TimeZone, Timelike, Utc, Weekday};
+use chrono::{
+    Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
+};
 use chrono_tz::Tz;
 use serde_json::Value;
 
@@ -771,8 +773,9 @@ pub(super) enum SelectProperty {
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-    /// `F` day-of-week-in-month, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E`
-    /// weekday, `a`, and `Z`/`X`/`x`/`O` offsets).
+    /// `w`/`W` week numbers, `F` day-of-week-in-month,
+    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and
+    /// `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1363,6 +1366,7 @@ fn local_time_select_value(
 }
 
 struct LocalTimeFields {
+    date: NaiveDate,
     year: i32,
     month: u32,
     day: u32,
@@ -1378,6 +1382,7 @@ struct LocalTimeFields {
 impl LocalTimeFields {
     fn from_datetime<Tz: TimeZone>(date: chrono::DateTime<Tz>) -> Self {
         Self {
+            date: date.date_naive(),
             year: date.year(),
             month: date.month(),
             day: date.day(),
@@ -1492,6 +1497,8 @@ fn format_local_time_field(
             3 => english_text(locale, short_month_name(fields.month)),
             _ => english_text(locale, long_month_name(fields.month)),
         },
+        'w' => root_locale_week_of_year(fields, count, locale),
+        'W' => root_locale_week_of_month(fields, count, locale),
         'd' => Some(padded_u32(fields.day, count)),
         'D' => Some(padded_u32(fields.day_of_year, count)),
         'F' => Some(padded_u32((fields.day.saturating_sub(1) / 7) + 1, count)),
@@ -1633,6 +1640,81 @@ fn format_quarter(month: u32, width: usize, locale: &str) -> Option<String> {
         5 => Some(quarter.to_string()),
         _ => None,
     }
+}
+
+fn root_locale_week_of_year(
+    fields: &LocalTimeFields,
+    width: usize,
+    locale: &str,
+) -> Option<String> {
+    if !root_english_week_locale(locale) {
+        return None;
+    }
+    let year_start = NaiveDate::from_ymd_opt(fields.year, 1, 1)?;
+    let week_one_start = first_week_start(year_start, Weekday::Mon, 1)?;
+    let next_year_start = NaiveDate::from_ymd_opt(fields.year + 1, 1, 1)?;
+    let next_week_one_start = first_week_start(next_year_start, Weekday::Mon, 1)?;
+
+    let anchor = if fields.date >= next_week_one_start {
+        next_week_one_start
+    } else if fields.date < week_one_start {
+        let previous_year_start = NaiveDate::from_ymd_opt(fields.year - 1, 1, 1)?;
+        first_week_start(previous_year_start, Weekday::Mon, 1)?
+    } else {
+        week_one_start
+    };
+
+    Some(padded_u32(week_number_since(anchor, fields.date)?, width))
+}
+
+fn root_locale_week_of_month(
+    fields: &LocalTimeFields,
+    width: usize,
+    locale: &str,
+) -> Option<String> {
+    if !root_english_week_locale(locale) {
+        return None;
+    }
+    let month_start = NaiveDate::from_ymd_opt(fields.year, fields.month, 1)?;
+    let week_one_start = first_week_start(month_start, Weekday::Mon, 1)?;
+    let week = if fields.date < week_one_start {
+        0
+    } else {
+        week_number_since(week_one_start, fields.date)?
+    };
+    Some(padded_u32(week, width))
+}
+
+fn root_english_week_locale(locale: &str) -> bool {
+    locale.is_empty() || locale.eq_ignore_ascii_case("root") || locale.eq_ignore_ascii_case("en")
+}
+
+fn first_week_start(
+    period_start: NaiveDate,
+    first_weekday: Weekday,
+    minimal_days: u32,
+) -> Option<NaiveDate> {
+    let week_start = start_of_week(period_start, first_weekday)?;
+    let days_before_period = (period_start - week_start).num_days() as u32;
+    let days_in_first_week = 7 - days_before_period;
+    if days_in_first_week >= minimal_days {
+        Some(week_start)
+    } else {
+        week_start.checked_add_signed(Duration::days(7))
+    }
+}
+
+fn start_of_week(date: NaiveDate, first_weekday: Weekday) -> Option<NaiveDate> {
+    let day = i64::from(date.weekday().num_days_from_monday());
+    let first = i64::from(first_weekday.num_days_from_monday());
+    date.checked_sub_signed(Duration::days((day - first).rem_euclid(7)))
+}
+
+fn week_number_since(week_one_start: NaiveDate, date: NaiveDate) -> Option<u32> {
+    if date < week_one_start {
+        return None;
+    }
+    u32::try_from(((date - week_one_start).num_days() / 7) + 1).ok()
 }
 
 fn short_quarter_name(quarter: u32) -> &'static str {
