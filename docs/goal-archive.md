@@ -2319,6 +2319,12 @@
     clips downward vanilla 0.2x0.2 particle AABBs against known block collision
     shape tops. Tests cover default ground damping, falling-dust roll reset, the
     world Y-clip math, and the native pump ordering marker.
+  - [x] particle three-axis block-shape clipping：world particle collision now
+    resolves Y first and then the largest horizontal component first, matching
+    vanilla `Direction.axisStepOrder`, and clips the 0.2x0.2 particle AABB
+    against known block collision shape faces for downward, upward, and
+    horizontal movement. Tests cover upward ceiling clipping, horizontal side
+    clipping, horizontal non-overlap rejection, and the vanilla axis-order rule.
 
 ## P2：Terrain / Block Render Presentation
 

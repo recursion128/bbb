@@ -245,12 +245,12 @@ When an agent does any of the following, update this file in the same slice:
         sprite metadata
     - collision/player-coupled physics:
       - particle tick now accepts a world collision callback, clips vanilla
-        0.2x0.2 particle AABBs against known block collision tops for downward
-        motion, applies `Particle.onGround` X/Z damping, and resets
+        0.2x0.2 particle AABBs against known block collision shapes on all
+        three axes with vanilla Y-first / largest-horizontal axis order, applies
+        `Particle.onGround` X/Z damping, and resets
         `FallingDustParticle` roll on the tick after ground contact
       - remaining deferred work is broader collision clipping parity
-        (horizontal / upward clipping and special contexts) and player-coupled
-        particle emitters
+        for special contexts and player-coupled particle emitters
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -362,10 +362,12 @@ When an agent does any of the following, update this file in the same slice:
       summary and resolve the concrete GROUND item particle material
       active-layer sprite ids through the native item runtime, including
       component-driven root item-model changes. Particle ticking now gets a
-      world collision callback from native, clips downward 0.2x0.2 particle AABBs
-      against known block collision tops, applies vanilla `Particle.onGround`
-      X/Z damping, and resets `FallingDustParticle` roll on the tick after ground
-      contact. Native spawn resolution also mirrors `TerrainParticle.createTerrainParticle` for
+      world collision callback from native, clips vanilla 0.2x0.2 particle AABBs
+      against known block collision shapes on all three axes with vanilla
+      Y-first / largest-horizontal axis order, applies vanilla
+      `Particle.onGround` X/Z damping, and resets `FallingDustParticle` roll on
+      the tick after ground contact. Native spawn resolution also mirrors
+      `TerrainParticle.createTerrainParticle` for
       definition-less `minecraft:block`, `minecraft:dust_pillar`, and
       `minecraft:block_crumble` submissions by rejecting air, moving-piston, and
       `shouldSpawnTerrainParticles=false` block states after packet sample RNG

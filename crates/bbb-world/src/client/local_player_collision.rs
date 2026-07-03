@@ -87,23 +87,31 @@ impl WorldStore {
         half_width: f64,
         height: f64,
     ) -> [f64; 3] {
-        let mut clipped = movement;
-        clipped[1] = self.clip_particle_y_collision(position, movement, half_width, height);
+        if !particle_collision_input_is_finite(position, movement) {
+            return movement;
+        }
+
+        let bounds = particle_collision_bounds(position, half_width, height);
+        let mut clipped = [0.0; 3];
+        for axis in particle_collision_axis_order(movement) {
+            let requested = particle_movement_component(movement, axis);
+            if requested == 0.0 {
+                continue;
+            }
+            let moved_bounds = bounds.moved(clipped[0], clipped[1], clipped[2]);
+            let axis_clipped = self.clip_particle_axis_collision(moved_bounds, axis, requested);
+            set_particle_movement_component(&mut clipped, axis, axis_clipped);
+        }
         clipped
     }
 
-    fn clip_particle_y_collision(
+    fn clip_particle_axis_collision(
         &self,
-        position: [f64; 3],
-        movement: [f64; 3],
-        half_width: f64,
-        height: f64,
+        bounds: LocalPlayerBounds,
+        axis: CollisionAxis,
+        requested: f64,
     ) -> f64 {
-        if movement[1] >= 0.0 || !particle_collision_input_is_finite(position, movement) {
-            return movement[1];
-        }
-        let bounds = particle_collision_bounds(position, half_width, height);
-        let swept = bounds.swept_axis(CollisionAxis::Y, movement[1]);
+        let swept = bounds.swept_axis(axis, requested);
         let min_x = block_floor(swept.min_x + COLLISION_EPSILON) - 1;
         let max_x = block_floor(swept.max_x - COLLISION_EPSILON) + 1;
         let min_y = block_floor(swept.min_y + COLLISION_EPSILON) - 1;
@@ -111,8 +119,7 @@ impl WorldStore {
         let min_z = block_floor(swept.min_z + COLLISION_EPSILON) - 1;
         let max_z = block_floor(swept.max_z - COLLISION_EPSILON) + 1;
 
-        let mut clipped_y = movement[1];
-        let horizontal_bounds = bounds.moved(movement[0], 0.0, movement[2]);
+        let mut clipped = requested;
         for y in min_y..=max_y {
             for z in min_z..=max_z {
                 for x in min_x..=max_x {
@@ -124,19 +131,18 @@ impl WorldStore {
                         continue;
                     };
                     for shape_box in shape.boxes() {
-                        clipped_y = clipped_particle_y_against_box(
-                            bounds,
-                            horizontal_bounds,
-                            movement[1],
-                            clipped_y,
-                            pos,
-                            shape_box,
+                        clipped = clipped_particle_axis_against_box(
+                            bounds, axis, requested, clipped, pos, shape_box,
                         );
                     }
                 }
             }
         }
-        clipped_y
+        if clipped.abs() < COLLISION_EPSILON {
+            0.0
+        } else {
+            clipped
+        }
     }
 }
 
@@ -161,26 +167,57 @@ fn particle_collision_bounds(
     }
 }
 
-fn clipped_particle_y_against_box(
+fn particle_collision_axis_order(movement: [f64; 3]) -> [CollisionAxis; 3] {
+    // Vanilla `Direction.axisStepOrder(Vec3)` always resolves Y first, then
+    // resolves the larger horizontal component before the smaller one.
+    if movement[0].abs() < movement[2].abs() {
+        [CollisionAxis::Y, CollisionAxis::Z, CollisionAxis::X]
+    } else {
+        [CollisionAxis::Y, CollisionAxis::X, CollisionAxis::Z]
+    }
+}
+
+fn particle_movement_component(movement: [f64; 3], axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => movement[0],
+        CollisionAxis::Y => movement[1],
+        CollisionAxis::Z => movement[2],
+    }
+}
+
+fn set_particle_movement_component(movement: &mut [f64; 3], axis: CollisionAxis, value: f64) {
+    match axis {
+        CollisionAxis::X => movement[0] = value,
+        CollisionAxis::Y => movement[1] = value,
+        CollisionAxis::Z => movement[2] = value,
+    }
+}
+
+fn clipped_particle_axis_against_box(
     bounds: LocalPlayerBounds,
-    horizontal_bounds: LocalPlayerBounds,
-    requested_y: f64,
-    current_clipped_y: f64,
+    axis: CollisionAxis,
+    requested: f64,
+    current_clipped: f64,
     pos: BlockPos,
     shape_box: BlockCollisionBox,
 ) -> f64 {
-    if !bounds_intersects_block_box_xz(horizontal_bounds, pos, shape_box) {
-        return current_clipped_y;
+    if !bounds_intersects_block_box_orthogonal(bounds, pos, shape_box, axis) {
+        return current_clipped;
     }
-    let shape_top = f64::from(pos.y) + shape_box.max_y;
-    if bounds.min_y < shape_top - COLLISION_EPSILON {
-        return current_clipped_y;
+    if requested > 0.0 {
+        let shape_min = block_box_axis_min(pos, shape_box, axis);
+        let distance = shape_min - bounds_axis_max(bounds, axis);
+        if distance >= -COLLISION_EPSILON {
+            return current_clipped.min(distance);
+        }
+    } else if requested < 0.0 {
+        let shape_max = block_box_axis_max(pos, shape_box, axis);
+        let distance = shape_max - bounds_axis_min(bounds, axis);
+        if distance <= COLLISION_EPSILON {
+            return current_clipped.max(distance);
+        }
     }
-    let requested_min_y = bounds.min_y + requested_y;
-    if requested_min_y >= shape_top - COLLISION_EPSILON {
-        return current_clipped_y;
-    }
-    current_clipped_y.max(shape_top - bounds.min_y)
+    current_clipped
 }
 
 fn block_collides_with_local_player_bounds(
@@ -1689,22 +1726,68 @@ fn bounds_intersects_block_box(
         && bounds.min_z < max_z - COLLISION_EPSILON
 }
 
-fn bounds_intersects_block_box_xz(
+fn bounds_intersects_block_box_orthogonal(
     bounds: LocalPlayerBounds,
     pos: BlockPos,
     shape: BlockCollisionBox,
+    axis: CollisionAxis,
 ) -> bool {
-    let block_x = f64::from(pos.x);
-    let min_x = block_x + shape.min_x;
-    let max_x = block_x + shape.max_x;
-    let block_z = f64::from(pos.z);
-    let min_z = block_z + shape.min_z;
-    let max_z = block_z + shape.max_z;
+    match axis {
+        CollisionAxis::X => {
+            bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::Y)
+                && bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::Z)
+        }
+        CollisionAxis::Y => {
+            bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::X)
+                && bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::Z)
+        }
+        CollisionAxis::Z => {
+            bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::X)
+                && bounds_axis_overlaps_block_box(bounds, pos, shape, CollisionAxis::Y)
+        }
+    }
+}
 
-    bounds.max_x > min_x + COLLISION_EPSILON
-        && bounds.min_x < max_x - COLLISION_EPSILON
-        && bounds.max_z > min_z + COLLISION_EPSILON
-        && bounds.min_z < max_z - COLLISION_EPSILON
+fn bounds_axis_overlaps_block_box(
+    bounds: LocalPlayerBounds,
+    pos: BlockPos,
+    shape: BlockCollisionBox,
+    axis: CollisionAxis,
+) -> bool {
+    bounds_axis_max(bounds, axis) > block_box_axis_min(pos, shape, axis) + COLLISION_EPSILON
+        && bounds_axis_min(bounds, axis) < block_box_axis_max(pos, shape, axis) - COLLISION_EPSILON
+}
+
+fn bounds_axis_min(bounds: LocalPlayerBounds, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => bounds.min_x,
+        CollisionAxis::Y => bounds.min_y,
+        CollisionAxis::Z => bounds.min_z,
+    }
+}
+
+fn bounds_axis_max(bounds: LocalPlayerBounds, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => bounds.max_x,
+        CollisionAxis::Y => bounds.max_y,
+        CollisionAxis::Z => bounds.max_z,
+    }
+}
+
+fn block_box_axis_min(pos: BlockPos, shape: BlockCollisionBox, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => f64::from(pos.x) + shape.min_x,
+        CollisionAxis::Y => f64::from(pos.y) + shape.min_y,
+        CollisionAxis::Z => f64::from(pos.z) + shape.min_z,
+    }
+}
+
+fn block_box_axis_max(pos: BlockPos, shape: BlockCollisionBox, axis: CollisionAxis) -> f64 {
+    match axis {
+        CollisionAxis::X => f64::from(pos.x) + shape.max_x,
+        CollisionAxis::Y => f64::from(pos.y) + shape.max_y,
+        CollisionAxis::Z => f64::from(pos.z) + shape.max_z,
+    }
 }
 
 fn block_floor(value: f64) -> i32 {
@@ -2860,10 +2943,9 @@ mod tests {
     #[test]
     fn particle_y_collision_clips_downward_motion_to_shape_top() {
         let bounds = particle_collision_bounds([0.5, 1.05, 0.5], 0.1, 0.2);
-        let horizontal_bounds = bounds;
-        let clipped = clipped_particle_y_against_box(
+        let clipped = clipped_particle_axis_against_box(
             bounds,
-            horizontal_bounds,
+            CollisionAxis::Y,
             -0.2,
             -0.2,
             BlockPos { x: 0, y: 0, z: 0 },
@@ -2876,10 +2958,9 @@ mod tests {
     #[test]
     fn particle_y_collision_ignores_boxes_outside_horizontal_overlap() {
         let bounds = particle_collision_bounds([1.5, 1.05, 0.5], 0.1, 0.2);
-        let horizontal_bounds = bounds;
-        let clipped = clipped_particle_y_against_box(
+        let clipped = clipped_particle_axis_against_box(
             bounds,
-            horizontal_bounds,
+            CollisionAxis::Y,
             -0.2,
             -0.2,
             BlockPos { x: 0, y: 0, z: 0 },
@@ -2887,6 +2968,56 @@ mod tests {
         );
 
         assert_f64_near(clipped, -0.2);
+    }
+
+    #[test]
+    fn particle_y_collision_clips_upward_motion_to_shape_bottom() {
+        let bounds = particle_collision_bounds([0.5, -0.25, 0.5], 0.1, 0.2);
+        let clipped = clipped_particle_axis_against_box(
+            bounds,
+            CollisionAxis::Y,
+            0.2,
+            0.2,
+            BlockPos { x: 0, y: 0, z: 0 },
+            BlockCollisionBox::FULL,
+        );
+
+        assert_f64_near(clipped, 0.05);
+    }
+
+    #[test]
+    fn particle_x_collision_clips_horizontal_motion_to_shape_side() {
+        let bounds = particle_collision_bounds([-0.15, 0.5, 0.5], 0.1, 0.2);
+        let clipped = clipped_particle_axis_against_box(
+            bounds,
+            CollisionAxis::X,
+            0.2,
+            0.2,
+            BlockPos { x: 0, y: 0, z: 0 },
+            BlockCollisionBox::FULL,
+        );
+
+        assert_f64_near(clipped, 0.05);
+    }
+
+    #[test]
+    fn particle_collision_axis_order_matches_vanilla_horizontal_priority() {
+        assert_eq!(
+            particle_collision_axis_order([0.3, -0.1, 0.2]).map(axis_name),
+            ["y", "x", "z"]
+        );
+        assert_eq!(
+            particle_collision_axis_order([0.2, -0.1, 0.3]).map(axis_name),
+            ["y", "z", "x"]
+        );
+    }
+
+    fn axis_name(axis: CollisionAxis) -> &'static str {
+        match axis {
+            CollisionAxis::X => "x",
+            CollisionAxis::Y => "y",
+            CollisionAxis::Z => "z",
+        }
     }
 
     fn assert_f64_near(actual: f64, expected: f64) {
