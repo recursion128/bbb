@@ -32,6 +32,8 @@ const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
+const RAVAGER_ATTACK_SOUND_EVENT: &str = "minecraft:entity.ravager.attack";
+const IRON_GOLEM_ATTACK_SOUND_EVENT: &str = "minecraft:entity.iron_golem.attack";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -304,6 +306,38 @@ impl WorldStore {
         let source = vanilla_entity_sound_source(transform.entity_type_id);
         let state = SoundEventState {
             sound: direct_sound_holder(TOTEM_USE_SOUND_EVENT),
+            source: source.as_str().to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub fn entity_attack_event_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+    ) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        if self.entities.is_silent(entity_id)? {
+            return None;
+        }
+        let sound = match transform.entity_type_id {
+            // Vanilla `Ravager.handleEntityEvent(4)` and
+            // `IronGolem.handleEntityEvent(4)` use explicit `playSound(sound, 1, 1)`.
+            VANILLA_ENTITY_TYPE_RAVAGER_ID => RAVAGER_ATTACK_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => IRON_GOLEM_ATTACK_SOUND_EVENT,
+            _ => return None,
+        };
+        let source = vanilla_entity_sound_source(transform.entity_type_id);
+        let state = SoundEventState {
+            sound: direct_sound_holder(sound),
             source: source.as_str().to_string(),
             position: ProtocolVec3d {
                 x: transform.position.x,

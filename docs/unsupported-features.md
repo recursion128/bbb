@@ -269,6 +269,11 @@ When an agent does any of the following, update this file in the same slice:
       - entity event `35` now also records and dispatches vanilla
         `minecraft:item.totem.use` as a positioned local sound at the entity's
         current position, with `Entity.getSoundSource()`-shaped source mapping
+      - Ravager and IronGolem entity event `4` now dispatch vanilla fixed-pitch
+        attack sounds at the current entity position:
+        `minecraft:entity.ravager.attack` / `minecraft:entity.iron_golem.attack`,
+        volume `1.0`, pitch `1.0`, silent gate, and vanilla-shaped hostile /
+        neutral source mapping
       - `ClientboundTakeItemEntity` now records and dispatches vanilla item /
         experience-orb pickup sounds at the picked entity position before the
         world removes or shrinks the entity; native also submits the vanilla
@@ -375,8 +380,8 @@ When an agent does any of the following, update this file in the same slice:
       - remaining deferred work is broader collision clipping parity for
         special contexts beyond the covered WakeParticle case, player-coupled
         particle emitters beyond the currently covered scoped cases, and broader
-        entity-event particle/audio parity outside the currently covered Fox and
-        other families.
+        entity-event particle/audio parity outside the currently covered fixed
+        attack sounds, Fox, and other families.
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -523,6 +528,10 @@ When an agent does any of the following, update this file in the same slice:
       positioned local sound at the current entity position, with source
       mapping derived from vanilla `Entity.getSoundSource()` (`Player` /
       `Monster` / default `Entity` branches covered).
+      Native Ravager / IronGolem entity event `4` now emits the vanilla
+      fixed-pitch attack positioned sounds: `minecraft:entity.ravager.attack`
+      and `minecraft:entity.iron_golem.attack` at the current entity position,
+      with volume/pitch `1.0`, silent gate, and hostile/neutral source mapping.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now

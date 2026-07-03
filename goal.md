@@ -542,6 +542,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     同一 event `35` 现在还按 vanilla `SoundEvents.TOTEM_USE` 在实体当前位置
     播放 `minecraft:item.totem.use` 本地位置声效，source 来自当前实体的
     `getSoundSource()` 映射（player/hostile/default neutral 等）；
+    Ravager / IronGolem entity event `4` 现在按 vanilla 固定
+    `playSound(sound, 1.0, 1.0)` side effect 在当前实体位置播放
+    `minecraft:entity.ravager.attack` / `minecraft:entity.iron_golem.attack`，
+    遵守 silent gate 和 `getSoundSource()` 的 hostile / neutral 映射；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
@@ -576,7 +580,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
     elder-guardian-curse 本地玩家位置声效、TakeItemEntity item / experience-orb
-    pickup 本地位置声效）/ block-state removal gates。
+    pickup 本地位置声效、Ravager/IronGolem event-4 fixed attack positioned sounds）
+    / block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

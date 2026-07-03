@@ -62,6 +62,7 @@ const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
+const ATTACK_SOUND_EVENT_ID: i8 = 4;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
 const TAMING_FAILED_EVENT_ID: i8 = 6;
 const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
@@ -555,6 +556,12 @@ impl WorldStore {
                         TOTEM_TRACKING_EMITTER_LIFETIME_TICKS,
                     );
                     if let Some(state) = self.totem_use_sound_for_entity(update.entity_id) {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied && update.event_id == ATTACK_SOUND_EVENT_ID {
+                    if let Some(state) = self.entity_attack_event_sound_for_entity(update.entity_id)
+                    {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -1475,11 +1482,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
@@ -1664,6 +1671,14 @@ mod tests {
             data_id,
             serializer_id: 1,
             value: EntityDataValueKind::Int(value),
+        }
+    }
+
+    fn bool_entity_data(data_id: u8, value: bool) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(value),
         }
     }
 
@@ -2202,6 +2217,119 @@ mod tests {
         );
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn fixed_pitch_attack_entity_events_forward_positioned_sounds() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                70,
+                VANILLA_ENTITY_TYPE_RAVAGER_ID,
+                Vec3d {
+                    x: 1.25,
+                    y: 64.0,
+                    z: -2.5,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 70,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                71,
+                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 65.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 71,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                72,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 7.0,
+                    y: 66.0,
+                    z: -9.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 72,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                73,
+                VANILLA_ENTITY_TYPE_RAVAGER_ID,
+                Vec3d {
+                    x: 8.0,
+                    y: 67.0,
+                    z: -10.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 73,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 73,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(
+            effects.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:entity.ravager.attack")
+        );
+        assert_eq!(effects.positioned_sounds[0].source, "hostile");
+        assert_eq!(
+            effects.positioned_sounds[0].position,
+            Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert_eq!(
+            effects.positioned_sounds[1].sound.location.as_deref(),
+            Some("minecraft:entity.iron_golem.attack")
+        );
+        assert_eq!(effects.positioned_sounds[1].source, "neutral");
+        assert_eq!(
+            effects.positioned_sounds[1].position,
+            Vec3d {
+                x: 4.0,
+                y: 65.0,
+                z: -8.0,
+            }
+        );
+        for sound in &effects.positioned_sounds {
+            assert_eq!(sound.volume, 1.0);
+            assert_eq!(sound.pitch, 1.0);
+            assert_eq!(sound.seed, 0);
+            assert_eq!(sound.distance_delay, false);
+        }
+        assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
+        assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
