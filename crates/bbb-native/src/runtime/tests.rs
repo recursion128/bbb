@@ -207,6 +207,52 @@ fn particle_sound_event_state_preserves_positioned_sound_metadata() {
 }
 
 #[test]
+fn primed_tnt_smoke_particle_batch_matches_vanilla_client_tick_spawn() {
+    let batch = primed_tnt_smoke_particle_batch(
+        vec![bbb_world::PrimedTntSmokeParticleState {
+            entity_id: 42,
+            position: bbb_world::EntityVec3 {
+                x: 3.0,
+                y: 64.0,
+                z: -5.0,
+            },
+        }],
+        1,
+    );
+
+    assert_eq!(batch.commands.len(), 1);
+    let command = &batch.commands[0];
+    assert_eq!(command.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_id, "minecraft:smoke");
+    assert_eq!(command.position, [3.0, 64.5, -5.0]);
+    assert_eq!(command.velocity, [0.0, 0.0, 0.0]);
+    assert!(!command.override_limiter);
+    assert!(!command.always_show);
+    assert_eq!(command.raw_options_len, 0);
+}
+
+#[test]
+fn primed_tnt_smoke_particle_batch_emits_once_per_advanced_tick() {
+    let batch = primed_tnt_smoke_particle_batch(
+        vec![bbb_world::PrimedTntSmokeParticleState {
+            entity_id: 42,
+            position: bbb_world::EntityVec3 {
+                x: 0.0,
+                y: 10.0,
+                z: 0.0,
+            },
+        }],
+        3,
+    );
+
+    assert_eq!(batch.commands.len(), 3);
+    assert!(batch
+        .commands
+        .iter()
+        .all(|command| command.position == [0.0, 10.5, 0.0]));
+}
+
+#[test]
 fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
@@ -798,6 +844,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_entity_target_contexts = source
         .find("let particle_entity_target_contexts =")
         .expect("pump should sample entity target state before particle tick");
+    let primed_tnt_smoke = source
+        .find("submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);")
+        .expect("pump should emit PrimedTnt client smoke before particle tick");
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts(")
         .expect("pump should advance particles");
@@ -838,6 +887,10 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         particle_entity_target_contexts < particle_tick,
         "entity-target particles sample world entity positions during particle tick"
+    );
+    assert!(
+        primed_tnt_smoke < particle_tick,
+        "vanilla `PrimedTnt.tick` emits smoke before ParticleEngine.tick advances particles"
     );
     assert!(
         particle_tick < particle_sound_drain && particle_sound_drain < particle_sound_emit,

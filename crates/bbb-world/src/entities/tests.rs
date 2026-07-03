@@ -630,6 +630,46 @@ fn local_player_using_item_flags_do_not_replace_existing_started_hand() {
 }
 
 #[test]
+fn primed_tnt_smoke_particles_use_current_position_when_post_decrement_fuse_survives() {
+    const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        200,
+        VANILLA_ENTITY_TYPE_TNT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        201,
+        VANILLA_ENTITY_TYPE_TNT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        202,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 200,
+        values: vec![protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 2)],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 201,
+        values: vec![protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 1)],
+    }));
+
+    let states = store.primed_tnt_smoke_particle_states();
+
+    assert_eq!(states.len(), 1);
+    assert_eq!(states[0].entity_id, 200);
+    assert_eq!(
+        states[0].position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+}
+
+#[test]
 fn update_attributes_ignores_non_living_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

@@ -412,11 +412,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `FlameParticle` 与 `PortalParticle` / `ReversePortalParticle` 现在保留
     vanilla `hasPhysics=true` metadata，并通过 collision-free `move` flag 表达其
     覆写路径；
+    `PrimedTnt.tick` 的客户端 smoke side effect 现在按当前 world 实体位置和
+    synced/default fuse 元数据提交：entity tick clock 推进后，post-decrement fuse
+    仍为正的 TNT 每个 advanced tick 在 `x, y + 0.5, z` 生成一个
+    `minecraft:smoke`，速度为 0；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
     vibration entity target refresh、DragonBreath hit-ground motion 与
     SuspendedTown collision-free move、Crit constructor tick、Flame/Portal
-    collision-free metadata），以及 local sound（不含 DripParticle
+    collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、

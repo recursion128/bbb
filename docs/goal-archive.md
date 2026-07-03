@@ -2516,6 +2516,16 @@
     preserve `has_physics=true` while marking flame, small-flame, portal, and
     reverse-portal as `moves_without_collision`. Tests cover flame runtime
     collision bypass plus provider metadata for flame and portal variants.
+  - [x] PrimedTnt client smoke side effect：local vanilla 26.1
+    `PrimedTnt.tick` decrements fuse, then on the client emits
+    `ParticleTypes.SMOKE` at `getX(), getY() + 0.5, getZ()` with zero velocity
+    while the post-decrement fuse remains positive. `WorldStore` now projects
+    TNT smoke states from the current entity position plus synced/default fuse
+    metadata, and native submits one `minecraft:smoke` command per advanced
+    entity tick before `ParticleEngine.tick` advances particles. Tests cover the
+    post-decrement fuse gate, spawn position, zero velocity, and particle-tick
+    ordering. Full local TNT physics/fuse simulation remains broader entity
+    parity work.
 
 ## P2：Terrain / Block Render Presentation
 

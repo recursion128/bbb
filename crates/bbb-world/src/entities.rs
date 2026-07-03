@@ -196,6 +196,12 @@ pub struct OminousItemSpawnerItemState {
     pub stack: ProtocolItemStackSummary,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PrimedTntSmokeParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+}
+
 /// The wall the front of an item frame faces (vanilla `ItemFrame.getDirection`). Drives the frame's
 /// render orientation: horizontal facings rotate the frame about Y, vertical facings tilt it about X.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2195,6 +2201,10 @@ impl WorldStore {
     ) -> Option<f32> {
         self.entities
             .primed_tnt_fuse_remaining_in_ticks(entity_id, partial_ticks)
+    }
+
+    pub fn primed_tnt_smoke_particle_states(&self) -> Vec<PrimedTntSmokeParticleState> {
+        self.entities.primed_tnt_smoke_particle_states()
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player

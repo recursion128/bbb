@@ -24,19 +24,20 @@ use bbb_renderer::{
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext,
-    ParticleSoundEvent, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldStore, WorldWeatherState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
+    PrimedTntSmokeParticleState, SoundEventState, SoundHolderState, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -63,7 +64,7 @@ use crate::{
     item_models::{
         dropped_item_models, entity_block_models, held_item_models, ominous_item_spawner_models,
     },
-    particle_runtime::ParticleEventSink,
+    particle_runtime::{ParticleEventSink, SMOKE_PARTICLE_TYPE_ID},
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
         TerrainUploadState,
@@ -1460,6 +1461,7 @@ pub(crate) fn pump_network_and_terrain(
         particle_local_player_scope_context(world, item_runtime, camera_pose_from_world(world));
     let particle_local_player_motion_context = particle_local_player_motion_context(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
+    submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
@@ -1727,6 +1729,61 @@ fn emit_particle_sound_events(
     for event in sound_events {
         let state = particle_sound_event_state(event);
         audio_events.play_positioned_sound(&state);
+    }
+}
+
+fn submit_primed_tnt_smoke_particles(renderer: &mut Renderer, world: &WorldStore, ticks: u32) {
+    if ticks == 0 {
+        return;
+    }
+    let batch = primed_tnt_smoke_particle_batch(world.primed_tnt_smoke_particle_states(), ticks);
+    renderer.submit_particle_spawns(batch);
+}
+
+fn primed_tnt_smoke_particle_batch(
+    states: Vec<PrimedTntSmokeParticleState>,
+    ticks: u32,
+) -> ParticleSpawnBatch {
+    if ticks == 0 || states.is_empty() {
+        return ParticleSpawnBatch::default();
+    }
+
+    let mut commands = Vec::with_capacity(states.len().saturating_mul(ticks as usize));
+    for _ in 0..ticks {
+        commands.extend(
+            states
+                .iter()
+                .map(|state| primed_tnt_smoke_particle_command(*state)),
+        );
+    }
+    ParticleSpawnBatch {
+        commands,
+        ..ParticleSpawnBatch::default()
+    }
+}
+
+fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> ParticleSpawnCommand {
+    ParticleSpawnCommand {
+        particle_type_id: SMOKE_PARTICLE_TYPE_ID,
+        particle_id: "minecraft:smoke".to_string(),
+        sprite_ids: Vec::new(),
+        position: [state.position.x, state.position.y + 0.5, state.position.z],
+        velocity: [0.0, 0.0, 0.0],
+        override_limiter: false,
+        always_show: false,
+        raw_options_len: 0,
+        initial_delay_ticks: 0,
+        child_spawn_templates: Vec::new(),
+        option_color: None,
+        option_color_to: None,
+        option_scale: None,
+        option_power: None,
+        option_target: None,
+        option_entity_target_source: None,
+        option_duration_ticks: None,
+        option_roll: None,
+        option_block: None,
+        option_item: None,
     }
 }
 

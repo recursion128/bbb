@@ -6254,9 +6254,14 @@ When an agent does any of the following, update this file in the same slice:
       `DATA_BLOCK_STATE_ID` (id 9), defaults to `Blocks.TNT.defaultBlockState()`,
       treats air block states as non-rendered, and native bakes the selected
       block model with entity light, `fuse - partialTick + 1`, the
-      final-10-tick fourth-power scale pulse, and white-strobe overlay. The
-      smoke particle emitted while fuse remains positive is still deferred to
-      the particle runtime.
+      final-10-tick fourth-power scale pulse, and white-strobe overlay. Native
+      now also mirrors the client-side `PrimedTnt.tick` smoke side effect for
+      the current world position: after the entity tick clock advances, TNT
+      whose post-decrement fuse remains positive submits one
+      `minecraft:smoke` particle per advanced tick at `x, y + 0.5, z` with
+      zero velocity. Full local TNT movement / fuse countdown simulation remains
+      deferred to broader entity-physics parity; this slice consumes the current
+      world entity position and synced/default fuse metadata.
     - falling blocks now use the vanilla 26.1 `FallingBlockRenderer` block-model
       attachment path instead of a placeholder bounds box. `WorldStore` resolves
       the add-entity packet `data` field with the vanilla block-state registry

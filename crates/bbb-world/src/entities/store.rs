@@ -877,6 +877,46 @@ impl EntityStore {
         Some(fuse as f32 - partial_ticks + 1.0)
     }
 
+    pub(crate) fn primed_tnt_smoke_particle_states(
+        &self,
+    ) -> Vec<super::PrimedTntSmokeParticleState> {
+        let mut states = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(mut query) = self
+                .ecs
+                .query_one::<(&EntityIdentity, &EntityTransform)>(entity)
+            else {
+                continue;
+            };
+            let Some((identity, transform)) = query.get() else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
+                continue;
+            }
+            let fuse = self
+                .metadata_int(
+                    identity.id,
+                    PRIMED_TNT_FUSE_DATA_ID,
+                    DEFAULT_PRIMED_TNT_FUSE,
+                )
+                .unwrap_or(DEFAULT_PRIMED_TNT_FUSE);
+            // Vanilla `PrimedTnt.tick` decrements fuse first and only emits smoke when the
+            // resulting fuse remains positive.
+            if fuse <= 1 {
+                continue;
+            }
+            states.push(super::PrimedTntSmokeParticleState {
+                entity_id: identity.id,
+                position: transform.position,
+            });
+        }
+        states
+    }
+
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
