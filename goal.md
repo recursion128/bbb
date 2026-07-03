@@ -365,6 +365,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     fluid kind/height sample 覆盖 `dripping_*`、`falling_*` 与 lava landing
     provider，`Fluids.EMPTY` 的 honey / obsidian tear / nectar / spore
     blossom providers 不参与该门；
+    `BubbleParticle` / `BubbleColumnUpParticle` / `WaterCurrentDownParticle`
+    现在按 vanilla `FluidTags.WATER` gate 在当前位置格子不含 water fluid
+    时移除；
     剩余 gravity/collision/player-coupled work 是特殊 context 和
     player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。

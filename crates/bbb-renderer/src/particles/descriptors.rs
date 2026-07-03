@@ -2042,6 +2042,15 @@ impl ParticleDescriptor {
         }
     }
 
+    pub(crate) fn required_fluid(self) -> Option<ParticleFluidKind> {
+        match self.provider {
+            "BubbleParticle.Provider"
+            | "BubbleColumnUpParticle.Provider"
+            | "WaterCurrentDownParticle.Provider" => Some(ParticleFluidKind::Water),
+            _ => None,
+        }
+    }
+
     pub(crate) fn falling_leaves(self) -> Option<FallingLeavesDescriptor> {
         match self.provider {
             "FallingLeavesParticle.CherryProvider" => Some(cherry_falling_leaves_descriptor()),

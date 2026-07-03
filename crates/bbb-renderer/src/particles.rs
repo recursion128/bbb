@@ -243,6 +243,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) drip_fluid: Option<ParticleFluidKind>,
     #[serde(default)]
+    pub(crate) required_fluid: Option<ParticleFluidKind>,
+    #[serde(default)]
     pub(crate) tick_angle: f32,
     #[serde(default)]
     pub(crate) particle_limit: Option<ParticleLimitDescriptor>,
@@ -956,6 +958,7 @@ impl ParticleInstance {
             removed: false,
             tick_motion: descriptor.tick_motion(),
             drip_fluid: descriptor.drip_fluid(),
+            required_fluid: descriptor.required_fluid(),
             tick_angle: 0.0,
             particle_limit,
             child_emission,
@@ -1047,6 +1050,7 @@ impl ParticleInstance {
                     self.velocity[0] *= 0.7;
                     self.velocity[2] *= 0.7;
                 }
+                self.remove_if_outside_required_fluid(block_fluid_surface);
             }
             ParticleTickMotionDescriptor::DirectGravityNoFriction => {
                 self.velocity[1] -= f64::from(self.gravity);
@@ -1059,9 +1063,11 @@ impl ParticleInstance {
                 let angle = f64::from(self.tick_angle);
                 self.velocity[0] = (self.velocity[0] + 0.6 * angle.cos()) * 0.07;
                 self.velocity[2] = (self.velocity[2] + 0.6 * angle.sin()) * 0.07;
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                self.move_particle(self.velocity, collide);
+                self.remove_if_outside_required_fluid(block_fluid_surface);
+                if self.on_ground {
+                    self.removed = true;
+                }
                 self.tick_angle += 0.08;
             }
             ParticleTickMotionDescriptor::Snowflake => {
@@ -1340,6 +1346,21 @@ impl ParticleInstance {
         }
         let block_y = self.position[1].floor();
         if self.position[1] < block_y + surface.fluid_height {
+            self.removed = true;
+        }
+    }
+
+    fn remove_if_outside_required_fluid<S>(&mut self, block_fluid_surface: &mut S)
+    where
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let Some(required_fluid) = self.required_fluid else {
+            return;
+        };
+        let surface = block_fluid_surface(ParticleBlockFluidSurfaceQuery {
+            position: self.position,
+        });
+        if surface.fluid_kind != Some(required_fluid) {
             self.removed = true;
         }
     }
@@ -3435,7 +3456,11 @@ mod tests {
         instance.velocity = [0.0, -0.05, 0.0];
         particles.active_instances.push_back(instance);
 
-        let summary = particles.advance(1);
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| water_fluid_surface_sample(),
+        );
 
         assert_eq!(summary.expired_instances, 0);
         let instance = &particles.active_instances()[0];
@@ -3444,6 +3469,68 @@ mod tests {
         assert_close3(instance.position, [1.042, 1.95, 3.0]);
         assert_close3(instance.velocity, [0.042, -0.05, 0.0]);
         assert_close_f32(instance.tick_angle, 0.08);
+    }
+
+    #[test]
+    fn particle_runtime_bubble_removes_outside_water() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:bubble", 30);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, 0.0, 0.0];
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample::default(),
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_bubble_column_stays_in_water() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:bubble_column_up", 30);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, 0.0, 0.0];
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| water_fluid_surface_sample(),
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert!(!particles.active_instances()[0].removed);
+    }
+
+    #[test]
+    fn particle_runtime_current_down_removes_outside_water() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:current_down", 30);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.05, 0.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample::default(),
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
     }
 
     #[test]
@@ -4318,6 +4405,7 @@ mod tests {
         assert_range_f64(bubble.velocity[0], 0.18, 0.22);
         assert_range_f64(bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(bubble.velocity[2], 0.58, 0.62);
+        assert_eq!(bubble.required_fluid, Some(ParticleFluidKind::Water));
 
         let mut rain_random = ParticleRandom::new(62);
         let rain = ParticleInstance::from_spawn_command(
@@ -4444,6 +4532,7 @@ mod tests {
         assert_range_f64(column_bubble.velocity[0], 0.18, 0.22);
         assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
+        assert_eq!(column_bubble.required_fluid, Some(ParticleFluidKind::Water));
 
         let mut current_down_random = ParticleRandom::new(82);
         let mut current_down_command = spawn_command("minecraft:current_down", 1.0);
@@ -4471,6 +4560,7 @@ mod tests {
             ParticleTickMotionDescriptor::CurrentDown
         );
         assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(current_down.required_fluid, Some(ParticleFluidKind::Water));
 
         let mut bubble_pop_random = ParticleRandom::new(75);
         let mut bubble_pop_command = spawn_command("minecraft:bubble_pop", 1.0);
@@ -4487,6 +4577,7 @@ mod tests {
         assert_eq!(bubble_pop.gravity, 0.008);
         assert!(bubble_pop.has_physics);
         assert_eq!(bubble_pop.velocity, [1.0, 2.0, 3.0]);
+        assert_eq!(bubble_pop.required_fluid, None);
         assert_eq!(
             bubble_pop.tick_motion,
             ParticleTickMotionDescriptor::DirectGravityNoFriction
@@ -7595,6 +7686,7 @@ mod tests {
             removed: false,
             tick_motion: descriptor.tick_motion(),
             drip_fluid: descriptor.drip_fluid(),
+            required_fluid: descriptor.required_fluid(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
             child_emission: descriptor.child_emission(),
@@ -7639,6 +7731,14 @@ mod tests {
             option_roll: None,
             option_block: None,
             option_item: None,
+        }
+    }
+
+    fn water_fluid_surface_sample() -> ParticleBlockFluidSurfaceSample {
+        ParticleBlockFluidSurfaceSample {
+            block_collision_height: 0.0,
+            fluid_height: 8.0 / 9.0,
+            fluid_kind: Some(ParticleFluidKind::Water),
         }
     }
 

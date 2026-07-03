@@ -2366,6 +2366,14 @@
     providers ignore the fluid sample. Native maps world `TerrainFluidKind`
     into renderer particle fluid kinds; world tests cover water/lava samples
     and renderer tests cover matching, non-matching, and empty-provider cases.
+  - [x] bubble water-fluid survival gates：`BubbleParticle.Provider`,
+    `BubbleColumnUpParticle.Provider`, and `WaterCurrentDownParticle.Provider`
+    now carry a renderer `required_fluid=Water` runtime gate and remove after
+    movement when the containing block's world-backed fluid kind is not water,
+    matching vanilla `FluidTags.WATER` checks. `WaterCurrentDownParticle` now
+    uses the no-physics `move` path before the water check; focused tests cover
+    bubble removal outside water, bubble-column survival in water, current-down
+    removal outside water, and descriptor/runtime field sampling.
 
 ## P2：Terrain / Block Render Presentation
 

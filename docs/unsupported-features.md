@@ -759,19 +759,21 @@ When an agent does any of the following, update this file in the same slice:
       - `BubbleParticle.Provider` command velocity scaled by `0.2` plus
         random `+-0.02` velocity, random `0.2..0.8` quad-size scaling,
         `8 / (random * 0.8 + 0.2)` lifetime, `0.85` friction, and upward
-        `+0.002` y-velocity tick behavior represented as negative gravity
+        `+0.002` y-velocity tick behavior represented as negative gravity.
+        Runtime ticks now remove the particle when the containing block's fluid
+        state is not water.
       - `BubbleColumnUpParticle.Provider` shares the bubble velocity and
         quad-size formulas while using `40 / (random * 0.8 + 0.2)` lifetime,
-        `-0.125` gravity, and `0.85` friction; water-fluid removal remains
-        deferred with broader particle collision/physics work
+        `-0.125` gravity, and `0.85` friction. Runtime ticks now remove the
+        particle when the containing block's fluid state is not water.
       - `WaterCurrentDownParticle.Provider` uses random sprite selection,
         fixed initial velocity `(0, -0.05, 0)`, `30 + random.nextFloat() * 60`
         lifetime, random `0.2..0.8` quad-size scaling, opaque particle layer,
         no-physics metadata, gravity `0.002`, and the vanilla swirl tick
         formula (`xd += 0.6*cos(angle)`, `zd += 0.6*sin(angle)`, horizontal
-        damping `0.07`, `angle += 0.08`); its water-fluid / on-ground removal
-        gate remains deferred with world-coupled particle collision/physics
-        work
+        damping `0.07`, `angle += 0.08`). Runtime ticks now use the vanilla
+        no-physics `move` path and remove the particle when the containing
+        block's fluid state is not water.
       - `FlyTowardsPositionParticle.EnchantProvider` and `NautilusProvider`
         use random sprite selection, command velocity, initial render position
         at `spawn + velocity` with the original spawn position retained as the
