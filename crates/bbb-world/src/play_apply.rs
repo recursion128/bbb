@@ -17,9 +17,9 @@ use crate::{
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LocalSoundEventState, RavagerRoarParticleState, SoundEntityEventState, SoundEventState,
-    StopSoundEventState, TakeItemEntityPickupParticleState, VehicleMoveReport,
-    WitchMagicParticleState, WorldStore,
+    LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
+    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    VehicleMoveReport, WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -59,6 +59,7 @@ const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
+const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
 const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
@@ -136,6 +137,12 @@ pub trait PlayApplyEffects {
         &mut self,
         _world: &WorldStore,
         _state: LivingEntityDrownParticleState,
+    ) {
+    }
+    fn living_entity_portal_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: LivingEntityPortalParticleState,
     ) {
     }
     fn honey_block_particles(&mut self, _world: &WorldStore, _state: HoneyBlockParticleState) {}
@@ -363,6 +370,12 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let living_entity_portal_particles =
+                    if update.event_id == LIVING_ENTITY_PORTAL_EVENT_ID {
+                        self.living_entity_portal_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
                 let living_entity_poof_particles = if update.event_id == LIVING_ENTITY_POOF_EVENT_ID
                 {
                     self.living_entity_poof_particle_state(update.entity_id)
@@ -414,6 +427,9 @@ impl WorldStore {
                     }
                     if let Some(state) = living_entity_drown_particles {
                         effects.living_entity_drown_particles(self, state);
+                    }
+                    if let Some(state) = living_entity_portal_particles {
+                        effects.living_entity_portal_particles(self, state);
                     }
                     if let Some(state) = honey_block_particles {
                         effects.honey_block_particles(self, state);
@@ -1349,8 +1365,8 @@ mod tests {
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, GameEvent,
-        LevelEvent, PlayTime, PlayerHealth, SoundEvent, SoundEventHolder, SoundSource,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, EntityPositionSync,
+        GameEvent, LevelEvent, PlayTime, PlayerHealth, SoundEvent, SoundEventHolder, SoundSource,
         TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
@@ -1363,6 +1379,7 @@ mod tests {
         witch_magic_particles: Vec<WitchMagicParticleState>,
         living_entity_poof_particles: Vec<LivingEntityPoofParticleState>,
         living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
+        living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
@@ -1398,6 +1415,14 @@ mod tests {
             state: LivingEntityDrownParticleState,
         ) {
             self.living_entity_drown_particles.push(state);
+        }
+
+        fn living_entity_portal_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: LivingEntityPortalParticleState,
+        ) {
+            self.living_entity_portal_particles.push(state);
         }
 
         fn honey_block_particles(&mut self, _world: &WorldStore, state: HoneyBlockParticleState) {
@@ -2161,6 +2186,90 @@ mod tests {
                 z: 0.3,
             }
         );
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn living_entity_portal_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let old_position = Vec3d {
+            x: 1.25,
+            y: 64.0,
+            z: -2.5,
+        };
+        let new_position = Vec3d {
+            x: 2.75,
+            y: 65.0,
+            z: -1.0,
+        };
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(96, VANILLA_ENTITY_TYPE_ZOMBIE_ID, old_position)),
+            PlayClientbound::AddEntity(add_entity(
+                97,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+        store.advance_entity_client_animations(1);
+
+        for packet in [
+            PlayClientbound::EntityPositionSync(EntityPositionSync {
+                id: 96,
+                position: new_position,
+                delta_movement: Vec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: false,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 96,
+                event_id: LIVING_ENTITY_PORTAL_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 97,
+                event_id: LIVING_ENTITY_PORTAL_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_PORTAL_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.living_entity_portal_particles.len(), 1);
+        let state = effects.living_entity_portal_particles[0];
+        assert_eq!(state.entity_id, 96);
+        assert_eq!(
+            state.previous_position,
+            crate::EntityVec3 {
+                x: old_position.x,
+                y: old_position.y,
+                z: old_position.z,
+            }
+        );
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: new_position.x,
+                y: new_position.y,
+                z: new_position.z,
+            }
+        );
+        assert!((state.width - 0.6).abs() < 1.0e-6);
+        assert!((state.height - 1.95).abs() < 1.0e-5);
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

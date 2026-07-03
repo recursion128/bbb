@@ -49,9 +49,9 @@ use bbb_protocol::packets::{
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
-    RegistryPacketEntry, TakeItemEntityPickupParticleState, WitchMagicParticleState,
-    WorldBlockSoundProfile, WorldStore,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
+    RavagerRoarParticleState, RegistryPacketEntry, TakeItemEntityPickupParticleState,
+    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2596,6 +2596,102 @@ fn living_entity_drown_entity_event_emits_particle_state() {
     assert_eq!(state.delta_movement.x, 0.1);
     assert_eq!(state.delta_movement.y, -0.2);
     assert_eq!(state.delta_movement.z, 0.3);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn living_entity_portal_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(76, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(77, VANILLA_ENTITY_TYPE_ITEM_ID),
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        2
+    );
+    world.advance_entity_client_animations(1);
+
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityPositionSync(
+        EntityPositionSync {
+            id: 76,
+            position: ProtocolVec3d {
+                x: 3.0,
+                y: 65.0,
+                z: -1.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: false,
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 76,
+        event_id: 46,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 77,
+        event_id: 46,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 46,
+    })))
+    .unwrap();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert_eq!(particles.living_entity_portal_states.len(), 1);
+    let state = particles.living_entity_portal_states[0];
+    assert_eq!(state.entity_id, 76);
+    assert_eq!(state.previous_position.x, 1.0);
+    assert_eq!(state.previous_position.y, 64.0);
+    assert_eq!(state.previous_position.z, -2.0);
+    assert_eq!(state.position.x, 3.0);
+    assert_eq!(state.position.y, 65.0);
+    assert_eq!(state.position.z, -1.0);
+    assert_close(state.width, 0.6);
+    assert_close(state.height, 1.95);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
@@ -8449,6 +8545,7 @@ struct RecordingParticleSink {
     witch_magic_states: Vec<WitchMagicParticleState>,
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
+    living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
@@ -8599,6 +8696,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityDrownParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_drown_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_living_entity_portal_particles(
+        &mut self,
+        state: LivingEntityPortalParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.living_entity_portal_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

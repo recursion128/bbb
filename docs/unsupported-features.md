@@ -304,6 +304,10 @@ When an agent does any of the following, update this file in the same slice:
         particles: 8 commands at entity position plus three
         `random.triangle(0.0, 1.0)` offsets, using the entity's current
         `deltaMovement` as command velocity.
+      - LivingEntity entity event `46` now emits vanilla `minecraft:portal`
+        particles: 128 commands interpolated from `xo/yo/zo` to the current
+        position, with width/height random offsets and
+        `(nextFloat()-0.5)*0.2` velocity.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -314,7 +318,8 @@ When an agent does any of the following, update this file in the same slice:
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
         magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
-        drown bubbles, HoneyBlock event-53/54 block particles, and the
+        drown bubbles, LivingEntity event-46 portal burst, HoneyBlock
+        event-53/54 block particles, and the
         GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
         model submit
     - terrain/item particle option metadata / atlas rendering:
@@ -491,6 +496,10 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:bubble` particles from `makeDrownParticles`: 8 commands at
       entity position plus `random.triangle(0.0, 1.0)` offsets, carrying the
       entity's current `deltaMovement` as velocity.
+      Native LivingEntity event `46` now emits vanilla `minecraft:portal`
+      particles from `handleEntityEvent`: 128 commands interpolated from
+      `xo/yo/zo` to current position with width/height random offsets and
+      `(nextFloat()-0.5)*0.2` velocity.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

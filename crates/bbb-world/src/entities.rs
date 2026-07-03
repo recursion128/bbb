@@ -380,6 +380,15 @@ pub struct LivingEntityDrownParticleState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LivingEntityPortalParticleState {
+    pub entity_id: i32,
+    pub previous_position: EntityVec3,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HoneyBlockParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -2000,6 +2009,29 @@ impl WorldStore {
             entity_id,
             position: transform.position,
             delta_movement: transform.delta_movement,
+        })
+    }
+
+    pub fn living_entity_portal_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<LivingEntityPortalParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !vanilla_living_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        let previous_position = self
+            .entities
+            .living_entity_previous_feet_position(entity_id)
+            .flatten()
+            .unwrap_or(transform.position);
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(LivingEntityPortalParticleState {
+            entity_id,
+            previous_position,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
         })
     }
 

@@ -24,9 +24,9 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, RavagerRoarParticleState,
-    TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
-    WitchMagicParticleState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    RavagerRoarParticleState, TakeItemEntityPickupParticleState, TerrainLight,
+    VaultConnectionParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -94,6 +94,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_living_entity_drown_particles(
         &mut self,
         state: LivingEntityDrownParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_living_entity_portal_particles(
+        &mut self,
+        state: LivingEntityPortalParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_honey_block_particles(&mut self, state: HoneyBlockParticleState)
         -> ParticleSpawnBatch;
@@ -355,6 +359,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityDrownParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_drown_particle_batch(state)
+    }
+
+    fn spawn_living_entity_portal_particles(
+        &mut self,
+        state: LivingEntityPortalParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.living_entity_portal_particle_batch(state)
     }
 
     fn spawn_honey_block_particles(
@@ -2614,6 +2625,42 @@ impl ParticleCommandResolver {
                 x: state.position.x + self.random.next_f64() - self.random.next_f64(),
                 y: state.position.y + self.random.next_f64() - self.random.next_f64(),
                 z: state.position.z + self.random.next_f64() - self.random.next_f64(),
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn living_entity_portal_particle_batch(
+        &mut self,
+        state: LivingEntityPortalParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let width = f64::from(state.width.max(0.0));
+        let height = f64::from(state.height.max(0.0));
+        for i in 0..128 {
+            let alpha = i as f64 / 127.0;
+            let velocity = Vec3d {
+                x: f64::from((self.random.next_float() - 0.5) * 0.2),
+                y: f64::from((self.random.next_float() - 0.5) * 0.2),
+                z: f64::from((self.random.next_float() - 0.5) * 0.2),
+            };
+            let position = Vec3d {
+                x: lerp_f64(alpha, state.previous_position.x, state.position.x)
+                    + (self.random.next_f64() - 0.5) * width * 2.0,
+                y: lerp_f64(alpha, state.previous_position.y, state.position.y)
+                    + self.random.next_f64() * height,
+                z: lerp_f64(alpha, state.previous_position.z, state.position.z)
+                    + (self.random.next_f64() - 0.5) * width * 2.0,
             };
             batch
                 .commands
@@ -5634,6 +5681,55 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:bubble"));
+    }
+
+    #[test]
+    fn living_entity_portal_batch_matches_vanilla_event_particles() {
+        let mut resolver = test_resolver(0);
+        let state = LivingEntityPortalParticleState {
+            entity_id: 75,
+            previous_position: bbb_world::EntityVec3 {
+                x: 9.0,
+                y: 63.5,
+                z: -4.0,
+            },
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.6,
+            height: 1.95,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_velocity = [
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+            f64::from((expected_random.next_float() - 0.5) * 0.2),
+        ];
+        let width = f64::from(state.width);
+        let height = f64::from(state.height);
+        let expected_position = [
+            state.previous_position.x + (expected_random.next_f64() - 0.5) * width * 2.0,
+            state.previous_position.y + expected_random.next_f64() * height,
+            state.previous_position.z + (expected_random.next_f64() - 0.5) * width * 2.0,
+        ];
+
+        let batch = resolver.living_entity_portal_particle_batch(state);
+
+        assert_eq!(batch.len(), 128);
+        assert_particle_command(
+            &batch.commands[0],
+            PORTAL_PARTICLE_TYPE_ID,
+            "minecraft:portal",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:portal"));
     }
 
     #[test]

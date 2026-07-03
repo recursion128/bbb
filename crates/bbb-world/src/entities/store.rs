@@ -2338,6 +2338,24 @@ impl EntityStore {
         )
     }
 
+    pub(crate) fn living_entity_previous_feet_position(
+        &self,
+        id: i32,
+    ) -> Option<Option<super::EntityVec3>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if !vanilla_living_entity_type(identity.entity_type_id) {
+            return None;
+        }
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            client_animations
+                .animations
+                .walk_animation
+                .and_then(|walk| walk.previous_feet_position),
+        )
+    }
+
     fn wither_head_targets_by_id(&self) -> HashMap<i32, [WitherHeadTargetRotations; 2]> {
         let mut eye_positions = HashMap::new();
         let mut withers = Vec::new();
