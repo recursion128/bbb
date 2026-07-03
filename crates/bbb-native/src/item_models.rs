@@ -77,6 +77,9 @@ const VANILLA_CONSUMABLE_COMPONENT_ID: i32 = 24;
 /// stacks carrying it use `ItemUseAnimation.BLOCK`; the vanilla shield has it as
 /// a prototype component.
 const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
+/// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
+/// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
+const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -1093,6 +1096,15 @@ pub(crate) fn first_person_item_models(
                         attach = first_person_apply_block_use_transform(attach, arm_left);
                     }
                 }
+                FirstPersonUseAnimation::Brush { use_duration_ticks } => {
+                    attach = first_person_apply_brush_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1154,6 +1166,7 @@ enum FirstPersonUseAnimation {
     None,
     EatDrink { use_duration_ticks: f32 },
     Block(FirstPersonBlockUseKind),
+    Brush { use_duration_ticks: f32 },
 }
 
 fn supported_first_person_item_stack(
@@ -1176,7 +1189,6 @@ fn supported_first_person_item_stack(
             | "minecraft:crossbow"
             | "minecraft:spyglass"
             | "minecraft:trident"
-            | "minecraft:brush"
             | "minecraft:bundle"
     )
 }
@@ -1210,6 +1222,15 @@ fn first_person_stack_supported_use_animation(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonUseAnimation> {
+    match first_person_stack_resource_id(stack, item_runtime) {
+        Some("minecraft:goat_horn") => return Some(FirstPersonUseAnimation::None),
+        Some("minecraft:brush") => {
+            return Some(FirstPersonUseAnimation::Brush {
+                use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
+            });
+        }
+        _ => {}
+    }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
         return match consumable.animation {
             ItemUseAnimationSummary::None => Some(FirstPersonUseAnimation::None),
@@ -1223,9 +1244,6 @@ fn first_person_stack_supported_use_animation(
             )),
             _ => None,
         };
-    }
-    if first_person_stack_resource_id(stack, item_runtime) == Some("minecraft:goat_horn") {
-        return Some(FirstPersonUseAnimation::None);
     }
     first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
 }
@@ -1446,6 +1464,50 @@ fn first_person_eat_drink_use_transform(
         * Mat4::from_rotation_y((invert * eat_jiggle * 90.0).to_radians())
         * Mat4::from_rotation_x((eat_jiggle * 10.0).to_radians())
         * Mat4::from_rotation_z((invert * eat_jiggle * 30.0).to_radians())
+}
+
+fn first_person_apply_brush_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_brush_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_brush_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    if use_duration_ticks <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let brush_animation_remaining_ticks = (use_duration_ticks - using_item_ticks).max(0.0) % 10.0;
+    let delta_since_last_update = brush_animation_remaining_ticks - partial_ticks + 1.0;
+    let scaled_usage_time = 1.0 - delta_since_last_update / 10.0;
+    let current_swipe_angle = -15.0 + 75.0 * (scaled_usage_time * 2.0 * std::f32::consts::PI).cos();
+
+    if arm_left {
+        Mat4::from_translation(Vec3::new(0.1, 0.83, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y((-90.0_f32).to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians())
+            * Mat4::from_translation(Vec3::new(-0.3, 0.22, 0.35))
+    } else {
+        Mat4::from_translation(Vec3::new(-0.25, 0.22, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y(90.0_f32.to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians())
+    }
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -3827,6 +3889,74 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_brush_use_pose() {
+        let root = unique_item_model_temp_dir("first-person-brush-use");
+        write_flat_item_runtime_fixture(&root, &["brush"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let brush = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:brush"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut edible_brush = brush.clone();
+        edible_brush.component_patch.added = 1;
+        edible_brush.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        edible_brush.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        assert_eq!(
+            first_person_stack_supported_use_animation(&edible_brush, &item_runtime),
+            Some(FirstPersonUseAnimation::Brush {
+                use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
+            }),
+            "BrushItem.getUseAnimation overrides stack CONSUMABLE data"
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: brush.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut brushing_world = WorldStore::new();
+        brushing_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: brush,
+        });
+        brushing_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        brushing_world.advance_local_using_item_ticks(12);
+        let brushing = first_person_item_models(
+            &brushing_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(brushing.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], brushing.flat_meshes[0],
+            "BRUSH use applies ItemInHandRenderer.applyBrushTransform after the arm transform"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -4055,6 +4185,32 @@ mod tests {
             (right_origin.x + left_origin.x).abs() < 1.0e-4,
             "EAT/DRINK use x movement mirrors between arms: {right_origin:?} vs {left_origin:?}"
         );
+    }
+
+    #[test]
+    fn first_person_brush_use_transform_matches_vanilla_apply_brush_transform() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let transformed = first_person_apply_brush_use_transform(base, false, 200.0, 12.0, 0.5);
+        let remaining = (200.0_f32 - 12.0).max(0.0) % 10.0;
+        let delta_since_last_update = remaining - 0.5 + 1.0;
+        let scaled_usage_time = 1.0 - delta_since_last_update / 10.0;
+        let current_swipe_angle =
+            -15.0 + 75.0 * (scaled_usage_time * 2.0 * std::f32::consts::PI).cos();
+        let right_brush = Mat4::from_translation(Vec3::new(-0.25, 0.22, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y(90.0_f32.to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians());
+        assert!(transformed.abs_diff_eq(base * right_brush, 1.0e-5));
+
+        let left_base =
+            first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, true, 0.0);
+        let left = first_person_apply_brush_use_transform(left_base, true, 200.0, 12.0, 0.5);
+        let left_brush = Mat4::from_translation(Vec3::new(0.1, 0.83, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y((-90.0_f32).to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians())
+            * Mat4::from_translation(Vec3::new(-0.3, 0.22, 0.35));
+        assert!(left.abs_diff_eq(left_base * left_brush, 1.0e-5));
     }
 
     #[test]

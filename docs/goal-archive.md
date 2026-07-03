@@ -1170,6 +1170,16 @@
     `minecraft:goat_horn` through first-person item rendering and classifies
     using goat horns as base-arm use animation. Tests cover non-skipped rendering
     and exact idle/use mesh equality with `swing_animation = NONE`.
+  - [x] first-person brush BRUSH use pose：local vanilla 26.1
+    `BrushItem.getUseAnimation` returns `ItemUseAnimation.BRUSH`,
+    `BrushItem.getUseDuration` returns `200`, and `ItemInHandRenderer` applies
+    `applyItemArmTransform` before `applyBrushTransform(frameInterp, arm,
+    player)`, using remaining ticks modulo the 10-tick brush animation to choose
+    the swipe angle. Native now allows `minecraft:brush` through first-person
+    rendering, classifies brush use before generic stack `CONSUMABLE` data, and
+    applies the vanilla right/left hand brush transform. Tests cover non-skipped
+    idle/rendering, using mesh movement, override precedence, and exact matrix
+    order/formula.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
