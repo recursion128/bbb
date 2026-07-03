@@ -4,10 +4,13 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bbb_protocol::packets::{
-    LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
-    SoundEvent as ProtocolSoundEvent, SoundEventHolder as ProtocolSoundEventHolder,
-    StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
+use bbb_protocol::{
+    entity_types::*,
+    packets::{
+        LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
+        SoundEvent as ProtocolSoundEvent, SoundEventHolder as ProtocolSoundEventHolder,
+        SoundSource, StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +24,7 @@ const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -284,6 +288,25 @@ impl WorldStore {
         };
         self.client_audio.last_stop_sound = Some(state.clone());
         state
+    }
+
+    pub fn totem_use_sound_for_entity(&mut self, entity_id: i32) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        let source = vanilla_entity_sound_source(transform.entity_type_id);
+        let state = SoundEventState {
+            sound: direct_sound_holder(TOTEM_USE_SOUND_EVENT),
+            source: source.as_str().to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
     }
 
     pub fn client_audio(&self) -> &ClientAudioState {
@@ -1017,6 +1040,67 @@ fn block_sound_state_with_distance_delay(
         seed: 0,
         distance_delay,
     }
+}
+
+fn vanilla_entity_sound_source(entity_type_id: i32) -> SoundSource {
+    if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+        return SoundSource::Players;
+    }
+    if is_vanilla_hostile_sound_source_type(entity_type_id) {
+        return SoundSource::Hostile;
+    }
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID | VANILLA_ENTITY_TYPE_ITEM_ID => SoundSource::Ambient,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => SoundSource::Weather,
+        _ => SoundSource::Neutral,
+    }
+}
+
+fn is_vanilla_hostile_sound_source_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_BLAZE_ID
+            | VANILLA_ENTITY_TYPE_BOGGED_ID
+            | VANILLA_ENTITY_TYPE_BREEZE_ID
+            | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID
+            | VANILLA_ENTITY_TYPE_CREAKING_ID
+            | VANILLA_ENTITY_TYPE_CREEPER_ID
+            | VANILLA_ENTITY_TYPE_DROWNED_ID
+            | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+            | VANILLA_ENTITY_TYPE_ENDERMAN_ID
+            | VANILLA_ENTITY_TYPE_ENDERMITE_ID
+            | VANILLA_ENTITY_TYPE_EVOKER_ID
+            | VANILLA_ENTITY_TYPE_GHAST_ID
+            | VANILLA_ENTITY_TYPE_GIANT_ID
+            | VANILLA_ENTITY_TYPE_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_HOGLIN_ID
+            | VANILLA_ENTITY_TYPE_HUSK_ID
+            | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+            | VANILLA_ENTITY_TYPE_PHANTOM_ID
+            | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+            | VANILLA_ENTITY_TYPE_PIGLIN_ID
+            | VANILLA_ENTITY_TYPE_PILLAGER_ID
+            | VANILLA_ENTITY_TYPE_RAVAGER_ID
+            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+            | VANILLA_ENTITY_TYPE_SHULKER_ID
+            | VANILLA_ENTITY_TYPE_SILVERFISH_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_ID
+            | VANILLA_ENTITY_TYPE_SLIME_ID
+            | VANILLA_ENTITY_TYPE_SPIDER_ID
+            | VANILLA_ENTITY_TYPE_STRAY_ID
+            | VANILLA_ENTITY_TYPE_VEX_ID
+            | VANILLA_ENTITY_TYPE_VINDICATOR_ID
+            | VANILLA_ENTITY_TYPE_WARDEN_ID
+            | VANILLA_ENTITY_TYPE_WITCH_ID
+            | VANILLA_ENTITY_TYPE_WITHER_ID
+            | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID
+            | VANILLA_ENTITY_TYPE_ZOGLIN_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
+    )
 }
 
 pub fn advance_cobweb_place_particle_randoms(random: &mut LevelEventSoundRandomState) {

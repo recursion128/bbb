@@ -2008,6 +2008,7 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
 
     assert_eq!(
@@ -2016,7 +2017,7 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
             &mut world,
             &mut counters,
             &None,
-            None,
+            Some(&mut audio),
             Some(&mut particles),
             None,
             None,
@@ -2035,6 +2036,21 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
     assert_close(state.width, 0.6);
     assert_close(state.height, 1.95);
     assert_eq!(state.lifetime_ticks, 30);
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Hostile);
+            assert_eq!(command.position, [1.0, 64.0, -2.0]);
+            assert_eq!(command.packet_volume, 1.0);
+            assert_eq!(command.packet_pitch, 1.0);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.fixed_range, None);
+            assert_eq!(command.sound.event_id, "minecraft:item.totem.use");
+            assert_eq!(command.sound.sound_name, "minecraft:item/totem/use");
+        }
+        other => panic!("expected totem positioned sound command, got {other:?}"),
+    }
     assert_eq!(world.counters().entity_events_applied, 1);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
@@ -7635,6 +7651,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.bone_meal.use": {
                 "sounds": ["item/bone_meal/use"]
+            },
+            "item.totem.use": {
+                "sounds": ["item/totem/use"]
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]

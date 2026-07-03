@@ -2643,6 +2643,18 @@
     `minecraft:totem_of_undying` commands for 30 ticks. Focused tests cover the
     Java `nextFloat` random stream, first command position/velocity, delay
     distribution, and dispatcher gating for missing entities.
+  - [x] Totem use entity event sound：local vanilla 26.1
+    `ClientPacketListener.handleEntityEvent(35)` calls
+    `level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(),
+    SoundEvents.TOTEM_USE, entity.getSoundSource(), 1.0F, 1.0F, false)` after
+    creating the totem `TrackingEmitter`; `SoundEvents.TOTEM_USE` registers
+    `minecraft:item.totem.use`, while `Entity.getSoundSource` defaults to
+    `NEUTRAL`, `Player` returns `PLAYERS`, and `Monster` / hostile overrides
+    return `HOSTILE`. World/native event handling now records and dispatches a
+    positioned totem-use sound for applied event `35`, using the current entity
+    position and vanilla-shaped source mapping. Focused tests cover player vs
+    zombie source selection, missing-entity gating, and native audio command
+    resolution.
   - [x] Vibration entity PositionSource initial target：local vanilla 26.1
     `EntityPositionSource.STREAM_CODEC` confirms entity sources are encoded as
     VarInt entity id plus float `y_offset`, and `getPosition` returns

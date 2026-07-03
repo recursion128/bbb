@@ -277,6 +277,9 @@ impl WorldStore {
                 }
                 if applied && update.event_id == 35 {
                     effects.totem_tracking_emitter_particles(self, update.entity_id);
+                    if let Some(state) = self.totem_use_sound_for_entity(update.entity_id) {
+                        effects.positioned_sound(&state);
+                    }
                 }
             }
             PlayClientbound::HurtAnimation(update) => {
@@ -1149,10 +1152,14 @@ fn advance_particle_utils_spawn_particles_randoms(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{
-        BlockPos as ProtocolBlockPos, LevelEvent, PlayTime, SoundEvent, SoundEventHolder,
-        SoundSource, Vec3d,
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
+    use bbb_protocol::packets::{
+        AddEntity, BlockPos as ProtocolBlockPos, EntityEvent, LevelEvent, PlayTime, SoundEvent,
+        SoundEventHolder, SoundSource, Vec3d,
+    };
+    use uuid::Uuid;
 
     #[derive(Default)]
     struct RecordingEffects {
@@ -1171,6 +1178,20 @@ mod tests {
             pos: ProtocolBlockPos { x: 1, y: 64, z: -3 },
             data,
             global: false,
+        }
+    }
+
+    fn add_entity(entity_id: i32, entity_type_id: i32, position: Vec3d) -> AddEntity {
+        AddEntity {
+            id: entity_id,
+            uuid: Uuid::from_u128(entity_id as u128),
+            entity_type_id,
+            position,
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
         }
     }
 
@@ -1271,6 +1292,80 @@ mod tests {
         assert!(leftover.is_none());
         assert_eq!(effects.positioned_sounds.len(), 1);
         assert_eq!(effects.positioned_sounds[0].seed, 42);
+    }
+
+    #[test]
+    fn totem_entity_event_forwards_positioned_use_sound_with_entity_source() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                10,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                11,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                Vec3d {
+                    x: 4.5,
+                    y: 70.0,
+                    z: 8.25,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 10,
+                event_id: 35,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 11,
+                event_id: 35,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: 35,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(
+            effects.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:item.totem.use")
+        );
+        assert_eq!(effects.positioned_sounds[0].source, "hostile");
+        assert_eq!(
+            effects.positioned_sounds[0].position,
+            Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[1].source, "player");
+        assert_eq!(
+            effects.positioned_sounds[1].position,
+            Vec3d {
+                x: 4.5,
+                y: 70.0,
+                z: 8.25,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[0].volume, 1.0);
+        assert_eq!(effects.positioned_sounds[0].pitch, 1.0);
+        assert_eq!(effects.positioned_sounds[0].seed, 0);
+        assert_eq!(effects.positioned_sounds[0].distance_delay, false);
+        assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]

@@ -259,6 +259,9 @@ When an agent does any of the following, update this file in the same slice:
         `TrackingEmitter` particles through native, using the entity's current
         AABB width/height, 16 unit-sphere samples per tick, 30 ticks, and
         `minecraft:totem_of_undying` delayed spawn commands
+      - entity event `35` now also records and dispatches vanilla
+        `minecraft:item.totem.use` as a positioned local sound at the entity's
+        current position, with `Entity.getSoundSource()`-shaped source mapping
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, and the totem event-35
@@ -396,6 +399,10 @@ When an agent does any of the following, update this file in the same slice:
       `TrackingEmitter` batch: 30 delayed ticks, 16 unit-sphere samples per
       tick, entity AABB width/height position sampling, and
       `minecraft:totem_of_undying` child particles.
+      The same entity event now emits `minecraft:item.totem.use` as a
+      positioned local sound at the current entity position, with source
+      mapping derived from vanilla `Entity.getSoundSource()` (`Player` /
+      `Monster` / default `Entity` branches covered).
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant
@@ -6422,6 +6429,12 @@ When an agent does any of the following, update this file in the same slice:
       - brush-block-complete event `3008` for suspicious sand/gravel, using
         the event-data `BrushableBlock.getBrushCompletedSound()` mapping and
         `SoundSource.PLAYERS`
+    - native dispatcher playback for vanilla entity-event local positioned
+      sounds:
+      - totem use entity event `35`, emitted after the totem
+        `TrackingEmitter` side effect at the entity position as
+        `minecraft:item.totem.use`, with source/category mapped from
+        `Entity.getSoundSource()`
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish
@@ -6809,6 +6822,9 @@ When an agent does any of the following, update this file in the same slice:
       sculk, simple particle-only, and block-face events, camera-relative
       `globalLevelEvent` sounds, portal-travel local ambience, and jukebox
       start/stop. P1-5 no longer tracks a LevelEvent-audio-specific open item.
+    - Totem entity event `35` local positioned audio is covered separately from
+      LevelEvent audio, including native resolver coverage for the
+      `minecraft:item.totem.use` command.
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

@@ -410,6 +410,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     构造时立即 tick、总计 30 tick，每 tick 做 16 次单位球采样，并按实体当前
     AABB width/height 在实体周围生成 `minecraft:totem_of_undying` 粒子，使用
     velocity `(xa, ya + 0.2, za)` 与 delay `0..29` 提交给 renderer；
+    同一 event `35` 现在还按 vanilla `SoundEvents.TOTEM_USE` 在实体当前位置
+    播放 `minecraft:item.totem.use` 本地位置声效，source 来自当前实体的
+    `getSoundSource()` 映射（player/hostile/default neutral 等）；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
@@ -435,7 +438,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     totem event-35 TrackingEmitter、vibration entity target refresh、
     DragonBreath hit-ground motion 与 SuspendedTown collision-free move、Crit
     constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
-    honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
+    honey/dripstone fall-and-land 落地本地声效、totem event-35
+    `minecraft:item.totem.use` 本地位置声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
