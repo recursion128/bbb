@@ -48,9 +48,10 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos,
-    FireworkRocketExplosionParticleState, LivingEntityPoofParticleState, LocalPlayerPoseState,
-    RavagerRoarParticleState, RegistryPacketEntry, TakeItemEntityPickupParticleState,
-    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    FireworkRocketExplosionParticleState, LivingEntityDrownParticleState,
+    LivingEntityPoofParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
+    RegistryPacketEntry, TakeItemEntityPickupParticleState, WitchMagicParticleState,
+    WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2523,6 +2524,78 @@ fn living_entity_poof_entity_event_emits_particle_state() {
     assert_eq!(state.position.z, -2.0);
     assert_close(state.width, 0.6);
     assert_close(state.height, 1.95);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn living_entity_drown_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(6);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(75, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityMotion(
+        SetEntityMotion {
+            id: 75,
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: -0.2,
+                z: 0.3,
+            },
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 75,
+        event_id: 67,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(76, VANILLA_ENTITY_TYPE_ITEM_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 76,
+        event_id: 67,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 67,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        6
+    );
+
+    assert_eq!(particles.living_entity_drown_states.len(), 1);
+    let state = particles.living_entity_drown_states[0];
+    assert_eq!(state.entity_id, 75);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_eq!(state.delta_movement.x, 0.1);
+    assert_eq!(state.delta_movement.y, -0.2);
+    assert_eq!(state.delta_movement.z, 0.3);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
@@ -8301,6 +8374,7 @@ struct RecordingParticleSink {
     ravager_roar_states: Vec<RavagerRoarParticleState>,
     witch_magic_states: Vec<WitchMagicParticleState>,
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
+    living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -8440,6 +8514,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityPoofParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_poof_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_living_entity_drown_particles(
+        &mut self,
+        state: LivingEntityDrownParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.living_entity_drown_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

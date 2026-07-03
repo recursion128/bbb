@@ -372,6 +372,13 @@ pub struct LivingEntityPoofParticleState {
     pub height: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LivingEntityDrownParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub delta_movement: EntityVec3,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
@@ -1970,6 +1977,21 @@ impl WorldStore {
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    pub fn living_entity_drown_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<LivingEntityDrownParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !vanilla_living_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        Some(LivingEntityDrownParticleState {
+            entity_id,
+            position: transform.position,
+            delta_movement: transform.delta_movement,
         })
     }
 

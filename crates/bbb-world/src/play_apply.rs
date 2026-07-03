@@ -16,9 +16,9 @@ use crate::{
     advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, JukeboxLevelEventState, LevelEventSoundRandomState,
-    LivingEntityPoofParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
-    VehicleMoveReport, WitchMagicParticleState, WorldStore,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LocalSoundEventState,
+    RavagerRoarParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+    TakeItemEntityPickupParticleState, VehicleMoveReport, WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -59,6 +59,7 @@ const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
+const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
 
 /// Growth level-event particle spawn mode; only the random-consumption shape
 /// matters for callers without a particle sink.
@@ -124,6 +125,12 @@ pub trait PlayApplyEffects {
         &mut self,
         _world: &WorldStore,
         _state: LivingEntityPoofParticleState,
+    ) {
+    }
+    fn living_entity_drown_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: LivingEntityDrownParticleState,
     ) {
     }
     /// Spawn level-event particles through a sink. Return `true` when the sink
@@ -356,6 +363,12 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let living_entity_drown_particles =
+                    if update.event_id == LIVING_ENTITY_DROWN_EVENT_ID {
+                        self.living_entity_drown_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
                 let applied = self.apply_entity_event(update);
                 if let Some(state) = firework_explosion_particles {
                     if state.has_explosions {
@@ -379,6 +392,9 @@ impl WorldStore {
                     }
                     if let Some(state) = living_entity_poof_particles {
                         effects.living_entity_poof_particles(self, state);
+                    }
+                    if let Some(state) = living_entity_drown_particles {
+                        effects.living_entity_drown_particles(self, state);
                     }
                 }
                 if applied && update.event_id == 35 {
@@ -1324,6 +1340,7 @@ mod tests {
         ravager_roar_particles: Vec<RavagerRoarParticleState>,
         witch_magic_particles: Vec<WitchMagicParticleState>,
         living_entity_poof_particles: Vec<LivingEntityPoofParticleState>,
+        living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
 
@@ -1350,6 +1367,14 @@ mod tests {
             state: LivingEntityPoofParticleState,
         ) {
             self.living_entity_poof_particles.push(state);
+        }
+
+        fn living_entity_drown_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: LivingEntityDrownParticleState,
+        ) {
+            self.living_entity_drown_particles.push(state);
         }
 
         fn tracking_emitter_particles(
@@ -2038,6 +2063,77 @@ mod tests {
         );
         assert!((state.width - 0.6).abs() < 1.0e-6);
         assert!((state.height - 1.95).abs() < 1.0e-5);
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn living_entity_drown_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let mut zombie = add_entity(
+            94,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            },
+        );
+        zombie.delta_movement = Vec3d {
+            x: 0.1,
+            y: -0.2,
+            z: 0.3,
+        };
+
+        for packet in [
+            PlayClientbound::AddEntity(zombie),
+            PlayClientbound::AddEntity(add_entity(
+                95,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 94,
+                event_id: LIVING_ENTITY_DROWN_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 95,
+                event_id: LIVING_ENTITY_DROWN_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_DROWN_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.living_entity_drown_particles.len(), 1);
+        let state = effects.living_entity_drown_particles[0];
+        assert_eq!(state.entity_id, 94);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert_eq!(
+            state.delta_movement,
+            crate::EntityVec3 {
+                x: 0.1,
+                y: -0.2,
+                z: 0.3,
+            }
+        );
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

@@ -24,8 +24,9 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, LevelEventSoundRandomState,
-    LivingEntityPoofParticleState, RavagerRoarParticleState, TakeItemEntityPickupParticleState,
-    TerrainLight, VaultConnectionParticleState, WitchMagicParticleState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, RavagerRoarParticleState,
+    TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::{
@@ -89,6 +90,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_living_entity_poof_particles(
         &mut self,
         state: LivingEntityPoofParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_living_entity_drown_particles(
+        &mut self,
+        state: LivingEntityDrownParticleState,
     ) -> ParticleSpawnBatch;
 }
 
@@ -341,6 +346,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityPoofParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_poof_particle_batch(state)
+    }
+
+    fn spawn_living_entity_drown_particles(
+        &mut self,
+        state: LivingEntityDrownParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.living_entity_drown_particle_batch(state)
     }
 }
 
@@ -2563,6 +2575,36 @@ impl ParticleCommandResolver {
                     - velocity.y * 10.0,
                 z: state.position.z + f64::from(state.width) * (2.0 * self.random.next_f64() - 1.0)
                     - velocity.z * 10.0,
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn living_entity_drown_particle_batch(
+        &mut self,
+        state: LivingEntityDrownParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(BUBBLE_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let velocity = Vec3d {
+            x: state.delta_movement.x,
+            y: state.delta_movement.y,
+            z: state.delta_movement.z,
+        };
+        for _ in 0..8 {
+            let position = Vec3d {
+                x: state.position.x + self.random.next_f64() - self.random.next_f64(),
+                y: state.position.y + self.random.next_f64() - self.random.next_f64(),
+                z: state.position.z + self.random.next_f64() - self.random.next_f64(),
             };
             batch
                 .commands
@@ -4896,6 +4938,7 @@ const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const BLOCK_PARTICLE_TYPE_ID: i32 = 1;
 const BLOCK_MARKER_PARTICLE_TYPE_ID: i32 = 2;
+const BUBBLE_PARTICLE_TYPE_ID: i32 = 3;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 pub(crate) const CRIT_PARTICLE_TYPE_ID: i32 = 6;
 const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
@@ -5505,6 +5548,46 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:poof"));
+    }
+
+    #[test]
+    fn living_entity_drown_batch_matches_vanilla_make_drown_particles() {
+        let mut resolver = test_resolver(0);
+        let state = LivingEntityDrownParticleState {
+            entity_id: 74,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            delta_movement: bbb_world::EntityVec3 {
+                x: 0.1,
+                y: -0.2,
+                z: 0.3,
+            },
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_position = [
+            10.0 + expected_random.next_f64() - expected_random.next_f64(),
+            64.0 + expected_random.next_f64() - expected_random.next_f64(),
+            -3.0 + expected_random.next_f64() - expected_random.next_f64(),
+        ];
+
+        let batch = resolver.living_entity_drown_particle_batch(state);
+
+        assert_eq!(batch.len(), 8);
+        assert_particle_command(
+            &batch.commands[0],
+            BUBBLE_PARTICLE_TYPE_ID,
+            "minecraft:bubble",
+            expected_position,
+            [0.1, -0.2, 0.3],
+            false,
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:bubble"));
     }
 
     #[test]
@@ -12615,6 +12698,7 @@ mod tests {
                 "white_smoke_0",
                 "dripping_dripstone_lava",
                 "dripping_dripstone_water",
+                "bubble_0",
                 "poof_0",
                 "happy_villager_0",
                 "composter_0",
@@ -12875,6 +12959,14 @@ mod tests {
                 }"#,
             );
         }
+        write_json(
+            &particle_dir(&root).join("bubble.json"),
+            r#"{
+              "textures": [
+                "minecraft:bubble_0"
+              ]
+            }"#,
+        );
         write_json(
             &particle_dir(&root).join("poof.json"),
             r#"{
