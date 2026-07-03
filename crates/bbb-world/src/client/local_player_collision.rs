@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::local_player::LocalPlayerPoseState;
-use crate::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
+use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
@@ -11,6 +11,19 @@ const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ParticleBlockFluidSurfaceSample {
+    pub block_collision_height: f64,
+    pub fluid_height: f64,
+    pub fluid_kind: Option<TerrainFluidKind>,
+}
+
+impl ParticleBlockFluidSurfaceSample {
+    pub fn max_surface_height(self) -> f64 {
+        self.block_collision_height.max(self.fluid_height)
+    }
+}
 
 pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool {
     local_player_collides_with_context(
@@ -80,9 +93,12 @@ impl WorldStore {
         )
     }
 
-    pub fn particle_block_fluid_surface_height(&self, position: [f64; 3]) -> f64 {
+    pub fn particle_block_fluid_surface_sample(
+        &self,
+        position: [f64; 3],
+    ) -> ParticleBlockFluidSurfaceSample {
         if !position.iter().all(|value| value.is_finite()) {
-            return 0.0;
+            return ParticleBlockFluidSurfaceSample::default();
         }
         let pos = BlockPos {
             x: block_floor(position[0]),
@@ -90,7 +106,7 @@ impl WorldStore {
             z: block_floor(position[2]),
         };
         let Some(block) = self.probe_block(pos) else {
-            return 0.0;
+            return ParticleBlockFluidSurfaceSample::default();
         };
         let local_x = position[0] - f64::from(pos.x);
         let local_z = position[2] - f64::from(pos.z);
@@ -101,7 +117,16 @@ impl WorldStore {
             .fluid
             .map(|fluid| crate::fluid::fluid_height_at(self, pos, fluid))
             .unwrap_or(0.0);
-        block_height.max(fluid_height)
+        ParticleBlockFluidSurfaceSample {
+            block_collision_height: block_height,
+            fluid_height,
+            fluid_kind: block.fluid.map(|fluid| fluid.kind),
+        }
+    }
+
+    pub fn particle_block_fluid_surface_height(&self, position: [f64; 3]) -> f64 {
+        self.particle_block_fluid_surface_sample(position)
+            .max_surface_height()
     }
 
     pub fn clip_particle_collision_movement(
@@ -3064,6 +3089,10 @@ mod tests {
         );
         set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, bottom_slab_id);
 
+        let sample = world.particle_block_fluid_surface_sample([0.5, 0.25, 0.5]);
+        assert_f64_near(sample.block_collision_height, 0.5);
+        assert_f64_near(sample.fluid_height, 0.0);
+        assert_eq!(sample.fluid_kind, None);
         assert_f64_near(
             world.particle_block_fluid_surface_height([0.5, 0.25, 0.5]),
             0.5,
@@ -3076,6 +3105,10 @@ mod tests {
         let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
         set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, water_id);
 
+        let sample = world.particle_block_fluid_surface_sample([0.5, 0.25, 0.5]);
+        assert_f64_near(sample.block_collision_height, 0.0);
+        assert_f64_near(sample.fluid_height, 8.0 / 9.0);
+        assert_eq!(sample.fluid_kind, Some(TerrainFluidKind::Water));
         assert_f64_near(
             world.particle_block_fluid_surface_height([0.5, 0.25, 0.5]),
             8.0 / 9.0,
@@ -3083,12 +3116,34 @@ mod tests {
     }
 
     #[test]
+    fn particle_block_fluid_surface_sample_reports_lava_kind_and_height() {
+        let mut world = empty_world();
+        let lava_id = vanilla_block_state_id("minecraft:lava", [("level", "0")]);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, lava_id);
+
+        let sample = world.particle_block_fluid_surface_sample([0.5, 0.25, 0.5]);
+
+        assert_f64_near(sample.block_collision_height, 0.0);
+        assert_f64_near(sample.fluid_height, 8.0 / 9.0);
+        assert_eq!(sample.fluid_kind, Some(TerrainFluidKind::Lava));
+        assert_f64_near(sample.max_surface_height(), 8.0 / 9.0);
+    }
+
+    #[test]
     fn particle_block_fluid_surface_height_is_empty_for_unloaded_or_nonfinite_position() {
         let world = empty_world();
 
+        assert_eq!(
+            world.particle_block_fluid_surface_sample([32.5, 0.25, 0.5]),
+            ParticleBlockFluidSurfaceSample::default()
+        );
         assert_f64_near(
             world.particle_block_fluid_surface_height([32.5, 0.25, 0.5]),
             0.0,
+        );
+        assert_eq!(
+            world.particle_block_fluid_surface_sample([f64::NAN, 0.25, 0.5]),
+            ParticleBlockFluidSurfaceSample::default()
         );
         assert_f64_near(
             world.particle_block_fluid_surface_height([f64::NAN, 0.25, 0.5]),

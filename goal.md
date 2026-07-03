@@ -361,8 +361,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `WaterDropParticle` in-block removal 现在查询 world block/fluid surface，
     按 vanilla `collisionShape.max(Y, localX, localZ)` 与 fluid height 的 max
     删除落入方块/流体内部的 `rain` / `splash`；
+    DripParticle 的 water/lava matching-fluid removal 现在同样通过 world
+    fluid kind/height sample 覆盖 `dripping_*`、`falling_*` 与 lava landing
+    provider，`Fluids.EMPTY` 的 honey / obsidian tear / nectar / spore
+    blossom providers 不参与该门；
     剩余 gravity/collision/player-coupled work 是特殊 context 和
-    player-coupled emitter，以及非 WaterDrop provider 的 fluid / block-state
+    player-coupled emitter，以及 child particle / local sound / block-state
     removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、

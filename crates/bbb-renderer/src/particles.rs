@@ -93,6 +93,25 @@ pub struct ParticleBlockFluidSurfaceQuery {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ParticleFluidKind {
+    Water,
+    Lava,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ParticleBlockFluidSurfaceSample {
+    pub block_collision_height: f64,
+    pub fluid_height: f64,
+    pub fluid_kind: Option<ParticleFluidKind>,
+}
+
+impl ParticleBlockFluidSurfaceSample {
+    fn max_surface_height(self) -> f64 {
+        self.block_collision_height.max(self.fluid_height)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParticleBlockOptionState {
     pub block_state_id: i32,
 }
@@ -221,6 +240,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) removed: bool,
     #[serde(default)]
     pub(crate) tick_motion: ParticleTickMotionDescriptor,
+    #[serde(default)]
+    pub(crate) drip_fluid: Option<ParticleFluidKind>,
     #[serde(default)]
     pub(crate) tick_angle: f32,
     #[serde(default)]
@@ -570,18 +591,20 @@ impl ParticleRuntimeState {
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
     {
-        self.advance_with_world(ticks, collide, |_| 0.0)
+        self.advance_with_world(ticks, collide, |_| {
+            ParticleBlockFluidSurfaceSample::default()
+        })
     }
 
     pub(crate) fn advance_with_world<F, S>(
         &mut self,
         ticks: u32,
         mut collide: F,
-        mut block_fluid_surface_height: S,
+        mut block_fluid_surface: S,
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
-        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
         let mut intaken_instances = 0;
         let mut expired_instances = 0;
@@ -597,7 +620,7 @@ impl ParticleRuntimeState {
         } else {
             for _ in 0..ticks {
                 expired_instances +=
-                    self.tick_active_instances(&mut collide, &mut block_fluid_surface_height);
+                    self.tick_active_instances(&mut collide, &mut block_fluid_surface);
                 self.drain_pending_spawns(
                     &mut intaken_instances,
                     &mut dropped_active_instances,
@@ -634,14 +657,10 @@ impl ParticleRuntimeState {
         }
     }
 
-    fn tick_active_instances<F, S>(
-        &mut self,
-        collide: &mut F,
-        block_fluid_surface_height: &mut S,
-    ) -> usize
+    fn tick_active_instances<F, S>(&mut self, collide: &mut F, block_fluid_surface: &mut S) -> usize
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
-        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
         let mut expired_instances = 0;
         let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
@@ -656,7 +675,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.tick_motion(&mut self.random, collide, block_fluid_surface_height);
+            instance.tick_motion(&mut self.random, collide, block_fluid_surface);
             if instance.removed {
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
@@ -936,6 +955,7 @@ impl ParticleInstance {
             stopped_by_collision: false,
             removed: false,
             tick_motion: descriptor.tick_motion(),
+            drip_fluid: descriptor.drip_fluid(),
             tick_angle: 0.0,
             particle_limit,
             child_emission,
@@ -995,17 +1015,19 @@ impl ParticleInstance {
 
     #[cfg(test)]
     fn tick_motion_without_collision(&mut self, random: &mut ParticleRandom) {
-        self.tick_motion(random, &mut |query| query.movement, &mut |_| 0.0);
+        self.tick_motion(random, &mut |query| query.movement, &mut |_| {
+            ParticleBlockFluidSurfaceSample::default()
+        });
     }
 
     fn tick_motion<F, S>(
         &mut self,
         random: &mut ParticleRandom,
         collide: &mut F,
-        block_fluid_surface_height: &mut S,
+        block_fluid_surface: &mut S,
     ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
-        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
         self.previous_position = self.position;
         match self.tick_motion {
@@ -1136,6 +1158,7 @@ impl ParticleInstance {
                 self.velocity[0] *= 0.02 * friction;
                 self.velocity[1] *= 0.02 * friction;
                 self.velocity[2] *= 0.02 * friction;
+                self.remove_if_inside_matching_fluid(block_fluid_surface);
             }
             ParticleTickMotionDescriptor::CoolingDripHang => {
                 let cooling_age = self.age_ticks as f32;
@@ -1150,6 +1173,7 @@ impl ParticleInstance {
                 self.velocity[0] *= 0.02 * friction;
                 self.velocity[1] *= 0.02 * friction;
                 self.velocity[2] *= 0.02 * friction;
+                self.remove_if_inside_matching_fluid(block_fluid_surface);
             }
             ParticleTickMotionDescriptor::DripFalling => {
                 self.velocity[1] -= f64::from(self.gravity);
@@ -1161,6 +1185,7 @@ impl ParticleInstance {
                     self.velocity[0] *= friction;
                     self.velocity[1] *= friction;
                     self.velocity[2] *= friction;
+                    self.remove_if_inside_matching_fluid(block_fluid_surface);
                 }
             }
             ParticleTickMotionDescriptor::DripFallAndLand => {
@@ -1173,6 +1198,7 @@ impl ParticleInstance {
                     self.velocity[0] *= friction;
                     self.velocity[1] *= friction;
                     self.velocity[2] *= friction;
+                    self.remove_if_inside_matching_fluid(block_fluid_surface);
                 }
             }
             ParticleTickMotionDescriptor::DripLand => {
@@ -1182,6 +1208,7 @@ impl ParticleInstance {
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
+                self.remove_if_inside_matching_fluid(block_fluid_surface);
             }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
@@ -1209,9 +1236,10 @@ impl ParticleInstance {
                     self.velocity[0] *= 0.7;
                     self.velocity[2] *= 0.7;
                 }
-                let surface_height = block_fluid_surface_height(ParticleBlockFluidSurfaceQuery {
+                let surface = block_fluid_surface(ParticleBlockFluidSurfaceQuery {
                     position: self.position,
                 });
+                let surface_height = surface.max_surface_height();
                 if surface_height.is_finite() && surface_height > 0.0 {
                     let block_y = self.position[1].floor();
                     if self.position[1] < block_y + surface_height {
@@ -1291,6 +1319,28 @@ impl ParticleInstance {
                 self.move_particle(self.velocity, collide);
                 self.velocity[1] = (self.velocity[1] - 0.003).max(-0.14);
             }
+        }
+    }
+
+    fn remove_if_inside_matching_fluid<S>(&mut self, block_fluid_surface: &mut S)
+    where
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
+    {
+        let Some(expected_fluid) = self.drip_fluid else {
+            return;
+        };
+        let surface = block_fluid_surface(ParticleBlockFluidSurfaceQuery {
+            position: self.position,
+        });
+        if surface.fluid_kind != Some(expected_fluid)
+            || !surface.fluid_height.is_finite()
+            || surface.fluid_height <= 0.0
+        {
+            return;
+        }
+        let block_y = self.position[1].floor();
+        if self.position[1] < block_y + surface.fluid_height {
+            self.removed = true;
         }
     }
 
@@ -1672,14 +1722,14 @@ impl Renderer {
         &mut self,
         ticks: u32,
         collide: F,
-        block_fluid_surface_height: S,
+        block_fluid_surface: S,
     ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
-        S: FnMut(ParticleBlockFluidSurfaceQuery) -> f64,
+        S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
     {
         let summary = self
             .particles
-            .advance_with_world(ticks, collide, block_fluid_surface_height);
+            .advance_with_world(ticks, collide, block_fluid_surface);
         self.record_particle_advance_summary(summary);
     }
 
@@ -2793,7 +2843,11 @@ mod tests {
             |query| query.movement,
             |query| {
                 assert_close3(query.position, [0.5, 0.25, 0.5]);
-                0.5
+                ParticleBlockFluidSurfaceSample {
+                    block_collision_height: 0.5,
+                    fluid_height: 0.0,
+                    fluid_kind: None,
+                }
             },
         );
 
@@ -2917,6 +2971,102 @@ mod tests {
         assert_eq!(instance.color, [1.0, 1.0, 0.5, 1.0]);
         assert_close3(instance.position, [1.1, 1.9988, 2.8]);
         assert_close3(instance.velocity, [0.001_96, -0.000_023_52, -0.003_92]);
+    }
+
+    #[test]
+    fn particle_runtime_drip_water_removes_inside_matching_fluid() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_water", 40);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample {
+                block_collision_height: 0.0,
+                fluid_height: 8.0 / 9.0,
+                fluid_kind: Some(ParticleFluidKind::Water),
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_drip_water_ignores_non_matching_fluid() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_water", 40);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample {
+                block_collision_height: 0.0,
+                fluid_height: 8.0 / 9.0,
+                fluid_kind: Some(ParticleFluidKind::Lava),
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert!(!particles.active_instances()[0].removed);
+    }
+
+    #[test]
+    fn particle_runtime_drip_lava_land_removes_inside_matching_fluid() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:landing_lava", 40);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample {
+                block_collision_height: 0.0,
+                fluid_height: 8.0 / 9.0,
+                fluid_kind: Some(ParticleFluidKind::Lava),
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_drip_empty_fluid_provider_ignores_fluid_sample() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:landing_honey", 40);
+        instance.position = [0.5, 0.25, 0.5];
+        instance.previous_position = instance.position;
+        instance.gravity = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_world(
+            1,
+            |query| query.movement,
+            |_query| ParticleBlockFluidSurfaceSample {
+                block_collision_height: 0.0,
+                fluid_height: 8.0 / 9.0,
+                fluid_kind: Some(ParticleFluidKind::Water),
+            },
+        );
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert!(!particles.active_instances()[0].removed);
     }
 
     #[test]
@@ -4548,6 +4698,7 @@ mod tests {
             dripping_honey.tick_motion,
             ParticleTickMotionDescriptor::DripHang
         );
+        assert_eq!(dripping_honey.drip_fluid, None);
         assert_eq!(dripping_honey.render_layer, ParticleRenderLayer::Opaque);
 
         let mut falling_honey_random = ParticleRandom::new(82);
@@ -4608,6 +4759,7 @@ mod tests {
             dripping_obsidian.tick_motion,
             ParticleTickMotionDescriptor::DripHang
         );
+        assert_eq!(dripping_obsidian.drip_fluid, None);
         assert_eq!(
             dripping_obsidian.light_emission,
             ParticleLightEmissionDescriptor::FullBlock
@@ -4686,6 +4838,7 @@ mod tests {
             dripping_lava.tick_motion,
             ParticleTickMotionDescriptor::CoolingDripHang
         );
+        assert_eq!(dripping_lava.drip_fluid, Some(ParticleFluidKind::Lava));
         assert_eq!(
             dripping_lava.light_emission,
             ParticleLightEmissionDescriptor::World
@@ -4708,6 +4861,7 @@ mod tests {
             falling_lava.tick_motion,
             ParticleTickMotionDescriptor::DripFallAndLand
         );
+        assert_eq!(falling_lava.drip_fluid, Some(ParticleFluidKind::Lava));
         assert_eq!(
             falling_lava.light_emission,
             ParticleLightEmissionDescriptor::World
@@ -4730,6 +4884,7 @@ mod tests {
             landing_lava.tick_motion,
             ParticleTickMotionDescriptor::DripLand
         );
+        assert_eq!(landing_lava.drip_fluid, Some(ParticleFluidKind::Lava));
         assert_eq!(
             landing_lava.light_emission,
             ParticleLightEmissionDescriptor::World
@@ -4752,6 +4907,7 @@ mod tests {
             dripping_water.tick_motion,
             ParticleTickMotionDescriptor::DripHang
         );
+        assert_eq!(dripping_water.drip_fluid, Some(ParticleFluidKind::Water));
         assert_eq!(
             dripping_water.light_emission,
             ParticleLightEmissionDescriptor::World
@@ -4774,6 +4930,7 @@ mod tests {
             falling_water.tick_motion,
             ParticleTickMotionDescriptor::DripFallAndLand
         );
+        assert_eq!(falling_water.drip_fluid, Some(ParticleFluidKind::Water));
         assert_eq!(
             falling_water.light_emission,
             ParticleLightEmissionDescriptor::World
@@ -4831,6 +4988,10 @@ mod tests {
             ParticleTickMotionDescriptor::DripFallAndLand
         );
         assert_eq!(
+            falling_dripstone_lava.drip_fluid,
+            Some(ParticleFluidKind::Lava)
+        );
+        assert_eq!(
             falling_dripstone_lava.light_emission,
             ParticleLightEmissionDescriptor::World
         );
@@ -4857,6 +5018,10 @@ mod tests {
         assert_eq!(
             dripping_dripstone_water.tick_motion,
             ParticleTickMotionDescriptor::DripHang
+        );
+        assert_eq!(
+            dripping_dripstone_water.drip_fluid,
+            Some(ParticleFluidKind::Water)
         );
         assert_eq!(
             dripping_dripstone_water.light_emission,
@@ -7429,6 +7594,7 @@ mod tests {
             stopped_by_collision: false,
             removed: false,
             tick_motion: descriptor.tick_motion(),
+            drip_fluid: descriptor.drip_fluid(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
             child_emission: descriptor.child_emission(),

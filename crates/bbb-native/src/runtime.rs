@@ -20,13 +20,13 @@ use bbb_renderer::{
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleFluidKind, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
@@ -1464,7 +1464,7 @@ pub(crate) fn pump_network_and_terrain(
                 query.height,
             )
         },
-        |query| world.particle_block_fluid_surface_height(query.position),
+        |query| renderer_particle_block_fluid_surface_sample(world, query.position),
     );
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
@@ -1685,6 +1685,21 @@ pub(crate) fn pump_network_and_terrain(
         &audio_counters,
         world,
     )
+}
+
+fn renderer_particle_block_fluid_surface_sample(
+    world: &WorldStore,
+    position: [f64; 3],
+) -> ParticleBlockFluidSurfaceSample {
+    let sample = world.particle_block_fluid_surface_sample(position);
+    ParticleBlockFluidSurfaceSample {
+        block_collision_height: sample.block_collision_height,
+        fluid_height: sample.fluid_height,
+        fluid_kind: sample.fluid_kind.map(|kind| match kind {
+            TerrainFluidKind::Water => ParticleFluidKind::Water,
+            TerrainFluidKind::Lava => ParticleFluidKind::Lava,
+        }),
+    }
 }
 
 fn particle_light_block_pos(position: [f64; 3]) -> BlockPos {

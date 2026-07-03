@@ -2357,6 +2357,15 @@
     block's surface. Native wires the query beside the existing particle
     collision callback; world tests cover slab collision and source-water
     fluid heights.
+  - [x] DripParticle water/lava matching-fluid removal：renderer particle ticks
+    now carry the vanilla `Fluids.WATER` / `Fluids.LAVA` provider type for
+    water, lava, and dripstone drip variants, query the world-backed fluid kind
+    and height after `DripParticle` move/friction, and remove only when the
+    containing block has the same fluid and the particle Y is below that fluid
+    surface. `Fluids.EMPTY` honey, obsidian-tear, nectar, and spore-blossom
+    providers ignore the fluid sample. Native maps world `TerrainFluidKind`
+    into renderer particle fluid kinds; world tests cover water/lava samples
+    and renderer tests cover matching, non-matching, and empty-provider cases.
 
 ## P2：Terrain / Block Render Presentation
 

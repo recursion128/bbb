@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::ParticleFluidKind;
+
 pub(crate) const DEFAULT_PARTICLE_RANDOM_SEED: i64 = 0x5EED_2601;
 pub(crate) const END_ROD_FADE_COLOR: [f32; 3] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
 pub(crate) const VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT: usize = 1000;
@@ -2022,6 +2024,21 @@ impl ParticleDescriptor {
             }
             "FallingDustParticle.Provider" => ParticleTickMotionDescriptor::FallingDust,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
+        }
+    }
+
+    pub(crate) fn drip_fluid(self) -> Option<ParticleFluidKind> {
+        match self.provider {
+            "DripParticle.WaterHangProvider"
+            | "DripParticle.WaterFallProvider"
+            | "DripParticle.DripstoneWaterHangProvider"
+            | "DripParticle.DripstoneWaterFallProvider" => Some(ParticleFluidKind::Water),
+            "DripParticle.LavaHangProvider"
+            | "DripParticle.LavaFallProvider"
+            | "DripParticle.LavaLandProvider"
+            | "DripParticle.DripstoneLavaHangProvider"
+            | "DripParticle.DripstoneLavaFallProvider" => Some(ParticleFluidKind::Lava),
+            _ => None,
         }
     }
 

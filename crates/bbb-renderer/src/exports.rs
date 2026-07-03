@@ -97,9 +97,9 @@ pub use crate::item_models::{
     ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 pub use crate::particles::{
-    ParticleBlockFluidSurfaceQuery, ParticleBlockOptionState, ParticleChildSpawnTemplate,
-    ParticleCollisionQuery, ParticleItemOptionState, ParticleSpawnBatch, ParticleSpawnCommand,
-    ParticleSpriteUv, ParticleUvRect,
+    ParticleBlockFluidSurfaceQuery, ParticleBlockFluidSurfaceSample, ParticleBlockOptionState,
+    ParticleChildSpawnTemplate, ParticleCollisionQuery, ParticleFluidKind, ParticleItemOptionState,
+    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };
 pub use crate::player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,

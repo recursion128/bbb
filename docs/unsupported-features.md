@@ -685,22 +685,24 @@ When an agent does any of the following, update this file in the same slice:
         `0.06`. The hang provider starts at the vanilla default white and
         updates RGB during runtime with `CoolingDripHangParticle.preMoveUpdate`
         before applying hang-particle `0.02` post-move damping. Hang-to-fall
-        child spawning, fall-to-land child spawning, and lava-fluid removal
-        remain deferred with world-coupled particle/audio work; the falling
-        provider now removes on `onGround` through the collision-backed `move`
-        path, and the landing provider now uses collision-backed
-        `DripParticle` move/friction without `WaterDropParticle`'s random
-        on-ground removal branch.
+        child spawning and fall-to-land child spawning remain deferred with
+        world-coupled particle/audio work. The falling provider now removes on
+        `onGround` through the collision-backed `move` path, the landing
+        provider now uses collision-backed `DripParticle` move/friction without
+        `WaterDropParticle`'s random on-ground removal branch, and lava
+        providers now remove when their containing block's matching lava fluid
+        surface contains the particle.
       - `DripParticle.WaterHangProvider` and `WaterFallProvider` use random
         sprite selection, zero initial velocity, DripParticle opaque layer,
         physics metadata, fixed blue tint, non-glowing world light, `0.98`
         friction, direct gravity motion, hang-particle `0.02` post-move
         damping, and lifetimes `40` and
         `64 / (random * 0.8 + 0.2)`, with gravity `0.0012` and `0.06`.
-        Hang-to-fall child spawning, fall-to-splash child spawning, and
-        water-fluid removal remain deferred with world-coupled particle/audio
-        work; the falling provider now removes on `onGround` through the
-        collision-backed `move` path.
+        Hang-to-fall child spawning and fall-to-splash child spawning remain
+        deferred with world-coupled particle/audio work. The falling provider
+        now removes on `onGround` through the collision-backed `move` path, and
+        water providers now remove when their containing block's matching water
+        fluid surface contains the particle.
       - `DripParticle.DripstoneLavaHangProvider`,
         `DripstoneLavaFallProvider`, `DripstoneWaterHangProvider`, and
         `DripstoneWaterFallProvider` use random sprite selection, zero initial
@@ -710,9 +712,10 @@ When an agent does any of the following, update this file in the same slice:
         fixed blue tint, lava falling tint, hang lifetime `40`, falling
         lifetime `64 / (random * 0.8 + 0.2)`, hang gravity `0.0012`, and
         falling gravity `0.06`. The falling providers now remove on `onGround`
-        through the collision-backed `move` path. Hang-to-fall child spawning,
-        fall-to-land/splash child spawning, dripstone local sound, and fluid
-        removal remain deferred with world-coupled particle/audio work.
+        through the collision-backed `move` path and remove when matching
+        water/lava fluid surfaces contain the particle. Hang-to-fall child
+        spawning, fall-to-land/splash child spawning, and dripstone local sound
+        remain deferred with world-coupled particle/audio work.
       - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
         use random sprite selection, `y - 0.125` initial position,
         `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`
