@@ -316,6 +316,12 @@ When an agent does any of the following, update this file in the same slice:
         item stacks spawn 8 `minecraft:item` commands at the egg's current
         position with `(nextFloat()-0.5)*0.08` velocity on each axis. Missing
         metadata uses `Items.EGG`; explicit empty stacks emit no particles.
+      - Arrow entity event `0` now emits vanilla tipped-arrow effect-clear
+        particles: when `Arrow.ID_EFFECT_COLOR` is not `-1`, native submits 20
+        `minecraft:entity_effect` commands with zero velocity, option RGB
+        decoded from the synced color, and positions sampled from
+        `getRandomX(0.5)` / `getRandomY()` / `getRandomZ(0.5)` over the current
+        arrow AABB. Color `-1` emits no particles; color `0` emits black.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -328,7 +334,7 @@ When an agent does any of the following, update this file in the same slice:
         magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
         drown bubbles, LivingEntity event-46 portal burst, HoneyBlock
         event-53/54 block particles, Snowball event-3 item burst, ThrownEgg
-        event-3 item burst, and the
+        event-3 item burst, Arrow event-0 entity-effect burst, and the
         GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
         model submit
     - terrain/item particle option metadata / atlas rendering:
@@ -517,6 +523,12 @@ When an agent does any of the following, update this file in the same slice:
       `ThrownEgg.handleEntityEvent`: 8 `minecraft:item` commands for non-empty
       item stacks at the egg position, with `(nextFloat()-0.5)*0.08` velocity
       on each axis; explicit empty stacks emit no particles.
+      Native Arrow event `0` now emits vanilla tipped-arrow effect-clear
+      particles from `Arrow.handleEntityEvent`: 20 `minecraft:entity_effect`
+      commands when synced `ID_EFFECT_COLOR != -1`, with RGB option color,
+      zero velocity, and current-arrow AABB position sampling via
+      `getRandomX(0.5)`, `getRandomY()`, and `getRandomZ(0.5)`. Color `-1`
+      emits no particles; color `0` emits black.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

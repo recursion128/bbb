@@ -7,7 +7,7 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{
-    BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind,
+    ArrowEffectParticleState, BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventGrowthRandomMode,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
@@ -364,6 +364,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         state: LivingEntityPortalParticleState,
     ) {
         emit_living_entity_portal_particles(self.particle_events, self.particle_renderer, state);
+    }
+
+    fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
+        emit_arrow_effect_particles(self.particle_events, self.particle_renderer, state);
     }
 
     fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
@@ -736,6 +740,20 @@ fn emit_thrown_egg_hit_particles(
         return;
     };
     let batch = particle_events.spawn_thrown_egg_hit_particles(state, item_runtime);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_arrow_effect_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: ArrowEffectParticleState,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_arrow_effect_particles(state);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

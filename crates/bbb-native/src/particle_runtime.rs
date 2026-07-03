@@ -22,7 +22,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
-    block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
+    block_name_should_spawn_terrain_particles, ArrowEffectParticleState, BlockPos as WorldBlockPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
@@ -98,6 +98,10 @@ pub(crate) trait ParticleEventSink {
     fn spawn_living_entity_portal_particles(
         &mut self,
         state: LivingEntityPortalParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_arrow_effect_particles(
+        &mut self,
+        state: ArrowEffectParticleState,
     ) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
@@ -376,6 +380,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityPortalParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_portal_particle_batch(state)
+    }
+
+    fn spawn_arrow_effect_particles(
+        &mut self,
+        state: ArrowEffectParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.arrow_effect_particle_batch(state)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2693,6 +2704,35 @@ impl ParticleCommandResolver {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn arrow_effect_particle_batch(
+        &mut self,
+        state: ArrowEffectParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(ENTITY_EFFECT_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let width = f64::from(state.width.max(0.0));
+        let height = f64::from(state.height.max(0.0));
+        let color = rgb_particle_color_u32(state.color_rgb);
+        for _ in 0..ARROW_EFFECT_PARTICLE_COUNT {
+            let position = Vec3d {
+                x: state.position.x + width * ((2.0 * self.random.next_f64() - 1.0) * 0.5),
+                y: state.position.y + height * self.random.next_f64(),
+                z: state.position.z + width * ((2.0 * self.random.next_f64() - 1.0) * 0.5),
+            };
+            let mut command =
+                self.command_from_template(&template, position, Vec3d::default(), false);
+            command.option_color = Some(color);
+            batch.commands.push(command);
         }
         batch
     }
@@ -5284,6 +5324,7 @@ const EGG_CRACK_PARTICLE_MAX: i32 = 6;
 const ITEM_BREAK_PARTICLE_COUNT: i32 = 8;
 const POTION_BREAK_ITEM_PARTICLE_COUNT: i32 = ITEM_BREAK_PARTICLE_COUNT;
 const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
+const ARROW_EFFECT_PARTICLE_COUNT: usize = 20;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
@@ -5990,6 +6031,61 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.velocity != [0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn arrow_effect_batch_matches_vanilla_event_particles() {
+        let mut resolver = test_resolver(0);
+        let state = ArrowEffectParticleState {
+            entity_id: 79,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            width: 0.5,
+            height: 0.5,
+            color_rgb: 0x0033_66cc,
+        };
+        let mut expected_random = LegacyRandom::new(0);
+        let expected_position = [
+            state.position.x
+                + f64::from(state.width) * ((2.0 * expected_random.next_f64() - 1.0) * 0.5),
+            state.position.y + f64::from(state.height) * expected_random.next_f64(),
+            state.position.z
+                + f64::from(state.width) * ((2.0 * expected_random.next_f64() - 1.0) * 0.5),
+        ];
+        let expected_color = [
+            0x33 as f32 / 255.0,
+            0x66 as f32 / 255.0,
+            0xcc as f32 / 255.0,
+            1.0,
+        ];
+
+        let batch = resolver.arrow_effect_particle_batch(state);
+
+        assert_eq!(batch.len(), ARROW_EFFECT_PARTICLE_COUNT);
+        assert_particle_command(
+            &batch.commands[0],
+            ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            "minecraft:entity_effect",
+            expected_position,
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert_eq!(batch.commands[0].option_color, Some(expected_color));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:entity_effect"));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.option_color == Some(expected_color)));
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.velocity == [0.0, 0.0, 0.0]));
     }
 
     #[test]

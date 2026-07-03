@@ -56,6 +56,9 @@ pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+// Vanilla `Arrow.ID_EFFECT_COLOR` (INT): Entity data ids 0-7 are from `Entity`, ids 8-10
+// are from `AbstractArrow`, then `Arrow` adds its potion/effect color at id 11.
+pub(crate) const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 /// Vanilla 26.1 `Items.EGG` protocol id from `bbb-pack`'s `Items.java` registry parser.
 pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
 /// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
@@ -390,6 +393,15 @@ pub struct LivingEntityPortalParticleState {
     pub position: EntityVec3,
     pub width: f32,
     pub height: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ArrowEffectParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub width: f32,
+    pub height: f32,
+    pub color_rgb: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2053,6 +2065,29 @@ impl WorldStore {
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    pub fn arrow_effect_particle_state(&self, entity_id: i32) -> Option<ArrowEffectParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_ARROW_ID {
+            return None;
+        }
+        let color = self.entities.metadata_int_for_entity(
+            entity_id,
+            VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+            -1,
+        )?;
+        if color == -1 {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(ArrowEffectParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+            color_rgb: color as u32 & 0x00ff_ffff,
         })
     }
 

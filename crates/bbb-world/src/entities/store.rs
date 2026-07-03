@@ -558,6 +558,15 @@ impl EntityStore {
         self.metadata_int(id, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 0)
     }
 
+    pub(crate) fn metadata_int_for_entity(
+        &self,
+        id: i32,
+        data_id: u8,
+        default: i32,
+    ) -> Option<i32> {
+        self.metadata_int(id, data_id, default)
+    }
+
     fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;

@@ -14,7 +14,7 @@ use bbb_protocol::packets::{
 use crate::{
     advance_cobweb_place_particle_randoms,
     advance_vault_activation_particle_randoms_with_connections,
-    advance_vault_deactivation_particle_randoms, BlockPos, ChunkPos,
+    advance_vault_deactivation_particle_randoms, ArrowEffectParticleState, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
@@ -59,6 +59,7 @@ const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
 const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
+const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
@@ -147,6 +148,7 @@ pub trait PlayApplyEffects {
         _state: LivingEntityPortalParticleState,
     ) {
     }
+    fn arrow_effect_particles(&mut self, _world: &WorldStore, _state: ArrowEffectParticleState) {}
     fn snowball_hit_particles(&mut self, _world: &WorldStore, _state: SnowballHitParticleState) {}
     fn thrown_egg_hit_particles(&mut self, _world: &WorldStore, _state: ThrownEggHitParticleState) {
     }
@@ -365,6 +367,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let arrow_effect_particles = if update.event_id == ARROW_EFFECT_CLEAR_EVENT_ID {
+                    self.arrow_effect_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let snowball_hit_particles = if update.event_id == THROWN_ITEM_HIT_EVENT_ID {
                     self.snowball_hit_particle_state(update.entity_id)
                 } else {
@@ -445,6 +452,9 @@ impl WorldStore {
                     }
                     if let Some(state) = living_entity_portal_particles {
                         effects.living_entity_portal_particles(self, state);
+                    }
+                    if let Some(state) = arrow_effect_particles {
+                        effects.arrow_effect_particles(self, state);
                     }
                     if let Some(state) = snowball_hit_particles {
                         effects.snowball_hit_particles(self, state);
@@ -1381,10 +1391,11 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
@@ -1403,6 +1414,7 @@ mod tests {
         living_entity_poof_particles: Vec<LivingEntityPoofParticleState>,
         living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
+        arrow_effect_particles: Vec<ArrowEffectParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
         thrown_egg_hit_particles: Vec<ThrownEggHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
@@ -1448,6 +1460,10 @@ mod tests {
             state: LivingEntityPortalParticleState,
         ) {
             self.living_entity_portal_particles.push(state);
+        }
+
+        fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
+            self.arrow_effect_particles.push(state);
         }
 
         fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
@@ -1514,6 +1530,14 @@ mod tests {
             data_id: crate::entities::VANILLA_ITEM_ENTITY_STACK_DATA_ID,
             serializer_id: 7,
             value: EntityDataValueKind::ItemStack(item),
+        }
+    }
+
+    fn int_entity_data(data_id: u8, value: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(value),
         }
     }
 
@@ -2324,6 +2348,121 @@ mod tests {
         assert!((state.width - 0.6).abs() < 1.0e-6);
         assert!((state.height - 1.95).abs() < 1.0e-5);
         assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn arrow_effect_clear_event_forwards_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                118,
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 65.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 118,
+                values: vec![int_entity_data(
+                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    0x0033_66cc,
+                )],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                119,
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 66.0,
+                    z: -5.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 119,
+                values: vec![int_entity_data(
+                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    0,
+                )],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                120,
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 67.0,
+                    z: -6.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 120,
+                values: vec![int_entity_data(
+                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    -1,
+                )],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                121,
+                VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+                Vec3d {
+                    x: 5.0,
+                    y: 68.0,
+                    z: -7.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 121,
+                values: vec![int_entity_data(
+                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    0x0011_2233,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 118,
+                event_id: ARROW_EFFECT_CLEAR_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 119,
+                event_id: ARROW_EFFECT_CLEAR_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 120,
+                event_id: ARROW_EFFECT_CLEAR_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 121,
+                event_id: ARROW_EFFECT_CLEAR_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ARROW_EFFECT_CLEAR_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.arrow_effect_particles.len(), 2);
+        assert_eq!(effects.arrow_effect_particles[0].entity_id, 118);
+        assert_eq!(
+            effects.arrow_effect_particles[0].position,
+            crate::EntityVec3 {
+                x: 2.25,
+                y: 65.0,
+                z: -4.5,
+            }
+        );
+        assert!((effects.arrow_effect_particles[0].width - 0.5).abs() < 1.0e-6);
+        assert!((effects.arrow_effect_particles[0].height - 0.5).abs() < 1.0e-6);
+        assert_eq!(effects.arrow_effect_particles[0].color_rgb, 0x0033_66cc);
+        assert_eq!(effects.arrow_effect_particles[1].entity_id, 119);
+        assert_eq!(effects.arrow_effect_particles[1].color_rgb, 0);
+        assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

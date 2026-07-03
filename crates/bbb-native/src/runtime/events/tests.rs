@@ -47,7 +47,7 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, BlockPos, ChunkPos,
+    advance_cobweb_place_particle_randoms, ArrowEffectParticleState, BlockPos, ChunkPos,
     FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
     RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
@@ -2695,6 +2695,112 @@ fn living_entity_portal_entity_event_emits_particle_state() {
     assert_close(state.height, 1.95);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn arrow_effect_clear_entity_event_emits_particle_state() {
+    let (tx, mut rx) = mpsc::channel(13);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(118, VANILLA_ENTITY_TYPE_ARROW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 118,
+            values: vec![EntityDataValue {
+                data_id: 11,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(0x0033_66cc),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(119, VANILLA_ENTITY_TYPE_ARROW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 119,
+            values: vec![EntityDataValue {
+                data_id: 11,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(0),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(120, VANILLA_ENTITY_TYPE_ARROW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 120,
+            values: vec![EntityDataValue {
+                data_id: 11,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(-1),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(121, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
+        SetEntityData {
+            id: 121,
+            values: vec![EntityDataValue {
+                data_id: 11,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(0x0011_2233),
+            }],
+        },
+    )))
+    .unwrap();
+    for entity_id in [118, 119, 120, 121, 999] {
+        tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+            entity_id,
+            event_id: 0,
+        })))
+        .unwrap();
+    }
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        13
+    );
+
+    assert_eq!(particles.arrow_effect_states.len(), 2);
+    assert_eq!(particles.arrow_effect_states[0].entity_id, 118);
+    assert_eq!(particles.arrow_effect_states[0].position.x, 1.0);
+    assert_eq!(particles.arrow_effect_states[0].position.y, 64.0);
+    assert_eq!(particles.arrow_effect_states[0].position.z, -2.0);
+    assert_close(particles.arrow_effect_states[0].width, 0.5);
+    assert_close(particles.arrow_effect_states[0].height, 0.5);
+    assert_eq!(particles.arrow_effect_states[0].color_rgb, 0x0033_66cc);
+    assert_eq!(particles.arrow_effect_states[1].entity_id, 119);
+    assert_eq!(particles.arrow_effect_states[1].color_rgb, 0);
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().entity_events_applied, 4);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8711,6 +8817,7 @@ struct RecordingParticleSink {
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
+    arrow_effect_states: Vec<ArrowEffectParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
     thrown_egg_hit_states: Vec<ThrownEggHitParticleState>,
     honey_block_states: Vec<HoneyBlockParticleState>,
@@ -8873,6 +8980,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityPortalParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_portal_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_arrow_effect_particles(
+        &mut self,
+        state: ArrowEffectParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.arrow_effect_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch
