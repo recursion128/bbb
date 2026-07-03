@@ -2403,6 +2403,12 @@
     and both pass `hasPhysics=false`; renderer focused coverage now pins that
     ash uses default ticking without invoking the world collision callback, so
     the old collision-removal deferred note was stale.
+  - [x] DripParticle child spawning：local vanilla 26.1 `DripParticle` confirms
+    hang particles spawn their configured falling particle when lifetime expires
+    and `FallAndLandParticle` variants spawn landing/splash children on
+    `onGround`; native particle commands now carry the corresponding child
+    templates and renderer runtime tests cover lifetime-expire and ground-hit
+    child intake. Honey / dripstone local sound remains separate audio work.
 
 ## P2：Terrain / Block Render Presentation
 

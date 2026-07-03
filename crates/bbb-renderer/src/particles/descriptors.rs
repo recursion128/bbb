@@ -92,6 +92,8 @@ pub(crate) enum ParticleAlphaCurve {
 pub(crate) enum ParticleChildEmissionDescriptor {
     LavaSmoke,
     HugeExplosionSeed,
+    DripHangToFall,
+    DripFallAndLand,
     GustSeed {
         scale_tenths: u32,
         vanilla_lifetime: u32,
@@ -2159,6 +2161,22 @@ impl ParticleDescriptor {
     pub(crate) fn child_emission(self) -> Option<ParticleChildEmissionDescriptor> {
         match self.provider {
             "LavaParticle.Provider" => Some(ParticleChildEmissionDescriptor::LavaSmoke),
+            "DripParticle.HoneyHangProvider"
+            | "DripParticle.ObsidianTearHangProvider"
+            | "DripParticle.LavaHangProvider"
+            | "DripParticle.WaterHangProvider"
+            | "DripParticle.DripstoneLavaHangProvider"
+            | "DripParticle.DripstoneWaterHangProvider" => {
+                Some(ParticleChildEmissionDescriptor::DripHangToFall)
+            }
+            "DripParticle.HoneyFallProvider"
+            | "DripParticle.ObsidianTearFallProvider"
+            | "DripParticle.LavaFallProvider"
+            | "DripParticle.WaterFallProvider"
+            | "DripParticle.DripstoneLavaFallProvider"
+            | "DripParticle.DripstoneWaterFallProvider" => {
+                Some(ParticleChildEmissionDescriptor::DripFallAndLand)
+            }
             "HugeExplosionSeedParticle.Provider" => {
                 Some(ParticleChildEmissionDescriptor::HugeExplosionSeed)
             }

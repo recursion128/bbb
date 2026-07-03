@@ -326,6 +326,12 @@ pub(crate) enum ParticleTextureAtlasKind {
     Items,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParticleRemovalReason {
+    LifetimeExpired,
+    RemovedDuringTick,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 struct FallingLeavesRuntimeState {
     rot_speed: f32,
@@ -689,12 +695,20 @@ impl ParticleRuntimeState {
                 continue;
             }
             if instance.age_ticks >= instance.lifetime_ticks {
+                self.enqueue_removed_child_spawns_from(
+                    &instance,
+                    ParticleRemovalReason::LifetimeExpired,
+                );
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
                 continue;
             }
             instance.tick_motion(&mut self.random, collide, block_fluid_surface);
             if instance.removed {
+                self.enqueue_removed_child_spawns_from(
+                    &instance,
+                    ParticleRemovalReason::RemovedDuringTick,
+                );
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
                 continue;
@@ -712,6 +726,16 @@ impl ParticleRuntimeState {
 
     fn enqueue_child_spawns_from(&mut self, instance: &ParticleInstance) {
         for command in instance.child_spawn_commands(&mut self.random) {
+            self.queue_pending_spawn(command);
+        }
+    }
+
+    fn enqueue_removed_child_spawns_from(
+        &mut self,
+        instance: &ParticleInstance,
+        reason: ParticleRemovalReason,
+    ) {
+        for command in instance.removal_child_spawn_commands(reason) {
             self.queue_pending_spawn(command);
         }
     }
@@ -1563,6 +1587,10 @@ impl ParticleInstance {
                 .lava_child_smoke_spawn_command(random)
                 .into_iter()
                 .collect(),
+            Some(
+                ParticleChildEmissionDescriptor::DripHangToFall
+                | ParticleChildEmissionDescriptor::DripFallAndLand,
+            ) => Vec::new(),
             Some(ParticleChildEmissionDescriptor::HugeExplosionSeed) => {
                 self.huge_explosion_seed_child_spawn_commands(random)
             }
@@ -1577,6 +1605,29 @@ impl ParticleInstance {
                 tick_delay,
             ),
             None => Vec::new(),
+        }
+    }
+
+    fn removal_child_spawn_commands(
+        &self,
+        reason: ParticleRemovalReason,
+    ) -> Vec<ParticleSpawnCommand> {
+        match (self.child_emission, reason) {
+            (
+                Some(ParticleChildEmissionDescriptor::DripHangToFall),
+                ParticleRemovalReason::LifetimeExpired,
+            ) => self
+                .drip_hang_falling_child_spawn_command()
+                .into_iter()
+                .collect(),
+            (
+                Some(ParticleChildEmissionDescriptor::DripFallAndLand),
+                ParticleRemovalReason::RemovedDuringTick,
+            ) if self.on_ground => self
+                .drip_landing_child_spawn_command()
+                .into_iter()
+                .collect(),
+            _ => Vec::new(),
         }
     }
 
@@ -1603,6 +1654,70 @@ impl ParticleInstance {
             raw_options_len: 0,
             initial_delay_ticks: 0,
             child_spawn_templates: Vec::new(),
+            option_color: None,
+            option_color_to: None,
+            option_scale: None,
+            option_power: None,
+            option_target: None,
+            option_duration_ticks: None,
+            option_roll: None,
+            option_block: None,
+            option_item: None,
+        })
+    }
+
+    fn drip_hang_falling_child_spawn_command(&self) -> Option<ParticleSpawnCommand> {
+        let child_particle_id = match self.particle_id.as_str() {
+            "minecraft:dripping_honey" => "minecraft:falling_honey",
+            "minecraft:dripping_obsidian_tear" => "minecraft:falling_obsidian_tear",
+            "minecraft:dripping_lava" => "minecraft:falling_lava",
+            "minecraft:dripping_water" => "minecraft:falling_water",
+            "minecraft:dripping_dripstone_lava" => "minecraft:falling_dripstone_lava",
+            "minecraft:dripping_dripstone_water" => "minecraft:falling_dripstone_water",
+            _ => return None,
+        };
+        self.drip_child_spawn_command(child_particle_id, self.position, self.velocity)
+    }
+
+    fn drip_landing_child_spawn_command(&self) -> Option<ParticleSpawnCommand> {
+        let child_particle_id = match self.particle_id.as_str() {
+            "minecraft:falling_honey" => "minecraft:landing_honey",
+            "minecraft:falling_obsidian_tear" => "minecraft:landing_obsidian_tear",
+            "minecraft:falling_lava" | "minecraft:falling_dripstone_lava" => {
+                "minecraft:landing_lava"
+            }
+            "minecraft:falling_water" | "minecraft:falling_dripstone_water" => "minecraft:splash",
+            _ => return None,
+        };
+        self.drip_child_spawn_command(child_particle_id, self.position, [0.0, 0.0, 0.0])
+    }
+
+    fn drip_child_spawn_command(
+        &self,
+        child_particle_id: &str,
+        position: [f64; 3],
+        velocity: [f64; 3],
+    ) -> Option<ParticleSpawnCommand> {
+        let template = self
+            .child_spawn_templates
+            .iter()
+            .find(|template| template.particle_id == child_particle_id)?;
+        Some(ParticleSpawnCommand {
+            particle_type_id: template.particle_type_id,
+            particle_id: template.particle_id.clone(),
+            sprite_ids: template.sprite_ids.clone(),
+            position,
+            velocity,
+            override_limiter: false,
+            always_show: false,
+            raw_options_len: 0,
+            initial_delay_ticks: 0,
+            child_spawn_templates: self
+                .child_spawn_templates
+                .iter()
+                .filter(|template| template.particle_id != child_particle_id)
+                .cloned()
+                .collect(),
             option_color: None,
             option_color_to: None,
             option_scale: None,
@@ -3013,6 +3128,105 @@ mod tests {
         assert_eq!(summary.expired_instances, 1);
         assert_eq!(summary.active_instances, 0);
         assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_drip_hang_expiration_spawns_falling_child() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:dripping_honey", 1);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.01, -0.02, 0.03];
+        instance.age_ticks = 1;
+        instance.child_spawn_templates = vec![
+            ParticleChildSpawnTemplate {
+                particle_type_id: 80,
+                particle_id: "minecraft:falling_honey".to_string(),
+                sprite_ids: vec!["minecraft:drip_0".to_string()],
+            },
+            ParticleChildSpawnTemplate {
+                particle_type_id: 81,
+                particle_id: "minecraft:landing_honey".to_string(),
+                sprite_ids: vec!["minecraft:drip_1".to_string()],
+            },
+        ];
+
+        let commands =
+            instance.removal_child_spawn_commands(ParticleRemovalReason::LifetimeExpired);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].particle_type_id, 80);
+        assert_eq!(commands[0].particle_id, "minecraft:falling_honey");
+        assert_close3(commands[0].position, [1.0, 2.0, 3.0]);
+        assert_close3(commands[0].velocity, [0.01, -0.02, 0.03]);
+        assert_eq!(commands[0].child_spawn_templates.len(), 1);
+        assert_eq!(
+            commands[0].child_spawn_templates[0].particle_id,
+            "minecraft:landing_honey"
+        );
+
+        particles.active_instances.push_back(instance);
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.active_instances, 1);
+        let child = &particles.active_instances()[0];
+        assert_eq!(child.particle_type_id, 80);
+        assert_eq!(child.particle_id, "minecraft:falling_honey");
+        assert_eq!(child.provider, "DripParticle.HoneyFallProvider");
+        assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:drip_0"));
+        assert_close3(child.position, [1.0, 2.0, 3.0]);
+        assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(child.child_spawn_templates.len(), 1);
+        assert_eq!(
+            child.child_spawn_templates[0].particle_id,
+            "minecraft:landing_honey"
+        );
+    }
+
+    #[test]
+    fn particle_runtime_drip_fall_and_land_ground_hit_spawns_landing_child() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_honey", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.gravity = 0.0;
+        instance.child_spawn_templates = vec![ParticleChildSpawnTemplate {
+            particle_type_id: 81,
+            particle_id: "minecraft:landing_honey".to_string(),
+            sprite_ids: vec!["minecraft:drip_1".to_string()],
+        }];
+        instance.on_ground = true;
+        let commands =
+            instance.removal_child_spawn_commands(ParticleRemovalReason::RemovedDuringTick);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].particle_type_id, 81);
+        assert_eq!(commands[0].particle_id, "minecraft:landing_honey");
+        assert_close3(commands[0].position, [0.0, 0.05, 0.0]);
+        assert_eq!(commands[0].velocity, [0.0, 0.0, 0.0]);
+        instance.on_ground = false;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.active_instances, 1);
+        let child = &particles.active_instances()[0];
+        assert_eq!(child.particle_type_id, 81);
+        assert_eq!(child.particle_id, "minecraft:landing_honey");
+        assert_eq!(child.provider, "DripParticle.HoneyLandProvider");
+        assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:drip_1"));
+        assert_close3(child.position, [0.0, 0.0, 0.0]);
+        assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+        assert!(child.child_spawn_templates.is_empty());
     }
 
     #[test]

@@ -2303,24 +2303,63 @@ impl ParticleCommandResolver {
         &self,
         particle_type: ParticleTypeInfo,
     ) -> Vec<ParticleChildSpawnTemplate> {
-        let child_particle_type_id = match particle_type.id {
-            EXPLOSION_EMITTER_PARTICLE_TYPE_ID => EXPLOSION_PARTICLE_TYPE_ID,
-            LAVA_PARTICLE_TYPE_ID => SMOKE_PARTICLE_TYPE_ID,
+        let child_particle_type_ids = match particle_type.id {
+            EXPLOSION_EMITTER_PARTICLE_TYPE_ID => vec![EXPLOSION_PARTICLE_TYPE_ID],
+            LAVA_PARTICLE_TYPE_ID => vec![SMOKE_PARTICLE_TYPE_ID],
+            DRIPPING_LAVA_PARTICLE_TYPE_ID => {
+                vec![FALLING_LAVA_PARTICLE_TYPE_ID, LANDING_LAVA_PARTICLE_TYPE_ID]
+            }
+            FALLING_LAVA_PARTICLE_TYPE_ID => vec![LANDING_LAVA_PARTICLE_TYPE_ID],
+            DRIPPING_WATER_PARTICLE_TYPE_ID => {
+                vec![FALLING_WATER_PARTICLE_TYPE_ID, SPLASH_PARTICLE_TYPE_ID]
+            }
+            FALLING_WATER_PARTICLE_TYPE_ID => vec![SPLASH_PARTICLE_TYPE_ID],
+            DRIPPING_HONEY_PARTICLE_TYPE_ID => {
+                vec![
+                    FALLING_HONEY_PARTICLE_TYPE_ID,
+                    LANDING_HONEY_PARTICLE_TYPE_ID,
+                ]
+            }
+            FALLING_HONEY_PARTICLE_TYPE_ID => vec![LANDING_HONEY_PARTICLE_TYPE_ID],
+            DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID => {
+                vec![
+                    FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                    LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                ]
+            }
+            FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID => {
+                vec![LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID]
+            }
+            DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID => {
+                vec![
+                    FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+                    LANDING_LAVA_PARTICLE_TYPE_ID,
+                ]
+            }
+            FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID => vec![LANDING_LAVA_PARTICLE_TYPE_ID],
+            DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID => {
+                vec![
+                    FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+                    SPLASH_PARTICLE_TYPE_ID,
+                ]
+            }
+            FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID => vec![SPLASH_PARTICLE_TYPE_ID],
             GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID => {
-                GUST_PARTICLE_TYPE_ID
+                vec![GUST_PARTICLE_TYPE_ID]
             }
             _ => return Vec::new(),
         };
-        self.simple_particle_template(child_particle_type_id)
-            .ok()
-            .map(|template| {
-                vec![ParticleChildSpawnTemplate {
-                    particle_type_id: template.particle_type.id,
-                    particle_id: template.particle_type.name.to_string(),
-                    sprite_ids: template.sprite_ids,
-                }]
+        child_particle_type_ids
+            .into_iter()
+            .filter_map(|child_particle_type_id| {
+                self.simple_particle_template(child_particle_type_id).ok()
             })
-            .unwrap_or_default()
+            .map(|template| ParticleChildSpawnTemplate {
+                particle_type_id: template.particle_type.id,
+                particle_id: template.particle_type.name.to_string(),
+                sprite_ids: template.sprite_ids,
+            })
+            .collect()
     }
 }
 
@@ -3979,6 +4018,11 @@ const BLOCK_PARTICLE_TYPE_ID: i32 = 1;
 const BLOCK_MARKER_PARTICLE_TYPE_ID: i32 = 2;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
+const DRIPPING_LAVA_PARTICLE_TYPE_ID: i32 = 9;
+const FALLING_LAVA_PARTICLE_TYPE_ID: i32 = 10;
+const LANDING_LAVA_PARTICLE_TYPE_ID: i32 = 11;
+const DRIPPING_WATER_PARTICLE_TYPE_ID: i32 = 12;
+const FALLING_WATER_PARTICLE_TYPE_ID: i32 = 13;
 const DUST_PARTICLE_TYPE_ID: i32 = 14;
 const DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID: i32 = 15;
 const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
@@ -4011,9 +4055,18 @@ const POOF_PARTICLE_TYPE_ID: i32 = 59;
 const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
+const SPLASH_PARTICLE_TYPE_ID: i32 = 70;
+const DRIPPING_HONEY_PARTICLE_TYPE_ID: i32 = 79;
+const FALLING_HONEY_PARTICLE_TYPE_ID: i32 = 80;
+const LANDING_HONEY_PARTICLE_TYPE_ID: i32 = 81;
+const DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 88;
+const FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 89;
+const LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 90;
 const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
 const DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID: i32 = 95;
+const FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID: i32 = 96;
 const DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID: i32 = 97;
+const FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID: i32 = 98;
 const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
 const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
@@ -4288,6 +4341,94 @@ mod tests {
         assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
         assert_eq!(child.particle_id, "minecraft:smoke");
         assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
+    }
+
+    #[test]
+    fn drip_particle_commands_carry_vanilla_child_templates() {
+        let mut resolver = test_resolver(0);
+        for (particle_type_id, child_particle_type_ids) in [
+            (
+                DRIPPING_HONEY_PARTICLE_TYPE_ID,
+                &[
+                    FALLING_HONEY_PARTICLE_TYPE_ID,
+                    LANDING_HONEY_PARTICLE_TYPE_ID,
+                ][..],
+            ),
+            (
+                FALLING_HONEY_PARTICLE_TYPE_ID,
+                &[LANDING_HONEY_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                &[
+                    FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                    LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                ][..],
+            ),
+            (
+                FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                &[LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                DRIPPING_LAVA_PARTICLE_TYPE_ID,
+                &[FALLING_LAVA_PARTICLE_TYPE_ID, LANDING_LAVA_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                FALLING_LAVA_PARTICLE_TYPE_ID,
+                &[LANDING_LAVA_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                DRIPPING_WATER_PARTICLE_TYPE_ID,
+                &[FALLING_WATER_PARTICLE_TYPE_ID, SPLASH_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                FALLING_WATER_PARTICLE_TYPE_ID,
+                &[SPLASH_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+                &[
+                    FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+                    LANDING_LAVA_PARTICLE_TYPE_ID,
+                ][..],
+            ),
+            (
+                FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+                &[LANDING_LAVA_PARTICLE_TYPE_ID][..],
+            ),
+            (
+                DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+                &[
+                    FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+                    SPLASH_PARTICLE_TYPE_ID,
+                ][..],
+            ),
+            (
+                FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+                &[SPLASH_PARTICLE_TYPE_ID][..],
+            ),
+        ] {
+            let batch =
+                resolver.resolve_level_particles(&level_particles_packet(particle_type_id, 0));
+
+            assert_eq!(batch.len(), 1);
+            let command = &batch.commands[0];
+            assert_eq!(command.particle_type_id, particle_type_id);
+            assert_eq!(
+                command.child_spawn_templates.len(),
+                child_particle_type_ids.len()
+            );
+            for (child, child_particle_type_id) in command
+                .child_spawn_templates
+                .iter()
+                .zip(child_particle_type_ids)
+            {
+                let child_type = vanilla_particle_type(*child_particle_type_id).unwrap();
+                assert_eq!(child.particle_type_id, *child_particle_type_id);
+                assert_eq!(child.particle_id, child_type.name);
+                assert!(!child.sprite_ids.is_empty(), "{}", child_type.name);
+            }
+        }
     }
 
     #[test]
@@ -11171,6 +11312,31 @@ mod tests {
               ]
             }"#,
         );
+        for particle_name in [
+            "dripping_lava",
+            "falling_lava",
+            "landing_lava",
+            "dripping_water",
+            "falling_water",
+            "splash",
+            "dripping_honey",
+            "falling_honey",
+            "landing_honey",
+            "dripping_obsidian_tear",
+            "falling_obsidian_tear",
+            "landing_obsidian_tear",
+            "falling_dripstone_lava",
+            "falling_dripstone_water",
+        ] {
+            write_json(
+                &particle_dir(&root).join(format!("{particle_name}.json")),
+                r#"{
+                  "textures": [
+                    "minecraft:generic_0"
+                  ]
+                }"#,
+            );
+        }
         write_json(
             &particle_dir(&root).join("poof.json"),
             r#"{
