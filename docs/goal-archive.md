@@ -2486,6 +2486,14 @@
     brush-complete `minecraft:block` commands attach the same
     `0.6 * colorAsTerrainParticle` option color used by terrain particles.
     Tests cover resolver tint output and dispatcher biome context threading.
+  - [x] DragonBreath special tick motion：local vanilla 26.1
+    `DragonBreathParticle.tick` has a provider-specific `hasHitGround` branch:
+    unchanged Y position multiplies X/Z velocity by `1.1` before friction, Y
+    velocity is not friction-damped until `onGround` first sets
+    `hasHitGround`, and the hit-ground branch adds `0.002` upward drift each
+    tick before applying friction. Renderer particles now carry this as an
+    explicit `DragonBreath` tick descriptor with deterministic runtime tests for
+    hovering, rising, and hit-ground branches.
 
 ## P2：Terrain / Block Render Presentation
 

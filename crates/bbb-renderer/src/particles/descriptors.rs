@@ -53,6 +53,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     Wake,
     Portal,
     ReversePortal,
+    DragonBreath,
     Firefly,
     FallingLeaves,
     FallingDust,
@@ -2019,6 +2020,7 @@ impl ParticleDescriptor {
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
             }
+            "DragonBreathParticle.Provider" => ParticleTickMotionDescriptor::DragonBreath,
             "FireflyParticle.FireflyProvider" => ParticleTickMotionDescriptor::Firefly,
             "FallingLeavesParticle.CherryProvider"
             | "FallingLeavesParticle.PaleOakProvider"

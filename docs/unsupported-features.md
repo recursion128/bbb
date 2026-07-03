@@ -601,7 +601,10 @@ When an agent does any of the following, update this file in the same slice:
       - color
       - age-size
       - `DragonBreathParticle.Provider` purple color range, 0.75 size scale,
-        grow-to-base size curve, lifetime, friction, and no-physics metadata
+        grow-to-base size curve, lifetime, friction, no-physics metadata, and
+        the vanilla special tick motion: unchanged Y position speeds up X/Z by
+        `1.1` before friction, while Y velocity is only damped after `onGround`
+        sets the persistent `hasHitGround` branch and adds `0.002` upward drift
       - `SuspendedTownParticle.HappyVillagerProvider`,
         `ComposterFillProvider`, plain `Provider` for `mycelium`, and
         `EggCrackProvider`: random sprite selection, provider tint,

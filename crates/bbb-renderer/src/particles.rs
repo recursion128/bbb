@@ -291,6 +291,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) on_ground: bool,
     #[serde(default)]
+    pub(crate) hit_ground: bool,
+    #[serde(default)]
     pub(crate) stopped_by_collision: bool,
     #[serde(default)]
     pub(crate) removed: bool,
@@ -1176,6 +1178,7 @@ impl ParticleInstance {
             collision_width,
             collision_height,
             on_ground: false,
+            hit_ground: false,
             stopped_by_collision: false,
             removed: false,
             tick_motion: descriptor.tick_motion(),
@@ -1526,6 +1529,27 @@ impl ParticleInstance {
                 self.position[0] += self.velocity[0] * speed_multiplier;
                 self.position[1] += self.velocity[1] * speed_multiplier;
                 self.position[2] += self.velocity[2] * speed_multiplier;
+            }
+            ParticleTickMotionDescriptor::DragonBreath => {
+                if self.on_ground {
+                    self.velocity[1] = 0.0;
+                    self.hit_ground = true;
+                }
+                if self.hit_ground {
+                    self.velocity[1] += 0.002;
+                }
+                let previous_y = self.position[1];
+                self.move_particle(self.velocity, collide);
+                if self.position[1] == previous_y {
+                    self.velocity[0] *= 1.1;
+                    self.velocity[2] *= 1.1;
+                }
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[2] *= friction;
+                if self.hit_ground {
+                    self.velocity[1] *= friction;
+                }
             }
             ParticleTickMotionDescriptor::Firefly => {
                 let next_age = self.age_ticks.saturating_add(1);
@@ -3328,6 +3352,59 @@ mod tests {
         assert!(instance.on_ground);
         assert_close3(instance.position, [1.2, 2.0, 2.4]);
         assert_close3(instance.velocity, [0.077, -0.2, -0.231]);
+    }
+
+    #[test]
+    fn particle_runtime_dragon_breath_uses_vanilla_hit_ground_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut hovering = test_instance_with_lifetime("minecraft:dragon_breath", 20);
+        hovering.position = [1.0, 2.0, 3.0];
+        hovering.previous_position = hovering.position;
+        hovering.velocity = [0.5, 0.0, -0.25];
+        hovering.friction = 0.96;
+        particles.active_instances.push_back(hovering);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let hovering = &particles.active_instances()[0];
+        assert_eq!(
+            hovering.tick_motion,
+            ParticleTickMotionDescriptor::DragonBreath
+        );
+        assert!(!hovering.hit_ground);
+        assert_close3(hovering.position, [1.5, 2.0, 2.75]);
+        assert_close3(hovering.velocity, [0.528, 0.0, -0.264]);
+
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut rising = test_instance_with_lifetime("minecraft:dragon_breath", 20);
+        rising.position = [1.0, 2.0, 3.0];
+        rising.previous_position = rising.position;
+        rising.velocity = [0.5, 0.25, -0.25];
+        rising.friction = 0.96;
+        particles.active_instances.push_back(rising);
+
+        particles.advance(1);
+
+        let rising = &particles.active_instances()[0];
+        assert_close3(rising.position, [1.5, 2.25, 2.75]);
+        assert_close3(rising.velocity, [0.48, 0.25, -0.24]);
+
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut grounded = test_instance_with_lifetime("minecraft:dragon_breath", 20);
+        grounded.position = [1.0, 2.0, 3.0];
+        grounded.previous_position = grounded.position;
+        grounded.velocity = [0.5, -0.3, -0.25];
+        grounded.friction = 0.96;
+        grounded.on_ground = true;
+        particles.active_instances.push_back(grounded);
+
+        particles.advance(1);
+
+        let grounded = &particles.active_instances()[0];
+        assert!(grounded.hit_ground);
+        assert_close3(grounded.position, [1.5, 2.002, 2.75]);
+        assert_close3(grounded.velocity, [0.48, 0.00192, -0.24]);
     }
 
     #[test]
@@ -6980,6 +7057,10 @@ mod tests {
         assert_eq!(dragon_breath.friction, 0.96);
         assert_eq!(dragon_breath.gravity, 0.0);
         assert!(!dragon_breath.has_physics);
+        assert_eq!(
+            dragon_breath.tick_motion,
+            ParticleTickMotionDescriptor::DragonBreath
+        );
 
         let mut end_rod_random = ParticleRandom::new(79);
         let mut end_rod_command = spawn_command("minecraft:end_rod", 1.0);
@@ -8907,6 +8988,7 @@ mod tests {
             collision_width,
             collision_height,
             on_ground: false,
+            hit_ground: false,
             stopped_by_collision: false,
             removed: false,
             tick_motion: descriptor.tick_motion(),
