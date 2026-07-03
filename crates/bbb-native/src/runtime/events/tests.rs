@@ -48,7 +48,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos,
-    FireworkRocketExplosionParticleState, LivingEntityDrownParticleState,
+    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LivingEntityDrownParticleState,
     LivingEntityPoofParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
     RegistryPacketEntry, TakeItemEntityPickupParticleState, WitchMagicParticleState,
     WorldBlockSoundProfile, WorldStore,
@@ -2598,6 +2598,80 @@ fn living_entity_drown_entity_event_emits_particle_state() {
     assert_eq!(state.delta_movement.z, 0.3);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn honey_block_entity_events_emit_particle_state() {
+    let (tx, mut rx) = mpsc::channel(6);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(76, VANILLA_ENTITY_TYPE_ITEM_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(77, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 76,
+        event_id: 53,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 77,
+        event_id: 54,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 76,
+        event_id: 54,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 53,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        6
+    );
+
+    let honey_block_state_id = vanilla_block_state_id("minecraft:honey_block", []);
+    assert_eq!(particles.honey_block_states.len(), 2);
+    assert_eq!(particles.honey_block_states[0].entity_id, 76);
+    assert_eq!(particles.honey_block_states[0].count, 5);
+    assert_eq!(
+        particles.honey_block_states[0].block_state_id,
+        honey_block_state_id
+    );
+    assert_eq!(particles.honey_block_states[0].position.x, 1.0);
+    assert_eq!(particles.honey_block_states[0].position.y, 64.0);
+    assert_eq!(particles.honey_block_states[0].position.z, -2.0);
+    assert_eq!(particles.honey_block_states[1].entity_id, 77);
+    assert_eq!(particles.honey_block_states[1].count, 10);
+    assert_eq!(
+        particles.honey_block_states[1].block_state_id,
+        honey_block_state_id
+    );
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().entity_events_applied, 3);
     assert_eq!(world.counters().entity_events_ignored, 1);
 }
 
@@ -8375,6 +8449,7 @@ struct RecordingParticleSink {
     witch_magic_states: Vec<WitchMagicParticleState>,
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
+    honey_block_states: Vec<HoneyBlockParticleState>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -8524,6 +8599,16 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityDrownParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_drown_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_honey_block_particles(
+        &mut self,
+        state: HoneyBlockParticleState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.honey_block_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

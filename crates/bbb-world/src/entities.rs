@@ -379,6 +379,14 @@ pub struct LivingEntityDrownParticleState {
     pub delta_movement: EntityVec3,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct HoneyBlockParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub count: u32,
+    pub block_state_id: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityStatusProbeState {
     pub id: i32,
@@ -1995,6 +2003,24 @@ impl WorldStore {
         })
     }
 
+    pub fn honey_block_particle_state(
+        &self,
+        entity_id: i32,
+        count: u32,
+        living_only: bool,
+    ) -> Option<HoneyBlockParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if living_only && !vanilla_living_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        Some(HoneyBlockParticleState {
+            entity_id,
+            position: transform.position,
+            count,
+            block_state_id: honey_block_state_id()?,
+        })
+    }
+
     pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {
         self.entities.camera_pose_state(id)
     }
@@ -2724,6 +2750,12 @@ fn block_pos_closer_to_center_than(pos: BlockPos, point: EntityVec3, distance: f
     let dy = f64::from(pos.y) + 0.5 - point.y;
     let dz = f64::from(pos.z) + 0.5 - point.z;
     dx * dx + dy * dy + dz * dz < distance * distance
+}
+
+fn honey_block_state_id() -> Option<i32> {
+    crate::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:honey_block", &BTreeMap::new())
+        .map(|state| state.id)
 }
 
 fn item_entity_stack_mut(

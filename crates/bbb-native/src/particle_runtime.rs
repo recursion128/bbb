@@ -23,7 +23,7 @@ use bbb_renderer::{
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockPos as WorldBlockPos,
-    FireworkRocketExplosionParticleState, LevelEventSoundRandomState,
+    FireworkRocketExplosionParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityPoofParticleState, RavagerRoarParticleState,
     TakeItemEntityPickupParticleState, TerrainLight, VaultConnectionParticleState,
     WitchMagicParticleState,
@@ -95,6 +95,8 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         state: LivingEntityDrownParticleState,
     ) -> ParticleSpawnBatch;
+    fn spawn_honey_block_particles(&mut self, state: HoneyBlockParticleState)
+        -> ParticleSpawnBatch;
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -353,6 +355,13 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityDrownParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_drown_particle_batch(state)
+    }
+
+    fn spawn_honey_block_particles(
+        &mut self,
+        state: HoneyBlockParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.honey_block_particle_batch(state)
     }
 }
 
@@ -2609,6 +2618,43 @@ impl ParticleCommandResolver {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
+        }
+        batch
+    }
+
+    fn honey_block_particle_batch(&self, state: HoneyBlockParticleState) -> ParticleSpawnBatch {
+        let Some(particle_type) = vanilla_particle_type(BLOCK_PARTICLE_TYPE_ID) else {
+            return ParticleSpawnBatch {
+                unknown_particle_type_count: 1,
+                ..ParticleSpawnBatch::default()
+            };
+        };
+        let mut batch = ParticleSpawnBatch::default();
+        let position = Vec3d {
+            x: state.position.x,
+            y: state.position.y,
+            z: state.position.z,
+        };
+        let option_state = ParticleOptionRenderState {
+            block: Some(ParticleBlockOptionState {
+                block_state_id: state.block_state_id,
+            }),
+            ..ParticleOptionRenderState::default()
+        };
+        for _ in 0..state.count {
+            batch.commands.push(self.command_for_type(
+                particle_type,
+                &[],
+                position,
+                Vec3d::default(),
+                particle_type.override_limiter,
+                false,
+                positive_var_i32_len(state.block_state_id),
+                0,
+                option_state.clone(),
+                None,
+                None,
+            ));
         }
         batch
     }
@@ -5588,6 +5634,36 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:bubble"));
+    }
+
+    #[test]
+    fn honey_block_batch_matches_vanilla_show_particles() {
+        let resolver = test_resolver(0);
+        let honey_block_state_id = test_block_state_id("minecraft:honey_block", []);
+        let state = HoneyBlockParticleState {
+            entity_id: 76,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            count: 10,
+            block_state_id: honey_block_state_id,
+        };
+
+        let batch = resolver.honey_block_particle_batch(state);
+
+        assert_eq!(batch.len(), 10);
+        assert_block_destroy_particle_command(
+            &batch.commands[0],
+            honey_block_state_id,
+            [10.0, 64.0, -3.0],
+            [0.0, 0.0, 0.0],
+        );
+        assert!(batch.commands.iter().all(|command| command.option_block
+            == Some(ParticleBlockOptionState {
+                block_state_id: honey_block_state_id
+            })));
     }
 
     #[test]

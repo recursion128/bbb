@@ -304,13 +304,19 @@ When an agent does any of the following, update this file in the same slice:
         particles: 8 commands at entity position plus three
         `random.triangle(0.0, 1.0)` offsets, using the entity's current
         `deltaMovement` as command velocity.
+      - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
+        particles: event `53` base Entity slide emits 5 commands and event
+        `54` LivingEntity jump emits 10 commands, both using
+        `Blocks.HONEY_BLOCK.defaultBlockState()`, the entity position, and zero
+        velocity.
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
         emitter, animate 4/5 crit/enchanted-hit tracking emitters, Witch event-15
         magic burst, LivingEntity event-60 poof burst, LivingEntity event-67
-        drown bubbles, and the GameEvent elder-guardian particle and
-        `ELDER_GUARDIANS` special-group model submit
+        drown bubbles, HoneyBlock event-53/54 block particles, and the
+        GameEvent elder-guardian particle and `ELDER_GUARDIANS` special-group
+        model submit
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -485,6 +491,11 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:bubble` particles from `makeDrownParticles`: 8 commands at
       entity position plus `random.triangle(0.0, 1.0)` offsets, carrying the
       entity's current `deltaMovement` as velocity.
+      Native HoneyBlock entity events `53`/`54` now emit vanilla
+      `minecraft:block` particles from `showParticles`: 5 slide commands for
+      base Entity event `53` and 10 jump commands for LivingEntity event `54`,
+      both using the honey block default state, entity position, and zero
+      velocity.
       Renderer light-descriptor tests also enumerate the vanilla 26.1
       `getLightCoords` override families: full-bright particles, forced
       block-light particles, age-based smooth block emission, portal/enchant
