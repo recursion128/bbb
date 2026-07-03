@@ -971,18 +971,19 @@
     width controlling numeric padding.
     `e`/`c` use the same root/en local weekday number (`Monday=1`) and ICU
     weekday text widths 3..=6; `E` now follows those root/en text widths too.
-    Short `z` zone names use the active TZDB abbreviation for explicit IANA
-    zones and RFC-822-style fixed-offset names for fixed zones; `VV` emits the
-    explicit zone id, while `VVV` emits the IANA zone's exemplar city.
+    `z` zone names use the active TZDB abbreviation for explicit IANA zones,
+    RFC-822-style fixed-offset short names, and fixed/UTC long names; `VV`
+    emits the explicit zone id, while `VVV` emits the IANA zone's exemplar city.
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
     `Q`/`q` quarter branch, `O` localized-GMT branch, `F`
     day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
-    `LocalTime.get`, plus root/en `e`/`c` local weekday branches and a short
-    `z` / `VV` / `VVV` IANA-zone branch. Long `z`, generic `v`, one- and
-    four-letter `V` widths, locale-specific week data beyond root/en, and
-    non-English locales remain follow-up.
+    `LocalTime.get`, plus root/en `e`/`c` local weekday branches, a short
+    `z` / `VV` / `VVV` IANA-zone branch, and fixed-offset `zzzz` branch. IANA
+    long `z`, generic `v`, one- and four-letter `V` widths,
+    locale-specific week data beyond root/en, and non-English locales remain
+    follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `source=daytime` / `moon_phase`,
     matching vanilla `Time.get` target values from `EnvironmentAttributes` and

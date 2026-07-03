@@ -774,9 +774,8 @@ pub(super) enum SelectProperty {
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
     /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
-    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` short zone
-    /// names, `VV` zone IDs, `VVV` exemplar cities, and `Z`/`X`/`x`/`O`
-    /// offsets).
+    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` zone names,
+    /// `VV` zone IDs, `VVV` exemplar cities, and `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1599,10 +1598,13 @@ fn localized_gmt_offset(offset_seconds: i32, width: usize, locale: &str) -> Opti
 }
 
 fn specific_short_zone_name(fields: &LocalTimeFields, width: usize) -> Option<String> {
-    if (1..=3).contains(&width) {
-        fields.zone_abbreviation.clone()
-    } else {
-        None
+    match width {
+        1..=3 => fields.zone_abbreviation.clone(),
+        4 => fields
+            .zone_id
+            .as_deref()
+            .and_then(|zone_id| fixed_time_zone_long_name(zone_id, fields.offset_seconds)),
+        _ => None,
     }
 }
 
@@ -1630,6 +1632,17 @@ fn fixed_time_zone_short_name(time_zone: &str, offset: FixedOffset) -> String {
         "GMT" => "GMT".to_string(),
         "UTC" | "Etc/UTC" | "Z" if offset.local_minus_utc() == 0 => "UTC".to_string(),
         _ => rfc822_offset(offset.local_minus_utc()),
+    }
+}
+
+fn fixed_time_zone_long_name(zone_id: &str, offset_seconds: i32) -> Option<String> {
+    fixed_time_zone_offset(zone_id)?;
+    match zone_id {
+        "UTC" | "Etc/UTC" | "Z" if offset_seconds == 0 => {
+            Some("Coordinated Universal Time".to_string())
+        }
+        "GMT" if offset_seconds == 0 => Some("Greenwich Mean Time".to_string()),
+        _ => localized_gmt_offset(offset_seconds, 4, ""),
     }
 }
 
