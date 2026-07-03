@@ -6878,6 +6878,21 @@ fn entity_model_kind_maps_all_vanilla_registry_ids() {
 }
 
 #[test]
+fn entity_model_kind_uses_source_verified_experience_orb_bounds() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, &[]),
+        EntityModelKind::Placeholder {
+            name: "experience_orb_entity_type_bounds",
+            bounds: bbb_renderer::EntityModelBounds {
+                width: 0.5,
+                height: 0.5,
+                depth: 0.5,
+            },
+        }
+    );
+}
+
+#[test]
 fn lightning_bolt_uses_weather_target_renderer_not_entity_placeholder() {
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, &[]),

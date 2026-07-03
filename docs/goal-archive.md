@@ -522,6 +522,14 @@
     `rayCount` / inner-outer color、`dragonRays` additive pipeline、
     `dragonRaysDepth` depth-only replay、order / submit_sequence 与
     missing-atlas-independent geometry 测试已覆盖。
+- Placeholder / remaining renderer bounds:
+  - [x] experience-orb source-verified placeholder bounds：native entity
+    scene no longer labels XP orb model bounds as `todo_*`; it uses vanilla
+    26.1 `EntityType.EXPERIENCE_ORB` `sized(0.5F, 0.5F)` as
+    `experience_orb_entity_type_bounds` and tests the exact key plus 0.5 cubed
+    placeholder bounds. The actual `ExperienceOrbRenderer` icon quad, animated
+    tint, alpha, and item-target translucent submission remain a later
+    presentation slice.
 
 ## P1-3：物品、Frame 与第一人称表现
 

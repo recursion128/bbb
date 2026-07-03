@@ -6175,6 +6175,13 @@ When an agent does any of the following, update this file in the same slice:
       `todo_unknown_entity_type_bounds` placeholder
     - primitive renderer-owned model families for humanoids and quadrupeds, plus
       named placeholder bounds for remaining entity types
+    - experience-orb placeholder bounds are no longer a guessed `todo_*`
+      model key: the entity scene now uses the vanilla
+      `EntityType.EXPERIENCE_ORB` `sized(0.5F, 0.5F)` dimensions under the
+      `experience_orb_entity_type_bounds` key. The actual
+      `ExperienceOrbRenderer` glowing 16x16 icon quad, icon selection, age-based
+      RGB pulse, alpha 128, and `entityTranslucentCullItemTarget` submission
+      remain deferred presentation work.
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, custom/datapack cow/pig

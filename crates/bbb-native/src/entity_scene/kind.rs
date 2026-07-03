@@ -268,8 +268,10 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
         | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
         | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => EntityModelKind::NoRender,
+        // Vanilla `EntityType.EXPERIENCE_ORB` is `sized(0.5F, 0.5F)`. The
+        // dedicated glowing quad renderer remains a separate presentation slice.
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
-            placeholder("todo_experience_orb_bounds", 0.5, 0.5, 0.5)
+            placeholder("experience_orb_entity_type_bounds", 0.5, 0.5, 0.5)
         }
         // The eye of ender also renders as an item sprite via the billboard layer (see above).
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => EntityModelKind::NoRender,
