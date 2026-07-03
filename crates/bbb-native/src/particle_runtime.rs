@@ -25,10 +25,10 @@ use bbb_world::{
     block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
-    HoneyBlockParticleState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainLight,
-    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    FoxEatParticleState, HoneyBlockParticleState, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    RavagerRoarParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TerrainLight, ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
     VillagerParticleState, WitchMagicParticleState,
 };
 
@@ -120,6 +120,11 @@ pub(crate) trait ParticleEventSink {
     fn spawn_dolphin_happy_particles(
         &mut self,
         state: DolphinHappyParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_fox_eat_particles(
+        &mut self,
+        state: FoxEatParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_snowball_hit_particles(
         &mut self,
@@ -437,6 +442,14 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: DolphinHappyParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.dolphin_happy_particle_batch(state)
+    }
+
+    fn spawn_fox_eat_particles(
+        &mut self,
+        state: FoxEatParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        self.resolver.fox_eat_particle_batch(state, item_runtime)
     }
 
     fn spawn_snowball_hit_particles(
@@ -2867,6 +2880,66 @@ impl ParticleCommandResolver {
         )
     }
 
+    fn fox_eat_particle_batch(
+        &mut self,
+        state: FoxEatParticleState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let Some(item) = particle_item_option_state_for_stack(&state.item_stack) else {
+            return ParticleSpawnBatch::default();
+        };
+        let template = match self.simple_particle_template(ITEM_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let option_state = ParticleOptionRenderState {
+            item: Some(item),
+            item_stack: Some(state.item_stack.clone()),
+            item_component_patch_empty: state.item_stack.component_patch == Default::default(),
+            ..ParticleOptionRenderState::default()
+        };
+        let look = fox_look_vector(state.x_rot, state.y_rot);
+        let position = Vec3d {
+            x: state.position.x + look[0] * 0.5,
+            y: state.position.y,
+            z: state.position.z + look[2] * 0.5,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..FOX_EAT_PARTICLE_COUNT {
+            let local_velocity = [
+                f64::from((self.random.next_float() - 0.5) * FOX_EAT_HORIZONTAL_VELOCITY_RANGE),
+                f64::from(
+                    self.random.next_float() * FOX_EAT_VERTICAL_VELOCITY_RANGE
+                        + FOX_EAT_VERTICAL_VELOCITY_BASE,
+                ),
+                0.0,
+            ];
+            let direction = fox_rotate_velocity(local_velocity, state.x_rot, state.y_rot);
+            let velocity = Vec3d {
+                x: direction[0],
+                y: direction[1] + FOX_EAT_VERTICAL_VELOCITY_OFFSET,
+                z: direction[2],
+            };
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                position,
+                velocity,
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state.clone(),
+                None,
+                item_runtime,
+            ));
+        }
+        batch
+    }
+
     fn entity_event_aabb_particle_batch(
         &mut self,
         particle_type_id: i32,
@@ -5140,6 +5213,39 @@ fn destroy_block_shape_boxes(block_state_id: i32) -> Vec<([f64; 3], [f64; 3])> {
         .unwrap_or_else(|| vec![([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])])
 }
 
+fn fox_look_vector(x_rot: f32, y_rot: f32) -> [f64; 3] {
+    let real_x_rot = x_rot.to_radians();
+    let real_y_rot = -y_rot.to_radians();
+    let y_cos = real_y_rot.cos();
+    let y_sin = real_y_rot.sin();
+    let x_cos = real_x_rot.cos();
+    let x_sin = real_x_rot.sin();
+    [
+        f64::from(y_sin * x_cos),
+        f64::from(-x_sin),
+        f64::from(y_cos * x_cos),
+    ]
+}
+
+fn fox_rotate_velocity(local: [f64; 3], x_rot: f32, y_rot: f32) -> [f64; 3] {
+    let x_rad = -x_rot.to_radians();
+    let x_cos = f64::from(x_rad.cos());
+    let x_sin = f64::from(x_rad.sin());
+    let after_x = [
+        local[0],
+        local[1] * x_cos + local[2] * x_sin,
+        local[2] * x_cos - local[1] * x_sin,
+    ];
+    let y_rad = -y_rot.to_radians();
+    let y_cos = f64::from(y_rad.cos());
+    let y_sin = f64::from(y_rad.sin());
+    [
+        after_x[0] * y_cos + after_x[2] * y_sin,
+        after_x[1],
+        after_x[2] * y_cos - after_x[0] * y_sin,
+    ]
+}
+
 fn firework_explosion_colors(explosion: &FireworkExplosionSummary) -> Vec<i32> {
     if explosion.colors.is_empty() {
         vec![FIREWORK_BLACK_COLOR]
@@ -5506,6 +5612,11 @@ const VILLAGER_PARTICLE_Y_OFFSET: f64 = 1.0;
 const DOLPHIN_HAPPY_PARTICLE_Y_OFFSET: f64 = 0.2;
 const DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE: f64 = 0.01;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
+const FOX_EAT_PARTICLE_COUNT: usize = 8;
+const FOX_EAT_HORIZONTAL_VELOCITY_RANGE: f32 = 0.1;
+const FOX_EAT_VERTICAL_VELOCITY_RANGE: f32 = 0.1;
+const FOX_EAT_VERTICAL_VELOCITY_BASE: f32 = 0.1;
+const FOX_EAT_VERTICAL_VELOCITY_OFFSET: f64 = 0.05;
 // Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
 const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
 const VANILLA_SPLASH_POTION_ITEM_ID: i32 = 1292;
@@ -6526,6 +6637,67 @@ mod tests {
             .commands
             .iter()
             .all(|command| command.particle_id == "minecraft:happy_villager"));
+    }
+
+    #[test]
+    fn fox_eat_batch_matches_vanilla_item_particles() {
+        let state = FoxEatParticleState {
+            entity_id: 85,
+            position: bbb_world::EntityVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -3.0,
+            },
+            y_rot: 45.0,
+            x_rot: -30.0,
+            item_stack: ItemStackSummary {
+                item_id: Some(42),
+                count: 3,
+                component_patch: Default::default(),
+            },
+        };
+        let look = fox_look_vector(state.x_rot, state.y_rot);
+        let expected_position = [
+            state.position.x + look[0] * 0.5,
+            state.position.y,
+            state.position.z + look[2] * 0.5,
+        ];
+        let mut expected_random = LegacyRandom::new(0);
+        let local_velocity = [
+            f64::from((expected_random.next_float() - 0.5) * FOX_EAT_HORIZONTAL_VELOCITY_RANGE),
+            f64::from(
+                expected_random.next_float() * FOX_EAT_VERTICAL_VELOCITY_RANGE
+                    + FOX_EAT_VERTICAL_VELOCITY_BASE,
+            ),
+            0.0,
+        ];
+        let mut expected_velocity = fox_rotate_velocity(local_velocity, state.x_rot, state.y_rot);
+        expected_velocity[1] += FOX_EAT_VERTICAL_VELOCITY_OFFSET;
+        let mut resolver = test_resolver(0);
+
+        let batch = resolver.fox_eat_particle_batch(state, None);
+
+        assert_eq!(batch.len(), FOX_EAT_PARTICLE_COUNT);
+        assert_particle_command(
+            &batch.commands[0],
+            ITEM_PARTICLE_TYPE_ID,
+            "minecraft:item",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert_eq!(
+            batch.commands[0].option_item,
+            Some(ParticleItemOptionState {
+                item_id: 42,
+                count: 3,
+                component_patch_len: 0,
+            })
+        );
+        assert!(batch
+            .commands
+            .iter()
+            .all(|command| command.particle_id == "minecraft:item"));
     }
 
     #[test]

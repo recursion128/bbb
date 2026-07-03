@@ -348,6 +348,11 @@ When an agent does any of the following, update this file in the same slice:
         `minecraft:happy_villager` particles from `Dolphin.handleEntityEvent`:
         7 commands with gaussian `*0.01` velocity and `getRandomX(1.0)`,
         `getRandomY()+0.2`, `getRandomZ(1.0)` current-AABB sampling.
+      - Fox entity event `45` now emits vanilla `minecraft:item` particles from
+        `Fox.handleEntityEvent`: 8 commands when the fox main hand is non-empty,
+        using the main-hand item stack, mouth anchor `position + getLookAngle()/2`
+        on x/z, and the local random velocity fan rotated by `-xRot` then
+        `-yRot` with `+0.05` Y.
       - HoneyBlock entity events `53`/`54` now emit vanilla `minecraft:block`
         particles: event `53` base Entity slide emits 5 commands and event
         `54` LivingEntity jump emits 10 commands, both using
@@ -370,8 +375,8 @@ When an agent does any of the following, update this file in the same slice:
       - remaining deferred work is broader collision clipping parity for
         special contexts beyond the covered WakeParticle case, player-coupled
         particle emitters beyond the currently covered scoped cases, and broader
-        entity-event particle/audio parity outside the currently covered
-        families.
+        entity-event particle/audio parity outside the currently covered Fox and
+        other families.
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -586,6 +591,10 @@ When an agent does any of the following, update this file in the same slice:
       particles from `Dolphin.handleEntityEvent`: 7 commands with gaussian
       `0.01` velocity and current-dolphin AABB position sampling with `+0.2`
       Y offset.
+      Native Fox event `45` now emits vanilla item-eat particles from
+      `Fox.handleEntityEvent`: 8 `minecraft:item` commands for a non-empty main
+      hand, main-hand item stack option, mouth anchor, and the rotated random
+      velocity fan.
       Native HoneyBlock entity events `53`/`54` now emit vanilla
       `minecraft:block` particles from `showParticles`: 5 slide commands for
       base Entity event `53` and 10 jump commands for LivingEntity event `54`,

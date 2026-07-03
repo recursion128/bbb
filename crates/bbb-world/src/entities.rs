@@ -479,6 +479,15 @@ pub struct DolphinHappyParticleState {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FoxEatParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub item_stack: ProtocolItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SnowballHitParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -2858,6 +2867,12 @@ impl WorldStore {
         id: i32,
     ) -> Option<FireworkRocketExplosionParticleState> {
         self.entities.firework_rocket_explosion_particle_state(id)
+    }
+
+    /// Fox entity event `45` breaks the item held in the fox's main hand at the
+    /// mouth, using the current body pitch/yaw for the velocity fan.
+    pub fn fox_eat_particle_state(&self, id: i32) -> Option<FoxEatParticleState> {
+        self.entities.fox_eat_particle_state(id)
     }
 
     /// The item-cluster render state for ominous item spawner entities (vanilla

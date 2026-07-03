@@ -502,6 +502,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:happy_villager` 粒子：速度为三轴 gaussian `*0.01`，位置按
     当前 dolphin AABB 的 `getRandomX(1.0)` / `getRandomY()+0.2` /
     `getRandomZ(1.0)` 采样；
+    Fox entity event `45` 现在按 vanilla `Fox.handleEntityEvent` 在主手非空时
+    生成 8 个 `minecraft:item` 粒子：位置为 `position + getLookAngle()/2`
+    的 x/z mouth anchor，item option 使用主手 stack，局部速度
+    `(rand-.5)*0.1, rand*0.1+0.1, 0` 先 `xRot(-xRot)` 再
+    `yRot(-yRot)`，并追加 `+0.05` Y；
     HoneyBlock entity events `53`/`54` 现在按 vanilla `HoneyBlock.showParticles`
     生成 `minecraft:block` 粒子：event `53` 基础 Entity slide 生成 5 个，
     event `54` LivingEntity jump 生成 10 个，均使用
@@ -567,7 +572,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
     ravager event-69 roar poof/knockback、GameEvent elder-guardian 粒子与
     `ELDER_GUARDIANS` model submit、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
-    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke、Witch event-15 magic burst、LivingEntity event-60 poof burst、LivingEntity event-67 drown bubbles、LivingEntity event-46 portal burst、Snowball event-3 item burst、ThrownEgg event-3 item burst、Arrow event-0 entity-effect burst、HoneyBlock event-53/54 block particles），以及 local sound（不含 DripParticle
+    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke、Witch event-15 magic burst、LivingEntity event-60 poof burst、LivingEntity event-67 drown bubbles、LivingEntity event-46 portal burst、Snowball event-3 item burst、ThrownEgg event-3 item burst、Arrow event-0 entity-effect burst、Fox event-45 item burst、HoneyBlock event-53/54 block particles），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
     `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
     elder-guardian-curse 本地玩家位置声效、TakeItemEntity item / experience-orb

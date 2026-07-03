@@ -49,11 +49,12 @@ use bbb_protocol::packets::{
 use bbb_world::{
     advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
     ArrowEffectParticleState, BlockPos, ChunkPos, DolphinHappyParticleState,
-    EntityTamingParticleState, FireworkRocketExplosionParticleState, HoneyBlockParticleState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LocalPlayerPoseState, RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    EntityTamingParticleState, FireworkRocketExplosionParticleState, FoxEatParticleState,
+    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LocalPlayerPoseState, RavagerRoarParticleState,
+    RegistryPacketEntry, SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    ThrownEggHitParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -3081,6 +3082,88 @@ fn dolphin_happy_entity_event_emits_particle_state() {
     assert_eq!(state.position.z, -2.0);
     assert_close(state.width, 0.9);
     assert_close(state.height, 0.6);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().entity_events_applied, 2);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
+fn fox_eat_entity_event_emits_main_hand_item_particle_state() {
+    let (tx, mut rx) = mpsc::channel(7);
+    let mut fox = protocol_add_entity_with_type(137, VANILLA_ENTITY_TYPE_FOX_ID);
+    fox.y_rot = 45.0;
+    fox.x_rot = -30.0;
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(fox)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEquipment(
+        SetEquipment {
+            entity_id: 137,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: item_stack(42, 3),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(138, VANILLA_ENTITY_TYPE_COW_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEquipment(
+        SetEquipment {
+            entity_id: 138,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: item_stack(42, 1),
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 137,
+        event_id: 45,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 138,
+        event_id: 45,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 45,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        7
+    );
+
+    assert_eq!(particles.fox_eat_states.len(), 1);
+    let state = &particles.fox_eat_states[0];
+    assert_eq!(state.entity_id, 137);
+    assert_eq!(state.position.x, 1.0);
+    assert_eq!(state.position.y, 64.0);
+    assert_eq!(state.position.z, -2.0);
+    assert_eq!(state.y_rot, 45.0);
+    assert_eq!(state.x_rot, -30.0);
+    assert_eq!(state.item_stack, item_stack(42, 3));
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 1);
@@ -9103,6 +9186,7 @@ struct RecordingParticleSink {
     entity_taming_states: Vec<EntityTamingParticleState>,
     villager_states: Vec<VillagerParticleState>,
     dolphin_happy_states: Vec<DolphinHappyParticleState>,
+    fox_eat_states: Vec<FoxEatParticleState>,
     animal_love_states: Vec<AnimalLoveParticleState>,
     allay_duplication_states: Vec<AllayDuplicationParticleState>,
     snowball_hit_states: Vec<SnowballHitParticleState>,
@@ -9307,6 +9391,17 @@ impl ParticleEventSink for RecordingParticleSink {
         state: DolphinHappyParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.dolphin_happy_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_fox_eat_particles(
+        &mut self,
+        state: FoxEatParticleState,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.fox_eat_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

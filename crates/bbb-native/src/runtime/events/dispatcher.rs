@@ -9,7 +9,7 @@ use bbb_protocol::packets::{
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
     BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
-    EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState,
+    EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
     LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
@@ -382,6 +382,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn dolphin_happy_particles(&mut self, _world: &WorldStore, state: DolphinHappyParticleState) {
         emit_dolphin_happy_particles(self.particle_events, self.particle_renderer, state);
+    }
+
+    fn fox_eat_particles(&mut self, _world: &WorldStore, state: FoxEatParticleState) {
+        emit_fox_eat_particles(
+            self.particle_events,
+            self.particle_renderer,
+            state,
+            self.item_runtime,
+        );
     }
 
     fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -822,6 +831,21 @@ fn emit_dolphin_happy_particles(
         return;
     };
     let batch = particle_events.spawn_dolphin_happy_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_fox_eat_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: FoxEatParticleState,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_fox_eat_particles(state, item_runtime);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

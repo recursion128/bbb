@@ -17,12 +17,12 @@ use crate::{
     advance_vault_deactivation_particle_randoms, AllayDuplicationParticleState,
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
-    HoneyBlockParticleState, JukeboxLevelEventState, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LocalSoundEventState, RavagerRoarParticleState, SnowballHitParticleState,
-    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
-    ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState, WorldStore,
+    FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
+    SnowballHitParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VehicleMoveReport,
+    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -72,6 +72,7 @@ const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
+const FOX_EAT_EVENT_ID: i8 = 45;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
@@ -162,6 +163,7 @@ pub trait PlayApplyEffects {
     fn entity_taming_particles(&mut self, _world: &WorldStore, _state: EntityTamingParticleState) {}
     fn villager_particles(&mut self, _world: &WorldStore, _state: VillagerParticleState) {}
     fn dolphin_happy_particles(&mut self, _world: &WorldStore, _state: DolphinHappyParticleState) {}
+    fn fox_eat_particles(&mut self, _world: &WorldStore, _state: FoxEatParticleState) {}
     fn animal_love_particles(&mut self, _world: &WorldStore, _state: AnimalLoveParticleState) {}
     fn allay_duplication_particles(
         &mut self,
@@ -418,6 +420,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let fox_eat_particles = if update.event_id == FOX_EAT_EVENT_ID {
+                    self.fox_eat_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let animal_love_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
                     self.animal_love_particle_state(update.entity_id)
                 } else {
@@ -520,6 +527,9 @@ impl WorldStore {
                     }
                     if let Some(state) = dolphin_happy_particles {
                         effects.dolphin_happy_particles(self, state);
+                    }
+                    if let Some(state) = fox_eat_particles {
+                        effects.fox_eat_particles(self, state);
                     }
                     if let Some(state) = animal_love_particles {
                         effects.animal_love_particles(self, state);
@@ -1464,17 +1474,18 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
-        EntityDataValueKind, EntityEvent, EntityPositionSync, GameEvent, ItemStackSummary,
-        LevelEvent, PlayTime, PlayerHealth, SetEntityData, SoundEvent, SoundEventHolder,
-        SoundSource, TakeItemEntity, Vec3d,
+        EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+        GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth, SetEntityData,
+        SetEquipment, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1491,6 +1502,7 @@ mod tests {
         entity_taming_particles: Vec<EntityTamingParticleState>,
         villager_particles: Vec<VillagerParticleState>,
         dolphin_happy_particles: Vec<DolphinHappyParticleState>,
+        fox_eat_particles: Vec<FoxEatParticleState>,
         animal_love_particles: Vec<AnimalLoveParticleState>,
         allay_duplication_particles: Vec<AllayDuplicationParticleState>,
         snowball_hit_particles: Vec<SnowballHitParticleState>,
@@ -1562,6 +1574,10 @@ mod tests {
             state: DolphinHappyParticleState,
         ) {
             self.dolphin_happy_particles.push(state);
+        }
+
+        fn fox_eat_particles(&mut self, _world: &WorldStore, state: FoxEatParticleState) {
+            self.fox_eat_particles.push(state);
         }
 
         fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
@@ -2801,6 +2817,83 @@ mod tests {
         );
         assert!((state.width - 0.9).abs() < 1.0e-6);
         assert!((state.height - 0.6).abs() < 1.0e-6);
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn fox_eat_event_forwards_main_hand_item_particle_state() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let mut fox = add_entity(
+            137,
+            VANILLA_ENTITY_TYPE_FOX_ID,
+            Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            },
+        );
+        fox.y_rot = 45.0;
+        fox.x_rot = -30.0;
+
+        for packet in [
+            PlayClientbound::AddEntity(fox),
+            PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 137,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: item_stack(42, 3),
+                }],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                138,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 65.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 138,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: item_stack(42, 1),
+                }],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 137,
+                event_id: FOX_EAT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 138,
+                event_id: FOX_EAT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: FOX_EAT_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.fox_eat_particles.len(), 1);
+        let state = &effects.fox_eat_particles[0];
+        assert_eq!(state.entity_id, 137);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert_eq!(state.y_rot, 45.0);
+        assert_eq!(state.x_rot, -30.0);
+        assert_eq!(state.item_stack, item_stack(42, 3));
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }

@@ -20,10 +20,10 @@ use super::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
     EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    FireworkRocketItemState, FoxEatParticleState, ItemEntityStackState, ItemFrameRenderState,
+    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
+    OminousItemSpawnerItemState, RavagerRoarParticleState, RavagerStunParticleState,
+    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -2716,6 +2716,23 @@ impl EntityStore {
             explosions: stack
                 .map(|stack| stack.component_patch.fireworks_explosions)
                 .unwrap_or_default(),
+        })
+    }
+
+    pub(crate) fn fox_eat_particle_state(&self, id: i32) -> Option<FoxEatParticleState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_FOX_ID {
+            return None;
+        }
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let item_stack = self.equipment_item(id, ProtocolEquipmentSlot::MainHand)?;
+        Some(FoxEatParticleState {
+            entity_id: identity.id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            item_stack,
         })
     }
 
