@@ -775,7 +775,8 @@ pub(super) enum SelectProperty {
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
     /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
     /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, `z` zone names,
-    /// `VV` zone IDs, `VVV` exemplar cities, and `Z`/`X`/`x`/`O` offsets).
+    /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
+    /// 1..=5, and localized-GMT `O` offsets).
     LocalTime {
         pattern: String,
         locale: String,
@@ -1531,6 +1532,10 @@ fn format_local_time_field(
         'Z' => {
             if (1..=3).contains(&count) {
                 Some(rfc822_offset(fields.offset_seconds))
+            } else if count == 4 {
+                localized_gmt_offset(fields.offset_seconds, count, locale)
+            } else if count == 5 {
+                iso8601_offset(fields.offset_seconds, count, true)
             } else {
                 None
             }
@@ -1546,18 +1551,18 @@ fn format_local_time_field(
 }
 
 fn rfc822_offset(offset_seconds: i32) -> String {
-    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    let (sign, hours, minutes, _) = offset_parts(offset_seconds);
     format!("{sign}{hours:02}{minutes:02}")
 }
 
 fn iso8601_offset(offset_seconds: i32, width: usize, zero_as_z: bool) -> Option<String> {
-    if !(1..=3).contains(&width) {
+    if !(1..=5).contains(&width) {
         return None;
     }
     if offset_seconds == 0 && zero_as_z {
         return Some("Z".to_string());
     }
-    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    let (sign, hours, minutes, seconds) = offset_parts(offset_seconds);
     match width {
         1 => {
             if minutes == 0 {
@@ -1568,14 +1573,33 @@ fn iso8601_offset(offset_seconds: i32, width: usize, zero_as_z: bool) -> Option<
         }
         2 => Some(format!("{sign}{hours:02}{minutes:02}")),
         3 => Some(format!("{sign}{hours:02}:{minutes:02}")),
+        4 => {
+            if seconds == 0 {
+                Some(format!("{sign}{hours:02}{minutes:02}"))
+            } else {
+                Some(format!("{sign}{hours:02}{minutes:02}{seconds:02}"))
+            }
+        }
+        5 => {
+            if seconds == 0 {
+                Some(format!("{sign}{hours:02}:{minutes:02}"))
+            } else {
+                Some(format!("{sign}{hours:02}:{minutes:02}:{seconds:02}"))
+            }
+        }
         _ => None,
     }
 }
 
-fn offset_parts(offset_seconds: i32) -> (char, i32, i32) {
+fn offset_parts(offset_seconds: i32) -> (char, i32, i32, i32) {
     let sign = if offset_seconds < 0 { '-' } else { '+' };
-    let total_minutes = offset_seconds.abs() / 60;
-    (sign, total_minutes / 60, total_minutes % 60)
+    let total_seconds = offset_seconds.abs();
+    (
+        sign,
+        total_seconds / 3600,
+        (total_seconds / 60) % 60,
+        total_seconds % 60,
+    )
 }
 
 fn localized_gmt_offset(offset_seconds: i32, width: usize, locale: &str) -> Option<String> {
@@ -1583,7 +1607,7 @@ fn localized_gmt_offset(offset_seconds: i32, width: usize, locale: &str) -> Opti
     if offset_seconds == 0 {
         return Some(prefix);
     }
-    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    let (sign, hours, minutes, _) = offset_parts(offset_seconds);
     match width {
         1..=3 => {
             if minutes == 0 {

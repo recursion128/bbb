@@ -951,8 +951,9 @@
     `Q`/`q` quarter, `M`/`L`, `d`, `D` day-of-year, root/en `w`/`W`
     week-of-year / week-of-month, `F` day-of-week-in-month, root/en
     `E`/`e`/`c` weekdays, 24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `a`,
-    `Z`/`X`/`x` offset fields, localized-GMT `O` offsets, short `z` zone
-    abbreviations, `VV` zone IDs, `VVV` exemplar cities, and quoted literals),
+    `Z`/`X`/`x` offset fields through width 5, localized-GMT `O` offsets,
+    short `z` zone abbreviations, `VV` zone IDs, `VVV` exemplar cities, and
+    quoted literals),
     using fixed `GMT`/UTC offset and IANA `time_zone` IDs when present or the
     system local zone otherwise. `G`/`u`/`D` follow Java
     `DateTimeFormatter`/`IsoChronology`
@@ -964,6 +965,11 @@
     `O` mirrors ICU localized GMT offset widths for root/en: `O`..`OOO` use
     the short form (`GMT+2:30`) and `OOOO` uses the zero-padded long form
     (`GMT+02:30`).
+    `Z`/`X`/`x` now cover ICU widths 1..=5 for the no-seconds offsets
+    produced by vanilla-supported fixed/GMT/UTC and modern IANA zones:
+    `ZZZZ` uses the long localized-GMT form, `ZZZZZ` and `XXXXX` use
+    extended ISO8601 with `Z` for UTC in the uppercase fields, and
+    `XXXX`/`xxxx` use the basic form.
     `w`/`W` mirror ICU root/en locale week fields using Monday as first day of
     week and minimal-days-in-first-week = 1, with pattern width controlling
     numeric padding.
@@ -980,8 +986,9 @@
     `Q`/`q` quarter branch, `O` localized-GMT branch, `F`
     day-of-week-in-month branch, and root/en `w`/`W` week branch from vanilla
     `LocalTime.get`, plus root/en `e`/`c` local weekday branches, a short
-    `z` / `VV` / `VVV` IANA-zone branch, and fixed-offset `zzzz` branch. IANA
-    long `z`, generic `v`, one- and four-letter `V` widths,
+    `z` / `VV` / `VVV` IANA-zone branch, fixed-offset `zzzz` branch, and UTC
+    / `UTC+02:30` width-4/5 offset branches. IANA long `z`, generic `v`,
+    one- and four-letter `V` widths,
     locale-specific week data beyond root/en, and non-English locales remain
     follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into

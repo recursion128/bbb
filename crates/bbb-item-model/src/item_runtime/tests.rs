@@ -7033,6 +7033,27 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(11), uv("fixed_zone_long_clock_fallback"));
 
+    // ICU offset fields: `ZZZZ` uses long localized-GMT, `ZZZZZ` uses extended
+    // ISO8601 with `Z` for UTC, and `XXXX`/`XXXXX` plus `xxxx`/`xxxxx` add the
+    // basic / extended width-4/5 forms.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(12), uv("offset_width_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(12), uv("offset_width_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12626,6 +12647,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "local_weekday_clock",
             "zone_name_clock",
             "fixed_zone_long_clock",
+            "offset_width_clock",
         ],
     );
     write_json(
@@ -12688,11 +12710,11 @@ fn write_local_time_select_fixture(root: &Path) {
                 "model": {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
-                    "pattern": "yyyy-MM-dd'T'HH:mm:ss X xx",
+                    "pattern": "yyyy-MM-dd'T'HH:mm:ss X xx XXXXX xxxxx ZZZZZ",
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-12-25T00:08:07 Z +0000",
+                            "when": "2026-12-25T00:08:07 Z +0000 Z +00:00 Z",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/utc_offset_clock_match" }
                         }
                     ],
@@ -12844,6 +12866,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("offset_width_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd Z ZZZZ ZZZZZ X XX XXX XXXX XXXXX x xx xxx xxxx xxxxx",
+                    "time_zone": "UTC+02:30",
+                    "cases": [
+                        {
+                            "when": "2026-01-01 +0230 GMT+02:30 +02:30 +0230 +0230 +02:30 +0230 +02:30 +0230 +0230 +02:30 +0230 +02:30",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/offset_width_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/offset_width_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -12884,6 +12924,8 @@ fn write_local_time_select_fixture(root: &Path) {
         "fixed_zone_long_clock_fallback",
         &[35, 65, 95, 255],
     );
+    write_flat_item_model_and_texture(&assets, "offset_width_clock_match", &[145, 190, 220, 255]);
+    write_flat_item_model_and_texture(&assets, "offset_width_clock_fallback", &[40, 70, 100, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {
