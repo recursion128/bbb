@@ -146,10 +146,15 @@ When an agent does any of the following, update this file in the same slice:
     `GameRenderer.extract` calls `LevelRenderer.extractLevel` /
     `extractVisibleEntities`, so bbb reads these fields after entity animation,
     client-time, item-cooldown, input, and local use-item tick advancement.
-  - Block-destroy overlays now have a source-order test and binding comment:
-    vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking
-    render state during render extract, after the client tick, so bbb reads
-    `block_destroy_overlays` after `advance_block_destruction_render_ticks`.
+  - Block-destroy overlays now have source-order and merge coverage: vanilla
+    `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking render
+    state during render extract, after the client tick, and
+    `destroyBlockProgress` stores local `MultiPlayerGameMode` stages and
+    server progress in the same per-position sorted set before extracting the
+    highest progress. bbb reads `block_destroy_overlays` after
+    `advance_block_destruction_render_ticks` and projects the highest
+    local/server stage through the official `destroy_stage_0..9` atlas
+    entries.
   - Selection outline, entity-scene outline, and entity-target outline now have
     a source-order test and binding comment: vanilla `Minecraft.renderFrame`
     calls `pick(partialTicks)` before `GameRenderer.extract`, and
@@ -8279,8 +8284,8 @@ When an agent does any of the following, update this file in the same slice:
       - server `BlockDestruction` progress
     - Those overlays use:
       - official `destroy_stage_0..9` block atlas textures
-      - keeping the highest stage when multiple overlays target one block
-        position
+      - merging local stages and server progress per block position before
+        keeping the highest renderer-visible stage
       - expiring server destruction entries after:
         - the vanilla-shaped 400 render tick window
     - It predicts the locally destroyed block before queuing:

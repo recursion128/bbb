@@ -21,7 +21,8 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
-    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData,
+    WorldBlockDestroyProfile, WorldDimension,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -7759,6 +7760,54 @@ fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position(
     assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(3).unwrap());
     assert_eq!(overlays[1].pos, [2, 3, 4]);
     assert_eq!(overlays[1].uv, textures.destroy_stage_uv_rect(7).unwrap());
+}
+
+#[test]
+fn block_destroy_overlays_merge_local_stage_with_server_progress_per_position() {
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let pos = BlockPos { x: 0, y: 1, z: 3 };
+    set_lightmap_test_block(&mut world, pos, 9);
+    assert_eq!(
+        world.probe_block(pos).unwrap().block_name.as_deref(),
+        Some("minecraft:grass_block")
+    );
+    world.set_default_block_destroy_profiles(std::collections::BTreeMap::from([(
+        "minecraft:grass_block".to_string(),
+        WorldBlockDestroyProfile {
+            destroy_time_tenths: Some(6),
+            requires_correct_tool: false,
+        },
+    )]));
+    world.set_local_destroying_block_hit(pos, bbb_protocol::packets::Direction::North);
+    for _ in 0..10 {
+        assert_eq!(world.advance_local_destroying_block_tick(), None);
+    }
+    assert_eq!(
+        world.local_player().interaction.destroying_block_stage,
+        Some(5)
+    );
+    assert!(
+        world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+            id: 10,
+            pos: bbb_protocol::packets::BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            progress: 2,
+        })
+    );
+    let textures = destroy_stage_test_textures();
+
+    let overlays = block_destroy_overlays_from_world(&world, &textures);
+
+    assert_eq!(overlays.len(), 1);
+    assert_eq!(overlays[0].pos, [0, 1, 3]);
+    assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(5).unwrap());
 }
 
 #[test]

@@ -2203,3 +2203,12 @@
   `CardinalLighting.Type.CODEC.optionalFieldOf("cardinal_light",
   CardinalLighting.Type.DEFAULT)`. Missing registry data still falls back to
   the built-in 26.1 dimension profiles.
+- [x] block-destroy local/server cube overlay merge：native render extraction
+  now has focused coverage for the vanilla-shaped shared progress channel:
+  local destroy stages and server `BlockDestruction` progress targeting the
+  same position merge before atlas lookup, keep the highest stage, and resolve
+  that stage through the official `destroy_stage_0..9` block atlas entries.
+  The vanilla basis is `MultiPlayerGameMode` writing local stages through
+  `ClientLevel.destroyBlockProgress`, `LevelRenderer.destroyBlockProgress`
+  storing local/server updates in one per-position sorted set, and
+  `extractBlockDestroyAnimation` extracting the sorted set's highest progress.
