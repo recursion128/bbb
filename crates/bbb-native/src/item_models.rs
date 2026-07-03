@@ -13,7 +13,9 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
-use bbb_protocol::packets::{EquipmentSlot, InteractionHand, ItemStackSummary};
+use bbb_protocol::packets::{
+    EquipmentSlot, InteractionHand, ItemStackSummary, SwingAnimationTypeSummary,
+};
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
     bake_item_model_mesh_with_light_and_overlay,
@@ -62,6 +64,10 @@ const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
 const POPPY_BLOCK_ID: &str = "minecraft:poppy";
 const RED_MUSHROOM_BLOCK_ID: &str = "minecraft:red_mushroom";
 const BROWN_MUSHROOM_BLOCK_ID: &str = "minecraft:brown_mushroom";
+/// Vanilla `DataComponents.SWING_ANIMATION` network type id, used by item-stack
+/// patches to remove prototype STAB/NONE data and fall back to
+/// `SwingAnimation.DEFAULT` (WHACK, 6 ticks).
+const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -987,6 +993,7 @@ pub(crate) fn first_person_item_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
 ) -> FirstPersonItemModels {
     let mut models = FirstPersonItemModels::empty();
     let (Some(item_runtime), Some(camera_pose)) = (item_runtime, camera_pose) else {
@@ -1015,6 +1022,7 @@ pub(crate) fn first_person_item_models(
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
     let camera_world = first_person_camera_world_transform(camera_pose);
+    let attack_swing = world.local_player_attack_swing(partial_ticks);
 
     for (hand, stack) in [
         (InteractionHand::MainHand, main_stack),
@@ -1032,7 +1040,14 @@ pub(crate) fn first_person_item_models(
         } else {
             BlockModelDisplayContext::FirstPersonRightHand
         };
-        let attach = first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
+        let attack = attack_swing
+            .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
+            .map_or(0.0, |swing| swing.attack_anim);
+        let mut attach =
+            first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
+        if first_person_stack_uses_whack_swing(stack) {
+            attach = first_person_apply_whack_swing(attach, arm_left, attack);
+        }
         bake_item_stack_at_transform(
             stack,
             attach,
@@ -1071,6 +1086,14 @@ fn ordinary_first_person_item_stack(
     if stack.component_patch.map_id.is_some() {
         return false;
     }
+    if !first_person_stack_removes_swing_animation(stack)
+        && stack
+            .component_patch
+            .swing_animation
+            .is_some_and(|swing| swing.animation_type == SwingAnimationTypeSummary::Stab)
+    {
+        return false;
+    }
     let Some(item_id) = stack.item_id else {
         return false;
     };
@@ -1085,10 +1108,34 @@ fn ordinary_first_person_item_stack(
             | "minecraft:spyglass"
             | "minecraft:shield"
             | "minecraft:trident"
+            | "minecraft:wooden_spear"
+            | "minecraft:stone_spear"
+            | "minecraft:copper_spear"
+            | "minecraft:iron_spear"
+            | "minecraft:golden_spear"
+            | "minecraft:diamond_spear"
+            | "minecraft:netherite_spear"
             | "minecraft:brush"
             | "minecraft:bundle"
             | "minecraft:goat_horn"
     )
+}
+
+fn first_person_stack_uses_whack_swing(stack: &ItemStackSummary) -> bool {
+    if first_person_stack_removes_swing_animation(stack) {
+        return true;
+    }
+    match stack.component_patch.swing_animation {
+        Some(swing_animation) => swing_animation.animation_type == SwingAnimationTypeSummary::Whack,
+        None => true,
+    }
+}
+
+fn first_person_stack_removes_swing_animation(stack: &ItemStackSummary) -> bool {
+    stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_SWING_ANIMATION_COMPONENT_ID)
 }
 
 fn local_player_is_scoping(world: &WorldStore, item_runtime: &NativeItemRuntime) -> bool {
@@ -1118,6 +1165,28 @@ fn first_person_item_arm_transform_from_camera_world(
             -0.52 + inverse_arm_height * -0.6,
             -0.72,
         ))
+}
+
+fn first_person_apply_whack_swing(transform: Mat4, arm_left: bool, attack: f32) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let sqrt_attack = attack.sqrt();
+    let x_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let y_swing_position = 0.2 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let y_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+    let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+
+    transform
+        * Mat4::from_translation(Vec3::new(
+            invert * x_swing_position,
+            y_swing_position,
+            z_swing_position,
+        ))
+        * Mat4::from_rotation_y((invert * (45.0 + y_swing_rotation * -20.0)).to_radians())
+        * Mat4::from_rotation_z((invert * xz_swing_rotation * -20.0).to_radians())
+        * Mat4::from_rotation_x((xz_swing_rotation * -80.0).to_radians())
+        * Mat4::from_rotation_y((invert * -45.0).to_radians())
 }
 
 fn first_person_camera_world_transform(pose: CameraPose) -> Mat4 {
@@ -2183,8 +2252,9 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
-        DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EquipmentSlotUpdate,
-        PlayLogin, SetEntityData, SetEquipment, SetPlayerInventory, Vec3d,
+        DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind,
+        EquipmentSlotUpdate, PlayLogin, SetEntityData, SetEquipment, SetPlayerInventory,
+        SwingAnimationSummary, Vec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -3051,6 +3121,7 @@ mod tests {
                 x_rot: 0.0,
                 eye_height: CameraPose::STANDING_EYE_HEIGHT,
             }),
+            1.0,
         );
 
         assert!(models.block_meshes.is_empty());
@@ -3060,9 +3131,56 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_local_player_whack_swing() {
+        let root = unique_item_model_temp_dir("first-person-whack-swing");
+        write_flat_item_runtime_fixture(&root, &["hand_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let item = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:hand_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+        let mut world = world_with_level_dimension("minecraft:overworld");
+        world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item });
+
+        let still = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(still.flat_meshes.len(), 1);
+
+        assert!(world.apply_entity_animation(EntityAnimation { id: 1, action: 0 }));
+        world.advance_entity_client_animations(2);
+        let swinging = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(swinging.flat_meshes.len(), 1);
+        assert_ne!(
+            still.flat_meshes[0], swinging.flat_meshes[0],
+            "ordinary first-person WHACK items should receive vanilla swingArm transform"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_skip_using_and_special_paths() {
         let root = unique_item_model_temp_dir("first-person-special-skip");
-        write_flat_item_runtime_fixture(&root, &["hand_item", "bow"]);
+        write_flat_item_runtime_fixture(&root, &["hand_item", "bow", "stab_item", "wooden_spear"]);
         let item_runtime =
             NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
         let hand_item = ItemStackSummary {
@@ -3072,6 +3190,20 @@ mod tests {
         };
         let bow = ItemStackSummary {
             item_id: item_runtime.item_protocol_id("minecraft:bow"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut stab = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:stab_item"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        stab.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        });
+        let spear = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:wooden_spear"),
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
@@ -3093,6 +3225,7 @@ mod tests {
             Some(&item_runtime),
             &TerrainTextureState::default(),
             camera,
+            1.0,
         )
         .flat_meshes
         .is_empty());
@@ -3104,6 +3237,37 @@ mod tests {
             Some(&item_runtime),
             &TerrainTextureState::default(),
             camera,
+            1.0,
+        )
+        .flat_meshes
+        .is_empty());
+
+        let mut stab_world = WorldStore::new();
+        stab_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: stab,
+        });
+        assert!(first_person_item_models(
+            &stab_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        )
+        .flat_meshes
+        .is_empty());
+
+        let mut spear_world = WorldStore::new();
+        spear_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: spear,
+        });
+        assert!(first_person_item_models(
+            &spear_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
         )
         .flat_meshes
         .is_empty());
@@ -3134,6 +3298,55 @@ mod tests {
         assert!(
             left_origin.abs_diff_eq(Vec3::new(-0.56, -0.52, -0.72), 1.0e-4),
             "left origin {left_origin:?}"
+        );
+    }
+
+    #[test]
+    fn first_person_whack_swing_transform_matches_vanilla_swing_arm() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let attack = 0.25_f32;
+        let swung = first_person_apply_whack_swing(base, false, attack);
+        let origin = swung.transform_point3(Vec3::ZERO);
+        let sqrt_attack = attack.sqrt();
+        let x_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+        let y_swing_position = 0.2 * (sqrt_attack * std::f32::consts::TAU).sin();
+        let z_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+        let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+        let expected_origin = Vec3::new(
+            0.56 + x_swing_position,
+            -0.52 + y_swing_position,
+            -0.72 + z_swing_position,
+        );
+        assert!(
+            origin.abs_diff_eq(expected_origin, 1.0e-4),
+            "origin {origin:?}, expected {expected_origin:?}"
+        );
+
+        let expected = base
+            * Mat4::from_translation(expected_origin - Vec3::new(0.56, -0.52, -0.72))
+            * Mat4::from_rotation_y(
+                (45.0 + (attack * attack * std::f32::consts::PI).sin() * -20.0).to_radians(),
+            )
+            * Mat4::from_rotation_z((xz_swing_rotation * -20.0).to_radians())
+            * Mat4::from_rotation_x((xz_swing_rotation * -80.0).to_radians())
+            * Mat4::from_rotation_y((-45.0_f32).to_radians());
+        assert!(swung.abs_diff_eq(expected, 1.0e-5));
+
+        let mut none_stack = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        none_stack.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::None,
+            duration: 6,
+        });
+        assert!(!first_person_stack_uses_whack_swing(&none_stack));
+
+        none_stack.component_patch.removed_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+        assert!(
+            first_person_stack_uses_whack_swing(&none_stack),
+            "removing swing_animation falls back to vanilla SwingAnimation.DEFAULT WHACK"
         );
     }
 

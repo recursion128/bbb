@@ -20,8 +20,8 @@ use super::{
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
     FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, WolfArmorCrackiness,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -2832,6 +2832,19 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         animations.animations.active_swing_off_hand()
+    }
+
+    pub(crate) fn attack_swing_state(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<LocalPlayerAttackSwingState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(LocalPlayerAttackSwingState {
+            attack_anim: animations.animations.attack_anim(partial_ticks),
+            off_hand: animations.animations.attack_arm_off_hand(),
+        })
     }
 
     pub(crate) fn refresh_client_animation_swing_duration(

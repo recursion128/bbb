@@ -1108,6 +1108,17 @@
     baking, special/use-path rejection, hand transform constants, and renderer
     pass ordering. Use/swing animation and map / bow / crossbow / spyglass /
     shield special paths remain first-person follow-ups.
+  - [x] ordinary first-person WHACK swing animation：local vanilla 26.1
+    `ItemInHandRenderer.renderHandsWithItems` samples
+    `LocalPlayer.getAttackAnim(partialTick)` and `swingingArm`, then the
+    ordinary non-using branch applies `applyItemArmTransform` followed by
+    `swingArm` only when `ItemStack.getSwingAnimation().type() == WHACK`.
+    Native now exposes the local-player attack swing from world animation state,
+    threads `entity_partial_tick` into first-person item extraction, applies the
+    vanilla `swingArm` translation and `applyItemArmAttackTransform` rotations
+    for ordinary WHACK stacks, respects explicit `NONE`, and keeps `STAB` on
+    the deferred special path. Tests cover local-player swing sampling, vanilla
+    transform math, mesh movement under a main-hand swing, and STAB rejection.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

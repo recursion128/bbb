@@ -3856,6 +3856,38 @@ fn entity_model_sources_project_attack_swing_ramp() {
 }
 
 #[test]
+fn local_player_attack_swing_samples_local_entity() {
+    let mut store = WorldStore::new();
+    assert_eq!(store.local_player_attack_swing(1.0), None);
+
+    store.apply_login(&protocol_play_login(61));
+    assert_eq!(
+        store.local_player_attack_swing(1.0),
+        None,
+        "login alone does not fabricate an entity animation component"
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert_eq!(
+        store.local_player_attack_swing(1.0),
+        Some(LocalPlayerAttackSwingState {
+            attack_anim: 0.0,
+            off_hand: false,
+        })
+    );
+
+    // Vanilla `renderHandsWithItems` samples `LocalPlayer.getAttackAnim(partialTick)` and
+    // `swingingArm`; action 3 selects the off hand while the usual 6-tick WHACK ramp lerps by partial.
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 61, action: 3 }));
+    store.advance_entity_client_animations(2);
+    let swing = store.local_player_attack_swing(0.5).unwrap();
+    assert!(swing.off_hand);
+    assert!((swing.attack_anim - 1.0 / 12.0).abs() < 1e-6);
+}
+
+#[test]
 fn entity_model_sources_use_held_item_default_swing_duration() {
     const SPEAR_ITEM_ID: i32 = 42;
 

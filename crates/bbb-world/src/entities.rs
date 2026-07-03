@@ -56,6 +56,17 @@ pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
+/// Local-player melee swing state sampled for first-person item rendering.
+///
+/// Vanilla `ItemInHandRenderer.renderHandsWithItems` reads
+/// `LocalPlayer.getAttackAnim(partialTick)` and `swingingArm` before dispatching each
+/// hand. `off_hand = false` means the main hand receives `attack_anim`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalPlayerAttackSwingState {
+    pub attack_anim: f32,
+    pub off_hand: bool,
+}
+
 pub(crate) fn is_vanilla_boat_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -2343,6 +2354,14 @@ impl WorldStore {
 
     pub fn local_player_main_arm_left(&self) -> Option<bool> {
         self.entities.main_arm_left(self.local_player_id?)
+    }
+
+    pub fn local_player_attack_swing(
+        &self,
+        partial_ticks: f32,
+    ) -> Option<LocalPlayerAttackSwingState> {
+        self.entities
+            .attack_swing_state(self.local_player_id?, partial_ticks)
     }
 
     /// The fishing bobber currently owned by the local player, if any. Vanilla

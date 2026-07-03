@@ -258,11 +258,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   extruded item-model quads for dropped / held / item-frame consumers；普通
   first-person local-player hand stacks now bake through `FIRST_PERSON_*_HAND`
   display contexts into an after-world / before-HUD depth-cleared hand pass,
-  using vanilla `applyItemArmTransform` constants. 剩余是 first-person special
-  consumers / use-swing animation 与像素级视觉校验。
+  using vanilla `applyItemArmTransform` constants and ordinary WHACK `swingArm`
+  from the local player's `attackAnim` / `swingingArm`. 剩余是 first-person
+  special consumers / use animation / STAB-special swing 与像素级视觉校验。
 - First-person viewmodel：
   - use animation。
-  - swing animation。
+  - STAB / special swing animation。
   - map / bow / crossbow / spyglass / shield 等特殊路径。
 - Combat / held item arm pose：
   - third-person hand-use sway。

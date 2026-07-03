@@ -1566,8 +1566,13 @@ pub(crate) fn pump_network_and_terrain(
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     let camera_pose = camera_pose_from_world(world);
-    let first_person_item_models =
-        first_person_item_models(world, item_runtime, terrain_textures, camera_pose);
+    let first_person_item_models = first_person_item_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        camera_pose,
+        entity_partial_tick,
+    );
     // Item frames render their wooden border + framed item into the same two atlas draws.
     let item_frame_models = item_frame_models(
         world,
