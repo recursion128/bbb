@@ -1189,6 +1189,16 @@
     use before generic stack `CONSUMABLE` data, and reuses the WHACK swing
     transform while the bundle is being used. Tests cover non-skipped using
     rendering, attack-swing mesh movement, and override precedence.
+  - [x] first-person trident TRIDENT use pose：local vanilla 26.1
+    `TridentItem.getUseAnimation` returns `ItemUseAnimation.TRIDENT` and
+    `TridentItem.getUseDuration` returns `72000`; `ItemInHandRenderer` applies
+    `applyItemArmTransform`, the fixed throw-charge translate / X-Y-Z rotations,
+    charge shake, Z scale, and `Axis.YN` 45 degree rotation using
+    `timeHeld = useDuration - (remainingTicks - frameInterp + 1)`. Native now
+    allows `minecraft:trident` through first-person item rendering, classifies
+    trident use before generic stack `CONSUMABLE` data, and applies the vanilla
+    throw-charge transform. Tests cover non-skipped idle/using rendering, mesh
+    movement, override precedence, and exact matrix order/formula.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -263,12 +263,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   `attackAnim` / `swingingArm`, first-person BLOCK/shield use pose, and
   patch-carried/default consumable EAT/DRINK `applyEatTransform` use pose, and
   goat horn `TOOT_HORN` base-arm use pose, and brush `BRUSH`
-  `applyBrushTransform` use pose, and bundle `BUNDLE` use `swingArm`. 剩余是
-  first-person special consumers / other non-EAT/DRINK use animation 与像素级视觉校验。
+  `applyBrushTransform` use pose, bundle `BUNDLE` use `swingArm`, and trident
+  `TRIDENT` throw-charge use pose. 剩余是 first-person special consumers / other
+  non-EAT/DRINK use animation 与像素级视觉校验。
 - First-person viewmodel：
   - remaining non-EAT/DRINK use animation beyond goat horn `TOOT_HORN` and
-    brush `BRUSH` / bundle `BUNDLE`。
-  - map / bow / crossbow / spyglass / trident 等特殊路径。
+    brush `BRUSH` / bundle `BUNDLE` / trident `TRIDENT`。
+  - map / bow / crossbow / spyglass 等特殊路径。
 - Combat / held item arm pose：
   - third-person hand-use sway。
   - kinetic weapon / ticksUsingItem。

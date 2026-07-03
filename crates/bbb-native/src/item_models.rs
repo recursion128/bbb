@@ -80,6 +80,8 @@ const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
 /// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
 const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
+/// Vanilla `TridentItem.getUseDuration`.
+const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -1108,6 +1110,15 @@ pub(crate) fn first_person_item_models(
                 FirstPersonUseAnimation::Bundle => {
                     attach = first_person_apply_whack_swing(attach, arm_left, attack);
                 }
+                FirstPersonUseAnimation::Trident { use_duration_ticks } => {
+                    attach = first_person_apply_trident_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1171,6 +1182,7 @@ enum FirstPersonUseAnimation {
     Block(FirstPersonBlockUseKind),
     Brush { use_duration_ticks: f32 },
     Bundle,
+    Trident { use_duration_ticks: f32 },
 }
 
 fn supported_first_person_item_stack(
@@ -1188,11 +1200,7 @@ fn supported_first_person_item_stack(
     };
     !matches!(
         resource_id,
-        "minecraft:filled_map"
-            | "minecraft:bow"
-            | "minecraft:crossbow"
-            | "minecraft:spyglass"
-            | "minecraft:trident"
+        "minecraft:filled_map" | "minecraft:bow" | "minecraft:crossbow" | "minecraft:spyglass"
     )
 }
 
@@ -1233,6 +1241,11 @@ fn first_person_stack_supported_use_animation(
             });
         }
         Some("minecraft:bundle") => return Some(FirstPersonUseAnimation::Bundle),
+        Some("minecraft:trident") => {
+            return Some(FirstPersonUseAnimation::Trident {
+                use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
+            });
+        }
         _ => {}
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
@@ -1512,6 +1525,48 @@ fn first_person_brush_use_transform(
             * Mat4::from_rotation_y(90.0_f32.to_radians())
             * Mat4::from_rotation_x(current_swipe_angle.to_radians())
     }
+}
+
+fn first_person_apply_trident_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_trident_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_trident_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let power = (time_held / 10.0).min(1.0);
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.5, 0.7, 0.1))
+        * Mat4::from_rotation_x((-55.0_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 35.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.2))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -4024,6 +4079,74 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_trident_use_pose() {
+        let root = unique_item_model_temp_dir("first-person-trident-use");
+        write_flat_item_runtime_fixture(&root, &["trident"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let trident = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:trident"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut edible_trident = trident.clone();
+        edible_trident.component_patch.added = 1;
+        edible_trident.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        edible_trident.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        assert_eq!(
+            first_person_stack_supported_use_animation(&edible_trident, &item_runtime),
+            Some(FirstPersonUseAnimation::Trident {
+                use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
+            }),
+            "TridentItem.getUseAnimation overrides stack CONSUMABLE data"
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: trident.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut using_world = WorldStore::new();
+        using_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: trident,
+        });
+        using_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        using_world.advance_local_using_item_ticks(12);
+        let using = first_person_item_models(
+            &using_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(using.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], using.flat_meshes[0],
+            "TRIDENT use applies ItemInHandRenderer's throw-charge transform"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -4278,6 +4401,32 @@ mod tests {
             * Mat4::from_rotation_x(current_swipe_angle.to_radians())
             * Mat4::from_translation(Vec3::new(-0.3, 0.22, 0.35));
         assert!(left.abs_diff_eq(left_base * left_brush, 1.0e-5));
+    }
+
+    #[test]
+    fn first_person_trident_use_transform_matches_vanilla_throw_charge_transform() {
+        let base = first_person_item_arm_transform_from_camera_world(Mat4::IDENTITY, false, 0.0);
+        let transformed = first_person_apply_trident_use_transform(
+            base,
+            false,
+            VANILLA_TRIDENT_USE_DURATION_TICKS,
+            12.0,
+            0.5,
+        );
+        let remaining_ticks = VANILLA_TRIDENT_USE_DURATION_TICKS - 12.0;
+        let time_held = VANILLA_TRIDENT_USE_DURATION_TICKS - (remaining_ticks - 0.5 + 1.0);
+        let power = (time_held / 10.0).min(1.0);
+        let shake = ((time_held - 0.1) * 1.3).sin() * (power - 0.1);
+        let expected = base
+            * Mat4::from_translation(Vec3::new(-0.5, 0.7, 0.1))
+            * Mat4::from_rotation_x((-55.0_f32).to_radians())
+            * Mat4::from_rotation_y(35.3_f32.to_radians())
+            * Mat4::from_rotation_z((-9.785_f32).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.2))
+            * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+            * Mat4::from_rotation_y((-45.0_f32).to_radians());
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
     }
 
     #[test]
