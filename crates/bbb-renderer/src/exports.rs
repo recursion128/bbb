@@ -82,6 +82,7 @@ pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
 };
 pub use crate::item_models::{
+    bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
     bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
     bake_item_frame_map_text_surface, bake_item_model_mesh, bake_item_model_mesh_with_light,
     bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,

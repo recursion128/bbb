@@ -24,6 +24,7 @@ use crate::{
 
 mod map;
 pub use map::{
+    bake_first_person_map_decoration_surface, bake_first_person_map_text_surface,
     bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
     bake_item_frame_map_text_surface, item_frame_map_decoration_type, item_frame_map_text_width,
     ItemFrameMapDecorationSubmission, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,

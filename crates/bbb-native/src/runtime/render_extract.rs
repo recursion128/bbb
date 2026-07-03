@@ -630,6 +630,9 @@ pub(crate) struct RendererFrame {
     pub(crate) first_person_item_model_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub(crate) first_person_map_textures: Vec<ItemFrameMapTexture>,
     pub(crate) first_person_map_surfaces: Vec<ItemFrameMapSurface>,
+    pub(crate) first_person_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub(crate) first_person_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    pub(crate) first_person_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
     pub(crate) item_frame_map_textures: Vec<ItemFrameMapTexture>,
     pub(crate) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -688,11 +691,17 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
         frame.item_frame_map_surfaces,
         frame.first_person_map_surfaces,
     );
-    renderer.set_item_frame_map_decoration_surfaces(
-        frame.item_frame_map_decoration_textures,
+    let mut map_decoration_textures = frame.item_frame_map_decoration_textures;
+    map_decoration_textures.extend(frame.first_person_map_decoration_textures);
+    renderer.set_map_decoration_surfaces(
+        map_decoration_textures,
         frame.item_frame_map_decoration_surfaces,
+        frame.first_person_map_decoration_surfaces,
     );
-    renderer.set_item_frame_map_text_surfaces(frame.item_frame_map_text_surfaces);
+    renderer.set_map_text_surfaces(
+        frame.item_frame_map_text_surfaces,
+        frame.first_person_map_text_surfaces,
+    );
     renderer.set_entity_model_instances(frame.entity_model_instances);
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_cloud_frame(frame.cloud_frame);

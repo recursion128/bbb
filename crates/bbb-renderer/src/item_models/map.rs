@@ -355,8 +355,55 @@ pub fn bake_item_frame_map_decoration_surface(
     light: [f32; 2],
     submit_sequence: u32,
 ) -> Option<ItemFrameMapDecorationSurface> {
+    bake_map_decoration_surface(
+        type_id,
+        x,
+        y,
+        rot,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        true,
+    )
+}
+
+pub fn bake_first_person_map_decoration_surface(
+    type_id: i32,
+    x: i8,
+    y: i8,
+    rot: u8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+) -> Option<ItemFrameMapDecorationSurface> {
+    bake_map_decoration_surface(
+        type_id,
+        x,
+        y,
+        rot,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        false,
+    )
+}
+
+fn bake_map_decoration_surface(
+    type_id: i32,
+    x: i8,
+    y: i8,
+    rot: u8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+    show_only_frame: bool,
+) -> Option<ItemFrameMapDecorationSurface> {
     let decoration_type = item_frame_map_decoration_type(type_id)?;
-    if !decoration_type.render_on_frame {
+    if show_only_frame && !decoration_type.render_on_frame {
         return None;
     }
     let transform = map_transform
@@ -423,8 +470,59 @@ pub fn bake_item_frame_map_text_surface(
     submit_sequence: u32,
     glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
 ) -> Option<ItemFrameMapTextSurface> {
+    bake_map_text_surface(
+        type_id,
+        text,
+        x,
+        y,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        glyphs,
+        true,
+    )
+}
+
+pub fn bake_first_person_map_text_surface(
+    type_id: i32,
+    text: impl Into<String>,
+    x: i8,
+    y: i8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+) -> Option<ItemFrameMapTextSurface> {
+    bake_map_text_surface(
+        type_id,
+        text,
+        x,
+        y,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        glyphs,
+        false,
+    )
+}
+
+fn bake_map_text_surface(
+    type_id: i32,
+    text: impl Into<String>,
+    x: i8,
+    y: i8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    show_only_frame: bool,
+) -> Option<ItemFrameMapTextSurface> {
     let decoration_type = item_frame_map_decoration_type(type_id)?;
-    if !decoration_type.render_on_frame {
+    if show_only_frame && !decoration_type.render_on_frame {
         return None;
     }
     let text = text.into();
@@ -646,6 +744,18 @@ impl Renderer {
         textures: Vec<ItemFrameMapDecorationTexture>,
         surfaces: Vec<ItemFrameMapDecorationSurface>,
     ) {
+        self.set_map_decoration_surfaces(textures, surfaces, Vec::new());
+    }
+
+    /// Sets all `MapRenderer` decoration sprite submissions. Item-frame maps use
+    /// `showOnlyFrame=true`; first-person maps use `showOnlyFrame=false`, but both sample the same
+    /// vanilla map-decoration atlas.
+    pub fn set_map_decoration_surfaces(
+        &mut self,
+        textures: Vec<ItemFrameMapDecorationTexture>,
+        item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
+        first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    ) {
         self.item_frame_map_decoration_atlas = build_item_frame_map_decoration_atlas(&textures)
             .map(|(layout, rgba)| {
                 create_item_frame_map_decoration_atlas_gpu(
@@ -659,7 +769,22 @@ impl Renderer {
             });
         self.item_frame_map_decoration_surfaces =
             if let Some(atlas) = &self.item_frame_map_decoration_atlas {
-                surfaces
+                item_frame_surfaces
+                    .into_iter()
+                    .filter(|surface| {
+                        !surface.is_empty()
+                            && atlas
+                                .layout
+                                .rects
+                                .contains_key(surface.submission.texture.sprite_id)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+        self.first_person_map_decoration_surfaces =
+            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
+                first_person_surfaces
                     .into_iter()
                     .filter(|surface| {
                         !surface.is_empty()
@@ -690,8 +815,24 @@ impl Renderer {
     }
 
     pub fn set_item_frame_map_text_surfaces(&mut self, surfaces: Vec<ItemFrameMapTextSurface>) {
+        self.set_map_text_surfaces(surfaces, Vec::new());
+    }
+
+    pub fn set_map_text_surfaces(
+        &mut self,
+        item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
+        first_person_surfaces: Vec<ItemFrameMapTextSurface>,
+    ) {
         self.item_frame_map_text_surfaces = if self.item_frame_map_text_font_atlas.is_some() {
-            surfaces
+            item_frame_surfaces
+                .into_iter()
+                .filter(|surface| !surface.is_empty())
+                .collect()
+        } else {
+            Vec::new()
+        };
+        self.first_person_map_text_surfaces = if self.item_frame_map_text_font_atlas.is_some() {
+            first_person_surfaces
                 .into_iter()
                 .filter(|surface| !surface.is_empty())
                 .collect()
@@ -726,11 +867,32 @@ impl Renderer {
         )
     }
 
+    pub(crate) fn collect_first_person_map_decoration_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        let Some(atlas) = &self.item_frame_map_decoration_atlas else {
+            return (Vec::new(), Vec::new());
+        };
+        merge_item_frame_map_decoration_surfaces(
+            &self.first_person_map_decoration_surfaces,
+            &atlas.layout,
+        )
+    }
+
     pub(crate) fn collect_item_frame_map_text_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         if self.item_frame_map_text_font_atlas.is_none() {
             return (Vec::new(), Vec::new());
         }
         merge_item_frame_map_text_surfaces(&self.item_frame_map_text_surfaces)
+    }
+
+    pub(crate) fn collect_first_person_map_text_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        if self.item_frame_map_text_font_atlas.is_none() {
+            return (Vec::new(), Vec::new());
+        }
+        merge_item_frame_map_text_surfaces(&self.first_person_map_text_surfaces)
     }
 }
 
@@ -1271,6 +1433,14 @@ mod tests {
                 .is_none(),
             "player marker has showOnItemFrame=false in vanilla"
         );
+        let first_person =
+            bake_first_person_map_decoration_surface(0, 0, 0, 0, 0, map_transform, light, 1)
+                .expect("first-person maps render all MapRenderer decorations");
+        assert_eq!(first_person.submission.type_id, 0);
+        assert_eq!(
+            first_person.submission.texture.vanilla_sprite_id(),
+            "minecraft:player"
+        );
     }
 
     #[test]
@@ -1349,6 +1519,20 @@ mod tests {
             .is_none(),
             "player marker has showOnItemFrame=false in vanilla"
         );
+        let first_person = bake_first_person_map_text_surface(
+            0,
+            "Player",
+            0,
+            0,
+            0,
+            map_transform,
+            light,
+            0,
+            &glyphs,
+        )
+        .expect("first-person maps render text for non-frame decorations");
+        assert_eq!(first_person.submission.type_id, 0);
+        assert_eq!(first_person.submission.text, "Player");
     }
 
     #[test]

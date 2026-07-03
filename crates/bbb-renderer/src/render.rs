@@ -1394,6 +1394,13 @@ impl Renderer {
             .create_item_model_frame_buffers(&flat_translucent_vertices, &flat_translucent_indices);
         let (map_vertices, map_indices) = self.collect_first_person_map_geometry();
         let map_buffers = self.create_item_model_frame_buffers(&map_vertices, &map_indices);
+        let (map_decoration_vertices, map_decoration_indices) =
+            self.collect_first_person_map_decoration_geometry();
+        let map_decoration_buffers =
+            self.create_item_model_frame_buffers(&map_decoration_vertices, &map_decoration_indices);
+        let (map_text_vertices, map_text_indices) = self.collect_first_person_map_text_geometry();
+        let map_text_buffers =
+            self.create_item_model_frame_buffers(&map_text_vertices, &map_text_indices);
         let (glint_vertices, glint_indices) = self.collect_first_person_item_model_glint_geometry();
         let glint_buffers = self.create_item_model_frame_buffers(&glint_vertices, &glint_indices);
         let (glint_translucent_vertices, glint_translucent_indices) =
@@ -1408,6 +1415,8 @@ impl Renderer {
             && flat_buffers.is_none()
             && flat_translucent_buffers.is_none()
             && map_buffers.is_none()
+            && map_decoration_buffers.is_none()
+            && map_text_buffers.is_none()
             && glint_buffers.is_none()
             && glint_translucent_buffers.is_none()
         {
@@ -1460,6 +1469,31 @@ impl Renderer {
             stats.item_model_draw_calls += 1;
         }
         if let (Some(atlas), Some(buffers)) = (&self.item_frame_map_atlas, &map_buffers) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) = (
+            &self.item_frame_map_decoration_atlas,
+            &map_decoration_buffers,
+        ) {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &atlas.bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(atlas), Some(buffers)) =
+            (&self.item_frame_map_text_font_atlas, &map_text_buffers)
+        {
             self.draw_item_model_frame_buffers(
                 &mut pass,
                 &self.item_model_pipeline,

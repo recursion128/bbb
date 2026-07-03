@@ -1248,6 +1248,20 @@
     and exact map tilt / one-handed / two-handed matrix formulas. Background /
     checkerboard, map decorations/text, and first-person player arms remain
     pixel-level follow-ups.
+  - [x] first-person filled-map decorations/text：local vanilla 26.1
+    `MapRenderer.render(mapRenderState, poseStack, submitNodeCollector, false,
+    lightCoords)` renders all known map decorations because `showOnlyFrame` is
+    false, increments the decoration count for each rendered decoration, and
+    submits order-1 labels after order-0 base/decor sprite geometry. Renderer
+    map decoration/text bakers now expose first-person variants that do not
+    apply the item-frame `renderOnFrame` filter; native first-person map
+    extraction emits decoration sprites and ASCII label surfaces alongside the
+    decoded map base surface; and the renderer draws those decoration/text
+    surfaces in the depth-cleared hand pass using the shared map-decoration and
+    font atlases. Tests cover the non-frame player marker (`type_id = 0`),
+    first-person label text, submit order/sequence, and the native hand-path
+    integration. Background/checkerboard and first-person player arms remain
+    pixel-level follow-ups.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

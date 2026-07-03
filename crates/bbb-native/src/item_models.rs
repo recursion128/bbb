@@ -18,7 +18,8 @@ use bbb_protocol::packets::{
     ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
-    allay_hand_attach_transform, bake_generated_item_quads, bake_item_frame_map_surface,
+    allay_hand_attach_transform, bake_first_person_map_decoration_surface,
+    bake_first_person_map_text_surface, bake_generated_item_quads, bake_item_frame_map_surface,
     bake_item_model_mesh_with_light_and_overlay,
     bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
@@ -28,10 +29,11 @@ use bbb_renderer::{
     mooshroom_mushroom_block_transforms, panda_held_item_transform, primed_tnt_block_transform,
     snow_golem_head_block_transform, villager_crossed_arms_item_transform,
     witch_held_item_transform, CameraPose, EntityModelInstance, EntityModelKind,
-    HumanoidModelFamily, IllagerModelFamily, ItemFrameMapSurface, ItemFrameMapTexture,
-    ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant,
-    PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT,
-    ITEM_MODEL_NO_OVERLAY,
+    HumanoidModelFamily, IllagerModelFamily, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelFoil, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    MooshroomVariant, PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{BlockPos, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -763,6 +765,9 @@ pub(crate) struct FirstPersonItemModels {
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
+    pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    pub map_text_surfaces: Vec<ItemFrameMapTextSurface>,
 }
 
 impl FirstPersonItemModels {
@@ -778,6 +783,9 @@ impl FirstPersonItemModels {
             flat_glint_translucent_meshes: Vec::new(),
             map_textures: Vec::new(),
             map_surfaces: Vec::new(),
+            map_decoration_textures: Vec::new(),
+            map_decoration_surfaces: Vec::new(),
+            map_text_surfaces: Vec::new(),
         }
     }
 }
@@ -1122,6 +1130,41 @@ pub(crate) fn first_person_item_models(
                     map_transform,
                     ITEM_MODEL_FULL_BRIGHT_LIGHT,
                 ));
+                let mut visible_decoration_index = 0;
+                let mut text_submit_sequence = 0;
+                for decoration in &map.decorations {
+                    if let Some(surface) = bake_first_person_map_decoration_surface(
+                        decoration.type_id,
+                        decoration.x,
+                        decoration.y,
+                        decoration.rot,
+                        visible_decoration_index,
+                        map_transform,
+                        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        visible_decoration_index + 1,
+                    ) {
+                        models.map_decoration_surfaces.push(surface);
+                        if let Some(name) = decoration.name.as_ref() {
+                            if let Some(glyphs) = item_runtime.map_text_glyphs() {
+                                if let Some(text_surface) = bake_first_person_map_text_surface(
+                                    decoration.type_id,
+                                    name.as_str(),
+                                    decoration.x,
+                                    decoration.y,
+                                    visible_decoration_index,
+                                    map_transform,
+                                    ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                                    text_submit_sequence,
+                                    glyphs,
+                                ) {
+                                    models.map_text_surfaces.push(text_surface);
+                                    text_submit_sequence += 1;
+                                }
+                            }
+                        }
+                        visible_decoration_index += 1;
+                    }
+                }
             }
             continue;
         }
@@ -1247,6 +1290,9 @@ pub(crate) fn first_person_item_models(
     }
 
     models.map_textures = map_textures.into_values().collect();
+    if !models.map_decoration_surfaces.is_empty() {
+        models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
+    }
     models
 }
 
@@ -4067,6 +4113,105 @@ mod tests {
             "offhand maps use vanilla's one-handed map branch"
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_render_filled_map_decorations_and_text() {
+        let item_runtime = NativeItemRuntime::empty_for_test();
+        let mut map = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        map.component_patch.map_id = Some(9);
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: map });
+        assert!(world.apply_map_item_data(MapItemData {
+            map_id: 9,
+            scale: 0,
+            locked: false,
+            decorations: Some(vec![
+                bbb_protocol::packets::MapDecoration {
+                    type_id: 0,
+                    x: 0,
+                    y: 0,
+                    rot: 0,
+                    name: Some("Player".to_string()),
+                },
+                bbb_protocol::packets::MapDecoration {
+                    type_id: 1,
+                    x: -20,
+                    y: 30,
+                    rot: 7,
+                    name: Some("Frame".to_string()),
+                },
+            ]),
+            color_patch: Some(MapColorPatch {
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+                colors: vec![(1 << 2) | 2],
+            }),
+        }));
+
+        let models = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            Some(pose),
+            1.0,
+        );
+
+        assert_eq!(models.map_surfaces.len(), 1);
+        assert_eq!(models.map_decoration_surfaces.len(), 2);
+        assert_eq!(models.map_text_surfaces.len(), 2);
+        let player = &models.map_decoration_surfaces[0];
+        assert_eq!(player.submission.type_id, 0);
+        assert_eq!(
+            player.submission.texture.vanilla_sprite_id(),
+            "minecraft:player"
+        );
+        assert_eq!(
+            (player.submission.order, player.submission.submit_sequence),
+            (0, 1)
+        );
+        assert_eq!(player.submission.decoration_index, 0);
+        let frame = &models.map_decoration_surfaces[1];
+        assert_eq!(frame.submission.type_id, 1);
+        assert_eq!(
+            frame.submission.texture.vanilla_sprite_id(),
+            "minecraft:frame"
+        );
+        assert_eq!(
+            (frame.submission.order, frame.submission.submit_sequence),
+            (0, 2)
+        );
+        assert_eq!(frame.submission.decoration_index, 1);
+        assert_eq!(models.map_text_surfaces[0].submission.type_id, 0);
+        assert_eq!(models.map_text_surfaces[0].submission.text, "Player");
+        assert_eq!(
+            (
+                models.map_text_surfaces[0].submission.order,
+                models.map_text_surfaces[0].submission.submit_sequence
+            ),
+            (1, 0)
+        );
+        assert_eq!(models.map_text_surfaces[1].submission.type_id, 1);
+        assert_eq!(models.map_text_surfaces[1].submission.text, "Frame");
+        assert_eq!(
+            (
+                models.map_text_surfaces[1].submission.order,
+                models.map_text_surfaces[1].submission.submit_sequence
+            ),
+            (1, 1)
+        );
     }
 
     #[test]
