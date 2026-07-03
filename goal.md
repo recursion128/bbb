@@ -414,6 +414,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ClientPacketListener.handleAnimate` 生成 crit / enchanted-hit
     `TrackingEmitter`，默认 3 tick，每 tick 16 次单位球采样，并复用实体当前
     AABB width/height；
+    `ClientboundGameEvent` 的 elder-guardian effect 现在按 vanilla 在本地玩家
+    脚部位置生成 `minecraft:elder_guardian` 粒子，并在 param floor 为 1 时播放
+    `minecraft:entity.elder_guardian.curse`；同组 game event 的
+    `minecraft:entity.arrow.hit_player` 与 `minecraft:entity.puffer_fish.sting`
+    本地玩家位置声效也已接到 native audio；
     同一 event `35` 现在还按 vanilla `SoundEvents.TOTEM_USE` 在实体当前位置
     播放 `minecraft:item.totem.use` 本地位置声效，source 来自当前实体的
     `getSoundSource()` 映射（player/hostile/default neutral 等）；
@@ -440,10 +445,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
     totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
-    vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
+    GameEvent elder-guardian 粒子、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
     collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke），以及 local sound（不含 DripParticle
     honey/dripstone fall-and-land 落地本地声效、totem event-35
-    `minecraft:item.totem.use` 本地位置声效）/ block-state removal gates。
+    `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
+    elder-guardian-curse 本地玩家位置声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

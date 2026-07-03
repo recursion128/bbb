@@ -262,13 +262,18 @@ When an agent does any of the following, update this file in the same slice:
       - `ClientboundAnimate` actions `4`/`5` now feed vanilla crit /
         enchanted-hit `TrackingEmitter` particles through native with the
         default 3-tick lifetime and the entity's current AABB width/height
+      - `ClientboundGameEvent` elder-guardian effect now feeds the vanilla
+        `minecraft:elder_guardian` particle at the local player's feet; the
+        same GameEvent side-effect path emits arrow-hit, puffer-fish sting, and
+        elder-guardian curse sounds at the vanilla local-player positions
       - entity event `35` now also records and dispatches vanilla
         `minecraft:item.totem.use` as a positioned local sound at the entity's
         current position, with `Entity.getSoundSource()`-shaped source mapping
       - remaining deferred work is broader collision clipping parity for
         special contexts and player-coupled particle emitters beyond
         `SpellParticle`, local PlayerCloud pull, the totem event-35 tracking
-        emitter, and animate 4/5 crit/enchanted-hit tracking emitters
+        emitter, animate 4/5 crit/enchanted-hit tracking emitters, and the
+        GameEvent elder-guardian particle
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types
@@ -405,6 +410,11 @@ When an agent does any of the following, update this file in the same slice:
       Native animate handling now also expands vanilla actions `4`/`5` into
       crit / enchanted-hit `TrackingEmitter` batches with the default 3 delayed
       ticks and the same entity AABB width/height sampling.
+      Native GameEvent handling now expands vanilla elder-guardian effect into
+      a `minecraft:elder_guardian` command at the local player's feet, and emits
+      `entity.arrow.hit_player`, `entity.puffer_fish.sting`, and
+      `entity.elder_guardian.curse` positioned sounds at the vanilla local
+      player eye/feet positions.
       The same entity event now emits `minecraft:item.totem.use` as a
       positioned local sound at the current entity position, with source
       mapping derived from vanilla `Entity.getSoundSource()` (`Player` /

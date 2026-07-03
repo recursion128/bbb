@@ -2764,6 +2764,18 @@
     effects, and native maps them to `minecraft:crit` / `minecraft:enchanted_hit`
     delayed batches. Tests cover world forwarding, missing-entity gating, native
     particle ids, entity bounds, and the 3-tick lifetime.
+  - [x] GameEvent local-player particle/audio side effects：local vanilla 26.1
+    `ClientPacketListener.handleGameEvent` maps event `6`
+    (`PLAY_ARROW_HIT_SOUND`) to `SoundEvents.ARROW_HIT_PLAYER` at the local
+    player's eye Y, event `9` (`PUFFER_FISH_STING`) to
+    `SoundEvents.PUFFER_FISH_STING` at the local player's feet, and event `10`
+    (`GUARDIAN_ELDER_EFFECT`) to an `ELDER_GUARDIAN` particle at the local
+    player's feet plus `SoundEvents.ELDER_GUARDIAN_CURSE` when
+    `Mth.floor(param) == 1`. `WorldStore` now forwards those side effects from
+    applied GameEvent packets, and native emits positioned audio plus a
+    synthetic single-particle `minecraft:elder_guardian` command through the
+    existing particle resolver. Tests cover pose gating, eye/feet positions,
+    sound categories, param flooring, and particle packet/context plumbing.
 
 ## P2：Terrain / Block Render Presentation
 

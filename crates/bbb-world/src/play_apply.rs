@@ -7,7 +7,8 @@
 //! mutation and the deterministic level-event random stream live here.
 
 use bbb_protocol::packets::{
-    ChatAcknowledgement, LevelEvent as ProtocolLevelEvent, PlayClientbound, Vec3d as ProtocolVec3d,
+    ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
+    PlayClientbound, Vec3d as ProtocolVec3d,
 };
 
 use crate::{
@@ -51,6 +52,7 @@ const CRITICAL_HIT_ANIMATION_ACTION: u8 = 4;
 const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
+const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 
 /// Growth level-event particle spawn mode; only the random-consumption shape
 /// matters for callers without a particle sink.
@@ -89,6 +91,7 @@ pub trait PlayApplyEffects {
     ) {
     }
     fn firework_empty_explosion_particles(&mut self, _world: &WorldStore, _position: [f64; 3]) {}
+    fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, _position: ProtocolVec3d) {}
     fn tracking_emitter_particles(
         &mut self,
         _world: &WorldStore,
@@ -516,6 +519,12 @@ impl WorldStore {
             }
             PlayClientbound::GameEvent(update) => {
                 self.apply_game_event(update);
+                if let Some(position) = self.elder_guardian_effect_particle_position(update) {
+                    effects.elder_guardian_effect_particles(self, position);
+                }
+                if let Some(state) = self.game_event_positioned_sound(update) {
+                    effects.positioned_sound(&state);
+                }
             }
             PlayClientbound::GameRuleValues(update) => {
                 self.apply_game_rule_values(update);
@@ -620,6 +629,15 @@ impl WorldStore {
             | PlayClientbound::Unknown { .. }) => return Some(packet),
         }
         None
+    }
+
+    fn elder_guardian_effect_particle_position(
+        &self,
+        event: ProtocolGameEvent,
+    ) -> Option<ProtocolVec3d> {
+        (event.event_id == GUARDIAN_ELDER_EFFECT_GAME_EVENT)
+            .then(|| self.local_player_pose().map(|pose| pose.position))
+            .flatten()
     }
 
     /// Vanilla `LevelRenderer.levelEvent` client effects: canonical state,
@@ -1198,24 +1216,30 @@ fn advance_particle_utils_spawn_particles_randoms(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, LevelEvent,
-        PlayTime, SoundEvent, SoundEventHolder, SoundSource, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityEvent, GameEvent,
+        LevelEvent, PlayTime, SoundEvent, SoundEventHolder, SoundSource, Vec3d,
     };
     use uuid::Uuid;
 
     #[derive(Default)]
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
+        elder_guardian_effect_particles: Vec<Vec3d>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
     }
 
     impl PlayApplyEffects for RecordingEffects {
         fn positioned_sound(&mut self, state: &SoundEventState) {
             self.positioned_sounds.push(state.clone());
+        }
+
+        fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, position: Vec3d) {
+            self.elder_guardian_effect_particles.push(position);
         }
 
         fn tracking_emitter_particles(
@@ -1350,6 +1374,118 @@ mod tests {
         assert!(leftover.is_none());
         assert_eq!(effects.positioned_sounds.len(), 1);
         assert_eq!(effects.positioned_sounds[0].seed, 42);
+    }
+
+    #[test]
+    fn game_events_forward_local_player_audio_and_particles() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: 2.0,
+                y: 64.0,
+                z: -5.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::GameEvent(GameEvent {
+                event_id: 6,
+                param: 0.0,
+            }),
+            PlayClientbound::GameEvent(GameEvent {
+                event_id: 9,
+                param: 0.0,
+            }),
+            PlayClientbound::GameEvent(GameEvent {
+                event_id: 10,
+                param: 1.75,
+            }),
+            PlayClientbound::GameEvent(GameEvent {
+                event_id: 10,
+                param: 0.0,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 3);
+        assert_eq!(
+            effects.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:entity.arrow.hit_player")
+        );
+        assert_eq!(effects.positioned_sounds[0].source, "player");
+        assert_eq!(
+            effects.positioned_sounds[0].position,
+            Vec3d {
+                x: 2.0,
+                y: 65.62,
+                z: -5.0,
+            }
+        );
+        assert_eq!(effects.positioned_sounds[0].volume, 0.18);
+        assert_eq!(effects.positioned_sounds[0].pitch, 0.45);
+        assert_eq!(
+            effects.positioned_sounds[1].sound.location.as_deref(),
+            Some("minecraft:entity.puffer_fish.sting")
+        );
+        assert_eq!(effects.positioned_sounds[1].source, "neutral");
+        assert_eq!(
+            effects.positioned_sounds[1].position,
+            Vec3d {
+                x: 2.0,
+                y: 64.0,
+                z: -5.0,
+            }
+        );
+        assert_eq!(
+            effects.positioned_sounds[2].sound.location.as_deref(),
+            Some("minecraft:entity.elder_guardian.curse")
+        );
+        assert_eq!(effects.positioned_sounds[2].source, "hostile");
+        assert_eq!(
+            effects.elder_guardian_effect_particles,
+            vec![
+                Vec3d {
+                    x: 2.0,
+                    y: 64.0,
+                    z: -5.0,
+                },
+                Vec3d {
+                    x: 2.0,
+                    y: 64.0,
+                    z: -5.0,
+                },
+            ]
+        );
+        assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[2]));
+        assert_eq!(store.counters().game_event_packets, 4);
+    }
+
+    #[test]
+    fn game_event_side_effects_require_local_player_pose() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for event_id in [6, 9, 10] {
+            let leftover = store.apply_play_packet(
+                PlayClientbound::GameEvent(GameEvent {
+                    event_id,
+                    param: 1.0,
+                }),
+                &mut random,
+                &mut effects,
+            );
+            assert!(leftover.is_none());
+        }
+
+        assert!(effects.positioned_sounds.is_empty());
+        assert!(effects.elder_guardian_effect_particles.is_empty());
+        assert_eq!(store.counters().game_event_packets, 3);
     }
 
     #[test]

@@ -4393,6 +4393,117 @@ fn debug_game_events_update_world_counters() {
 }
 
 #[test]
+fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
+    let (tx, mut rx) = mpsc::channel(4);
+    for (event_id, param) in [(6, 0.0), (9, 0.0), (10, 1.75), (10, 0.0)] {
+        tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
+            bbb_protocol::packets::GameEvent { event_id, param },
+        )))
+        .unwrap();
+    }
+
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 4.0,
+            y: 70.0,
+            z: -1.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 3);
+    let expected = [
+        (
+            "minecraft:entity.arrow.hit_player",
+            AudioCategory::Players,
+            [4.0, 71.62, -1.0],
+            0.18,
+            0.45,
+        ),
+        (
+            "minecraft:entity.puffer_fish.sting",
+            AudioCategory::Neutral,
+            [4.0, 70.0, -1.0],
+            1.0,
+            1.0,
+        ),
+        (
+            "minecraft:entity.elder_guardian.curse",
+            AudioCategory::Hostile,
+            [4.0, 70.0, -1.0],
+            1.0,
+            1.0,
+        ),
+    ];
+    for (command, (event_id, category, position, volume, pitch)) in
+        audio.commands.iter().zip(expected)
+    {
+        let AudioCommand::PlayPositionedSound(command) = command else {
+            panic!("expected positioned sound, got {command:?}");
+        };
+        assert_eq!(command.sound.event_id, event_id);
+        assert_eq!(command.category, category);
+        assert_close(command.position[0] as f32, position[0] as f32);
+        assert_close(command.position[1] as f32, position[1] as f32);
+        assert_close(command.position[2] as f32, position[2] as f32);
+        assert_close(command.packet_volume, volume);
+        assert_close(command.packet_pitch, pitch);
+        assert_eq!(command.seed, 0);
+    }
+
+    assert_eq!(particles.packets.len(), 2);
+    assert_eq!(particles.contexts.len(), 2);
+    for packet in &particles.packets {
+        assert_eq!(
+            packet.particle.particle_type_id,
+            crate::particle_runtime::ELDER_GUARDIAN_PARTICLE_TYPE_ID
+        );
+        assert_eq!(
+            packet.position,
+            ProtocolVec3d {
+                x: 4.0,
+                y: 70.0,
+                z: -1.0,
+            }
+        );
+        assert_eq!(packet.offset, ProtocolVec3d::default());
+        assert_eq!(packet.max_speed, 1.0);
+        assert_eq!(packet.count, 0);
+        assert!(!packet.override_limiter);
+        assert!(!packet.always_show);
+    }
+    for context in &particles.contexts {
+        let camera_position = context.camera_position.expect("camera position");
+        assert_close(camera_position[0] as f32, 4.0);
+        assert_close(camera_position[1] as f32, 71.62);
+        assert_close(camera_position[2] as f32, -1.0);
+    }
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().game_event_packets, 4);
+}
+
+#[test]
 fn block_destruction_event_updates_world_and_counter() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::BlockDestruction(
@@ -7713,6 +7824,15 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.totem.use": {
                 "sounds": ["item/totem/use"]
+            },
+            "entity.arrow.hit_player": {
+                "sounds": ["random/bowhit"]
+            },
+            "entity.puffer_fish.sting": {
+                "sounds": ["mob/puffer_fish/sting"]
+            },
+            "entity.elder_guardian.curse": {
+                "sounds": ["mob/elderguardian/curse"]
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]

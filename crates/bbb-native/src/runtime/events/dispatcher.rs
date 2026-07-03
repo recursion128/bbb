@@ -2,7 +2,10 @@ use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
-use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, RegistryData, Vec3d as ProtocolVec3d};
+use bbb_protocol::packets::{
+    BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, RegistryData,
+    Vec3d as ProtocolVec3d,
+};
 use bbb_world::{
     BlockPos as WorldBlockPos, EntityTrackingEmitterParticleKind, LevelEventGrowthRandomMode,
     LevelEventSoundRandomState, PlayApplyEffects, TerrainFluidKind, WorldStore,
@@ -16,7 +19,8 @@ use crate::particle_runtime::{
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState, CRIT_PARTICLE_TYPE_ID,
-    ENCHANTED_HIT_PARTICLE_TYPE_ID, TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+    ELDER_GUARDIAN_PARTICLE_TYPE_ID, ENCHANTED_HIT_PARTICLE_TYPE_ID,
+    TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
 };
 
 use super::control_state::apply_control_projection_event;
@@ -278,6 +282,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         );
     }
 
+    fn elder_guardian_effect_particles(&mut self, world: &WorldStore, position: ProtocolVec3d) {
+        emit_elder_guardian_effect_particles(
+            self.particle_events,
+            self.particle_renderer,
+            position,
+            camera_audio_position_from_world(world),
+        );
+    }
+
     fn tracking_emitter_particles(
         &mut self,
         world: &WorldStore,
@@ -440,6 +453,41 @@ fn emit_firework_empty_explosion_particles(
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch =
             particle_events.spawn_firework_empty_explosion_particles(position, camera_position);
+        if let Some(renderer) = particle_renderer.as_deref_mut() {
+            renderer.submit_particle_spawns(batch);
+        }
+    }
+}
+
+fn emit_elder_guardian_effect_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    position: ProtocolVec3d,
+    camera_position: Option<ProtocolVec3d>,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let packet = LevelParticles {
+            override_limiter: false,
+            always_show: false,
+            position,
+            offset: ProtocolVec3d::default(),
+            max_speed: 1.0,
+            count: 0,
+            particle: ParticlePayload {
+                particle_type_id: ELDER_GUARDIAN_PARTICLE_TYPE_ID,
+                raw_options: Vec::new(),
+            },
+        };
+        let batch = particle_events.spawn_level_particles(
+            &packet,
+            LevelParticleSpawnContext {
+                camera_position: camera_position
+                    .map(|position| [position.x, position.y, position.z]),
+                ..LevelParticleSpawnContext::default()
+            },
+            None,
+            None,
+        );
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }

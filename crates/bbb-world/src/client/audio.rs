@@ -7,9 +7,10 @@ use std::{
 use bbb_protocol::{
     entity_types::*,
     packets::{
-        LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
-        SoundEvent as ProtocolSoundEvent, SoundEventHolder as ProtocolSoundEventHolder,
-        SoundSource, StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
+        GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
+        SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
+        SoundEventHolder as ProtocolSoundEventHolder, SoundSource, StopSound as ProtocolStopSound,
+        Vec3d as ProtocolVec3d,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,12 @@ const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
+const PLAY_ARROW_HIT_SOUND_GAME_EVENT: u8 = 6;
+const PUFFER_FISH_STING_GAME_EVENT: u8 = 9;
+const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
+const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
+const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
+const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
 const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
@@ -303,6 +310,53 @@ impl WorldStore {
             },
             volume: 1.0,
             pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub fn game_event_positioned_sound(
+        &mut self,
+        event: ProtocolGameEvent,
+    ) -> Option<SoundEventState> {
+        let pose = self.local_player_pose()?;
+        let feet_position = pose.position;
+        let eye_position = ProtocolVec3d {
+            x: feet_position.x,
+            y: feet_position.y + pose.eye_height(),
+            z: feet_position.z,
+        };
+        let (sound, source, position, volume, pitch) = match event.event_id {
+            PLAY_ARROW_HIT_SOUND_GAME_EVENT => (
+                ARROW_HIT_PLAYER_SOUND_EVENT,
+                SoundSource::Players,
+                eye_position,
+                0.18,
+                0.45,
+            ),
+            PUFFER_FISH_STING_GAME_EVENT => (
+                PUFFER_FISH_STING_SOUND_EVENT,
+                SoundSource::Neutral,
+                feet_position,
+                1.0,
+                1.0,
+            ),
+            GUARDIAN_ELDER_EFFECT_GAME_EVENT if game_event_param_floor(event.param) == Some(1) => (
+                ELDER_GUARDIAN_CURSE_SOUND_EVENT,
+                SoundSource::Hostile,
+                feet_position,
+                1.0,
+                1.0,
+            ),
+            _ => return None,
+        };
+        let state = SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: source.as_str().to_string(),
+            position,
+            volume,
+            pitch,
             seed: 0,
             distance_delay: false,
         };
@@ -1140,6 +1194,10 @@ fn direct_sound_holder(sound: &str) -> SoundHolderState {
         location: Some(sound.to_string()),
         fixed_range: None,
     }
+}
+
+fn game_event_param_floor(param: f32) -> Option<i32> {
+    param.is_finite().then_some(param.floor() as i32)
 }
 
 fn is_air_block_name(name: &str) -> bool {
