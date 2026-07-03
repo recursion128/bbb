@@ -609,10 +609,12 @@ When an agent does any of the following, update this file in the same slice:
         `ComposterFillProvider`, plain `Provider` for `mycelium`, and
         `EggCrackProvider`: random sprite selection, provider tint,
         suspended-town size scaling, provider initial-speed transform,
-        lifetime, and friction metadata
+        lifetime, friction metadata, and the vanilla collision-free
+        `SuspendedTownParticle.move` override
       - `SuspendedTownParticle.DolphinSpeedProvider` blue tint, random alpha,
         suspended-town size scaling, provider initial-speed transform, half
-        lifetime, and friction metadata
+        lifetime, friction metadata, and the vanilla collision-free
+        `SuspendedTownParticle.move` override
       - `HeartParticle.Provider` random sprite selection, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, no-physics, and blocked-y speed-up metadata

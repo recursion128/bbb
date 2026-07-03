@@ -404,11 +404,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `DragonBreathParticle` 现在使用 vanilla 专用 tick motion：Y 未移动时先让
     X/Z 速度 `*1.1` 再施加 friction，且 Y 速度只在 `onGround` 设置持久
     `hasHitGround` 后追加 `0.002` 上升并参与摩擦；
+    `SuspendedTownParticle` 系 provider（happy_villager / composter /
+    dolphin / mycelium / egg_crack）现在表达 vanilla 覆写的 collision-free
+    `move`；
     剩余 gravity/collision/player-coupled work 是其他特殊 context 和
     player-coupled emitter（不含 SpellParticle、本地 PlayerCloud 牵引、
-    vibration entity target refresh 与 DragonBreath hit-ground motion），以及
-    local sound（不含 DripParticle honey/dripstone fall-and-land 落地本地声效）/
-    block-state removal gates。
+    vibration entity target refresh、DragonBreath hit-ground motion 与
+    SuspendedTown collision-free move），以及 local sound（不含 DripParticle
+    honey/dripstone fall-and-land 落地本地声效）/ block-state removal gates。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

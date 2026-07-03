@@ -5068,6 +5068,33 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_suspended_town_move_ignores_collision_callback() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:happy_villager", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        assert!(instance.has_physics);
+        assert!(instance.moves_without_collision);
+        particles.active_instances.push_back(instance);
+
+        let mut collision_queries = 0;
+        let summary = particles.advance_with_collision(1, |_query| {
+            collision_queries += 1;
+            [0.0, 0.0, 0.0]
+        });
+
+        assert_eq!(collision_queries, 0);
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(!instance.on_ground);
+        assert!(!instance.stopped_by_collision);
+        assert_close3(instance.position, [1.2, 1.6, 2.4]);
+        assert_close3(instance.velocity, [0.198, -0.396, -0.594]);
+    }
+
+    #[test]
     fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
@@ -7100,6 +7127,7 @@ mod tests {
         assert_range_f32(dolphin.color[3], 0.3, 1.0);
         assert_eq!(dolphin.friction, 0.99);
         assert!(dolphin.has_physics);
+        assert!(dolphin.moves_without_collision);
         assert_ne!(dolphin.velocity, [0.0, 0.0, 0.0]);
 
         let mut happy_villager_random = ParticleRandom::new(47);
@@ -7124,6 +7152,7 @@ mod tests {
         assert_eq!(happy_villager.friction, 0.99);
         assert_eq!(happy_villager.gravity, 0.0);
         assert!(happy_villager.has_physics);
+        assert!(happy_villager.moves_without_collision);
         assert_ne!(happy_villager.velocity, [0.0, 0.0, 0.0]);
 
         let mut composter_random = ParticleRandom::new(48);
@@ -7138,6 +7167,7 @@ mod tests {
         assert!((3..=7).contains(&composter.lifetime_ticks));
         assert_eq!(composter.quad_size_curve, ParticleQuadSizeCurve::Constant);
         assert_eq!(composter.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!(composter.moves_without_collision);
         assert_ne!(composter.velocity, [0.0, 0.0, 0.0]);
 
         let mut mycelium_random = ParticleRandom::new(49);
@@ -7150,6 +7180,7 @@ mod tests {
         assert_eq!(mycelium.color[0], mycelium.color[1]);
         assert_eq!(mycelium.color[1], mycelium.color[2]);
         assert_eq!(mycelium.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!(mycelium.moves_without_collision);
         assert_ne!(mycelium.velocity, [0.0, 0.0, 0.0]);
 
         let mut egg_crack_random = ParticleRandom::new(50);
@@ -7160,6 +7191,7 @@ mod tests {
         assert_eq!(egg_crack.provider, "SuspendedTownParticle.EggCrackProvider");
         assert_eq!(egg_crack.color, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(egg_crack.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!(egg_crack.moves_without_collision);
         assert_ne!(egg_crack.velocity, [0.0, 0.0, 0.0]);
 
         let mut smoke_random = ParticleRandom::new(44);

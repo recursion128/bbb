@@ -2494,6 +2494,13 @@
     tick before applying friction. Renderer particles now carry this as an
     explicit `DragonBreath` tick descriptor with deterministic runtime tests for
     hovering, rising, and hit-ground branches.
+  - [x] SuspendedTown collision-free move：local vanilla 26.1
+    `SuspendedTownParticle` overrides `move` to translate the bounding box
+    directly instead of using `Particle.move` collision clipping. Renderer
+    descriptors now mark the happy-villager, composter, dolphin, mycelium, and
+    egg-crack providers as `moves_without_collision`, and runtime tests assert
+    the collision callback is not invoked while velocity still damps by vanilla
+    friction.
 
 ## P2：Terrain / Block Render Presentation
 

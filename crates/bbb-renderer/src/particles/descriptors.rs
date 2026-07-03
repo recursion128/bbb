@@ -2066,7 +2066,15 @@ impl ParticleDescriptor {
     }
 
     pub(crate) fn moves_without_collision(self) -> bool {
-        matches!(self.provider, "EndRodParticle.Provider")
+        matches!(
+            self.provider,
+            "EndRodParticle.Provider"
+                | "SuspendedTownParticle.HappyVillagerProvider"
+                | "SuspendedTownParticle.ComposterFillProvider"
+                | "SuspendedTownParticle.DolphinSpeedProvider"
+                | "SuspendedTownParticle.EggCrackProvider"
+                | "SuspendedTownParticle.Provider"
+        )
     }
 
     pub(crate) fn air_downward_acceleration(self) -> f64 {
