@@ -658,9 +658,11 @@ When an agent does any of the following, update this file in the same slice:
         `64 / (random * 0.8 + 0.2)`, and
         `128 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`,
         and `0.06`. The falling provider now removes on `onGround` through the
-        collision-backed `move` path. Hang-to-fall child spawning,
-        fall-to-land child spawning, and local drip sound remain deferred with
-        world-coupled particle/audio work.
+        collision-backed `move` path. The landing provider now uses the
+        collision-backed `DripParticle` move/friction path without
+        `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
+        child spawning, fall-to-land child spawning, and local drip sound remain
+        deferred with world-coupled particle/audio work.
       - `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` use random
         sprite selection, zero initial velocity, DripParticle opaque layer,
@@ -669,9 +671,11 @@ When an agent does any of the following, update this file in the same slice:
         override, lifetimes `100`, `64 / (random * 0.8 + 0.2)`, and
         `28 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
         `0.06`. The falling provider now removes on `onGround` through the
-        collision-backed `move` path. Hang-to-fall child spawning and
-        fall-to-land child spawning remain deferred with world-coupled
-        particle/audio work.
+        collision-backed `move` path. The landing provider now uses the
+        collision-backed `DripParticle` move/friction path without
+        `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
+        child spawning and fall-to-land child spawning remain deferred with
+        world-coupled particle/audio work.
       - `DripParticle.LavaHangProvider`, `LavaFallProvider`, and
         `LavaLandProvider` use random sprite selection, zero initial velocity,
         DripParticle opaque layer, physics metadata, `0.98` friction, direct
@@ -684,7 +688,9 @@ When an agent does any of the following, update this file in the same slice:
         child spawning, fall-to-land child spawning, and lava-fluid removal
         remain deferred with world-coupled particle/audio work; the falling
         provider now removes on `onGround` through the collision-backed `move`
-        path.
+        path, and the landing provider now uses collision-backed
+        `DripParticle` move/friction without `WaterDropParticle`'s random
+        on-ground removal branch.
       - `DripParticle.WaterHangProvider` and `WaterFallProvider` use random
         sprite selection, zero initial velocity, DripParticle opaque layer,
         physics metadata, fixed blue tint, non-glowing world light, `0.98`
@@ -839,8 +845,10 @@ When an agent does any of the following, update this file in the same slice:
         and water-drop damping. `rain` preserves the constructor random x/z
         velocity damped by `0.3`, `0.1..0.3` y velocity, and `0.06`
         gravity; `splash` uses `0.04` gravity and the horizontal command
-        branch `(xa, 0.1, za)`. Ground/block/fluid removal remains with the
-        world-coupled collision follow-up.
+        branch `(xa, 0.1, za)`. Runtime ticks now use the collision-backed
+        `move` path and apply vanilla `onGround` 50% random removal plus X/Z
+        ground damping; block/fluid in-block removal remains deferred until
+        particle ticks can query world block/fluid state.
         `fishing` now maps to `WakeParticle.Provider` with first sprite
         initialization, vanilla single-quad size, `8 / (random * 0.8 + 0.2)`
         lifetime, command velocity, opaque layer, physics metadata, `0.98`
@@ -6389,8 +6397,10 @@ When an agent does any of the following, update this file in the same slice:
         hang-particle `0.02` post-move damping, lifetimes `100`,
         `64/(random*.8+.2)`, and `128/(random*.8+.2)`, with gravity
         `0.000012`, `0.01`, and `0.06`. The falling provider now removes on
-        `onGround` through the collision-backed `move` path. Hang-to-fall child
-        spawning, fall-to-land child spawning, and local drip sound remain
+        `onGround` through the collision-backed `move` path. The landing
+        provider now uses collision-backed `DripParticle` move/friction without
+        `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
+        child spawning, fall-to-land child spawning, and local drip sound remain
         deferred to the world-coupled particle/audio follow-up.
       - particle descriptors map `DripParticle.ObsidianTearHangProvider`,
         `ObsidianTearFallProvider`, and `ObsidianTearLandProvider` for
@@ -6401,8 +6411,10 @@ When an agent does any of the following, update this file in the same slice:
         post-move damping, glowing block-light override, lifetimes `100`,
         `64/(random*.8+.2)`, and `28/(random*.8+.2)`, with gravity
         `0.000012`, `0.01`, and `0.06`. The falling provider now removes on
-        `onGround` through the collision-backed `move` path. Hang-to-fall child
-        spawning and fall-to-land child spawning remain deferred to the
+        `onGround` through the collision-backed `move` path. The landing
+        provider now uses collision-backed `DripParticle` move/friction without
+        `WaterDropParticle`'s random on-ground removal branch. Hang-to-fall
+        child spawning and fall-to-land child spawning remain deferred to the
         world-coupled particle/audio follow-up.
       - particle descriptors map `BubblePopParticle.Provider` to fixed lifetime
         `4`, age sprites, command velocity, default `SingleQuadParticle` white
@@ -6459,8 +6471,10 @@ When an agent does any of the following, update this file in the same slice:
         motion, and damping. `rain` uses constructor random x/z velocity
         damped by `0.3`, `0.1..0.3` y velocity, and `0.06` gravity;
         `splash` uses `0.04` gravity and the vanilla horizontal command
-        branch `(xa, 0.1, za)`. Ground/block/fluid removal remains deferred
-        until world-coupled particle collision state is represented.
+        branch `(xa, 0.1, za)`. Runtime ticks now use collision-backed `move`
+        and apply vanilla `onGround` 50% random removal plus X/Z ground damping;
+        block/fluid in-block removal remains deferred until particle ticks can
+        query world block/fluid state.
       - particle descriptors map `WakeParticle.Provider` for `fishing` to
         first sprite initialization, vanilla single-quad size,
         `8/(random*.8+.2)` lifetime, command velocity, opaque particle layer,
@@ -6591,8 +6605,8 @@ When an agent does any of the following, update this file in the same slice:
         copper lantern weathering/waxed variants). Full mapColor catalog
         coverage is now pinned by the registry-wide falling-dust color test;
         biome-aware per-spawn BlockColors now use the same spawn-position
-        world probe path as terrain particles. On-ground roll reset remains
-        deferred until particle ticking can query world block/collision state.
+        world probe path as terrain particles. On-ground roll reset is now
+        covered by collision-backed particle ticking.
       - native spawn resolution mirrors `TerrainParticle.createTerrainParticle`
         for definition-less `minecraft:block`, `minecraft:dust_pillar`, and
         `minecraft:block_crumble` submissions: air, `moving_piston`, and

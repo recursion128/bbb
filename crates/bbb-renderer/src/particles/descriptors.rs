@@ -44,6 +44,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     CoolingDripHang,
     DripFalling,
     DripFallAndLand,
+    DripLand,
     DustPlume,
     WaterDrop,
     Wake,
@@ -2007,7 +2008,7 @@ impl ParticleDescriptor {
             }
             "DripParticle.HoneyLandProvider"
             | "DripParticle.ObsidianTearLandProvider"
-            | "DripParticle.LavaLandProvider" => ParticleTickMotionDescriptor::WaterDrop,
+            | "DripParticle.LavaLandProvider" => ParticleTickMotionDescriptor::DripLand,
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -3625,7 +3626,7 @@ mod tests {
                 },
                 [0.522, 0.408, 0.082],
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripLand,
             ),
         ] {
             assert_descriptor(
@@ -3679,7 +3680,7 @@ mod tests {
                     span_tenths: 8,
                 },
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripLand,
             ),
         ] {
             assert_descriptor(
@@ -3737,7 +3738,7 @@ mod tests {
                 ParticleLifetimeDescriptor::SixteenOverRandom,
                 [1.0, 0.285_714_3, 0.083_333_336],
                 0.06,
-                ParticleTickMotionDescriptor::WaterDrop,
+                ParticleTickMotionDescriptor::DripLand,
             ),
         ] {
             assert_descriptor(

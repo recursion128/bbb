@@ -353,8 +353,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `falling_obsidian_tear` / `falling_lava` / `falling_water` /
     dripstone falling variants) 现在也通过 world collision callback 的 vanilla
     `move` 路径在 `onGround` 时移除；
+    `WaterDropParticle.Provider` / `SplashParticle.Provider` (`rain` /
+    `splash`) 现在用同一 collision-backed `move` 路径，并在 `onGround` 时应用
+    vanilla 50% 随机移除与 X/Z damping；honey / obsidian tear / lava
+    landing providers 现在拆成 `DripLand` tick，使用 vanilla `DripParticle`
+    move/friction 而不套用 `WaterDropParticle` 的随机落地移除；
     剩余 gravity/collision/player-coupled work 是特殊 context 和
-    player-coupled emitter。
+    player-coupled emitter，以及需要 world block/fluid 查询的 in-block
+    particle removal。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。

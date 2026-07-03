@@ -2342,6 +2342,14 @@
     active particle when `onGround` becomes true. The landing child particles,
     drip sounds, and fluid removal gates remain deferred; tests cover descriptor
     mapping and runtime removal via a collision callback.
+  - [x] water-drop ground removal and drip-land split：`rain` and `splash`
+    now route `WaterDropParticle` ticks through the collision-backed vanilla
+    `move` path, apply the vanilla `onGround` 50% random removal gate, and keep
+    X/Z ground damping after friction. Honey, obsidian-tear, and lava landing
+    particles now use a separate `DripLand` tick motion that follows
+    `DripParticle` move/friction behavior without the WaterDrop random ground
+    removal branch. Block/fluid in-block removal remains deferred to
+    world-query-backed particle ticking.
 
 ## P2：Terrain / Block Render Presentation
 

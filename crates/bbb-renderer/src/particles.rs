@@ -1146,6 +1146,14 @@ impl ParticleInstance {
                     self.velocity[2] *= friction;
                 }
             }
+            ParticleTickMotionDescriptor::DripLand => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.move_particle(self.velocity, collide);
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+            }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -1160,13 +1168,18 @@ impl ParticleInstance {
             }
             ParticleTickMotionDescriptor::WaterDrop => {
                 self.velocity[1] -= f64::from(self.gravity);
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                self.move_particle(self.velocity, collide);
                 let friction = f64::from(self.friction);
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
+                if self.on_ground {
+                    if random.next_f32() < 0.5 {
+                        self.removed = true;
+                    }
+                    self.velocity[0] *= 0.7;
+                    self.velocity[2] *= 0.7;
+                }
             }
             ParticleTickMotionDescriptor::Wake => {
                 let life =
@@ -2689,6 +2702,30 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_water_drop_removes_on_ground_when_random_passes() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 4096);
+        let mut instance = test_instance_with_lifetime("minecraft:rain", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.gravity = 0.0;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
     fn particle_runtime_drip_falling_removes_on_ground_collision() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:falling_nectar", 20);
@@ -2732,6 +2769,34 @@ mod tests {
         assert_eq!(summary.expired_instances, 1);
         assert_eq!(summary.active_instances, 0);
         assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_drip_land_uses_collision_without_ground_removal() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 4096);
+        let mut instance = test_instance_with_lifetime("minecraft:landing_honey", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.gravity = 0.0;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert!(instance.on_ground);
+        assert!(!instance.removed);
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.position, [0.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -4440,7 +4505,7 @@ mod tests {
         assert_eq!(landing_honey.gravity, 0.06);
         assert_eq!(
             landing_honey.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripLand
         );
         assert_eq!(landing_honey.render_layer, ParticleRenderLayer::Opaque);
 
@@ -4520,7 +4585,7 @@ mod tests {
         assert_eq!(landing_obsidian.gravity, 0.06);
         assert_eq!(
             landing_obsidian.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripLand
         );
         assert_eq!(
             landing_obsidian.light_emission,
@@ -4586,7 +4651,7 @@ mod tests {
         assert_eq!(landing_lava.gravity, 0.06);
         assert_eq!(
             landing_lava.tick_motion,
-            ParticleTickMotionDescriptor::WaterDrop
+            ParticleTickMotionDescriptor::DripLand
         );
         assert_eq!(
             landing_lava.light_emission,
