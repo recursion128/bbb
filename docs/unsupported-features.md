@@ -6743,7 +6743,8 @@ When an agent does any of the following, update this file in the same slice:
       root/en plus selected English regional week-data ICU numeric/date-time /
       timezone-offset subset (which now includes `u` proleptic year,
       supported-English `Y` week-year, `G` era, `D` day-of-year, and `Q`/`q`
-      quarter fields, root/en `M`/`L` month widths 1..=5, `F`
+      quarter fields, root/en `M`/`L` month widths 1..=5, `g` Julian day,
+      `F`
       day-of-week-in-month, supported-English `w`/`W` week numbers,
       supported-English `e`/`c` local weekdays, `A` milliseconds-in-day,
       root/en `a` AM/PM widths
@@ -7097,8 +7098,9 @@ When an agent does any of the following, update this file in the same slice:
       root/en plus selected English regional week-data ICU `SimpleDateFormat`
       subset (`y`/`u` year, supported-English `Y` week-year, `G` era text,
       `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d` day, `D`
-      day-of-year, supported-English `w`/`W` week-of-year / week-of-month,
-      `F` day-of-week-in-month, supported-English `E`/`e`/`c` weekdays, 24/12-hour
+      day-of-year, `g` Julian day, supported-English `w`/`W`
+      week-of-year / week-of-month, `F` day-of-week-in-month,
+      supported-English `E`/`e`/`c` weekdays, 24/12-hour
       `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
       AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
       localized-GMT `O` offsets, short `z` zone abbreviations, `VV` zone IDs,
@@ -7109,9 +7111,10 @@ When an agent does any of the following, update this file in the same slice:
       the fallback, cross-midnight `UTC+02:30` plus `Asia/Tokyo` date-time /
       weekday / AM-PM branches, UTC `X`/`x` zero-offset formatting,
       `uuuu-DDD-G` proleptic-year / day-of-year / era, `Q`/`q` quarter,
-      root/en narrow `M`/`L` month symbols, localized-GMT `O`, `F`
-      day-of-week-in-month, `A` milliseconds-in-day, root/en `a` narrow
-      AM/PM, supported-English `Y` week-year, and supported-English `w`/`W`
+      `g` Julian day, root/en narrow `M`/`L` month symbols,
+      localized-GMT `O`, `F` day-of-week-in-month, `A` milliseconds-in-day,
+      root/en `a` narrow AM/PM, supported-English `Y` week-year, and
+      supported-English `w`/`W`
       week plus `e`/`c` local weekday branches, a root/en `w` year-end boundary
       branch, a Sunday-first regional branch, and a Monday/minimal-days=4
       Jan 1 previous-week-year / previous-month `W` branch; an IANA-zone short
@@ -7220,8 +7223,9 @@ When an agent does any of the following, update this file in the same slice:
     selector and common root/en plus selected English regional week-data ICU
     date-time patterns from wall-clock time, including `y`/`u` year,
     supported-English `Y` week-year, `G` era, `D` day-of-year, `Q`/`q` quarter
-    widths 1..=5 for root/en, `F` day-of-week-in-month, supported-English
-    `w`/`W` week numbers and `e`/`c` local weekdays, fixed-offset / IANA
+    widths 1..=5 for root/en, `g` Julian day, `F` day-of-week-in-month,
+    supported-English `w`/`W` week numbers and `e`/`c` local weekdays,
+    fixed-offset / IANA
     `time_zone` IDs, `Z`/`X`/`x` offset fields, localized-GMT `O` offset
     widths, the root/en `w` year-end boundary, the Sunday-first regional
     branch, and the Monday/minimal-days=4 Jan 1 previous-week-year /

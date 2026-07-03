@@ -950,7 +950,7 @@
     root/en plus selected English regional week-data ICU `SimpleDateFormat`
     subset (`y`/`u` year, supported-English `Y` week-year, `G` era, `Q`/`q`
     quarter, root/en `M`/`L` month widths 1..=5, `d`, `D` day-of-year,
-    supported-English `w`/`W` week-of-year / week-of-month, `F`
+    `g` Julian day, supported-English `w`/`W` week-of-year / week-of-month, `F`
     day-of-week-in-month, supported-English `E`/`e`/`c` weekdays, 24/12-hour
     `H`/`k`/`K`/`h`, `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a`
     AM/PM widths 1..=5, `Z`/`X`/`x` offset fields through width 5,
@@ -967,6 +967,8 @@
     `M`/`L` mirror ICU root/en month widths 1..=5: numeric, zero-padded,
     abbreviated, wide, and narrow (`A` for August), treating format and
     stand-alone month names identically for the supported locale subset.
+    `g` mirrors ICU `Calendar.JULIAN_DAY` numeric output for the local
+    calendar date, with pattern width controlling minimum zero padding.
     `A` mirrors ICU milliseconds-in-day with pattern width as the minimum
     numeric padding.
     `a` mirrors ICU root/en AM/PM marker widths 1..=5: widths 1..=4 use
@@ -1000,8 +1002,9 @@
     Tests pin GMT Christmas selection plus cross-midnight `UTC+02:30`,
     `Asia/Tokyo`, UTC date-time / weekday / AM-PM / offset, and a
     `uuuu-DDD-G` proleptic-year / day-of-year / era branch plus a
-    `Q`/`q` quarter branch, root/en `M`/`L` narrow month branch, `A`
-    milliseconds-in-day branch, root/en `a` narrow AM/PM branch, `O`
+    `Q`/`q` quarter branch, `g` Julian day branch, root/en `M`/`L` narrow
+    month branch, `A` milliseconds-in-day branch, root/en `a` narrow AM/PM
+    branch, `O`
     localized-GMT branch, `F`
     day-of-week-in-month branch, selected-English `Y` week-year branch, and
     selected-English `w`/`W` week branch including the year-end `w` boundary,

@@ -6893,6 +6893,26 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(4), uv("date_field_clock_fallback"));
 
+    // ICU `g`: Julian day number for the local calendar date, padded to the
+    // requested minimum width.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 12, 25, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(20), uv("julian_day_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 12, 26, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(20), uv("julian_day_clock_fallback"));
+
     // ICU quarter fields: `Q/q` widths 1..=5 map to numeric / padded /
     // abbreviated / wide / narrow values. August is Q3.
     runtime.set_local_time_epoch_millis_for_test(
@@ -12797,6 +12817,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "week_year_clock",
             "us_week_clock",
             "gb_week_clock",
+            "julian_day_clock",
         ],
     );
     write_json(
@@ -13161,6 +13182,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("julian_day_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd g gggggggg",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "2026-12-25 2461400 02461400",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/julian_day_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/julian_day_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -13217,6 +13256,8 @@ fn write_local_time_select_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "us_week_clock_fallback", &[70, 100, 130, 255]);
     write_flat_item_model_and_texture(&assets, "gb_week_clock_match", &[210, 225, 245, 255]);
     write_flat_item_model_and_texture(&assets, "gb_week_clock_fallback", &[75, 105, 135, 255]);
+    write_flat_item_model_and_texture(&assets, "julian_day_clock_match", &[215, 230, 245, 255]);
+    write_flat_item_model_and_texture(&assets, "julian_day_clock_fallback", &[80, 110, 140, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {

@@ -721,6 +721,15 @@ mod tests {
     }
 
     #[test]
+    fn local_time_julian_day_number_matches_known_gregorian_dates() {
+        let date = |year, month, day| NaiveDate::from_ymd_opt(year, month, day).unwrap();
+
+        assert_eq!(julian_day_number(date(1970, 1, 1)), 2_440_588);
+        assert_eq!(julian_day_number(date(2000, 1, 1)), 2_451_545);
+        assert_eq!(julian_day_number(date(2026, 12, 25)), 2_461_400);
+    }
+
+    #[test]
     fn custom_data_predicate_accepts_snbt_compound_strings() {
         let value = Value::String(
             r#"{owner:"Alex",level:7,nested:{flag:true},lore:["two"],bytes:[B;1b,2b]}"#.to_string(),
@@ -809,7 +818,8 @@ pub(super) enum SelectProperty {
     /// wall-clock date/time pattern (root/en plus selected English regional
     /// week-data ICU subset: `y`/`u` year, supported-English `Y` week-year,
     /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
-    /// day, `D` day-of-year, supported-English `w`/`W` week numbers, `F`
+    /// day, `D` day-of-year, `g` Julian day, supported-English `w`/`W` week
+    /// numbers, `F`
     /// day-of-week-in-month, supported-English `E`/`e`/`c` weekdays,
     /// `H`/`k`/`K`/`h` hour,
     /// `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a` AM/PM widths
@@ -1550,6 +1560,7 @@ fn format_local_time_field(
         'e' | 'c' => english_locale_local_weekday(fields, count, locale),
         'd' => Some(padded_u32(fields.day, count)),
         'D' => Some(padded_u32(fields.day_of_year, count)),
+        'g' => Some(padded_i64(julian_day_number(fields.date), count)),
         'F' => Some(padded_u32((fields.day.saturating_sub(1) / 7) + 1, count)),
         'H' => Some(padded_u32(fields.hour, count)),
         'k' => {
@@ -1717,6 +1728,16 @@ fn padded_i32(value: i32, width: usize) -> String {
     }
 }
 
+fn padded_i64(value: i64, width: usize) -> String {
+    if width <= 1 {
+        value.to_string()
+    } else if value < 0 {
+        format!("-{:0width$}", value.abs(), width = width)
+    } else {
+        format!("{value:0width$}")
+    }
+}
+
 fn padded_u32(value: u32, width: usize) -> String {
     if width <= 1 {
         value.to_string()
@@ -1745,6 +1766,10 @@ fn format_year_number(year: i32, width: usize) -> String {
 
 fn milliseconds_in_day(fields: &LocalTimeFields) -> u32 {
     (((fields.hour * 60 + fields.minute) * 60 + fields.second) * 1_000) + fields.millisecond
+}
+
+fn julian_day_number(date: NaiveDate) -> i64 {
+    i64::from(date.num_days_from_ce()) + 1_721_425
 }
 
 fn english_text(locale: &str, value: &str) -> Option<String> {
