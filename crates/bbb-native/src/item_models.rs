@@ -21,7 +21,7 @@ use bbb_renderer::{
     custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
     fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
-    panda_held_item_transform, snow_golem_head_block_transform,
+    panda_held_item_transform, primed_tnt_block_transform, snow_golem_head_block_transform,
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
     EntityModelKind, HumanoidModelFamily, IllagerModelFamily, ItemModelFoil, ItemModelMesh,
     ItemModelMeshSet, ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
@@ -98,6 +98,14 @@ fn minecart_tnt_display_block_overlay(instance: &EntityModelInstance) -> [f32; 2
     }
 }
 
+fn primed_tnt_block_overlay(fuse_remaining_in_ticks: f32) -> [f32; 2] {
+    if (fuse_remaining_in_ticks as i32) / 5 % 2 == 0 {
+        [15.0, 10.0]
+    } else {
+        ITEM_MODEL_NO_OVERLAY
+    }
+}
+
 /// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
 /// counterpart to held items: the renderer supplies the posed entity-bone transform, and native resolves
 /// the block model through the terrain atlas state.
@@ -106,8 +114,14 @@ pub(crate) fn entity_block_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    entity_partial_tick: f32,
 ) -> Vec<ItemModelMesh> {
-    let attachments = entity_block_attachments(instances, world, item_runtime);
+    let attachments = entity_block_attachments(
+        instances,
+        world,
+        item_runtime,
+        entity_partial_tick.clamp(0.0, 1.0),
+    );
     if attachments.is_empty() {
         return Vec::new();
     }
@@ -138,6 +152,7 @@ fn entity_block_attachments(
     instances: &[EntityModelInstance],
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    entity_partial_tick: f32,
 ) -> Vec<EntityBlockAttachment> {
     let mut attachments = Vec::new();
     for instance in instances {
@@ -183,6 +198,21 @@ fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     overlay: minecart_tnt_display_block_overlay(instance),
+                    outline_only: entity_block_attachment_outline_only(instance),
+                });
+            }
+        }
+        if let Some(block) = world.primed_tnt_block_state(instance.entity_id) {
+            let fuse = world
+                .primed_tnt_fuse_remaining_in_ticks(instance.entity_id, entity_partial_tick)
+                .unwrap_or(80.0);
+            if let Some(transform) = primed_tnt_block_transform(instance, fuse) {
+                attachments.push(EntityBlockAttachment {
+                    block_id: Cow::Owned(block.name),
+                    properties: block.properties,
+                    transform,
+                    light: entity_render_state_shader_light(instance),
+                    overlay: primed_tnt_block_overlay(fuse),
                     outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
@@ -1749,6 +1779,7 @@ mod tests {
     use uuid::Uuid;
 
     const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
+    const BLOCK_STATE_SERIALIZER_ID: i32 = 14;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
 
@@ -1844,6 +1875,22 @@ mod tests {
         }
     }
 
+    fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(value),
+        }
+    }
+
+    fn protocol_block_state_data(data_id: u8, block_state: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: BLOCK_STATE_SERIALIZER_ID,
+            value: EntityDataValueKind::BlockState(block_state),
+        }
+    }
+
     fn world_with_enderman_carried_grass_block(entity_id: i32) -> WorldStore {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
@@ -1875,6 +1922,26 @@ mod tests {
             entity_id,
             VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
         ));
+        world
+    }
+
+    fn world_with_primed_tnt(entity_id: i32, fuse: i32, block_state: Option<i32>) -> WorldStore {
+        const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+        const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(entity_id, VANILLA_ENTITY_TYPE_TNT_ID));
+        let mut values = vec![protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, fuse)];
+        if let Some(block_state) = block_state {
+            values.push(protocol_block_state_data(
+                PRIMED_TNT_BLOCK_STATE_DATA_ID,
+                block_state,
+            ));
+        }
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: entity_id,
+            values,
+        }));
         world
     }
 
@@ -1925,6 +1992,7 @@ mod tests {
             ],
             &world,
             None,
+            1.0,
         );
 
         assert_eq!(attachments.len(), 5);
@@ -1958,7 +2026,7 @@ mod tests {
             .with_invisible(true)
             .with_appears_glowing(true);
 
-        let attachments = entity_block_attachments(&[snow_golem, mooshroom], &world, None);
+        let attachments = entity_block_attachments(&[snow_golem, mooshroom], &world, None, 1.0);
 
         assert_eq!(attachments.len(), 4);
         assert!(attachments.iter().all(|attachment| attachment.outline_only));
@@ -1985,7 +2053,7 @@ mod tests {
             .with_enderman_carrying(true)
             .with_light_coords(light_coords);
 
-        let attachments = entity_block_attachments(&[enderman], &world, None);
+        let attachments = entity_block_attachments(&[enderman], &world, None, 1.0);
 
         assert_eq!(attachments.len(), 1);
         assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
@@ -2004,7 +2072,7 @@ mod tests {
         let minecart = EntityModelInstance::minecart(entity_id, [0.0, 64.0, 0.0], 45.0)
             .with_light_coords(light_coords);
 
-        let attachments = entity_block_attachments(&[minecart], &world, None);
+        let attachments = entity_block_attachments(&[minecart], &world, None, 1.0);
 
         assert_eq!(attachments.len(), 1);
         assert_eq!(attachments[0].block_id.as_ref(), "minecraft:chest");
@@ -2025,10 +2093,10 @@ mod tests {
             .is_finite());
 
         let hidden = minecart.with_invisible(true);
-        assert!(entity_block_attachments(&[hidden], &world, None).is_empty());
+        assert!(entity_block_attachments(&[hidden], &world, None, 1.0).is_empty());
 
         let outline = hidden.with_appears_glowing(true);
-        let outline_attachments = entity_block_attachments(&[outline], &world, None);
+        let outline_attachments = entity_block_attachments(&[outline], &world, None, 1.0);
         assert_eq!(outline_attachments.len(), 1);
         assert!(outline_attachments[0].outline_only);
     }
@@ -2042,7 +2110,7 @@ mod tests {
             .with_light_coords(light_coords)
             .with_minecart_tnt_fuse_remaining_in_ticks(4.5);
 
-        let attachments = entity_block_attachments(&[primed], &world, None);
+        let attachments = entity_block_attachments(&[primed], &world, None, 1.0);
 
         assert_eq!(attachments.len(), 1);
         assert_eq!(attachments[0].block_id.as_ref(), "minecraft:tnt");
@@ -2058,17 +2126,58 @@ mod tests {
         );
 
         let unprimed = primed.with_minecart_tnt_fuse_remaining_in_ticks(-1.0);
-        let unprimed_attachment = entity_block_attachments(&[unprimed], &world, None)
+        let unprimed_attachment = entity_block_attachments(&[unprimed], &world, None, 1.0)
             .pop()
             .expect("unprimed tnt attachment");
         assert_eq!(unprimed_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
         assert_ne!(unprimed_attachment.transform, attachments[0].transform);
 
         let odd_strobe = primed.with_minecart_tnt_fuse_remaining_in_ticks(6.0);
-        let odd_strobe_attachment = entity_block_attachments(&[odd_strobe], &world, None)
+        let odd_strobe_attachment = entity_block_attachments(&[odd_strobe], &world, None, 1.0)
             .pop()
             .expect("odd strobe tnt attachment");
         assert_eq!(odd_strobe_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
+    }
+
+    #[test]
+    fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
+        let entity_id = 134;
+        let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+        let world = world_with_primed_tnt(entity_id, 4, Some(GRASS_BLOCK_STATE_ID));
+        let light_coords = (5_u32 << 4) | (12_u32 << 20);
+        let tnt = EntityModelInstance::no_render(entity_id, [0.0, 64.0, 0.0], 0.0)
+            .with_light_coords(light_coords);
+
+        let attachments = entity_block_attachments(&[tnt], &world, None, 0.5);
+
+        assert_eq!(attachments.len(), 1);
+        assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
+        assert_eq!(attachments[0].properties, grass_props);
+        assert_eq!(attachments[0].light, [5.0 / 15.0, 12.0 / 15.0]);
+        assert_eq!(attachments[0].overlay, [15.0, 10.0]);
+        assert_eq!(
+            attachments[0].transform,
+            primed_tnt_block_transform(&tnt, 4.5).unwrap()
+        );
+        assert!(!attachments[0].outline_only);
+
+        let hidden = tnt.with_invisible(true);
+        assert!(entity_block_attachments(&[hidden], &world, None, 0.5).is_empty());
+        let outline = hidden.with_appears_glowing(true);
+        let outline_attachments = entity_block_attachments(&[outline], &world, None, 0.5);
+        assert_eq!(outline_attachments.len(), 1);
+        assert!(outline_attachments[0].outline_only);
+
+        let default_world = world_with_primed_tnt(entity_id, 6, None);
+        let default_attachment = entity_block_attachments(&[tnt], &default_world, None, 0.0)
+            .pop()
+            .expect("default primed tnt attachment");
+        assert_eq!(default_attachment.block_id.as_ref(), "minecraft:tnt");
+        assert_eq!(
+            default_attachment.properties,
+            BTreeMap::from([("unstable".to_string(), "false".to_string())])
+        );
+        assert_eq!(default_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
     }
 
     #[test]

@@ -1381,6 +1381,73 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 }
 
 #[test]
+fn primed_tnt_projects_block_state_and_fuse_metadata() {
+    const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+    const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        133,
+        VANILLA_ENTITY_TYPE_TNT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        134,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert_eq!(store.primed_tnt_fuse_remaining_in_ticks(134, 0.0), None);
+    assert_eq!(
+        store.primed_tnt_block_state(133),
+        Some(EntityBlockModelState {
+            name: "minecraft:tnt".to_string(),
+            properties: BTreeMap::from([("unstable".to_string(), "false".to_string())]),
+        })
+    );
+    assert_eq!(
+        store.primed_tnt_fuse_remaining_in_ticks(133, 0.5),
+        Some(80.5)
+    );
+
+    let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+    let grass_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:grass_block", &grass_props)
+        .expect("vanilla 26.1 grass block state exists")
+        .id;
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 133,
+        values: vec![
+            protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 4),
+            protocol_block_state_data(PRIMED_TNT_BLOCK_STATE_DATA_ID, grass_id),
+        ],
+    }));
+
+    assert_eq!(
+        store.primed_tnt_block_state(133),
+        Some(EntityBlockModelState {
+            name: "minecraft:grass_block".to_string(),
+            properties: grass_props,
+        })
+    );
+    assert_eq!(
+        store.primed_tnt_fuse_remaining_in_ticks(133, 0.5),
+        Some(4.5)
+    );
+
+    let air_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:air", &BTreeMap::new())
+        .expect("vanilla 26.1 air block state exists")
+        .id;
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 133,
+        values: vec![protocol_block_state_data(
+            PRIMED_TNT_BLOCK_STATE_DATA_ID,
+            air_id,
+        )],
+    }));
+    assert_eq!(store.primed_tnt_block_state(133), None);
+}
+
+#[test]
 fn minecart_display_blocks_expand_model_culling_bounds() {
     const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
     const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
@@ -13828,6 +13895,14 @@ fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 1,
         value: EntityDataValueKind::Int(value),
+    }
+}
+
+fn protocol_block_state_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 14,
+        value: EntityDataValueKind::BlockState(value),
     }
 }
 

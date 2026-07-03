@@ -353,9 +353,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
         }
-        VANILLA_ENTITY_TYPE_TNT_ID => {
-            entity_type_bounds_placeholder("tnt_entity_type_bounds", 0.98, 0.98)
-        }
+        VANILLA_ENTITY_TYPE_TNT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),

@@ -15,7 +15,7 @@ pub use block_attachment::{
     copper_golem_antenna_block_transform, enderman_carried_block_transform,
     iron_golem_flower_block_transform, minecart_display_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
-    snow_golem_head_block_transform,
+    primed_tnt_block_transform, snow_golem_head_block_transform,
 };
 pub use catalog::*;
 #[cfg(test)]

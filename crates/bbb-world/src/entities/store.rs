@@ -30,7 +30,7 @@ use super::{
     VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
     VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
@@ -101,6 +101,12 @@ const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 /// Vanilla `MinecartFurnace.DATA_ID_FUEL` boolean metadata, declared after abstract minecart fields.
 const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
 const DEFAULT_MINECART_DISPLAY_OFFSET: i32 = 6;
+/// Vanilla `PrimedTnt.DATA_FUSE_ID` int metadata: `PrimedTnt` directly extends
+/// `Entity`, whose base accessors occupy ids `0..=7`.
+const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+/// Vanilla `PrimedTnt.DATA_BLOCK_STATE_ID` block-state metadata, declared after fuse.
+const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
+const DEFAULT_PRIMED_TNT_FUSE: i32 = 80;
 
 fn wolf_armor_crackiness(
     item: &ItemStackSummary,
@@ -733,6 +739,20 @@ impl EntityStore {
         )
     }
 
+    fn metadata_block_state(&self, id: i32, data_id: u8) -> Option<Option<i32>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(metadata.data_values.iter().find_map(|value| {
+            if value.data_id != data_id {
+                return None;
+            }
+            match &value.value {
+                EntityDataValueKind::BlockState(state) => Some(*state),
+                _ => None,
+            }
+        }))
+    }
+
     pub(crate) fn enderman_carried_block_state_id(&self, id: i32) -> Option<Option<i32>> {
         let identity = self.identity(id)?;
         if !vanilla_is_enderman(identity.entity_type_id) {
@@ -783,6 +803,48 @@ impl EntityStore {
             block,
             display_offset,
         })
+    }
+
+    pub(crate) fn primed_tnt_block_state(
+        &self,
+        id: i32,
+        registries: &RegistrySet,
+    ) -> Option<EntityBlockModelState> {
+        let identity = self.identity(id)?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
+            return None;
+        }
+
+        let state_id = self
+            .metadata_block_state(id, PRIMED_TNT_BLOCK_STATE_DATA_ID)
+            .unwrap_or(None);
+        if let Some(state_id) = state_id {
+            let state = registries.block_state(state_id)?;
+            if state.name == "minecraft:air" {
+                return None;
+            }
+            return Some(EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            });
+        }
+
+        default_primed_tnt_block_state(registries)
+    }
+
+    pub(crate) fn primed_tnt_fuse_remaining_in_ticks(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let identity = self.identity(id)?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
+            return None;
+        }
+        let fuse = self
+            .metadata_int(id, PRIMED_TNT_FUSE_DATA_ID, DEFAULT_PRIMED_TNT_FUSE)
+            .unwrap_or(DEFAULT_PRIMED_TNT_FUSE);
+        Some(fuse as f32 - partial_ticks + 1.0)
     }
 
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
@@ -3102,6 +3164,14 @@ fn default_minecart_display_block_state(
         VANILLA_ENTITY_TYPE_MINECART_ID => None,
         _ => None,
     }
+}
+
+fn default_primed_tnt_block_state(registries: &RegistrySet) -> Option<EntityBlockModelState> {
+    registered_block_model_state(
+        registries,
+        "minecraft:tnt",
+        BTreeMap::from([("unstable".to_string(), "false".to_string())]),
+    )
 }
 
 fn registered_block_model_state(

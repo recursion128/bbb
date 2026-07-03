@@ -2153,6 +2153,20 @@ impl WorldStore {
             .minecart_display_block_state(entity_id, &self.registries)
     }
 
+    pub fn primed_tnt_block_state(&self, entity_id: i32) -> Option<EntityBlockModelState> {
+        self.entities
+            .primed_tnt_block_state(entity_id, &self.registries)
+    }
+
+    pub fn primed_tnt_fuse_remaining_in_ticks(
+        &self,
+        entity_id: i32,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        self.entities
+            .primed_tnt_fuse_remaining_in_ticks(entity_id, partial_ticks)
+    }
+
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player
     /// whose `CAPE` model part is shown and whose GameProfile name (from the
     /// player-info list) is `Dinnerbone`/`Grumm`. The non-player living path is

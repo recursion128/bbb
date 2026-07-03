@@ -1535,8 +1535,13 @@ pub(crate) fn pump_network_and_terrain(
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
-    let entity_block_meshes =
-        entity_block_models(&entity_instances, world, item_runtime, terrain_textures);
+    let entity_block_meshes = entity_block_models(
+        &entity_instances,
+        world,
+        item_runtime,
+        terrain_textures,
+        entity_partial_tick,
+    );
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);

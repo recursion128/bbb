@@ -184,6 +184,39 @@ fn minecart_tnt_display_block_scale(fuse_remaining_in_ticks: f32) -> f32 {
     }
 }
 
+/// World transform for vanilla `TntRenderer.submit`.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla translates the
+/// TNT model up by `0.5`, applies the final-10-tick pulse scale, then rotates/translates the block model
+/// from the entity origin: `rotateY(-90)`, `translate(-0.5, -0.5, 0.5)`, `rotateY(90)`.
+pub fn primed_tnt_block_transform(
+    instance: &EntityModelInstance,
+    fuse_remaining_in_ticks: f32,
+) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::NoRender)
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
+    {
+        return None;
+    }
+    Some(
+        Mat4::from_translation(Vec3::from_array(instance.position))
+            * Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0))
+            * Mat4::from_scale(Vec3::splat(primed_tnt_block_scale(fuse_remaining_in_ticks)))
+            * Mat4::from_rotation_y(-PI / 2.0)
+            * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.5))
+            * Mat4::from_rotation_y(PI / 2.0),
+    )
+}
+
+fn primed_tnt_block_scale(fuse_remaining_in_ticks: f32) -> f32 {
+    if fuse_remaining_in_ticks < 10.0 {
+        let g = (1.0 - fuse_remaining_in_ticks / 10.0).clamp(0.0, 1.0);
+        1.0 + g * g * g * g * 0.3
+    } else {
+        1.0
+    }
+}
+
 /// World transform for vanilla `SnowGolemHeadLayer`'s carved-pumpkin block model.
 ///
 /// The returned matrix expects block quads normalized to the `0..1` unit cube, matching

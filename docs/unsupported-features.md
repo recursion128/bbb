@@ -6170,6 +6170,15 @@ When an agent does any of the following, update this file in the same slice:
       remains unsupported and is classified as block-entity special renderer /
       P2 presentation, not a blocker for the entity minecart renderer; the
       minecart body submission light/overlay metadata remains covered
+    - primed TNT now uses the vanilla 26.1 `TntRenderer` block-model attachment
+      path instead of a placeholder bounds box. `WorldStore` reads
+      `PrimedTnt.DATA_FUSE_ID` (entity data id 8) and
+      `DATA_BLOCK_STATE_ID` (id 9), defaults to `Blocks.TNT.defaultBlockState()`,
+      treats air block states as non-rendered, and native bakes the selected
+      block model with entity light, `fuse - partialTick + 1`, the
+      final-10-tick fourth-power scale pulse, and white-strobe overlay. The
+      smoke particle emitted while fuse remains positive is still deferred to
+      the particle runtime.
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -6177,13 +6186,13 @@ When an agent does any of the following, update this file in the same slice:
       named placeholder bounds for remaining entity types
     - simple non-display placeholder bounds are no longer guessed `todo_*`
       model keys when vanilla `EntityType.sized(width, height)` gives the exact
-      box: dragon fireball (1.0), experience orb (0.5), falling block/TNT
-      (0.98), and firework rocket/fishing bobber/item/ominous item spawner
-      (0.25) now use source-verified `*_entity_type_bounds` keys. The actual
+      box: dragon fireball (1.0), experience orb (0.5), falling block (0.98),
+      and firework rocket/fishing bobber/item/ominous item spawner (0.25)
+      now use source-verified `*_entity_type_bounds` keys. The actual
       dedicated renderers remain deferred presentation work: dragon-fireball /
-      fishing-hook / experience-orb textured camera quads, falling-block and TNT
+      fishing-hook / experience-orb textured camera quads, falling-block
       block-model submission, firework and ominous-spawner item model clusters,
-      and their renderer-specific lighting/tint/line/fuse behavior.
+      and their renderer-specific lighting/tint/line behavior.
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, custom/datapack cow/pig

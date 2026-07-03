@@ -264,6 +264,38 @@ fn tnt_minecart_display_block_transform_applies_vanilla_fuse_scale() {
 }
 
 #[test]
+fn primed_tnt_block_transform_uses_vanilla_submit_pose_and_fuse_scale() {
+    let fuse = 4.5_f32;
+    let tnt = EntityModelInstance::no_render(133, [2.0, 64.0, -3.0], 0.0);
+    let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+    let scale = 1.0 + g * g * g * g * 0.3;
+    let expected = Mat4::from_translation(Vec3::from_array(tnt.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0))
+        * Mat4::from_scale(Vec3::splat(scale))
+        * Mat4::from_rotation_y(-90.0_f32.to_radians())
+        * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.5))
+        * Mat4::from_rotation_y(90.0_f32.to_radians());
+
+    assert_close_transform(primed_tnt_block_transform(&tnt, fuse).unwrap(), expected);
+    assert_close_transform(
+        primed_tnt_block_transform(&tnt, 10.0).unwrap(),
+        Mat4::from_translation(Vec3::from_array(tnt.position))
+            * Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0))
+            * Mat4::from_rotation_y(-90.0_f32.to_radians())
+            * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.5))
+            * Mat4::from_rotation_y(90.0_f32.to_radians()),
+    );
+
+    let creeper = EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    assert!(primed_tnt_block_transform(&creeper, fuse).is_none());
+    assert!(primed_tnt_block_transform(&tnt.with_invisible(true), fuse).is_none());
+    assert!(
+        primed_tnt_block_transform(&tnt.with_invisible(true).with_appears_glowing(true), fuse)
+            .is_some()
+    );
+}
+
+#[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
     let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)

@@ -6922,12 +6922,6 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             0.25,
             0.25,
         ),
-        (
-            VANILLA_ENTITY_TYPE_TNT_ID,
-            "tnt_entity_type_bounds",
-            0.98,
-            0.98,
-        ),
     ] {
         assert_eq!(
             entity_model_kind(entity_type_id, &[]),
@@ -6941,6 +6935,14 @@ fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placehol
             }
         );
     }
+}
+
+#[test]
+fn primed_tnt_uses_block_attachment_renderer_not_placeholder_bounds() {
+    assert_eq!(
+        entity_model_kind(VANILLA_ENTITY_TYPE_TNT_ID, &[]),
+        EntityModelKind::NoRender
+    );
 }
 
 #[test]

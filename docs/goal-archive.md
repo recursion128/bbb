@@ -538,6 +538,17 @@
     `EntityType.sized(width, height)` box. Display entities, painting, and the
     unknown future-id placeholder stay deferred because their current boxes are not
     direct vanilla `EntityType.sized` renderer boxes.
+  - [x] primed TNT block attachment renderer：native entity scene now maps
+    vanilla TNT to `EntityModelKind::NoRender` instead of the prior source-verified
+    placeholder box, and native item-model attachments render the vanilla
+    `TntRenderer` block model path. World reads `PrimedTnt.DATA_FUSE_ID` (id 8)
+    and `DATA_BLOCK_STATE_ID` (id 9), defaults to `Blocks.TNT.defaultBlockState()`,
+    rejects air block states, and the renderer-owned transform applies the
+    `translate(0, 0.5, 0)` pose, final-10-tick fourth-power scale pulse,
+    `Ry(-90) / translate(-0.5, -0.5, 0.5) / Ry(90)`, entity light, partial-tick
+    fuse projection, and white-strobe overlay. Tests cover default/custom block
+    state, partial tick, outline-only hidden glowing attachments, and the
+    renderer transform.
 
 ## P1-3：物品、Frame 与第一人称表现
 
