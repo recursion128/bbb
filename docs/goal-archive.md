@@ -1140,6 +1140,16 @@
     applies the vanilla non-shield BLOCK transform. Tests cover shield rendering
     while using, non-shield mesh movement, consumable precedence, and transform
     matrix order.
+  - [x] first-person consumable EAT/DRINK use pose：local vanilla 26.1
+    `Consumable.STREAM_CODEC` carries `consumeSeconds` followed by
+    `ItemUseAnimation.STREAM_CODEC`, and `ItemInHandRenderer.renderArmWithItem`
+    handles `EAT` / `DRINK` by applying `applyEatTransform(frameInterp, arm,
+    stack, player)` before `applyItemArmTransform`. Protocol summaries now
+    preserve the consumable animation id, and native supports patch-carried
+    consumables with EAT/DRINK first-person use pose using local
+    `using_item_ticks`, `partial_ticks`, and vanilla `consumeTicks()` seconds
+    truncation. Tests cover consumable animation decoding, EAT/DRINK mesh
+    movement, shared EAT/DRINK output, and the exact matrix order/formula.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

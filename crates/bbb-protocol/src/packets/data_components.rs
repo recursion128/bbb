@@ -317,18 +317,53 @@ impl PartialEq for UseEffectsSummary {
 
 impl Eq for UseEffectsSummary {}
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ConsumableSummary {
     pub consume_seconds: f32,
+    #[serde(default)]
+    pub animation: ItemUseAnimationSummary,
+}
+
+impl Default for ConsumableSummary {
+    fn default() -> Self {
+        Self {
+            consume_seconds: 0.0,
+            animation: ItemUseAnimationSummary::default(),
+        }
+    }
 }
 
 impl PartialEq for ConsumableSummary {
     fn eq(&self, other: &Self) -> bool {
         self.consume_seconds.to_bits() == other.consume_seconds.to_bits()
+            && self.animation == other.animation
     }
 }
 
 impl Eq for ConsumableSummary {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemUseAnimationSummary {
+    None,
+    Eat,
+    Drink,
+    Block,
+    Bow,
+    Trident,
+    Crossbow,
+    Spyglass,
+    TootHorn,
+    Brush,
+    Bundle,
+    Spear,
+}
+
+impl Default for ItemUseAnimationSummary {
+    fn default() -> Self {
+        Self::Eat
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SwingAnimationSummary {
@@ -1323,7 +1358,7 @@ fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
 
 fn decode_consumable_summary(decoder: &mut Decoder<'_>) -> Result<ConsumableSummary> {
     let consume_seconds = decoder.read_f32()?;
-    decoder.read_var_i32()?;
+    let animation = decode_item_use_animation_summary(decoder)?;
     decode_sound_event_holder(decoder)?;
     decoder.read_bool()?;
 
@@ -1331,7 +1366,27 @@ fn decode_consumable_summary(decoder: &mut Decoder<'_>) -> Result<ConsumableSumm
     for _ in 0..effect_count {
         decode_consume_effect(decoder)?;
     }
-    Ok(ConsumableSummary { consume_seconds })
+    Ok(ConsumableSummary {
+        consume_seconds,
+        animation,
+    })
+}
+
+fn decode_item_use_animation_summary(decoder: &mut Decoder<'_>) -> Result<ItemUseAnimationSummary> {
+    Ok(match decoder.read_var_i32()? {
+        1 => ItemUseAnimationSummary::Eat,
+        2 => ItemUseAnimationSummary::Drink,
+        3 => ItemUseAnimationSummary::Block,
+        4 => ItemUseAnimationSummary::Bow,
+        5 => ItemUseAnimationSummary::Trident,
+        6 => ItemUseAnimationSummary::Crossbow,
+        7 => ItemUseAnimationSummary::Spyglass,
+        8 => ItemUseAnimationSummary::TootHorn,
+        9 => ItemUseAnimationSummary::Brush,
+        10 => ItemUseAnimationSummary::Bundle,
+        11 => ItemUseAnimationSummary::Spear,
+        _ => ItemUseAnimationSummary::None,
+    })
 }
 
 fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2706,8 +2761,8 @@ mod tests {
 
         payload.write_var_i32(24);
         payload.write_f32(0.8);
-        payload.write_var_i32(0);
-        write_direct_sound_event(&mut payload, "minecraft:entity.generic.eat", None);
+        payload.write_var_i32(2);
+        write_direct_sound_event(&mut payload, "minecraft:entity.generic.drink", None);
         payload.write_bool(true);
         payload.write_var_i32(0);
 
@@ -2723,6 +2778,7 @@ mod tests {
                 removed_type_ids: Vec::new(),
                 consumable: Some(ConsumableSummary {
                     consume_seconds: 0.8,
+                    animation: ItemUseAnimationSummary::Drink,
                 }),
                 ..DataComponentPatchSummary::default()
             }
@@ -3546,6 +3602,7 @@ mod tests {
                 }),
                 consumable: Some(ConsumableSummary {
                     consume_seconds: 1.6,
+                    animation: ItemUseAnimationSummary::Drink,
                 }),
                 attack_range: Some(AttackRangeSummary {
                     min_reach: 0.0,

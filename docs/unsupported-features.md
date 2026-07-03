@@ -1109,8 +1109,9 @@ When an agent does any of the following, update this file in the same slice:
     first-person hand item meshes now use the same item-model/glint buckets in a
     depth-cleared hand pass, including the vanilla WHACK `swingArm` transform
     and STAB `SpearAnimations.firstPersonAttack` transforms from local-player
-    attack animation plus BLOCK/shield use pose; first-person non-BLOCK use and
-    special consumers remain item presentation follow-ups. Standalone
+    attack animation, BLOCK/shield use pose, and patch-carried consumable
+    EAT/DRINK `applyEatTransform`; default/prototype consumables plus remaining
+    non-EAT/DRINK use and special consumers remain item presentation follow-ups. Standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2728,10 +2729,11 @@ When an agent does any of the following, update this file in the same slice:
       `swingArm` transform and STAB `SpearAnimations.firstPersonAttack` from
       local `attackAnim` / `swingingArm`, applies the BLOCK use transform for
       non-shield `blocks_attacks` stacks while vanilla shields keep only the arm
-      transform, and draws in a depth-cleared pass after world transparency is
-      composited and before HUD overlays. Remaining refinements are first-person
-      non-BLOCK use/special paths, combat arm poses, and custom ground
-      transforms. Done:
+      transform, applies the vanilla EAT/DRINK use transform for patch-carried
+      consumables, and draws in a depth-cleared pass after world transparency is
+      composited and before HUD overlays. Remaining refinements are default
+      consumable prototype coverage, first-person non-EAT/DRINK use/special
+      paths, combat arm poses, and custom ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs,
@@ -3129,7 +3131,8 @@ When an agent does any of the following, update this file in the same slice:
         and zombie/zombified-piglin `STAB` skip/lunge parity are covered; ordinary piglin/brute
         non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
         swing-type parity remains separate custom-component work.
-      - remaining slices: held-item refinements (first-person non-BLOCK use/special viewmodel paths;
+      - remaining slices: held-item refinements (first-person default consumable,
+        non-EAT/DRINK use, and special viewmodel paths;
         broader non-profile dynamic texture loading; the
         `NONE` swing type). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:

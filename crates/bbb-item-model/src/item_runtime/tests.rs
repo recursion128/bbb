@@ -6603,6 +6603,7 @@ fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
         component_patch: DataComponentPatchSummary {
             consumable: Some(ConsumableSummary {
                 consume_seconds: 0.8,
+                animation: ItemUseAnimationSummary::Eat,
             }),
             ..DataComponentPatchSummary::default()
         },

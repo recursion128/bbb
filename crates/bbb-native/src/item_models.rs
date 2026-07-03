@@ -14,7 +14,8 @@ use std::{
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{
-    EquipmentSlot, InteractionHand, ItemStackSummary, SwingAnimationTypeSummary,
+    ConsumableSummary, EquipmentSlot, InteractionHand, ItemStackSummary, ItemUseAnimationSummary,
+    SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
@@ -1028,9 +1029,9 @@ pub(crate) fn first_person_item_models(
             InteractionHand::MainHand => main_stack,
             InteractionHand::OffHand => off_stack,
         };
-        if !stack
-            .is_some_and(|stack| first_person_stack_block_use_kind(stack, item_runtime).is_some())
-        {
+        if !stack.is_some_and(|stack| {
+            first_person_stack_supported_use_animation(stack, item_runtime).is_some()
+        }) {
             return models;
         }
     }
@@ -1072,12 +1073,26 @@ pub(crate) fn first_person_item_models(
         let mut attach =
             first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
         let using_this_hand = using_hand == Some(hand);
-        if let Some(kind) = using_this_hand
-            .then(|| first_person_stack_block_use_kind(stack, item_runtime))
+        if let Some(use_animation) = using_this_hand
+            .then(|| first_person_stack_supported_use_animation(stack, item_runtime))
             .flatten()
         {
-            if kind == FirstPersonBlockUseKind::NonShieldBlock {
-                attach = first_person_apply_block_use_transform(attach, arm_left);
+            match use_animation {
+                FirstPersonUseAnimation::None => {}
+                FirstPersonUseAnimation::EatDrink { use_duration_ticks } => {
+                    attach = first_person_apply_eat_drink_use_transform(
+                        camera_world,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Block(kind) => {
+                    if kind == FirstPersonBlockUseKind::NonShieldBlock {
+                        attach = first_person_apply_block_use_transform(attach, arm_left);
+                    }
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1134,6 +1149,13 @@ enum FirstPersonBlockUseKind {
     NonShieldBlock,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum FirstPersonUseAnimation {
+    None,
+    EatDrink { use_duration_ticks: f32 },
+    Block(FirstPersonBlockUseKind),
+}
+
 fn supported_first_person_item_stack(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
@@ -1183,6 +1205,57 @@ fn first_person_stack_block_use_kind(
     }
     first_person_stack_has_added_component(stack, VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
         .then_some(FirstPersonBlockUseKind::NonShieldBlock)
+}
+
+fn first_person_stack_supported_use_animation(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonUseAnimation> {
+    if let Some(consumable) = first_person_stack_consumable_summary(stack) {
+        return match consumable.animation {
+            ItemUseAnimationSummary::None => Some(FirstPersonUseAnimation::None),
+            ItemUseAnimationSummary::Eat | ItemUseAnimationSummary::Drink => {
+                Some(FirstPersonUseAnimation::EatDrink {
+                    use_duration_ticks: first_person_consumable_use_duration_ticks(consumable),
+                })
+            }
+            ItemUseAnimationSummary::Block => Some(FirstPersonUseAnimation::Block(
+                first_person_stack_block_kind_for_animation(stack, item_runtime)?,
+            )),
+            _ => None,
+        };
+    }
+    first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
+}
+
+fn first_person_stack_consumable_summary(stack: &ItemStackSummary) -> Option<ConsumableSummary> {
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_CONSUMABLE_COMPONENT_ID)
+    {
+        return None;
+    }
+    stack.component_patch.consumable.or_else(|| {
+        first_person_stack_has_added_component(stack, VANILLA_CONSUMABLE_COMPONENT_ID)
+            .then(ConsumableSummary::default)
+    })
+}
+
+fn first_person_stack_block_kind_for_animation(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonBlockUseKind> {
+    let item_id = stack.item_id?;
+    if item_runtime.item_resource_id(item_id) == Some("minecraft:shield") {
+        Some(FirstPersonBlockUseKind::Shield)
+    } else {
+        Some(FirstPersonBlockUseKind::NonShieldBlock)
+    }
+}
+
+fn first_person_consumable_use_duration_ticks(consumable: ConsumableSummary) -> f32 {
+    (consumable.consume_seconds * 20.0) as i32 as f32
 }
 
 fn first_person_stack_has_added_component(stack: &ItemStackSummary, component_id: i32) -> bool {
@@ -1311,6 +1384,49 @@ fn first_person_apply_block_use_transform(transform: Mat4, arm_left: bool) -> Ma
         * Mat4::from_rotation_x((-102.25_f32).to_radians())
         * Mat4::from_rotation_y((invert * 13.365_f32).to_radians())
         * Mat4::from_rotation_z((invert * 78.05_f32).to_radians())
+}
+
+fn first_person_apply_eat_drink_use_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let eat_transform = first_person_eat_drink_use_transform(
+        arm_left,
+        use_duration_ticks,
+        using_item_ticks,
+        partial_ticks,
+    );
+    first_person_item_arm_transform_from_camera_world(camera_world * eat_transform, arm_left, 0.0)
+}
+
+fn first_person_eat_drink_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    if use_duration_ticks <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let curr_usage_time = remaining_ticks - partial_ticks + 1.0;
+    let scaled_usage_time = curr_usage_time / use_duration_ticks;
+    let extra_height_offset = if scaled_usage_time < 0.8 {
+        (curr_usage_time / 4.0 * std::f32::consts::PI).cos().abs() * 0.1
+    } else {
+        0.0
+    };
+    let eat_jiggle = 1.0 - scaled_usage_time.powf(27.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(0.0, extra_height_offset, 0.0))
+        * Mat4::from_translation(Vec3::new(eat_jiggle * 0.6 * invert, eat_jiggle * -0.5, 0.0))
+        * Mat4::from_rotation_y((invert * eat_jiggle * 90.0).to_radians())
+        * Mat4::from_rotation_x((eat_jiggle * 10.0).to_radians())
+        * Mat4::from_rotation_z((invert * eat_jiggle * 30.0).to_radians())
 }
 
 fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
@@ -3485,6 +3601,91 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_consumable_eat_and_drink_use_pose() {
+        let root = unique_item_model_temp_dir("first-person-consumable-use");
+        write_flat_item_runtime_fixture(&root, &["snack"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut snack = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:snack"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        snack.component_patch.added = 1;
+        snack.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        snack.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut eating_world = WorldStore::new();
+        eating_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack.clone(),
+        });
+        eating_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        eating_world.advance_local_using_item_ticks(12);
+        let eating = first_person_item_models(
+            &eating_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(eating.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], eating.flat_meshes[0],
+            "consumable EAT applies ItemInHandRenderer.applyEatTransform before the arm transform"
+        );
+
+        let mut drink = snack;
+        drink.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Drink,
+        });
+        let mut drinking_world = WorldStore::new();
+        drinking_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: drink,
+        });
+        drinking_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        drinking_world.advance_local_using_item_ticks(12);
+        let drinking = first_person_item_models(
+            &drinking_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(drinking.flat_meshes.len(), 1);
+        assert_eq!(
+            eating.flat_meshes[0], drinking.flat_meshes[0],
+            "vanilla EAT and DRINK share the first-person applyEatTransform matrix"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -3686,6 +3887,32 @@ mod tests {
         assert!(
             (right_origin.x + left_origin.x).abs() < 1.0e-4,
             "BLOCK use x translation mirrors between arms: {right_origin:?} vs {left_origin:?}"
+        );
+    }
+
+    #[test]
+    fn first_person_eat_drink_use_transform_matches_vanilla_apply_eat_transform() {
+        let transformed =
+            first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, false, 32.0, 12.0, 0.5);
+        let curr_usage_time = 32.0 - 12.0 - 0.5 + 1.0;
+        let scaled_usage_time = curr_usage_time / 32.0;
+        let extra_height_offset = (curr_usage_time / 4.0 * std::f32::consts::PI).cos().abs() * 0.1;
+        let eat_jiggle = 1.0_f32 - scaled_usage_time.powf(27.0);
+        let expected_eat = Mat4::from_translation(Vec3::new(0.0, extra_height_offset, 0.0))
+            * Mat4::from_translation(Vec3::new(eat_jiggle * 0.6, eat_jiggle * -0.5, 0.0))
+            * Mat4::from_rotation_y((eat_jiggle * 90.0).to_radians())
+            * Mat4::from_rotation_x((eat_jiggle * 10.0).to_radians())
+            * Mat4::from_rotation_z((eat_jiggle * 30.0).to_radians());
+        let expected = first_person_item_arm_transform_from_camera_world(expected_eat, false, 0.0);
+        assert!(transformed.abs_diff_eq(expected, 1.0e-5));
+
+        let left =
+            first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, true, 32.0, 12.0, 0.5);
+        let right_origin = transformed.transform_point3(Vec3::ZERO);
+        let left_origin = left.transform_point3(Vec3::ZERO);
+        assert!(
+            (right_origin.x + left_origin.x).abs() < 1.0e-4,
+            "EAT/DRINK use x movement mirrors between arms: {right_origin:?} vs {left_origin:?}"
         );
     }
 

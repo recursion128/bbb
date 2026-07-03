@@ -27,9 +27,9 @@ use bbb_protocol::packets::{
 // of the non-test import set so the standalone library build stays warning-free.
 #[cfg(test)]
 use bbb_protocol::packets::{
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, JukeboxSongSummary,
-    LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
+    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemUseAnimationSummary,
+    JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+    NbtSummaryEntry, NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
 use bbb_render_types::{
