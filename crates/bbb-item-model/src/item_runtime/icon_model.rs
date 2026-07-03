@@ -771,10 +771,11 @@ pub(super) enum SelectProperty {
     /// against the owner entity type resource key.
     ContextEntityType,
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
-    /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
-    /// `G` era, `Q`/`q` quarter, root/en `M`/`L` month widths 1..=5, `d`
-    /// day, `D` day-of-year, `w`/`W` week numbers, `F`
-    /// day-of-week-in-month, `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
+    /// wall-clock date/time pattern (root/en plus en_US-week-data ICU subset:
+    /// `y`/`u` year, root/en/en_US `Y` week-year, `G` era, `Q`/`q` quarter,
+    /// root/en `M`/`L` month widths 1..=5, `d` day, `D` day-of-year,
+    /// root/en/en_US `w`/`W` week numbers, `F` day-of-week-in-month,
+    /// root/en/en_US `E`/`e`/`c` weekdays, `H`/`k`/`K`/`h` hour,
     /// `m`/`s`/`S`, `A` milliseconds-in-day, root/en `a` AM/PM widths
     /// 1..=5, `z` zone names,
     /// `VV` zone IDs, `VVV` exemplar cities, `Z`/`X`/`x` offset widths
@@ -1466,7 +1467,7 @@ fn format_local_time_field(
         // for every CE date (proleptic year >= 1), which covers every epoch-millis
         // timestamp, so both letters format the stored proleptic year here.
         'y' | 'u' => Some(format_year_number(fields.year, count)),
-        'Y' => root_locale_week_year(fields, count, locale),
+        'Y' => english_locale_week_year(fields, count, locale),
         // Era text (`IsoChronology`: proleptic year >= 1 is CE, otherwise BCE).
         // `G`..`GGG` short, `GGGG` full, `GGGGG` narrow.
         'G' => {
@@ -1508,9 +1509,9 @@ fn format_local_time_field(
             5 => english_text(locale, narrow_month_name(fields.month)),
             _ => None,
         },
-        'w' => root_locale_week_of_year(fields, count, locale),
-        'W' => root_locale_week_of_month(fields, count, locale),
-        'e' | 'c' => root_locale_local_weekday(fields, count, locale),
+        'w' => english_locale_week_of_year(fields, count, locale),
+        'W' => english_locale_week_of_month(fields, count, locale),
+        'e' | 'c' => english_locale_local_weekday(fields, count, locale),
         'd' => Some(padded_u32(fields.day, count)),
         'D' => Some(padded_u32(fields.day_of_year, count)),
         'F' => Some(padded_u32((fields.day.saturating_sub(1) / 7) + 1, count)),
@@ -1744,44 +1745,43 @@ fn format_ampm_marker(hour: u32, width: usize, locale: &str) -> Option<String> {
     }
 }
 
-fn root_locale_week_year(fields: &LocalTimeFields, width: usize, locale: &str) -> Option<String> {
-    if !root_english_week_locale(locale) {
-        return None;
-    }
-    // With the supported ICU root/en week data (Monday, minimal-days=1), the
-    // week-year stays aligned with the local calendar year at both boundaries.
-    Some(format_year_number(fields.year, width))
-}
-
-fn root_locale_week_of_year(
+fn english_locale_week_year(
     fields: &LocalTimeFields,
     width: usize,
     locale: &str,
 ) -> Option<String> {
-    if !root_english_week_locale(locale) {
-        return None;
-    }
+    english_week_data(locale)?;
+    // With the supported English week data (minimal-days=1), the week-year
+    // stays aligned with the local calendar year at both boundaries.
+    Some(format_year_number(fields.year, width))
+}
+
+fn english_locale_week_of_year(
+    fields: &LocalTimeFields,
+    width: usize,
+    locale: &str,
+) -> Option<String> {
+    let week_data = english_week_data(locale)?;
     let year_start = NaiveDate::from_ymd_opt(fields.year, 1, 1)?;
-    // ICU root/en week data uses Monday as first day and minimal-days=1:
+    // Supported English week data uses minimal-days=1:
     // the week containing Jan 1 is week 1 for that calendar year, so late
     // December does not roll into next year's week 1 before Jan 1.
-    let week_one_start = start_of_week(year_start, Weekday::Mon)?;
+    let week_one_start = start_of_week(year_start, week_data.first_weekday)?;
     Some(padded_u32(
         week_number_since(week_one_start, fields.date)?,
         width,
     ))
 }
 
-fn root_locale_week_of_month(
+fn english_locale_week_of_month(
     fields: &LocalTimeFields,
     width: usize,
     locale: &str,
 ) -> Option<String> {
-    if !root_english_week_locale(locale) {
-        return None;
-    }
+    let week_data = english_week_data(locale)?;
     let month_start = NaiveDate::from_ymd_opt(fields.year, fields.month, 1)?;
-    let week_one_start = first_week_start(month_start, Weekday::Mon, 1)?;
+    let week_one_start =
+        first_week_start(month_start, week_data.first_weekday, week_data.minimal_days)?;
     let week = if fields.date < week_one_start {
         0
     } else {
@@ -1790,18 +1790,16 @@ fn root_locale_week_of_month(
     Some(padded_u32(week, width))
 }
 
-fn root_locale_local_weekday(
+fn english_locale_local_weekday(
     fields: &LocalTimeFields,
     width: usize,
     locale: &str,
 ) -> Option<String> {
-    if !root_english_week_locale(locale) {
-        return None;
-    }
+    let week_data = english_week_data(locale)?;
     match width {
-        1 => Some(local_weekday_number(fields.weekday, Weekday::Mon).to_string()),
+        1 => Some(local_weekday_number(fields.weekday, week_data.first_weekday).to_string()),
         2 => Some(padded_u32(
-            local_weekday_number(fields.weekday, Weekday::Mon),
+            local_weekday_number(fields.weekday, week_data.first_weekday),
             2,
         )),
         3..=6 => format_weekday_name(fields.weekday, width, locale),
@@ -1809,8 +1807,29 @@ fn root_locale_local_weekday(
     }
 }
 
-fn root_english_week_locale(locale: &str) -> bool {
-    locale.is_empty() || locale.eq_ignore_ascii_case("root") || locale.eq_ignore_ascii_case("en")
+#[derive(Clone, Copy)]
+struct EnglishWeekData {
+    first_weekday: Weekday,
+    minimal_days: u32,
+}
+
+fn english_week_data(locale: &str) -> Option<EnglishWeekData> {
+    let locale = locale.replace('-', "_");
+    if locale.is_empty() || locale.eq_ignore_ascii_case("root") || locale.eq_ignore_ascii_case("en")
+    {
+        return Some(EnglishWeekData {
+            first_weekday: Weekday::Mon,
+            minimal_days: 1,
+        });
+    }
+    let locale_lower = locale.to_ascii_lowercase();
+    if locale_lower == "en_us" || locale_lower.starts_with("en_us_") {
+        return Some(EnglishWeekData {
+            first_weekday: Weekday::Sun,
+            minimal_days: 1,
+        });
+    }
+    None
 }
 
 fn first_week_start(
