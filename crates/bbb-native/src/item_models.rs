@@ -1105,6 +1105,9 @@ pub(crate) fn first_person_item_models(
                         partial_ticks,
                     );
                 }
+                FirstPersonUseAnimation::Bundle => {
+                    attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                }
             }
         } else {
             match first_person_stack_swing_animation(stack, item_runtime) {
@@ -1167,6 +1170,7 @@ enum FirstPersonUseAnimation {
     EatDrink { use_duration_ticks: f32 },
     Block(FirstPersonBlockUseKind),
     Brush { use_duration_ticks: f32 },
+    Bundle,
 }
 
 fn supported_first_person_item_stack(
@@ -1189,7 +1193,6 @@ fn supported_first_person_item_stack(
             | "minecraft:crossbow"
             | "minecraft:spyglass"
             | "minecraft:trident"
-            | "minecraft:bundle"
     )
 }
 
@@ -1229,6 +1232,7 @@ fn first_person_stack_supported_use_animation(
                 use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
             });
         }
+        Some("minecraft:bundle") => return Some(FirstPersonUseAnimation::Bundle),
         _ => {}
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
@@ -3952,6 +3956,69 @@ mod tests {
         assert_ne!(
             idle.flat_meshes[0], brushing.flat_meshes[0],
             "BRUSH use applies ItemInHandRenderer.applyBrushTransform after the arm transform"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn first_person_item_models_apply_bundle_use_swing() {
+        let root = unique_item_model_temp_dir("first-person-bundle-use");
+        write_flat_item_runtime_fixture(&root, &["bundle"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let bundle = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:bundle"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut edible_bundle = bundle.clone();
+        edible_bundle.component_patch.added = 1;
+        edible_bundle.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+        edible_bundle.component_patch.consumable = Some(ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimationSummary::Eat,
+        });
+        assert_eq!(
+            first_person_stack_supported_use_animation(&edible_bundle, &item_runtime),
+            Some(FirstPersonUseAnimation::Bundle),
+            "BundleItem.getUseAnimation overrides stack CONSUMABLE data"
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut world = world_with_level_dimension("minecraft:overworld");
+        world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: bundle,
+        });
+        world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        let still = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(still.flat_meshes.len(), 1);
+
+        assert!(world.apply_entity_animation(EntityAnimation { id: 1, action: 0 }));
+        world.advance_entity_client_animations(2);
+        let swinging = first_person_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            1.0,
+        );
+        assert_eq!(swinging.flat_meshes.len(), 1);
+        assert_ne!(
+            still.flat_meshes[0], swinging.flat_meshes[0],
+            "BUNDLE use applies ItemInHandRenderer.swingArm while the item is being used"
         );
         std::fs::remove_dir_all(root).unwrap();
     }

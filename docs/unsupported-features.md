@@ -1111,9 +1111,9 @@ When an agent does any of the following, update this file in the same slice:
     and STAB `SpearAnimations.firstPersonAttack` transforms from local-player
     attack animation, BLOCK/shield use pose, and patch-carried/default
     consumable EAT/DRINK `applyEatTransform`, plus goat horn `TOOT_HORN`
-    base-arm use pose and brush `BRUSH` `applyBrushTransform`; remaining
-    non-EAT/DRINK use and special consumers remain item presentation
-    follow-ups. Standalone
+    base-arm use pose, brush `BRUSH` `applyBrushTransform`, and bundle `BUNDLE`
+    `swingArm`; remaining non-EAT/DRINK use and special consumers remain item
+    presentation follow-ups. Standalone
     mip/sampler generalization belongs to P3 resource parity, and remaining
     diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -2734,9 +2734,10 @@ When an agent does any of the following, update this file in the same slice:
       transform, applies the vanilla EAT/DRINK use transform for patch-carried
       and default item-prototype consumables, keeps goat horn `TOOT_HORN` use on
       the base arm transform, applies the vanilla BRUSH swipe transform, and
-      draws in a depth-cleared pass after world transparency is composited and
-      before HUD overlays. Remaining refinements are first-person non-EAT/DRINK
-      use/special paths beyond goat horn and brush, combat arm poses, and custom
+      applies the vanilla BUNDLE `swingArm` use transform, and draws in a
+      depth-cleared pass after world transparency is composited and before HUD
+      overlays. Remaining refinements are first-person non-EAT/DRINK use/special
+      paths beyond goat horn, brush, and bundle, combat arm poses, and custom
       ground transforms. Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized

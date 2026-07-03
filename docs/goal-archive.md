@@ -1180,6 +1180,15 @@
     applies the vanilla right/left hand brush transform. Tests cover non-skipped
     idle/rendering, using mesh movement, override precedence, and exact matrix
     order/formula.
+  - [x] first-person bundle BUNDLE use pose：local vanilla 26.1
+    `BundleItem.getUseAnimation` returns `ItemUseAnimation.BUNDLE`, and
+    `ItemInHandRenderer.renderArmWithItem` applies `applyItemArmTransform` then
+    calls the same `swingArm(attack, poseStack, invert, arm)` helper used by
+    ordinary WHACK first-person item attacks. Native now allows
+    `minecraft:bundle` through first-person item rendering, classifies bundle
+    use before generic stack `CONSUMABLE` data, and reuses the WHACK swing
+    transform while the bundle is being used. Tests cover non-skipped using
+    rendering, attack-swing mesh movement, and override precedence.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
