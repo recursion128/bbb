@@ -503,6 +503,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     生成 `minecraft:block` 粒子：event `53` 基础 Entity slide 生成 5 个，
     event `54` LivingEntity jump 生成 10 个，均使用
     `Blocks.HONEY_BLOCK.defaultBlockState()`、实体当前位置和零速度；
+    Ravager stun client tick 现在按 vanilla `Ravager.aiStep` /
+    `stunEffect` 在 event `39` 的 40 tick stun 期间每 tick 消耗 Java-LCG
+    client RNG 执行 `nextInt(6)`，命中时在头部 anchor
+    `position - width*sin(yBodyRot)` / `position.y + height - 0.3` /
+    `position + width*cos(yBodyRot)` 加 `±0.3` x/z jitter 生成灰色
+    `minecraft:entity_effect`；EvokerFangs event `4` 启动 `lifeTicks`
+    后，tick 到 `14` 时按 vanilla 一次性生成 12 个 `minecraft:crit`
+    粒子，使用 `width*0.5` 水平范围、`1.05 + random` Y 偏移和
+    `0.3..0.6` Y 速度，并在 renderer `ParticleEngine.tick` 前提交；
     `ClientboundTakeItemEntity` 现在按 vanilla 在 shrink/remove 前创建
     `ItemPickupParticle` runtime command：source 使用被拾取实体当前位置/速度，
     target 使用目标 living entity 或本地玩家 fallback 的 `(feet + eyeY) / 2`

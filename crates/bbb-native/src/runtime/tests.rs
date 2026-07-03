@@ -253,6 +253,51 @@ fn primed_tnt_smoke_particle_batch_emits_once_per_advanced_tick() {
 }
 
 #[test]
+fn entity_client_tick_particle_batch_maps_ravager_and_fangs_particles() {
+    let batch = entity_client_tick_particle_batch(
+        vec![bbb_world::RavagerStunParticleState {
+            entity_id: 76,
+            position: bbb_world::EntityVec3 {
+                x: 1.25,
+                y: 65.9,
+                z: -0.5,
+            },
+        }],
+        vec![bbb_world::EvokerFangsCritParticleState {
+            entity_id: 78,
+            position: bbb_world::EntityVec3 {
+                x: 0.9,
+                y: 65.4,
+                z: -1.8,
+            },
+            velocity: bbb_world::EntityVec3 {
+                x: -0.1,
+                y: 0.45,
+                z: 0.2,
+            },
+        }],
+    );
+
+    assert_eq!(batch.commands.len(), 2);
+    let stun = &batch.commands[0];
+    assert_eq!(stun.particle_type_id, ENTITY_EFFECT_PARTICLE_TYPE_ID);
+    assert_eq!(stun.particle_id, "minecraft:entity_effect");
+    assert_eq!(stun.position, [1.25, 65.9, -0.5]);
+    assert_eq!(stun.velocity, [0.0, 0.0, 0.0]);
+    assert_eq!(
+        stun.option_color,
+        Some([0.49803922, 0.5137255, 0.57254905, 1.0])
+    );
+
+    let crit = &batch.commands[1];
+    assert_eq!(crit.particle_type_id, CRIT_PARTICLE_TYPE_ID);
+    assert_eq!(crit.particle_id, "minecraft:crit");
+    assert_eq!(crit.position, [0.9, 65.4, -1.8]);
+    assert_eq!(crit.velocity, [-0.1, 0.45, 0.2]);
+    assert_eq!(crit.option_color, None);
+}
+
+#[test]
 fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
@@ -853,6 +898,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let primed_tnt_smoke = source
         .find("submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
+    let entity_client_tick_particles = source
+        .find("submit_entity_client_tick_particles(renderer, world);")
+        .expect("pump should emit entity client tick particles before particle tick");
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
         .expect("pump should advance particles");
@@ -903,6 +951,10 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     assert!(
         primed_tnt_smoke < particle_tick,
         "vanilla `PrimedTnt.tick` emits smoke before ParticleEngine.tick advances particles"
+    );
+    assert!(
+        primed_tnt_smoke < entity_client_tick_particles && entity_client_tick_particles < particle_tick,
+        "entity client-tick particles should be submitted before ParticleEngine.tick advances particles"
     );
     assert!(
         particle_tick < particle_sound_drain && particle_sound_drain < particle_sound_emit,

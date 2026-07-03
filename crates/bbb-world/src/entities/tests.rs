@@ -12751,6 +12751,79 @@ fn evoker_fangs_attack_event_drives_the_bite_progress_ramp() {
 }
 
 #[test]
+fn ravager_stun_tick_particles_follow_the_vanilla_head_anchor() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        76,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID,
+    ));
+
+    assert!(store.take_ravager_stun_particle_states().is_empty());
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 76,
+        event_id: 39,
+    }));
+    store.advance_entity_client_animations(40);
+
+    let particles = store.take_ravager_stun_particle_states();
+    assert!(
+        !particles.is_empty(),
+        "the deterministic client RNG should emit at least one stun particle"
+    );
+    assert!(particles.len() <= 40);
+    let y_body_rot = 20.0_f64.to_radians();
+    let anchor_x = 1.0 - 1.95 * y_body_rot.sin();
+    let anchor_z = -2.0 + 1.95 * y_body_rot.cos();
+    for particle in particles {
+        assert_eq!(particle.entity_id, 76);
+        assert!((particle.position.y - 65.9).abs() < 1.0e-6);
+        assert!(
+            (particle.position.x - anchor_x).abs() <= 0.3,
+            "x jitter stays inside vanilla +/-0.3 around the head anchor: {:?}",
+            particle
+        );
+        assert!(
+            (particle.position.z - anchor_z).abs() <= 0.3,
+            "z jitter stays inside vanilla +/-0.3 around the head anchor: {:?}",
+            particle
+        );
+    }
+    assert!(store.take_ravager_stun_particle_states().is_empty());
+}
+
+#[test]
+fn evoker_fangs_attack_tick_emits_twelve_crit_particles_once() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+    ));
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 78,
+        event_id: 4,
+    }));
+    store.advance_entity_client_animations(7);
+    assert!(store.take_evoker_fangs_crit_particle_states().is_empty());
+
+    store.advance_entity_client_animations(1);
+    let particles = store.take_evoker_fangs_crit_particle_states();
+    assert_eq!(particles.len(), 12);
+    for particle in particles {
+        assert_eq!(particle.entity_id, 78);
+        assert!((0.75..=1.25).contains(&particle.position.x));
+        assert!((65.05..66.05).contains(&particle.position.y));
+        assert!((-2.25..=-1.75).contains(&particle.position.z));
+        assert!((-0.3..=0.3).contains(&particle.velocity.x));
+        assert!((0.3..=0.6).contains(&particle.velocity.y));
+        assert!((-0.3..=0.3).contains(&particle.velocity.z));
+    }
+
+    store.advance_entity_client_animations(8);
+    assert!(store.take_evoker_fangs_crit_particle_states().is_empty());
+}
+
+#[test]
 fn camel_dash_flag_drives_the_dash_animation_timer() {
     const CAMEL_DASH_DATA_ID: u8 = 19;
 

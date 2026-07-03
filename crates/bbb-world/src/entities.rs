@@ -376,6 +376,19 @@ pub struct RavagerRoarParticleState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct RavagerStunParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EvokerFangsCritParticleState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub velocity: EntityVec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct WitchMagicParticleState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -2726,6 +2739,14 @@ impl WorldStore {
 
     pub fn primed_tnt_smoke_particle_states(&self) -> Vec<PrimedTntSmokeParticleState> {
         self.entities.primed_tnt_smoke_particle_states()
+    }
+
+    pub fn take_ravager_stun_particle_states(&mut self) -> Vec<RavagerStunParticleState> {
+        self.entities.take_ravager_stun_particle_states()
+    }
+
+    pub fn take_evoker_fangs_crit_particle_states(&mut self) -> Vec<EvokerFangsCritParticleState> {
+        self.entities.take_evoker_fangs_crit_particle_states()
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player

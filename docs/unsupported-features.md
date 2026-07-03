@@ -353,10 +353,21 @@ When an agent does any of the following, update this file in the same slice:
         `54` LivingEntity jump emits 10 commands, both using
         `Blocks.HONEY_BLOCK.defaultBlockState()`, the entity position, and zero
         velocity.
+      - Ravager stun client ticks now mirror vanilla `Ravager.aiStep` /
+        `stunEffect`: entity event `39` arms the 40-tick stun timer, each stunned
+        tick consumes a deterministic Java-LCG client RNG for `nextInt(6)`, and
+        successful ticks enqueue a grey `minecraft:entity_effect` particle at
+        the head anchor `position - width*sin(yBodyRot)`,
+        `position.y + height - 0.3`, `position + width*cos(yBodyRot)` with the
+        vanilla `±0.3` x/z jitter. Evoker fangs attack ticks now mirror vanilla
+        `EvokerFangs.tick`: entity event `4` starts `lifeTicks`, and the tick
+        where it reaches `14` enqueues the 12 `minecraft:crit` particles with
+        vanilla `width*0.5`, `1.05 + random`, and `0.3..0.6` Y-velocity ranges
+        before the renderer particle engine advances.
       - remaining deferred work is broader collision clipping parity for
         special contexts, player-coupled particle emitters beyond the currently
-        covered scoped cases, and remaining entity-event families such as
-        tick-driven stun/fang particle state
+        covered scoped cases, and broader entity-event particle/audio parity
+        outside the currently covered families.
     - terrain/item particle option metadata / atlas rendering:
       - native preserves commands and raw option length for definition-less
         block/item atlas particle types

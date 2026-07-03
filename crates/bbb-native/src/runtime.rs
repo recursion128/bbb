@@ -33,11 +33,11 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
-    PrimedTntSmokeParticleState, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
-    WorldWeatherState,
+    BlockPos, BookScreenState, ContainerState, EvokerFangsCritParticleState, ItemEquipmentSlot,
+    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
+    MountInventoryKind, PrimedTntSmokeParticleState, RavagerStunParticleState, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -66,7 +66,10 @@ use crate::{
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
         ominous_item_spawner_models,
     },
-    particle_runtime::{ParticleEventSink, SMOKE_PARTICLE_TYPE_ID},
+    particle_runtime::{
+        ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
+        SMOKE_PARTICLE_TYPE_ID,
+    },
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
         TerrainUploadState,
@@ -1467,6 +1470,7 @@ pub(crate) fn pump_network_and_terrain(
     let particle_local_player_motion_context = particle_local_player_motion_context(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
+    submit_entity_client_tick_particles(renderer, world);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state during particle tick.
@@ -1839,13 +1843,70 @@ fn primed_tnt_smoke_particle_batch(
     }
 }
 
+fn submit_entity_client_tick_particles(renderer: &mut Renderer, world: &mut WorldStore) {
+    let batch = entity_client_tick_particle_batch(
+        world.take_ravager_stun_particle_states(),
+        world.take_evoker_fangs_crit_particle_states(),
+    );
+    renderer.submit_particle_spawns(batch);
+}
+
+fn entity_client_tick_particle_batch(
+    ravager_stun_particles: Vec<RavagerStunParticleState>,
+    evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
+) -> ParticleSpawnBatch {
+    if ravager_stun_particles.is_empty() && evoker_fangs_crit_particles.is_empty() {
+        return ParticleSpawnBatch::default();
+    }
+
+    let mut commands =
+        Vec::with_capacity(ravager_stun_particles.len() + evoker_fangs_crit_particles.len());
+    commands.extend(ravager_stun_particles.into_iter().map(|state| {
+        let mut command = direct_particle_spawn_command(
+            ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            "minecraft:entity_effect",
+            [state.position.x, state.position.y, state.position.z],
+            [0.0, 0.0, 0.0],
+        );
+        command.option_color = Some([0.49803922, 0.5137255, 0.57254905, 1.0]);
+        command
+    }));
+    commands.extend(evoker_fangs_crit_particles.into_iter().map(|state| {
+        direct_particle_spawn_command(
+            CRIT_PARTICLE_TYPE_ID,
+            "minecraft:crit",
+            [state.position.x, state.position.y, state.position.z],
+            [state.velocity.x, state.velocity.y, state.velocity.z],
+        )
+    }));
+
+    ParticleSpawnBatch {
+        commands,
+        ..ParticleSpawnBatch::default()
+    }
+}
+
 fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> ParticleSpawnCommand {
+    direct_particle_spawn_command(
+        SMOKE_PARTICLE_TYPE_ID,
+        "minecraft:smoke",
+        [state.position.x, state.position.y + 0.5, state.position.z],
+        [0.0, 0.0, 0.0],
+    )
+}
+
+fn direct_particle_spawn_command(
+    particle_type_id: i32,
+    particle_id: &str,
+    position: [f64; 3],
+    velocity: [f64; 3],
+) -> ParticleSpawnCommand {
     ParticleSpawnCommand {
-        particle_type_id: SMOKE_PARTICLE_TYPE_ID,
-        particle_id: "minecraft:smoke".to_string(),
+        particle_type_id,
+        particle_id: particle_id.to_string(),
         sprite_ids: Vec::new(),
-        position: [state.position.x, state.position.y + 0.5, state.position.z],
-        velocity: [0.0, 0.0, 0.0],
+        position,
+        velocity,
         override_limiter: false,
         always_show: false,
         raw_options_len: 0,

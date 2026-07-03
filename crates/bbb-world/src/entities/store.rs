@@ -15,14 +15,15 @@ use bbb_protocol::packets::ItemStackSummary;
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
     is_vanilla_minecart_type, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimations, EntityDamage,
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
-    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
-    EntityTransform, EntityTransformState, EntityTransientEvents, FallingBlockModelState,
-    FireworkRocketExplosionParticleState, FireworkRocketItemState, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, RavagerRoarParticleState,
-    WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
+    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -49,7 +50,8 @@ use crate::entities::animations::{
     guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
-    wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
+    wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
+    WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -354,6 +356,8 @@ pub(crate) struct EntityStore {
     ecs: World,
     by_protocol_id: BTreeMap<i32, Entity>,
     order: Vec<i32>,
+    pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
+    pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
 }
 
 impl EntityStore {
@@ -926,6 +930,16 @@ impl EntityStore {
             });
         }
         states
+    }
+
+    pub(crate) fn take_ravager_stun_particle_states(&mut self) -> Vec<RavagerStunParticleState> {
+        std::mem::take(&mut self.pending_ravager_stun_particles)
+    }
+
+    pub(crate) fn take_evoker_fangs_crit_particle_states(
+        &mut self,
+    ) -> Vec<EvokerFangsCritParticleState> {
+        std::mem::take(&mut self.pending_evoker_fangs_crit_particles)
     }
 
     pub(crate) fn ravager_roar_particle_state(&self, id: i32) -> Option<RavagerRoarParticleState> {
@@ -2940,7 +2954,7 @@ impl EntityStore {
         let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
         animations
             .animations
-            .handle_entity_event(entity_type_id, event_id);
+            .handle_entity_event(entity_type_id, id, event_id);
         Some(())
     }
 
@@ -3056,12 +3070,13 @@ impl EntityStore {
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
-            for (_, (identity, transform, mount, metadata, equipment, animations)) in
+            for (_, (identity, transform, mount, metadata, attributes, equipment, animations)) in
                 self.ecs.query_mut::<(
                     &EntityIdentity,
                     &EntityTransform,
                     &EntityMount,
                     &EntityMetadata,
+                    &EntityAttributes,
                     Option<&EntityEquipment>,
                     &mut EntityClientAnimations,
                 )>()
@@ -3116,7 +3131,8 @@ impl EntityStore {
                 let boat_paddles =
                     boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty());
                 let boat_bubble_time_value = boat_bubble_time(&metadata.data_values);
-                animations.animations.advance_client_tick(
+                let client_animations_before_tick = animations.animations;
+                let particle_triggers = animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
                     *transform,
@@ -3150,6 +3166,16 @@ impl EntityStore {
                     boat_paddles[1],
                     boat_bubble_time_value,
                     is_swimming,
+                );
+                append_client_tick_particle_triggers(
+                    &mut self.pending_ravager_stun_particles,
+                    &mut self.pending_evoker_fangs_crit_particles,
+                    identity,
+                    transform,
+                    &metadata.data_values,
+                    &attributes.attributes,
+                    client_animations_before_tick,
+                    particle_triggers,
                 );
             }
             for (_, minecart_lerp) in self.ecs.query_mut::<&mut EntityMinecartLerp>() {
@@ -3374,6 +3400,8 @@ impl Default for EntityStore {
             ecs: World::new(),
             by_protocol_id: BTreeMap::new(),
             order: Vec::new(),
+            pending_ravager_stun_particles: Vec::new(),
+            pending_evoker_fangs_crit_particles: Vec::new(),
         }
     }
 }
@@ -3435,6 +3463,9 @@ impl Clone for EntityStore {
             store.by_protocol_id.insert(id, cloned);
         }
         store.order = self.order.clone();
+        store.pending_ravager_stun_particles = self.pending_ravager_stun_particles.clone();
+        store.pending_evoker_fangs_crit_particles =
+            self.pending_evoker_fangs_crit_particles.clone();
         store
     }
 }
@@ -3533,6 +3564,59 @@ fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
         x: position.x.floor() as i32,
         y: position.y.floor() as i32,
         z: position.z.floor() as i32,
+    }
+}
+
+fn append_client_tick_particle_triggers(
+    pending_ravager_stun_particles: &mut Vec<RavagerStunParticleState>,
+    pending_evoker_fangs_crit_particles: &mut Vec<EvokerFangsCritParticleState>,
+    identity: &EntityIdentity,
+    transform: &EntityTransform,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    attributes: &[ProtocolAttributeSnapshot],
+    client_animations: EntityClientAnimationState,
+    triggers: EntityClientTickParticleTriggers,
+) {
+    if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
+        return;
+    }
+    let Some(bounds) = vanilla_pick_bounds_for_entity_data(
+        identity.entity_type_id,
+        identity.data,
+        data_values,
+        attributes,
+        Some(client_animations),
+    ) else {
+        return;
+    };
+
+    if let Some(offset) = triggers.ravager_stun {
+        let width = f64::from(bounds.max[0] - bounds.min[0]);
+        let height = f64::from(bounds.max[1] - bounds.min[1]);
+        let y_body_rot = f64::from(transform.y_rot).to_radians();
+        pending_ravager_stun_particles.push(RavagerStunParticleState {
+            entity_id: identity.id,
+            position: super::EntityVec3 {
+                x: transform.position.x - width * y_body_rot.sin() + offset.jitter_x,
+                y: transform.position.y + height - 0.3,
+                z: transform.position.z + width * y_body_rot.cos() + offset.jitter_z,
+            },
+        });
+    }
+
+    if let Some(offsets) = triggers.evoker_fangs_crit {
+        let half_width = f64::from(bounds.max[0] - bounds.min[0]) * 0.5;
+        pending_evoker_fangs_crit_particles.extend(offsets.into_iter().map(|offset| {
+            EvokerFangsCritParticleState {
+                entity_id: identity.id,
+                position: super::EntityVec3 {
+                    x: transform.position.x + offset.x_unit * half_width,
+                    y: transform.position.y + offset.y_offset,
+                    z: transform.position.z + offset.z_unit * half_width,
+                },
+                velocity: offset.velocity,
+            }
+        }));
     }
 }
 

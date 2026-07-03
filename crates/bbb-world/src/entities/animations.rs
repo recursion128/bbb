@@ -360,6 +360,7 @@ const RAVAGER_STUN_EVENT_ID: i8 = 39;
 const RAVAGER_ATTACK_TICKS: i32 = 10;
 const RAVAGER_STUN_TICKS: i32 = 40;
 const RAVAGER_ROAR_TICKS: i32 = 20;
+const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_EVENT_ID: i8 = 4;
@@ -370,6 +371,9 @@ const HOGLIN_ATTACK_TICKS: i32 = 10;
 /// `getAnimationProgress` ramp built from `lifeTicks` drives `EvokerFangsModel.setupAnim`.
 const EVOKER_FANGS_ATTACK_EVENT_ID: i8 = 4;
 const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
+const EVOKER_FANGS_CRIT_PARTICLE_TICK: i32 = 14;
+const EVOKER_FANGS_CRIT_PARTICLE_COUNT: usize = 12;
+const EVOKER_FANGS_PARTICLE_RANDOM_SALT: i64 = 0xF46;
 /// Vanilla `Camel.DASH_COOLDOWN_TICKS`: `onSyncedDataUpdated(DASH)` seeds `dashCooldown` to 55 when
 /// the synced dash flag rises, and `Camel.tick` decrements it each client tick. The renderer consumes
 /// `max(dashCooldown - partialTicks, 0)` as `CamelRenderState.jumpCooldown`.
@@ -411,6 +415,27 @@ const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
 /// `fuse - partialTicks + 1.0`.
 const TNT_MINECART_PRIME_EVENT_ID: i8 = 10;
 const TNT_MINECART_FUSE_TICKS: i32 = 80;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct EntityClientTickParticleTriggers {
+    pub(crate) ravager_stun: Option<RavagerStunParticleOffset>,
+    pub(crate) evoker_fangs_crit:
+        Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct RavagerStunParticleOffset {
+    pub(crate) jitter_x: f64,
+    pub(crate) jitter_z: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EvokerFangsCritParticleOffset {
+    pub(crate) x_unit: f64,
+    pub(crate) y_offset: f64,
+    pub(crate) z_unit: f64,
+    pub(crate) velocity: EntityVec3,
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -1810,24 +1835,52 @@ pub struct RavagerAnimationState {
     pub attack_tick: i32,
     pub stunned_tick: i32,
     pub roar_tick: i32,
+    #[serde(default)]
+    client_particle_random_seed: u64,
 }
 
 impl RavagerAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            attack_tick: 0,
+            stunned_tick: 0,
+            roar_tick: 0,
+            client_particle_random_seed: java_random_seed(
+                i64::from(entity_id).wrapping_add(RAVAGER_STUN_PARTICLE_RANDOM_SALT),
+            ),
+        }
+    }
+
     /// Vanilla `Ravager.aiStep`: decrement the roar, attack, and stun timers; when the stun timer hits
     /// `0` it sets `roarTick = 20` (the post-stun roar).
-    fn advance_client_tick(&mut self) {
+    fn advance_client_tick(&mut self, entity_id: i32) -> Option<RavagerStunParticleOffset> {
+        if self.client_particle_random_seed == 0 {
+            self.client_particle_random_seed = java_random_seed(
+                i64::from(entity_id).wrapping_add(RAVAGER_STUN_PARTICLE_RANDOM_SALT),
+            );
+        }
         if self.roar_tick > 0 {
             self.roar_tick -= 1;
         }
         if self.attack_tick > 0 {
             self.attack_tick -= 1;
         }
+        let mut particle = None;
         if self.stunned_tick > 0 {
             self.stunned_tick -= 1;
+            if java_random_next_int_bound(&mut self.client_particle_random_seed, 6) == 0 {
+                particle = Some(RavagerStunParticleOffset {
+                    jitter_x: java_random_next_double(&mut self.client_particle_random_seed) * 0.6
+                        - 0.3,
+                    jitter_z: java_random_next_double(&mut self.client_particle_random_seed) * 0.6
+                        - 0.3,
+                });
+            }
             if self.stunned_tick == 0 {
                 self.roar_tick = RAVAGER_ROAR_TICKS;
             }
         }
+        particle
     }
 
     /// All three timers have run out, so the ravager is back to its idle/walk and the state can be
@@ -2486,6 +2539,8 @@ pub struct EvokerFangsAnimationState {
     /// Vanilla `EvokerFangs.lifeTicks` (field initializer `22`).
     #[serde(default)]
     pub life_ticks: i32,
+    #[serde(default)]
+    client_particle_random_seed: u64,
 }
 
 /// Canonical client-side parrot wing-flap animation, mirroring vanilla `Parrot`
@@ -3133,6 +3188,12 @@ fn java_random_next_int_bound(state: &mut u64, bound: i32) -> i32 {
     }
 }
 
+fn java_random_next_double(state: &mut u64) -> f64 {
+    let high = u64::from(java_random_next_bits(state, 26));
+    let low = u64::from(java_random_next_bits(state, 27));
+    ((high << 27) + low) as f64 / (1_u64 << 53) as f64
+}
+
 /// Vanilla `AbstractHorse.tailCounter`, with the random idle start driven from a repo-local
 /// deterministic Java LCG. The exact vanilla client RNG seed is not sent over the protocol, but the
 /// `nextInt(200)` distribution and `tailCounter` lifetime mirror `AbstractHorse.aiStep` / `tick`.
@@ -3468,19 +3529,57 @@ impl Default for EvokerFangsAnimationState {
         Self {
             started: false,
             life_ticks: EVOKER_FANGS_LIFE_TICKS,
+            client_particle_random_seed: 0,
         }
     }
 }
 
 impl EvokerFangsAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            client_particle_random_seed: java_random_seed(
+                i64::from(entity_id).wrapping_add(EVOKER_FANGS_PARTICLE_RANDOM_SALT),
+            ),
+            ..Self::default()
+        }
+    }
+
     /// Advances one client tick of `EvokerFangs.tick`. Vanilla decrements `lifeTicks`
     /// every tick once the attack has started; the count is clamped at `2` (where the
     /// progress ramp has already saturated at `1.0` — the vanished state) to bound it
     /// while the entity waits to be removed.
-    fn advance_client_tick(&mut self) {
+    fn advance_client_tick(
+        &mut self,
+        entity_id: i32,
+    ) -> Option<[EvokerFangsCritParticleOffset; EVOKER_FANGS_CRIT_PARTICLE_COUNT]> {
+        if self.client_particle_random_seed == 0 {
+            self.client_particle_random_seed = java_random_seed(
+                i64::from(entity_id).wrapping_add(EVOKER_FANGS_PARTICLE_RANDOM_SALT),
+            );
+        }
         if self.started && self.life_ticks > 2 {
             self.life_ticks -= 1;
+            if self.life_ticks == EVOKER_FANGS_CRIT_PARTICLE_TICK {
+                return Some(std::array::from_fn(|_| EvokerFangsCritParticleOffset {
+                    x_unit: java_random_next_double(&mut self.client_particle_random_seed) * 2.0
+                        - 1.0,
+                    y_offset: 1.05 + java_random_next_double(&mut self.client_particle_random_seed),
+                    z_unit: java_random_next_double(&mut self.client_particle_random_seed) * 2.0
+                        - 1.0,
+                    velocity: EntityVec3 {
+                        x: (java_random_next_double(&mut self.client_particle_random_seed) * 2.0
+                            - 1.0)
+                            * 0.3,
+                        y: 0.3
+                            + java_random_next_double(&mut self.client_particle_random_seed) * 0.3,
+                        z: (java_random_next_double(&mut self.client_particle_random_seed) * 2.0
+                            - 1.0)
+                            * 0.3,
+                    },
+                }));
+            }
         }
+        None
     }
 
     /// Vanilla `EvokerFangs.getAnimationProgress(partialTick)`: `0` until the attack
@@ -4061,7 +4160,12 @@ impl EntityClientAnimationState {
     /// Projects a client entity event into client animation state. Vanilla
     /// `ArmorStand.handleEntityEvent(32)` resets the hit wobble, and
     /// `Sheep.handleEntityEvent` resets the eat-grass animation on event `10`.
-    pub(crate) fn handle_entity_event(&mut self, entity_type_id: i32, event_id: i8) {
+    pub(crate) fn handle_entity_event(
+        &mut self,
+        entity_type_id: i32,
+        entity_id: i32,
+        event_id: i8,
+    ) {
         if vanilla_living_entity_type(entity_type_id)
             && event_id == LIVING_ENTITY_KINETIC_HIT_EVENT_ID
         {
@@ -4172,11 +4276,9 @@ impl EntityClientAnimationState {
         {
             // Vanilla `Ravager.handleEntityEvent`: event 4 → `attackTick = 10`, 39 → `stunnedTick = 40`.
             // The `aiStep` decrements them and arms the post-stun roar.
-            let ravager = self.ravager.get_or_insert(RavagerAnimationState {
-                attack_tick: 0,
-                stunned_tick: 0,
-                roar_tick: 0,
-            });
+            let ravager = self
+                .ravager
+                .get_or_insert_with(|| RavagerAnimationState::new(entity_id));
             if event_id == RAVAGER_ATTACK_EVENT_ID {
                 ravager.attack_tick = RAVAGER_ATTACK_TICKS;
             } else {
@@ -4240,7 +4342,7 @@ impl EntityClientAnimationState {
             // Vanilla `EvokerFangs.handleEntityEvent`: event 4 → `clientSideAttackStarted = true`,
             // arming the `lifeTicks` countdown that `tick` runs.
             self.evoker_fangs
-                .get_or_insert_with(EvokerFangsAnimationState::default)
+                .get_or_insert_with(|| EvokerFangsAnimationState::new(entity_id))
                 .started = true;
         }
     }
@@ -5297,8 +5399,9 @@ impl EntityClientAnimationState {
         boat_bubble_time: i32,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
-    ) {
+    ) -> EntityClientTickParticleTriggers {
         self.age_ticks = self.age_ticks.saturating_add(1);
+        let mut particle_triggers = EntityClientTickParticleTriggers::default();
         // Vanilla `AbstractArrow.tick`: `if (shakeTime > 0) --shakeTime`.
         // The state is only created for arrow/spectral-arrow metadata updates, so
         // it can advance outside the per-type match without touching other entities.
@@ -5424,7 +5527,9 @@ impl EntityClientAnimationState {
             }
             VANILLA_ENTITY_TYPE_RAVAGER_ID => {
                 if let Some(ravager) = self.ravager.as_mut() {
-                    ravager.advance_client_tick();
+                    if let Some(offset) = ravager.advance_client_tick(entity_id) {
+                        particle_triggers.ravager_stun = Some(offset);
+                    }
                     if ravager.is_settled() {
                         self.ravager = None;
                     }
@@ -5727,7 +5832,9 @@ impl EntityClientAnimationState {
                 // has started (the event arm seeds the state); an un-attacked fang
                 // holds `started = false` (hidden) and is left untouched.
                 if let Some(fangs) = self.evoker_fangs.as_mut() {
-                    fangs.advance_client_tick();
+                    if let Some(offsets) = fangs.advance_client_tick(entity_id) {
+                        particle_triggers.evoker_fangs_crit = Some(offsets);
+                    }
                 }
             }
             VANILLA_ENTITY_TYPE_PARROT_ID => self
@@ -5794,6 +5901,7 @@ impl EntityClientAnimationState {
                     camel_walk_active,
                 );
         }
+        particle_triggers
     }
 }
 
