@@ -1211,7 +1211,7 @@ fn first_person_stack_supported_use_animation(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonUseAnimation> {
-    if let Some(consumable) = first_person_stack_consumable_summary(stack) {
+    if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
         return match consumable.animation {
             ItemUseAnimationSummary::None => Some(FirstPersonUseAnimation::None),
             ItemUseAnimationSummary::Eat | ItemUseAnimationSummary::Drink => {
@@ -1228,7 +1228,10 @@ fn first_person_stack_supported_use_animation(
     first_person_stack_block_use_kind(stack, item_runtime).map(FirstPersonUseAnimation::Block)
 }
 
-fn first_person_stack_consumable_summary(stack: &ItemStackSummary) -> Option<ConsumableSummary> {
+fn first_person_stack_consumable_summary(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<ConsumableSummary> {
     if stack
         .component_patch
         .removed_type_ids
@@ -1239,6 +1242,11 @@ fn first_person_stack_consumable_summary(stack: &ItemStackSummary) -> Option<Con
     stack.component_patch.consumable.or_else(|| {
         first_person_stack_has_added_component(stack, VANILLA_CONSUMABLE_COMPONENT_ID)
             .then(ConsumableSummary::default)
+            .or_else(|| {
+                stack
+                    .item_id
+                    .and_then(|item_id| item_runtime.item_default_consumable(item_id))
+            })
     })
 }
 
@@ -3686,6 +3694,69 @@ mod tests {
     }
 
     #[test]
+    fn first_person_item_models_apply_default_consumable_use_pose() {
+        let root = unique_item_model_temp_dir("first-person-default-consumable-use");
+        write_default_consumable_item_runtime_fixture(&root, "snack");
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let snack = ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:snack"),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        assert_eq!(
+            snack
+                .item_id
+                .and_then(|item_id| item_runtime.item_default_consumable(item_id)),
+            Some(ConsumableSummary {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimationSummary::Eat,
+            })
+        );
+        let camera = Some(CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        });
+
+        let mut idle_world = WorldStore::new();
+        idle_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack.clone(),
+        });
+        let idle = first_person_item_models(
+            &idle_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(idle.flat_meshes.len(), 1);
+
+        let mut eating_world = WorldStore::new();
+        eating_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: snack,
+        });
+        eating_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        eating_world.advance_local_using_item_ticks(12);
+        let eating = first_person_item_models(
+            &eating_world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            camera,
+            0.5,
+        );
+        assert_eq!(eating.flat_meshes.len(), 1);
+        assert_ne!(
+            idle.flat_meshes[0], eating.flat_meshes[0],
+            "default item prototype CONSUMABLE applies vanilla EAT first-person use pose"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
         let root = unique_item_model_temp_dir("first-person-stab-swing");
         write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
@@ -4800,6 +4871,26 @@ mod tests {
                 &[(64 + index * 40) as u8, 80, 120, 255],
             );
         }
+    }
+
+    fn write_default_consumable_item_runtime_fixture(root: &Path, item_id: &str) {
+        write_flat_item_runtime_fixture(root, &[item_id]);
+        let constant = item_id.to_ascii_uppercase();
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            &format!(
+                r#"public class Items {{
+                public static final Item {constant} = registerItem("{item_id}", new Item.Properties().food(Foods.{constant}));
+            }}"#,
+            ),
+        );
     }
 
     fn write_main_hand_select_item_runtime_fixture(root: &Path) {

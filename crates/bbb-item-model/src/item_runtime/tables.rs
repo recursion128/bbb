@@ -155,6 +155,32 @@ pub(super) fn world_item_use_effects(effects: PackItemUseEffects) -> WorldItemUs
     }
 }
 
+pub(super) fn protocol_item_consumable(consumable: PackItemConsumable) -> ConsumableSummary {
+    ConsumableSummary {
+        consume_seconds: consumable.consume_seconds,
+        animation: protocol_item_use_animation(consumable.animation),
+    }
+}
+
+pub(super) fn protocol_item_use_animation(
+    animation: PackItemUseAnimation,
+) -> ItemUseAnimationSummary {
+    match animation {
+        PackItemUseAnimation::None => ItemUseAnimationSummary::None,
+        PackItemUseAnimation::Eat => ItemUseAnimationSummary::Eat,
+        PackItemUseAnimation::Drink => ItemUseAnimationSummary::Drink,
+        PackItemUseAnimation::Block => ItemUseAnimationSummary::Block,
+        PackItemUseAnimation::Bow => ItemUseAnimationSummary::Bow,
+        PackItemUseAnimation::Trident => ItemUseAnimationSummary::Trident,
+        PackItemUseAnimation::Crossbow => ItemUseAnimationSummary::Crossbow,
+        PackItemUseAnimation::Spyglass => ItemUseAnimationSummary::Spyglass,
+        PackItemUseAnimation::TootHorn => ItemUseAnimationSummary::TootHorn,
+        PackItemUseAnimation::Brush => ItemUseAnimationSummary::Brush,
+        PackItemUseAnimation::Bundle => ItemUseAnimationSummary::Bundle,
+        PackItemUseAnimation::Spear => ItemUseAnimationSummary::Spear,
+    }
+}
+
 pub(super) fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMiningRule {
     WorldItemMiningRule {
         block_names: rule.block_names.clone(),
@@ -547,6 +573,16 @@ impl NativeItemRuntime {
 
     pub fn item_use_effect_count(&self) -> usize {
         self.item_use_effects_by_protocol_id().len()
+    }
+
+    pub fn item_default_consumable(&self, item_id: i32) -> Option<ConsumableSummary> {
+        let registry = self.registry.as_ref()?;
+        let resource_id = registry
+            .resource_ids()
+            .get(usize::try_from(item_id).ok()?)?;
+        registry
+            .default_consumable(resource_id)
+            .map(protocol_item_consumable)
     }
 
     pub fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {

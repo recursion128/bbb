@@ -10,26 +10,28 @@ use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, BlockModelDisplayContext,
     BlockModelDisplayTransform, BlockModelDisplayTransforms, EquipmentAssetCatalog,
     EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
-    ItemAttackRange as PackItemAttackRange, ItemCuboidModel, ItemCuboidModelCatalog,
-    ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
+    ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
+    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
     ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
     ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
-    ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackResourceStack, PackRoots,
-    ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    ItemUseAnimation as PackItemUseAnimation, ItemUseEffects as PackItemUseEffects,
+    LanguageCatalog, PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TagCatalog,
+    TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary, ItemRaritySummary,
-    ItemStackSummary, ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    ItemStackSummary, ItemStackTemplateSummary, ItemUseAnimationSummary, ResolvableProfileSummary,
+    ResourceTextureSummary,
 };
 // These summary types are referenced only by this crate's tests; keep them out
 // of the non-test import set so the standalone library build stays warning-free.
 #[cfg(test)]
 use bbb_protocol::packets::{
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemUseAnimationSummary,
-    JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-    NbtSummaryEntry, NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
+    FireworkExplosionShapeSummary, FireworkExplosionSummary, JukeboxSongSummary,
+    LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
 use bbb_render_types::{

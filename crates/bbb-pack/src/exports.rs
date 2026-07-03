@@ -27,8 +27,9 @@ pub use crate::item_models::{
     ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::item_registry::{
-    ItemAttackRange, ItemDefaultAttributeModifier, ItemEquipmentSlot, ItemMiningProfile,
-    ItemMiningRule, ItemMountBodyArmorKind, ItemRegistryCatalog, ItemUseEffects,
+    ItemAttackRange, ItemConsumable, ItemDefaultAttributeModifier, ItemEquipmentSlot,
+    ItemMiningProfile, ItemMiningRule, ItemMountBodyArmorKind, ItemRegistryCatalog,
+    ItemUseAnimation, ItemUseEffects,
 };
 pub use crate::jukebox_song_registry::JukeboxSongRegistry;
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};

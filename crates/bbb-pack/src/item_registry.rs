@@ -82,6 +82,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
     #[serde(default)]
+    default_consumables: BTreeMap<String, ItemConsumable>,
+    #[serde(default)]
     crafting_remainders: BTreeMap<String, String>,
     #[serde(default)]
     mining_profiles: BTreeMap<String, ItemMiningProfile>,
@@ -135,6 +137,44 @@ impl PartialEq for ItemUseEffects {
 }
 
 impl Eq for ItemUseEffects {}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ItemConsumable {
+    pub consume_seconds: f32,
+    pub animation: ItemUseAnimation,
+}
+
+impl PartialEq for ItemConsumable {
+    fn eq(&self, other: &Self) -> bool {
+        self.consume_seconds.to_bits() == other.consume_seconds.to_bits()
+            && self.animation == other.animation
+    }
+}
+
+impl Eq for ItemConsumable {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemUseAnimation {
+    None,
+    Eat,
+    Drink,
+    Block,
+    Bow,
+    Trident,
+    Crossbow,
+    Spyglass,
+    TootHorn,
+    Brush,
+    Bundle,
+    Spear,
+}
+
+impl Default for ItemUseAnimation {
+    fn default() -> Self {
+        Self::Eat
+    }
+}
 
 impl ItemRegistryCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
@@ -211,6 +251,7 @@ impl ItemRegistryCatalog {
         let mut default_swing_animation_durations = BTreeMap::new();
         let mut default_attribute_modifiers = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
+        let mut default_consumables = BTreeMap::new();
         let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
@@ -233,6 +274,7 @@ impl ItemRegistryCatalog {
             let default_attribute_modifier_entries =
                 default_attribute_modifiers_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
+            let default_consumable = default_consumable_for_declaration(expression)?;
             let crafting_remainder =
                 crafting_remainder_for_declaration(expression, item_id_constants)?;
             let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
@@ -285,6 +327,9 @@ impl ItemRegistryCatalog {
                 if let Some(default_use_effect) = default_use_effect {
                     default_use_effects.insert(resource_id.clone(), default_use_effect);
                 }
+                if let Some(default_consumable) = default_consumable {
+                    default_consumables.insert(resource_id.clone(), default_consumable);
+                }
                 if let Some(crafting_remainder) = &crafting_remainder {
                     crafting_remainders.insert(resource_id.clone(), crafting_remainder.clone());
                 }
@@ -325,6 +370,7 @@ impl ItemRegistryCatalog {
             default_swing_animation_durations,
             default_attribute_modifiers,
             default_use_effects,
+            default_consumables,
             crafting_remainders,
             mining_profiles,
         })
@@ -456,6 +502,11 @@ impl ItemRegistryCatalog {
     pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_use_effects.get(&resource_id).copied()
+    }
+
+    pub fn default_consumable(&self, resource_id: &str) -> Option<ItemConsumable> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_consumables.get(&resource_id).copied()
     }
 
     pub fn crafting_remainder(&self, resource_id: &str) -> Option<&str> {
@@ -1133,6 +1184,59 @@ fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUs
         interact_vibrations: parse_java_bool_literal(capture.get(2).unwrap().as_str())?,
         speed_multiplier: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
     }))
+}
+
+fn default_consumable_for_declaration(expression: &str) -> Result<Option<ItemConsumable>> {
+    if let Some(name) = optional_capture(
+        r#"\.component\(\s*DataComponents\.CONSUMABLE\s*,\s*Consumables\.([A-Z0-9_]+)"#,
+        expression,
+    )? {
+        return consumable_for_name(&name).map(Some);
+    }
+    if let Some(name) = optional_capture(
+        r#"\.food\(\s*Foods\.[A-Z0-9_]+\s*,\s*Consumables\.([A-Z0-9_]+)"#,
+        expression,
+    )? {
+        return consumable_for_name(&name).map(Some);
+    }
+    if expression.contains(".food(") {
+        return Ok(Some(ItemConsumable {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimation::Eat,
+        }));
+    }
+    Ok(None)
+}
+
+fn consumable_for_name(name: &str) -> Result<ItemConsumable> {
+    let consumable = match name {
+        "DEFAULT_FOOD"
+        | "CHICKEN"
+        | "CHORUS_FRUIT"
+        | "ENCHANTED_GOLDEN_APPLE"
+        | "GOLDEN_APPLE"
+        | "POISONOUS_POTATO"
+        | "PUFFERFISH"
+        | "ROTTEN_FLESH"
+        | "SPIDER_EYE" => ItemConsumable {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimation::Eat,
+        },
+        "DRIED_KELP" => ItemConsumable {
+            consume_seconds: 0.8,
+            animation: ItemUseAnimation::Eat,
+        },
+        "DEFAULT_DRINK" | "MILK_BUCKET" | "OMINOUS_BOTTLE" => ItemConsumable {
+            consume_seconds: 1.6,
+            animation: ItemUseAnimation::Drink,
+        },
+        "HONEY_BOTTLE" => ItemConsumable {
+            consume_seconds: 2.0,
+            animation: ItemUseAnimation::Drink,
+        },
+        other => bail!("unsupported Consumables.{other} item declaration"),
+    };
+    Ok(consumable)
 }
 
 fn crafting_remainder_for_declaration(
@@ -1921,6 +2025,54 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(decoded.default_use_effects("minecraft:wooden_spear"), None);
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_consumables() {
+        let source = r#"
+            public class Items {
+               public static final Item APPLE = registerItem("apple", new Item.Properties().food(Foods.APPLE));
+               public static final Item DRIED_KELP = registerItem("dried_kelp", new Item.Properties().food(Foods.DRIED_KELP, Consumables.DRIED_KELP));
+               public static final Item MILK_BUCKET = registerItem(
+                  "milk_bucket",
+                  new Item.Properties().craftRemainder(BUCKET).component(DataComponents.CONSUMABLE, Consumables.MILK_BUCKET).usingConvertsTo(BUCKET).stacksTo(1)
+               );
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert_eq!(
+            catalog.default_consumable("minecraft:apple"),
+            Some(ItemConsumable {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimation::Eat,
+            })
+        );
+        assert_eq!(
+            catalog.default_consumable("minecraft:dried_kelp"),
+            Some(ItemConsumable {
+                consume_seconds: 0.8,
+                animation: ItemUseAnimation::Eat,
+            })
+        );
+        assert_eq!(
+            catalog.default_consumable("minecraft:milk_bucket"),
+            Some(ItemConsumable {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimation::Drink,
+            })
+        );
+        assert_eq!(catalog.default_consumable("minecraft:iron_sword"), None);
+
+        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:apple"],
+            "protocol_ids": {"minecraft:apple": 0}
+        }))
+        .unwrap();
+        assert_eq!(decoded.default_consumable("minecraft:apple"), None);
     }
 
     #[test]

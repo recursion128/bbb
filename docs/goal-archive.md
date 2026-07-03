@@ -1150,6 +1150,18 @@
     `using_item_ticks`, `partial_ticks`, and vanilla `consumeTicks()` seconds
     truncation. Tests cover consumable animation decoding, EAT/DRINK mesh
     movement, shared EAT/DRINK output, and the exact matrix order/formula.
+  - [x] default/prototype consumable EAT/DRINK first-person pose：local vanilla
+    26.1 `Items.java` declares default consumables through `.food(Foods.X)`,
+    `.food(Foods.X, Consumables.X)`, and
+    `.component(DataComponents.CONSUMABLE, Consumables.X)`, with
+    `Consumables.DEFAULT_FOOD` / `DEFAULT_DRINK` and the named vanilla overrides
+    defining consume seconds plus `ItemUseAnimation`. The pack item-registry
+    catalog now extracts those default consumables, item runtime exposes them by
+    protocol item id, and native first-person item rendering falls back to the
+    default prototype when the stack patch neither overrides nor removes
+    `CONSUMABLE`. Tests cover default food / dried-kelp / drink parsing,
+    runtime default lookup, and mesh movement for a default EAT item without a
+    stack consumable patch.
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
