@@ -1089,6 +1089,16 @@ pub(super) fn placeholder(
     }
 }
 
+/// Bounds-only placeholder for entities whose dedicated renderer is deferred,
+/// but whose vanilla `EntityType.sized(width, height)` box is source-verified.
+pub(super) fn entity_type_bounds_placeholder(
+    name: &'static str,
+    width: f32,
+    height: f32,
+) -> EntityModelKind {
+    placeholder(name, width, height, width)
+}
+
 pub(super) fn armor_stand_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {

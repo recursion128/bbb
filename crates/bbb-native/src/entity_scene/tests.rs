@@ -6878,18 +6878,69 @@ fn entity_model_kind_maps_all_vanilla_registry_ids() {
 }
 
 #[test]
-fn entity_model_kind_uses_source_verified_experience_orb_bounds() {
-    assert_eq!(
-        entity_model_kind(VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, &[]),
-        EntityModelKind::Placeholder {
-            name: "experience_orb_entity_type_bounds",
-            bounds: bbb_renderer::EntityModelBounds {
-                width: 0.5,
-                height: 0.5,
-                depth: 0.5,
-            },
-        }
-    );
+fn entity_model_kind_uses_source_verified_entity_type_bounds_for_simple_placeholders() {
+    for (entity_type_id, name, width, height) in [
+        (
+            VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+            "dragon_fireball_entity_type_bounds",
+            1.0,
+            1.0,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            "experience_orb_entity_type_bounds",
+            0.5,
+            0.5,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+            "falling_block_entity_type_bounds",
+            0.98,
+            0.98,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+            "firework_rocket_entity_type_bounds",
+            0.25,
+            0.25,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            "fishing_bobber_entity_type_bounds",
+            0.25,
+            0.25,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            "item_entity_type_bounds",
+            0.25,
+            0.25,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+            "ominous_item_spawner_entity_type_bounds",
+            0.25,
+            0.25,
+        ),
+        (
+            VANILLA_ENTITY_TYPE_TNT_ID,
+            "tnt_entity_type_bounds",
+            0.98,
+            0.98,
+        ),
+    ] {
+        assert_eq!(
+            entity_model_kind(entity_type_id, &[]),
+            EntityModelKind::Placeholder {
+                name,
+                bounds: bbb_renderer::EntityModelBounds {
+                    width,
+                    height,
+                    depth: width,
+                },
+            }
+        );
+    }
 }
 
 #[test]

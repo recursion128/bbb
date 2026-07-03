@@ -202,7 +202,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             placeholder("todo_block_display_bounds", 1.0, 1.0, 1.0)
         }
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => {
-            placeholder("todo_dragon_fireball_bounds", 1.0, 1.0, 1.0)
+            entity_type_bounds_placeholder("dragon_fireball_entity_type_bounds", 1.0, 1.0)
         }
         // Thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item sprite,
         // emitted by the item-entity billboard layer (`thrown_item_projectile_billboards_from_world`),
@@ -268,23 +268,21 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
         | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
         | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => EntityModelKind::NoRender,
-        // Vanilla `EntityType.EXPERIENCE_ORB` is `sized(0.5F, 0.5F)`. The
-        // dedicated glowing quad renderer remains a separate presentation slice.
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
-            placeholder("experience_orb_entity_type_bounds", 0.5, 0.5, 0.5)
+            entity_type_bounds_placeholder("experience_orb_entity_type_bounds", 0.5, 0.5)
         }
         // The eye of ender also renders as an item sprite via the billboard layer (see above).
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
-            placeholder("todo_falling_block_bounds", 0.98, 0.98, 0.98)
+            entity_type_bounds_placeholder("falling_block_entity_type_bounds", 0.98, 0.98)
         }
         // The large fireball also renders as a (3× scaled) item sprite via the billboard layer.
         VANILLA_ENTITY_TYPE_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
-            placeholder("todo_firework_rocket_bounds", 0.25, 0.25, 0.25)
+            entity_type_bounds_placeholder("firework_rocket_entity_type_bounds", 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
-            placeholder("todo_fishing_bobber_bounds", 0.25, 0.25, 0.25)
+            entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, frog_variants),
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast {
@@ -301,7 +299,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
         VANILLA_ENTITY_TYPE_INTERACTION_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_ITEM_ID => placeholder("todo_item_entity_bounds", 0.25, 0.25, 0.25),
+        VANILLA_ENTITY_TYPE_ITEM_ID => {
+            entity_type_bounds_placeholder("item_entity_type_bounds", 0.25, 0.25)
+        }
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
@@ -315,7 +315,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_MARKER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => {
-            placeholder("todo_ominous_item_spawner_bounds", 0.25, 0.25, 0.25)
+            entity_type_bounds_placeholder("ominous_item_spawner_entity_type_bounds", 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(data_values),
@@ -353,7 +353,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
         }
-        VANILLA_ENTITY_TYPE_TNT_ID => placeholder("todo_tnt_bounds", 0.98, 0.98, 0.98),
+        VANILLA_ENTITY_TYPE_TNT_ID => {
+            entity_type_bounds_placeholder("tnt_entity_type_bounds", 0.98, 0.98)
+        }
         VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),

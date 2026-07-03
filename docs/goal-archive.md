@@ -530,6 +530,14 @@
     placeholder bounds. The actual `ExperienceOrbRenderer` icon quad, animated
     tint, alpha, and item-target translucent submission remain a later
     presentation slice.
+  - [x] simple EntityType-sized placeholder bounds batch：native entity scene
+    now uses source-verified `*_entity_type_bounds` keys for dragon fireball
+    (`1.0`), falling block / TNT (`0.98`), firework rocket / fishing bobber /
+    item entity / ominous item spawner (`0.25`), and keeps the prior XP orb
+    `0.5` key on the same helper. Tests pin every id, key, and
+    `EntityType.sized(width, height)` box. Display entities, painting, and the
+    unknown future-id placeholder stay deferred because their current boxes are not
+    direct vanilla `EntityType.sized` renderer boxes.
 
 ## P1-3：物品、Frame 与第一人称表现
 
