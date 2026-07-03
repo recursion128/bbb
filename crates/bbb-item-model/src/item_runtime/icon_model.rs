@@ -773,8 +773,8 @@ pub(super) enum SelectProperty {
     /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
     /// wall-clock date/time pattern (root/en-locale ICU subset: `y`/`u` year,
     /// `G` era, `Q`/`q` quarter, `M`/`L` month, `d` day, `D` day-of-year,
-    /// `w`/`W` week numbers, `F` day-of-week-in-month,
-    /// `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `E` weekday, `a`, and
+    /// `w`/`W` week numbers, `F` day-of-week-in-month, `E`/`e`/`c`
+    /// weekdays, `H`/`k`/`K`/`h` hour, `m`/`s`/`S`, `a`, and
     /// `Z`/`X`/`x`/`O` offsets).
     LocalTime {
         pattern: String,
@@ -1499,6 +1499,7 @@ fn format_local_time_field(
         },
         'w' => root_locale_week_of_year(fields, count, locale),
         'W' => root_locale_week_of_month(fields, count, locale),
+        'e' | 'c' => root_locale_local_weekday(fields, count, locale),
         'd' => Some(padded_u32(fields.day, count)),
         'D' => Some(padded_u32(fields.day_of_year, count)),
         'F' => Some(padded_u32((fields.day.saturating_sub(1) / 7) + 1, count)),
@@ -1526,13 +1527,7 @@ fn format_local_time_field(
         'X' => iso8601_offset(fields.offset_seconds, count, true),
         'x' => iso8601_offset(fields.offset_seconds, count, false),
         'O' => localized_gmt_offset(fields.offset_seconds, count, locale),
-        'E' => {
-            if count <= 3 {
-                english_text(locale, short_weekday_name(fields.weekday))
-            } else {
-                english_text(locale, long_weekday_name(fields.weekday))
-            }
-        }
+        'E' => format_weekday_name(fields.weekday, count, locale),
         _ => None,
     }
 }
@@ -1685,6 +1680,25 @@ fn root_locale_week_of_month(
     Some(padded_u32(week, width))
 }
 
+fn root_locale_local_weekday(
+    fields: &LocalTimeFields,
+    width: usize,
+    locale: &str,
+) -> Option<String> {
+    if !root_english_week_locale(locale) {
+        return None;
+    }
+    match width {
+        1 => Some(local_weekday_number(fields.weekday, Weekday::Mon).to_string()),
+        2 => Some(padded_u32(
+            local_weekday_number(fields.weekday, Weekday::Mon),
+            2,
+        )),
+        3..=6 => format_weekday_name(fields.weekday, width, locale),
+        _ => None,
+    }
+}
+
 fn root_english_week_locale(locale: &str) -> bool {
     locale.is_empty() || locale.eq_ignore_ascii_case("root") || locale.eq_ignore_ascii_case("en")
 }
@@ -1715,6 +1729,22 @@ fn week_number_since(week_one_start: NaiveDate, date: NaiveDate) -> Option<u32> 
         return None;
     }
     u32::try_from(((date - week_one_start).num_days() / 7) + 1).ok()
+}
+
+fn local_weekday_number(weekday: Weekday, first_weekday: Weekday) -> u32 {
+    let day = i64::from(weekday.num_days_from_monday());
+    let first = i64::from(first_weekday.num_days_from_monday());
+    (day - first).rem_euclid(7) as u32 + 1
+}
+
+fn format_weekday_name(weekday: Weekday, width: usize, locale: &str) -> Option<String> {
+    match width {
+        1..=3 => english_text(locale, short_weekday_name(weekday)),
+        4 => english_text(locale, long_weekday_name(weekday)),
+        5 => english_text(locale, narrow_weekday_name(weekday)),
+        6 => english_text(locale, two_letter_weekday_name(weekday)),
+        _ => None,
+    }
 }
 
 fn short_quarter_name(quarter: u32) -> &'static str {
@@ -1794,6 +1824,30 @@ fn long_weekday_name(weekday: Weekday) -> &'static str {
         Weekday::Fri => "Friday",
         Weekday::Sat => "Saturday",
         Weekday::Sun => "Sunday",
+    }
+}
+
+fn narrow_weekday_name(weekday: Weekday) -> &'static str {
+    match weekday {
+        Weekday::Mon => "M",
+        Weekday::Tue => "T",
+        Weekday::Wed => "W",
+        Weekday::Thu => "T",
+        Weekday::Fri => "F",
+        Weekday::Sat => "S",
+        Weekday::Sun => "S",
+    }
+}
+
+fn two_letter_weekday_name(weekday: Weekday) -> &'static str {
+    match weekday {
+        Weekday::Mon => "Mo",
+        Weekday::Tue => "Tu",
+        Weekday::Wed => "We",
+        Weekday::Thu => "Th",
+        Weekday::Fri => "Fr",
+        Weekday::Sat => "Sa",
+        Weekday::Sun => "Su",
     }
 }
 

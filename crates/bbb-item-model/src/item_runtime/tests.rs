@@ -6972,6 +6972,26 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(8), uv("week_clock_fallback"));
 
+    // ICU root-locale `e`/`c`: local weekday number uses the same Monday-first
+    // week data, then widths 3..=6 follow weekday text widths.
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 4, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(9), uv("local_weekday_clock_match"));
+
+    runtime.set_local_time_epoch_millis_for_test(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 5, 0, 0, 0)
+            .single()
+            .unwrap()
+            .timestamp_millis(),
+    );
+    assert_eq!(selected(9), uv("local_weekday_clock_fallback"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -12562,6 +12582,7 @@ fn write_local_time_select_fixture(root: &Path) {
             "localized_gmt_clock",
             "weekday_in_month_clock",
             "week_clock",
+            "local_weekday_clock",
         ],
     );
     write_json(
@@ -12726,6 +12747,24 @@ fn write_local_time_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets.join("items").join("local_weekday_clock.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd e ee eee eeee eeeee eeeeee c cc ccc cccc ccccc cccccc E EEEE EEEEE EEEEEE",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "2026-01-04 7 07 Sun Sunday S Su 7 07 Sun Sunday S Su Sun Sunday S Su",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/local_weekday_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/local_weekday_clock_fallback" }
+                }
+            }"#,
+    );
     write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
     write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     write_flat_item_model_and_texture(&assets, "precise_clock_match", &[40, 120, 180, 255]);
@@ -12752,6 +12791,8 @@ fn write_local_time_select_fixture(root: &Path) {
     );
     write_flat_item_model_and_texture(&assets, "week_clock_match", &[70, 160, 210, 255]);
     write_flat_item_model_and_texture(&assets, "week_clock_fallback", &[45, 35, 85, 255]);
+    write_flat_item_model_and_texture(&assets, "local_weekday_clock_match", &[80, 190, 140, 255]);
+    write_flat_item_model_and_texture(&assets, "local_weekday_clock_fallback", &[35, 55, 90, 255]);
 }
 
 fn write_component_select_fixture(root: &Path) {
