@@ -2311,6 +2311,14 @@
     `minecraft:item` commands through the installed empty-component GROUND item
     material sprite ids. Tests pin splash-potion and ender-eye sprite ids without
     changing the vanilla random stream.
+  - [x] particle ground-collision roll coupling：renderer particle ticks now
+    accept a collision callback, carry vanilla-shaped `onGround` /
+    `stoppedByCollision` state, apply `Particle.tick` ground X/Z damping for
+    default particles, and reset `FallingDustParticle` roll on the tick after
+    ground contact. Native wires this callback to a world collision probe that
+    clips downward vanilla 0.2x0.2 particle AABBs against known block collision
+    shape tops. Tests cover default ground damping, falling-dust roll reset, the
+    world Y-clip math, and the native pump ordering marker.
 
 ## P2：Terrain / Block Render Presentation
 

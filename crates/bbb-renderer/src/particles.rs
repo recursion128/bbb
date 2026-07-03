@@ -24,6 +24,8 @@ pub(super) use gpu::{
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
 const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
 const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
+const DEFAULT_PARTICLE_COLLISION_WIDTH: f32 = 0.2;
+const DEFAULT_PARTICLE_COLLISION_HEIGHT: f32 = 0.2;
 const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
@@ -75,6 +77,14 @@ pub struct ParticleSpawnCommand {
     pub option_block: Option<ParticleBlockOptionState>,
     #[serde(default)]
     pub option_item: Option<ParticleItemOptionState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleCollisionQuery {
+    pub position: [f64; 3],
+    pub movement: [f64; 3],
+    pub half_width: f64,
+    pub height: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -194,6 +204,14 @@ pub(crate) struct ParticleInstance {
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
+    #[serde(default = "default_particle_collision_width")]
+    pub(crate) collision_width: f32,
+    #[serde(default = "default_particle_collision_height")]
+    pub(crate) collision_height: f32,
+    #[serde(default)]
+    pub(crate) on_ground: bool,
+    #[serde(default)]
+    pub(crate) stopped_by_collision: bool,
     #[serde(default)]
     pub(crate) tick_motion: ParticleTickMotionDescriptor,
     #[serde(default)]
@@ -419,6 +437,14 @@ fn default_particle_quad_size() -> f32 {
     DEFAULT_PARTICLE_QUAD_SIZE
 }
 
+fn default_particle_collision_width() -> f32 {
+    DEFAULT_PARTICLE_COLLISION_WIDTH
+}
+
+fn default_particle_collision_height() -> f32 {
+    DEFAULT_PARTICLE_COLLISION_HEIGHT
+}
+
 fn default_particle_color() -> [f32; 4] {
     [1.0, 1.0, 1.0, 1.0]
 }
@@ -526,6 +552,17 @@ impl ParticleRuntimeState {
     }
 
     pub(crate) fn advance(&mut self, ticks: u32) -> ParticleAdvanceSummary {
+        self.advance_with_collision(ticks, |query| query.movement)
+    }
+
+    pub(crate) fn advance_with_collision<F>(
+        &mut self,
+        ticks: u32,
+        mut collide: F,
+    ) -> ParticleAdvanceSummary
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
         let mut intaken_instances = 0;
         let mut expired_instances = 0;
         let mut dropped_active_instances = 0;
@@ -539,7 +576,7 @@ impl ParticleRuntimeState {
             );
         } else {
             for _ in 0..ticks {
-                expired_instances += self.tick_active_instances();
+                expired_instances += self.tick_active_instances(&mut collide);
                 self.drain_pending_spawns(
                     &mut intaken_instances,
                     &mut dropped_active_instances,
@@ -576,7 +613,10 @@ impl ParticleRuntimeState {
         }
     }
 
-    fn tick_active_instances(&mut self) -> usize {
+    fn tick_active_instances<F>(&mut self, collide: &mut F) -> usize
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
         let mut expired_instances = 0;
         let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
         while let Some(mut instance) = self.active_instances.pop_front() {
@@ -590,7 +630,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.tick_motion_without_collision(&mut self.random);
+            instance.tick_motion(&mut self.random, collide);
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
@@ -859,6 +899,10 @@ impl ParticleInstance {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
+            collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
+            on_ground: false,
+            stopped_by_collision: false,
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit,
@@ -917,18 +961,33 @@ impl ParticleInstance {
         }
     }
 
+    #[cfg(test)]
     fn tick_motion_without_collision(&mut self, random: &mut ParticleRandom) {
+        self.tick_motion(random, &mut |query| query.movement);
+    }
+
+    fn tick_motion<F>(&mut self, random: &mut ParticleRandom, collide: &mut F)
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
         self.previous_position = self.position;
         match self.tick_motion {
             ParticleTickMotionDescriptor::DefaultParticleTick => {
                 self.velocity[1] -= 0.04 * f64::from(self.gravity);
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                let previous_y = self.position[1];
+                self.move_particle(self.velocity, collide);
+                if self.speed_up_when_y_motion_is_blocked && self.position[1] == previous_y {
+                    self.velocity[0] *= 1.1;
+                    self.velocity[2] *= 1.1;
+                }
                 let friction = f64::from(self.friction);
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
+                if self.on_ground {
+                    self.velocity[0] *= 0.7;
+                    self.velocity[2] *= 0.7;
+                }
             }
             ParticleTickMotionDescriptor::DirectGravityNoFriction => {
                 self.velocity[1] -= f64::from(self.gravity);
@@ -1139,13 +1198,55 @@ impl ParticleInstance {
                 self.tick_falling_leaves_without_collision();
             }
             ParticleTickMotionDescriptor::FallingDust => {
-                self.previous_roll = self.roll;
-                self.roll += std::f32::consts::PI * self.roll_speed * 2.0;
-                self.position[0] += self.velocity[0];
-                self.position[1] += self.velocity[1];
-                self.position[2] += self.velocity[2];
+                if self.on_ground {
+                    self.previous_roll = 0.0;
+                    self.roll = 0.0;
+                } else {
+                    self.previous_roll = self.roll;
+                    self.roll += std::f32::consts::PI * self.roll_speed * 2.0;
+                }
+                self.move_particle(self.velocity, collide);
                 self.velocity[1] = (self.velocity[1] - 0.003).max(-0.14);
             }
+        }
+    }
+
+    fn move_particle<F>(&mut self, movement: [f64; 3], collide: &mut F)
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
+        if self.stopped_by_collision {
+            return;
+        }
+
+        let mut adjusted = movement;
+        if self.has_physics
+            && movement.iter().any(|value| *value != 0.0)
+            && motion_length_squared(movement) < 10_000.0
+        {
+            adjusted = collide(ParticleCollisionQuery {
+                position: self.position,
+                movement,
+                half_width: f64::from(self.collision_width) / 2.0,
+                height: f64::from(self.collision_height),
+            });
+        }
+
+        if adjusted.iter().any(|value| *value != 0.0) {
+            self.position[0] += adjusted[0];
+            self.position[1] += adjusted[1];
+            self.position[2] += adjusted[2];
+        }
+
+        if movement[1].abs() >= 1.0e-5 && adjusted[1].abs() < 1.0e-5 {
+            self.stopped_by_collision = true;
+        }
+        self.on_ground = movement[1] != adjusted[1] && movement[1] < 0.0;
+        if movement[0] != adjusted[0] {
+            self.velocity[0] = 0.0;
+        }
+        if movement[2] != adjusted[2] {
+            self.velocity[2] = 0.0;
         }
     }
 
@@ -1473,6 +1574,18 @@ impl Renderer {
 
     pub fn advance_particles(&mut self, ticks: u32) {
         let summary = self.particles.advance(ticks);
+        self.record_particle_advance_summary(summary);
+    }
+
+    pub fn advance_particles_with_collision<F>(&mut self, ticks: u32, collide: F)
+    where
+        F: FnMut(ParticleCollisionQuery) -> [f64; 3],
+    {
+        let summary = self.particles.advance_with_collision(ticks, collide);
+        self.record_particle_advance_summary(summary);
+    }
+
+    fn record_particle_advance_summary(&mut self, summary: ParticleAdvanceSummary) {
         self.counters.pending_particle_spawns = summary.pending_spawns;
         self.counters.active_particle_instances = summary.active_instances;
         self.counters.last_particle_intake_count = summary.intaken_instances;
@@ -2027,6 +2140,10 @@ fn lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
     start + alpha * (end - start)
 }
 
+fn motion_length_squared(movement: [f64; 3]) -> f64 {
+    movement[0] * movement[0] + movement[1] * movement[1] + movement[2] * movement[2]
+}
+
 fn argb_srgb_lerp_color(alpha: f32, start: u32, end: u32) -> [f32; 4] {
     let lerp_channel = |shift: u32| -> f32 {
         let from = ((start >> shift) & 0xFF) as i32;
@@ -2446,6 +2563,75 @@ mod tests {
         assert_close3(instance.velocity, [0.2, -0.14, -0.4]);
         assert_close_f32(instance.previous_roll, 0.3);
         assert_close_f32(instance.roll, 0.3 + std::f32::consts::PI * 0.02 * 2.0);
+    }
+
+    #[test]
+    fn particle_runtime_default_tick_applies_collision_ground_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:dust", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, -0.4, -0.6];
+        instance.friction = 0.5;
+        instance.gravity = 0.0;
+        instance.speed_up_when_y_motion_is_blocked = false;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance_with_collision(1, |query| {
+            assert_close_f64(query.half_width, 0.1);
+            assert_close_f64(query.height, 0.2);
+            let mut movement = query.movement;
+            movement[1] = 0.0;
+            movement
+        });
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert!(instance.on_ground);
+        assert_close3(instance.position, [1.2, 2.0, 2.4]);
+        assert_close3(instance.velocity, [0.07, -0.2, -0.21]);
+    }
+
+    #[test]
+    fn particle_runtime_falling_dust_resets_roll_after_ground_collision() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:falling_dust", 20);
+        instance.position = [0.0, 0.05, 0.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.1, 0.0];
+        instance.roll = 0.3;
+        instance.previous_roll = 0.2;
+        instance.roll_speed = 0.02;
+        particles.active_instances.push_back(instance);
+
+        let floor_collision = |query: ParticleCollisionQuery| {
+            let mut movement = query.movement;
+            if movement[1] < 0.0 && query.position[1] + movement[1] < 0.0 {
+                movement[1] = -query.position[1];
+            }
+            movement
+        };
+
+        let first_summary = particles.advance_with_collision(1, floor_collision);
+
+        assert_eq!(first_summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert!(instance.on_ground);
+        assert_close3(instance.position, [0.0, 0.0, 0.0]);
+        assert_close_f32(instance.previous_roll, 0.3);
+        assert_close_f32(instance.roll, 0.3 + std::f32::consts::PI * 0.02 * 2.0);
+
+        let second_summary = particles.advance_with_collision(1, floor_collision);
+
+        assert_eq!(second_summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert!(instance.on_ground);
+        assert!(instance.stopped_by_collision);
+        assert_close3(instance.position, [0.0, 0.0, 0.0]);
+        assert_close_f32(instance.previous_roll, 0.0);
+        assert_close_f32(instance.roll, 0.0);
     }
 
     #[test]
@@ -7017,6 +7203,10 @@ mod tests {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            collision_width: DEFAULT_PARTICLE_COLLISION_WIDTH,
+            collision_height: DEFAULT_PARTICLE_COLLISION_HEIGHT,
+            on_ground: false,
+            stopped_by_collision: false,
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),

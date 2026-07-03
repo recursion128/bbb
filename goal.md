@@ -343,7 +343,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     Biome-aware per-spawn BlockColors 现在按 vanilla provider 的
     `BlockPos.containing(x, y, z)` 采样 `LevelParticles` 实际 spawn 位置：
     terrain 粒子使用 `0.6 * colorAsTerrainParticle`，非 FallingBlock
-    `falling_dust` 使用原始 tint；on-ground roll reset 仍随 collision 查询推进。
+    `falling_dust` 使用原始 tint。Particle tick 现在从 native 获得 world
+    collision 回调，向下裁剪 vanilla 0.2x0.2 粒子 AABB，应用
+    `Particle.onGround` X/Z damping，并在落地后的 tick 清零
+    `FallingDustParticle` roll；剩余 gravity/collision/player-coupled work
+    是更完整的水平/向上 clipping、特殊 context 和 player-coupled emitter。
   - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
     `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
     `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
@@ -386,8 +390,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     firework 宽面，不再作为 provider alpha/color curve 小项跟踪。
   - gravity / collision / player-coupled physics。
 - 粒子 sorting：
-  - terrain/item particle atlas rendering：on-ground roll reset remains
-    follow-up work because particle ticking still lacks world collision state.
+  - terrain/item particle atlas rendering：on-ground roll reset 已通过 native
+    world collision 回调接入；更完整的 collision clipping / player-coupled
+    physics 仍属上一节 deferred work。
     Renderer GPU draw ranges now bind particle / terrain / item atlas textures
     once concrete sprite UVs are available; native terrain atlas upload supplies
     block sprite UVs and native item atlas upload supplies item sprite UVs to

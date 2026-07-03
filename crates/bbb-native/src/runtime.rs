@@ -1454,7 +1454,14 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_local_using_item_ticks(advanced_ticks);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here.
-    renderer.advance_particles(advanced_ticks);
+    renderer.advance_particles_with_collision(advanced_ticks, |query| {
+        world.clip_particle_collision_movement(
+            query.position,
+            query.movement,
+            query.half_width,
+            query.height,
+        )
+    });
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();

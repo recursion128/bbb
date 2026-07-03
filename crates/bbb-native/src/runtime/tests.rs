@@ -667,7 +667,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("world.advance_local_using_item_ticks(advanced_ticks);")
         .expect("pump should advance local use-item ticks before particle tick");
     let particle_tick = source
-        .find("renderer.advance_particles(advanced_ticks);")
+        .find("renderer.advance_particles_with_collision(advanced_ticks, |query| {")
         .expect("pump should advance particles");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
