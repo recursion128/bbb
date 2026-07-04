@@ -5,7 +5,9 @@ use std::{
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
-use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
+use bbb_control::{
+    AudioCounters, NetCounters, RendererCounters, SharedControlRequests, SharedSnapshot,
+};
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
@@ -1341,9 +1343,9 @@ pub(crate) fn request_net_disconnect(
     }
 }
 
-pub(crate) fn take_control_screenshot(snapshot: &SharedSnapshot) -> Option<PathBuf> {
-    snapshot
-        .write()
+pub(crate) fn take_control_screenshot(requests: &SharedControlRequests) -> Option<PathBuf> {
+    requests
+        .lock()
         .ok()?
         .screenshot_request
         .take()
@@ -1367,6 +1369,7 @@ pub(crate) fn pump_network_and_terrain(
     terrain_textures: &TerrainTextureState,
     item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
+    control_requests: &SharedControlRequests,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
     render_distance_chunks: u32,
     hide_lightning_flash: bool,
@@ -1400,7 +1403,13 @@ pub(crate) fn pump_network_and_terrain(
         net_counters,
         net_commands,
     );
-    pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
+    pump_control_net_requests(
+        control_requests,
+        net_commands,
+        net_counters,
+        world,
+        code_of_conduct,
+    );
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
@@ -1782,7 +1791,6 @@ pub(crate) fn pump_network_and_terrain(
         control_renderer_counters(renderer.counters()),
         net_counters,
         &audio_counters,
-        world,
     )
 }
 
@@ -6387,13 +6395,11 @@ pub(crate) fn publish_snapshot(
     renderer: RendererCounters,
     net: &NetCounters,
     audio: &AudioCounters,
-    world: &WorldStore,
 ) -> bool {
     if let Ok(mut guard) = snapshot.write() {
         guard.renderer = renderer;
         guard.net = net.clone();
         guard.audio = audio.clone();
-        guard.world_store = world.clone();
         guard.app.running
     } else {
         false

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
+use bbb_control::{AudioCounters, ControlState, NetCounters};
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog,
@@ -73,11 +73,14 @@ fn main() -> Result<()> {
     }
 
     let pack_roots = load_pack_roots(&args);
-    let snapshot = shared_snapshot(format!(
+    let control = ControlState::new(format!(
         "bbb-native {} / protocol {}",
         bbb_protocol::MC_VERSION,
         bbb_protocol::PROTOCOL_VERSION
     ));
+    let snapshot = control.snapshot.clone();
+    let control_requests = control.requests.clone();
+    let world_shared = control.world.clone();
     let mut world = WorldStore::new();
     let mut net_counters = NetCounters::default();
     let code_of_conduct_store_path = args
@@ -100,7 +103,7 @@ fn main() -> Result<()> {
         events: mut net_events,
         commands: net_commands,
     } = start_network_if_requested(&runtime, &args, &mut code_of_conduct_acceptance)?;
-    start_control_api(&runtime, args.control, &snapshot);
+    start_control_api(&runtime, args.control, &control);
     let (mut audio_runtime, audio_status) = match pack_roots.as_ref() {
         Some(roots) => match NativeAudioRuntime::load(roots) {
             Ok(runtime) => {
@@ -303,8 +306,14 @@ fn main() -> Result<()> {
     let mut cursor_position = None;
     let mut cursor_captured = false;
 
+    *world_shared
+        .write()
+        .expect("world lock poisoned before event loop") = world;
+
     event_loop.run(move |event, target| {
         target.set_control_flow(ControlFlow::Poll);
+        let mut world_guard = world_shared.write().expect("world lock poisoned");
+        let mut world = &mut *world_guard;
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => target.exit(),
@@ -404,7 +413,7 @@ fn main() -> Result<()> {
                     if code_of_conduct_overlay.is_visible(&world) {
                         if code_of_conduct_overlay.handle_mouse_input(
                             &world,
-                            &snapshot,
+                            &control_requests,
                             button,
                             state,
                             cursor_position,
@@ -547,6 +556,7 @@ fn main() -> Result<()> {
                         &terrain_textures,
                         item_runtime.as_ref(),
                         &snapshot,
+                        &control_requests,
                         Some(&mut code_of_conduct_acceptance),
                         args.render_distance_chunks,
                         args.hide_lightning_flash,
@@ -577,7 +587,7 @@ fn main() -> Result<()> {
                         .as_deref()
                         .filter(|_| terrain_ready_for_screenshot);
                     let control_screenshot_path = if cli_screenshot_path.is_none() {
-                        take_control_screenshot(&snapshot)
+                        take_control_screenshot(&control_requests)
                     } else {
                         None
                     };
@@ -606,7 +616,6 @@ fn main() -> Result<()> {
                         control_renderer_counters(renderer.counters()),
                         &net_counters,
                         &audio_counters,
-                        &world,
                     ) {
                         target.exit();
                     }
@@ -673,6 +682,7 @@ fn main() -> Result<()> {
                     &terrain_textures,
                     item_runtime.as_ref(),
                     &snapshot,
+                    &control_requests,
                     Some(&mut code_of_conduct_acceptance),
                     args.render_distance_chunks,
                     args.hide_lightning_flash,

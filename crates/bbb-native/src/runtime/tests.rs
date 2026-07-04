@@ -8237,14 +8237,12 @@ fn publish_snapshot_includes_audio_runtime_counters() {
         ..AudioCounters::default()
     };
     let net = NetCounters::default();
-    let world = WorldStore::new();
 
     assert!(publish_snapshot(
         &snapshot,
         RendererCounters::default(),
         &net,
         &audio,
-        &world,
     ));
 
     assert_eq!(snapshot.read().unwrap().audio, audio);

@@ -1,4 +1,4 @@
-use bbb_control::{CodeOfConductControlRequest, SharedSnapshot};
+use bbb_control::{CodeOfConductControlRequest, SharedControlRequests};
 use bbb_world::{CodeOfConductState, WorldStore};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -92,7 +92,7 @@ impl CodeOfConductOverlayState {
     pub(crate) fn handle_mouse_input(
         &mut self,
         world: &WorldStore,
-        snapshot: &SharedSnapshot,
+        control_requests: &SharedControlRequests,
         button: MouseButton,
         state: ElementState,
         cursor: Option<PhysicalPosition<f64>>,
@@ -118,7 +118,7 @@ impl CodeOfConductOverlayState {
             OverlayAction::Remember => CodeOfConductControlRequest::Accept { remember: true },
             OverlayAction::Decline => CodeOfConductControlRequest::Decline,
         };
-        let Ok(mut guard) = snapshot.write() else {
+        let Ok(mut guard) = control_requests.lock() else {
             return true;
         };
         guard.code_of_conduct_requests.push(request);
@@ -531,14 +531,14 @@ mod tests {
     fn click_queues_accept_request_and_dismisses_current_overlay() {
         let mut world = WorldStore::new();
         world.apply_code_of_conduct("Keep chat friendly.".to_string());
-        let snapshot = bbb_control::shared_snapshot("test");
+        let requests = bbb_control::SharedControlRequests::default();
         let mut overlay = CodeOfConductOverlayState::default();
         let surface = PhysicalSize::new(800, 600);
         let (origin_x, origin_y) = overlay_origin(surface);
 
         assert!(overlay.handle_mouse_input(
             &world,
-            &snapshot,
+            &requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 30.0, origin_y + 252.0)),
@@ -546,7 +546,7 @@ mod tests {
         ));
 
         assert_eq!(
-            snapshot.read().unwrap().code_of_conduct_requests,
+            requests.lock().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::Accept { remember: false }]
         );
         assert!(overlay.visible_code_of_conduct(&world).is_none());
@@ -559,35 +559,35 @@ mod tests {
 
         let mut remember_world = WorldStore::new();
         remember_world.apply_code_of_conduct("Remember this server.".to_string());
-        let remember_snapshot = bbb_control::shared_snapshot("remember");
+        let remember_requests = bbb_control::SharedControlRequests::default();
         let mut remember_overlay = CodeOfConductOverlayState::default();
         assert!(remember_overlay.handle_mouse_input(
             &remember_world,
-            &remember_snapshot,
+            &remember_requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 180.0, origin_y + 252.0)),
             surface,
         ));
         assert_eq!(
-            remember_snapshot.read().unwrap().code_of_conduct_requests,
+            remember_requests.lock().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::Accept { remember: true }]
         );
 
         let mut decline_world = WorldStore::new();
         decline_world.apply_code_of_conduct("Decline this server.".to_string());
-        let decline_snapshot = bbb_control::shared_snapshot("decline");
+        let decline_requests = bbb_control::SharedControlRequests::default();
         let mut decline_overlay = CodeOfConductOverlayState::default();
         assert!(decline_overlay.handle_mouse_input(
             &decline_world,
-            &decline_snapshot,
+            &decline_requests,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(origin_x + 380.0, origin_y + 252.0)),
             surface,
         ));
         assert_eq!(
-            decline_snapshot.read().unwrap().code_of_conduct_requests,
+            decline_requests.lock().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::Decline]
         );
     }

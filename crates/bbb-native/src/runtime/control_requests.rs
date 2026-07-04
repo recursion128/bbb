@@ -2,7 +2,7 @@ use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
     CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
     GameModeControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
-    NetCounters, RecipeBookTypeControl, SharedSnapshot,
+    NetCounters, RecipeBookTypeControl, SharedControlRequests,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
@@ -136,14 +136,14 @@ fn protocol_game_mode(game_mode: GameModeControl) -> GameType {
 }
 
 pub(crate) fn pump_control_net_requests(
-    snapshot: &SharedSnapshot,
+    control_requests: &SharedControlRequests,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     counters: &mut NetCounters,
     world: &mut WorldStore,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) {
-    let (requests, net_requests) = snapshot
-        .write()
+    let (requests, net_requests) = control_requests
+        .lock()
         .map(|mut guard| {
             (
                 std::mem::take(&mut guard.code_of_conduct_requests),
@@ -448,9 +448,9 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_chat_command() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::ChatCommand {
@@ -460,7 +460,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(
@@ -469,14 +469,14 @@ mod tests {
                 command: "give @p minecraft:stone".to_string()
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_signed_chat_command_for_signable_argument() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::ChatCommand {
@@ -487,7 +487,7 @@ mod tests {
         world.apply_commands(signable_message_command_tree());
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         match rx.try_recv().unwrap() {
@@ -499,13 +499,13 @@ mod tests {
             }
             command => panic!("expected signed chat command, got {command:?}"),
         }
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_command_suggestion_request() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::CommandSuggestionRequest {
                 id: 18,
                 command: "/give @p minecraft:stone".to_string(),
@@ -515,7 +515,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.command_suggestion_commands_queued, 1);
         assert_eq!(
@@ -525,13 +525,13 @@ mod tests {
                 command: "/give @p minecraft:stone".to_string(),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_tag_query_commands() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.extend([
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::QueryBlockEntityTag {
                 transaction_id: 11,
                 x: -5,
@@ -547,7 +547,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.block_entity_tag_query_commands_queued, 1);
         assert_eq!(counters.entity_tag_query_commands_queued, 1);
@@ -569,14 +569,14 @@ mod tests {
                 entity_id: 123,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_spectator_entity_commands() {
-        let snapshot = bbb_control::shared_snapshot("test");
+        let requests = bbb_control::SharedControlRequests::default();
         let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
-        snapshot.write().unwrap().net_requests.extend([
+        requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::SpectateEntity { entity_id: 1234 },
             bbb_control::NetControlRequest::TeleportToEntity { uuid },
         ]);
@@ -584,7 +584,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.spectate_entity_commands_queued, 1);
         assert_eq!(counters.teleport_to_entity_commands_queued, 1);
@@ -596,14 +596,14 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::TeleportToEntity(TeleportToEntity { uuid })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_sets_held_slot_and_queues_command() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SetHeldSlot { slot: 4 });
@@ -611,20 +611,20 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(world.local_player().selected_hotbar_slot, 4);
         assert_eq!(world.counters().held_slot_packets, 0);
         assert_eq!(counters.held_slot_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(4));
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_sets_flying_when_allowed_and_queues_command() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SetFlying { flying: true });
@@ -640,7 +640,7 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert!(world.local_player().abilities.unwrap().flying);
         assert_eq!(world.counters().player_abilities_packets, 1);
@@ -651,14 +651,14 @@ mod tests {
                 flying: true
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_does_not_set_flying_without_permission() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SetFlying { flying: true });
@@ -674,19 +674,19 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert!(!world.local_player().abilities.unwrap().flying);
         assert_eq!(counters.player_abilities_commands_queued, 0);
         assert!(rx.try_recv().is_err());
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_perform_respawn() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::PerformRespawn);
@@ -694,17 +694,17 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.perform_respawn_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_client_command_requests() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.extend([
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::RequestStats,
             bbb_control::NetControlRequest::RequestGameRuleValues,
         ]);
@@ -712,20 +712,20 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.request_stats_commands_queued, 1);
         assert_eq!(counters.request_game_rule_values_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_place_recipe() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::PlaceRecipe {
@@ -737,7 +737,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.place_recipe_commands_queued, 1);
         assert_eq!(
@@ -748,13 +748,13 @@ mod tests {
                 use_max_items: true,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_difficulty_commands() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.extend([
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::ChangeDifficulty {
                 difficulty: bbb_control::DifficultyControl::Hard,
             },
@@ -767,7 +767,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.change_difficulty_commands_queued, 1);
         assert_eq!(counters.change_game_mode_commands_queued, 1);
@@ -788,13 +788,13 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::LockDifficulty(LockDifficultyCommand { locked: true })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_recipe_book_commands() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.extend([
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::ChangeRecipeBookSettings {
                 book_type: bbb_control::RecipeBookTypeControl::BlastFurnace,
                 open: true,
@@ -806,7 +806,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
         assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
@@ -826,14 +826,14 @@ mod tests {
                 recipe: bbb_protocol::packets::RecipeDisplayId { index: 321 },
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_edit_book() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::EditBook {
@@ -845,7 +845,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.edit_book_commands_queued, 1);
         assert_eq!(
@@ -856,14 +856,14 @@ mod tests {
                 title: Some("Field Notes".to_string()),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_sign_update() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SignUpdate {
@@ -882,7 +882,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.sign_update_commands_queued, 1);
         assert_eq!(
@@ -902,14 +902,14 @@ mod tests {
                 ],
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_rename_item() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::RenameItem {
@@ -919,7 +919,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.rename_item_commands_queued, 1);
         assert_eq!(
@@ -928,19 +928,19 @@ mod tests {
                 name: "Sharp Pick".to_string(),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_seen_advancements() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::OpenAdvancementsTab {
                 tab: "minecraft:story/root".to_string(),
             },
         );
-        snapshot
-            .write()
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::CloseAdvancementsScreen);
@@ -948,7 +948,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.advancements_seen_commands_queued, 2);
         assert_eq!(
@@ -961,14 +961,14 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen)
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_select_trade() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SelectTrade { item: 2 });
@@ -976,20 +976,20 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.select_trade_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::SelectTrade(bbb_protocol::packets::SelectTradeCommand { item: 2 })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_select_bundle_item() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SelectBundleItem {
                 slot_id: 12,
                 selected_item_index: 3,
@@ -1003,7 +1003,7 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.select_bundle_item_commands_queued, 1);
         assert_eq!(
@@ -1017,13 +1017,13 @@ mod tests {
                 selected_item_index: 3,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_rejects_invalid_select_bundle_item_index() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SelectBundleItem {
                 slot_id: 12,
                 selected_item_index: -2,
@@ -1037,7 +1037,7 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.select_bundle_item_commands_queued, 0);
         assert_eq!(
@@ -1045,14 +1045,14 @@ mod tests {
             -1
         );
         assert!(rx.try_recv().is_err());
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_set_beacon() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::SetBeacon {
@@ -1063,7 +1063,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.set_beacon_commands_queued, 1);
         assert_eq!(
@@ -1073,13 +1073,13 @@ mod tests {
                 secondary_effect: None,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_set_creative_mode_slot() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SetCreativeModeSlot(
                 bbb_control::CreativeModeSlotControlRequest {
                     slot_num: 36,
@@ -1094,7 +1094,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.set_creative_mode_slot_commands_queued, 1);
         assert_eq!(
@@ -1108,13 +1108,13 @@ mod tests {
                 },
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_container_button_click() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerButtonClick {
                 container_id: 7,
                 button_id: 2,
@@ -1124,7 +1124,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_button_click_commands_queued, 1);
         assert_eq!(
@@ -1134,14 +1134,17 @@ mod tests {
                 button_id: 2,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_container_click() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
-            bbb_control::NetControlRequest::ContainerClick(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ContainerClick(
                 bbb_control::ContainerClickControlRequest {
                     container_id: 7,
                     state_id: 33,
@@ -1161,13 +1164,12 @@ mod tests {
                     }],
                     carried_item: bbb_control::HashedStackControl::Empty,
                 },
-            ),
-        );
+            ));
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_click_commands_queued, 1);
         assert_eq!(
@@ -1194,13 +1196,13 @@ mod tests {
                 carried_item: bbb_protocol::packets::HashedStack::empty(),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_builds_container_click_from_world_inventory() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
                     slot_num: 1,
@@ -1235,7 +1237,7 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_click_commands_queued, 1);
         assert_eq!(
@@ -1256,13 +1258,13 @@ mod tests {
                 ),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_builds_container_zero_click_when_local_inventory_is_open() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
                     slot_num: 36,
@@ -1291,7 +1293,7 @@ mod tests {
         assert!(world.open_local_inventory());
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_click_commands_queued, 1);
         assert_eq!(
@@ -1312,13 +1314,13 @@ mod tests {
                 ),
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_skips_container_click_slot_without_open_container() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
                     slot_num: 1,
@@ -1331,18 +1333,18 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_click_commands_queued, 0);
         assert!(rx.try_recv().is_err());
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_container_close() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::ContainerClose { container_id: 7 });
@@ -1350,7 +1352,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_close_commands_queued, 1);
         assert_eq!(
@@ -1359,14 +1361,14 @@ mod tests {
                 container_id: 7,
             })
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_closes_matching_world_container() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .net_requests
             .push(bbb_control::NetControlRequest::ContainerClose { container_id: 7 });
@@ -1379,7 +1381,7 @@ mod tests {
         });
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert!(world.inventory().open_container.is_none());
         assert_eq!(world.counters().container_close_updates_received, 0);
@@ -1394,8 +1396,8 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_container_slot_state_changed() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().net_requests.push(
+        let requests = bbb_control::SharedControlRequests::default();
+        requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerSlotStateChanged {
                 slot_id: 12,
                 container_id: 7,
@@ -1406,7 +1408,7 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
         assert_eq!(
@@ -1419,14 +1421,14 @@ mod tests {
                 }
             )
         );
-        assert!(snapshot.read().unwrap().net_requests.is_empty());
+        assert!(requests.lock().unwrap().net_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_queues_code_of_conduct_accept_command() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Accept { remember: false });
@@ -1434,17 +1436,17 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+        pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
-        assert!(snapshot.read().unwrap().code_of_conduct_requests.is_empty());
+        assert!(requests.lock().unwrap().code_of_conduct_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_persists_current_code_of_conduct_hash() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Accept { remember: true });
@@ -1459,7 +1461,7 @@ mod tests {
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(
-            &snapshot,
+            &requests,
             &Some(tx.clone()),
             &mut counters,
             &mut world,
@@ -1477,9 +1479,9 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_non_persistent_accept_clears_existing_hash() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Accept { remember: false });
@@ -1494,7 +1496,7 @@ mod tests {
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(
-            &snapshot,
+            &requests,
             &Some(tx.clone()),
             &mut counters,
             &mut world,
@@ -1509,9 +1511,9 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_decline_clears_hash_and_disconnects() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Decline);
@@ -1526,7 +1528,7 @@ mod tests {
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(
-            &snapshot,
+            &requests,
             &Some(tx.clone()),
             &mut counters,
             &mut world,
@@ -1541,9 +1543,9 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_clear_acceptance_does_not_send_accept_command() {
-        let snapshot = bbb_control::shared_snapshot("test");
-        snapshot
-            .write()
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
             .unwrap()
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::ClearAcceptance);
@@ -1558,7 +1560,7 @@ mod tests {
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(
-            &snapshot,
+            &requests,
             &Some(tx.clone()),
             &mut counters,
             &mut world,

@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, thread, time::Duration};
 
 use anyhow::{ensure, Context, Result};
-use bbb_control::SharedSnapshot;
+use bbb_control::ControlState;
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
 use bbb_pack::PackRoots;
 use bbb_protocol::packets::{
@@ -270,15 +270,15 @@ fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
 pub(crate) fn start_control_api(
     runtime: &Runtime,
     addr: Option<SocketAddr>,
-    snapshot: &SharedSnapshot,
+    control: &ControlState,
 ) {
     let Some(addr) = addr else {
         return;
     };
 
-    let snapshot = snapshot.clone();
+    let control = control.clone();
     runtime.spawn(async move {
-        if let Err(err) = bbb_control::serve(addr, snapshot).await {
+        if let Err(err) = bbb_control::serve(addr, control).await {
             tracing::error!(?err, "control API stopped");
         }
     });

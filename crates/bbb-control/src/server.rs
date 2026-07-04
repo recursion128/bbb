@@ -13,7 +13,7 @@ use tokio::{
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    CreativeModeSlotControlRequest, NetControlRequest, SharedSnapshot,
+    ControlState, CreativeModeSlotControlRequest, NetControlRequest, SharedSnapshot,
 };
 
 mod params;
@@ -37,7 +37,7 @@ pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     }))
 }
 
-pub async fn serve(addr: SocketAddr, snapshot: SharedSnapshot) -> Result<()> {
+pub async fn serve(addr: SocketAddr, state: ControlState) -> Result<()> {
     let listener = TcpListener::bind(addr)
         .await
         .with_context(|| format!("bind control API on {addr}"))?;
@@ -45,21 +45,21 @@ pub async fn serve(addr: SocketAddr, snapshot: SharedSnapshot) -> Result<()> {
 
     loop {
         let (stream, _) = listener.accept().await?;
-        let snapshot = Arc::clone(&snapshot);
+        let state = state.clone();
         tokio::spawn(async move {
-            if let Err(err) = handle_client(stream, snapshot).await {
+            if let Err(err) = handle_client(stream, state).await {
                 tracing::debug!(?err, "control client failed");
             }
         });
     }
 }
 
-async fn handle_client(stream: TcpStream, snapshot: SharedSnapshot) -> Result<()> {
+async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut lines = BufReader::new(reader).lines();
     while let Some(line) = lines.next_line().await? {
         let response = match serde_json::from_str::<ControlRequest>(&line) {
-            Ok(request) => dispatch(request, &snapshot),
+            Ok(request) => dispatch(request, &state),
             Err(err) => ControlResponse {
                 ok: false,
                 result: None,
@@ -74,9 +74,9 @@ async fn handle_client(stream: TcpStream, snapshot: SharedSnapshot) -> Result<()
     Ok(())
 }
 
-fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlResponse {
+fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     if request.method == "app.quit" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        let mut snapshot_guard = state.snapshot.write().expect("control snapshot poisoned");
         snapshot_guard.app.running = false;
         return ControlResponse {
             ok: true,
@@ -94,8 +94,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             };
         };
         let path = path.to_string();
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard.screenshot_request = Some(path.clone());
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard.screenshot_request = Some(path.clone());
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"queued": true, "path": path})),
@@ -105,8 +105,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
 
     if request.method == "net.accept_code_of_conduct" {
         let remember = bool_param(&request.params, "remember").unwrap_or(false);
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Accept { remember });
         return ControlResponse {
@@ -114,37 +114,37 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             result: Some(serde_json::json!({
                 "queued": true,
                 "remember": remember,
-                "pending": snapshot_guard.code_of_conduct_requests.len()
+                "pending": requests_guard.code_of_conduct_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.decline_code_of_conduct" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Decline);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.code_of_conduct_requests.len()
+                "pending": requests_guard.code_of_conduct_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.clear_code_of_conduct_acceptance" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::ClearAcceptance);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.code_of_conduct_requests.len()
+                "pending": requests_guard.code_of_conduct_requests.len()
             })),
             error: None,
         };
@@ -160,8 +160,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ChatCommand {
                 command: command.to_string(),
@@ -170,7 +170,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -196,8 +196,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::CommandSuggestionRequest {
                 id,
@@ -207,7 +207,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -244,8 +244,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.query_block_entity_tag requires integer param z".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::QueryBlockEntityTag {
                 transaction_id,
@@ -257,7 +257,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -280,8 +280,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.query_entity_tag requires integer param entity_id".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::QueryEntityTag {
                 transaction_id,
@@ -291,7 +291,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -305,15 +305,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.spectate_entity requires integer param entity_id".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SpectateEntity { entity_id });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -339,15 +339,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::TeleportToEntity { uuid });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -364,13 +364,13 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard.net_requests.push(change_difficulty);
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard.net_requests.push(change_difficulty);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -387,13 +387,13 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard.net_requests.push(change_game_mode);
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard.net_requests.push(change_game_mode);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -407,15 +407,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.lock_difficulty requires boolean param locked".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::LockDifficulty { locked });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -437,15 +437,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             };
         }
         let slot = slot as u8;
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SetHeldSlot { slot });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -459,60 +459,60 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.set_flying requires boolean param flying".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SetFlying { flying });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.perform_respawn" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::PerformRespawn);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.request_stats" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::RequestStats);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.request_game_rule_values" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::RequestGameRuleValues);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -540,8 +540,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.place_recipe requires boolean param use_max_items".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::PlaceRecipe {
                 container_id,
@@ -552,7 +552,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -587,8 +587,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ChangeRecipeBookSettings {
                 book_type,
@@ -599,7 +599,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -613,15 +613,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.mark_recipe_seen requires integer param recipe_index".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::MarkRecipeSeen { recipe_index });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -644,8 +644,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 )),
             };
         }
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::RenameItem {
                 name: name.to_string(),
@@ -654,7 +654,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -688,15 +688,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::EditBook { slot, pages, title });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -741,8 +741,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SignUpdate {
                 x,
@@ -755,7 +755,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -779,8 +779,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         }
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::OpenAdvancementsTab {
                 tab: tab.to_string(),
@@ -789,22 +789,22 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
     }
 
     if request.method == "net.close_advancements_screen" {
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::CloseAdvancementsScreen);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -825,15 +825,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.select_trade requires item >= 0".to_string()),
             };
         }
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SelectTrade { item });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -860,8 +860,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SetBeacon {
                 primary_effect,
@@ -871,7 +871,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -897,15 +897,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some(err),
             };
         }
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SetCreativeModeSlot(request));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -937,8 +937,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         }
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::SelectBundleItem {
                 slot_id,
@@ -948,7 +948,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -973,8 +973,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ContainerButtonClick {
                 container_id,
@@ -984,7 +984,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -1002,15 +1002,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                     };
                 }
             };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ContainerClick(click));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -1029,15 +1029,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 };
             }
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ContainerClickSlot(click));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -1051,15 +1051,15 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 error: Some("net.container_close requires integer param container_id".to_string()),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ContainerClose { container_id });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
@@ -1094,8 +1094,8 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 ),
             };
         };
-        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
             .net_requests
             .push(NetControlRequest::ContainerSlotStateChanged {
                 slot_id,
@@ -1106,111 +1106,91 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.net_requests.len()
+                "pending": requests_guard.net_requests.len()
             })),
             error: None,
         };
     }
 
-    let snapshot_guard = snapshot.read().expect("control snapshot poisoned");
+    let snapshot_view = state
+        .snapshot
+        .read()
+        .expect("control snapshot poisoned")
+        .clone();
+    let world_guard = state.world.read().expect("control world poisoned");
     let json = match request.method.as_str() {
         "app.status" => Ok(serde_json::json!({
-            "app": &snapshot_guard.app,
-            "net": &snapshot_guard.net,
-            "audio": &snapshot_guard.audio,
-            "renderer": &snapshot_guard.renderer,
-            "world": snapshot_guard.world_store.counters(),
+            "app": &snapshot_view.app,
+            "net": &snapshot_view.net,
+            "audio": &snapshot_view.audio,
+            "renderer": &snapshot_view.renderer,
+            "world": world_guard.counters(),
         })),
-        "net.counters" => serde_json::to_value(&snapshot_guard.net),
-        "audio.counters" => serde_json::to_value(&snapshot_guard.audio),
-        "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
-        "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
-        "world.apply_diagnostics" => {
-            serde_json::to_value(snapshot_guard.world_store.apply_diagnostics())
-        }
-        "world.registries" => serde_json::to_value(snapshot_guard.world_store.registries()),
+        "net.counters" => serde_json::to_value(&snapshot_view.net),
+        "audio.counters" => serde_json::to_value(&snapshot_view.audio),
+        "renderer.counters" => serde_json::to_value(&snapshot_view.renderer),
+        "world.counters" => serde_json::to_value(world_guard.counters()),
+        "world.apply_diagnostics" => serde_json::to_value(world_guard.apply_diagnostics()),
+        "world.registries" => serde_json::to_value(world_guard.registries()),
         "world.level_state" => Ok(serde_json::json!({
-            "dimension": snapshot_guard.world_store.dimension(),
-            "level": snapshot_guard.world_store.level_info(),
-            "gameplay": snapshot_guard.world_store.gameplay(),
+            "dimension": world_guard.dimension(),
+            "level": world_guard.level_info(),
+            "gameplay": world_guard.gameplay(),
         })),
-        "world.client_advancements" => {
-            serde_json::to_value(snapshot_guard.world_store.client_advancements())
-        }
-        "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
-        "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
-        "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
-        "world.client_cooldowns" => serde_json::to_value(snapshot_guard.world_store.cooldowns()),
-        "world.client_effects" => serde_json::to_value(snapshot_guard.world_store.client_effects()),
+        "world.client_advancements" => serde_json::to_value(world_guard.client_advancements()),
+        "world.client_audio" => serde_json::to_value(world_guard.client_audio()),
+        "world.client_chat" => serde_json::to_value(world_guard.client_chat()),
+        "world.client_combat" => serde_json::to_value(world_guard.client_combat()),
+        "world.client_cooldowns" => serde_json::to_value(world_guard.cooldowns()),
+        "world.client_effects" => serde_json::to_value(world_guard.client_effects()),
         "world.client_command_suggestions" => {
-            serde_json::to_value(snapshot_guard.world_store.client_command_suggestions())
+            serde_json::to_value(world_guard.client_command_suggestions())
         }
-        "world.client_features" => {
-            serde_json::to_value(snapshot_guard.world_store.enabled_feature_list())
-        }
-        "world.client_known_packs" => {
-            serde_json::to_value(snapshot_guard.world_store.known_packs())
-        }
-        "world.client_debug_query" => {
-            serde_json::to_value(snapshot_guard.world_store.client_debug_query())
-        }
-        "world.client_debug_game" => {
-            serde_json::to_value(snapshot_guard.world_store.client_debug_game())
-        }
-        "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
-        "world.client_inventory" => serde_json::to_value(snapshot_guard.world_store.inventory()),
-        "world.client_local_player" => {
-            serde_json::to_value(snapshot_guard.world_store.client_local_player())
-        }
-        "world.client_player_info" => {
-            serde_json::to_value(snapshot_guard.world_store.player_info())
-        }
-        "world.client_recipe_book" => {
-            serde_json::to_value(snapshot_guard.world_store.recipe_book())
-        }
-        "world.client_recipes" => serde_json::to_value(snapshot_guard.world_store.recipes()),
-        "world.client_scoreboard" => serde_json::to_value(snapshot_guard.world_store.scoreboard()),
-        "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
-        "world.client_waypoints" => {
-            serde_json::to_value(snapshot_guard.world_store.client_waypoints())
-        }
-        "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
-        "world.client_maps" => serde_json::to_value(snapshot_guard.world_store.map_items()),
-        "world.last_map_color_patch" => {
-            serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
-        }
-        "world.command_tree" => serde_json::to_value(snapshot_guard.world_store.commands()),
+        "world.client_features" => serde_json::to_value(world_guard.enabled_feature_list()),
+        "world.client_known_packs" => serde_json::to_value(world_guard.known_packs()),
+        "world.client_debug_query" => serde_json::to_value(world_guard.client_debug_query()),
+        "world.client_debug_game" => serde_json::to_value(world_guard.client_debug_game()),
+        "world.client_hud" => serde_json::to_value(world_guard.client_hud()),
+        "world.client_inventory" => serde_json::to_value(world_guard.inventory()),
+        "world.client_local_player" => serde_json::to_value(world_guard.client_local_player()),
+        "world.client_player_info" => serde_json::to_value(world_guard.player_info()),
+        "world.client_recipe_book" => serde_json::to_value(world_guard.recipe_book()),
+        "world.client_recipes" => serde_json::to_value(world_guard.recipes()),
+        "world.client_scoreboard" => serde_json::to_value(world_guard.scoreboard()),
+        "world.client_stats" => serde_json::to_value(world_guard.client_stats()),
+        "world.client_waypoints" => serde_json::to_value(world_guard.client_waypoints()),
+        "world.client_ui" => serde_json::to_value(world_guard.client_ui()),
+        "world.client_maps" => serde_json::to_value(world_guard.map_items()),
+        "world.last_map_color_patch" => serde_json::to_value(world_guard.last_map_color_patch()),
+        "world.command_tree" => serde_json::to_value(world_guard.commands()),
         "world.last_block_changed_ack" => {
-            serde_json::to_value(snapshot_guard.world_store.last_block_changed_ack())
+            serde_json::to_value(world_guard.last_block_changed_ack())
         }
         "world.client_block_events" => Ok(serde_json::json!({
-            "destructions": snapshot_guard.world_store.block_destructions(),
-            "block_events": snapshot_guard.world_store.block_events(),
-            "level_events": snapshot_guard.world_store.level_events(),
+            "destructions": world_guard.block_destructions(),
+            "block_events": world_guard.block_events(),
+            "level_events": world_guard.level_events(),
         })),
-        "world.world_border" => serde_json::to_value(snapshot_guard.world_store.world_border()),
+        "world.world_border" => serde_json::to_value(world_guard.world_border()),
         "world.level_clock" => Ok(serde_json::json!({
-            "world_time": snapshot_guard.world_store.world_time(),
-            "weather": snapshot_guard.world_store.weather(),
-            "ticking": snapshot_guard.world_store.ticking(),
+            "world_time": world_guard.world_time(),
+            "weather": world_guard.weather(),
+            "ticking": world_guard.ticking(),
         })),
         "world.chunk_view" => {
-            let view = snapshot_guard.world_store.chunk_view();
+            let view = world_guard.chunk_view();
             Ok(serde_json::json!({
-                "first_chunk": snapshot_guard.world_store.first_chunk(),
+                "first_chunk": world_guard.first_chunk(),
                 "center": view.center,
                 "radius": view.radius,
             }))
         }
-        "world.server_presentation" => {
-            serde_json::to_value(snapshot_guard.world_store.presentation())
-        }
+        "world.server_presentation" => serde_json::to_value(world_guard.presentation()),
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
             let result = match (x, z) {
-                (Some(x), Some(z)) => snapshot_guard
-                    .world_store
+                (Some(x), Some(z)) => world_guard
                     .probe_chunk_summary(ChunkPos { x, z })
                     .map(|summary| {
                         serde_json::to_value(summary).expect("chunk probe summary serializes")
@@ -1223,8 +1203,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.probe_entity" => {
             let id = i32_param(&request.params, "id");
             let result = match id {
-                Some(id) => snapshot_guard
-                    .world_store
+                Some(id) => world_guard
                     .probe_entity(id)
                     .map(|entity| serde_json::to_value(entity).expect("entity state serializes"))
                     .unwrap_or(serde_json::Value::Null),
@@ -1235,8 +1214,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.probe_entity_status" => {
             let id = i32_param(&request.params, "id");
             let result = match id {
-                Some(id) => snapshot_guard
-                    .world_store
+                Some(id) => world_guard
                     .probe_entity_status(id)
                     .map(|status| {
                         serde_json::to_value(status).expect("entity status probe serializes")
@@ -1249,8 +1227,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.probe_entity_transform" => {
             let id = i32_param(&request.params, "id");
             let result = match id {
-                Some(id) => snapshot_guard
-                    .world_store
+                Some(id) => world_guard
                     .probe_entity_transform(id)
                     .map(|entity| {
                         serde_json::to_value(entity).expect("entity transform state serializes")
@@ -1260,27 +1237,20 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             };
             Ok(result)
         }
-        "world.entity_transforms" => {
-            serde_json::to_value(snapshot_guard.world_store.entity_transforms())
-        }
+        "world.entity_transforms" => serde_json::to_value(world_guard.entity_transforms()),
         "world.last_projectile_power" => {
-            serde_json::to_value(snapshot_guard.world_store.last_projectile_power_update())
+            serde_json::to_value(world_guard.last_projectile_power_update())
         }
         "world.entity_pick_targets" => {
             let partial_tick = f32_param(&request.params, "partial_tick").unwrap_or(1.0);
-            serde_json::to_value(
-                snapshot_guard
-                    .world_store
-                    .entity_pick_targets_at_partial_tick(partial_tick),
-            )
+            serde_json::to_value(world_guard.entity_pick_targets_at_partial_tick(partial_tick))
         }
         "world.probe_block" => {
             let x = i32_param(&request.params, "x");
             let y = i32_param(&request.params, "y");
             let z = i32_param(&request.params, "z");
             let result = match (x, y, z) {
-                (Some(x), Some(y), Some(z)) => snapshot_guard
-                    .world_store
+                (Some(x), Some(y), Some(z)) => world_guard
                     .probe_block(BlockPos { x, y, z })
                     .map(|probe| serde_json::to_value(probe).expect("block probe serializes"))
                     .unwrap_or(serde_json::Value::Null),
@@ -1292,8 +1262,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
             let result = match (x, z) {
-                (Some(x), Some(z)) => snapshot_guard
-                    .world_store
+                (Some(x), Some(z)) => world_guard
                     .extract_terrain_chunk(ChunkPos { x, z })
                     .map(|snapshot| {
                         serde_json::to_value(snapshot.summary())

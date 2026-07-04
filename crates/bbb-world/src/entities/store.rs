@@ -3466,8 +3466,10 @@ impl Default for EntityStore {
 impl Clone for EntityStore {
     fn clone(&self) -> Self {
         // Clone component-by-component instead of round-tripping every entity
-        // through a full `EntityState` projection; this runs on every control
-        // snapshot publish.
+        // through a full `EntityState` projection. Control snapshot publishes
+        // no longer copy the store (the control API reads the authoritative
+        // `WorldStore` through a shared lock), so this only runs for callers
+        // that explicitly deep-copy a world.
         let mut store = Self::default();
         for (&id, &entity) in &self.by_protocol_id {
             let (

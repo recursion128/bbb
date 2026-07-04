@@ -48,33 +48,32 @@ use uuid::Uuid;
 
 #[test]
 fn app_quit_marks_snapshot_not_running() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "app.quit".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
-    assert!(!snapshot.read().unwrap().app.running);
+    assert!(!state.snapshot.read().unwrap().app.running);
 }
 
 #[test]
 fn app_status_reads_world_counters_from_world_store() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
-        let mut guard = snapshot.write().unwrap();
-        guard.audio = AudioCounters {
+        state.snapshot.write().unwrap().audio = AudioCounters {
             enabled: true,
             catalog_events: 123,
             commands_submitted: 4,
             ..AudioCounters::default()
         };
-        guard.world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -82,7 +81,7 @@ fn app_status_reads_world_counters_from_world_store() {
             method: "app.status".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -97,8 +96,8 @@ fn app_status_reads_world_counters_from_world_store() {
 
 #[test]
 fn audio_counters_reads_runtime_projection() {
-    let snapshot = shared_snapshot("test");
-    snapshot.write().unwrap().audio = AudioCounters {
+    let state = ControlState::new("test");
+    state.snapshot.write().unwrap().audio = AudioCounters {
         enabled: false,
         disabled_reason: Some("initialize Kira audio runtime".to_string()),
         resolve_failures: 2,
@@ -113,7 +112,7 @@ fn audio_counters_reads_runtime_projection() {
             method: "audio.counters".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -131,7 +130,7 @@ fn audio_counters_reads_runtime_projection() {
 
 #[test]
 fn registries_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.record_registry_data(RegistryData {
@@ -165,7 +164,7 @@ fn registries_reads_canonical_world_state() {
                 }],
             }],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -173,7 +172,7 @@ fn registries_reads_canonical_world_state() {
             method: "world.registries".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -207,7 +206,7 @@ fn registries_reads_canonical_world_state() {
 
 #[test]
 fn level_state_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_login(&ProtocolPlayLogin {
@@ -238,7 +237,7 @@ fn level_state_reads_canonical_world_state() {
             },
             enforces_secure_chat: true,
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -246,7 +245,7 @@ fn level_state_reads_canonical_world_state() {
             method: "world.level_state".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -271,13 +270,13 @@ fn level_state_reads_canonical_world_state() {
     assert_eq!(level_state["gameplay"]["show_death_screen"], true);
     assert_eq!(level_state["gameplay"]["do_limited_crafting"], false);
 
-    snapshot.write().unwrap().world_store.clear_client_level();
+    state.world.write().unwrap().clear_client_level();
     let response = dispatch(
         ControlRequest {
             method: "world.level_state".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -289,19 +288,19 @@ fn level_state_reads_canonical_world_state() {
 
 #[test]
 fn renderer_screenshot_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "renderer.screenshot".to_string(),
             params: json!({"path": "target/control-shot.png"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["queued"], true);
     assert_eq!(
-        snapshot.read().unwrap().screenshot_request.as_deref(),
+        state.requests.lock().unwrap().screenshot_request.as_deref(),
         Some("target/control-shot.png")
     );
 
@@ -310,39 +309,39 @@ fn renderer_screenshot_queues_request() {
             method: "renderer.screenshot".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_path.ok);
 }
 
 #[test]
 fn net_accept_code_of_conduct_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.accept_code_of_conduct".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["queued"], true);
     assert_eq!(
-        snapshot.read().unwrap().code_of_conduct_requests,
+        state.requests.lock().unwrap().code_of_conduct_requests,
         vec![CodeOfConductControlRequest::Accept { remember: false }]
     );
 }
 
 #[test]
 fn net_accept_code_of_conduct_can_queue_persistent_accept() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.accept_code_of_conduct".to_string(),
             params: json!({"remember": true}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -350,63 +349,63 @@ fn net_accept_code_of_conduct_can_queue_persistent_accept() {
     assert_eq!(result["queued"], true);
     assert_eq!(result["remember"], true);
     assert_eq!(
-        snapshot.read().unwrap().code_of_conduct_requests,
+        state.requests.lock().unwrap().code_of_conduct_requests,
         vec![CodeOfConductControlRequest::Accept { remember: true }]
     );
 }
 
 #[test]
 fn net_decline_code_of_conduct_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.decline_code_of_conduct".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["queued"], true);
     assert_eq!(
-        snapshot.read().unwrap().code_of_conduct_requests,
+        state.requests.lock().unwrap().code_of_conduct_requests,
         vec![CodeOfConductControlRequest::Decline]
     );
 }
 
 #[test]
 fn net_clear_code_of_conduct_acceptance_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.clear_code_of_conduct_acceptance".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(
-        snapshot.read().unwrap().code_of_conduct_requests,
+        state.requests.lock().unwrap().code_of_conduct_requests,
         vec![CodeOfConductControlRequest::ClearAcceptance]
     );
 }
 
 #[test]
 fn net_send_chat_command_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.send_chat_command".to_string(),
             params: json!({"command": "give @p minecraft:stone"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ChatCommand {
             command: "give @p minecraft:stone".to_string()
         }]
@@ -417,26 +416,26 @@ fn net_send_chat_command_queues_request() {
             method: "net.send_chat_command".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_command.ok);
 }
 
 #[test]
 fn net_request_command_suggestions_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.request_command_suggestions".to_string(),
             params: json!({"id": 18, "command": "/give @p minecraft:stone"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::CommandSuggestionRequest {
             id: 18,
             command: "/give @p minecraft:stone".to_string()
@@ -448,20 +447,20 @@ fn net_request_command_suggestions_queues_request() {
             method: "net.request_command_suggestions".to_string(),
             params: json!({"command": "/help"}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_id.ok);
 }
 
 #[test]
 fn net_tag_query_block_entity_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.query_block_entity_tag".to_string(),
             params: json!({"transaction_id": 42, "x": -5, "y": 70, "z": 12}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -469,7 +468,7 @@ fn net_tag_query_block_entity_queues_request() {
     assert_eq!(result["queued"], true);
     assert_eq!(result["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::QueryBlockEntityTag {
             transaction_id: 42,
             x: -5,
@@ -481,20 +480,20 @@ fn net_tag_query_block_entity_queues_request() {
 
 #[test]
 fn net_tag_query_block_entity_rejects_missing_or_non_integer_params() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_transaction = dispatch(
         ControlRequest {
             method: "net.query_block_entity_tag".to_string(),
             params: json!({"x": -5, "y": 70, "z": 12}),
         },
-        &snapshot,
+        &state,
     );
     let non_integer_y = dispatch(
         ControlRequest {
             method: "net.query_block_entity_tag".to_string(),
             params: json!({"transaction_id": 42, "x": -5, "y": "70", "z": 12}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_transaction.ok);
@@ -507,18 +506,18 @@ fn net_tag_query_block_entity_rejects_missing_or_non_integer_params() {
         non_integer_y.error.as_deref(),
         Some("net.query_block_entity_tag requires integer param y")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_tag_query_entity_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.query_entity_tag".to_string(),
             params: json!({"transaction_id": 43, "entity_id": 99}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -526,7 +525,7 @@ fn net_tag_query_entity_queues_request() {
     assert_eq!(result["queued"], true);
     assert_eq!(result["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::QueryEntityTag {
             transaction_id: 43,
             entity_id: 99,
@@ -536,20 +535,20 @@ fn net_tag_query_entity_queues_request() {
 
 #[test]
 fn net_tag_query_entity_rejects_missing_or_non_integer_params() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_transaction = dispatch(
         ControlRequest {
             method: "net.query_entity_tag".to_string(),
             params: json!({"entity_id": 99}),
         },
-        &snapshot,
+        &state,
     );
     let non_integer_entity = dispatch(
         ControlRequest {
             method: "net.query_entity_tag".to_string(),
             params: json!({"transaction_id": 43, "entity_id": "99"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_transaction.ok);
@@ -562,7 +561,7 @@ fn net_tag_query_entity_rejects_missing_or_non_integer_params() {
         non_integer_entity.error.as_deref(),
         Some("net.query_entity_tag requires integer param entity_id")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -580,13 +579,13 @@ fn net_tag_query_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_spectate_entity_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.spectate_entity".to_string(),
             params: json!({"entity_id": 99}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -594,27 +593,27 @@ fn net_spectate_entity_queues_request() {
     assert_eq!(result["queued"], true);
     assert_eq!(result["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SpectateEntity { entity_id: 99 }]
     );
 }
 
 #[test]
 fn net_spectate_entity_rejects_missing_or_non_integer_entity_id() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_entity_id = dispatch(
         ControlRequest {
             method: "net.spectate_entity".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let non_integer_entity_id = dispatch(
         ControlRequest {
             method: "net.spectate_entity".to_string(),
             params: json!({"entity_id": "99"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_entity_id.ok);
@@ -627,19 +626,19 @@ fn net_spectate_entity_rejects_missing_or_non_integer_entity_id() {
         non_integer_entity_id.error.as_deref(),
         Some("net.spectate_entity requires integer param entity_id")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_teleport_to_entity_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let uuid = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
     let response = dispatch(
         ControlRequest {
             method: "net.teleport_to_entity".to_string(),
             params: json!({"uuid": uuid.to_string()}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -647,34 +646,34 @@ fn net_teleport_to_entity_queues_request() {
     assert_eq!(result["queued"], true);
     assert_eq!(result["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::TeleportToEntity { uuid }]
     );
 }
 
 #[test]
 fn net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_uuid = dispatch(
         ControlRequest {
             method: "net.teleport_to_entity".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let non_string_uuid = dispatch(
         ControlRequest {
             method: "net.teleport_to_entity".to_string(),
             params: json!({"uuid": 42}),
         },
-        &snapshot,
+        &state,
     );
     let invalid_uuid = dispatch(
         ControlRequest {
             method: "net.teleport_to_entity".to_string(),
             params: json!({"uuid": "not-a-uuid"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_uuid.ok);
@@ -691,7 +690,7 @@ fn net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid() {
     assert!(invalid_uuid.error.as_deref().is_some_and(
         |err| err.starts_with("net.teleport_to_entity requires valid UUID param uuid:")
     ));
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -709,46 +708,46 @@ fn net_spectate_and_teleport_to_entity_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_change_difficulty_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
             params: json!({"difficulty": "hard"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::change_difficulty_named("hard").unwrap()]
     );
 }
 
 #[test]
 fn net_change_difficulty_rejects_missing_or_invalid_difficulty() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_difficulty = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let invalid_difficulty = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
             params: json!({"difficulty": "nightmare"}),
         },
-        &snapshot,
+        &state,
     );
     let non_string_difficulty = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
             params: json!({"difficulty": 3}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_difficulty.ok);
@@ -764,12 +763,12 @@ fn net_change_difficulty_rejects_missing_or_invalid_difficulty() {
         Some("net.change_difficulty requires difficulty peaceful, easy, normal, or hard")
     );
     assert!(!non_string_difficulty.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_change_game_mode_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let game_modes = ["survival", "creative", "adventure", "spectator"];
 
     for (index, game_mode) in game_modes.iter().enumerate() {
@@ -778,7 +777,7 @@ fn net_change_game_mode_queues_request() {
                 method: "net.change_game_mode".to_string(),
                 params: json!({"game_mode": game_mode}),
             },
-            &snapshot,
+            &state,
         );
 
         assert!(response.ok);
@@ -789,32 +788,35 @@ fn net_change_game_mode_queues_request() {
         .iter()
         .map(|game_mode| NetControlRequest::change_game_mode_named(game_mode).unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(snapshot.read().unwrap().net_requests, expected_requests);
+    assert_eq!(
+        state.requests.lock().unwrap().net_requests,
+        expected_requests
+    );
 }
 
 #[test]
 fn net_change_game_mode_rejects_missing_non_string_or_invalid_game_mode() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_game_mode = dispatch(
         ControlRequest {
             method: "net.change_game_mode".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let non_string_game_mode = dispatch(
         ControlRequest {
             method: "net.change_game_mode".to_string(),
             params: json!({"game_mode": 1}),
         },
-        &snapshot,
+        &state,
     );
     let invalid_game_mode = dispatch(
         ControlRequest {
             method: "net.change_game_mode".to_string(),
             params: json!({"game_mode": "builder"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_game_mode.ok);
@@ -832,7 +834,7 @@ fn net_change_game_mode_rejects_missing_non_string_or_invalid_game_mode() {
         invalid_game_mode.error.as_deref(),
         Some("net.change_game_mode requires game_mode survival, creative, adventure, or spectator")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -848,39 +850,39 @@ fn net_change_game_mode_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_lock_difficulty_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.lock_difficulty".to_string(),
             params: json!({"locked": false}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::LockDifficulty { locked: false }]
     );
 }
 
 #[test]
 fn net_lock_difficulty_rejects_missing_or_non_bool_locked() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_locked = dispatch(
         ControlRequest {
             method: "net.lock_difficulty".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let non_bool_locked = dispatch(
         ControlRequest {
             method: "net.lock_difficulty".to_string(),
             params: json!({"locked": "true"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_locked.ok);
@@ -893,7 +895,7 @@ fn net_lock_difficulty_rejects_missing_or_non_bool_locked() {
         non_bool_locked.error.as_deref(),
         Some("net.lock_difficulty requires boolean param locked")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -911,19 +913,19 @@ fn net_difficulty_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_set_held_slot_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_held_slot".to_string(),
             params: json!({"slot": 4}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetHeldSlot { slot: 4 }]
     );
 
@@ -932,7 +934,7 @@ fn net_set_held_slot_queues_request() {
             method: "net.set_held_slot".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_slot.ok);
 
@@ -941,26 +943,26 @@ fn net_set_held_slot_queues_request() {
             method: "net.set_held_slot".to_string(),
             params: json!({"slot": 9}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!invalid_slot.ok);
 }
 
 #[test]
 fn net_set_flying_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_flying".to_string(),
             params: json!({"flying": true}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetFlying { flying: true }]
     );
 
@@ -969,54 +971,54 @@ fn net_set_flying_queues_request() {
             method: "net.set_flying".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_flying.ok);
 }
 
 #[test]
 fn net_perform_respawn_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.perform_respawn".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::PerformRespawn]
     );
 }
 
 #[test]
 fn net_client_command_requests_queue_requests() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
 
     let stats = dispatch(
         ControlRequest {
             method: "net.request_stats".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let game_rules = dispatch(
         ControlRequest {
             method: "net.request_game_rule_values".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(stats.ok);
     assert!(game_rules.ok);
     assert_eq!(game_rules.result.unwrap()["pending"], 2);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![
             NetControlRequest::RequestStats,
             NetControlRequest::RequestGameRuleValues,
@@ -1026,19 +1028,19 @@ fn net_client_command_requests_queue_requests() {
 
 #[test]
 fn net_place_recipe_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.place_recipe".to_string(),
             params: json!({"container_id": 7, "recipe_index": 123, "use_max_items": true}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::PlaceRecipe {
             container_id: 7,
             recipe_index: 123,
@@ -1051,14 +1053,14 @@ fn net_place_recipe_queues_request() {
             method: "net.place_recipe".to_string(),
             params: json!({"container_id": 7, "use_max_items": true}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_recipe.ok);
 }
 
 #[test]
 fn net_recipe_book_commands_queue_requests() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let change_response = dispatch(
         ControlRequest {
             method: "net.change_recipe_book_settings".to_string(),
@@ -1068,21 +1070,21 @@ fn net_recipe_book_commands_queue_requests() {
                 "filtering": false
             }),
         },
-        &snapshot,
+        &state,
     );
     let seen_response = dispatch(
         ControlRequest {
             method: "net.mark_recipe_seen".to_string(),
             params: json!({"recipe_index": 321}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(change_response.ok);
     assert!(seen_response.ok);
     assert_eq!(seen_response.result.unwrap()["pending"], 2);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![
             NetControlRequest::ChangeRecipeBookSettings {
                 book_type: RecipeBookTypeControl::BlastFurnace,
@@ -1098,7 +1100,7 @@ fn net_recipe_book_commands_queue_requests() {
             method: "net.change_recipe_book_settings".to_string(),
             params: json!({"book_type": "crafting", "filtering": false}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_open.ok);
 
@@ -1107,7 +1109,7 @@ fn net_recipe_book_commands_queue_requests() {
             method: "net.change_recipe_book_settings".to_string(),
             params: json!({"book_type": "campfire", "open": true, "filtering": false}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!invalid_type.ok);
 
@@ -1116,26 +1118,26 @@ fn net_recipe_book_commands_queue_requests() {
             method: "net.mark_recipe_seen".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_recipe.ok);
 }
 
 #[test]
 fn net_rename_item_queues_request_and_validates_name() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.rename_item".to_string(),
             params: json!({"name": "Polished Pickaxe"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::RenameItem {
             name: "Polished Pickaxe".to_string()
         }]
@@ -1146,7 +1148,7 @@ fn net_rename_item_queues_request_and_validates_name() {
             method: "net.rename_item".to_string(),
             params: json!({"name": 7}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!non_string_name.ok);
 
@@ -1155,15 +1157,15 @@ fn net_rename_item_queues_request_and_validates_name() {
             method: "net.rename_item".to_string(),
             params: json!({"name": "x".repeat(RENAME_ITEM_MAX_NAME_CHARS + 1)}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!oversized_name.ok);
-    assert_eq!(snapshot.read().unwrap().net_requests.len(), 1);
+    assert_eq!(state.requests.lock().unwrap().net_requests.len(), 1);
 }
 
 #[test]
 fn net_edit_book_queues_unsigned_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1172,13 +1174,13 @@ fn net_edit_book_queues_unsigned_request() {
                 "pages": ["first page", "second page"],
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::EditBook {
             slot: 36,
             pages: vec!["first page".to_string(), "second page".to_string()],
@@ -1189,7 +1191,7 @@ fn net_edit_book_queues_unsigned_request() {
 
 #[test]
 fn net_edit_book_queues_signed_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1199,13 +1201,13 @@ fn net_edit_book_queues_signed_request() {
                 "title": "Field Notes",
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::EditBook {
             slot: 8,
             pages: vec!["signed page".to_string()],
@@ -1222,11 +1224,11 @@ fn net_edit_book_queues_signed_request() {
                 "title": null,
             }),
         },
-        &snapshot,
+        &state,
     );
     assert!(null_title.ok);
     assert_eq!(
-        snapshot.read().unwrap().net_requests[1],
+        state.requests.lock().unwrap().net_requests[1],
         NetControlRequest::EditBook {
             slot: 8,
             pages: vec!["still unsigned".to_string()],
@@ -1237,45 +1239,45 @@ fn net_edit_book_queues_signed_request() {
 
 #[test]
 fn net_edit_book_rejects_missing_or_non_array_pages() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_pages = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
             params: json!({"slot": 36}),
         },
-        &snapshot,
+        &state,
     );
     let non_array_pages = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
             params: json!({"slot": 36, "pages": "not pages"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_pages.ok);
     assert!(!non_array_pages.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_edit_book_rejects_too_many_pages() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
             params: json!({"slot": 36, "pages": vec!["x"; EDIT_BOOK_MAX_PAGES + 1]}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!response.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_edit_book_rejects_oversized_page() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1284,16 +1286,16 @@ fn net_edit_book_rejects_oversized_page() {
                 "pages": ["x".repeat(EDIT_BOOK_MAX_PAGE_CHARS + 1)],
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!response.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_edit_book_rejects_oversized_title() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1303,16 +1305,16 @@ fn net_edit_book_rejects_oversized_title() {
                 "title": "x".repeat(EDIT_BOOK_MAX_TITLE_CHARS + 1),
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!response.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_update_sign_queues_request_and_validates_lines() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.update_sign".to_string(),
@@ -1324,13 +1326,13 @@ fn net_update_sign_queues_request_and_validates_lines() {
                 "lines": ["line 0", "line 1", "line 2", "line 3"]
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SignUpdate {
             x: -5,
             y: 70,
@@ -1356,7 +1358,7 @@ fn net_update_sign_queues_request_and_validates_lines() {
                 "lines": ["line 0", "line 1", "line 2"]
             }),
         },
-        &snapshot,
+        &state,
     );
     assert!(!wrong_line_count.ok);
 
@@ -1371,26 +1373,26 @@ fn net_update_sign_queues_request_and_validates_lines() {
                 "lines": ["a".repeat(385), "line 1", "line 2", "line 3"]
             }),
         },
-        &snapshot,
+        &state,
     );
     assert!(!oversized_line.ok);
 }
 
 #[test]
 fn net_advancements_open_tab_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
             params: json!({"tab": "minecraft:story/root"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::OpenAdvancementsTab {
             tab: "minecraft:story/root".to_string()
         }]
@@ -1399,19 +1401,19 @@ fn net_advancements_open_tab_queues_request() {
 
 #[test]
 fn net_advancements_open_tab_accepts_default_namespace_path() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
             params: json!({"tab": "story/root"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["queued"], true);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::OpenAdvancementsTab {
             tab: "story/root".to_string()
         }]
@@ -1420,26 +1422,26 @@ fn net_advancements_open_tab_accepts_default_namespace_path() {
 
 #[test]
 fn net_advancements_close_screen_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.close_advancements_screen".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::CloseAdvancementsScreen]
     );
 }
 
 #[test]
 fn net_advancements_open_tab_rejects_invalid_tab() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     for tab in [
         "",
         "minecraft:",
@@ -1455,52 +1457,52 @@ fn net_advancements_open_tab_rejects_invalid_tab() {
                 method: "net.open_advancements_tab".to_string(),
                 params: json!({"tab": tab}),
             },
-            &snapshot,
+            &state,
         );
         assert!(!response.ok, "{tab:?} should be rejected");
     }
 
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_advancements_open_tab_requires_tab() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let missing_tab = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     let non_string_tab = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
             params: json!({"tab": 7}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!missing_tab.ok);
     assert!(!non_string_tab.ok);
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
 fn net_select_trade_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.select_trade".to_string(),
             params: json!({"item": 2}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SelectTrade { item: 2 }]
     );
 
@@ -1509,7 +1511,7 @@ fn net_select_trade_queues_request() {
             method: "net.select_trade".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_item.ok);
 
@@ -1518,26 +1520,26 @@ fn net_select_trade_queues_request() {
             method: "net.select_trade".to_string(),
             params: json!({"item": -1}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!invalid_item.ok);
 }
 
 #[test]
 fn net_set_beacon_queues_both_effects() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
             params: json!({"primary_effect": 1, "secondary_effect": 5}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetBeacon {
             primary_effect: Some(1),
             secondary_effect: Some(5),
@@ -1547,18 +1549,18 @@ fn net_set_beacon_queues_both_effects() {
 
 #[test]
 fn net_set_beacon_queues_null_and_missing_effects_as_none() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
             params: json!({"primary_effect": null}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetBeacon {
             primary_effect: None,
             secondary_effect: None,
@@ -1568,13 +1570,13 @@ fn net_set_beacon_queues_null_and_missing_effects_as_none() {
 
 #[test]
 fn net_set_beacon_rejects_non_integer_effects() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
             params: json!({"primary_effect": "speed"}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!response.ok);
@@ -1582,7 +1584,7 @@ fn net_set_beacon_rejects_non_integer_effects() {
         response.error.as_deref(),
         Some("net.set_beacon requires integer or null param primary_effect")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -1600,7 +1602,7 @@ fn net_set_beacon_counter_deserializes_with_default() {
 
 #[test]
 fn net_set_creative_mode_slot_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
@@ -1613,13 +1615,13 @@ fn net_set_creative_mode_slot_queues_request() {
                 }
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok, "{response:?}");
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetCreativeModeSlot(
             crate::types::CreativeModeSlotControlRequest {
                 slot_num: 36,
@@ -1634,18 +1636,18 @@ fn net_set_creative_mode_slot_queues_request() {
 
 #[test]
 fn net_set_creative_mode_slot_defaults_missing_item_to_empty_drop() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
             params: json!({"slot_num": -1}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok, "{response:?}");
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SetCreativeModeSlot(
             crate::types::CreativeModeSlotControlRequest {
                 slot_num: -1,
@@ -1657,7 +1659,7 @@ fn net_set_creative_mode_slot_defaults_missing_item_to_empty_drop() {
 
 #[test]
 fn net_set_creative_mode_slot_rejects_invalid_item_stack() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
@@ -1670,7 +1672,7 @@ fn net_set_creative_mode_slot_rejects_invalid_item_stack() {
                 }
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(!response.ok);
@@ -1678,7 +1680,7 @@ fn net_set_creative_mode_slot_rejects_invalid_item_stack() {
         response.error.as_deref(),
         Some("net.set_creative_mode_slot requires item.count > 0")
     );
-    assert!(snapshot.read().unwrap().net_requests.is_empty());
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
 }
 
 #[test]
@@ -1696,19 +1698,19 @@ fn net_set_creative_mode_slot_counter_deserializes_with_default() {
 
 #[test]
 fn net_select_bundle_item_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.select_bundle_item".to_string(),
             params: json!({"slot_id": 12, "selected_item_index": 3}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::SelectBundleItem {
             slot_id: 12,
             selected_item_index: 3,
@@ -1720,12 +1722,12 @@ fn net_select_bundle_item_queues_request() {
             method: "net.select_bundle_item".to_string(),
             params: json!({"slot_id": 12, "selected_item_index": -1}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(unselect_response.ok);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![
             NetControlRequest::SelectBundleItem {
                 slot_id: 12,
@@ -1743,7 +1745,7 @@ fn net_select_bundle_item_queues_request() {
             method: "net.select_bundle_item".to_string(),
             params: json!({"slot_id": 12}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_index.ok);
 
@@ -1752,27 +1754,27 @@ fn net_select_bundle_item_queues_request() {
             method: "net.select_bundle_item".to_string(),
             params: json!({"slot_id": 12, "selected_item_index": -2}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!invalid_index.ok);
-    assert_eq!(snapshot.read().unwrap().net_requests.len(), 2);
+    assert_eq!(state.requests.lock().unwrap().net_requests.len(), 2);
 }
 
 #[test]
 fn net_container_button_click_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.container_button_click".to_string(),
             params: json!({"container_id": 7, "button_id": 2}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ContainerButtonClick {
             container_id: 7,
             button_id: 2,
@@ -1784,14 +1786,14 @@ fn net_container_button_click_queues_request() {
             method: "net.container_button_click".to_string(),
             params: json!({"container_id": 7}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_button.ok);
 }
 
 #[test]
 fn net_container_click_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.container_click".to_string(),
@@ -1816,13 +1818,13 @@ fn net_container_click_queues_request() {
                 "carried_item": {"kind": "empty"}
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok, "{response:?}");
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ContainerClick(
             ContainerClickControlRequest {
                 container_id: 7,
@@ -1856,14 +1858,14 @@ fn net_container_click_queues_request() {
                 "button_num": 1
             }),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_input.ok);
 }
 
 #[test]
 fn net_container_click_slot_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.container_click_slot".to_string(),
@@ -1873,13 +1875,13 @@ fn net_container_click_slot_queues_request() {
                 "input": "pickup"
             }),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok, "{response:?}");
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ContainerClickSlot(
             crate::types::ContainerClickSlotControlRequest {
                 slot_num: 5,
@@ -1897,26 +1899,26 @@ fn net_container_click_slot_queues_request() {
                 "button_num": 1
             }),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_input.ok);
 }
 
 #[test]
 fn net_container_close_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.container_close".to_string(),
             params: json!({"container_id": 7}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ContainerClose { container_id: 7 }]
     );
 
@@ -1925,26 +1927,26 @@ fn net_container_close_queues_request() {
             method: "net.container_close".to_string(),
             params: json!({}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_container.ok);
 }
 
 #[test]
 fn net_container_slot_state_changed_queues_request() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let response = dispatch(
         ControlRequest {
             method: "net.container_slot_state_changed".to_string(),
             params: json!({"slot_id": 12, "container_id": 7, "new_state": true}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
     assert_eq!(response.result.unwrap()["pending"], 1);
     assert_eq!(
-        snapshot.read().unwrap().net_requests,
+        state.requests.lock().unwrap().net_requests,
         vec![NetControlRequest::ContainerSlotStateChanged {
             slot_id: 12,
             container_id: 7,
@@ -1957,14 +1959,14 @@ fn net_container_slot_state_changed_queues_request() {
             method: "net.container_slot_state_changed".to_string(),
             params: json!({"slot_id": 12, "container_id": 7}),
         },
-        &snapshot,
+        &state,
     );
     assert!(!missing_state.ok);
 }
 
 #[test]
 fn client_hud_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_system_chat(SystemChat {
@@ -1985,7 +1987,7 @@ fn client_hud_reads_canonical_world_state() {
         store.apply_subtitle_text(SetSubtitleText {
             content: "Return to camp".to_string(),
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -1993,7 +1995,7 @@ fn client_hud_reads_canonical_world_state() {
             method: "world.client_hud".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2012,7 +2014,7 @@ fn client_hud_reads_canonical_world_state() {
 
 #[test]
 fn client_inventory_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_set_player_inventory(SetPlayerInventory {
@@ -2044,7 +2046,7 @@ fn client_inventory_reads_canonical_world_state() {
             id: 2,
             value: 10,
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2052,7 +2054,7 @@ fn client_inventory_reads_canonical_world_state() {
             method: "world.client_inventory".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2082,7 +2084,7 @@ fn client_inventory_reads_canonical_world_state() {
 
 #[test]
 fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_open_screen(OpenScreen {
@@ -2123,7 +2125,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
             show_progress: true,
             can_restock: false,
         }));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2131,7 +2133,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
             method: "world.client_inventory".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2159,17 +2161,17 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
     assert_eq!(offers["offers"][1]["buy_b"], serde_json::Value::Null);
     assert_eq!(offers["offers"][1]["is_out_of_stock"], true);
 
-    assert!(snapshot
+    assert!(state
+        .world
         .write()
         .unwrap()
-        .world_store
         .apply_container_close(ContainerClose { container_id: 7 }));
     let response = dispatch(
         ControlRequest {
             method: "world.client_inventory".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2178,7 +2180,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
 
 #[test]
 fn client_recipe_book_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_recipe_book_add(RecipeBookAdd {
@@ -2209,7 +2211,7 @@ fn client_recipe_book_reads_canonical_world_state() {
                 filtering: false,
             },
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2217,7 +2219,7 @@ fn client_recipe_book_reads_canonical_world_state() {
             method: "world.client_recipe_book".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2240,7 +2242,7 @@ fn client_recipe_book_reads_canonical_world_state() {
 
 #[test]
 fn client_recipes_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_update_recipes(UpdateRecipes {
@@ -2260,7 +2262,7 @@ fn client_recipes_reads_canonical_world_state() {
                 },
             }],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2268,7 +2270,7 @@ fn client_recipes_reads_canonical_world_state() {
             method: "world.client_recipes".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2293,7 +2295,7 @@ fn client_recipes_reads_canonical_world_state() {
 
 #[test]
 fn client_chat_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_disguised_chat(ProtocolDisguisedChat {
@@ -2304,7 +2306,7 @@ fn client_chat_reads_canonical_world_state() {
                 target_name: None,
             },
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2312,7 +2314,7 @@ fn client_chat_reads_canonical_world_state() {
             method: "world.client_chat".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2327,14 +2329,14 @@ fn client_chat_reads_canonical_world_state() {
 
 #[test]
 fn client_combat_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_player_combat_kill(PlayerCombatKill {
             player_id: 123,
             message: "You died".to_string(),
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2342,7 +2344,7 @@ fn client_combat_reads_canonical_world_state() {
             method: "world.client_combat".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2355,14 +2357,14 @@ fn client_combat_reads_canonical_world_state() {
 
 #[test]
 fn client_cooldowns_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_cooldown(Cooldown {
             cooldown_group: "minecraft:ender_pearl".to_string(),
             duration: 20,
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2370,7 +2372,7 @@ fn client_cooldowns_reads_canonical_world_state() {
             method: "world.client_cooldowns".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2381,20 +2383,16 @@ fn client_cooldowns_reads_canonical_world_state() {
     );
     assert_eq!(cooldowns["minecraft:ender_pearl"]["duration"], 20);
 
-    snapshot
-        .write()
-        .unwrap()
-        .world_store
-        .apply_cooldown(Cooldown {
-            cooldown_group: "minecraft:ender_pearl".to_string(),
-            duration: 0,
-        });
+    state.world.write().unwrap().apply_cooldown(Cooldown {
+        cooldown_group: "minecraft:ender_pearl".to_string(),
+        duration: 0,
+    });
     let response = dispatch(
         ControlRequest {
             method: "world.client_cooldowns".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2407,7 +2405,7 @@ fn client_cooldowns_reads_canonical_world_state() {
 
 #[test]
 fn client_effects_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_explosion(ProtocolExplosion {
@@ -2445,7 +2443,7 @@ fn client_effects_reads_canonical_world_state() {
                 raw_options: vec![0xaa, 0xbb],
             },
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2453,7 +2451,7 @@ fn client_effects_reads_canonical_world_state() {
             method: "world.client_effects".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2480,7 +2478,7 @@ fn client_effects_reads_canonical_world_state() {
 
 #[test]
 fn client_stats_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_award_stats(AwardStats {
@@ -2502,7 +2500,7 @@ fn client_stats_reads_canonical_world_state() {
                 },
             ],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2510,7 +2508,7 @@ fn client_stats_reads_canonical_world_state() {
             method: "world.client_stats".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2531,7 +2529,7 @@ fn client_stats_reads_canonical_world_state() {
 
 #[test]
 fn client_waypoints_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let waypoint_id = uuid::Uuid::from_u128(0x00112233445566778899aabbccddeeff);
     {
         let mut store = WorldStore::new();
@@ -2550,7 +2548,7 @@ fn client_waypoints_reads_canonical_world_state() {
                 }),
             },
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2558,7 +2556,7 @@ fn client_waypoints_reads_canonical_world_state() {
             method: "world.client_waypoints".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2582,7 +2580,7 @@ fn client_waypoints_reads_canonical_world_state() {
 
 #[test]
 fn client_ui_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_low_disk_space_warning();
@@ -2612,7 +2610,7 @@ fn client_ui_reads_canonical_world_state() {
             dialog: DialogHolder::Reference { registry_id: 7 },
         });
         store.apply_pong_response(PongResponse { time: 123456789 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2620,7 +2618,7 @@ fn client_ui_reads_canonical_world_state() {
             method: "world.client_ui".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2653,7 +2651,7 @@ fn client_ui_reads_canonical_world_state() {
 
 #[test]
 fn client_audio_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_sound_event(SoundEvent {
@@ -2690,7 +2688,7 @@ fn client_audio_reads_canonical_world_state() {
             source: Some(SoundSource::Music),
             name: Some("minecraft:music.menu".to_string()),
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2698,7 +2696,7 @@ fn client_audio_reads_canonical_world_state() {
             method: "world.client_audio".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2724,7 +2722,7 @@ fn client_audio_reads_canonical_world_state() {
 
 #[test]
 fn client_debug_game_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_debug_block_value(DebugBlockValue {
@@ -2743,7 +2741,7 @@ fn client_debug_game_reads_canonical_world_state() {
                 },
             ],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2751,7 +2749,7 @@ fn client_debug_game_reads_canonical_world_state() {
             method: "world.client_debug_game".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2780,7 +2778,7 @@ fn client_debug_game_reads_canonical_world_state() {
 
 #[test]
 fn client_debug_query_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_tag_query(TagQuery {
@@ -2788,7 +2786,7 @@ fn client_debug_query_reads_canonical_world_state() {
             tag_present: true,
             raw_nbt: vec![10, 0],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2796,7 +2794,7 @@ fn client_debug_query_reads_canonical_world_state() {
             method: "world.client_debug_query".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2808,14 +2806,14 @@ fn client_debug_query_reads_canonical_world_state() {
 
 #[test]
 fn client_command_suggestions_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_custom_chat_completions(CustomChatCompletions {
             action: CustomChatCompletionsAction::Set,
             entries: vec!["/warp".to_string(), "/spawn".to_string()],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2823,7 +2821,7 @@ fn client_command_suggestions_reads_canonical_world_state() {
             method: "world.client_command_suggestions".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2841,7 +2839,7 @@ fn client_command_suggestions_reads_canonical_world_state() {
 
 #[test]
 fn client_features_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_update_enabled_features(UpdateEnabledFeatures {
@@ -2851,7 +2849,7 @@ fn client_features_reads_canonical_world_state() {
                 "minecraft:trade_rebalance".to_string(),
             ],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2859,7 +2857,7 @@ fn client_features_reads_canonical_world_state() {
             method: "world.client_features".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2871,7 +2869,7 @@ fn client_features_reads_canonical_world_state() {
 
 #[test]
 fn client_known_packs_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_select_known_packs(
@@ -2882,7 +2880,7 @@ fn client_known_packs_reads_canonical_world_state() {
             }],
             Vec::new(),
         );
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2890,7 +2888,7 @@ fn client_known_packs_reads_canonical_world_state() {
             method: "world.client_known_packs".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2903,11 +2901,11 @@ fn client_known_packs_reads_canonical_world_state() {
 
 #[test]
 fn apply_diagnostics_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.record_apply_error("light_update", "invalid light payload");
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2915,7 +2913,7 @@ fn apply_diagnostics_reads_canonical_world_state() {
             method: "world.apply_diagnostics".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2933,11 +2931,11 @@ fn apply_diagnostics_reads_canonical_world_state() {
 
 #[test]
 fn command_tree_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_commands(command_tree("say"));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2945,7 +2943,7 @@ fn command_tree_reads_canonical_world_state() {
             method: "world.command_tree".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2960,11 +2958,11 @@ fn command_tree_reads_canonical_world_state() {
 
 #[test]
 fn last_block_changed_ack_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -2972,7 +2970,7 @@ fn last_block_changed_ack_reads_canonical_world_state() {
             method: "world.last_block_changed_ack".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -2981,7 +2979,7 @@ fn last_block_changed_ack_reads_canonical_world_state() {
 
 #[test]
 fn client_block_events_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         assert!(store.apply_block_destruction(BlockDestruction {
@@ -3013,7 +3011,7 @@ fn client_block_events_reads_canonical_world_state() {
             data: 9,
             global: true,
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3021,7 +3019,7 @@ fn client_block_events_reads_canonical_world_state() {
             method: "world.client_block_events".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3042,7 +3040,7 @@ fn client_block_events_reads_canonical_world_state() {
 
 #[test]
 fn world_border_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_initialize_border(InitializeBorder {
@@ -3066,7 +3064,7 @@ fn world_border_reads_canonical_world_state() {
         });
         store.apply_set_border_warning_delay(SetBorderWarningDelay { warning_delay: 11 });
         store.apply_set_border_warning_distance(SetBorderWarningDistance { warning_blocks: 12 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3074,7 +3072,7 @@ fn world_border_reads_canonical_world_state() {
             method: "world.world_border".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3091,7 +3089,7 @@ fn world_border_reads_canonical_world_state() {
 
 #[test]
 fn client_advancements_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_update_advancements(UpdateAdvancements {
@@ -3110,7 +3108,7 @@ fn client_advancements_reads_canonical_world_state() {
         store.apply_select_advancements_tab(SelectAdvancementsTab {
             tab: Some("minecraft:story/root".to_string()),
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3118,7 +3116,7 @@ fn client_advancements_reads_canonical_world_state() {
             method: "world.client_advancements".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3132,7 +3130,7 @@ fn client_advancements_reads_canonical_world_state() {
 
 #[test]
 fn client_local_player_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_player_abilities(PlayerAbilities {
@@ -3164,7 +3162,7 @@ fn client_local_player_reads_canonical_world_state() {
             pitch: -10.0,
         });
         store.apply_simulation_distance(SetSimulationDistance { distance: 12 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3172,7 +3170,7 @@ fn client_local_player_reads_canonical_world_state() {
             method: "world.client_local_player".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3187,7 +3185,7 @@ fn client_local_player_reads_canonical_world_state() {
 
 #[test]
 fn client_player_info_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     let profile_id = Uuid::from_u128(0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);
     {
         let mut store = WorldStore::new();
@@ -3222,7 +3220,7 @@ fn client_player_info_reads_canonical_world_state() {
             }],
         });
         assert_eq!(applied, 1);
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3230,7 +3228,7 @@ fn client_player_info_reads_canonical_world_state() {
             method: "world.client_player_info".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3255,7 +3253,7 @@ fn client_player_info_reads_canonical_world_state() {
 
 #[test]
 fn client_scoreboard_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         assert!(store.apply_set_objective(SetObjective {
@@ -3292,7 +3290,7 @@ fn client_scoreboard_reads_canonical_world_state() {
             }),
             players: vec!["Alice".to_string(), "Bob".to_string()],
         }));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3300,7 +3298,7 @@ fn client_scoreboard_reads_canonical_world_state() {
             method: "world.client_scoreboard".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3335,7 +3333,7 @@ fn client_scoreboard_reads_canonical_world_state() {
 
 #[test]
 fn client_maps_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         assert!(store.apply_map_item_data(MapItemData {
@@ -3357,7 +3355,7 @@ fn client_maps_reads_canonical_world_state() {
                 colors: vec![1, 2, 3, 4],
             }),
         }));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3365,7 +3363,7 @@ fn client_maps_reads_canonical_world_state() {
             method: "world.client_maps".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3388,7 +3386,7 @@ fn client_maps_reads_canonical_world_state() {
 
 #[test]
 fn last_map_color_patch_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_map_item_data(MapItemData {
@@ -3410,7 +3408,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
                 colors: vec![1, 2, 3, 4],
             }),
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3418,7 +3416,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
             method: "world.last_map_color_patch".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3432,7 +3430,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
 
 #[test]
 fn level_clock_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_world_time(PlayTime {
@@ -3453,7 +3451,7 @@ fn level_clock_reads_canonical_world_state() {
             frozen: true,
         });
         store.apply_ticking_step(TickingStep { tick_steps: 7 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3461,7 +3459,7 @@ fn level_clock_reads_canonical_world_state() {
             method: "world.level_clock".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3478,7 +3476,7 @@ fn level_clock_reads_canonical_world_state() {
 
 #[test]
 fn server_presentation_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_transfer(Transfer {
@@ -3504,7 +3502,7 @@ fn server_presentation_reads_canonical_world_state() {
                 url: "https://example.invalid/support".to_string(),
             }],
         });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3512,7 +3510,7 @@ fn server_presentation_reads_canonical_world_state() {
             method: "world.server_presentation".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3543,7 +3541,7 @@ fn server_presentation_reads_canonical_world_state() {
 
 #[test]
 fn probes_chunk_and_block_from_world_store() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -3551,8 +3549,7 @@ fn probes_chunk_and_block_from_world_store() {
         });
         store.insert_decoded_chunk(single_section_chunk());
 
-        let mut guard = snapshot.write().unwrap();
-        guard.world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let chunk_response = dispatch(
@@ -3560,7 +3557,7 @@ fn probes_chunk_and_block_from_world_store() {
             method: "world.probe_chunk".to_string(),
             params: json!({"x": 1, "z": -2}),
         },
-        &snapshot,
+        &state,
     );
     assert!(chunk_response.ok);
     let chunk = chunk_response.result.unwrap();
@@ -3573,7 +3570,7 @@ fn probes_chunk_and_block_from_world_store() {
             method: "world.probe_block".to_string(),
             params: json!({"x": 17, "y": 0, "z": -31}),
         },
-        &snapshot,
+        &state,
     );
     assert!(block_response.ok);
     let block = block_response.result.unwrap();
@@ -3588,7 +3585,7 @@ fn probes_chunk_and_block_from_world_store() {
             method: "world.terrain_chunk_summary".to_string(),
             params: json!({"x": 1, "z": -2}),
         },
-        &snapshot,
+        &state,
     );
     assert!(terrain_response.ok);
     let terrain = terrain_response.result.unwrap();
@@ -3602,7 +3599,7 @@ fn probes_chunk_and_block_from_world_store() {
             method: "world.probe_block".to_string(),
             params: json!({"x": 17, "y": 16, "z": -31}),
         },
-        &snapshot,
+        &state,
     );
     assert!(missing_response.ok);
     assert!(missing_response.result.unwrap().is_null());
@@ -3610,7 +3607,7 @@ fn probes_chunk_and_block_from_world_store() {
 
 #[test]
 fn chunk_view_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.insert_decoded_chunk(single_section_chunk());
@@ -3619,7 +3616,7 @@ fn chunk_view_reads_canonical_world_state() {
             chunk_z: 7,
         });
         store.apply_set_chunk_cache_radius(SetChunkCacheRadius { radius: 10 });
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3627,7 +3624,7 @@ fn chunk_view_reads_canonical_world_state() {
             method: "world.chunk_view".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3641,7 +3638,7 @@ fn chunk_view_reads_canonical_world_state() {
 
 #[test]
 fn probes_entity_transforms_from_world_store_components() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(7, 3));
@@ -3665,7 +3662,7 @@ fn probes_entity_transforms_from_world_store_components() {
             })
         );
 
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let one_response = dispatch(
@@ -3673,7 +3670,7 @@ fn probes_entity_transforms_from_world_store_components() {
             method: "world.probe_entity_transform".to_string(),
             params: json!({"id": 9}),
         },
-        &snapshot,
+        &state,
     );
     assert!(one_response.ok);
     let one = one_response.result.unwrap();
@@ -3690,7 +3687,7 @@ fn probes_entity_transforms_from_world_store_components() {
             method: "world.entity_transforms".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
     assert!(all_response.ok);
     let all = all_response.result.unwrap();
@@ -3707,7 +3704,7 @@ fn probes_entity_transforms_from_world_store_components() {
             method: "world.probe_entity_transform".to_string(),
             params: json!({"id": 999}),
         },
-        &snapshot,
+        &state,
     );
     assert!(missing_response.ok);
     assert!(missing_response.result.unwrap().is_null());
@@ -3715,14 +3712,14 @@ fn probes_entity_transforms_from_world_store_components() {
 
 #[test]
 fn last_projectile_power_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
 
     let empty_response = dispatch(
         ControlRequest {
             method: "world.last_projectile_power".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
     assert!(empty_response.ok);
     assert!(empty_response.result.unwrap().is_null());
@@ -3735,7 +3732,7 @@ fn last_projectile_power_reads_canonical_world_state() {
             entity_id: 10,
             acceleration_power: 0.75,
         }));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let applied_response = dispatch(
@@ -3743,7 +3740,7 @@ fn last_projectile_power_reads_canonical_world_state() {
             method: "world.last_projectile_power".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
     assert!(applied_response.ok);
     let applied = applied_response.result.unwrap();
@@ -3751,10 +3748,10 @@ fn last_projectile_power_reads_canonical_world_state() {
     assert_eq!(applied["acceleration_power"], 0.75);
     assert_eq!(applied["applied"], true);
 
-    assert!(!snapshot
+    assert!(!state
+        .world
         .write()
         .unwrap()
-        .world_store
         .apply_projectile_power(ProjectilePower {
             entity_id: 20,
             acceleration_power: 0.25,
@@ -3765,7 +3762,7 @@ fn last_projectile_power_reads_canonical_world_state() {
             method: "world.last_projectile_power".to_string(),
             params: serde_json::Value::Null,
         },
-        &snapshot,
+        &state,
     );
     assert!(ignored_response.ok);
     let ignored = ignored_response.result.unwrap();
@@ -3776,7 +3773,7 @@ fn last_projectile_power_reads_canonical_world_state() {
 
 #[test]
 fn probe_entity_status_reads_canonical_world_state() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(7, 7));
@@ -3809,7 +3806,7 @@ fn probe_entity_status_reads_canonical_world_state() {
                 blend: true,
             },
         }));
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3817,7 +3814,7 @@ fn probe_entity_status_reads_canonical_world_state() {
             method: "world.probe_entity_status".to_string(),
             params: json!({"id": 7}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);
@@ -3845,7 +3842,7 @@ fn probe_entity_status_reads_canonical_world_state() {
             method: "world.probe_entity_status".to_string(),
             params: json!({"id": 999}),
         },
-        &snapshot,
+        &state,
     );
     assert!(missing_response.ok);
     assert!(missing_response.result.unwrap().is_null());
@@ -3853,12 +3850,12 @@ fn probe_entity_status_reads_canonical_world_state() {
 
 #[test]
 fn entity_pick_targets_probe_exposes_ender_dragon_part_targets() {
-    let snapshot = shared_snapshot("test");
+    let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(100, 43));
         store.advance_entity_client_animations(1);
-        snapshot.write().unwrap().world_store = store;
+        *state.world.write().unwrap() = store;
     }
 
     let response = dispatch(
@@ -3866,7 +3863,7 @@ fn entity_pick_targets_probe_exposes_ender_dragon_part_targets() {
             method: "world.entity_pick_targets".to_string(),
             params: json!({"partial_tick": 1.0}),
         },
-        &snapshot,
+        &state,
     );
 
     assert!(response.ok);

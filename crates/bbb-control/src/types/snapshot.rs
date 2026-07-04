@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use bbb_world::WorldStore;
@@ -267,20 +267,58 @@ where
         .collect()
 }
 
+/// Pure derived view published by the native runtime once per frame. It only
+/// carries counters projected out of the runtime; the authoritative
+/// `WorldStore` is shared via [`SharedWorld`] and never copied here.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ControlSnapshot {
     pub app: AppStatus,
     pub net: NetCounters,
     pub audio: AudioCounters,
     pub renderer: RendererCounters,
-    #[serde(skip)]
-    pub screenshot_request: Option<String>,
-    #[serde(skip)]
-    pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
-    #[serde(skip)]
-    pub net_requests: Vec<NetControlRequest>,
-    #[serde(skip)]
-    pub world_store: WorldStore,
 }
 
 pub type SharedSnapshot = Arc<RwLock<ControlSnapshot>>;
+
+/// Control-plane input queues: produced by the control API server (and the
+/// native code-of-conduct overlay) and drained by the native runtime each
+/// frame. Kept separate from [`ControlSnapshot`] so the published snapshot
+/// stays a pure derived view.
+#[derive(Debug, Default)]
+pub struct ControlRequests {
+    pub screenshot_request: Option<String>,
+    pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
+    pub net_requests: Vec<NetControlRequest>,
+}
+
+pub type SharedControlRequests = Arc<Mutex<ControlRequests>>;
+
+/// Shared handle onto the authoritative `WorldStore` owned by the native
+/// runtime. The control server only ever takes short read locks to answer
+/// `world.*` queries on demand; the native event loop holds the write lock
+/// for the duration of each event, so control queries observe consistent
+/// between-event world states without any per-publish deep copy.
+pub type SharedWorld = Arc<RwLock<WorldStore>>;
+
+/// Bundle of the shared control-plane handles served by the control API.
+#[derive(Debug, Clone, Default)]
+pub struct ControlState {
+    pub snapshot: SharedSnapshot,
+    pub requests: SharedControlRequests,
+    pub world: SharedWorld,
+}
+
+impl ControlState {
+    pub fn new(version: impl Into<String>) -> Self {
+        Self {
+            snapshot: Arc::new(RwLock::new(ControlSnapshot {
+                app: AppStatus {
+                    version: version.into(),
+                    running: true,
+                },
+                ..ControlSnapshot::default()
+            })),
+            ..Self::default()
+        }
+    }
+}
