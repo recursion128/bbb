@@ -752,6 +752,19 @@ When an agent does any of the following, update this file in the same slice:
     - Totem entity event `35` local positioned audio is covered separately from
       LevelEvent audio, including native resolver coverage for the
       `minecraft:item.totem.use` command.
+    - 2026-07-04 determinism: the client sound-seed source no longer draws from
+      wall-clock time. Vanilla seeds `Level.soundSeedGenerator` /
+      `ClientLevel.random` from `RandomSupport.generateUniqueSeed()`
+      (`SEED_UNIQUIFIER ^ System.nanoTime()`) and derives per-sound seeds via
+      `RandomSource.nextLong()`. `bbb-world` now keeps the vanilla
+      `LegacyRandomSource.nextLong()` advancement but seeds it from a fixed local
+      seed on `ClientAudioState.sound_seed_random` (`WorldStore::next_sound_seed`),
+      so the serializable world state stays deterministic (same packet stream ->
+      same seeds/pitches). `LevelEventSoundRandomState::default()` likewise uses a
+      fixed seed; native's level-event pitch stream is seeded from
+      `world.next_sound_seed()`. The field is `#[serde(default)]` for snapshot
+      compatibility. This removes the last `SystemTime::now()` determinism leak in
+      `bbb-world`.
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

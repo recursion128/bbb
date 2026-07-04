@@ -296,7 +296,8 @@ fn main() -> Result<()> {
         args.client_gamma,
         args.hide_lightning_flash,
     );
-    let mut level_event_sound_random = LevelEventSoundRandomState::default();
+    let mut level_event_sound_random =
+        LevelEventSoundRandomState::with_seed(world.next_sound_seed());
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
     let mut cursor_position = None;

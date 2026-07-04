@@ -1,8 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    sync::atomic::{AtomicU64, Ordering},
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::BTreeMap;
 
 use bbb_protocol::{
     entity_types::*,
@@ -60,10 +56,15 @@ const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 const RANDOM_FLOAT_MULTIPLIER: f32 = 5.960_464_5e-8;
 const RANDOM_DOUBLE_DIVISOR: f64 = (1_u64 << 53) as f64;
-const SEED_UNIQUIFIER_INITIAL: u64 = 8_682_522_807_148_012;
-const SEED_UNIQUIFIER_MULTIPLIER: u64 = 1_181_783_497_276_652_981;
-
-static SEED_UNIQUIFIER: AtomicU64 = AtomicU64::new(SEED_UNIQUIFIER_INITIAL);
+/// Fixed local seed for `LevelEventSoundRandomState::default()`. Vanilla seeds
+/// the client `level.random` from a wall-clock `RandomSupport.generateUniqueSeed`;
+/// a fixed seed keeps the derived level-event pitch stream deterministic.
+const DEFAULT_LEVEL_EVENT_SOUND_SEED: i64 = 0;
+/// Fixed local seed for the client sound-seed generator. Vanilla derives sound
+/// seeds from `RandomSource.nextLong()` (`Level.soundSeedGenerator` /
+/// `ClientLevel.random`), itself seeded from wall-clock unique seeds; a distinct
+/// fixed seed keeps `WorldStore` serializable and deterministic.
+const SOUND_SEED_RANDOM_INITIAL_SEED: i64 = 0x5EED_50_1D_A0D_10;
 
 #[derive(Debug, Clone)]
 pub struct LevelEventSoundRandomState {
@@ -139,22 +140,51 @@ impl LevelEventSoundRandomState {
 
 impl Default for LevelEventSoundRandomState {
     fn default() -> Self {
-        Self::with_seed(generate_unique_seed())
+        Self::with_seed(DEFAULT_LEVEL_EVENT_SOUND_SEED)
     }
 }
 
-fn generate_unique_seed() -> i64 {
-    let unique = SEED_UNIQUIFIER
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
-            Some(current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
-        })
-        .map(|previous| previous.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
-        .unwrap_or_else(|current| current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER));
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos() as u64)
-        .unwrap_or(0);
-    (unique ^ nanos) as i64
+/// Deterministic client-local sound-seed generator.
+///
+/// Vanilla derives per-sound seeds from a `RandomSource.nextLong()` chain
+/// (`Level.soundSeedGenerator` / `ClientLevel.random`), itself seeded from a
+/// wall-clock `RandomSupport.generateUniqueSeed()`. To keep `WorldStore`
+/// serializable and deterministic (same packet stream -> same state), this
+/// replaces the wall-clock seed with a fixed local seed while preserving the
+/// `LegacyRandomSource.nextLong()` advancement, so successive draws stay unique.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SoundSeedRandomState {
+    seed: u64,
+}
+
+impl SoundSeedRandomState {
+    fn with_seed(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+        }
+    }
+
+    /// Next `RandomSource.nextLong()` sound seed.
+    pub fn next_long(&mut self) -> i64 {
+        let high = (self.next_bits(32) as i32 as i64) << 32;
+        let low = self.next_bits(32) as i32 as i64;
+        high.wrapping_add(low)
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(RANDOM_MULTIPLIER)
+            .wrapping_add(RANDOM_INCREMENT)
+            & RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+}
+
+impl Default for SoundSeedRandomState {
+    fn default() -> Self {
+        Self::with_seed(SOUND_SEED_RANDOM_INITIAL_SEED)
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -171,6 +201,8 @@ pub struct ClientAudioState {
     pub playing_jukebox_songs: Vec<JukeboxSongState>,
     #[serde(default)]
     pub last_jukebox_event: Option<JukeboxLevelEventState>,
+    #[serde(default)]
+    pub sound_seed_random: SoundSeedRandomState,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -592,6 +624,14 @@ impl WorldStore {
 
     pub fn client_audio(&self) -> &ClientAudioState {
         &self.client_audio
+    }
+
+    /// Draws the next deterministic client-local sound seed, matching vanilla's
+    /// `RandomSource.nextLong()` sound-seed derivation
+    /// (`Level.soundSeedGenerator` / `ClientLevel.random`) with a fixed local
+    /// seed instead of a wall-clock one.
+    pub fn next_sound_seed(&mut self) -> i64 {
+        self.client_audio.sound_seed_random.next_long()
     }
 
     pub fn last_sound(&self) -> Option<&SoundEventState> {
@@ -1477,6 +1517,33 @@ mod tests {
     };
     use std::collections::BTreeMap;
     use uuid::Uuid;
+
+    #[test]
+    fn sound_seed_random_is_deterministic_and_non_repeating() {
+        // Two identically-initialized instances produce the same seed sequence
+        // (determinism), and a single instance does not repeat within a window
+        // (the uniqueness the old wall-clock `unique ^ nanos` seed provided).
+        let mut a = SoundSeedRandomState::default();
+        let mut b = SoundSeedRandomState::default();
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..1024 {
+            let seed_a = a.next_long();
+            let seed_b = b.next_long();
+            assert_eq!(seed_a, seed_b, "identical seeds must yield identical draws");
+            assert!(seen.insert(seed_a), "sound seed sequence must not repeat");
+        }
+
+        // `WorldStore` threads the same deterministic chain: fresh stores draw
+        // matching seeds, and successive draws advance.
+        let mut world_one = WorldStore::new();
+        let mut world_two = WorldStore::new();
+        for _ in 0..8 {
+            assert_eq!(world_one.next_sound_seed(), world_two.next_sound_seed());
+        }
+        let first = world_one.next_sound_seed();
+        let second = world_one.next_sound_seed();
+        assert_ne!(first, second);
+    }
 
     #[test]
     fn level_event_random_state_matches_java_float_and_double_samples() {
