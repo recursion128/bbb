@@ -64,6 +64,7 @@ const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
 const ATTACK_SOUND_EVENT_ID: i8 = 4;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
+const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
 const TAMING_FAILED_EVENT_ID: i8 = 6;
 const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
 const VILLAGER_HEART_EVENT_ID: i8 = 12;
@@ -569,6 +570,15 @@ impl WorldStore {
                     }
                     if let Some(state) = self
                         .evoker_fangs_attack_sound_for_entity(update.entity_id, || {
+                            random.next_float()
+                        })
+                    {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied && update.event_id == LIVING_ENTITY_DEATH_EVENT_ID {
+                    if let Some(state) = self
+                        .armor_stand_death_sound_for_entity(update.entity_id, || {
                             random.next_float()
                         })
                     {
@@ -2686,6 +2696,95 @@ mod tests {
         assert_eq!(sound.distance_delay, false);
         assert_eq!(store.last_sound(), Some(sound));
         assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn armor_stand_death_event_forwards_randomized_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                84,
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                Vec3d {
+                    x: -2.0,
+                    y: 61.5,
+                    z: 5.75,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 84,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                85,
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 85,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 85,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                86,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 86,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.armor_stand.break")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: -2.0,
+                y: 61.5,
+                z: 5.75,
+            }
+        );
+        assert_eq!(sound.volume, 1.0);
+        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

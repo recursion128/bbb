@@ -566,6 +566,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     ArmorStand entity event `32` 现在按 vanilla 命中分支在实体当前位置播放
     `minecraft:entity.armor_stand.hit`，source 为 neutral，volume `0.3`，
     pitch `1.0`，并与既有 hit-wiggle 状态投影一起应用；
+    ArmorStand LivingEntity death event `3` 现在按 vanilla `getDeathSound()`
+    播放 `minecraft:entity.armor_stand.break`，遵守 generic silent gate，
+    volume `1.0`，pitch 为 `(random.nextFloat()-random.nextFloat())*0.2+1.0`；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
