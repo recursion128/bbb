@@ -6,7 +6,6 @@ protocol, world, renderer, control, and runtime boundaries.
 Current native crates:
 
 - `bbb-native`
-- `bbb-platform`
 - `bbb-protocol`
 - `bbb-net`
 - `bbb-world`

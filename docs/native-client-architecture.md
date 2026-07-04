@@ -198,12 +198,6 @@ glyph metrics, and item-frame map decoration textures.
 - Exists so `bbb-item-model` can name renderer-facing data without depending on
   the GPU renderer. New shared value types go here, not into `bbb-renderer`.
 
-### `bbb-platform`
-
-Owns OS/window/input integration primitives. It should expose narrow runtime
-interfaces and avoid Minecraft-specific state ownership unless there is a clear
-platform reason.
-
 ## Mapping From Vanilla Client Architecture
 
 Vanilla class or manager names are behavioral references, not module names to

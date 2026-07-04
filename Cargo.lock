@@ -275,7 +275,6 @@ dependencies = [
  "bbb-item-model",
  "bbb-net",
  "bbb-pack",
- "bbb-platform",
  "bbb-protocol",
  "bbb-renderer",
  "bbb-world",
@@ -320,14 +319,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "bbb-platform"
-version = "0.1.0"
-dependencies = [
- "serde",
- "winit",
 ]
 
 [[package]]

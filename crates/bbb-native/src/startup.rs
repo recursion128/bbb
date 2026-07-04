@@ -4,7 +4,6 @@ use anyhow::{ensure, Context, Result};
 use bbb_control::SharedSnapshot;
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
 use bbb_pack::PackRoots;
-use bbb_platform::WindowConfig;
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
@@ -13,8 +12,10 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use clap::{ArgAction, Parser, ValueEnum};
+use serde::{Deserialize, Serialize};
 use tokio::{runtime::Runtime, sync::mpsc};
 use winit::{
+    dpi::PhysicalSize,
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
@@ -285,6 +286,29 @@ pub(crate) fn start_control_api(
 
 pub(crate) fn create_event_loop() -> Result<EventLoop<()>> {
     Ok(EventLoop::new()?)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct WindowConfig {
+    pub(crate) title: String,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+impl Default for WindowConfig {
+    fn default() -> Self {
+        Self {
+            title: "bbb-native".to_string(),
+            width: 1280,
+            height: 720,
+        }
+    }
+}
+
+impl WindowConfig {
+    pub(crate) fn physical_size(&self) -> PhysicalSize<u32> {
+        PhysicalSize::new(self.width, self.height)
+    }
 }
 
 pub(crate) fn build_window(event_loop: &EventLoop<()>) -> Result<Window> {

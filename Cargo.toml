@@ -4,7 +4,6 @@ members = [
     "crates/bbb-audio",
     "crates/bbb-item-model",
     "crates/bbb-native",
-    "crates/bbb-platform",
     "crates/bbb-protocol",
     "crates/bbb-net",
     "crates/bbb-world",
