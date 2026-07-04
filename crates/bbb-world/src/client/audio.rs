@@ -40,6 +40,7 @@ const ARMADILLO_PEEK_SOUND_EVENT: &str = "minecraft:entity.armadillo.peek";
 const ARMOR_STAND_HIT_SOUND_EVENT: &str = "minecraft:entity.armor_stand.hit";
 const ARMOR_STAND_BREAK_SOUND_EVENT: &str = "minecraft:entity.armor_stand.break";
 const ZOMBIE_DEATH_SOUND_EVENT: &str = "minecraft:entity.zombie.death";
+const ZOMBIE_VILLAGER_DEATH_SOUND_EVENT: &str = "minecraft:entity.zombie_villager.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -470,6 +471,7 @@ impl WorldStore {
         let sound = match transform.entity_type_id {
             VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => ARMOR_STAND_BREAK_SOUND_EVENT,
             VANILLA_ENTITY_TYPE_ZOMBIE_ID => ZOMBIE_DEATH_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => ZOMBIE_VILLAGER_DEATH_SOUND_EVENT,
             _ => return None,
         };
         if self.entities.is_silent(entity_id)? {

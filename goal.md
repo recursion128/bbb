@@ -572,6 +572,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     Zombie LivingEntity death event `3` 现在按 vanilla `Zombie.getDeathSound()`
     播放 `minecraft:entity.zombie.death`，source 为 hostile，遵守 generic
     silent gate，并使用相同 death-event pitch 随机公式；
+    ZombieVillager LivingEntity death event `3` 现在按 vanilla
+    `ZombieVillager.getDeathSound()` 播放
+    `minecraft:entity.zombie_villager.death`，沿用 hostile source、generic
+    silent gate 与 death-event pitch 随机公式；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
