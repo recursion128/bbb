@@ -555,6 +555,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `playSound(sound, 1.0, 1.0)` side effect 在当前实体位置播放
     `minecraft:entity.ravager.attack` / `minecraft:entity.iron_golem.attack`，
     遵守 silent gate 和 `getSoundSource()` 的 hostile / neutral 映射；
+    ZombieVillager entity event `16` 现在按 vanilla 在 `getEyeY()` 位置播放
+    `minecraft:entity.zombie_villager.cure`，遵守 silent gate，source 为
+    hostile，volume `1.0 + random.nextFloat()`，pitch
+    `random.nextFloat()*0.7+0.3`；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle

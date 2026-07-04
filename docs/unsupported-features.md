@@ -541,6 +541,10 @@ When an agent does any of the following, update this file in the same slice:
       current fang position, with neutral source, volume `1.0`, silent gate,
       pitch `random.nextFloat() * 0.2 + 0.85`, and deterministic native/audio
       tests.
+      Native ZombieVillager entity event `16` now emits the vanilla randomized
+      cure sound `minecraft:entity.zombie_villager.cure` at `getX()` /
+      `getEyeY()` / `getZ()`, with hostile source, silent gate, volume
+      `1.0 + random.nextFloat()`, and pitch `random.nextFloat() * 0.7 + 0.3`.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now

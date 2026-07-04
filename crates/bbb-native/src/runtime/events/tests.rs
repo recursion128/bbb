@@ -4487,6 +4487,54 @@ fn evoker_fangs_attack_event_emits_positioned_audio_command() {
 }
 
 #[test]
+fn zombie_villager_cure_event_emits_eye_positioned_audio_command() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(144, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 144,
+        event_id: 16,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_volume = 1.0 + expected_random.next_float();
+    let expected_pitch = expected_random.next_float() * 0.7 + 0.3;
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Hostile);
+            assert_eq!(command.position[0], 1.0);
+            assert!((command.position[1] - 65.74).abs() < 1.0e-6);
+            assert_eq!(command.position[2], -2.0);
+            assert!((command.packet_volume - expected_volume).abs() < 1.0e-6);
+            assert!((command.packet_pitch - expected_pitch).abs() < 1.0e-6);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.fixed_range, None);
+            assert_eq!(
+                command.sound.event_id,
+                "minecraft:entity.zombie_villager.cure"
+            );
+        }
+        other => panic!("expected zombie villager cure positioned sound command, got {other:?}"),
+    }
+    assert_eq!(world.counters().entity_events_applied, 1);
+    assert_eq!(world.counters().entity_events_ignored, 0);
+}
+
+#[test]
 fn sound_event_registry_data_updates_audio_reference_resolution() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::RegistryData(RegistryData {
@@ -9632,6 +9680,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.evoker_fangs.attack": {
                 "sounds": ["mob/evocation/fangs"]
+            },
+            "entity.zombie_villager.cure": {
+                "sounds": ["mob/zombie_villager/cure"]
             },
             "entity.item.pickup": {
                 "sounds": ["random/pop"]

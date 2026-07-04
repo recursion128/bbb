@@ -70,6 +70,7 @@ const VILLAGER_HEART_EVENT_ID: i8 = 12;
 const VILLAGER_ANGRY_EVENT_ID: i8 = 13;
 const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
+const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
@@ -566,6 +567,15 @@ impl WorldStore {
                     }
                     if let Some(state) = self
                         .evoker_fangs_attack_sound_for_entity(update.entity_id, || {
+                            random.next_float()
+                        })
+                    {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied && update.event_id == ZOMBIE_VILLAGER_CURE_EVENT_ID {
+                    if let Some(state) = self
+                        .zombie_villager_cure_sound_for_entity(update.entity_id, || {
                             random.next_float()
                         })
                     {
@@ -1495,6 +1505,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
@@ -2421,6 +2432,96 @@ mod tests {
             }
         );
         assert_eq!(sound.volume, 1.0);
+        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 3);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn zombie_villager_cure_event_forwards_eye_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_volume = 1.0 + expected_random.next_float();
+        let expected_pitch = expected_random.next_float() * 0.7 + 0.3;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                77,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 7.0,
+                    y: 66.0,
+                    z: -9.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                78,
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 65.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 78,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                79,
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                Vec3d {
+                    x: 1.5,
+                    y: 64.0,
+                    z: -3.25,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 77,
+                event_id: ZOMBIE_VILLAGER_CURE_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 78,
+                event_id: ZOMBIE_VILLAGER_CURE_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 79,
+                event_id: ZOMBIE_VILLAGER_CURE_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ZOMBIE_VILLAGER_CURE_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        let pose = store.probe_entity_camera_pose(79).unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.zombie_villager.cure")
+        );
+        assert_eq!(sound.source, "hostile");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: pose.position.x,
+                y: pose.position.y + f64::from(pose.eye_height),
+                z: pose.position.z,
+            }
+        );
+        assert!((sound.volume - expected_volume).abs() < 1.0e-6);
         assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
         assert_eq!(sound.seed, 0);
         assert_eq!(sound.distance_delay, false);
