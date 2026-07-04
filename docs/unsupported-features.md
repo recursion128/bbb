@@ -549,6 +549,10 @@ When an agent does any of the following, update this file in the same slice:
       `Armadillo.handleEntityEvent` by playing `minecraft:entity.armadillo.peek`
       at the current `getX()` / `getY()` / `getZ()` position with neutral source
       and fixed volume/pitch `1.0`, independent of the generic silent flag.
+      Native ArmorStand entity event `32` now mirrors the vanilla hit branch by
+      playing `minecraft:entity.armor_stand.hit` at the current entity position
+      with neutral source, volume `0.3`, pitch `1.0`, and no generic silent
+      gate, alongside the existing hit-wiggle state update.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now
@@ -6713,6 +6717,9 @@ When an agent does any of the following, update this file in the same slice:
       - armadillo peek entity event `64`, emitted at the entity position as
         `minecraft:entity.armadillo.peek`, with neutral source and fixed
         volume/pitch `1.0`
+      - armor-stand hit entity event `32`, emitted at the entity position as
+        `minecraft:entity.armor_stand.hit`, with neutral source, volume `0.3`,
+        and pitch `1.0`
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish

@@ -37,6 +37,7 @@ const IRON_GOLEM_ATTACK_SOUND_EVENT: &str = "minecraft:entity.iron_golem.attack"
 const EVOKER_FANGS_ATTACK_SOUND_EVENT: &str = "minecraft:entity.evoker_fangs.attack";
 const ZOMBIE_VILLAGER_CURE_SOUND_EVENT: &str = "minecraft:entity.zombie_villager.cure";
 const ARMADILLO_PEEK_SOUND_EVENT: &str = "minecraft:entity.armadillo.peek";
+const ARMOR_STAND_HIT_SOUND_EVENT: &str = "minecraft:entity.armor_stand.hit";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -429,6 +430,28 @@ impl WorldStore {
                 z: transform.position.z,
             },
             volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub fn armor_stand_hit_sound_for_entity(&mut self, entity_id: i32) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+            return None;
+        }
+        let source = vanilla_entity_sound_source(transform.entity_type_id);
+        let state = SoundEventState {
+            sound: direct_sound_holder(ARMOR_STAND_HIT_SOUND_EVENT),
+            source: source.as_str().to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume: 0.3,
             pitch: 1.0,
             seed: 0,
             distance_delay: false,

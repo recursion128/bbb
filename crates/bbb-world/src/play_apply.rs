@@ -72,6 +72,7 @@ const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
+const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
 const FOX_EAT_EVENT_ID: i8 = 45;
@@ -580,6 +581,11 @@ impl WorldStore {
                             random.next_float()
                         })
                     {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied && update.event_id == ARMOR_STAND_HIT_EVENT_ID {
+                    if let Some(state) = self.armor_stand_hit_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -1503,12 +1509,12 @@ mod tests {
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
-        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
+        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -2602,6 +2608,79 @@ mod tests {
             }
         );
         assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, 1.0);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn armor_stand_hit_event_forwards_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                82,
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                Vec3d {
+                    x: -1.0,
+                    y: 62.5,
+                    z: 6.75,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 82,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 82,
+                event_id: ARMOR_STAND_HIT_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                83,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 83,
+                event_id: ARMOR_STAND_HIT_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ARMOR_STAND_HIT_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.armor_stand.hit")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: -1.0,
+                y: 62.5,
+                z: 6.75,
+            }
+        );
+        assert_eq!(sound.volume, 0.3);
         assert_eq!(sound.pitch, 1.0);
         assert_eq!(sound.seed, 0);
         assert_eq!(sound.distance_delay, false);
