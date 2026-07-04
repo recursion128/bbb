@@ -4657,6 +4657,48 @@ fn armor_stand_death_event_emits_positioned_audio_command() {
 }
 
 #[test]
+fn zombie_death_event_emits_positioned_audio_command() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(148, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 148,
+        event_id: 3,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Hostile);
+            assert_eq!(command.position, [1.0, 64.0, -2.0]);
+            assert_eq!(command.packet_volume, 1.0);
+            assert!((command.packet_pitch - expected_pitch).abs() < 1.0e-6);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.fixed_range, None);
+            assert_eq!(command.sound.event_id, "minecraft:entity.zombie.death");
+        }
+        other => panic!("expected zombie death positioned sound command, got {other:?}"),
+    }
+    assert_eq!(world.counters().entity_events_applied, 1);
+    assert_eq!(world.counters().entity_events_ignored, 0);
+}
+
+#[test]
 fn sound_event_registry_data_updates_audio_reference_resolution() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::RegistryData(RegistryData {
@@ -9814,6 +9856,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.armor_stand.break": {
                 "sounds": ["mob/armorstand/break"]
+            },
+            "entity.zombie.death": {
+                "sounds": ["mob/zombie/death"]
             },
             "entity.item.pickup": {
                 "sounds": ["random/pop"]

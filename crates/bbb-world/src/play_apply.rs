@@ -577,10 +577,8 @@ impl WorldStore {
                     }
                 }
                 if applied && update.event_id == LIVING_ENTITY_DEATH_EVENT_ID {
-                    if let Some(state) = self
-                        .armor_stand_death_sound_for_entity(update.entity_id, || {
-                            random.next_float()
-                        })
+                    if let Some(state) =
+                        self.living_death_sound_for_entity(update.entity_id, || random.next_float())
                     {
                         effects.positioned_sound(&state);
                     }
@@ -2775,6 +2773,95 @@ mod tests {
             sound.position,
             Vec3d {
                 x: -2.0,
+                y: 61.5,
+                z: 5.75,
+            }
+        );
+        assert_eq!(sound.volume, 1.0);
+        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 3);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn zombie_death_event_forwards_randomized_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                87,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: -3.0,
+                    y: 61.5,
+                    z: 5.75,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 87,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                88,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 88,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 88,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                89,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 89,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.zombie.death")
+        );
+        assert_eq!(sound.source, "hostile");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: -3.0,
                 y: 61.5,
                 z: 5.75,
             }

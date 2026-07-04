@@ -557,6 +557,10 @@ When an agent does any of the following, update this file in the same slice:
       `getDeathSound()` branch to `minecraft:entity.armor_stand.break` at the
       current entity position, with neutral source, generic silent gate, volume
       `1.0`, and pitch `(random.nextFloat() - random.nextFloat()) * 0.2 + 1.0`.
+      Native Zombie LivingEntity death event `3` now maps
+      `Zombie.getDeathSound()` to `minecraft:entity.zombie.death`, with hostile
+      source, the generic silent gate, volume `1.0`, and the same death-event
+      pitch randomization.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now
@@ -6727,6 +6731,9 @@ When an agent does any of the following, update this file in the same slice:
       - armor-stand death entity event `3`, emitted at the entity position as
         `minecraft:entity.armor_stand.break`, with the generic LivingEntity
         silent gate and death-event pitch randomization
+      - zombie death entity event `3`, emitted at the entity position as
+        `minecraft:entity.zombie.death`, with hostile source, the generic
+        LivingEntity silent gate, and death-event pitch randomization
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish

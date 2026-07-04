@@ -39,6 +39,7 @@ const ZOMBIE_VILLAGER_CURE_SOUND_EVENT: &str = "minecraft:entity.zombie_villager
 const ARMADILLO_PEEK_SOUND_EVENT: &str = "minecraft:entity.armadillo.peek";
 const ARMOR_STAND_HIT_SOUND_EVENT: &str = "minecraft:entity.armor_stand.hit";
 const ARMOR_STAND_BREAK_SOUND_EVENT: &str = "minecraft:entity.armor_stand.break";
+const ZOMBIE_DEATH_SOUND_EVENT: &str = "minecraft:entity.zombie.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -460,21 +461,23 @@ impl WorldStore {
         Some(self.record_positioned_sound(state))
     }
 
-    pub fn armor_stand_death_sound_for_entity(
+    pub fn living_death_sound_for_entity(
         &mut self,
         entity_id: i32,
         mut next_float: impl FnMut() -> f32,
     ) -> Option<SoundEventState> {
         let transform = self.entities.transform_state(entity_id)?;
-        if transform.entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
-            return None;
-        }
+        let sound = match transform.entity_type_id {
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => ARMOR_STAND_BREAK_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID => ZOMBIE_DEATH_SOUND_EVENT,
+            _ => return None,
+        };
         if self.entities.is_silent(entity_id)? {
             return None;
         }
         let source = vanilla_entity_sound_source(transform.entity_type_id);
         let state = SoundEventState {
-            sound: direct_sound_holder(ARMOR_STAND_BREAK_SOUND_EVENT),
+            sound: direct_sound_holder(sound),
             source: source.as_str().to_string(),
             position: ProtocolVec3d {
                 x: transform.position.x,
