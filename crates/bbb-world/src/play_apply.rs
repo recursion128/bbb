@@ -3088,6 +3088,129 @@ mod tests {
     }
 
     #[test]
+    fn villager_and_witch_death_events_forward_randomized_positioned_sounds() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_witch_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let expected_villager_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                97,
+                VANILLA_ENTITY_TYPE_WITCH_ID,
+                Vec3d {
+                    x: -6.0,
+                    y: 61.5,
+                    z: 5.75,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 97,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                98,
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                Vec3d {
+                    x: 2.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 98,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                99,
+                VANILLA_ENTITY_TYPE_WITCH_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 99,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 99,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                100,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 100,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 2);
+        let witch = &effects.positioned_sounds[0];
+        assert_eq!(
+            witch.sound.location.as_deref(),
+            Some("minecraft:entity.witch.death")
+        );
+        assert_eq!(witch.source, "hostile");
+        assert_eq!(
+            witch.position,
+            Vec3d {
+                x: -6.0,
+                y: 61.5,
+                z: 5.75,
+            }
+        );
+        assert_eq!(witch.volume, 1.0);
+        assert!((witch.pitch - expected_witch_pitch).abs() < 1.0e-6);
+
+        let villager = &effects.positioned_sounds[1];
+        assert_eq!(
+            villager.sound.location.as_deref(),
+            Some("minecraft:entity.villager.death")
+        );
+        assert_eq!(villager.source, "neutral");
+        assert_eq!(
+            villager.position,
+            Vec3d {
+                x: 2.0,
+                y: 70.0,
+                z: -8.0,
+            }
+        );
+        assert_eq!(villager.volume, 1.0);
+        assert!((villager.pitch - expected_villager_pitch).abs() < 1.0e-6);
+        for sound in &effects.positioned_sounds {
+            assert_eq!(sound.seed, 0);
+            assert_eq!(sound.distance_delay, false);
+        }
+        assert_eq!(store.last_sound(), Some(villager));
+        assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
     fn witch_magic_entity_event_forwards_particle_state() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
