@@ -2758,6 +2758,7 @@ mod tests {
         "weather_target_pass",
         "transparency_combine_pass",
         "transparency_blit_pass",
+        "first_person_item_pass",
         "hud_passes",
         "finish_frame",
     ];
@@ -2816,6 +2817,51 @@ mod tests {
             );
             previous_definition = definition;
         }
+    }
+
+    #[test]
+    fn render_calls_exactly_one_step_per_frame_steps_entry() {
+        let source = include_str!("render.rs");
+        let render_start = source
+            .find("pub fn render(")
+            .expect("render entry point is present");
+        let render_end = render_start
+            + source[render_start..]
+                .find("\n    }")
+                .expect("render entry point ends");
+        let render_body = &source[render_start..render_end];
+
+        // Count `self.<method>(` call sites in render()'s body. Every frame
+        // step is invoked this way; other `self.` uses in render() (e.g.
+        // `self.surface.get_current_texture()`, or `self\n    .device\n    \
+        // .create_command_encoder(...)`) never match because a `.` or a
+        // line break sits between the identifier and the `(`, so this stays
+        // an exact count of step calls without needing a regex crate.
+        let bytes = render_body.as_bytes();
+        let mut step_call_count = 0;
+        let mut search_from = 0;
+        while let Some(offset) = render_body[search_from..].find("self.") {
+            let ident_start = search_from + offset + "self.".len();
+            let mut cursor = ident_start;
+            while cursor < bytes.len()
+                && (bytes[cursor].is_ascii_alphanumeric() || bytes[cursor] == b'_')
+            {
+                cursor += 1;
+            }
+            if cursor > ident_start && bytes.get(cursor) == Some(&b'(') {
+                step_call_count += 1;
+            }
+            search_from = ident_start;
+        }
+
+        // If this fails after adding a new pass to render(), the new step
+        // method must also be added to FRAME_STEPS (in call order) so the
+        // execution-order test above covers it.
+        assert_eq!(
+            step_call_count,
+            FRAME_STEPS.len(),
+            "render() must call exactly one step per FRAME_STEPS entry, and vice versa"
+        );
     }
 
     fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {
