@@ -79,6 +79,7 @@ const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
 const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
+const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
 const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
 const HONEY_BLOCK_SLIDE_PARTICLE_COUNT: u32 = 5;
 const HONEY_BLOCK_JUMP_PARTICLE_COUNT: u32 = 10;
@@ -579,6 +580,11 @@ impl WorldStore {
                             random.next_float()
                         })
                     {
+                        effects.positioned_sound(&state);
+                    }
+                }
+                if applied && update.event_id == ARMADILLO_PEEK_EVENT_ID {
+                    if let Some(state) = self.armadillo_peek_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -1496,8 +1502,9 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
@@ -2527,6 +2534,79 @@ mod tests {
         assert_eq!(sound.distance_delay, false);
         assert_eq!(store.last_sound(), Some(sound));
         assert_eq!(store.counters().entity_events_applied, 3);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn armadillo_peek_event_forwards_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                80,
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 63.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 80,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 80,
+                event_id: ARMADILLO_PEEK_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                81,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 81,
+                event_id: ARMADILLO_PEEK_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ARMADILLO_PEEK_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.armadillo.peek")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: 2.25,
+                y: 63.0,
+                z: -4.5,
+            }
+        );
+        assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, 1.0);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

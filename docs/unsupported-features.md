@@ -545,6 +545,10 @@ When an agent does any of the following, update this file in the same slice:
       cure sound `minecraft:entity.zombie_villager.cure` at `getX()` /
       `getEyeY()` / `getZ()`, with hostile source, silent gate, volume
       `1.0 + random.nextFloat()`, and pitch `random.nextFloat() * 0.7 + 0.3`.
+      Native Armadillo entity event `64` now mirrors vanilla
+      `Armadillo.handleEntityEvent` by playing `minecraft:entity.armadillo.peek`
+      at the current `getX()` / `getY()` / `getZ()` position with neutral source
+      and fixed volume/pitch `1.0`, independent of the generic silent flag.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now
@@ -6706,6 +6710,9 @@ When an agent does any of the following, update this file in the same slice:
         `TrackingEmitter` side effect at the entity position as
         `minecraft:item.totem.use`, with source/category mapped from
         `Entity.getSoundSource()`
+      - armadillo peek entity event `64`, emitted at the entity position as
+        `minecraft:entity.armadillo.peek`, with neutral source and fixed
+        volume/pitch `1.0`
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish
