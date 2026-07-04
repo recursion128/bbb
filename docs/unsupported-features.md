@@ -373,7 +373,10 @@ When an agent does any of the following, update this file in the same slice:
         `EvokerFangs.tick`: entity event `4` starts `lifeTicks`, and the tick
         where it reaches `14` enqueues the 12 `minecraft:crit` particles with
         vanilla `width*0.5`, `1.05 + random`, and `0.3..0.6` Y-velocity ranges
-        before the renderer particle engine advances.
+        before the renderer particle engine advances. The same event also emits
+        vanilla `minecraft:entity.evoker_fangs.attack` positioned audio at the
+        fang position with neutral source, volume `1.0`, silent gate, and pitch
+        `random.nextFloat() * 0.2 + 0.85`.
       - `WakeParticle.Provider` (`minecraft:fishing`) now uses vanilla
         `setSize(0.01F, 0.01F)` collision bounds and the collision-backed
         `Particle.move` path before `0.98` friction and wake sprite cycling.
@@ -533,6 +536,11 @@ When an agent does any of the following, update this file in the same slice:
       fixed-pitch attack positioned sounds: `minecraft:entity.ravager.attack`
       and `minecraft:entity.iron_golem.attack` at the current entity position,
       with volume/pitch `1.0`, silent gate, and hostile/neutral source mapping.
+      Native EvokerFangs entity event `4` now emits the vanilla randomized
+      positioned attack sound `minecraft:entity.evoker_fangs.attack` at the
+      current fang position, with neutral source, volume `1.0`, silent gate,
+      pitch `random.nextFloat() * 0.2 + 0.85`, and deterministic native/audio
+      tests.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now

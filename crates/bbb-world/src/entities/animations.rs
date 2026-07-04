@@ -2530,7 +2530,7 @@ impl AxolotlAnimationState {
 /// true`); from then on `EvokerFangs.tick` decrements `lifeTicks` (initially `22`) each client tick.
 /// `getAnimationProgress` builds the `0..1` bite ramp from `lifeTicks`, which
 /// `EvokerFangsModel.setupAnim` turns into the jaw snap, the rise out of the ground, and the final
-/// vanish (root scale → 0). The attack sound on the same event is audio, not pose, and is not modelled.
+/// vanish (root scale → 0). The attack sound on the same event is a `play_apply` audio side effect.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EvokerFangsAnimationState {
     /// Vanilla `EvokerFangs.clientSideAttackStarted`.

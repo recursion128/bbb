@@ -525,7 +525,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:entity_effect`；EvokerFangs event `4` 启动 `lifeTicks`
     后，tick 到 `14` 时按 vanilla 一次性生成 12 个 `minecraft:crit`
     粒子，使用 `width*0.5` 水平范围、`1.05 + random` Y 偏移和
-    `0.3..0.6` Y 速度，并在 renderer `ParticleEngine.tick` 前提交；
+    `0.3..0.6` Y 速度，并在 renderer `ParticleEngine.tick` 前提交，同一
+    event 现在还按 vanilla 在 fang 当前位置播放
+    `minecraft:entity.evoker_fangs.attack` positioned sound，source 为默认
+    neutral、volume `1.0`、pitch `random.nextFloat()*0.2+0.85`；
     `ClientboundTakeItemEntity` 现在按 vanilla 在 shrink/remove 前创建
     `ItemPickupParticle` runtime command：source 使用被拾取实体当前位置/速度，
     target 使用目标 living entity 或本地玩家 fallback 的 `(feet + eyeY) / 2`

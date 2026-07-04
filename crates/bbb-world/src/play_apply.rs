@@ -564,6 +564,13 @@ impl WorldStore {
                     {
                         effects.positioned_sound(&state);
                     }
+                    if let Some(state) = self
+                        .evoker_fangs_attack_sound_for_entity(update.entity_id, || {
+                            random.next_float()
+                        })
+                    {
+                        effects.positioned_sound(&state);
+                    }
                 }
             }
             PlayClientbound::HurtAnimation(update) => {
@@ -1481,9 +1488,10 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -2330,6 +2338,94 @@ mod tests {
         }
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn evoker_fangs_attack_event_forwards_randomized_positioned_sound() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch = expected_random.next_float() * 0.2 + 0.85;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                74,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 7.0,
+                    y: 66.0,
+                    z: -9.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                75,
+                VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+                Vec3d {
+                    x: 1.5,
+                    y: 64.0,
+                    z: -3.25,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                76,
+                VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 65.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 76,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 74,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 76,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 75,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: ATTACK_SOUND_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.evoker_fangs.attack")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: 1.5,
+                y: 64.0,
+                z: -3.25,
+            }
+        );
+        assert_eq!(sound.volume, 1.0);
+        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(sound));
+        assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
