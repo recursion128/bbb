@@ -1518,12 +1518,14 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
-        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
@@ -3207,6 +3209,161 @@ mod tests {
         }
         assert_eq!(store.last_sound(), Some(villager));
         assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn skeleton_family_death_events_forward_randomized_positioned_sounds() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_skeleton_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let expected_stray_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let expected_bogged_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                101,
+                VANILLA_ENTITY_TYPE_SKELETON_ID,
+                Vec3d {
+                    x: -7.0,
+                    y: 61.5,
+                    z: 5.75,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 101,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                102,
+                VANILLA_ENTITY_TYPE_STRAY_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 102,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                103,
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+                Vec3d {
+                    x: 4.5,
+                    y: 65.25,
+                    z: -1.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 103,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                104,
+                VANILLA_ENTITY_TYPE_SKELETON_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: -8.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 104,
+                values: vec![bool_entity_data(
+                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
+                    true,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 104,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                105,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                Vec3d {
+                    x: 9.0,
+                    y: 64.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 105,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.positioned_sounds.len(), 3);
+        let skeleton = &effects.positioned_sounds[0];
+        assert_eq!(
+            skeleton.sound.location.as_deref(),
+            Some("minecraft:entity.skeleton.death")
+        );
+        assert_eq!(skeleton.source, "hostile");
+        assert_eq!(
+            skeleton.position,
+            Vec3d {
+                x: -7.0,
+                y: 61.5,
+                z: 5.75,
+            }
+        );
+        assert_eq!(skeleton.volume, 1.0);
+        assert!((skeleton.pitch - expected_skeleton_pitch).abs() < 1.0e-6);
+
+        let stray = &effects.positioned_sounds[1];
+        assert_eq!(
+            stray.sound.location.as_deref(),
+            Some("minecraft:entity.stray.death")
+        );
+        assert_eq!(stray.source, "hostile");
+        assert_eq!(
+            stray.position,
+            Vec3d {
+                x: 3.0,
+                y: 70.0,
+                z: -8.0,
+            }
+        );
+        assert_eq!(stray.volume, 1.0);
+        assert!((stray.pitch - expected_stray_pitch).abs() < 1.0e-6);
+
+        let bogged = &effects.positioned_sounds[2];
+        assert_eq!(
+            bogged.sound.location.as_deref(),
+            Some("minecraft:entity.bogged.death")
+        );
+        assert_eq!(bogged.source, "hostile");
+        assert_eq!(
+            bogged.position,
+            Vec3d {
+                x: 4.5,
+                y: 65.25,
+                z: -1.0,
+            }
+        );
+        assert_eq!(bogged.volume, 1.0);
+        assert!((bogged.pitch - expected_bogged_pitch).abs() < 1.0e-6);
+        for sound in &effects.positioned_sounds {
+            assert_eq!(sound.seed, 0);
+            assert_eq!(sound.distance_delay, false);
+        }
+        assert_eq!(store.last_sound(), Some(bogged));
+        assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

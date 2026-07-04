@@ -585,6 +585,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:entity.witch.death` / `minecraft:entity.villager.death`，
     沿用 hostile / neutral source 映射、generic silent gate 与同一
     death-event pitch 随机公式；
+    Skeleton / Stray / Bogged LivingEntity death event `3` 现在按 vanilla
+    `getDeathSound()` 播放 `minecraft:entity.skeleton.death` /
+    `minecraft:entity.stray.death` / `minecraft:entity.bogged.death`，
+    沿用 hostile source、generic silent gate 与同一 death-event pitch
+    随机公式；
     `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
     native level-particle command resolution 用当前 world entity transform
     生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle

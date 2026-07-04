@@ -45,6 +45,9 @@ const RAVAGER_DEATH_SOUND_EVENT: &str = "minecraft:entity.ravager.death";
 const IRON_GOLEM_DEATH_SOUND_EVENT: &str = "minecraft:entity.iron_golem.death";
 const VILLAGER_DEATH_SOUND_EVENT: &str = "minecraft:entity.villager.death";
 const WITCH_DEATH_SOUND_EVENT: &str = "minecraft:entity.witch.death";
+const SKELETON_DEATH_SOUND_EVENT: &str = "minecraft:entity.skeleton.death";
+const STRAY_DEATH_SOUND_EVENT: &str = "minecraft:entity.stray.death";
+const BOGGED_DEATH_SOUND_EVENT: &str = "minecraft:entity.bogged.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 // Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
@@ -480,6 +483,9 @@ impl WorldStore {
             VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => IRON_GOLEM_DEATH_SOUND_EVENT,
             VANILLA_ENTITY_TYPE_VILLAGER_ID => VILLAGER_DEATH_SOUND_EVENT,
             VANILLA_ENTITY_TYPE_WITCH_ID => WITCH_DEATH_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_SKELETON_ID => SKELETON_DEATH_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_STRAY_ID => STRAY_DEATH_SOUND_EVENT,
+            VANILLA_ENTITY_TYPE_BOGGED_ID => BOGGED_DEATH_SOUND_EVENT,
             _ => return None,
         };
         if self.entities.is_silent(entity_id)? {

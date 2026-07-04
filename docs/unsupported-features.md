@@ -575,6 +575,11 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:entity.witch.death` / `minecraft:entity.villager.death`,
       with hostile / neutral source mapping, generic silent gate, volume
       `1.0`, and the same death-event pitch randomization.
+      Native Skeleton, Stray, and Bogged LivingEntity death event `3` now map
+      vanilla `getDeathSound()` to `minecraft:entity.skeleton.death`,
+      `minecraft:entity.stray.death`, and `minecraft:entity.bogged.death`,
+      with hostile source, generic silent gate, volume `1.0`, and the same
+      death-event pitch randomization.
       Native TakeItemEntity handling now also emits vanilla item /
       experience-orb pickup positioned sounds at the picked entity position
       before world mutation removes or shrinks the entity. The same packet now
@@ -6759,6 +6764,11 @@ When an agent does any of the following, update this file in the same slice:
         position as `minecraft:entity.witch.death` /
         `minecraft:entity.villager.death`, with hostile / neutral source, the
         generic LivingEntity silent gate, and death-event pitch randomization
+      - skeleton, stray, and bogged death entity event `3`, emitted at the
+        entity position as `minecraft:entity.skeleton.death` /
+        `minecraft:entity.stray.death` / `minecraft:entity.bogged.death`, with
+        hostile source, the generic LivingEntity silent gate, and death-event
+        pitch randomization
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish
