@@ -34,7 +34,7 @@ use bbb_world::{
 };
 
 use crate::{
-    particle_registry::{vanilla_particle_type, ParticleTypeInfo},
+    particle_registry::{particle_type_ids, vanilla_particle_type, ParticleTypeInfo},
     terrain_runtime::{BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState},
 };
 
@@ -5558,77 +5558,88 @@ const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
 const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
-const ANGRY_VILLAGER_PARTICLE_TYPE_ID: i32 = 0;
-const BLOCK_PARTICLE_TYPE_ID: i32 = 1;
-const BLOCK_MARKER_PARTICLE_TYPE_ID: i32 = 2;
-const BUBBLE_PARTICLE_TYPE_ID: i32 = 3;
-const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
-pub(crate) const CRIT_PARTICLE_TYPE_ID: i32 = 6;
-const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
-const DRIPPING_LAVA_PARTICLE_TYPE_ID: i32 = 9;
-const FALLING_LAVA_PARTICLE_TYPE_ID: i32 = 10;
-const LANDING_LAVA_PARTICLE_TYPE_ID: i32 = 11;
-const DRIPPING_WATER_PARTICLE_TYPE_ID: i32 = 12;
-const FALLING_WATER_PARTICLE_TYPE_ID: i32 = 13;
-const DUST_PARTICLE_TYPE_ID: i32 = 14;
-const DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID: i32 = 15;
-const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
-pub(crate) const ELDER_GUARDIAN_PARTICLE_TYPE_ID: i32 = 17;
-pub(crate) const ENCHANTED_HIT_PARTICLE_TYPE_ID: i32 = 18;
-pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
-const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
-const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
-const GUST_PARTICLE_TYPE_ID: i32 = 24;
-const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
-const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
-const FALLING_DUST_PARTICLE_TYPE_ID: i32 = 29;
-const FIREWORK_PARTICLE_TYPE_ID: i32 = 30;
-const FLAME_PARTICLE_TYPE_ID: i32 = 32;
-const TINTED_LEAVES_PARTICLE_TYPE_ID: i32 = 36;
-const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
-const SCULK_CHARGE_POP_PARTICLE_TYPE_ID: i32 = 39;
-const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
-const FLASH_PARTICLE_TYPE_ID: i32 = 42;
-const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
-const COMPOSTER_PARTICLE_TYPE_ID: i32 = 44;
-const HEART_PARTICLE_TYPE_ID: i32 = 45;
-const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
-const ITEM_PARTICLE_TYPE_ID: i32 = 47;
-const VIBRATION_PARTICLE_TYPE_ID: i32 = 48;
-const TRAIL_PARTICLE_TYPE_ID: i32 = 49;
-const ITEM_SLIME_PARTICLE_TYPE_ID: i32 = 52;
-const ITEM_COBWEB_PARTICLE_TYPE_ID: i32 = 53;
-const ITEM_SNOWBALL_PARTICLE_TYPE_ID: i32 = 54;
-const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
-const LAVA_PARTICLE_TYPE_ID: i32 = 56;
-const POOF_PARTICLE_TYPE_ID: i32 = 59;
-const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
-pub(crate) const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
-const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
-pub(crate) const TOTEM_OF_UNDYING_PARTICLE_TYPE_ID: i32 = 68;
-const SPLASH_PARTICLE_TYPE_ID: i32 = 70;
-const WITCH_PARTICLE_TYPE_ID: i32 = 71;
-const DRIPPING_HONEY_PARTICLE_TYPE_ID: i32 = 79;
-const FALLING_HONEY_PARTICLE_TYPE_ID: i32 = 80;
-const LANDING_HONEY_PARTICLE_TYPE_ID: i32 = 81;
-const DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 88;
-const FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 89;
-const LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID: i32 = 90;
-const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
-const DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID: i32 = 95;
-const FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID: i32 = 96;
-const DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID: i32 = 97;
-const FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID: i32 = 98;
-const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
-const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
-const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
-const SCRAPE_PARTICLE_TYPE_ID: i32 = 104;
-const SHRIEK_PARTICLE_TYPE_ID: i32 = 105;
-const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
-const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
-const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
-const VAULT_CONNECTION_PARTICLE_TYPE_ID: i32 = 110;
-const OMINOUS_SPAWNING_PARTICLE_TYPE_ID: i32 = 112;
+particle_type_ids! {
+    // Every id below is derived from `PARTICLE_TYPES_26_1` (index == id); the
+    // generated test reasserts each pairing and guards the registry length so a
+    // reorder or truncation cannot drift these constants silently.
+    expect_registry_len = 117;
+
+    const ANGRY_VILLAGER_PARTICLE_TYPE_ID = "minecraft:angry_villager";
+    const BLOCK_PARTICLE_TYPE_ID = "minecraft:block";
+    const BLOCK_MARKER_PARTICLE_TYPE_ID = "minecraft:block_marker";
+    const BUBBLE_PARTICLE_TYPE_ID = "minecraft:bubble";
+    const CLOUD_PARTICLE_TYPE_ID = "minecraft:cloud";
+    pub(crate) const CRIT_PARTICLE_TYPE_ID = "minecraft:crit";
+    const DRAGON_BREATH_PARTICLE_TYPE_ID = "minecraft:dragon_breath";
+    const DRIPPING_LAVA_PARTICLE_TYPE_ID = "minecraft:dripping_lava";
+    const FALLING_LAVA_PARTICLE_TYPE_ID = "minecraft:falling_lava";
+    const LANDING_LAVA_PARTICLE_TYPE_ID = "minecraft:landing_lava";
+    const DRIPPING_WATER_PARTICLE_TYPE_ID = "minecraft:dripping_water";
+    const FALLING_WATER_PARTICLE_TYPE_ID = "minecraft:falling_water";
+    const DUST_PARTICLE_TYPE_ID = "minecraft:dust";
+    const DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID = "minecraft:dust_color_transition";
+    const EFFECT_PARTICLE_TYPE_ID = "minecraft:effect";
+    pub(crate) const ELDER_GUARDIAN_PARTICLE_TYPE_ID = "minecraft:elder_guardian";
+    pub(crate) const ENCHANTED_HIT_PARTICLE_TYPE_ID = "minecraft:enchanted_hit";
+    pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID = "minecraft:entity_effect";
+    const EXPLOSION_EMITTER_PARTICLE_TYPE_ID = "minecraft:explosion_emitter";
+    const EXPLOSION_PARTICLE_TYPE_ID = "minecraft:explosion";
+    const GUST_PARTICLE_TYPE_ID = "minecraft:gust";
+    const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID = "minecraft:gust_emitter_large";
+    const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID = "minecraft:gust_emitter_small";
+    const FALLING_DUST_PARTICLE_TYPE_ID = "minecraft:falling_dust";
+    const FIREWORK_PARTICLE_TYPE_ID = "minecraft:firework";
+    const FLAME_PARTICLE_TYPE_ID = "minecraft:flame";
+    const TINTED_LEAVES_PARTICLE_TYPE_ID = "minecraft:tinted_leaves";
+    const SCULK_CHARGE_PARTICLE_TYPE_ID = "minecraft:sculk_charge";
+    const SCULK_CHARGE_POP_PARTICLE_TYPE_ID = "minecraft:sculk_charge_pop";
+    const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID = "minecraft:soul_fire_flame";
+    const FLASH_PARTICLE_TYPE_ID = "minecraft:flash";
+    const HAPPY_VILLAGER_PARTICLE_TYPE_ID = "minecraft:happy_villager";
+    const COMPOSTER_PARTICLE_TYPE_ID = "minecraft:composter";
+    const HEART_PARTICLE_TYPE_ID = "minecraft:heart";
+    const INSTANT_EFFECT_PARTICLE_TYPE_ID = "minecraft:instant_effect";
+    const ITEM_PARTICLE_TYPE_ID = "minecraft:item";
+    const VIBRATION_PARTICLE_TYPE_ID = "minecraft:vibration";
+    const TRAIL_PARTICLE_TYPE_ID = "minecraft:trail";
+    const ITEM_SLIME_PARTICLE_TYPE_ID = "minecraft:item_slime";
+    const ITEM_COBWEB_PARTICLE_TYPE_ID = "minecraft:item_cobweb";
+    const ITEM_SNOWBALL_PARTICLE_TYPE_ID = "minecraft:item_snowball";
+    const LARGE_SMOKE_PARTICLE_TYPE_ID = "minecraft:large_smoke";
+    const LAVA_PARTICLE_TYPE_ID = "minecraft:lava";
+    const POOF_PARTICLE_TYPE_ID = "minecraft:poof";
+    const PORTAL_PARTICLE_TYPE_ID = "minecraft:portal";
+    pub(crate) const SMOKE_PARTICLE_TYPE_ID = "minecraft:smoke";
+    const WHITE_SMOKE_PARTICLE_TYPE_ID = "minecraft:white_smoke";
+    pub(crate) const TOTEM_OF_UNDYING_PARTICLE_TYPE_ID = "minecraft:totem_of_undying";
+    const SPLASH_PARTICLE_TYPE_ID = "minecraft:splash";
+    const WITCH_PARTICLE_TYPE_ID = "minecraft:witch";
+    const DRIPPING_HONEY_PARTICLE_TYPE_ID = "minecraft:dripping_honey";
+    const FALLING_HONEY_PARTICLE_TYPE_ID = "minecraft:falling_honey";
+    const LANDING_HONEY_PARTICLE_TYPE_ID = "minecraft:landing_honey";
+    const DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID = "minecraft:dripping_obsidian_tear";
+    const FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID = "minecraft:falling_obsidian_tear";
+    const LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID = "minecraft:landing_obsidian_tear";
+    const SMALL_FLAME_PARTICLE_TYPE_ID = "minecraft:small_flame";
+    const DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID = "minecraft:dripping_dripstone_lava";
+    const FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID = "minecraft:falling_dripstone_lava";
+    const DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID = "minecraft:dripping_dripstone_water";
+    const FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID = "minecraft:falling_dripstone_water";
+    const ELECTRIC_SPARK_PARTICLE_TYPE_ID = "minecraft:electric_spark";
+    const WAX_ON_PARTICLE_TYPE_ID = "minecraft:wax_on";
+    const WAX_OFF_PARTICLE_TYPE_ID = "minecraft:wax_off";
+    const SCRAPE_PARTICLE_TYPE_ID = "minecraft:scrape";
+    const SHRIEK_PARTICLE_TYPE_ID = "minecraft:shriek";
+    const EGG_CRACK_PARTICLE_TYPE_ID = "minecraft:egg_crack";
+    const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID = "minecraft:trial_spawner_detection";
+    const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID =
+        "minecraft:trial_spawner_detection_ominous";
+    const VAULT_CONNECTION_PARTICLE_TYPE_ID = "minecraft:vault_connection";
+    const OMINOUS_SPAWNING_PARTICLE_TYPE_ID = "minecraft:ominous_spawning";
+    const DUST_PILLAR_PARTICLE_TYPE_ID = "minecraft:dust_pillar";
+    const TRIAL_OMEN_PARTICLE_TYPE_ID = "minecraft:trial_omen";
+    const BLOCK_CRUMBLE_PARTICLE_TYPE_ID = "minecraft:block_crumble";
+}
 const FIREWORK_BLACK_COLOR: i32 = 1_973_019;
 const FIREWORK_CREEPER_PARTICLE_COORDS: &[[f64; 2]] = &[
     [0.0, 0.2],
@@ -5652,9 +5663,6 @@ const FIREWORK_STAR_PARTICLE_COORDS: &[[f64; 2]] = &[
     [0.6122448979591837, -0.8040816326530612],
     [0.0, -0.35918367346938773],
 ];
-const DUST_PILLAR_PARTICLE_TYPE_ID: i32 = 111;
-const TRIAL_OMEN_PARTICLE_TYPE_ID: i32 = 114;
-const BLOCK_CRUMBLE_PARTICLE_TYPE_ID: i32 = 115;
 const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
     (0, -1, 0),
     (0, 1, 0),

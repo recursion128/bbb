@@ -17,7 +17,7 @@ pub(crate) fn vanilla_particle_type(id: i32) -> Option<ParticleTypeInfo> {
 }
 
 #[cfg(test)]
-fn vanilla_particle_type_count() -> usize {
+pub(crate) fn vanilla_particle_type_count() -> usize {
     PARTICLE_TYPES_26_1.len()
 }
 
@@ -140,6 +140,79 @@ const PARTICLE_TYPES_26_1: &[(&str, bool)] = &[
     ("minecraft:block_crumble", false),
     ("minecraft:firefly", false),
 ];
+
+const fn particle_name_bytes_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut index = 0;
+    while index < a.len() {
+        if a[index] != b[index] {
+            return false;
+        }
+        index += 1;
+    }
+    true
+}
+
+/// Resolves the vanilla 26.1 particle type id (the `PARTICLE_TYPES_26_1` index)
+/// for `name`. This makes the registry the single source of truth for the
+/// `*_PARTICLE_TYPE_ID` constants declared via [`particle_type_ids!`]: reordering
+/// the registry re-derives every id, and renaming/removing an entry that still
+/// backs a constant fails the build here instead of drifting silently.
+pub(crate) const fn particle_type_id(name: &str) -> i32 {
+    let mut index = 0;
+    while index < PARTICLE_TYPES_26_1.len() {
+        if particle_name_bytes_eq(PARTICLE_TYPES_26_1[index].0.as_bytes(), name.as_bytes()) {
+            return index as i32;
+        }
+        index += 1;
+    }
+    panic!("particle type name not present in PARTICLE_TYPES_26_1");
+}
+
+/// Declares `*_PARTICLE_TYPE_ID` constants paired with their canonical
+/// `minecraft:` registry name in a single place. Each id is derived at compile
+/// time from `PARTICLE_TYPES_26_1` via [`particle_type_id`], so the array is the
+/// only source of truth. A generated test additionally reasserts every
+/// `(id, name)` pairing against the registry and guards its length against
+/// truncation.
+macro_rules! particle_type_ids {
+    (
+        expect_registry_len = $len:literal;
+        $( $vis:vis const $name:ident = $lit:literal; )+
+    ) => {
+        $(
+            $vis const $name: i32 = $crate::particle_registry::particle_type_id($lit);
+        )+
+
+        #[cfg(test)]
+        const PARTICLE_TYPE_ID_NAME_PAIRS: &[(i32, &str)] = &[
+            $( ($name, $lit), )+
+        ];
+
+        #[cfg(test)]
+        #[test]
+        fn particle_type_id_constants_match_registry() {
+            assert_eq!(
+                $crate::particle_registry::vanilla_particle_type_count(),
+                $len,
+                "PARTICLE_TYPES_26_1 length changed (possible truncation); \
+                 re-verify the particle type id constants and update expect_registry_len",
+            );
+            for &(value, name) in PARTICLE_TYPE_ID_NAME_PAIRS {
+                let info = $crate::particle_registry::vanilla_particle_type(value)
+                    .expect("particle type id constant out of registry range");
+                assert_eq!(
+                    info.name, name,
+                    "constant declared for {name:?} resolved to id {value} = {:?}",
+                    info.name,
+                );
+            }
+        }
+    };
+}
+pub(crate) use particle_type_ids;
 
 #[cfg(test)]
 mod tests {
