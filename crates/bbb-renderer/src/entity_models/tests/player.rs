@@ -1848,6 +1848,44 @@ fn player_attack_swing_twists_body_and_whacks_the_swinging_arm() {
 }
 
 #[test]
+fn player_none_swing_keeps_attack_prologue_without_whack() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.setupAttackAnimation` still runs its shared body/arm-anchor prologue for
+    // `SwingAnimationType.NONE`, then breaks before the WHACK arm chop.
+    let t = 0.4_f32;
+    let body_yrot = (t.sqrt() * PI * 2.0).sin() * 0.2;
+    let base =
+        EntityModelInstance::player(904, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
+
+    let mut resting = PlayerModel::new(false);
+    resting.prepare(&base);
+    let resting_right = resting.root_mut().child_mut("right_arm").pose;
+    let resting_left = resting.root_mut().child_mut("left_arm").pose;
+
+    let mut none = PlayerModel::new(false);
+    none.prepare(&base.with_attack_anim(t).with_main_hand_swing_is_none(true));
+    let body = none.root_mut().child_mut("body").pose;
+    let right = none.root_mut().child_mut("right_arm").pose;
+    let left = none.root_mut().child_mut("left_arm").pose;
+
+    assert!((body.rotation[1] - body_yrot).abs() < 1.0e-6);
+    assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1.0e-6);
+    assert!((right.offset[2] - body_yrot.sin() * 5.0).abs() < 1.0e-6);
+    assert!((right.rotation[0] - resting_right.rotation[0]).abs() < 1.0e-6);
+    assert!((right.rotation[1] - (resting_right.rotation[1] + body_yrot)).abs() < 1.0e-6);
+    assert!((right.rotation[2] - resting_right.rotation[2]).abs() < 1.0e-6);
+    assert!((left.rotation[0] - (resting_left.rotation[0] + body_yrot)).abs() < 1.0e-6);
+
+    let mut whack = PlayerModel::new(false);
+    whack.prepare(&base.with_attack_anim(t));
+    assert!(
+        whack.root_mut().child_mut("right_arm").pose.rotation[0] < right.rotation[0] - 0.8,
+        "WHACK should chop the attack arm while NONE keeps the prologue-only pitch"
+    );
+}
+
+#[test]
 fn player_with_a_spear_lunges_instead_of_whacking() {
     use std::f32::consts::PI;
 

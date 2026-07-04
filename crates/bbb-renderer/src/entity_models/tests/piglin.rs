@@ -1168,6 +1168,74 @@ fn piglin_default_whack_swing_uses_humanoid_attack_animation() {
 }
 
 #[test]
+fn piglin_default_none_and_stab_swing_use_humanoid_swing_type() {
+    use std::f32::consts::PI;
+
+    let attack_anim = 0.1_f32;
+    let body_yrot = (attack_anim.sqrt() * PI * 2.0).sin() * 0.2;
+    let progress = |t: f32, a: f32, b: f32| ((t - a) / (b - a)).clamp(0.0, 1.0);
+    let in_out_sine = |x: f32| -((PI * x).cos() - 1.0) / 2.0;
+    let in_out_expo = |x: f32| {
+        if x < 0.5 {
+            if x == 0.0 {
+                0.0
+            } else {
+                2.0_f32.powf(20.0 * x - 10.0) / 2.0
+            }
+        } else if x == 1.0 {
+            1.0
+        } else {
+            (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+        }
+    };
+    let stab = {
+        let prepare = in_out_sine(progress(attack_anim, 0.0, 0.05));
+        let attack = progress(attack_anim, 0.05, 0.2).powi(2);
+        let retract = in_out_expo(progress(attack_anim, 0.4, 1.0));
+        (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians()
+    };
+
+    for family in [PiglinModelFamily::Piglin, PiglinModelFamily::PiglinBrute] {
+        let base = EntityModelInstance::piglin(172, [0.0, 64.0, 0.0], 0.0, family, false);
+        let mut idle = PiglinModel::new(family, false);
+        idle.prepare(&base);
+        let idle_right = idle.root_mut().child_mut("right_arm").pose;
+
+        let mut none = PiglinModel::new(family, false);
+        none.prepare(
+            &base
+                .with_attack_anim(attack_anim)
+                .with_main_hand_swing_is_none(true),
+        );
+        let none_body = none.root_mut().child_mut("body").pose;
+        let none_right = none.root_mut().child_mut("right_arm").pose;
+        assert!((none_body.rotation[1] - body_yrot).abs() < 1.0e-6);
+        assert!((none_right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1.0e-6);
+        assert!((none_right.offset[2] - body_yrot.sin() * 5.0).abs() < 1.0e-6);
+        assert!((none_right.rotation[0] - idle_right.rotation[0]).abs() < 1.0e-6);
+
+        let mut stab_model = PiglinModel::new(family, false);
+        stab_model.prepare(
+            &base
+                .with_attack_anim(attack_anim)
+                .with_main_hand_swing_is_stab(true),
+        );
+        let stab_right = stab_model.root_mut().child_mut("right_arm").pose;
+        assert!((stab_right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1.0e-6);
+        assert!((stab_right.rotation[0] - (idle_right.rotation[0] + stab)).abs() < 1.0e-6);
+
+        let mut whack = PiglinModel::new(family, false);
+        whack.prepare(&base.with_attack_anim(attack_anim));
+        assert!(
+            (whack.root_mut().child_mut("right_arm").pose.rotation[0] - stab_right.rotation[0])
+                .abs()
+                > 0.3,
+            "{family:?} STAB should not collapse to the default WHACK branch"
+        );
+    }
+}
+
+#[test]
 fn piglin_admires_a_loved_offhand_item() {
     // Vanilla `PiglinModel.setupAnim` ADMIRING_ITEM (mainArm = RIGHT): head tilts down to the item
     // (`head.xRot = 0.5, head.yRot = 0`, overwriting the head look) and the off (left) arm lifts it

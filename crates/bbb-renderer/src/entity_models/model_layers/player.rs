@@ -2,7 +2,8 @@ use super::{
     apply_crossbow_charge_pose_for_hand, apply_crossbow_hold_pose,
     apply_crossbow_hold_pose_for_hand, apply_head_look, apply_humanoid_attack_animation,
     apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
-    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spear_arm_pose,
+    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose,
+    apply_humanoid_no_swing_attack_animation, apply_humanoid_spear_arm_pose,
     apply_humanoid_spear_use_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
     apply_humanoid_toot_horn_pose, apply_humanoid_walk, humanoid_crouch_head_pose, PartPose,
@@ -492,9 +493,17 @@ impl EntityModel for PlayerModel {
         }
         // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
         // a swinging player twists the body and drives the attacking arm. The player is always adult
-        // (`ageScale = 1.0`). An attack-arm spear lunges (`STAB`); everything else chops (`WHACK`).
+        // (`ageScale = 1.0`). An attack-arm spear lunges (`STAB`), `NONE` keeps only the shared prologue,
+        // and everything else chops (`WHACK`).
         if render_state.main_hand_swing_is_stab {
             apply_humanoid_stab_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                1.0,
+            );
+        } else if render_state.main_hand_swing_is_none {
+            apply_humanoid_no_swing_attack_animation(
                 &mut self.root,
                 render_state.attack_anim,
                 render_state.attack_arm_off_hand,

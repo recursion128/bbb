@@ -2740,6 +2740,18 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
         duration: 6,
     });
 
+    let mut none = ItemStackSummary {
+        item_id: Some(WOODEN_SPEAR_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    none.component_patch.added = 1;
+    none.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    none.component_patch.swing_animation = Some(SwingAnimationSummary {
+        animation_type: SwingAnimationTypeSummary::None,
+        duration: 6,
+    });
+
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         243,
@@ -2749,6 +2761,7 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
     assert!(world.apply_set_equipment(equip(243, removed)));
     assert!(world.apply_entity_animation(EntityAnimation { id: 243, action: 0 }));
     assert!(!state(&world, 243).main_hand_swing_is_stab);
+    assert!(!state(&world, 243).main_hand_swing_is_none);
 
     world.apply_add_entity(protocol_add_entity(
         244,
@@ -2758,6 +2771,17 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
     assert!(world.apply_set_equipment(equip(244, whack)));
     assert!(world.apply_entity_animation(EntityAnimation { id: 244, action: 0 }));
     assert!(!state(&world, 244).main_hand_swing_is_stab);
+    assert!(!state(&world, 244).main_hand_swing_is_none);
+
+    world.apply_add_entity(protocol_add_entity(
+        245,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [3.0, 64.0, -9.0],
+    ));
+    assert!(world.apply_set_equipment(equip(245, none)));
+    assert!(world.apply_entity_animation(EntityAnimation { id: 245, action: 0 }));
+    assert!(!state(&world, 245).main_hand_swing_is_stab);
+    assert!(state(&world, 245).main_hand_swing_is_none);
 }
 
 #[test]

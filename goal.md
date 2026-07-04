@@ -293,7 +293,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   `entityTranslucent`, local light, and dynamic skin atlas routing, and
   first-person generated item consumers now pass the local active-use tick
   context into `minecraft:use_duration` / `minecraft:use_cycle` item-model
-  range-dispatch properties. 剩余是截图级 viewmodel 视觉校验。
+  range-dispatch properties, and attack-arm `SWING_ANIMATION(NONE)` stack
+  patches now project through native/render-state so PlayerModel and ordinary
+  piglin/brute inherited `HumanoidModel.setupAttackAnimation` keep the vanilla
+  prologue while skipping WHACK/STAB. 剩余是截图级 viewmodel 视觉校验。
 - First-person viewmodel：
   - 截图级视觉校验。
 - HUD / inventory：

@@ -242,6 +242,29 @@ pub(super) fn entity_hand_swing_is_stab(
     entity_hand_holds_spear(world, item_runtime, entity_id, off_hand)
 }
 
+pub(super) fn entity_hand_swing_is_none(
+    world: &WorldStore,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+    {
+        return false;
+    }
+    stack
+        .component_patch
+        .swing_animation
+        .is_some_and(|swing_animation| {
+            swing_animation.animation_type == SwingAnimationTypeSummary::None
+        })
+}
+
 /// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==
 /// ItemUseAnimation.BLOCK`, returned by `Item.getUseAnimation` for a non-consumable item carrying
 /// `DataComponents.BLOCKS_ATTACKS`). While the entity raises it, `HumanoidModel.poseRightArm`/`poseLeftArm`

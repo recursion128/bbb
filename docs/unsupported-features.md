@@ -2461,15 +2461,16 @@ When an agent does any of the following, update this file in the same slice:
     `IllagerModel` `swingWeaponDown` axe pose, and the piglin/brute reuse that same
     `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above).
     Ordinary non-`ATTACKING_WITH_MELEE_WEAPON` piglin/brute swings now fall through to vanilla
-    `HumanoidModel.setupAttackAnimation`, applying the default WHACK body twist, arm-anchor
-    reposition, and attacking-arm chop before any later piglin arm-pose override. Registry-backed
+    `HumanoidModel.setupAttackAnimation`, including WHACK, STAB, and NONE branches before any later
+    piglin arm-pose override. Registry-backed
     per-item default swing duration is now wired through pack →
     native → world for `ItemStack.getSwingAnimation().duration()`: vanilla spear attack durations
     from `Item.Properties.spear(... attackDuration ...)` keep the client-side swing alive past the
     default 6-tick WHACK ramp (for example wooden spear `0.65F * 20 -> 13` ticks). Stack-level
     `swing_animation` component patches now override the item prototype for both duration and type:
-    patch-granted `STAB` drives the attack-arm STAB render state even on non-spear items, while removed
-    or `WHACK` patches on spear stacks fall back away from the prototype STAB. Dig-speed /
+    patch-granted `STAB` drives the attack-arm STAB render state even on non-spear items, patch-granted
+    `NONE` keeps the shared attack prologue but skips WHACK/STAB, while removed or `WHACK` patches on
+    spear stacks fall back away from the prototype STAB. Dig-speed /
     mining-fatigue duration modifiers now follow vanilla `LivingEntity.getCurrentSwingDuration` too:
     HASTE / CONDUIT_POWER take priority and reduce the duration by the max amplifier + 1, otherwise
     MINING_FATIGUE increases it by `(amplifier + 1) * 2`. Runtime item/effect changes during an
@@ -2511,8 +2512,12 @@ When an agent does any of the following, update this file in the same slice:
     zombified-piglin STAB attack-arm spear paths now skip the held-out `animateZombieArms` rewrite whenever
     `swingAnimationType == STAB`; with positive `attack_anim`, the attacking arm takes the inherited
     `HumanoidModel.setupAttackAnimation` STAB lunge and the trailing `bobArms` tail. The STAB default lives
-    on the item prototype (not the network component patch), so it is detected by the resolved item id. A
-    datapack-overridden `SWING_ANIMATION` on a non-spear item and the `NONE` swing type stay deferred. The
+    on the item prototype (not the network component patch), so it is detected by the resolved item id.
+    Stack patch-granted STAB and NONE are also covered: native projects attack-arm
+    `SWING_ANIMATION(NONE)`, PlayerModel and ordinary piglin/brute inherited
+    `HumanoidModel.setupAttackAnimation` keep the vanilla body/arm-anchor prologue while skipping WHACK /
+    STAB, and ordinary piglin/brute non-melee STAB now uses the inherited STAB lunge. Datapack/custom item
+    prototype default `SWING_ANIMATION` beyond the resolved vanilla spear ids remains deferred. The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -3409,12 +3414,12 @@ When an agent does any of the following, update this file in the same slice:
         and vindicator empty/armed `ATTACKING`; illager riding sit pose is also covered
         through the projected passenger state. Non-player `HumanoidMobRenderer` held-spear `ArmPose.SPEAR`
         and zombie/zombified-piglin `STAB` skip/lunge parity are covered; ordinary piglin/brute
-        non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
-        swing-type parity remains separate custom-component work.
+        non-melee-pose WHACK/STAB/NONE now use the inherited
+        `HumanoidModel.setupAttackAnimation` branches, and PlayerModel's attack-arm
+        `SWING_ANIMATION(NONE)` keeps the vanilla body/arm-anchor prologue while skipping WHACK/STAB.
       - remaining slices: held-item refinements (screenshot-level viewmodel
         parity;
-        broader non-profile dynamic texture loading; the
-        `NONE` swing type). Item lighting
+        broader non-profile dynamic texture loading). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
         vanilla `core/item.vsh` multiplies submitted color by
         `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,

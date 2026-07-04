@@ -1,9 +1,10 @@
 use super::{
     apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
     apply_humanoid_attack_animation, apply_humanoid_mob_spear_arm_poses,
-    apply_humanoid_stab_attack_animation, apply_humanoid_walk, apply_humanoid_weapon_swing_down,
-    apply_zombie_arms_held_out_named, humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose,
-    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_humanoid_no_swing_attack_animation, apply_humanoid_stab_attack_animation,
+    apply_humanoid_walk, apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named,
+    humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
+    PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -638,14 +639,30 @@ impl EntityModel for PiglinModel {
         {
             // Vanilla `PiglinModel.setupAttackAnimation`: only ATTACKING_WITH_MELEE_WEAPON replaces the
             // inherited attack animation with `swingWeaponDown`; default/hold/charge/admire/dance poses
-            // still run `HumanoidModel.setupAttackAnimation` first.
-            apply_humanoid_attack_animation(
-                &mut self.root,
-                render_state.attack_anim,
-                render_state.attack_arm_off_hand,
-                render_state.head_pitch,
-                1.0,
-            );
+            // still run `HumanoidModel.setupAttackAnimation` first, including STAB/NONE swing types.
+            if render_state.main_hand_swing_is_stab {
+                apply_humanoid_stab_attack_animation(
+                    &mut self.root,
+                    render_state.attack_anim,
+                    render_state.attack_arm_off_hand,
+                    1.0,
+                );
+            } else if render_state.main_hand_swing_is_none {
+                apply_humanoid_no_swing_attack_animation(
+                    &mut self.root,
+                    render_state.attack_anim,
+                    render_state.attack_arm_off_hand,
+                    1.0,
+                );
+            } else {
+                apply_humanoid_attack_animation(
+                    &mut self.root,
+                    render_state.attack_anim,
+                    render_state.attack_arm_off_hand,
+                    render_state.head_pitch,
+                    1.0,
+                );
+            }
         }
         // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow
         // levels it along the head look, overwriting the walk arm swing. Mutually exclusive with DANCING

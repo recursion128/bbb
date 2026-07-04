@@ -482,6 +482,10 @@ entity_render_state! {
     /// a spear. PlayerModel, zombie-family models, and the standard humanoid held-item layer consume it.
     /// The builder name is historical.
     (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
+    /// Vanilla `HumanoidRenderState.swingAnimationType == NONE` for the current attack arm: the shared
+    /// `HumanoidModel.setupAttackAnimation` body twist / arm-anchor prologue still runs for positive
+    /// `attackTime`, but the WHACK arm chop and STAB lunge are skipped.
+    (with_main_hand_swing_is_none) main_hand_swing_is_none: bool = false;
     /// Vanilla `HumanoidModel.ArmPose.SPEAR` while using a spear: `SpearAnimations.thirdPersonHandUse`
     /// poses the using arm with kinetic weapon timing, and `ItemInHandLayer` applies the matching
     /// `thirdPersonUseItem` item transform before submitting the held item. `None` for every entity not
@@ -2646,6 +2650,7 @@ mod tests {
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
+                main_hand_swing_is_none: false,
                 player_using_spear: None,
                 ticks_since_kinetic_hit_feedback: 0.0,
                 player_main_hand_spear_pose: false,

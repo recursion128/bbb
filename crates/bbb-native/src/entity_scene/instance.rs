@@ -64,6 +64,8 @@ pub(super) fn entity_model_instance(
         entity_hand_swing_is_stab(world, item_runtime, source.entity_id, false);
     let off_hand_swing_is_stab_type =
         entity_hand_swing_is_stab(world, item_runtime, source.entity_id, true);
+    let main_hand_swing_is_none_type = entity_hand_swing_is_none(world, source.entity_id, false);
+    let off_hand_swing_is_none_type = entity_hand_swing_is_none(world, source.entity_id, true);
     let player_main_hand_holds_spear = is_player && main_hand_holds_spear;
     let player_off_hand_holds_spear = is_player && off_hand_holds_spear;
     let is_zombie_family = matches!(
@@ -93,14 +95,17 @@ pub(super) fn entity_model_instance(
     let using_offhand_forced_to_item_by_main_hand_crossbow =
         source.use_item_off_hand && main_hand_crossbow_hold_forces_offhand_item;
     // Vanilla `ArmedEntityRenderState.extractArmedEntityRenderState` selects the `attackArm` hand stack and
-    // copies its `getSwingAnimation().type()` into the render state: a spear swing uses the `STAB`
-    // `SpearAnimations.thirdPersonAttackHand` pose instead of the default `WHACK`. Resolve this for all
-    // armed models: PlayerModel and the zombie family consume it in their attack poses, and ItemInHandLayer
-    // consumes it for the attack-arm item transform.
+    // copies its `getSwingAnimation().type()` into the render state: a spear swing uses `STAB`, a patched
+    // `NONE` stack keeps the shared body/anchor swing prologue but skips the WHACK/STAB arm attack.
     let main_hand_swing_is_stab = if source.attack_arm_off_hand {
         off_hand_swing_is_stab_type
     } else {
         main_hand_swing_is_stab_type
+    };
+    let main_hand_swing_is_none = if source.attack_arm_off_hand {
+        off_hand_swing_is_none_type
+    } else {
+        main_hand_swing_is_none_type
     };
     // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
     // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
@@ -529,6 +534,7 @@ pub(super) fn entity_model_instance(
         .with_minecart_damage_time(source.boat_damage_time)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
+        .with_main_hand_swing_is_none(main_hand_swing_is_none)
         .with_player_using_spear(player_using_spear)
         .with_player_main_hand_spear_pose(player_main_hand_spear_pose)
         .with_player_off_hand_spear_pose(player_off_hand_spear_pose)

@@ -266,7 +266,7 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
 /// look pitch (vanilla `head.xRot`); `age_scale` is the model scale (`1.0` adult). A no-op at
 /// `attack_anim <= 0`. Runs LAST — after the walk swing / arm pose — accumulating onto their rotations
 /// and overwriting the arm anchor offsets. Use [`apply_humanoid_stab_attack_animation`] for the per-item
-/// STAB branch; the per-item NONE skip remains later swing-type parity.
+/// STAB branch and [`apply_humanoid_no_swing_attack_animation`] for the per-item NONE branch.
 pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     root: &mut ModelPart,
     attack_anim: f32,
@@ -309,6 +309,39 @@ pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     attack_arm.pose.rotation[0] -= raise * 1.2 + head_term;
     attack_arm.pose.rotation[1] += body_yrot * 2.0;
     attack_arm.pose.rotation[2] += (attack_anim * PI).sin() * -0.4;
+}
+
+/// Vanilla `HumanoidModel.setupAttackAnimation` `NONE` branch: the method still runs the shared body
+/// twist / arm-anchor prologue for positive `attackTime`, then the switch breaks without the WHACK arm
+/// chop or STAB lunge.
+pub(in crate::entity_models) fn apply_humanoid_no_swing_attack_animation(
+    root: &mut ModelPart,
+    attack_anim: f32,
+    attack_arm_off_hand: bool,
+    age_scale: f32,
+) {
+    if attack_anim <= 0.0 {
+        return;
+    }
+    use std::f32::consts::PI;
+    let mut body_yrot = (attack_anim.sqrt() * PI * 2.0).sin() * 0.2;
+    if attack_arm_off_hand {
+        body_yrot = -body_yrot;
+    }
+    root.child_mut("body").pose.rotation[1] = body_yrot;
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.offset[0] = -body_yrot.cos() * 5.0 * age_scale;
+        right.pose.offset[2] = body_yrot.sin() * 5.0 * age_scale;
+        right.pose.rotation[1] += body_yrot;
+    }
+    {
+        let left = root.child_mut("left_arm");
+        left.pose.offset[0] = body_yrot.cos() * 5.0 * age_scale;
+        left.pose.offset[2] = -body_yrot.sin() * 5.0 * age_scale;
+        left.pose.rotation[1] += body_yrot;
+        left.pose.rotation[0] += body_yrot;
+    }
 }
 
 /// Vanilla `HumanoidModel.setupAttackAnimation` `STAB` branch (`SpearAnimations.thirdPersonAttackHand`): a
