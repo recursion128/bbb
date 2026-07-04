@@ -9139,3 +9139,60 @@ fn item_cost(item_id: i32, count: i32) -> ProtocolItemCostSummary {
         component_predicate: Default::default(),
     }
 }
+
+#[test]
+fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
+    let mut store = WorldStore::new();
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 36,
+        item: item_stack(42, 3),
+    });
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(7, 1),
+    });
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: "Chest".to_string(),
+    });
+
+    let value = serde_json::to_value(&store).unwrap();
+    let inventory = value
+        .get("inventory")
+        .and_then(|value| value.as_object())
+        .expect("world store serializes the sub-store under the `inventory` key");
+    let mut keys: Vec<&str> = inventory.keys().map(String::as_str).collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "cursor_item",
+            "inventory_menu",
+            "local_inventory_open",
+            "open_container",
+            "player_slots",
+        ]
+    );
+    let open_container = inventory
+        .get("open_container")
+        .and_then(|value| value.as_object())
+        .expect("open container serializes as an object");
+    let mut container_keys: Vec<&str> = open_container.keys().map(String::as_str).collect();
+    container_keys.sort_unstable();
+    assert_eq!(
+        container_keys,
+        [
+            "container_id",
+            "data_values",
+            "menu_type_id",
+            "merchant_offers",
+            "mount",
+            "slots",
+            "state_id",
+            "title",
+        ]
+    );
+
+    let restored: WorldStore = serde_json::from_value(value).unwrap();
+    assert_eq!(restored.inventory(), store.inventory());
+}
