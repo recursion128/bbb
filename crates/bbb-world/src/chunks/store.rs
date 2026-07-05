@@ -508,6 +508,32 @@ impl WorldStore {
         })
     }
 
+    /// Builds a biome sampler for the 3x3 chunk neighbourhood centred on
+    /// `base`, pre-resolving the (up to) nine neighbour columns once so the
+    /// per-block biome lookups used by biome colour blending
+    /// (`ClientLevel.calculateBlockTint`) do not re-scan the chunk list. A
+    /// biome-blend window of radius `r < 16` can only reach the immediately
+    /// adjacent chunks, so 3x3 always covers it; columns that are not loaded
+    /// stay `None`, letting callers honestly truncate the blend window at the
+    /// render-distance edge instead of fabricating biome samples.
+    pub fn chunk_biome_sampler(&self, base: ChunkPos) -> ChunkBiomeSampler<'_> {
+        let mut columns: [Option<&ChunkColumn>; 9] = [None; 9];
+        for dz in -1..=1 {
+            for dx in -1..=1 {
+                let pos = ChunkPos {
+                    x: base.x + dx,
+                    z: base.z + dz,
+                };
+                columns[((dz + 1) * 3 + (dx + 1)) as usize] = self.probe_chunk(pos);
+            }
+        }
+        ChunkBiomeSampler {
+            columns,
+            base,
+            dimension: self.dimension,
+        }
+    }
+
     pub fn extract_terrain_chunks(&self) -> Vec<TerrainChunkSnapshot> {
         self.chunks
             .iter()
@@ -918,5 +944,45 @@ fn apply_counted_delta(count: &mut i16, old_counted: bool, new_counted: bool) {
         (true, false) => *count = count.saturating_sub(1),
         (false, true) => *count = count.saturating_add(1),
         _ => {}
+    }
+}
+
+/// A cheap biome sampler over the 3x3 chunk neighbourhood around a base chunk,
+/// created by [`WorldStore::chunk_biome_sampler`]. Mirrors the per-column biome
+/// lookup vanilla `ClientLevel.calculateBlockTint` performs while averaging
+/// `ColorResolver` samples across the biome-blend window.
+#[derive(Debug, Clone, Copy)]
+pub struct ChunkBiomeSampler<'a> {
+    columns: [Option<&'a ChunkColumn>; 9],
+    base: ChunkPos,
+    dimension: WorldDimension,
+}
+
+impl ChunkBiomeSampler<'_> {
+    /// Returns the biome global id stored at world position `(x, y, z)`, or
+    /// `None` when that column is outside the pre-resolved 3x3 neighbourhood,
+    /// out of the world's vertical range, or belongs to a chunk that is not
+    /// currently loaded. Biomes are stored per 4x4x4 cell, matching vanilla.
+    pub fn biome_id_at(&self, x: i32, y: i32, z: i32) -> Option<i32> {
+        if !self.dimension.contains_y(y) {
+            return None;
+        }
+        let dx = x.div_euclid(16) - self.base.x;
+        let dz = z.div_euclid(16) - self.base.z;
+        if !(-1..=1).contains(&dx) || !(-1..=1).contains(&dz) {
+            return None;
+        }
+        let column = self.columns[((dz + 1) * 3 + (dx + 1)) as usize]?;
+        let section_y = y.div_euclid(16);
+        let section_index = usize::try_from(section_y - self.dimension.min_section_y()).ok()?;
+        let section = column.sections.get(section_index)?;
+        let local_x = x.rem_euclid(16) as u8;
+        let local_y = y.rem_euclid(16) as u8;
+        let local_z = z.rem_euclid(16) as u8;
+        let biome_index = section_biome_index(local_x / 4, local_y / 4, local_z / 4);
+        section
+            .biomes
+            .value_at(biome_index)
+            .map(|value| value.global_id)
     }
 }

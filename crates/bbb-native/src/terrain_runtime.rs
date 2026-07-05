@@ -7,6 +7,10 @@ use bbb_renderer::terrain::{
 };
 use bbb_world::{ChunkPos, WorldCardinalLighting, WorldStore};
 
+use crate::biome_tint::{
+    block_wants_biome_blend, BiomeBlend, BIOME_BLEND_DIAMETER, BIOME_BLEND_RADIUS,
+    BIOME_BLEND_SAMPLES,
+};
 use crate::camera_pose::camera_pose_from_world;
 
 mod textures;
@@ -140,7 +144,10 @@ pub(crate) fn maybe_upload_decoded_terrain(
     let cardinal_lighting = terrain_cardinal_lighting(world);
     let renderer_snapshots: Vec<_> = snapshots
         .into_iter()
-        .map(|snapshot| convert_terrain_snapshot(snapshot, textures, cardinal_lighting))
+        .map(|snapshot| {
+            let biome_sampler = world.chunk_biome_sampler(snapshot.pos);
+            convert_terrain_snapshot(snapshot, textures, cardinal_lighting, &biome_sampler)
+        })
         .collect();
     let camera_position = camera_pose_from_world(world)
         .map(|pose| {
@@ -195,6 +202,7 @@ fn convert_terrain_snapshot(
     snapshot: bbb_world::TerrainChunkSnapshot,
     textures: &TerrainTextureState,
     cardinal_lighting: TerrainCardinalLighting,
+    biome_sampler: &bbb_world::ChunkBiomeSampler,
 ) -> TerrainChunkSnapshot {
     let chunk_origin_x = snapshot.pos.x * 16;
     let chunk_origin_z = snapshot.pos.z * 16;
@@ -212,6 +220,18 @@ fn convert_terrain_snapshot(
                 z: chunk_origin_z + local_z,
             };
             let world_material = cell.material;
+            let has_water_fluid = cell
+                .fluid
+                .is_some_and(|fluid| matches!(fluid.kind, bbb_world::TerrainFluidKind::Water));
+            // Only biome-resolver blocks (grass / foliage / dry-foliage / water)
+            // read the blend window, so we skip building the 5x5 sample grid for
+            // the interior stone/dirt/air majority of a chunk.
+            let wants_blend = cell
+                .block_name
+                .as_deref()
+                .map(|name| block_wants_biome_blend(name, has_water_fluid))
+                .unwrap_or(has_water_fluid);
+            let blend = wants_blend.then(|| build_biome_blend(biome_sampler, position));
             let (texture_indices, tint, face_transparency, render_shape, ambient_occlusion) =
                 textures.block_render_data(
                     cell.block_name.as_deref(),
@@ -219,10 +239,18 @@ fn convert_terrain_snapshot(
                     world_material,
                     cell.biome_id,
                     Some(position),
+                    blend.as_ref(),
                 );
             let fluid = cell.fluid.map(renderer_fluid);
             let (fluid_texture_indices, fluid_tint) = fluid
-                .map(|fluid| textures.fluid_render_data(fluid.kind, cell.biome_id, Some(position)))
+                .map(|fluid| {
+                    textures.fluid_render_data(
+                        fluid.kind,
+                        cell.biome_id,
+                        Some(position),
+                        blend.as_ref(),
+                    )
+                })
                 .unwrap_or(([0; 6], [TerrainTint::WHITE; 6]));
             let fluid_overlay_texture_index =
                 fluid.and_then(|fluid| textures.fluid_overlay_texture_index(fluid.kind));
@@ -263,6 +291,28 @@ fn convert_terrain_snapshot(
         cells,
     )
     .with_cardinal_lighting(cardinal_lighting)
+}
+
+/// Samples the `biomeBlendRadius` window (x/z plane, fixed y) for `center`,
+/// pulling neighbour-chunk biomes through `sampler`. Columns whose chunk is not
+/// loaded stay `None`, so the averaging step honestly truncates the window at
+/// the render-distance edge instead of inventing biome data.
+fn build_biome_blend(
+    sampler: &bbb_world::ChunkBiomeSampler,
+    center: BlockRenderPosition,
+) -> BiomeBlend {
+    let mut samples = [None; BIOME_BLEND_SAMPLES];
+    for row in 0..BIOME_BLEND_DIAMETER {
+        for col in 0..BIOME_BLEND_DIAMETER {
+            let index = (row * BIOME_BLEND_DIAMETER + col) as usize;
+            samples[index] = sampler.biome_id_at(
+                center.x - BIOME_BLEND_RADIUS + col,
+                center.y,
+                center.z - BIOME_BLEND_RADIUS + row,
+            );
+        }
+    }
+    BiomeBlend::new(center, samples)
 }
 
 fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {

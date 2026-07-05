@@ -63,6 +63,7 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
         bbb_world::TerrainMaterialClass::Fluid,
         None,
         None,
+        None,
     );
     let water_still = textures.texture_index("minecraft:block/water_still");
     let water_flow = textures.texture_index("minecraft:block/water_flow");
@@ -70,7 +71,8 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     assert_eq!(water[0], water_still);
     assert_eq!(water[1], water_still);
     assert_eq!(water[2..], [water_flow; 4]);
-    let (water_layer, water_tint) = textures.fluid_render_data(TerrainFluidKind::Water, None, None);
+    let (water_layer, water_tint) =
+        textures.fluid_render_data(TerrainFluidKind::Water, None, None, None);
     assert_eq!(water_layer, water);
     assert_eq!(water_tint, [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6]);
     assert_eq!(
@@ -84,13 +86,15 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
         bbb_world::TerrainMaterialClass::Fluid,
         None,
         None,
+        None,
     );
     let lava_still = textures.texture_index("minecraft:block/lava_still");
     let lava_flow = textures.texture_index("minecraft:block/lava_flow");
     assert_eq!(lava[0], lava_still);
     assert_eq!(lava[1], lava_still);
     assert_eq!(lava[2..], [lava_flow; 4]);
-    let (lava_layer, lava_tint) = textures.fluid_render_data(TerrainFluidKind::Lava, None, None);
+    let (lava_layer, lava_tint) =
+        textures.fluid_render_data(TerrainFluidKind::Lava, None, None, None);
     assert_eq!(lava_layer, lava);
     assert_eq!(lava_tint, [TerrainTint::WHITE; 6]);
     assert_eq!(
@@ -301,6 +305,7 @@ fn box_face_transparency_uses_model_uv_crop() {
         [TerrainTransparency::OPAQUE; 6],
         None,
         None,
+        None,
     );
     let transparent_shape = textures.terrain_render_shape_for_block(
         "minecraft:test_block",
@@ -310,6 +315,7 @@ fn box_face_transparency_uses_model_uv_crop() {
         [0; 6],
         [TerrainTint::WHITE; 6],
         [TerrainTransparency::OPAQUE; 6],
+        None,
         None,
         None,
     );
@@ -373,6 +379,7 @@ fn box_face_transparency_uses_all_animation_frames_for_model_uv_crop() {
         [0; 6],
         [TerrainTint::WHITE; 6],
         [TerrainTransparency::OPAQUE; 6],
+        None,
         None,
         None,
     );
@@ -443,6 +450,7 @@ fn fluid_material_overrides_particle_only_model_shape() {
         [TerrainTransparency::OPAQUE; 6],
         None,
         None,
+        None,
     );
 
     assert!(matches!(
@@ -461,6 +469,7 @@ fn fluid_material_overrides_particle_only_model_shape() {
         [0; 6],
         [TerrainTint::WHITE; 6],
         [TerrainTransparency::OPAQUE; 6],
+        None,
         None,
         None,
     );
@@ -498,6 +507,7 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
         [TerrainTint::WHITE; 6],
         [TerrainTransparency::OPAQUE; 6],
         Some(4),
+        None,
         None,
     );
 
@@ -561,6 +571,7 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
         [TerrainTransparency::OPAQUE; 6],
         Some(4),
         None,
+        None,
     );
 
     let TerrainRenderShape::Crosses(crosses) = shape else {
@@ -610,6 +621,7 @@ fn model_quads_preserve_texture_tint_transparency_and_light() {
         [TerrainTint::WHITE; 6],
         [TerrainTransparency::OPAQUE; 6],
         Some(4),
+        None,
         None,
     );
 
@@ -679,6 +691,7 @@ fn block_render_data_preserves_model_ambient_occlusion() {
         bbb_world::TerrainMaterialClass::Opaque,
         None,
         None,
+        None,
     );
 
     assert!(!ambient_occlusion);
@@ -722,6 +735,7 @@ fn block_render_data_preserves_empty_multipart_geometry() {
         Some("minecraft:cobblestone_wall"),
         &properties([("north", "none"), ("up", "false")]),
         bbb_world::TerrainMaterialClass::Opaque,
+        None,
         None,
         None,
     );
@@ -1031,6 +1045,237 @@ fn particle_tint_catalog_samples_biome_profiles() {
     assert_eq!(
         catalog.falling_dust_block_tint_color_for_block_state(water, Some(42), position),
         Some(rgb(90, 99, 108))
+    );
+}
+
+// Vanilla `ClientLevel.calculateBlockTint` averages a biome `ColorResolver`
+// over the `biomeBlendRadius` (default 2 -> 5x5) window. These tests exercise
+// that averaging: no-op on a uniform window, exact arithmetic mean across a
+// biome boundary, per-sample application of the swamp grass modifier, and
+// honest truncation when the window overhangs unloaded chunks.
+
+fn blend_biome_profile(id: i32, water: [u8; 3], modifier: GrassColorModifier) -> BiomeColorProfile {
+    BiomeColorProfile {
+        id,
+        name: format!("minecraft:blend_biome_{id}"),
+        temperature: 0.5,
+        temperature_modifier: bbb_pack::BiomeTemperatureModifier::None,
+        downfall: 0.5,
+        has_precipitation: true,
+        grass_color: Some([100, 100, 100]),
+        foliage_color: Some([40, 50, 60]),
+        dry_foliage_color: Some([70, 80, 90]),
+        water_color: Some(water),
+        fog_color: None,
+        sky_color: None,
+        water_fog_color: None,
+        water_fog_end_distance: None,
+        grass_color_modifier: modifier,
+    }
+}
+
+/// Builds a blend window centred on `center`; `fill(dcol, drow)` returns the
+/// biome id for the column offset `(dcol, drow)` from the centre (or `None` for
+/// an unavailable / unloaded column), matching `BiomeBlend::samples` geometry.
+fn blend_window(
+    center: BlockRenderPosition,
+    mut fill: impl FnMut(i32, i32) -> Option<i32>,
+) -> BiomeBlend {
+    use crate::biome_tint::{BIOME_BLEND_DIAMETER, BIOME_BLEND_RADIUS, BIOME_BLEND_SAMPLES};
+    let mut samples = [None; BIOME_BLEND_SAMPLES];
+    for row in 0..BIOME_BLEND_DIAMETER {
+        for col in 0..BIOME_BLEND_DIAMETER {
+            samples[(row * BIOME_BLEND_DIAMETER + col) as usize] =
+                fill(col - BIOME_BLEND_RADIUS, row - BIOME_BLEND_RADIUS);
+        }
+    }
+    BiomeBlend::new(center, samples)
+}
+
+#[test]
+fn biome_blend_uniform_window_matches_single_biome() {
+    let mut textures = TerrainTextureState::default();
+    textures.biome_colors = Some(BiomeColorCatalog::new([blend_biome_profile(
+        1,
+        [70, 80, 90],
+        GrassColorModifier::None,
+    )]));
+    let center = BlockRenderPosition { x: 8, y: 64, z: 8 };
+    let blend = blend_window(center, |_, _| Some(1));
+
+    // A window that is entirely one biome must reproduce the single-biome
+    // colour exactly (no regression versus `biomeBlendRadius == 0`).
+    let single = textures.block_tint(
+        "minecraft:water",
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        Some(1),
+        Some(center),
+    );
+    let blended = textures.block_tint_blended(
+        "minecraft:water",
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        Some(1),
+        Some(center),
+        Some(&blend),
+    );
+    assert_eq!(blended, single);
+    assert_eq!(blended, TerrainTint::from_rgb_u8(70, 80, 90));
+}
+
+#[test]
+fn biome_blend_averages_two_biomes_across_boundary() {
+    let mut textures = TerrainTextureState::default();
+    textures.biome_colors = Some(BiomeColorCatalog::new([
+        blend_biome_profile(1, [10, 20, 30], GrassColorModifier::None),
+        blend_biome_profile(2, [20, 40, 60], GrassColorModifier::None),
+    ]));
+    let center = BlockRenderPosition { x: 0, y: 64, z: 0 };
+    // A vertical boundary: the two left columns (2 * 5 = 10 samples) are biome
+    // 1, the three right columns (15 samples) are biome 2.
+    let blend = blend_window(center, |dcol, _| Some(if dcol < 0 { 1 } else { 2 }));
+
+    let tint = textures.block_tint_blended(
+        "minecraft:water",
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        Some(1),
+        Some(center),
+        Some(&blend),
+    );
+    // R = (10*10 + 15*20) / 25 = 16, G = (10*20 + 15*40) / 25 = 32,
+    // B = (10*30 + 15*60) / 25 = 48 (integer truncation, matching vanilla).
+    assert_eq!(tint, TerrainTint::from_rgb_u8(16, 32, 48));
+    assert_ne!(tint, TerrainTint::from_rgb_u8(10, 20, 30));
+    assert_ne!(tint, TerrainTint::from_rgb_u8(20, 40, 60));
+}
+
+#[test]
+fn biome_blend_truncates_window_to_available_samples() {
+    let mut textures = TerrainTextureState::default();
+    textures.biome_colors = Some(BiomeColorCatalog::new([
+        blend_biome_profile(1, [10, 20, 30], GrassColorModifier::None),
+        blend_biome_profile(2, [20, 40, 60], GrassColorModifier::None),
+    ]));
+    let center = BlockRenderPosition { x: 0, y: 64, z: 0 };
+    // Only the centre row is loaded (5 samples): one biome 1 plus four biome 2;
+    // the other 20 columns overhang unloaded chunks and are dropped.
+    let blend = blend_window(center, |dcol, drow| {
+        if drow == 0 {
+            Some(if dcol == -2 { 1 } else { 2 })
+        } else {
+            None
+        }
+    });
+    let tint = textures.block_tint_blended(
+        "minecraft:water",
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        Some(1),
+        Some(center),
+        Some(&blend),
+    );
+    // Divided by the available count (5), not the full 25:
+    // R = (10 + 4*20) / 5 = 18, G = (20 + 4*40) / 5 = 36, B = (30 + 4*60) / 5 = 54.
+    assert_eq!(tint, TerrainTint::from_rgb_u8(18, 36, 54));
+
+    // A fully-unavailable window degrades to the single centre biome.
+    let empty = blend_window(center, |_, _| None);
+    let tint_empty = textures.block_tint_blended(
+        "minecraft:water",
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        Some(2),
+        Some(center),
+        Some(&empty),
+    );
+    assert_eq!(tint_empty, TerrainTint::from_rgb_u8(20, 40, 60));
+}
+
+#[test]
+fn biome_blend_applies_swamp_modifier_per_sample() {
+    use crate::biome_tint::BIOME_BLEND_RADIUS;
+    let mut textures = TerrainTextureState::default();
+    textures.biome_colors = Some(BiomeColorCatalog::new([blend_biome_profile(
+        3,
+        [0, 0, 0],
+        GrassColorModifier::Swamp,
+    )]));
+    // The swamp modifier ignores the base colour and picks a dark/light constant
+    // from `biome_info_noise(x, z)`, so the resolved colour is purely a function
+    // of each sample's own position.
+    let base = [100u8, 100, 100];
+    let window_positions = |center: BlockRenderPosition| {
+        let mut positions = Vec::new();
+        for drow in -BIOME_BLEND_RADIUS..=BIOME_BLEND_RADIUS {
+            for dcol in -BIOME_BLEND_RADIUS..=BIOME_BLEND_RADIUS {
+                positions.push(BlockRenderPosition {
+                    x: center.x + dcol,
+                    y: center.y,
+                    z: center.z + drow,
+                });
+            }
+        }
+        positions
+    };
+
+    // Find a centre whose 5x5 footprint straddles the swamp noise boundary so
+    // the window mixes dark and light samples (the region around the vanilla
+    // `biome_info_noise` dark sample at x=-496, z=-512).
+    let mut chosen = None;
+    'scan: for cz in -560..-440 {
+        for cx in -560..-440 {
+            let center = BlockRenderPosition {
+                x: cx,
+                y: 64,
+                z: cz,
+            };
+            let colors: Vec<[u8; 3]> = window_positions(center)
+                .into_iter()
+                .map(|pos| apply_grass_color_modifier(GrassColorModifier::Swamp, base, Some(pos)))
+                .collect();
+            if colors.iter().any(|color| *color != colors[0]) {
+                chosen = Some(center);
+                break 'scan;
+            }
+        }
+    }
+    let center = chosen.expect("expected a swamp noise boundary inside the scan range");
+
+    // Expected = per-sample modifier, then integer arithmetic mean.
+    let positions = window_positions(center);
+    let mut sum = [0u32; 3];
+    for pos in &positions {
+        let color = apply_grass_color_modifier(GrassColorModifier::Swamp, base, Some(*pos));
+        sum[0] += u32::from(color[0]);
+        sum[1] += u32::from(color[1]);
+        sum[2] += u32::from(color[2]);
+    }
+    let count = positions.len() as u32;
+    let expected = TerrainTint::from_rgb_u8(
+        (sum[0] / count) as u8,
+        (sum[1] / count) as u8,
+        (sum[2] / count) as u8,
+    );
+    // The wrong "average first, apply modifier once at the centre" collapses to a
+    // single dark/light constant, which a mixed window cannot equal.
+    let center_only = apply_grass_color_modifier(GrassColorModifier::Swamp, base, Some(center));
+    let center_only = TerrainTint::from_rgb_u8(center_only[0], center_only[1], center_only[2]);
+
+    let blend = blend_window(center, |_, _| Some(3));
+    let blended = textures.block_tint_blended(
+        "minecraft:grass_block",
+        bbb_world::TerrainMaterialClass::Opaque,
+        Some(0),
+        Some(3),
+        Some(center),
+        Some(&blend),
+    );
+    assert_eq!(blended, expected);
+    assert_ne!(
+        blended, center_only,
+        "swamp grass modifier must run per sample, before averaging",
     );
 }
 

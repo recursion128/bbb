@@ -3,10 +3,11 @@ pub use crate::block_events::{
     LocalBlockPredictionState,
 };
 pub use crate::chunks::{
-    decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState,
-    ChunkSection, ChunkState, ChunkViewState, HeightmapData, LightData, NbtPayloadSummary,
-    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    decode_level_chunk_with_light, BlockEntityRecord, ChunkBiomeSampler, ChunkColumn,
+    ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, HeightmapData, LightData,
+    NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData,
+    SignBlockEntityTextState, VaultConnectionParticleState, VaultConnectionParticleTargetState,
+    VaultSharedDataState,
 };
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{

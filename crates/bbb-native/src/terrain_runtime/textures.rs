@@ -16,7 +16,7 @@ use bbb_renderer::{
 
 use crate::biome_tint::{
     apply_grass_color_modifier, biome_colormap_climate, is_dry_foliage_tinted_block,
-    is_foliage_tinted_block, is_grass_tinted_block, terrain_tint_from_rgb,
+    is_foliage_tinted_block, is_grass_tinted_block, terrain_tint_from_rgb, BiomeBlend,
 };
 
 const VANILLA_DEFAULT_MIPMAP_LEVELS: u32 = 4;
@@ -357,6 +357,7 @@ impl TerrainTextureState {
         kind: TerrainFluidKind,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> ([u32; 6], [TerrainTint; 6]) {
         let block_name = match kind {
             TerrainFluidKind::Water => "minecraft:water",
@@ -365,12 +366,13 @@ impl TerrainTextureState {
         let texture_indices = self
             .fluid_texture_indices(block_name)
             .unwrap_or([self.fallback_index; 6]);
-        let tint = [self.block_tint(
+        let tint = [self.block_tint_blended(
             block_name,
             bbb_world::TerrainMaterialClass::Fluid,
             Some(0),
             biome_id,
             position,
+            blend,
         ); 6];
         (texture_indices, tint)
     }
@@ -438,6 +440,7 @@ impl TerrainTextureState {
         material: bbb_world::TerrainMaterialClass,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> (
         [u32; 6],
         [TerrainTint; 6],
@@ -471,6 +474,7 @@ impl TerrainTextureState {
                 &model.face_textures,
                 biome_id,
                 position,
+                blend,
             );
             let face_transparency = self.face_texture_transparencies(&model.face_textures);
             return (
@@ -487,6 +491,7 @@ impl TerrainTextureState {
                     face_transparency,
                     biome_id,
                     position,
+                    blend,
                 ),
                 model.use_ambient_occlusion,
             );
@@ -494,7 +499,7 @@ impl TerrainTextureState {
 
         let all = self.texture_index(&block_fallback_texture_id(block_name));
         let texture_indices = self.fluid_texture_indices(block_name).unwrap_or([all; 6]);
-        let tint = self.fallback_face_tints(block_name, material, biome_id, position);
+        let tint = self.fallback_face_tints(block_name, material, biome_id, position, blend);
         (
             texture_indices,
             tint,
@@ -509,6 +514,7 @@ impl TerrainTextureState {
                 [TerrainTransparency::OPAQUE; 6],
                 biome_id,
                 position,
+                blend,
             ),
             true,
         )
@@ -531,6 +537,7 @@ impl TerrainTextureState {
             Some(block_name),
             properties,
             bbb_world::TerrainMaterialClass::Opaque,
+            None,
             None,
             None,
         );
@@ -765,14 +772,16 @@ impl TerrainTextureState {
         face_textures: &BlockFaceTextures,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> [TerrainTint; 6] {
         std::array::from_fn(|index| {
-            self.block_tint(
+            self.block_tint_blended(
                 block_name,
                 material,
                 face_textures.tint_indices[index],
                 biome_id,
                 position,
+                blend,
             )
         })
     }
@@ -788,6 +797,7 @@ impl TerrainTextureState {
         fallback_transparency: [TerrainTransparency; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> TerrainRenderShape {
         if matches!(material, bbb_world::TerrainMaterialClass::Fluid) {
             if let Some(shape) = fluid_render_shape(block_name, properties) {
@@ -803,6 +813,7 @@ impl TerrainTextureState {
             fallback_transparency,
             biome_id,
             position,
+            blend,
         )
     }
 
@@ -816,6 +827,7 @@ impl TerrainTextureState {
         fallback_transparency: [TerrainTransparency; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> TerrainRenderShape {
         match shape {
             BlockModelShape::Cross {
@@ -838,6 +850,7 @@ impl TerrainTextureState {
                             fallback_tint,
                             biome_id,
                             position,
+                            blend,
                         ),
                         face_transparency: self
                             .model_cross_face_transparencies(&model_cross, fallback_transparency),
@@ -879,6 +892,7 @@ impl TerrainTextureState {
                             fallback_tint,
                             biome_id,
                             position,
+                            blend,
                         ),
                         face_transparency: self
                             .model_box_face_transparencies(&model_box, fallback_transparency),
@@ -905,6 +919,7 @@ impl TerrainTextureState {
                             fallback_tint,
                             biome_id,
                             position,
+                            blend,
                         ),
                         transparency: self
                             .model_quad_transparency(&model_quad, fallback_transparency)
@@ -994,8 +1009,9 @@ impl TerrainTextureState {
         material: bbb_world::TerrainMaterialClass,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> [TerrainTint; 6] {
-        [self.block_tint(block_name, material, Some(0), biome_id, position); 6]
+        [self.block_tint_blended(block_name, material, Some(0), biome_id, position, blend); 6]
     }
 
     fn model_box_face_tints(
@@ -1006,15 +1022,17 @@ impl TerrainTextureState {
         fallback: [TerrainTint; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> [TerrainTint; 6] {
         std::array::from_fn(|index| {
             if model_box.face_present[index] {
-                self.block_tint(
+                self.block_tint_blended(
                     block_name,
                     material,
                     model_box.face_tint_indices[index],
                     biome_id,
                     position,
+                    blend,
                 )
             } else {
                 fallback[index]
@@ -1030,15 +1048,17 @@ impl TerrainTextureState {
         fallback: [TerrainTint; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> [TerrainTint; 6] {
         std::array::from_fn(|index| {
             if model_cross.face_textures[index].is_some() {
-                self.block_tint(
+                self.block_tint_blended(
                     block_name,
                     material,
                     model_cross.face_tint_indices[index],
                     biome_id,
                     position,
+                    blend,
                 )
             } else {
                 fallback[index]
@@ -1054,20 +1074,23 @@ impl TerrainTextureState {
         fallback: [TerrainTint; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> TerrainTint {
         if model_quad.texture.is_some() {
-            self.block_tint(
+            self.block_tint_blended(
                 block_name,
                 material,
                 model_quad.tint_index,
                 biome_id,
                 position,
+                blend,
             )
         } else {
             fallback[model_quad.face.index()]
         }
     }
 
+    #[cfg(test)]
     fn block_tint(
         &self,
         block_name: &str,
@@ -1076,8 +1099,20 @@ impl TerrainTextureState {
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
     ) -> TerrainTint {
+        self.block_tint_blended(block_name, material, tint_index, biome_id, position, None)
+    }
+
+    fn block_tint_blended(
+        &self,
+        block_name: &str,
+        material: bbb_world::TerrainMaterialClass,
+        tint_index: Option<i32>,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
+    ) -> TerrainTint {
         self.tint_context()
-            .block_tint(block_name, material, tint_index, biome_id, position)
+            .block_tint(block_name, material, tint_index, biome_id, position, blend)
     }
 
     fn block_colors_layer0_terrain_particle_tint(
@@ -1156,9 +1191,10 @@ impl TerrainTintContext<'_> {
         tint_index: Option<i32>,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> TerrainTint {
         if matches!(block_name, "minecraft:water" | "minecraft:water_cauldron") {
-            return self.water_tint(biome_id);
+            return self.water_tint(biome_id, blend);
         }
         if tint_index.is_none() {
             return TerrainTint::WHITE;
@@ -1170,13 +1206,13 @@ impl TerrainTintContext<'_> {
             return TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55);
         }
         if is_dry_foliage_tinted_block(block_name) {
-            return self.dry_foliage_tint(biome_id);
+            return self.dry_foliage_tint(biome_id, blend);
         }
         if is_foliage_tinted_block(block_name) {
-            return self.foliage_tint(biome_id);
+            return self.foliage_tint(biome_id, blend);
         }
         if is_grass_tinted_block(block_name) {
-            return self.grass_tint(biome_id, position);
+            return self.grass_tint(biome_id, position, blend);
         }
         if matches!(material, bbb_world::TerrainMaterialClass::Fluid) {
             return TerrainTint::WHITE;
@@ -1202,7 +1238,7 @@ impl TerrainTintContext<'_> {
             | "minecraft:short_grass"
             | "minecraft:potted_fern"
             | "minecraft:bush"
-            | "minecraft:sugar_cane" => Some(self.grass_tint(biome_id, position)),
+            | "minecraft:sugar_cane" => Some(self.grass_tint(biome_id, position, None)),
             "minecraft:spruce_leaves" => Some(TerrainTint::from_rgb_u8(0x61, 0x99, 0x61)),
             "minecraft:birch_leaves" => Some(TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55)),
             "minecraft:oak_leaves"
@@ -1210,10 +1246,10 @@ impl TerrainTintContext<'_> {
             | "minecraft:acacia_leaves"
             | "minecraft:dark_oak_leaves"
             | "minecraft:vine"
-            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(biome_id)),
-            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(biome_id)),
+            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(biome_id, None)),
+            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(biome_id, None)),
             "minecraft:water_cauldron" | "minecraft:water" | "minecraft:bubble_column" => {
-                Some(self.water_tint(biome_id))
+                Some(self.water_tint(biome_id, None))
             }
             "minecraft:redstone_wire" => Some(redstone_wire_tint(
                 properties
@@ -1239,7 +1275,20 @@ impl TerrainTintContext<'_> {
         &self,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> TerrainTint {
+        terrain_tint_from_rgb(
+            self.blend_rgb(biome_id, position, blend, |ctx, biome_id, pos| {
+                ctx.resolve_grass_rgb(biome_id, pos)
+            }),
+        )
+    }
+
+    fn resolve_grass_rgb(
+        &self,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> [u8; 3] {
         let profile = self.biome_profile(biome_id);
         let base = profile.and_then(|profile| profile.grass_color).or_else(|| {
             self.colormaps.map(|colormaps| {
@@ -1250,18 +1299,26 @@ impl TerrainTintContext<'_> {
             })
         });
         let Some(base) = base else {
-            return TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59);
+            return [0x91, 0xbd, 0x59];
         };
-        terrain_tint_from_rgb(apply_grass_color_modifier(
+        apply_grass_color_modifier(
             profile.map_or(GrassColorModifier::None, |profile| {
                 profile.grass_color_modifier
             }),
             base,
             position,
-        ))
+        )
     }
 
-    fn foliage_tint(&self, biome_id: Option<i32>) -> TerrainTint {
+    fn foliage_tint(&self, biome_id: Option<i32>, blend: Option<&BiomeBlend>) -> TerrainTint {
+        terrain_tint_from_rgb(
+            self.blend_rgb(biome_id, None, blend, |ctx, biome_id, _pos| {
+                ctx.resolve_foliage_rgb(biome_id)
+            }),
+        )
+    }
+
+    fn resolve_foliage_rgb(&self, biome_id: Option<i32>) -> [u8; 3] {
         let profile = self.biome_profile(biome_id);
         profile
             .and_then(|profile| profile.foliage_color)
@@ -1273,11 +1330,18 @@ impl TerrainTintContext<'_> {
                         .sample_temperature_downfall(temperature, downfall)
                 })
             })
-            .map(terrain_tint_from_rgb)
-            .unwrap_or_else(|| TerrainTint::from_rgb_u8(0x48, 0xb5, 0x18))
+            .unwrap_or([0x48, 0xb5, 0x18])
     }
 
-    fn dry_foliage_tint(&self, biome_id: Option<i32>) -> TerrainTint {
+    fn dry_foliage_tint(&self, biome_id: Option<i32>, blend: Option<&BiomeBlend>) -> TerrainTint {
+        terrain_tint_from_rgb(
+            self.blend_rgb(biome_id, None, blend, |ctx, biome_id, _pos| {
+                ctx.resolve_dry_foliage_rgb(biome_id)
+            }),
+        )
+    }
+
+    fn resolve_dry_foliage_rgb(&self, biome_id: Option<i32>) -> [u8; 3] {
         let profile = self.biome_profile(biome_id);
         profile
             .and_then(|profile| profile.dry_foliage_color)
@@ -1289,15 +1353,62 @@ impl TerrainTintContext<'_> {
                         colormap.sample_temperature_downfall(temperature, downfall)
                     })
             })
-            .map(terrain_tint_from_rgb)
-            .unwrap_or_else(|| TerrainTint::from_rgb_u8(0x5c, 0x3c, 0x32))
+            .unwrap_or([0x5c, 0x3c, 0x32])
     }
 
-    fn water_tint(&self, biome_id: Option<i32>) -> TerrainTint {
+    fn water_tint(&self, biome_id: Option<i32>, blend: Option<&BiomeBlend>) -> TerrainTint {
+        terrain_tint_from_rgb(
+            self.blend_rgb(biome_id, None, blend, |ctx, biome_id, _pos| {
+                ctx.resolve_water_rgb(biome_id)
+            }),
+        )
+    }
+
+    fn resolve_water_rgb(&self, biome_id: Option<i32>) -> [u8; 3] {
         self.biome_profile(biome_id)
             .and_then(|profile| profile.water_color)
-            .map(terrain_tint_from_rgb)
-            .unwrap_or_else(|| TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4))
+            .unwrap_or([0x3f, 0x76, 0xe4])
+    }
+
+    /// Averages a biome `ColorResolver` over the blend window, mirroring vanilla
+    /// `ClientLevel.calculateBlockTint`: each available column is resolved to an
+    /// RGB colour (the swamp grass modifier runs per sample, using that column's
+    /// position), then the R/G/B channels are summed and integer-divided by the
+    /// sample count. With a fully-loaded window the count is the vanilla
+    /// `(2r+1)^2`; unloaded columns are dropped so a render-distance edge
+    /// averages only the columns that actually exist. When `blend` is `None`
+    /// (item / particle rendering, or an all-unavailable window) it degrades to
+    /// the single-biome resolve, i.e. `biomeBlendRadius == 0`.
+    fn blend_rgb(
+        &self,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
+        resolve: impl Fn(&Self, Option<i32>, Option<BlockRenderPosition>) -> [u8; 3],
+    ) -> [u8; 3] {
+        let Some(blend) = blend else {
+            return resolve(self, biome_id, position);
+        };
+        let mut sum = [0u32; 3];
+        let mut count = 0u32;
+        for (sample_biome, sample_position) in blend.samples() {
+            let Some(sample_biome) = sample_biome else {
+                continue;
+            };
+            let rgb = resolve(self, Some(sample_biome), Some(sample_position));
+            sum[0] += u32::from(rgb[0]);
+            sum[1] += u32::from(rgb[1]);
+            sum[2] += u32::from(rgb[2]);
+            count += 1;
+        }
+        if count == 0 {
+            return resolve(self, biome_id, position);
+        }
+        [
+            (sum[0] / count) as u8,
+            (sum[1] / count) as u8,
+            (sum[2] / count) as u8,
+        ]
     }
 
     fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {

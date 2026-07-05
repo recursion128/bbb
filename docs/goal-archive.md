@@ -3764,6 +3764,27 @@
   `ClientLevel.destroyBlockProgress`, `LevelRenderer.destroyBlockProgress`
   storing local/server updates in one per-position sorted set, and
   `extractBlockDestroyAnimation` extracting the sorted set's highest progress.
+- [x] biome 颜色混合半径（2026-07-05，P2 terrain 首片）：terrain 的 grass/
+  foliage/dry-foliage/water tint 由 per-cell 单 biome 查表改为 vanilla
+  `ClientLevel.calculateBlockTint` 的 `biomeBlendRadius` 邻域平均（硬编码
+  vanilla `Options.java` 默认 `IntRange(0,7)` 默认值 2 → 5×5=25 列）。逐条
+  复核 vanilla 语义：`Cursor3D(x-r,y,z-r … x+r,y,z+r)` 仅在 x/z 平面、y 固定
+  `pos.getY()`；`totalRed/count`（`count=(2r+1)^2`）为 per-channel 整数算术
+  平均（截断）；modifier per-sample——`GRASS_COLOR_RESOLVER=Biome::getGrassColor`
+  在 resolver 内用该样本 x/z 应用 swamp/dark_forest modifier，然后才平均
+  （`BiomeColors.java`/`Biome.getGrassColor`）。vanilla 26.1 有 4 个 resolver
+  （grass/foliage/**dry_foliage**/water 全部走 `getBlockTint` 平均），已全部
+  接入；spruce/birch 叶是常量（不走 resolver）故不混合。跨 chunk：新增
+  `WorldStore::chunk_biome_sampler` 每次 convert 预解析 3×3 邻 chunk 列
+  （半径 <16 只可能触达相邻 chunk），边界列取真实邻 chunk biome；邻 chunk 未
+  加载的列如实从均值中剔除（render-distance 边缘窗口截断、按可得样本数
+  除，不造假数据）。性能：邻域平均仅在 chunk convert（非每帧）、且仅对 biome-
+  resolver 方块（grass/foliage/water，跳过 stone/dirt/air 内部）建 5×5 窗口，
+  单元格 25 次 O(1) 采样。block-break 粒子仍取中心单 biome（该处 blend 暂缓）。
+  测试：`terrain_runtime/textures/tests.rs`（uniform=无变化不回归 / 两 biome
+  边界精确算术平均 / swamp modifier per-sample 先于平均 / 未加载列截断按可
+  得数平均）+ bbb-world `chunk_biome_sampler_reads_neighbourhood_and_
+  truncates_unloaded_columns`。
 
 ### 2026-07-05 迁入：terrain presentation 已完成项
 

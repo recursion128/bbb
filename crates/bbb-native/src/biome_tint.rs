@@ -367,6 +367,71 @@ pub(crate) fn is_dry_foliage_tinted_block(block_name: &str) -> bool {
     matches!(block_name, "minecraft:leaf_litter")
 }
 
+/// Whether `block_tint` routes this block to a biome `ColorResolver`
+/// (grass / foliage / dry-foliage / water) whose colour vanilla averages over
+/// the `biomeBlendRadius` window. Spruce/birch leaves are excluded because
+/// vanilla gives them a constant (`FoliageColor.FOLIAGE_EVERGREEN` /
+/// `FOLIAGE_BIRCH`) that never goes through a resolver, so it is not blended.
+pub(crate) fn block_wants_biome_blend(block_name: &str, has_water_fluid: bool) -> bool {
+    has_water_fluid
+        || matches!(block_name, "minecraft:water" | "minecraft:water_cauldron")
+        || is_dry_foliage_tinted_block(block_name)
+        || is_foliage_tinted_block(block_name)
+        || is_grass_tinted_block(block_name)
+}
+
+/// Vanilla `Options.biomeBlendRadius` default (`Options.java`: `IntRange(0, 7)`
+/// default `2`), producing a `5x5 = 25`-column blend window.
+pub(crate) const BIOME_BLEND_RADIUS: i32 = 2;
+pub(crate) const BIOME_BLEND_DIAMETER: i32 = BIOME_BLEND_RADIUS * 2 + 1;
+pub(crate) const BIOME_BLEND_SAMPLES: usize =
+    (BIOME_BLEND_DIAMETER * BIOME_BLEND_DIAMETER) as usize;
+
+/// The biome-id window used to average biome tint colours across the
+/// `biomeBlendRadius` neighbourhood, mirroring vanilla
+/// `ClientLevel.calculateBlockTint`. Sampling happens only in the x/z plane at
+/// the cell's own y (vanilla's `Cursor3D` fixes `y` to `pos.getY()`);
+/// `samples[row * D + col]` is the biome id at
+/// `(center.x - r + col, center.y, center.z - r + row)`, and `None` marks a
+/// column whose chunk is not loaded — an honestly-truncated window edge that is
+/// dropped from the average rather than fabricated.
+#[derive(Debug, Clone)]
+pub(crate) struct BiomeBlend {
+    center: BlockRenderPosition,
+    samples: [Option<i32>; BIOME_BLEND_SAMPLES],
+}
+
+impl BiomeBlend {
+    pub(crate) fn new(
+        center: BlockRenderPosition,
+        samples: [Option<i32>; BIOME_BLEND_SAMPLES],
+    ) -> Self {
+        Self { center, samples }
+    }
+
+    /// Iterates the window as `(biome_id, sample_position)` pairs. Each
+    /// `sample_position` carries that column's own x/z, which the swamp grass
+    /// modifier needs because vanilla applies it per sample inside
+    /// `Biome::getGrassColor(x, z)` before the colours are averaged.
+    pub(crate) fn samples(&self) -> impl Iterator<Item = (Option<i32>, BlockRenderPosition)> + '_ {
+        let base_x = self.center.x - BIOME_BLEND_RADIUS;
+        let base_z = self.center.z - BIOME_BLEND_RADIUS;
+        let y = self.center.y;
+        self.samples.iter().enumerate().map(move |(index, biome)| {
+            let col = (index as i32) % BIOME_BLEND_DIAMETER;
+            let row = (index as i32) / BIOME_BLEND_DIAMETER;
+            (
+                *biome,
+                BlockRenderPosition {
+                    x: base_x + col,
+                    y,
+                    z: base_z + row,
+                },
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

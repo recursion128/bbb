@@ -425,12 +425,6 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; the umbrella claims in goal.md P2 were
   re-verified and most surfaces are already aligned — see Evidence):
-  - Biome color blending radius: per-cell tints are single-biome lookups
-    (`terrain_runtime.rs` passes one `biome_id` per cell;
-    `terrain_runtime/textures.rs` `grass_tint`/foliage/`water_tint` are point
-    queries) with no `biomeBlendRadius` (default 2, 5×5) neighborhood
-    averaging per vanilla `BiomeColors.getAverage*Color` /
-    `Level.getBlockTint` — biome borders show hard color seams.
   - Breaking crack decal shape: `block_destroy.rs` always emits a unit cube
     (`DESTROY_OVERLAY_FACES`) regardless of the block's render shape; vanilla
     `BlockRenderDispatcher.renderBreakingTexture` re-renders the model's own
@@ -451,6 +445,24 @@ When an agent does any of the following, update this file in the same slice:
     fallback (`block_models/shape.rs` → `textures.rs`) alongside, since
     unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-05 — Biome color blend radius: terrain grass/foliage/
+    dry-foliage/water tints now average the biome `ColorResolver` over the
+    `biomeBlendRadius` window (hard-coded to vanilla `Options.java` default 2 →
+    5×5), matching `ClientLevel.calculateBlockTint` (x/z plane at fixed y,
+    per-channel integer arithmetic mean; the swamp grass modifier is applied
+    per sample inside the resolver, before averaging — verified against
+    `BiomeColors`/`Biome.getGrassColor`). Cross-chunk correctness: a per-convert
+    `WorldStore::chunk_biome_sampler` pre-resolves the 3×3 neighbour columns so
+    edge columns pull real neighbour-chunk biomes; columns whose chunk is not
+    loaded are dropped from the mean (honest window truncation at the render-
+    distance edge, divided by the available count) rather than fabricated.
+    Window build is limited to biome-resolver blocks (grass/foliage/water),
+    skipping the stone/dirt/air interior. Spruce/birch leaves keep their vanilla
+    constant (not resolver-driven, so not blended); block-break particles still
+    sample the single centre biome (blend deferred there). Tests:
+    `terrain_runtime/textures/tests.rs` (uniform=no-op, two-biome exact mean,
+    swamp per-sample-before-average, unloaded-column truncation) +
+    `bbb-world` `chunk_biome_sampler_reads_neighbourhood_and_truncates_...`.
   - Verified aligned on 2026-07-05 (no code gap): vanilla four-corner AO +
     smooth lighting (`terrain/mesh/emitter.rs` per
     `ModelBlockRenderer.AmbientOcclusionCalculator`), face culling between

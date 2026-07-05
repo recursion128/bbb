@@ -466,6 +466,41 @@ fn probes_block_state_from_local_palette() {
 }
 
 #[test]
+fn chunk_biome_sampler_reads_neighbourhood_and_truncates_unloaded_columns() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let sampler = store.chunk_biome_sampler(ChunkPos { x: 2, z: -3 });
+
+    // In-chunk sample matches the per-block biome probe (single-value biome 4).
+    assert_eq!(sampler.biome_id_at(34, 1, -45), Some(4));
+    assert_eq!(
+        sampler.biome_id_at(34, 1, -45),
+        store
+            .probe_block(BlockPos {
+                x: 34,
+                y: 1,
+                z: -45,
+            })
+            .unwrap()
+            .biome_id,
+    );
+
+    // A column that reaches into the adjacent (unloaded) chunk truncates to
+    // None instead of fabricating a biome sample.
+    assert_eq!(sampler.biome_id_at(48, 1, -45), None);
+    // Out of the vertical range.
+    assert_eq!(sampler.biome_id_at(34, 16, -45), None);
+    // Beyond the pre-resolved 3x3 neighbourhood.
+    assert_eq!(sampler.biome_id_at(64, 1, -45), None);
+}
+
+#[test]
 fn applies_single_block_update_and_reuploads_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

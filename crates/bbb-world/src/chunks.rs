@@ -17,6 +17,7 @@ pub use state::{
     ChunkViewState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState,
     VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
 };
+pub use store::ChunkBiomeSampler;
 pub(crate) use vault::decode_vault_shared_data;
 
 #[cfg(test)]
