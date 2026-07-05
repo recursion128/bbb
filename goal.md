@@ -194,8 +194,9 @@ glint 全家族与 first-person 手持/手臂/use-pose 完成史）。
 
 仍在推进：
 
-- HUD / inventory：vanilla font / count / durability / cooldown / tooltip /
-  screen depth behavior。
+- HUD / inventory：vanilla non-ASCII font（含 tooltip 文本 bidi 整形）与
+  screen depth behavior（tooltip 官方 background/frame nine-slice sprite 与
+  count / durability / cooldown 均已完成）。
 - creative inventory-tab preview（需要 creative screen state）与 entity
   preview 实际 GPU PIP drawing（后续视觉渲染面）。
 - touchscreen snapback（宽面，按最小 slice 进入）。

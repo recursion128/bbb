@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use anyhow::{bail, Context, Result};
-use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
+use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
+use bbb_renderer::HudNineSliceScaling;
 
 use bbb_item_model::ascii_font::{
     hud_ascii_atlas_from_image, hud_ascii_digit_atlas_from_image, load_ascii_font_texture,
@@ -35,6 +36,22 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/inventory",
     )?;
     renderer.upload_hud_inventory_background(inventory.width, inventory.height, &inventory.rgba)?;
+    let tooltip_background = hud_sprite(&sprites, "tooltip/background")?;
+    let tooltip_background_scaling = hud_nine_slice_scaling(tooltip_background)?;
+    renderer.upload_hud_tooltip_background(
+        tooltip_background.width,
+        tooltip_background.height,
+        &tooltip_background.rgba,
+        tooltip_background_scaling,
+    )?;
+    let tooltip_frame = hud_sprite(&sprites, "tooltip/frame")?;
+    let tooltip_frame_scaling = hud_nine_slice_scaling(tooltip_frame)?;
+    renderer.upload_hud_tooltip_frame(
+        tooltip_frame.width,
+        tooltip_frame.height,
+        &tooltip_frame.rgba,
+        tooltip_frame_scaling,
+    )?;
     let generic_container = gui_texture(
         roots,
         "textures/gui/container/generic_54.png",
@@ -768,6 +785,32 @@ fn hud_sprite<'a>(
     sprites
         .get(&id)
         .with_context(|| format!("missing HUD sprite {id} in vanilla GUI atlas"))
+}
+
+/// Extracts a HUD sprite's nine-slice scaling from its `gui.scaling` mcmeta, failing loudly if the
+/// sprite is not declared `nine_slice` (the tooltip background/frame sprites always are).
+fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
+    match sprite.gui_metadata.scaling {
+        SpriteGuiScaling::NineSlice {
+            width,
+            height,
+            border,
+            stretch_inner,
+        } => Ok(HudNineSliceScaling {
+            sprite_width: width,
+            sprite_height: height,
+            border_left: border.left,
+            border_top: border.top,
+            border_right: border.right,
+            border_bottom: border.bottom,
+            stretch_inner,
+        }),
+        other => bail!(
+            "HUD sprite {} has gui scaling {:?}, expected nine_slice",
+            sprite.id,
+            other
+        ),
+    }
 }
 
 fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {

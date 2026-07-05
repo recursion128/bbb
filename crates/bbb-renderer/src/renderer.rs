@@ -51,7 +51,7 @@ use crate::{
     hud::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAsciiGlyph, HudDigitGlyph, HudInventoryScreen, HudItemIcon,
-        HudSpriteGpu, HUD_ASCII_GLYPH_COUNT, HUD_HOTBAR_SLOTS,
+        HudNineSliceSprite, HudSpriteGpu, HUD_ASCII_GLYPH_COUNT, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -345,6 +345,8 @@ pub struct Renderer {
     pub(super) hud_ascii_glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
     pub(super) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(super) hud_inventory_background: Option<HudSpriteGpu>,
+    pub(super) hud_tooltip_background: Option<HudNineSliceSprite>,
+    pub(super) hud_tooltip_frame: Option<HudNineSliceSprite>,
     pub(super) hud_generic_container_background: Option<HudSpriteGpu>,
     pub(super) hud_dispenser_background: Option<HudSpriteGpu>,
     pub(super) hud_crafting_table_background: Option<HudSpriteGpu>,
@@ -1208,6 +1210,8 @@ impl Renderer {
             hud_ascii_glyphs: [HudAsciiGlyph::default(); HUD_ASCII_GLYPH_COUNT],
             hud_hotbar_item_icons: std::array::from_fn(|_| None),
             hud_inventory_background: None,
+            hud_tooltip_background: None,
+            hud_tooltip_frame: None,
             hud_generic_container_background: None,
             hud_dispenser_background: None,
             hud_crafting_table_background: None,

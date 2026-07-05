@@ -857,6 +857,44 @@ mod tests {
     }
 
     #[test]
+    fn sprite_source_reads_gui_nine_slice_stretch_inner_from_mcmeta() {
+        // Mirrors the real `tooltip/frame.png.mcmeta`: a scalar border plus `stretch_inner: true`.
+        let dir = unique_temp_dir("gui-nine-slice-stretch-inner");
+        let path = dir.join("frame.png");
+        write_test_png(&path, 100, 100);
+        write_json(
+            &dir.join("frame.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 100,
+                  "height": 100,
+                  "border": 10,
+                  "stretch_inner": true
+                }
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:tooltip/frame", &path).unwrap();
+
+        assert_eq!(
+            source.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::NineSlice {
+                    width: 100,
+                    height: 100,
+                    border: SpriteNineSliceBorder::uniform(10),
+                    stretch_inner: true,
+                },
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn sprite_source_rejects_gui_nine_slice_without_center() {
         let dir = unique_temp_dir("gui-nine-slice-invalid");
         let path = dir.join("bad_button.png");

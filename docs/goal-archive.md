@@ -1467,6 +1467,31 @@
   `entity_models/tests/player.rs`
   `first_person_player_arm_renders_visible_pixels`（无 GPU adapter 时 skip，
   不在无 adapter 机器上误 fail）。
+- [x] HUD/inventory tooltip 官方 background/frame nine-slice sprite：把
+  `push_hud_inventory_tooltip` 的单张纯色矩形（`[0.0625,0,0.0625,0.94]`）换成
+  vanilla `TooltipRenderUtil.extractTooltipBackground` 的两层 nine-slice blit——
+  先 `tooltip/background`、后 `tooltip/frame`，两者都画在同一 `x-3-9,y-3-9` /
+  `w+24,h+24` padded rect 上（bbb 既有的
+  `hud_inventory_tooltip_background_hud_rect` 已与 vanilla 常量一致）。gui sprite
+  管线加 nine-slice 支持：native 侧从 gui atlas 读 `tooltip/background`（mcmeta
+  `nine_slice` width/height 100、border 9、`stretch_inner` 缺省 false=tile）与
+  `tooltip/frame`（border 10、`stretch_inner` true=stretch）的
+  `SpriteImage.gui_metadata.scaling`，经新公开 `HudNineSliceScaling` +
+  `upload_hud_tooltip_background` / `_frame` 连同 RGBA 上传；renderer 侧
+  `hud/layout.rs` 新增 `nine_slice_segments`，按
+  `GuiGraphicsExtractor.blitNineSlicedSprite` 语义把目标矩形拆成 9 区（角块 1:1、
+  四边+中心按 `stretch_inner` 拉伸或 `blitTiledSprite` 平铺、末尾行列 tile 裁剪、
+  border 按 `min(border, target/2)` clamp、退化时塌成 4 角块），bbb 因每张 sprite
+  单独成纹理故 UV 直接是 sprite 分数（`getU(x/spriteWidth)`，`u0=0`）。sprite 缺失
+  时回退旧纯色矩形（账本记录）。测试：`bbb-pack` `sprites.rs`
+  `sprite_source_reads_gui_nine_slice_stretch_inner_from_mcmeta`（mcmeta 定字节 →
+  九宫格参数含 stretch_inner）、`bbb-renderer` `hud/layout.rs`
+  `nine_slice_segments_stretch_inner_splits_into_nine_vanilla_regions` /
+  `nine_slice_segments_clamp_borders_and_drop_center_when_target_smaller_than_borders` /
+  `nine_slice_segments_tile_inner_repeats_and_clips_last_tile` /
+  `hud_inventory_tooltip_sprite_segments_layer_background_then_frame_in_vanilla_order`
+  （九宫格顶点/UV 确定性、退化 clamp、tile 平铺+裁剪、两层 source-order）。剩余
+  rich tooltip 项：non-ASCII font provider 与 bidi 文本整形。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

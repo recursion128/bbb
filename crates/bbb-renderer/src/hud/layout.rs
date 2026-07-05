@@ -1,7 +1,9 @@
 use glam::{Mat4, Vec3};
 use winit::dpi::PhysicalSize;
 
-use super::{HudAsciiGlyph, HudDigitGlyph, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
+use super::{
+    HudAsciiGlyph, HudDigitGlyph, HudNineSliceScaling, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS,
+};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
@@ -29,7 +31,7 @@ const HUD_TOOLTIP_BACKGROUND_PADDING: u32 = 24;
 const HUD_TOOLTIP_LINE_HEIGHT: u32 = 10;
 const HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP: u32 = 2;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct HudRect {
     x: f32,
     y: f32,
@@ -465,6 +467,240 @@ pub(super) fn hud_quad_vertices(
     ]
 }
 
+/// One textured quad of a nine-slice blit: `rect` is the on-screen placement and `uv` the
+/// sub-rectangle of the (standalone) sprite texture, in the same conventions as
+/// [`hud_quad_vertices`]. bbb uploads each nine-slice sprite as its own texture, so UVs are direct
+/// fractions of the sprite (vanilla `TextureAtlasSprite.getU(x / spriteWidth)` with `u0 == 0`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct NineSliceSegment {
+    pub(super) rect: HudRect,
+    pub(super) uv: HudUvRect,
+}
+
+/// Which tooltip sprite a planned segment belongs to. Vanilla draws the whole background sprite
+/// first and the whole frame sprite second (`TooltipRenderUtil.extractTooltipBackground` blits
+/// `tooltip/background` then `tooltip/frame`), so the planner preserves that source order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum HudTooltipSpriteLayer {
+    Background,
+    Frame,
+}
+
+/// A tooltip nine-slice quad tagged with its owning sprite so the renderer can dispatch to the
+/// background/frame GPU textures while keeping vanilla source order.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudTooltipSpriteSegment {
+    pub(super) layer: HudTooltipSpriteLayer,
+    pub(super) rect: HudRect,
+    pub(super) uv: HudUvRect,
+}
+
+/// Splits `target` into vanilla nine-slice quads for `scaling`, mirroring
+/// `GuiGraphicsExtractor.blitNineSlicedSprite`: borders are clamped to `target / 2` (integer
+/// division), corners blit 1:1, and the four edges plus center either stretch (`stretch_inner`) or
+/// tile (matching `blitTiledSprite`, with the last row/column tile clipped) across the remaining
+/// span. Degenerate spans (`0` after clamping) are dropped, so a target smaller than twice its
+/// borders collapses to just the four corner quads.
+pub(super) fn nine_slice_segments(
+    target: HudRect,
+    scaling: HudNineSliceScaling,
+) -> Vec<NineSliceSegment> {
+    let mut segments = Vec::new();
+    let target_width = target.width;
+    let target_height = target.height;
+    if target_width == 0 || target_height == 0 {
+        return segments;
+    }
+    let sprite_width = scaling.sprite_width.max(1);
+    let sprite_height = scaling.sprite_height.max(1);
+    let border_left = scaling.border_left.min(target_width / 2);
+    let border_right = scaling.border_right.min(target_width / 2);
+    let border_top = scaling.border_top.min(target_height / 2);
+    let border_bottom = scaling.border_bottom.min(target_height / 2);
+    let inner_width = target_width.saturating_sub(border_left + border_right);
+    let inner_height = target_height.saturating_sub(border_top + border_bottom);
+    let tex_inner_width = sprite_width.saturating_sub(border_left + border_right);
+    let tex_inner_height = sprite_height.saturating_sub(border_top + border_bottom);
+
+    // Column/row spans as (screen offset, screen size, texture offset, texture size). The clamped
+    // borders are used for both the screen rect and the texture rect, matching vanilla's use of the
+    // clamped `borderLeft`/`borderRight`/... when it computes texture coordinates.
+    let columns = [
+        (0, border_left, 0, border_left),
+        (border_left, inner_width, border_left, tex_inner_width),
+        (
+            target_width - border_right,
+            border_right,
+            sprite_width - border_right,
+            border_right,
+        ),
+    ];
+    let rows = [
+        (0, border_top, 0, border_top),
+        (border_top, inner_height, border_top, tex_inner_height),
+        (
+            target_height - border_bottom,
+            border_bottom,
+            sprite_height - border_bottom,
+            border_bottom,
+        ),
+    ];
+
+    for (row_index, &(row_offset, row_size, tex_row_offset, tex_row_size)) in
+        rows.iter().enumerate()
+    {
+        for (col_index, &(col_offset, col_size, tex_col_offset, tex_col_size)) in
+            columns.iter().enumerate()
+        {
+            if col_size == 0 || row_size == 0 {
+                continue;
+            }
+            // The center (1, 1) and the four edges (exactly one index == 1) are the "inner" slices
+            // that stretch or tile; the four corners (both indices != 1) always blit 1:1.
+            let is_inner = row_index == 1 || col_index == 1;
+            let tile = is_inner && !scaling.stretch_inner;
+            push_nine_slice_region(
+                &mut segments,
+                target,
+                sprite_width,
+                sprite_height,
+                col_offset,
+                row_offset,
+                col_size,
+                row_size,
+                tex_col_offset,
+                tex_row_offset,
+                tex_col_size,
+                tex_row_size,
+                tile,
+            );
+        }
+    }
+
+    segments
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_nine_slice_region(
+    segments: &mut Vec<NineSliceSegment>,
+    target: HudRect,
+    sprite_width: u32,
+    sprite_height: u32,
+    col_offset: u32,
+    row_offset: u32,
+    col_size: u32,
+    row_size: u32,
+    tex_col_offset: u32,
+    tex_row_offset: u32,
+    tex_col_size: u32,
+    tex_row_size: u32,
+    tile: bool,
+) {
+    if !tile || tex_col_size == 0 || tex_row_size == 0 {
+        // Single stretched quad (also the graceful fallback when a texture span is zero and so
+        // cannot be tiled).
+        segments.push(nine_slice_region_segment(
+            target,
+            sprite_width,
+            sprite_height,
+            col_offset,
+            row_offset,
+            col_size,
+            row_size,
+            tex_col_offset,
+            tex_row_offset,
+            tex_col_size,
+            tex_row_size,
+        ));
+        return;
+    }
+    // Tile the texture span (`tex_col_size` x `tex_row_size`) across the screen span at 1:1 scale,
+    // clipping the final row/column tile like vanilla's `blitTiledSprite`.
+    let mut oy = 0;
+    while oy < row_size {
+        let tile_height = tex_row_size.min(row_size - oy);
+        let mut ox = 0;
+        while ox < col_size {
+            let tile_width = tex_col_size.min(col_size - ox);
+            segments.push(nine_slice_region_segment(
+                target,
+                sprite_width,
+                sprite_height,
+                col_offset + ox,
+                row_offset + oy,
+                tile_width,
+                tile_height,
+                tex_col_offset,
+                tex_row_offset,
+                tile_width,
+                tile_height,
+            ));
+            ox += tex_col_size;
+        }
+        oy += tex_row_size;
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn nine_slice_region_segment(
+    target: HudRect,
+    sprite_width: u32,
+    sprite_height: u32,
+    col_offset: u32,
+    row_offset: u32,
+    col_size: u32,
+    row_size: u32,
+    tex_col_offset: u32,
+    tex_row_offset: u32,
+    tex_col_size: u32,
+    tex_row_size: u32,
+) -> NineSliceSegment {
+    let sprite_width = sprite_width as f32;
+    let sprite_height = sprite_height as f32;
+    NineSliceSegment {
+        rect: HudRect {
+            x: target.x + col_offset as f32,
+            y: target.y + row_offset as f32,
+            width: col_size,
+            height: row_size,
+        },
+        uv: HudUvRect {
+            min: [
+                tex_col_offset as f32 / sprite_width,
+                tex_row_offset as f32 / sprite_height,
+            ],
+            max: [
+                (tex_col_offset + tex_col_size) as f32 / sprite_width,
+                (tex_row_offset + tex_row_size) as f32 / sprite_height,
+            ],
+        },
+    }
+}
+
+/// Plans the tooltip's two nine-slice layers over `target` in vanilla source order: every
+/// `background` segment, then every `frame` segment (`TooltipRenderUtil.extractTooltipBackground`
+/// blits `tooltip/background` before `tooltip/frame` over the same rect).
+pub(super) fn hud_inventory_tooltip_sprite_segments(
+    target: HudRect,
+    background: HudNineSliceScaling,
+    frame: HudNineSliceScaling,
+) -> Vec<HudTooltipSpriteSegment> {
+    let mut segments = Vec::new();
+    for (layer, scaling) in [
+        (HudTooltipSpriteLayer::Background, background),
+        (HudTooltipSpriteLayer::Frame, frame),
+    ] {
+        for region in nine_slice_segments(target, scaling) {
+            segments.push(HudTooltipSpriteSegment {
+                layer,
+                rect: region.rect,
+                uv: region.uv,
+            });
+        }
+    }
+    segments
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -693,6 +929,225 @@ mod tests {
         assert_eq!(bottom.x, 30.0);
         assert_eq!(bottom.y, 65.0);
         assert_eq!(bottom.height, 44);
+    }
+
+    fn uniform_nine_slice(size: u32, border: u32, stretch_inner: bool) -> HudNineSliceScaling {
+        HudNineSliceScaling {
+            sprite_width: size,
+            sprite_height: size,
+            border_left: border,
+            border_top: border,
+            border_right: border,
+            border_bottom: border,
+            stretch_inner,
+        }
+    }
+
+    #[test]
+    fn nine_slice_segments_stretch_inner_splits_into_nine_vanilla_regions() {
+        let target = HudRect {
+            x: 100.0,
+            y: 50.0,
+            width: 64,
+            height: 32,
+        };
+        let segments = nine_slice_segments(target, uniform_nine_slice(100, 9, true));
+
+        // 100x100 sprite, border 9 (well below target/2), stretched inner => exactly nine quads.
+        assert_eq!(segments.len(), 9);
+
+        // Top-left corner: 9x9 at the target origin, sampling the sprite's top-left 9x9 texels.
+        assert_eq!(
+            segments[0],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 100.0,
+                    y: 50.0,
+                    width: 9,
+                    height: 9,
+                },
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [9.0 / 100.0, 9.0 / 100.0],
+                },
+            }
+        );
+
+        // Center: the 46x14 inner span stretched across the sprite's 82x82 inner texels.
+        assert_eq!(
+            segments[4],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 109.0,
+                    y: 59.0,
+                    width: 46,
+                    height: 14,
+                },
+                uv: HudUvRect {
+                    min: [9.0 / 100.0, 9.0 / 100.0],
+                    max: [91.0 / 100.0, 91.0 / 100.0],
+                },
+            }
+        );
+
+        // Bottom-right corner anchored to the target's far edge and the sprite's far texels.
+        assert_eq!(
+            segments[8],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 155.0,
+                    y: 73.0,
+                    width: 9,
+                    height: 9,
+                },
+                uv: HudUvRect {
+                    min: [91.0 / 100.0, 91.0 / 100.0],
+                    max: [1.0, 1.0],
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn nine_slice_segments_clamp_borders_and_drop_center_when_target_smaller_than_borders() {
+        let target = HudRect {
+            x: 20.0,
+            y: 30.0,
+            width: 10,
+            height: 10,
+        };
+        let segments = nine_slice_segments(target, uniform_nine_slice(100, 9, true));
+
+        // Vanilla clamps each border to target/2 (=5 here), collapsing the inner spans to zero, so
+        // only the four 5x5 corner quads survive.
+        assert_eq!(segments.len(), 4);
+        assert_eq!(
+            segments[0].rect,
+            HudRect {
+                x: 20.0,
+                y: 30.0,
+                width: 5,
+                height: 5,
+            }
+        );
+        assert_eq!(segments[0].uv.max, [5.0 / 100.0, 5.0 / 100.0]);
+        assert_eq!(
+            segments[3].rect,
+            HudRect {
+                x: 25.0,
+                y: 35.0,
+                width: 5,
+                height: 5,
+            }
+        );
+        assert_eq!(segments[3].uv.min, [95.0 / 100.0, 95.0 / 100.0]);
+        assert_eq!(segments[3].uv.max, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn nine_slice_segments_tile_inner_repeats_and_clips_last_tile() {
+        let target = HudRect {
+            x: 0.0,
+            y: 0.0,
+            width: 28,
+            height: 12,
+        };
+        let tiled = nine_slice_segments(target, uniform_nine_slice(20, 4, false));
+        let stretched = nine_slice_segments(target, uniform_nine_slice(20, 4, true));
+
+        // Inner span (20 wide) exceeds the sprite's inner texel span (12), so tiling emits an extra
+        // clipped quad per horizontal inner slice; the stretched variant stays at nine.
+        assert_eq!(stretched.len(), 9);
+        assert_eq!(tiled.len(), 12);
+
+        // Ordered row-major, the center row's tiles are indices 5 and 6.
+        assert_eq!(
+            tiled[5],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 4.0,
+                    y: 4.0,
+                    width: 12,
+                    height: 4,
+                },
+                uv: HudUvRect {
+                    min: [4.0 / 20.0, 4.0 / 20.0],
+                    max: [16.0 / 20.0, 8.0 / 20.0],
+                },
+            }
+        );
+        // Final center tile is clipped to the remaining 8px, sampling only 8 of the 12 inner texels.
+        assert_eq!(
+            tiled[6],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 16.0,
+                    y: 4.0,
+                    width: 8,
+                    height: 4,
+                },
+                uv: HudUvRect {
+                    min: [4.0 / 20.0, 4.0 / 20.0],
+                    max: [12.0 / 20.0, 8.0 / 20.0],
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn hud_inventory_tooltip_sprite_segments_layer_background_then_frame_in_vanilla_order() {
+        // The two real tooltip sprites: background tiles its inner (stretch_inner=false, border 9),
+        // frame stretches its inner (stretch_inner=true, border 10). Both are 100x100.
+        let background = uniform_nine_slice(100, 9, false);
+        let frame = uniform_nine_slice(100, 10, true);
+        let target = HudRect {
+            x: 100.0,
+            y: 50.0,
+            width: 64,
+            height: 32,
+        };
+
+        let segments = hud_inventory_tooltip_sprite_segments(target, background, frame);
+
+        // Both layers' inner spans stay below their sprite inner texels, so each contributes nine
+        // quads: eighteen total, all background quads first (vanilla blits background then frame).
+        assert_eq!(segments.len(), 18);
+        assert!(segments[..9]
+            .iter()
+            .all(|segment| segment.layer == HudTooltipSpriteLayer::Background));
+        assert!(segments[9..]
+            .iter()
+            .all(|segment| segment.layer == HudTooltipSpriteLayer::Frame));
+
+        // Both layers share the same padded rect origin; border widths differ per sprite (9 vs 10).
+        assert_eq!(
+            segments[0].rect,
+            HudRect {
+                x: 100.0,
+                y: 50.0,
+                width: 9,
+                height: 9,
+            }
+        );
+        assert_eq!(
+            segments[9].rect,
+            HudRect {
+                x: 100.0,
+                y: 50.0,
+                width: 10,
+                height: 10,
+            }
+        );
+
+        // The background center is a single clipped tile (not stretched): its UV covers only the
+        // 46x14 inner span, unlike a stretch that would reach the sprite's 82x82 inner texels.
+        assert_eq!(
+            segments[4].uv,
+            HudUvRect {
+                min: [9.0 / 100.0, 9.0 / 100.0],
+                max: [55.0 / 100.0, 23.0 / 100.0],
+            }
+        );
     }
 
     #[test]

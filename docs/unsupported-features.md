@@ -1428,8 +1428,9 @@ When an agent does any of the following, update this file in the same slice:
   - Commands: continue adding focused command queue and encode tests for
     inventory, interaction, chat, command, and sign editing.
   - Inventory: implement remaining rich tooltip behavior (non-ASCII font
-    providers, bidirectional text shaping, official tooltip
-    background/frame sprites, and italic/complex component styles).
+    providers, bidirectional text shaping, and italic/complex component
+    styles); the official tooltip background/frame nine-slice sprites are
+    now drawn.
   - Completion requires full vanilla movement and these flows to work
     through encoded serverbound packets end to end.
 - Evidence / boundary:

@@ -20,10 +20,11 @@ use self::layout::{
     heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect,
     hud_experience_progress_width, hud_food_fill, hud_heart_fill,
     hud_inventory_text_label_glyph_hud_rect, hud_inventory_tooltip_background_hud_rect,
-    hud_inventory_tooltip_text_height, hud_inventory_tooltip_text_hud_rect, hud_item_cooldown_rect,
-    hud_item_count_digit_hud_rect, hud_item_durability_bar_rect, hud_quad_vertices,
-    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
+    hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
+    hud_inventory_tooltip_text_hud_rect, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
+    hud_item_durability_bar_rect, hud_quad_vertices, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
+    HudTooltipSpriteLayer, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -32,6 +33,30 @@ pub use bbb_render_types::{
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
+
+/// Nine-slice scaling metadata for a HUD sprite, mirroring vanilla `GuiSpriteScaling.NineSlice`
+/// (`assets/.../gui/sprites/**.png.mcmeta` → `gui.scaling`). `sprite_width`/`sprite_height` are the
+/// declared nine-slice grid size (the sprite is uploaded as its own texture, so UVs are direct
+/// fractions of these), the four borders are per-edge slice widths, and `stretch_inner` selects
+/// stretch (`true`) vs tile (`false`) for the four edge slices and the center.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudNineSliceScaling {
+    pub sprite_width: u32,
+    pub sprite_height: u32,
+    pub border_left: u32,
+    pub border_top: u32,
+    pub border_right: u32,
+    pub border_bottom: u32,
+    pub stretch_inner: bool,
+}
+
+/// A HUD sprite uploaded together with its nine-slice scaling, so draw-time geometry can split it
+/// into border/edge/center quads instead of stretching a single flat quad.
+pub(crate) struct HudNineSliceSprite {
+    pub(crate) gpu: HudSpriteGpu,
+    pub(crate) scaling: HudNineSliceScaling,
+}
+
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
 const HUD_ITEM_BAR_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -522,6 +547,34 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_inventory_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_tooltip_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_tooltip_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
+        Ok(())
+    }
+
+    pub fn upload_hud_tooltip_frame(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_tooltip_frame = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
         Ok(())
     }
 
@@ -1962,6 +2015,8 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.hud_ascii_atlas.as_ref(),
                 &self.hud_ascii_glyphs,
                 surface_size,
@@ -2612,10 +2667,13 @@ fn push_hud_inventory_text_labels<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn push_hud_inventory_tooltip<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
     ascii_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
     surface_size: PhysicalSize<u32>,
@@ -2636,26 +2694,55 @@ fn push_hud_inventory_tooltip<'a>(
         return;
     };
 
-    push_hud_draw_with_uv_and_tint(
-        vertices,
-        commands,
-        white_pixel,
+    let background_rect = hud_inventory_tooltip_background_hud_rect(
         surface_size,
-        hud_inventory_tooltip_background_hud_rect(
-            surface_size,
-            screen.width,
-            screen.height,
-            tooltip.x,
-            tooltip.y,
-            text_width,
-            text_height,
-        ),
-        HudUvRect {
-            min: [0.0, 0.0],
-            max: [1.0, 1.0],
-        },
-        HUD_TOOLTIP_BACKGROUND_TINT,
+        screen.width,
+        screen.height,
+        tooltip.x,
+        tooltip.y,
+        text_width,
+        text_height,
     );
+    match (tooltip_background, tooltip_frame) {
+        // Vanilla `TooltipRenderUtil.extractTooltipBackground`: nine-slice `tooltip/background`
+        // then `tooltip/frame` over the same padded rect.
+        (Some(background), Some(frame)) => {
+            for segment in hud_inventory_tooltip_sprite_segments(
+                background_rect,
+                background.scaling,
+                frame.scaling,
+            ) {
+                let sprite = match segment.layer {
+                    HudTooltipSpriteLayer::Background => &background.gpu,
+                    HudTooltipSpriteLayer::Frame => &frame.gpu,
+                };
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    sprite,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        // Missing-asset fallback: the legacy flat translucent background quad.
+        _ => {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                background_rect,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TOOLTIP_BACKGROUND_TINT,
+            );
+        }
+    }
 
     for shadow_offset in [1.0, 0.0] {
         for (line_index, line) in tooltip.lines.iter().enumerate() {

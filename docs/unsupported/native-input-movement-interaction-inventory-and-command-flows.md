@@ -87,7 +87,6 @@
       - remaining rich tooltip behavior:
         - non-ASCII font providers
         - bidirectional text shaping
-        - official tooltip background/frame sprites
         - italic and complex component styles
         - component-specific detail lines
       - remaining dedicated server-opened menu layouts not already covered by
@@ -603,6 +602,12 @@
         - unbreakable component detail line
       - renders hovered-slot item tooltip names as basic ASCII text using
         official 26.1 `font/ascii.png` glyphs
+      - draws the tooltip background/frame with the official
+        `tooltip/background` and `tooltip/frame` nine-slice sprites (vanilla
+        `TooltipRenderUtil.extractTooltipBackground`: background then frame over
+        the same `x-3-9,y-3-9`/`w+24,h+24` padded rect), tiling or stretching
+        each sprite's inner slices per its `gui.scaling` mcmeta and falling back
+        to the legacy flat translucent quad only when the sprites are absent
     - It renders and hit-tests supported server-opened screens:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
