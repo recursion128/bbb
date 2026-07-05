@@ -19,8 +19,9 @@ use self::layout::{
     boss_bar_hud_rect, centered_hud_rect, experience_bar_hud_rect, food_hud_rect,
     gui_item_slot_placement, heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect,
     hotbar_selection_hud_rect, hud_boss_bar_fill_uv, hud_boss_bar_name_origin,
-    hud_boss_bar_progress_width, hud_boss_bar_rows, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
+    hud_boss_bar_progress_width, hud_boss_bar_rows, hud_experience_level_text_origin,
+    hud_experience_progress_width, hud_food_fill, hud_food_jitter_offsets, hud_heart_fill,
+    hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
     hud_inventory_tooltip_line_origin, hud_inventory_tooltip_sprite_segments,
     hud_inventory_tooltip_text_height, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
     hud_item_durability_bar_rect, hud_overlay_message_text_origin, hud_quad_vertices,
@@ -89,6 +90,21 @@ pub struct HudTitleText {
     pub stay: i32,
     pub fade_out: i32,
     pub partial_tick: f32,
+}
+
+/// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
+/// the starvation-shake gate (`FoodData.getSaturationLevel() <= 0` plus the
+/// client `tickCount` modulo) and the hunger potion swap
+/// (`player.hasEffect(MobEffects.HUNGER)` → the `food_*_hunger` sprites). The
+/// food level itself is projected separately (`set_hud_food`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HudFoodEffect {
+    /// Vanilla `FoodData.getSaturationLevel() <= 0` — arms the starvation shake.
+    pub saturation_empty: bool,
+    /// Vanilla `player.hasEffect(MobEffects.HUNGER)` — swaps to `food_*_hunger`.
+    pub hunger_effect: bool,
+    /// Client tick counter (vanilla `Gui.tickCount`) gating the shake modulo.
+    pub tick_count: u64,
 }
 
 /// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
@@ -197,6 +213,32 @@ pub struct HudBossBar {
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
+
+/// Which food icon a draw needs, so `hud_food_variant_sprite` can pick the base
+/// or the Hunger-effect variant of that shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudFoodSprite {
+    Empty,
+    Half,
+    Full,
+}
+
+/// Vanilla `ContextualBarRenderer.extractExperienceLevel` outline color
+/// `-16777216` (0xFF000000 opaque black), drawn at the four axis offsets.
+const HUD_EXPERIENCE_LEVEL_OUTLINE_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+/// Vanilla `ContextualBarRenderer.extractExperienceLevel` center color
+/// `-8323296` (0xFF80FF20 green), drawn last on top of the black outline.
+const HUD_EXPERIENCE_LEVEL_FILL_TINT: [f32; 4] = [128.0 / 255.0, 255.0 / 255.0, 32.0 / 255.0, 1.0];
+/// The five `extractExperienceLevel` passes in vanilla draw order
+/// (ContextualBarRenderer.java:39-43): four black `(±1,0)/(0,±1)` copies, then
+/// the green center — each `dropShadow = false`.
+const HUD_EXPERIENCE_LEVEL_PASSES: [(f32, f32, [f32; 4]); 5] = [
+    (1.0, 0.0, HUD_EXPERIENCE_LEVEL_OUTLINE_TINT),
+    (-1.0, 0.0, HUD_EXPERIENCE_LEVEL_OUTLINE_TINT),
+    (0.0, 1.0, HUD_EXPERIENCE_LEVEL_OUTLINE_TINT),
+    (0.0, -1.0, HUD_EXPERIENCE_LEVEL_OUTLINE_TINT),
+    (0.0, 0.0, HUD_EXPERIENCE_LEVEL_FILL_TINT),
+];
 const HUD_ITEM_BAR_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const HUD_ITEM_BAR_BACKGROUND_WIDTH: u32 = 13;
 const HUD_ITEM_BAR_BACKGROUND_HEIGHT: u32 = 2;
@@ -1748,6 +1790,40 @@ impl Renderer {
         Ok(())
     }
 
+    /// Vanilla `hud/food_empty_hunger` — the empty icon drawn while the player
+    /// has the Hunger effect (`Gui.extractFood`, Gui.java:948-951).
+    pub fn upload_hud_food_empty_hunger(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_food_empty_hunger = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/food_full_hunger` — the full icon drawn under the Hunger effect.
+    pub fn upload_hud_food_full_hunger(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_food_full_hunger = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/food_half_hunger` — the half icon drawn under the Hunger effect.
+    pub fn upload_hud_food_half_hunger(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_food_half_hunger = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_boss_bar_background(
         &mut self,
         color: HudBossBarColor,
@@ -1824,10 +1900,23 @@ impl Renderer {
         self.hud_food = food;
     }
 
+    /// Projects this frame's food-bar effect state (starvation-shake gate and
+    /// hunger potion sprite swap); the food level is set by `set_hud_food`.
+    pub fn set_hud_food_effect(&mut self, effect: HudFoodEffect) {
+        self.hud_food_effect = effect;
+    }
+
     pub fn set_hud_experience_progress(&mut self, progress: Option<f32>) {
         self.hud_experience_progress_value = progress
             .filter(|progress| progress.is_finite())
             .map(|progress| progress.clamp(0.0, 1.0));
+    }
+
+    /// Projects the experience level to render as centered text above the bar.
+    /// Vanilla only draws it when `experienceLevel > 0`
+    /// (Gui.java:533), so non-positive levels clear the text.
+    pub fn set_hud_experience_level(&mut self, level: Option<i32>) {
+        self.hud_experience_level = hud_experience_level_projection(level);
     }
 
     pub fn set_hud_selected_slot(&mut self, slot: u8) {
@@ -1858,6 +1947,19 @@ impl Renderer {
     /// `BossHealthOverlay.events`), sanitizing each bar's progress.
     pub fn set_hud_boss_bars(&mut self, bars: Vec<HudBossBar>) {
         self.hud_boss_bars = bars.into_iter().map(sanitize_hud_boss_bar).collect();
+    }
+
+    /// Resolves one food-icon sprite, honoring the Hunger potion swap: under the
+    /// effect it prefers the uploaded `food_*_hunger` variant, falling back to
+    /// the base sprite when the hunger variant is not loaded (vanilla
+    /// `Gui.extractFood` selects the sprite id, Gui.java:945-956).
+    fn hud_food_variant_sprite(&self, which: HudFoodSprite, hunger: bool) -> Option<&HudSpriteGpu> {
+        let (hunger_sprite, base_sprite) = match which {
+            HudFoodSprite::Empty => (&self.hud_food_empty_hunger, &self.hud_food_empty),
+            HudFoodSprite::Half => (&self.hud_food_half_hunger, &self.hud_food_half),
+            HudFoodSprite::Full => (&self.hud_food_full_hunger, &self.hud_food_full),
+        };
+        hud_food_sprite_variant(hunger, hunger_sprite.as_ref(), base_sprite.as_ref())
     }
 
     /// The uploaded 182x5 sheet backing one bar layer (vanilla
@@ -2085,33 +2187,82 @@ impl Renderer {
             }
         }
 
-        if let (Some(food), Some(empty)) = (self.hud_food, &self.hud_food_empty) {
-            for index in 0..HUD_FOOD_ICONS_PER_ROW {
-                push_hud_draw(
-                    &mut vertices,
-                    &mut commands,
-                    empty,
-                    surface_size,
-                    food_hud_rect(surface_size, index, empty.width, empty.height),
-                );
-            }
-
-            for index in 0..HUD_FOOD_ICONS_PER_ROW {
-                let sprite = match hud_food_fill(food, index) {
-                    HudIconFill::Empty => None,
-                    HudIconFill::Half => self.hud_food_half.as_ref(),
-                    HudIconFill::Full => self.hud_food_full.as_ref(),
-                };
-                if let Some(sprite) = sprite {
+        if let Some(food) = self.hud_food {
+            let effect = self.hud_food_effect;
+            // Vanilla `Gui.extractFood` reseeds/advances `this.random` every
+            // frame; bbb reseeds the identical LCG from the render frame counter
+            // so the shake flickers deterministically (layout::hud_food_jitter_offsets).
+            let jitter = hud_food_jitter_offsets(
+                food,
+                effect.saturation_empty,
+                effect.tick_count,
+                self.counters.frame_index,
+            );
+            if let Some(empty) =
+                self.hud_food_variant_sprite(HudFoodSprite::Empty, effect.hunger_effect)
+            {
+                for index in 0..HUD_FOOD_ICONS_PER_ROW {
                     push_hud_draw(
                         &mut vertices,
                         &mut commands,
-                        sprite,
+                        empty,
                         surface_size,
-                        food_hud_rect(surface_size, index, sprite.width, sprite.height),
+                        food_hud_rect(
+                            surface_size,
+                            index,
+                            empty.width,
+                            empty.height,
+                            jitter[index as usize],
+                        ),
                     );
                 }
+
+                for index in 0..HUD_FOOD_ICONS_PER_ROW {
+                    let sprite =
+                        match hud_food_fill(food, index) {
+                            HudIconFill::Empty => None,
+                            HudIconFill::Half => self
+                                .hud_food_variant_sprite(HudFoodSprite::Half, effect.hunger_effect),
+                            HudIconFill::Full => self
+                                .hud_food_variant_sprite(HudFoodSprite::Full, effect.hunger_effect),
+                        };
+                    if let Some(sprite) = sprite {
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            sprite,
+                            surface_size,
+                            food_hud_rect(
+                                surface_size,
+                                index,
+                                sprite.width,
+                                sprite.height,
+                                jitter[index as usize],
+                            ),
+                        );
+                    }
+                }
             }
+        }
+
+        // Vanilla draws the experience level number between the contextual bar
+        // background and its render state (Gui.java:532-535), i.e. after the
+        // status bars and before the boss overlay, gated only on
+        // `experienceLevel > 0` (independent of which contextual bar — jump /
+        // locator / experience — occupies the slot; bbb tracks no jump/locator
+        // state, so no suppression is needed). It needs the font atlas.
+        if let (Some(level), Some(font_atlas)) = (self.hud_experience_level, &self.hud_font_atlas) {
+            push_hud_experience_level_text(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                font_atlas,
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                level,
+            );
         }
 
         // Vanilla `Gui.extractRenderState` submits the boss overlay right
@@ -3272,6 +3423,77 @@ fn hud_boss_bar_layers(bar: &HudBossBar) -> Vec<HudBossBarLayer> {
         }
     }
     layers
+}
+
+/// Vanilla `Gui.java:533` gate: the experience level number renders only when
+/// `experienceLevel > 0`, so a zero (or negative) projection clears the text.
+fn hud_experience_level_projection(level: Option<i32>) -> Option<i32> {
+    level.filter(|&level| level > 0)
+}
+
+/// Picks a food icon's sprite honoring the Hunger potion swap (vanilla
+/// `Gui.extractFood` sprite-id selection, Gui.java:945-956): under the effect
+/// prefer the hunger variant, falling back to the base sprite when the variant
+/// is not loaded; without the effect always use the base sprite. Generic over
+/// the sprite handle so the decision is unit-testable without GPU resources.
+fn hud_food_sprite_variant<T>(
+    hunger_effect: bool,
+    hunger: Option<T>,
+    base: Option<T>,
+) -> Option<T> {
+    if hunger_effect {
+        hunger.or(base)
+    } else {
+        base
+    }
+}
+
+/// Draws the centered experience-level number with vanilla's 1px black outline
+/// (`ContextualBarRenderer.extractExperienceLevel`,
+/// ContextualBarRenderer.java:35-44): the level string `Component.translatable
+/// ("gui.experience.level", level)` (the `"%s"` lang value, so just the number)
+/// centered at `x = (guiWidth - width)/2`, `y = guiHeight - 24 - 9 - 2`, drawn as
+/// four black axis-offset copies then the `0x80FF20` green center, all
+/// `dropShadow = false`. Reuses the shared styled-text pass (`shadow_offset = 0`,
+/// `is_shadow = false`) with the outline offset baked into the pen origin, so no
+/// bespoke glyph loop is introduced.
+#[allow(clippy::too_many_arguments)]
+fn push_hud_experience_level_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    level: i32,
+) {
+    let runs = [HudStyledTextRun::plain(level.to_string())];
+    let width = hud_font_runs_width(&runs, glyphs).unwrap_or(0);
+    let (base_x, base_y) = hud_experience_level_text_origin(surface_size, width);
+    for (dx, dy, tint) in HUD_EXPERIENCE_LEVEL_PASSES {
+        let geometry = hud_styled_text_pass_geometry(
+            &runs,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            (base_x + dx, base_y + dy),
+            0.0,
+            false,
+            tint,
+            None,
+            1.0,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
 }
 
 /// Draws one resolved screen text line through the styled pipeline with the
@@ -5135,6 +5357,87 @@ mod tests {
             food < overlay && overlay < title && title < screen,
             "overlay message and title submit after status bars and before screen content"
         );
+    }
+
+    #[test]
+    fn experience_level_text_submits_after_food_and_before_the_boss_overlay() {
+        // Vanilla `Gui.extractRenderState` draws the level number between the
+        // status bars and the boss overlay (Gui.java:532-535 then the boss
+        // overlay stratum), so `collect_hud_draws` pushes it after the food row
+        // and before the boss bars.
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let food = collect_source
+            .find("hud_food_fill(")
+            .expect("food bar draws first");
+        let level = collect_source
+            .find("push_hud_experience_level_text(")
+            .expect("experience level text is drawn");
+        let boss = collect_source
+            .find("hud_boss_bar_draws(")
+            .expect("boss bars draw after");
+        assert!(
+            food < level && level < boss,
+            "experience level submits after the food row and before the boss overlay"
+        );
+    }
+
+    #[test]
+    fn experience_level_projection_gates_on_a_positive_level() {
+        // Vanilla `Gui.java:533` draws the level only when `experienceLevel > 0`.
+        assert_eq!(hud_experience_level_projection(Some(30)), Some(30));
+        assert_eq!(hud_experience_level_projection(Some(1)), Some(1));
+        assert_eq!(hud_experience_level_projection(Some(0)), None);
+        assert_eq!(hud_experience_level_projection(Some(-4)), None);
+        assert_eq!(hud_experience_level_projection(None), None);
+    }
+
+    #[test]
+    fn experience_level_outline_passes_match_vanilla_offsets_and_colors() {
+        // ContextualBarRenderer.java:39-43: four black axis-offset copies drawn
+        // in `(+1,0),(-1,0),(0,+1),(0,-1)` order, then the `0x80FF20` green
+        // center last, so the fill sits on top of the outline.
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+        const GREEN: [f32; 4] = [128.0 / 255.0, 255.0 / 255.0, 32.0 / 255.0, 1.0];
+        assert_eq!(
+            HUD_EXPERIENCE_LEVEL_PASSES,
+            [
+                (1.0, 0.0, BLACK),
+                (-1.0, 0.0, BLACK),
+                (0.0, 1.0, BLACK),
+                (0.0, -1.0, BLACK),
+                (0.0, 0.0, GREEN),
+            ]
+        );
+        assert!(HUD_EXPERIENCE_LEVEL_PASSES[..4]
+            .iter()
+            .all(|pass| pass.2 == BLACK));
+        assert_eq!(HUD_EXPERIENCE_LEVEL_PASSES[4].2, GREEN);
+    }
+
+    #[test]
+    fn food_sprite_variant_prefers_the_hunger_icon_only_under_the_effect() {
+        // Under the Hunger effect the variant wins, with the base as fallback
+        // when the variant is not loaded.
+        assert_eq!(
+            hud_food_sprite_variant(true, Some("hunger"), Some("base")),
+            Some("hunger")
+        );
+        assert_eq!(
+            hud_food_sprite_variant(true, None, Some("base")),
+            Some("base")
+        );
+        assert_eq!(hud_food_sprite_variant::<&str>(true, None, None), None);
+        // Without the effect the base sprite always wins, even if a hunger
+        // variant happens to be loaded.
+        assert_eq!(
+            hud_food_sprite_variant(false, Some("hunger"), Some("base")),
+            Some("base")
+        );
+        assert_eq!(hud_food_sprite_variant(false, Some("hunger"), None), None);
     }
 
     #[test]

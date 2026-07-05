@@ -483,9 +483,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Experience level number (green centered text above the bar;
-    `experience.level` is in world state but not projected) and the
-    hunger-effect food-bar jitter variant.
   - Offscreen full-frame readback harness: `render()` hard-requires
     `surface.get_current_texture()`; existing readback tests each hand-roll
     sub-passes. A shared offscreen color-target harness unlocks pixel proofs
@@ -500,6 +497,33 @@ When an agent does any of the following, update this file in the same slice:
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-05 — Experience level number + hunger food-bar jitter. The
+    level is projected (`experience.level`) into `RendererFrame.hud_experience_level`
+    and gated `> 0` by `set_hud_experience_level` (vanilla
+    `Gui.java:533`; `hasExperience()` game-mode gate not modeled — bbb draws
+    XP HUD whenever the experience state exists, matching how the progress bar
+    already projects). Drawn in `collect_hud_draws` after the food row and
+    before the boss overlay (vanilla `Gui.extractRenderState` order), centered
+    at `x=(guiWidth-font.width)/2`, `y=guiHeight-24-9-2` via a reused
+    styled-text pass: four `-16777216` black `(±1,0)/(0,±1)` copies then the
+    `-8323296` (0x80FF20) green center, all `dropShadow=false`
+    (ContextualBarRenderer.java:35-44; lang `gui.experience.level = "%s"`).
+    Vanilla draws the level independent of the contextual bar, so jump/locator
+    bars need no suppression (bbb tracks no jump/locator state anyway).
+    Food-bar shake mirrors `Gui.extractFood` (Gui.java:958-960): per-icon
+    `yo += random.nextInt(3)-1` (∈{-1,0,1}) applied to both the empty
+    background and the fill of each index, gated on `saturation<=0 &&
+    tickCount % (foodLevel*3+1) == 0`. The tick modulo reads the real client
+    tick (`LightmapTickState.client_tick_count`); the offset LCG is the exact
+    `nextInt(3)` clone (`HudObfuscatedRandom`) but reseeded per frame from the
+    render frame counter (vanilla's wall-clock `RandomSource` is
+    unreproducible, so the shake flickers deterministically instead). Hunger
+    potion swap: under `MobEffects.HUNGER` (registry id 16, derived from
+    MobEffects.java:70 via the raw `holderRegistry` stream codec) the row draws
+    the `food_{empty,half,full}_hunger` sprites (loaded in `hud_assets.rs`),
+    falling back to the base sprite when a variant is unloaded. Boundary: no
+    game-mode gate (creative still shows XP HUD); the shake seed diverges from
+    vanilla's wall-clock sequence by design.
   - Done 2026-07-05 — Boss bars render: `ClientHudState.boss_bars` projects
     per frame as an ordered `Vec<HudBossBar>` (plain-run name + latest packet
     progress + `HudBossBarColor`/`HudBossBarOverlay` enums whose `name()`

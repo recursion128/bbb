@@ -721,6 +721,25 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_food_full(food_full.width, food_full.height, &food_full.rgba)?;
     let food_half = hud_sprite(&sprites, "hud/food_half")?;
     renderer.upload_hud_food_half(food_half.width, food_half.height, &food_half.rgba)?;
+    // Hunger-effect food variants (vanilla `FOOD_*_HUNGER_SPRITE`, Gui.java:97-99).
+    let food_empty_hunger = hud_sprite(&sprites, "hud/food_empty_hunger")?;
+    renderer.upload_hud_food_empty_hunger(
+        food_empty_hunger.width,
+        food_empty_hunger.height,
+        &food_empty_hunger.rgba,
+    )?;
+    let food_full_hunger = hud_sprite(&sprites, "hud/food_full_hunger")?;
+    renderer.upload_hud_food_full_hunger(
+        food_full_hunger.width,
+        food_full_hunger.height,
+        &food_full_hunger.rgba,
+    )?;
+    let food_half_hunger = hud_sprite(&sprites, "hud/food_half_hunger")?;
+    renderer.upload_hud_food_half_hunger(
+        food_half_hunger.width,
+        food_half_hunger.height,
+        &food_half_hunger.rgba,
+    )?;
     // The 22 vanilla boss-bar sheets (`BossHealthOverlay`'s sprite arrays):
     // a background/progress pair per `BossBarColor` plus one per notched
     // `BossBarOverlay`, all plain 182x5 GUI-atlas sprites.

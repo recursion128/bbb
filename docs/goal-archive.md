@@ -3862,6 +3862,42 @@
   progress sanitize clamp、绘制次序源序锁（status bars 后、overlay
   message 前）；layout 矩形常数。
 
+### 2026-07-05 迁入：经验等级数字 + 饥饿 hunger-effect 抖动
+
+- HUD 队列第三片完成（一行两小件）。原 goal.md P2 缺口行
+  「经验等级数字（level 已在 world，未投影）；饥饿 hunger-effect 抖动」删除。
+- 件 1 经验等级数字：`experience.level` 经 `RendererFrame.hud_experience_level`
+  投影，`set_hud_experience_level` 按 vanilla `Gui.java:533` 的 `> 0` 门控
+  （`hasExperience()` game-mode 门未建模——bbb 有经验态即画经验 HUD，与既有
+  progress bar 投影一致）。绘制点在 `collect_hud_draws` 食物行之后、boss
+  overlay 之前（vanilla `Gui.extractRenderState` 顺序）；居中
+  `x = (guiWidth - font.width)/2`、`y = guiHeight - 24 - 9 - 2`，复用既有
+  styled-text 管线：四个 `-16777216` 黑色 `(±1,0)/(0,±1)` 描边拷贝 + 最后
+  `-8323296`（0x80FF20）绿色中心，全部 `dropShadow=false`
+  （ContextualBarRenderer.java:35-44；lang `gui.experience.level = "%s"` 即只画
+  数字）。vanilla 该文本独立于 contextual bar 绘制，故 jump/locator bar 无需
+  抑制（bbb 本就不跟踪 jump/locator 态）。
+- 件 2 饥饿抖动：镜像 `Gui.extractFood`（Gui.java:958-960）——逐图标
+  `yo += random.nextInt(3) - 1`（∈{-1,0,1}），同一 index 的 empty 背景与
+  half/full 填充共用该偏移；门控 `saturation <= 0 && tickCount %
+  (foodLevel*3+1) == 0`。tick 模数读真实客户端 tick
+  （`LightmapTickState.client_tick_count`）；偏移 LCG 用与 vanilla 完全一致的
+  `nextInt(3)` 克隆（`HudObfuscatedRandom`），但每帧以渲染帧计数器重新播种
+  （vanilla 的 wall-clock `RandomSource` 序列不可复现，改为确定性逐帧闪动）。
+- 件 2 hunger 药水变体：`MobEffects.HUNGER`（registry id 16，据 MobEffects.java:70
+  经原始 `holderRegistry` stream codec 推得，非 +1）激活时食物行改画
+  `food_{empty,half,full}_hunger` sprite（`hud_assets.rs` 加载），变体未上传时
+  回退基础 sprite。hunger 数据链已就绪（`world.entity_effect(local_player_id,
+  16)`），无需新增 packet 处理。
+- 边界：无 game-mode 门（创造模式仍显示经验 HUD）；抖动种子按设计偏离
+  vanilla 的 wall-clock 序列。
+- 测试：bbb-renderer layout——`hud_food_jitter_offsets`（saturation>0 不抖 /
+  tick 模数未命中不抖 / 命中时偏移 ∈{-1,0,1} 且对已知 seed 锁定 LCG 序列 /
+  food=0 除数=1 恒触发 / 同 seed 确定性）、`food_hud_rect` y 偏移、
+  `hud_experience_level_text_origin` 居中与 Java 整除截断；bbb-renderer hud——
+  经验门控 `> 0`、四黑一绿描边 pass 偏移与颜色顺序、hunger sprite 变体选择、
+  绘制次序源序锁（食物后、boss 前）；既有 food/layout 测试无回归。
+
 ## 历史 audit 快照
 
 ### 2026-07-03（dolphin event slice 后复核，原 goal.md 当前边界）

@@ -1,3 +1,4 @@
+use bbb_render_types::HudObfuscatedRandom;
 use glam::{Mat4, Vec3};
 use winit::dpi::PhysicalSize;
 
@@ -237,17 +238,21 @@ pub(super) fn heart_hud_rect(
     }
 }
 
+/// One food icon's rect. `y_offset` is vanilla `Gui.extractFood`'s per-icon
+/// starvation shake (`yo += random.nextInt(3) - 1`, Gui.java:958-960), applied
+/// identically to the empty background and the half/full fill of that index.
 pub(super) fn food_hud_rect(
     surface_size: PhysicalSize<u32>,
     index: u32,
     width: u32,
     height: u32,
+    y_offset: i32,
 ) -> HudRect {
     let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;
     HudRect {
         x: surface_width * 0.5 + 91.0 - index as f32 * HUD_FOOD_SPACING - width as f32,
-        y: surface_height - 39.0,
+        y: surface_height - 39.0 + y_offset as f32,
         width,
         height,
     }
@@ -541,6 +546,53 @@ pub(super) fn hud_food_fill(food: i32, index: u32) -> HudIconFill {
     } else {
         HudIconFill::Empty
     }
+}
+
+/// Per-icon starvation-shake y offsets for the food row, mirroring vanilla
+/// `Gui.extractFood` (Gui.java:958-960): while `saturation <= 0` and
+/// `tickCount % (foodLevel*3+1) == 0`, every icon shifts by
+/// `random.nextInt(3) - 1` (∈ {-1, 0, 1}); otherwise all icons stay at 0.
+///
+/// Vanilla's `this.random` is a wall-clock-seeded `LegacyRandomSource` advanced
+/// across the whole GUI, so its exact sequence is unreproducible; bbb keeps the
+/// identical `nextInt(3)` LCG ([`HudObfuscatedRandom`]) but reseeds it per frame
+/// from `seed` (the render frame counter, the same deterministic source the
+/// obfuscated-glyph jitter uses) so the shake flickers frame-to-frame yet stays
+/// reproducible. The tick modulo still gates on the real client `tick_count`
+/// (vanilla `Gui.tickCount`) so the shake keeps its per-tick cadence.
+pub(super) fn hud_food_jitter_offsets(
+    food: i32,
+    saturation_empty: bool,
+    tick_count: u64,
+    seed: u64,
+) -> [i32; HUD_FOOD_ICONS_PER_ROW as usize] {
+    let mut offsets = [0i32; HUD_FOOD_ICONS_PER_ROW as usize];
+    // `foodLevel * 3 + 1` is always >= 1 for the vanilla 0..=20 food range; the
+    // `max(0)` only guards a malformed negative projection from a modulo panic.
+    let divisor = (food.max(0) as u64) * 3 + 1;
+    if saturation_empty && tick_count % divisor == 0 {
+        let mut random = HudObfuscatedRandom::with_seed(seed);
+        for offset in &mut offsets {
+            *offset = random.next_int_bound(3) as i32 - 1;
+        }
+    }
+    offsets
+}
+
+/// Pen origin (line top-left, HUD pixels) of the centered experience-level
+/// number, mirroring `ContextualBarRenderer.extractExperienceLevel`
+/// (ContextualBarRenderer.java:37-38): `x = (guiWidth - font.width(str)) / 2`
+/// (Java int division), `y = guiHeight - 24 - 9 - 2`. The caller offsets this
+/// origin by `(±1, 0)/(0, ±1)` for the four black outline copies.
+pub(super) fn hud_experience_level_text_origin(
+    surface_size: PhysicalSize<u32>,
+    text_width: u32,
+) -> (f32, f32) {
+    let gui_width = surface_size.width.max(1) as i32;
+    let gui_height = surface_size.height.max(1) as i32;
+    let x = (gui_width - text_width as i32) / 2;
+    let y = gui_height - 24 - 9 - 2;
+    (x as f32, y as f32)
 }
 
 pub(super) fn hud_quad_vertices(
@@ -1032,8 +1084,8 @@ mod tests {
     #[test]
     fn hud_layout_places_food_icons_above_hotbar() {
         let surface_size = PhysicalSize::new(1280, 720);
-        let first = food_hud_rect(surface_size, 0, 9, 9);
-        let last = food_hud_rect(surface_size, 9, 9, 9);
+        let first = food_hud_rect(surface_size, 0, 9, 9, 0);
+        let last = food_hud_rect(surface_size, 9, 9, 9, 0);
         assert_eq!(first.x, 722.0);
         assert_eq!(first.y, 681.0);
         assert_eq!(last.x, 650.0);
@@ -1461,6 +1513,69 @@ mod tests {
         assert_eq!(hud_food_fill(6, 2), HudIconFill::Full);
         assert_eq!(hud_food_fill(20, 9), HudIconFill::Full);
         assert_eq!(hud_food_fill(25, 9), HudIconFill::Full);
+    }
+
+    #[test]
+    fn hud_food_jitter_shakes_only_when_saturation_empty_and_the_tick_hits() {
+        // Saturation above zero never shakes, whatever the tick.
+        assert_eq!(hud_food_jitter_offsets(18, false, 0, 7), [0; 10]);
+        assert_eq!(hud_food_jitter_offsets(18, false, 55, 7), [0; 10]);
+
+        // Saturation empty but the tick misses the `food*3+1` modulo (food = 18
+        // -> divisor 55; 1 % 55 != 0): still no shake.
+        assert_eq!(hud_food_jitter_offsets(18, true, 1, 7), [0; 10]);
+
+        // Saturation empty and the tick hits the modulo: every icon shifts by a
+        // deterministic `nextInt(3) - 1` drawn from the frame seed's LCG.
+        let offsets = hud_food_jitter_offsets(18, true, 55, 7);
+        let mut random = HudObfuscatedRandom::with_seed(7);
+        let expected: [i32; 10] = std::array::from_fn(|_| random.next_int_bound(3) as i32 - 1);
+        assert_eq!(offsets, expected);
+        assert!(offsets.iter().all(|&offset| (-1..=1).contains(&offset)));
+        assert!(
+            offsets.iter().any(|&offset| offset != 0),
+            "seed 7 shakes at least one icon"
+        );
+
+        // food = 0 -> divisor 1, so any tick hits while saturation is empty.
+        let starving = hud_food_jitter_offsets(0, true, 3, 11);
+        assert!(starving.iter().all(|&offset| (-1..=1).contains(&offset)));
+        // Same seed -> same offsets, so a redraw of the same frame is stable.
+        assert_eq!(
+            hud_food_jitter_offsets(0, true, 3, 42),
+            hud_food_jitter_offsets(0, true, 3, 42)
+        );
+    }
+
+    #[test]
+    fn hud_food_rect_applies_the_per_icon_shake_offset() {
+        let surface_size = PhysicalSize::new(400, 300);
+        let base = food_hud_rect(surface_size, 0, 9, 9, 0);
+        let shaken_up = food_hud_rect(surface_size, 0, 9, 9, -1);
+        let shaken_down = food_hud_rect(surface_size, 0, 9, 9, 1);
+        assert_eq!(shaken_up.y, base.y - 1.0);
+        assert_eq!(shaken_down.y, base.y + 1.0);
+        // Only y moves; x/size are untouched.
+        assert_eq!(shaken_up.x, base.x);
+        assert_eq!(shaken_up.width, base.width);
+    }
+
+    #[test]
+    fn hud_experience_level_text_origin_centers_above_the_bar() {
+        // Vanilla: x = (guiWidth - width) / 2 (int division), y = guiHeight - 35.
+        assert_eq!(
+            hud_experience_level_text_origin(PhysicalSize::new(400, 300), 12),
+            (194.0, 265.0)
+        );
+        // Odd numerator truncates toward zero, matching Java int division.
+        assert_eq!(
+            hud_experience_level_text_origin(PhysicalSize::new(401, 300), 10),
+            (195.0, 265.0)
+        );
+        assert_eq!(
+            hud_experience_level_text_origin(PhysicalSize::new(400, 300), 13),
+            (193.0, 265.0)
+        );
     }
 
     fn assert_f32_near(actual: f32, expected: f32) {

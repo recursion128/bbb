@@ -20,14 +20,15 @@ use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
     FogEnvironment, GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview,
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudEntityPreviewRect, HudFoodEffect, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudUvRect, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -218,6 +219,9 @@ const VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES: [(i64, f32); 12] = [
 ];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
+/// `BuiltInRegistries.MOB_EFFECT` id for `hunger` (0-indexed registration order,
+/// MobEffects.java:70; the `holderRegistry` stream codec writes the raw id).
+const VANILLA_MOB_EFFECT_HUNGER_ID: i32 = 16;
 const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 const VANILLA_MOB_EFFECT_DARKNESS_ID: i32 = 32;
 const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
@@ -1521,9 +1525,24 @@ pub(crate) fn pump_network_and_terrain(
     let local_player = world.local_player();
     let hud_health = local_player.health.map(|health| health.health);
     let hud_food = local_player.health.map(|health| health.food);
+    // Vanilla `Gui.extractFood` starvation-shake / hunger-swap inputs
+    // (Gui.java:948,958): saturation-empty gate, the Hunger potion flag, and
+    // the client `tickCount` (bbb's `LightmapTickState.client_tick_count`, the
+    // same per-client-tick counter the lightmap uses).
+    let hud_food_effect = HudFoodEffect {
+        saturation_empty: local_player
+            .health
+            .map(|health| health.saturation <= 0.0)
+            .unwrap_or(false),
+        hunger_effect: local_player_effect(world, VANILLA_MOB_EFFECT_HUNGER_ID).is_some(),
+        tick_count: lightmap_ticks.client_tick_count,
+    };
     let hud_experience_progress = local_player
         .experience
         .map(|experience| experience.progress);
+    // Vanilla draws the level number only when `experienceLevel > 0`
+    // (Gui.java:533); the renderer setter applies that gate.
+    let hud_experience_level = local_player.experience.map(|experience| experience.level);
     let hud_selected_slot = local_player.selected_hotbar_slot;
     // Vanilla `Gui.extractOverlayMessage` / `extractTitle` read the post-tick
     // countdowns with the frame partial tick; the renderer resolves fade
@@ -1739,7 +1758,9 @@ pub(crate) fn pump_network_and_terrain(
             cloud_environment,
             hud_health,
             hud_food,
+            hud_food_effect,
             hud_experience_progress,
+            hud_experience_level,
             hud_selected_slot,
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,

@@ -8,8 +8,8 @@
 use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudBlockItemModel,
-    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudInventoryScreen, HudStyledTextRun,
-    HudTitleText, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudFoodEffect, HudInventoryScreen,
+    HudStyledTextRun, HudTitleText, ItemEntityBillboard, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, WorldBorderRenderState,
 };
@@ -777,7 +777,9 @@ pub(crate) struct RendererFrame {
     pub(crate) cloud_environment: CloudEnvironment,
     pub(crate) hud_health: Option<f32>,
     pub(crate) hud_food: Option<i32>,
+    pub(crate) hud_food_effect: HudFoodEffect,
     pub(crate) hud_experience_progress: Option<f32>,
+    pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
@@ -838,7 +840,9 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_cloud_environment(frame.cloud_environment);
     renderer.set_hud_health(frame.hud_health);
     renderer.set_hud_food(frame.hud_food);
+    renderer.set_hud_food_effect(frame.hud_food_effect);
     renderer.set_hud_experience_progress(frame.hud_experience_progress);
+    renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
     renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);

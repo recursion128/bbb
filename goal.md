@@ -262,7 +262,6 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- 经验等级数字（level 已在 world，未投影）；饥饿 hunger-effect 抖动。
 - 离屏整帧 readback harness：render() 脱离 surface 依赖，让 HUD/screen
   slice 复用统一 pixel-proof 基建（新视觉 slice 的前置）。
 - 护甲条（先从既有 attributes 派生 armor 值）；氧气泡/坐骑血量/生命扩展
