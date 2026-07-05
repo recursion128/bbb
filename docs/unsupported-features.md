@@ -466,6 +466,49 @@ When an agent does any of the following, update this file in the same slice:
     Linear/Linear (`LightTexture`). This asymmetry is vanilla-correct.
 - Detailed audit anchors live in the 2026-07-05 goal-archive P2 entry.
 
+### HUD Overlay And Screen Render Surfaces
+
+- Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
+- Status: `partial`
+- Next action (2026-07-05 entry audit; consume in this order):
+  - Actionbar, titles, subtitles: `ClientHudState`
+    (`bbb-world/src/client/hud.rs` — `ActionBarState`, `HudTitleState` with
+    fade timing) is fully packet-fed and tested, but `RendererFrame` carries
+    none of it and `collect_hud_draws` has no branch; needs projection +
+    centered styled-text drawing + fade alpha per `Gui.extractOverlayMessage`
+    / `extractTitle` / `extractSubtitleOverlay`.
+  - Boss bars: `ClientHudState.boss_bars` (progress/color/overlay/darken/fog)
+    is fully applied and queryable; renderer has zero consumption. Needs
+    `boss_bars` sprites (5 colors × progress + notched overlays), top
+    stacking, and name text per `BossHealthOverlay.java`.
+  - Experience level number (green centered text above the bar;
+    `experience.level` is in world state but not projected) and the
+    hunger-effect food-bar jitter variant.
+  - Offscreen full-frame readback harness: `render()` hard-requires
+    `surface.get_current_texture()`; existing readback tests each hand-roll
+    sub-passes. A shared offscreen color-target harness unlocks pixel proofs
+    for all upcoming HUD/screen slices.
+  - Armor bar (derive the armor value from already-stored attributes per
+    `Gui.extractArmor`), then air bubbles / vehicle health / heart variants
+    (absorption, poison, wither, hardcore, regen flash) — these need world
+    metadata first: `air_supply`, `LivingEntity` health, and absorption are
+    not yet parsed in `bbb-world/src/entities/metadata.rs`.
+  - Sign edit screen (needs a sign block-entity text store; input flow
+    exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
+    ready), advancement screen (`ClientAdvancementsState` ready), horse jump
+    meter (client-side charge), debug overlay (F3; large, low priority).
+- Evidence / boundary:
+  - Verified aligned on 2026-07-05: crosshair, hotbar + selection + item
+    icons (flat + 3D pass), hearts/food base tiers, experience progress bar,
+    the 22-variant container screen family incl. merchant trading UI and
+    lectern/held book reading, and HUD pass color/depth semantics (all HUD
+    sub-passes Load over the world blit; the 3D-item depth clear mirrors
+    vanilla `GuiItemAtlas` per-slot clears). Vanilla's stratum/blur
+    depth-clear (`GuiRenderer.java` before/after-blur) only matters once a
+    blur-backed screen exists — deferred with that trigger recorded.
+  - HUD text drawing can reuse the completed vanilla font stack (styled
+    runs, shadow, color) with no font-side prerequisites.
+
 ### Audio Runtime Parity
 
 - Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
