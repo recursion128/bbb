@@ -981,7 +981,20 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                for mesh in &self.terrain_translucent {
+                // Draw sections far→near via `terrain_translucent_order`, the
+                // camera-sorted permutation of `terrain_translucent` that mirrors
+                // vanilla's reversed TRANSLUCENT draw list
+                // (ChunkSectionsToRender.java:55-56, MC 26.1). The order is kept
+                // in lock-step with the mesh set, but fall back to storage order
+                // if it is ever stale so no section is silently dropped.
+                let ordered =
+                    self.terrain_translucent_order.len() == self.terrain_translucent.len();
+                for draw_index in 0..self.terrain_translucent.len() {
+                    let mesh = if ordered {
+                        &self.terrain_translucent[self.terrain_translucent_order[draw_index]]
+                    } else {
+                        &self.terrain_translucent[draw_index]
+                    };
                     pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
@@ -3778,6 +3791,27 @@ mod tests {
         assert!(
             source[target..terrain_pipeline].contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
             "translucent target color is cleared every frame so missing translucent meshes do not reuse stale color"
+        );
+    }
+
+    #[test]
+    fn translucent_terrain_draws_sections_back_to_front() {
+        let source = include_str!("render.rs");
+        let translucent_pipeline = source
+            .find("pass.set_pipeline(&self.terrain_translucent_pipeline)")
+            .expect("translucent terrain pipeline is selected");
+        let draw = source[translucent_pipeline..]
+            .find("pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1)")
+            .map(|index| translucent_pipeline + index)
+            .expect("translucent terrain sections are drawn");
+
+        // The draw loop must index sections through the camera-sorted permutation
+        // (`terrain_translucent_order`) rather than walking storage order, so
+        // sections composite far→near like vanilla's reversed TRANSLUCENT draw
+        // list (ChunkSectionsToRender.java:55-56, MC 26.1).
+        assert!(
+            source[translucent_pipeline..draw].contains("self.terrain_translucent_order"),
+            "translucent terrain sections draw through the back-to-front section order"
         );
     }
 

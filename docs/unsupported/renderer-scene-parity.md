@@ -227,6 +227,26 @@
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.
+    Translucent terrain now also draws its *sections* back-to-front across
+    chunks: the translucent target pass iterates `terrain_translucent_order`, a
+    permutation of the resident section meshes sorted by each section's
+    bounding-box-center distance to `camera_sort_position()` descending
+    (far→near, ascending section index on ties for a stable order). This mirrors
+    vanilla `ChunkSectionsToRender.renderGroup`, which accumulates draws in the
+    near→far `visibleSections` BFS order (`LevelRenderer.java:1063-1134`) but
+    reverses that list for the TRANSLUCENT layer only
+    (`ChunkSectionsToRender.java:55-56`: `draws = draws.reversed()`, MC 26.1). The
+    order is rebuilt on every camera change (alongside the within-section quad
+    resort, same coordinate basis) and on every mesh upload (the full-replace
+    add/remove path), so it stays a valid, camera-correct permutation. Audit
+    conclusion (2026-07-05): the within-section quad order, the terrain→feature
+    composite order, the particle sort, and the within-target draw order were all
+    rechecked against vanilla and confirmed consistent; only this cross-section
+    (segment) order diverged, and this slice closes it. Deterministic unit tests
+    pin far→near ordering for known section bounding boxes, reordering after a
+    camera move, equidistant tie stability, and boundless sections sinking to the
+    end; a render.rs source-order test pins that the draw loop indexes through the
+    sorted section order.
     Fluid boxes now emit vanilla `FluidRenderer.tesselate` double-sided faces:
     the horizontal side faces (`N/S/W/E`) and the open top each emit a reversed
     back face (`addFace(..., !isOverlay)` for sides and

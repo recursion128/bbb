@@ -216,15 +216,14 @@ preview / GPU PIP 归 P1-3。
 已完成项见 docs/goal-archive.md#p1-5透明排序粒子与-level-events（含
 falling_dust mapColor 全目录、provider 初速度与 alpha/color 档收敛、
 collision/on-ground 接入、firework 与 entity/level event 粒子及声效、
-particle-target carried submit 完成史）。
+particle-target carried submit、透明排序审计 + 跨 section 段间序修复
+完成史）。
 
-仍在推进（逐 provider 追踪表放账本 particle 条目
-`docs/unsupported/particle-runtime-vanilla-parity.md`，本文件不复制清单；
-2026-07-05 建表并清零全部 30 个 todo——collision/player-coupled/sounds/
-removal-gates 四维已收敛，新增缺口按表头流程先加行再立 slice）：
-
-- 透明排序：跨 target 的 translucent 粒子/对象排序差异按最小 slice 审计
-  进入（当前无已知 blocker，audit 发现即立项）。
+仍在推进：无 open 项。透明排序 2026-07-05 收口（跨 section 段间序修复，
+审计确认段内 quad 序/合成序/粒子序/within-target 序均已一致）。逐 provider
+追踪表放账本 particle 条目 `docs/unsupported/particle-runtime-vanilla-parity.md`
+（30 个 todo 已清零，本文件不复制清单）；新增缺口一律走账本表流程（先加行/
+立 todo 再切 slice）。
 
 完成标准：每个 particle slice 记录 vanilla provider 类和精确公式；对随机
 行为使用确定性 seed 或固定样本测试。

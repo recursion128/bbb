@@ -3403,6 +3403,28 @@
     说明改为"新增 provider 行为缺口先加行/立 todo 再切 slice"）；主账本
     Particle Runtime 条目 Next action 首条同步。
 
+- 透明排序审计 + 跨 section 段间序修复：
+  - [x] 2026-07-05 P1-5 最后一个透明排序 slice 收口。先做全链审计：段内
+    quad 序（`MeshData.sortQuads` centroid 距离序 + camera resort 重写
+    index buffer）、terrain→feature 合成序、粒子排序、within-target draw
+    序均逐一对照 vanilla 26.1 复核一致，唯独 translucent terrain 的**跨
+    section 段间序**有差异——旧实现 `translucent_target_pass` 按 Vec 存储序
+    绘制，`resort_translucent_terrain_for_camera` 只重写段内 index buffer。
+    vanilla `ChunkSectionsToRender.renderGroup` 按 `visibleSections` 近→远
+    BFS 累积各层 draw（`LevelRenderer.java:1063-1134`），但对 TRANSLUCENT
+    层单独 `draws = draws.reversed()`（`ChunkSectionsToRender.java:55-56`），
+    即远→近 back-to-front 且每帧随相机更新。修复：为 translucent 层维护
+    `terrain_translucent_order`——按每 section 包围盒中心到
+    `camera_sort_position()` 距离降序（远→近，等距按 section index 升序稳定）
+    排出的绘制序；`translucent_target_pass` 迭代该序。序在每次相机变化
+    （挂进 `resort_translucent_terrain_for_camera`，与段内 resort 同坐标基准）
+    与每次 mesh 上传（`upload_terrain_mesh_layers` 全量重建，唯一增删路径）
+    重建，保证始终是 `terrain_translucent` 的有效相机相关排列；缺 bounds 的
+    退化 section 沉到末尾。确定性单测覆盖已知包围盒远→近序、相机移动后重排、
+    等距稳定序、boundless 沉底四场景，render.rs source-order 断言 pin 绘制
+    循环走排序后的段序。主账本 Renderer Scene Parity 条目 Evidence 与
+    per-slice history 同步。
+
 ## P2：Terrain / Block Render Presentation
 
 - [x] fluid water overlay side texture：renderer terrain cells now carry the

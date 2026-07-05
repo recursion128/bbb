@@ -1195,7 +1195,7 @@ impl TerrainBounds {
         self.max = self.max.max(other.max);
     }
 
-    fn center(self) -> Vec3 {
+    pub(crate) fn center(self) -> Vec3 {
         (self.min + self.max) * 0.5
     }
 

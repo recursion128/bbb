@@ -298,7 +298,12 @@ When an agent does any of the following, update this file in the same slice:
     The world border forcefield now draws into the weather target after
     rain/snow with vanilla `WorldBorderRenderer` mesh/alpha/tint/UV-scroll
     formulas and `RenderPipelines.WORLD_BORDER` state (2026-07-05, detail in
-    the per-slice history file).
+    the per-slice history file). Translucent terrain now draws sections
+    back-to-front across chunks (camera-sorted `terrain_translucent_order`),
+    matching vanilla's reversed TRANSLUCENT draw list
+    (`ChunkSectionsToRender.java:55-56`, MC 26.1); the 2026-07-05 audit
+    confirmed within-section/composite/particle/within-target orders were
+    already consistent and only this segment order diverged.
   - Entity presentation migration off wrong-model proxies is complete; the
     `EntityRenderState` projection carries packed-light shading, the hurt red
     overlay, creeper swelling, death animation, riptide spin, the

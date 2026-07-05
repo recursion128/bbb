@@ -213,6 +213,13 @@ pub struct Renderer {
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
+    // Cross-section back-to-front draw order (far→near) of indices into
+    // `terrain_translucent`. Vanilla draws the TRANSLUCENT layer reversed so
+    // sections render far→near (ChunkSectionsToRender.java:55-56, MC 26.1); we
+    // keep this order sorted by section bounding-box-center distance and refresh
+    // it on every camera change / mesh upload. See
+    // `rebuild_translucent_section_order`.
+    pub(super) terrain_translucent_order: Vec<usize>,
     pub(super) terrain_source_sections: usize,
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) entity_model_bounds: Option<TerrainBounds>,
@@ -464,6 +471,10 @@ pub(super) struct ResidentTerrainMesh {
     pub(super) translucent_faces: usize,
     pub(super) culled_faces: usize,
     pub(super) resident_bytes: u64,
+    // Axis-aligned bounds of this section's translucent geometry; its center is
+    // the sort key for the cross-section back-to-front draw order. `None` only
+    // for degenerate (empty-vertex) meshes, which are filtered before residency.
+    bounds: Option<TerrainBounds>,
     translucent_sort: Option<TerrainTranslucentSortState>,
 }
 
@@ -533,6 +544,45 @@ impl TerrainTranslucentSortState {
         }
         indices
     }
+}
+
+/// Back-to-front (far→near) draw order for translucent terrain *sections*.
+///
+/// Vanilla `ChunkSectionsToRender.renderGroup` accumulates draws for every layer
+/// in the near→far `visibleSections` BFS order (LevelRenderer.java:1063-1134, MC
+/// 26.1) but reverses that list for the TRANSLUCENT layer only
+/// (ChunkSectionsToRender.java:55-56: `draws = draws.reversed()`), so translucent
+/// sections composite from the farthest to the nearest. We reproduce that by
+/// sorting resident translucent section meshes by the squared distance from each
+/// section's bounding-box center to the camera sort position, descending — the
+/// same distance basis and tie-break shape as the within-section quad resort
+/// (`TerrainTranslucentSortState::sorted_indices`). Sections whose bounds are
+/// absent (degenerate meshes) sink to the end, and equal distances keep ascending
+/// section index so the order is stable and jitter-free frame-to-frame.
+fn translucent_section_draw_order(
+    centers: &[Option<[f32; 3]>],
+    camera_position: [f32; 3],
+) -> Vec<usize> {
+    let distances: Vec<f32> = centers
+        .iter()
+        .map(|center| {
+            center
+                .map(|center| {
+                    let dx = center[0] - camera_position[0];
+                    let dy = center[1] - camera_position[1];
+                    let dz = center[2] - camera_position[2];
+                    dx * dx + dy * dy + dz * dz
+                })
+                .unwrap_or(f32::NEG_INFINITY)
+        })
+        .collect();
+    let mut order: Vec<usize> = (0..centers.len()).collect();
+    order.sort_by(|&left, &right| {
+        distances[right]
+            .total_cmp(&distances[left])
+            .then_with(|| left.cmp(&right))
+    });
+    order
 }
 
 impl Renderer {
@@ -1037,6 +1087,7 @@ impl Renderer {
             terrain_opaque: Vec::new(),
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
+            terrain_translucent_order: Vec::new(),
             terrain_source_sections: 0,
             terrain_bounds: None,
             entity_model_bounds: None,
@@ -1463,6 +1514,10 @@ impl Renderer {
                 self.terrain_translucent.push(resident);
             }
         }
+        // The translucent section set just changed (full replace is the only
+        // add/remove path); refresh the far→near draw order so it stays a valid,
+        // camera-correct permutation of `terrain_translucent`.
+        self.rebuild_translucent_section_order();
 
         self.update_camera();
         self.refresh_terrain_counters();
@@ -1623,6 +1678,7 @@ impl Renderer {
             translucent_faces: mesh.translucent_faces,
             culled_faces: mesh.culled_faces,
             resident_bytes,
+            bounds,
             translucent_sort,
         })
     }
@@ -1637,7 +1693,31 @@ impl Renderer {
         })
     }
 
+    /// Recompute the cross-section back-to-front (far→near) draw order for the
+    /// translucent terrain layer. Kept in lock-step with `terrain_translucent`
+    /// (rebuilt on every mesh upload and every camera change) so the draw pass can
+    /// iterate `terrain_translucent_order` as valid indices. With no camera pose
+    /// yet the natural upload order is retained.
+    fn rebuild_translucent_section_order(&mut self) {
+        self.terrain_translucent_order = match self.camera_sort_position() {
+            Some(camera_position) => {
+                let centers: Vec<Option<[f32; 3]>> = self
+                    .terrain_translucent
+                    .iter()
+                    .map(|mesh| mesh.bounds.map(|bounds| bounds.center().to_array()))
+                    .collect();
+                translucent_section_draw_order(&centers, camera_position)
+            }
+            None => (0..self.terrain_translucent.len()).collect(),
+        };
+    }
+
     fn resort_translucent_terrain_for_camera(&mut self) {
+        // Segment (cross-section) order tracks the camera every frame, mirroring
+        // vanilla's per-frame `draws.reversed()` for the TRANSLUCENT layer
+        // (ChunkSectionsToRender.java:55-56, MC 26.1).
+        self.rebuild_translucent_section_order();
+
         let Some(camera_position) = self.camera_sort_position() else {
             return;
         };
@@ -1910,8 +1990,10 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 
 #[cfg(test)]
 mod tests {
-    use super::{choose_format, TerrainTranslucentSortState};
+    use super::{choose_format, translucent_section_draw_order, TerrainTranslucentSortState};
+    use crate::camera::TerrainBounds;
     use crate::terrain::TerrainVertex;
+    use glam::Vec3;
 
     #[test]
     fn choose_format_prefers_srgb_surface_formats_for_screenshot_readback() {
@@ -2005,5 +2087,80 @@ mod tests {
             ambient_occlusion: 1.0,
             block_state_id: 0,
         }
+    }
+
+    /// Center of an axis-aligned bounding box, derived the same way the renderer
+    /// derives a translucent section's sort key (`mesh.bounds.map(|b| b.center())`).
+    fn section_center(min: [f32; 3], max: [f32; 3]) -> Option<[f32; 3]> {
+        let bounds = TerrainBounds::from_points([Vec3::from_array(min), Vec3::from_array(max)])
+            .expect("two corner points form bounds");
+        Some(bounds.center().to_array())
+    }
+
+    #[test]
+    fn translucent_sections_draw_back_to_front() {
+        // Three 16³ translucent sections strung out along -Z with centers at
+        // z = 0, -10, -20, indexed in storage order 0, 1, 2.
+        let centers = [
+            section_center([-8.0, -8.0, -8.0], [8.0, 8.0, 8.0]),
+            section_center([-8.0, -8.0, -18.0], [8.0, 8.0, -2.0]),
+            section_center([-8.0, -8.0, -28.0], [8.0, 8.0, -12.0]),
+        ];
+
+        // Camera in front (+Z) looking down -Z: farthest section (2) draws first,
+        // nearest (0) last — vanilla reversed TRANSLUCENT order.
+        let order = translucent_section_draw_order(&centers, [0.0, 0.0, 5.0]);
+        assert_eq!(order, vec![2, 1, 0]);
+    }
+
+    #[test]
+    fn translucent_section_order_reorders_after_camera_move() {
+        let centers = [
+            section_center([-8.0, -8.0, -8.0], [8.0, 8.0, 8.0]),
+            section_center([-8.0, -8.0, -18.0], [8.0, 8.0, -2.0]),
+            section_center([-8.0, -8.0, -28.0], [8.0, 8.0, -12.0]),
+        ];
+
+        // From +Z the far→near order is 2,1,0 ...
+        assert_eq!(
+            translucent_section_draw_order(&centers, [0.0, 0.0, 5.0]),
+            vec![2, 1, 0]
+        );
+        // ... and moving the camera behind section 2 flips it to 0,1,2, proving
+        // the segment order tracks the camera every rebuild rather than staying
+        // pinned to storage order.
+        assert_eq!(
+            translucent_section_draw_order(&centers, [0.0, 0.0, -25.0]),
+            vec![0, 1, 2]
+        );
+    }
+
+    #[test]
+    fn translucent_section_order_is_stable_on_equal_distance() {
+        // Three sections equidistant (100) from the camera at the origin: the tie
+        // must break on ascending storage index so the order never jitters between
+        // frames when distances collide.
+        let centers = [
+            section_center([2.0, -8.0, -8.0], [18.0, 8.0, 8.0]), // center x = 10
+            section_center([-18.0, -8.0, -8.0], [-2.0, 8.0, 8.0]), // center x = -10
+            section_center([-8.0, 2.0, -8.0], [8.0, 18.0, 8.0]), // center y = 10
+        ];
+        assert_eq!(
+            translucent_section_draw_order(&centers, [0.0, 0.0, 0.0]),
+            vec![0, 1, 2]
+        );
+    }
+
+    #[test]
+    fn translucent_section_order_sinks_boundless_sections_to_the_end() {
+        // A degenerate (boundless) section keeps a valid slot but sorts last so it
+        // never occludes a real far→near draw.
+        let centers = [
+            section_center([-8.0, -8.0, -28.0], [8.0, 8.0, -12.0]), // farthest
+            None,
+            section_center([-8.0, -8.0, -8.0], [8.0, 8.0, 8.0]), // nearest
+        ];
+        let order = translucent_section_draw_order(&centers, [0.0, 0.0, 5.0]);
+        assert_eq!(order, vec![0, 2, 1]);
     }
 }
