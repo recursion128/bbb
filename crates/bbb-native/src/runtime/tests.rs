@@ -135,9 +135,9 @@ fn particle_scope_context_tracks_local_spyglass_use() {
 }
 
 #[test]
-fn particle_local_player_motion_context_tracks_local_player_pose() {
+fn particle_player_motion_contexts_track_local_and_remote_players() {
     let mut world = WorldStore::new();
-    assert_eq!(particle_local_player_motion_context(&world), None);
+    assert!(particle_player_motion_contexts(&world).is_empty());
 
     world.set_local_player_pose(LocalPlayerPoseState {
         position: bbb_protocol::packets::Vec3d {
@@ -152,10 +152,81 @@ fn particle_local_player_motion_context_tracks_local_player_pose() {
         },
         ..LocalPlayerPoseState::default()
     });
+    // Non-player entities are never nearest-player candidates.
+    world.apply_add_entity(test_add_entity(
+        7,
+        VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID,
+    ));
+    world.apply_add_entity(bbb_protocol::packets::AddEntity {
+        id: 42,
+        uuid: uuid::Uuid::from_u128(42),
+        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        position: bbb_protocol::packets::Vec3d {
+            x: 4.0,
+            y: 5.0,
+            z: 6.0,
+        },
+        delta_movement: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: -0.3,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
 
-    let context = particle_local_player_motion_context(&world).unwrap();
-    assert_eq!(context.position, [1.0, 2.0, 3.0]);
-    assert_eq!(context.delta_movement, [-0.1, 0.25, 0.5]);
+    assert_eq!(
+        particle_player_motion_contexts(&world),
+        vec![
+            ParticlePlayerMotionContext {
+                position: [1.0, 2.0, 3.0],
+                delta_movement: [-0.1, 0.25, 0.5],
+            },
+            ParticlePlayerMotionContext {
+                position: [4.0, 5.0, 6.0],
+                delta_movement: [0.0, -0.3, 0.0],
+            },
+        ]
+    );
+
+    // Vanilla `EntitySelector.NO_SPECTATORS` drops spectator remote players.
+    world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+        actions: vec![
+            bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+            bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
+        ],
+        entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+            profile_id: uuid::Uuid::from_u128(42),
+            profile: Some(bbb_protocol::packets::GameProfile {
+                uuid: uuid::Uuid::from_u128(42),
+                name: "RemoteSpectator".to_string(),
+                properties: Vec::new(),
+            }),
+            listed: true,
+            latency: 0,
+            game_mode: bbb_protocol::packets::GameType::Spectator,
+            display_name: None,
+            show_hat: false,
+            list_order: 0,
+            chat_session: None,
+        }],
+    });
+    assert_eq!(
+        particle_player_motion_contexts(&world),
+        vec![ParticlePlayerMotionContext {
+            position: [1.0, 2.0, 3.0],
+            delta_movement: [-0.1, 0.25, 0.5],
+        }]
+    );
+
+    // ... and the spectator local player as well.
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    assert!(particle_player_motion_contexts(&world).is_empty());
 }
 
 #[test]
@@ -890,9 +961,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let particle_sound_camera_position = source
         .find("let particle_sound_camera_position =")
         .expect("pump should convert particle sound camera before particle tick");
-    let particle_local_player_motion_context = source
-        .find("let particle_local_player_motion_context =")
-        .expect("pump should sample local player motion state before particle tick");
+    let particle_player_motion_contexts = source
+        .find("let particle_player_motion_contexts =")
+        .expect("pump should sample nearest-player candidate motion state before particle tick");
     let particle_entity_target_contexts = source
         .find("let particle_entity_target_contexts =")
         .expect("pump should sample entity target state before particle tick");
@@ -944,9 +1015,9 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         "scheduled particle sounds choose far variants from the particle-tick camera"
     );
     assert!(
-        using_item_tick < particle_local_player_motion_context
-            && particle_local_player_motion_context < particle_tick,
-        "player-coupled particles sample post-input local player motion during particle tick"
+        using_item_tick < particle_player_motion_contexts
+            && particle_player_motion_contexts < particle_tick,
+        "player-coupled particles sample post-input player motion candidates during particle tick"
     );
     assert!(
         particle_entity_target_contexts < particle_tick,

@@ -1098,11 +1098,12 @@
 
 ## Per-provider tracking table (established 2026-07-05)
 
-Usage: subsequent P1-5 slices take work from the `todo` cells in this table
-(one slice per todo row, or one slice per shared root cause listed below).
-When a slice lands, flip the cell to `covered` and append the commit hash to
-the row's notes. `not-needed` means vanilla 26.1 has no such behavior for
-that provider (reason noted); do not pick those rows. Every row was judged
+Usage: no open todo cells remain — every cell is `covered` or `not-needed`.
+When a new provider behavior gap is found, first add the row (or flip the
+affected cell back to `todo` with a root-cause tag), then cut a slice for
+it; when the slice lands, flip the cell to `covered` and append the commit
+hash to the row's notes. `not-needed` means vanilla 26.1 has no such
+behavior for that provider (reason noted); do not pick those rows. Every row was judged
 against the vanilla 26.1 class under
 `~/Work/mc-code/sources/26.1/net/minecraft/client/particle/` (line references
 in notes), cross-checked against the bbb runtime
@@ -1154,9 +1155,18 @@ Shared todo root causes (one slice may clear several rows):
   vanilla (initial 0.01 box still comes from `collision_size()`).
 - `[nearest-player]`: PlayerCloudParticle pulls toward
   `level.getNearestPlayer(x, y, z, 2.0, false)` — the nearest of all
-  players, not only the local one (PlayerCloudParticle.java:51-58); bbb
-  currently only threads local-player motion context (local-player path
-  covered).
+  players, not only the local one (PlayerCloudParticle.java:51-58).
+  RESOLVED (this slice): the native pump now projects a candidate list
+  (`particle_player_motion_contexts` — the local player pose plus every
+  `VANILLA_ENTITY_TYPE_PLAYER_ID` entity transform, spectators excluded on
+  both paths per `EntitySelector.NO_SPECTATORS`, creative kept because
+  `filterOutCreative=false`, EntityGetter.java:95-98), and the renderer
+  cloud/sneeze tick resolves the strict nearest candidate within 2.0 per
+  particle (`dist < range * range`, minimum squared distance,
+  EntityGetter.java:74-88; the former local-only path also accepted
+  `dist == 4.0`, now excluded). Remote player `delta_movement` comes from
+  the entity transform state, matching the pull's
+  `player.getDeltaMovement().y` read.
 
 | Provider | collision | player-coupled | sounds | removal-gates | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -1227,8 +1237,8 @@ Shared todo root causes (one slice may clear several rows):
 | LargeSmokeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; smoke-family collision + blocked-Y speed-up covered |
 | LavaParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds physics; child smoke emission covered |
 | NoteParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics` stays true in vanilla; default bounds; generic collision + speed-up |
-| PlayerCloudParticle.Provider | not-needed | todo | not-needed | not-needed | `hasPhysics=false` (PlayerCloudParticle.java:32); `[nearest-player]` — local-player pull covered, nearest-other-player pull missing |
-| PlayerCloudParticle.SneezeProvider | not-needed | todo | not-needed | not-needed | as PlayerCloudParticle.Provider |
+| PlayerCloudParticle.Provider | not-needed | covered | not-needed | not-needed | `hasPhysics=false` (PlayerCloudParticle.java:32); `[nearest-player]` nearest-of-all-players pull covered (this slice): native projects local + remote player candidates minus spectators, renderer picks the strict nearest within 2.0 per particle |
+| PlayerCloudParticle.SneezeProvider | not-needed | covered | not-needed | not-needed | as PlayerCloudParticle.Provider |
 | PortalParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` (PortalParticle.java:48-51); curve covered |
 | ReversePortalParticle.ReversePortalProvider | not-needed | not-needed | not-needed | not-needed | inherits portal collision-free `move` |
 | SculkChargeParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (SculkChargeParticle.java:18); roll covered |
@@ -1274,7 +1284,8 @@ Shared todo root causes (one slice may clear several rows):
 | FireworkParticles.Starter (code-spawned) | not-needed | covered | covered | not-needed | no `move`; camera-distance far-variant selection (FireworkParticles.java:284-287) covered; life-0 blast / large_blast (:216-238) + delayed twinkle (:273-281) covered |
 | ItemPickupParticle (code-spawned) | not-needed | covered | not-needed | not-needed | follows target entity midpoint (ItemPickupParticle.java:45-49); covered incl. 3-tick lifetime and quadratic extract |
 
-Row and cell counts (2026-07-05; collision counts updated after the
+Row and cell counts (2026-07-05; player-coupled counts updated after the
+nearest-player slice cleared `[nearest-player]`, collision counts after the
 dynamic-collision-size slice cleared `[leaf-bounds]` + `[wake-grow]`):
 
 - 113 rows: 110 distinct provider classes registered by vanilla 26.1
@@ -1285,7 +1296,10 @@ dynamic-collision-size slice cleared `[leaf-bounds]` + `[wake-grow]`):
   slice flipped the last 4: 3 `[leaf-bounds]` leaf providers now sized from the
   sampled `base_quad_size`, and `[wake-grow]` Wake now grows `life * 0.001`
   per tick)
-- player-coupled: 6 covered / 105 not-needed / 2 todo
+- player-coupled: 8 covered / 105 not-needed / 0 todo (the nearest-player
+  slice flipped the last 2: PlayerCloud + Sneeze now pull toward the
+  nearest of all players, not only the local one)
 - sounds: 4 covered / 109 not-needed / 0 todo
 - removal-gates: 18 covered / 95 not-needed / 0 todo
-- 2 todo cells on 2 distinct rows (both `[nearest-player]` player-coupled).
+- 0 todo cells — the table is fully `covered` / `not-needed`; new provider
+  behavior gaps re-enter as new `todo` cells (see Usage above).

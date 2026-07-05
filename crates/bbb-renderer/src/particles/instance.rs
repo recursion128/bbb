@@ -983,9 +983,13 @@ impl ParticleInstance {
         ])
     }
 
+    /// Vanilla `PlayerCloudParticle.tick` (PlayerCloudParticle.java:51-58):
+    /// resolve `level.getNearestPlayer(this.x, this.y, this.z, 2.0, false)`
+    /// over the candidate players, then pull the particle down toward that
+    /// player only while it sits above `player.getY()`.
     pub(super) fn update_player_cloud_motion(
         &mut self,
-        context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
     ) {
         if !matches!(
             self.provider.as_str(),
@@ -993,17 +997,39 @@ impl ParticleInstance {
         ) {
             return;
         }
-        let Some(context) = context else {
+        let Some(player) = self.nearest_player_motion_context(player_motion_contexts) else {
             return;
         };
-        let dx = context.position[0] - self.position[0];
-        let dy = context.position[1] - self.position[1];
-        let dz = context.position[2] - self.position[2];
-        if dx * dx + dy * dy + dz * dz > 4.0 || self.position[1] <= context.position[1] {
+        if self.position[1] <= player.position[1] {
             return;
         }
-        self.position[1] += (context.position[1] - self.position[1]) * 0.2;
-        self.velocity[1] += (context.delta_movement[1] - self.velocity[1]) * 0.2;
+        self.position[1] += (player.position[1] - self.position[1]) * 0.2;
+        self.velocity[1] += (player.delta_movement[1] - self.velocity[1]) * 0.2;
+    }
+
+    /// Vanilla `EntityGetter.getNearestPlayer(x, y, z, 2.0, false)`
+    /// (EntityGetter.java:74-88, 95-98): keep the candidate with the strictly
+    /// smallest squared distance among those strictly inside `2.0 * 2.0`.
+    /// Spectators are already excluded from the candidate list on the native
+    /// side (`EntitySelector.NO_SPECTATORS`; `false` keeps creative players).
+    fn nearest_player_motion_context(
+        &self,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
+    ) -> Option<ParticlePlayerMotionContext> {
+        const PLAYER_CLOUD_PULL_RANGE_SQUARED: f64 = 2.0 * 2.0;
+        let mut best: Option<(f64, ParticlePlayerMotionContext)> = None;
+        for context in player_motion_contexts {
+            let dx = context.position[0] - self.position[0];
+            let dy = context.position[1] - self.position[1];
+            let dz = context.position[2] - self.position[2];
+            let distance_squared = dx * dx + dy * dy + dz * dz;
+            if distance_squared < PLAYER_CLOUD_PULL_RANGE_SQUARED
+                && best.is_none_or(|(best_distance, _)| distance_squared < best_distance)
+            {
+                best = Some((distance_squared, *context));
+            }
+        }
+        best.map(|(_, context)| context)
     }
 
     pub(super) fn update_color_fade_from_age(&mut self) {

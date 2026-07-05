@@ -3363,6 +3363,30 @@
     （断言 move 用滞后一 tick 的尺寸：tick1 half_width 0.005 → tick2 0.010）；既有
     collision 测试不回归。追踪表最后 4 个 collision `todo`→`covered`（6→2 todo：
     仅剩 2 `[nearest-player]` player-coupled）。
+  - [x] 2026-07-05 `[nearest-player]` slice 完成（清最后 2 个 todo，追踪表归零）：
+    PlayerCloudParticle.Provider / SneezeProvider 的玩家牵引从"仅本地玩家"泛化为
+    vanilla `level.getNearestPlayer(x, y, z, 2.0, false)`
+    （PlayerCloudParticle.java:51-58；EntityGetter.java:74-88、95-98——
+    `filterOutCreative=false` → `EntitySelector.NO_SPECTATORS`，只排 spectator
+    不排 creative，严格 `dist < range*range` 取最小平方距离）。方案：per-particle
+    最近选择只能在知道粒子位置的 renderer 侧做，故沿 entity_target_contexts
+    的切片管道形状——native `particle_player_motion_contexts` 每 tick 投影候选
+    玩家列表（本地玩家 pose + `entity_transforms` 中 VANILLA_ENTITY_TYPE_PLAYER_ID
+    远程玩家，双向过滤 spectator：本地 `local_player_is_spectator()`、远程
+    player_info gamemode），renderer `update_player_cloud_motion` 逐粒子解析
+    最近候选再做 y/yd 牵引；远程玩家 delta_movement 取自实体 transform（牵引
+    公式读 `player.getY()` + `getDeltaMovement().y`）。顺带把旧实现 `> 4.0` 的
+    边界修正为 vanilla 严格 `< 4.0`（dist²==4.0 不再牵引）。
+    `ParticleLocalPlayerMotionContext` 更名 `ParticlePlayerMotionContext`，
+    advance 链 Option→slice。新增确定性测试：renderer
+    `particle_runtime_player_cloud_pulls_toward_nearest_player_candidate`
+    （首候选更近 / 次候选更近（sneeze 路径）/ 全部超 2.0 含 dist²==4.0 边界
+    三场景断言牵引目标）+ native
+    `particle_player_motion_contexts_track_local_and_remote_players`
+    （本地+远程候选投影、非玩家实体排除、远程/本地 spectator 排除）。追踪表
+    2 个 player-coupled `todo`→`covered`（2→0：全表无 open todo，表头使用
+    说明改为"新增 provider 行为缺口先加行/立 todo 再切 slice"）；主账本
+    Particle Runtime 条目 Next action 首条同步。
 
 ## P2：Terrain / Block Render Presentation
 

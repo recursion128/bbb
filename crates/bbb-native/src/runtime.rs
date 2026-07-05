@@ -25,7 +25,7 @@ use bbb_renderer::{
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
     ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
     SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
@@ -1483,14 +1483,15 @@ pub(crate) fn pump_network_and_terrain(
         particle_local_player_scope_context(world, item_runtime, particle_camera_pose);
     let particle_sound_camera_position =
         particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
-    let particle_local_player_motion_context = particle_local_player_motion_context(world);
+    let particle_player_motion_contexts = particle_player_motion_contexts(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
     submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
     submit_entity_client_tick_particles(renderer, world, &mut particle_events);
     submit_ominous_item_spawner_particles(renderer, world, &mut particle_events);
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
-    // particles sample the same post-input local player state during particle tick.
+    // particles sample the same post-input local player state (plus the current remote
+    // player transforms as nearest-player candidates) during particle tick.
     renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(
         advanced_ticks,
         |query| {
@@ -1503,7 +1504,7 @@ pub(crate) fn pump_network_and_terrain(
         },
         |query| renderer_particle_block_fluid_surface_sample(world, query.position),
         particle_scope_context,
-        particle_local_player_motion_context,
+        &particle_player_motion_contexts,
         &particle_entity_target_contexts,
         particle_sound_camera_position,
     );
@@ -5972,18 +5973,51 @@ fn particle_local_player_scope_context(
     })
 }
 
-fn particle_local_player_motion_context(
-    world: &WorldStore,
-) -> Option<ParticleLocalPlayerMotionContext> {
-    let pose = world.local_player_pose()?;
-    Some(ParticleLocalPlayerMotionContext {
-        position: [pose.position.x, pose.position.y, pose.position.z],
-        delta_movement: [
-            pose.delta_movement.x,
-            pose.delta_movement.y,
-            pose.delta_movement.z,
-        ],
-    })
+/// Candidate players for the PlayerCloud / Sneeze per-particle
+/// `level.getNearestPlayer(x, y, z, 2.0, false)` resolution
+/// (PlayerCloudParticle.java:51): the local player plus every remote player
+/// entity, minus spectators (`EntitySelector.NO_SPECTATORS` — creative
+/// players stay in, EntityGetter.java:95-98). The nearest-candidate pick
+/// itself happens in the renderer particle tick, which knows each particle's
+/// position.
+fn particle_player_motion_contexts(world: &WorldStore) -> Vec<ParticlePlayerMotionContext> {
+    let mut contexts = Vec::new();
+    if !world.local_player_is_spectator() {
+        if let Some(pose) = world.local_player_pose() {
+            contexts.push(ParticlePlayerMotionContext {
+                position: [pose.position.x, pose.position.y, pose.position.z],
+                delta_movement: [
+                    pose.delta_movement.x,
+                    pose.delta_movement.y,
+                    pose.delta_movement.z,
+                ],
+            });
+        }
+    }
+    for transform in world.entity_transforms() {
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            continue;
+        }
+        if world
+            .player_info_entry(transform.uuid)
+            .is_some_and(|info| info.is_spectator())
+        {
+            continue;
+        }
+        contexts.push(ParticlePlayerMotionContext {
+            position: [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ],
+            delta_movement: [
+                transform.delta_movement.x,
+                transform.delta_movement.y,
+                transform.delta_movement.z,
+            ],
+        });
+    }
+    contexts
 }
 
 fn particle_entity_target_contexts(world: &WorldStore) -> Vec<ParticleEntityTargetContext> {

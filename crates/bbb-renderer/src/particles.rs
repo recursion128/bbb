@@ -112,8 +112,14 @@ pub struct ParticleLocalPlayerScopeContext {
     pub scoping: bool,
 }
 
+/// One candidate for the per-particle nearest-player selection performed by
+/// the PlayerCloud / Sneeze tick (vanilla
+/// `level.getNearestPlayer(x, y, z, 2.0, false)`,
+/// `PlayerCloudParticle.java:51`). The native pump projects the local player
+/// plus every remote player entity, already filtered through vanilla
+/// `EntitySelector.NO_SPECTATORS` (`EntityGetter.java:95-98`).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ParticleLocalPlayerMotionContext {
+pub struct ParticlePlayerMotionContext {
     pub position: [f64; 3],
     pub delta_movement: [f64; 3],
 }
@@ -785,7 +791,7 @@ impl ParticleRuntimeState {
             collide,
             block_fluid_surface,
             None,
-            None,
+            &[],
             &[],
         )
     }
@@ -806,7 +812,7 @@ impl ParticleRuntimeState {
             collide,
             block_fluid_surface,
             scope_context,
-            None,
+            &[],
         )
     }
 
@@ -816,7 +822,7 @@ impl ParticleRuntimeState {
         collide: F,
         block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
     ) -> ParticleAdvanceSummary
     where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -827,7 +833,7 @@ impl ParticleRuntimeState {
             collide,
             block_fluid_surface,
             scope_context,
-            local_player_motion_context,
+            player_motion_contexts,
             &[],
         )
     }
@@ -838,7 +844,7 @@ impl ParticleRuntimeState {
         collide: F,
         block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
         entity_target_contexts: &[ParticleEntityTargetContext],
     ) -> ParticleAdvanceSummary
     where
@@ -850,7 +856,7 @@ impl ParticleRuntimeState {
             collide,
             block_fluid_surface,
             scope_context,
-            local_player_motion_context,
+            player_motion_contexts,
             entity_target_contexts,
             None,
         )
@@ -862,7 +868,7 @@ impl ParticleRuntimeState {
         mut collide: F,
         mut block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
         entity_target_contexts: &[ParticleEntityTargetContext],
         sound_camera_position: Option<[f64; 3]>,
     ) -> ParticleAdvanceSummary
@@ -889,7 +895,7 @@ impl ParticleRuntimeState {
                     &mut collide,
                     &mut block_fluid_surface,
                     scope_context,
-                    local_player_motion_context,
+                    player_motion_contexts,
                     entity_target_contexts,
                 );
                 self.advance_scheduled_sound_events(sound_camera_position);
@@ -963,7 +969,7 @@ impl ParticleRuntimeState {
         collide: &mut F,
         block_fluid_surface: &mut S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
         entity_target_contexts: &[ParticleEntityTargetContext],
     ) -> usize
     where
@@ -1010,7 +1016,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.update_player_cloud_motion(local_player_motion_context);
+            instance.update_player_cloud_motion(player_motion_contexts);
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();

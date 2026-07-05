@@ -123,7 +123,7 @@ impl Renderer {
         collide: F,
         block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
     ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
         S: FnMut(ParticleBlockFluidSurfaceQuery) -> ParticleBlockFluidSurfaceSample,
@@ -133,7 +133,7 @@ impl Renderer {
             collide,
             block_fluid_surface,
             scope_context,
-            local_player_motion_context,
+            player_motion_contexts,
             &[],
         );
     }
@@ -144,7 +144,7 @@ impl Renderer {
         collide: F,
         block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
         entity_target_contexts: &[ParticleEntityTargetContext],
     ) where
         F: FnMut(ParticleCollisionQuery) -> [f64; 3],
@@ -155,7 +155,7 @@ impl Renderer {
             collide,
             block_fluid_surface,
             scope_context,
-            local_player_motion_context,
+            player_motion_contexts,
             entity_target_contexts,
         );
         self.record_particle_advance_summary(summary);
@@ -167,7 +167,7 @@ impl Renderer {
         collide: F,
         block_fluid_surface: S,
         scope_context: Option<ParticleLocalPlayerScopeContext>,
-        local_player_motion_context: Option<ParticleLocalPlayerMotionContext>,
+        player_motion_contexts: &[ParticlePlayerMotionContext],
         entity_target_contexts: &[ParticleEntityTargetContext],
         sound_camera_position: Option<[f64; 3]>,
     ) where
@@ -181,7 +181,7 @@ impl Renderer {
                 collide,
                 block_fluid_surface,
                 scope_context,
-                local_player_motion_context,
+                player_motion_contexts,
                 entity_target_contexts,
                 sound_camera_position,
             );

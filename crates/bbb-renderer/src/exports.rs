@@ -105,7 +105,7 @@ pub use crate::particles::{
     ItemPickupParticleRenderState, ParticleBlockFluidSurfaceQuery, ParticleBlockFluidSurfaceSample,
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleCollisionQuery,
     ParticleEntityTargetContext, ParticleEntityTargetSource, ParticleFluidKind,
-    ParticleItemOptionState, ParticleLocalPlayerMotionContext, ParticleLocalPlayerScopeContext,
+    ParticleItemOptionState, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
     ParticleScheduledSoundEvent, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
     ParticleSpriteUv, ParticleUvRect,
 };

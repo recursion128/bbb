@@ -102,7 +102,7 @@ fn particle_runtime_scheduled_sound_events_release_with_current_camera_variant()
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &[],
         Some([10.0, 64.0, 0.0]),
     );
@@ -113,7 +113,7 @@ fn particle_runtime_scheduled_sound_events_release_with_current_camera_variant()
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &[],
         Some([10.0, 64.0, 14.0]),
     );
@@ -279,7 +279,7 @@ fn particle_runtime_item_pickup_tracks_target_midpoint_and_expires_on_third_tick
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &[ParticleEntityTargetContext {
             entity_id: 20,
             position: [6.0, 71.0, -4.0],
@@ -350,7 +350,7 @@ fn particle_runtime_item_pickup_extracts_experience_orb_render_state() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &[ParticleEntityTargetContext {
             entity_id: 20,
             position: [6.0, 71.0, -4.0],
@@ -656,10 +656,10 @@ fn particle_runtime_player_cloud_tracks_nearby_local_player_motion() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        Some(ParticleLocalPlayerMotionContext {
+        &[ParticlePlayerMotionContext {
             position: [0.0, 2.0, 0.0],
             delta_movement: [0.0, -0.2, 0.0],
-        }),
+        }],
     );
 
     assert_eq!(summary.expired_instances, 0);
@@ -682,10 +682,10 @@ fn particle_runtime_player_cloud_ignores_far_or_lower_local_player() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        Some(ParticleLocalPlayerMotionContext {
+        &[ParticlePlayerMotionContext {
             position: [0.0, 2.0, 0.0],
             delta_movement: [0.0, -0.2, 0.0],
-        }),
+        }],
     );
 
     let far = &particles.active_instances()[0];
@@ -703,15 +703,110 @@ fn particle_runtime_player_cloud_ignores_far_or_lower_local_player() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        Some(ParticleLocalPlayerMotionContext {
+        &[ParticlePlayerMotionContext {
             position: [0.0, 2.0, 0.0],
             delta_movement: [0.0, -0.2, 0.0],
-        }),
+        }],
     );
 
     let lower = &particles.active_instances()[0];
     assert_close3(lower.position, [0.0, 1.4, 0.0]);
     assert_close3(lower.velocity, [0.0, 0.384, 0.0]);
+}
+
+// Vanilla `PlayerCloudParticle.tick` pulls toward
+// `level.getNearestPlayer(x, y, z, 2.0, false)` (PlayerCloudParticle.java:51,
+// EntityGetter.java:74-88): the strictly nearest candidate within 2.0 wins,
+// regardless of slice order (native pushes the local player first).
+#[test]
+fn particle_runtime_player_cloud_pulls_toward_nearest_player_candidate() {
+    // Local (first) candidate nearer: post-move particle sits at [0, 3.4, 0];
+    // local dist^2 = 0.81 beats remote dist^2 = 1.64.
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
+    instance.position = [0.0, 3.0, 0.0];
+    instance.velocity = [0.0, 0.4, 0.0];
+    particles.active_instances.push_back(instance);
+
+    particles.advance_with_world_and_player_context(
+        1,
+        |query| query.movement,
+        |_| ParticleBlockFluidSurfaceSample::default(),
+        None,
+        &[
+            ParticlePlayerMotionContext {
+                position: [0.0, 2.5, 0.0],
+                delta_movement: [0.0, -0.5, 0.0],
+            },
+            ParticlePlayerMotionContext {
+                position: [1.0, 2.6, 0.0],
+                delta_movement: [0.0, 0.3, 0.0],
+            },
+        ],
+    );
+
+    let instance = &particles.active_instances()[0];
+    assert_close3(instance.position, [0.0, 3.22, 0.0]);
+    assert_close3(instance.velocity, [0.0, 0.2072, 0.0]);
+
+    // Remote (second) candidate nearer: remote dist^2 = 1.0 beats local
+    // dist^2 = 1.64, so the pull reads the remote y and delta movement.
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    let mut instance = test_instance_with_lifetime("minecraft:sneeze", 20);
+    instance.position = [0.0, 3.0, 0.0];
+    instance.velocity = [0.0, 0.4, 0.0];
+    particles.active_instances.push_back(instance);
+
+    particles.advance_with_world_and_player_context(
+        1,
+        |query| query.movement,
+        |_| ParticleBlockFluidSurfaceSample::default(),
+        None,
+        &[
+            ParticlePlayerMotionContext {
+                position: [1.0, 2.6, 0.0],
+                delta_movement: [0.0, -0.5, 0.0],
+            },
+            ParticlePlayerMotionContext {
+                position: [0.0, 2.4, 0.0],
+                delta_movement: [0.0, 0.3, 0.0],
+            },
+        ],
+    );
+
+    let instance = &particles.active_instances()[0];
+    assert_close3(instance.position, [0.0, 3.2, 0.0]);
+    assert_close3(instance.velocity, [0.0, 0.3672, 0.0]);
+
+    // Every candidate at or beyond 2.0: dist^2 = 4.0 exactly (vanilla keeps
+    // only `dist < range * range`, EntityGetter.java:81) and dist^2 = 9.0 —
+    // no pull, plain friction tick.
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
+    instance.position = [0.0, 3.0, 0.0];
+    instance.velocity = [0.0, 0.4, 0.0];
+    particles.active_instances.push_back(instance);
+
+    particles.advance_with_world_and_player_context(
+        1,
+        |query| query.movement,
+        |_| ParticleBlockFluidSurfaceSample::default(),
+        None,
+        &[
+            ParticlePlayerMotionContext {
+                position: [0.0, 1.4, 0.0],
+                delta_movement: [0.0, -0.5, 0.0],
+            },
+            ParticlePlayerMotionContext {
+                position: [3.0, 3.4, 0.0],
+                delta_movement: [0.0, 0.3, 0.0],
+            },
+        ],
+    );
+
+    let instance = &particles.active_instances()[0];
+    assert_close3(instance.position, [0.0, 3.4, 0.0]);
+    assert_close3(instance.velocity, [0.0, 0.384, 0.0]);
 }
 
 #[test]
@@ -1972,7 +2067,7 @@ fn particle_runtime_vibration_refreshes_entity_target_each_tick() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &entity_targets,
     );
 
@@ -2003,7 +2098,7 @@ fn particle_runtime_vibration_entity_target_missing_removes_particle() {
         |query| query.movement,
         |_| ParticleBlockFluidSurfaceSample::default(),
         None,
-        None,
+        &[],
         &[],
     );
 
