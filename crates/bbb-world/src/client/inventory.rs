@@ -2210,6 +2210,10 @@ impl WorldStore {
         self.items.item_max_stack_size_for_protocol_id(item_id)
     }
 
+    pub fn item_max_damage_for_protocol_id(&self, item_id: i32) -> Option<i32> {
+        self.items.item_max_damage_for_protocol_id(item_id)
+    }
+
     pub fn set_local_merchant_selected_offer(&mut self, index: i32) -> bool {
         self.inventory
             .set_local_merchant_selected_offer(inventory_ctx!(self), index)

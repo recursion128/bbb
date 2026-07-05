@@ -121,6 +121,14 @@ impl ItemProfiles {
             .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
     }
 
+    /// Vanilla `ItemStack.getMaxDamage` reads `DataComponents.MAX_DAMAGE` via
+    /// `getOrDefault`, so a damageable item whose patch omits `max_damage`
+    /// (the common case: only `damage` is patched) still falls back to the
+    /// item's registry default.
+    pub(crate) fn item_max_damage_for_protocol_id(&self, item_id: i32) -> Option<i32> {
+        self.default_item_max_damage.get(&item_id).copied()
+    }
+
     pub(crate) fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.furnace_fuel_item_ids = filter_item_ids(item_ids);
     }

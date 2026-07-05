@@ -8169,46 +8169,110 @@ fn item_cooldown_group_requires_runtime_for_default_item_group() {
 
 #[test]
 fn hud_item_durability_bar_follows_vanilla_damage_formula() {
+    let world = WorldStore::new();
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 25, false)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 1, 100, 25, false)),
         Some(HudItemDurabilityBar::new(10, [127.0 / 255.0, 1.0, 0.0]))
     );
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 100, false)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 1, 100, 100, false)),
         Some(HudItemDurabilityBar::new(0, [1.0, 0.0, 0.0]))
     );
 }
 
 #[test]
 fn hud_item_durability_bar_requires_damageable_damaged_stack() {
+    let world = WorldStore::new();
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 0, false)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 1, 100, 0, false)),
         None
     );
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, -5, false)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 1, 100, -5, false)),
         None
     );
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 25, true)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 1, 100, 25, true)),
         None
     );
     assert_eq!(
-        hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 0, 100, 25, false)),
+        hud_item_durability_bar_for_stack(&world, &item_stack_with_damage(42, 0, 100, 25, false)),
         None
     );
     let mut missing_damage = item_stack(42, 1);
     missing_damage.component_patch.max_damage = Some(100);
-    assert_eq!(hud_item_durability_bar_for_stack(&missing_damage), None);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &missing_damage),
+        None
+    );
 
+    // No patch `max_damage` and an empty default-item-max-damage table (as
+    // when the registry default table hasn't been populated, or the item has
+    // no vanilla default): still None, since there is nothing to fall back to.
     let mut missing_max_damage = item_stack(42, 1);
     missing_max_damage.component_patch.damage = Some(25);
-    assert_eq!(hud_item_durability_bar_for_stack(&missing_max_damage), None);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &missing_max_damage),
+        None
+    );
 
     let mut non_damageable = item_stack_with_damage(42, 1, 0, 25, false);
-    assert_eq!(hud_item_durability_bar_for_stack(&non_damageable), None);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &non_damageable),
+        None
+    );
     non_damageable.component_patch.max_damage = Some(-1);
-    assert_eq!(hud_item_durability_bar_for_stack(&non_damageable), None);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &non_damageable),
+        None
+    );
+}
+
+#[test]
+fn hud_item_durability_bar_falls_back_to_default_item_max_damage_table() {
+    let mut world = WorldStore::new();
+    world.set_default_item_max_damage(std::collections::BTreeMap::from([(42, 100)]));
+
+    // Vanilla protocol patches usually only carry `damage` for a damaged
+    // stack, since `max_damage` is a registry default component. The HUD/
+    // inventory durability bar must still show, matching the same
+    // width/color formula as an explicit patch `max_damage`.
+    let mut default_max_damage_only = item_stack(42, 1);
+    default_max_damage_only.component_patch.damage = Some(25);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &default_max_damage_only),
+        Some(HudItemDurabilityBar::new(10, [127.0 / 255.0, 1.0, 0.0]))
+    );
+
+    // An explicit patch `max_damage` still takes priority over the registry
+    // default table (100): using the patched 50 (not 100) yields width 10,
+    // not the width 12 that the default-table value would produce.
+    let mut explicit_max_damage = item_stack(42, 1);
+    explicit_max_damage.component_patch.max_damage = Some(50);
+    explicit_max_damage.component_patch.damage = Some(10);
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &explicit_max_damage),
+        Some(HudItemDurabilityBar::new(
+            10,
+            vanilla_hsv_to_rgb_unit(0.8 / 3.0, 1.0, 1.0)
+        ))
+    );
+
+    // `minecraft:unbreakable` suppresses the bar even when the registry
+    // default table has a `max_damage` entry for the item.
+    let mut unbreakable = item_stack(42, 1);
+    unbreakable.component_patch.damage = Some(25);
+    unbreakable.component_patch.unbreakable = true;
+    assert_eq!(
+        hud_item_durability_bar_for_stack(&world, &unbreakable),
+        None
+    );
+
+    // An item with no registry default entry (e.g. a non-damageable item)
+    // still falls back to None when the patch omits `max_damage`.
+    let mut other_item = item_stack(7, 1);
+    other_item.component_patch.damage = Some(25);
+    assert_eq!(hud_item_durability_bar_for_stack(&world, &other_item), None);
 }
 
 #[test]

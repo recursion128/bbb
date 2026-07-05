@@ -1395,6 +1395,19 @@
     already do. Tests use a constant-transform custom consumable with
     `UseAnimation.NONE` to prove idle, start, mid, and full use-duration
     branches produce distinct first-person meshes from local use ticks.
+  - [x] HUD/inventory durability bar registry-default `max_damage` fallback：
+    vanilla `ItemStack.getMaxDamage()` is `getOrDefault(MAX_DAMAGE, 0)`, and
+    servers only patch `damage` for an ordinary damaged stack since
+    `max_damage` is a registry default component. Native's
+    `hud_item_durability_bar_for_stack` now falls back to the world's
+    default-item-max-damage table (`WorldStore::item_max_damage_for_protocol_id`,
+    populated at startup from `NativeItemRuntime::item_max_damage_by_protocol_id`)
+    when the stack patch omits `max_damage`, matching the existing
+    `wolf_armor_crackiness` fallback pattern. An explicit patch `max_damage`
+    still takes priority, and `minecraft:unbreakable` still suppresses the bar
+    regardless of the default table. Tests cover the default-table fallback,
+    patch-value priority over the default table, an empty default table, and
+    unbreakable-with-default-table suppression.
 
 
 ### 2026-07-05 迁入：item glint 与 first-person presentation 完成史

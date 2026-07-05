@@ -5066,7 +5066,7 @@ fn hud_item_icon_for_stack(
             .collect(),
         foil: hud_item_foil_for_stack(item_runtime, item),
         count_label: hud_item_count_label_for_stack(item),
-        durability_bar: hud_item_durability_bar_for_stack(item),
+        durability_bar: hud_item_durability_bar_for_stack(world, item),
         cooldown_progress: hud_item_cooldown_progress_for_stack(
             world,
             Some(item_runtime),
@@ -5136,13 +5136,20 @@ fn item_cooldown_group(
 }
 
 fn hud_item_durability_bar_for_stack(
+    world: &WorldStore,
     item: &bbb_protocol::packets::ItemStackSummary,
 ) -> Option<HudItemDurabilityBar> {
     if item_stack_is_empty(item) || item.component_patch.unbreakable {
         return None;
     }
 
-    let max_damage = item.component_patch.max_damage?;
+    // Vanilla `ItemStack.getMaxDamage()` is `getOrDefault(MAX_DAMAGE, 0)`: for a
+    // damageable item the protocol patch usually only carries `damage`, since
+    // `max_damage` is a registry default that doesn't get re-sent per stack.
+    let max_damage = item.component_patch.max_damage.or_else(|| {
+        item.item_id
+            .and_then(|item_id| world.item_max_damage_for_protocol_id(item_id))
+    })?;
     if max_damage <= 0 {
         return None;
     }

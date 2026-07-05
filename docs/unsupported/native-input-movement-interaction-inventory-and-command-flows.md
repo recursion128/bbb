@@ -567,8 +567,11 @@
         - for local inventory item icons
         - using official 26.1 `font/ascii.png` digit glyphs
         - with vanilla item-count placement
-      - renders vanilla-shaped durability bars for item icons with
-        `damage` / `max_damage` component summaries:
+      - renders vanilla-shaped durability bars for item icons with a patch
+        `damage` component summary, falling back to the registry
+        default-item-max-damage table when the patch omits `max_damage` (the
+        common case for a damaged stack, since `max_damage` is a registry
+        default component that servers don't re-send per stack):
         - in the hotbar
         - in local inventory screens
         - in supported server-opened screens
