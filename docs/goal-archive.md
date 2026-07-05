@@ -318,6 +318,31 @@
   粒子 light refresh 已调整并验证为 input/use-item 后 tick、frame extract 输入绑定后采样，
   当前 RendererFrame / adjacent renderer-state 提取时机清单已审完。
 
+### 2026-07-05：target ownership 伞形条目逐 pass 审计闭项
+
+- [x] P1-1 target ownership 审计（2026-07-05，HEAD bb4e8d34）：render.rs 全部
+  19 个 FRAME_STEPS step 的写入 target 与 vanilla 逐项对照，结论全 aligned，
+  伞形条目按"无已知错位，仅剩常态规则"闭项。要点：
+  - bbb 无条件创建 main/translucent/item_entity/particle/weather/cloud/
+    entity_outline 七个独立 target 并跑 transparency combine——建模的是
+    vanilla fabulous-on 路径（`LevelRenderer.java:480-487` 仅
+    `transparencyChain != null` 时 createInternal 分离 target），全部对齐
+    均为 aligned-by-mode。
+  - 曾疑似错位的 selection/line 画入 itemEntity target 实为 vanilla 规定：
+    `RenderTypes.java:332-350` `LINES`/`linesTranslucent`/
+    `SECONDARY_BLOCK_OUTLINE` 均 `.setOutputTarget(ITEM_ENTITY_TARGET)`。
+  - feature pass 相对序与 `FeatureRenderDispatcher.java:53-94`（solid →
+    translucent features → translucent particles）及顶层 frame 序
+    `LevelRenderer.java:493-534` 一致；copy main depth →
+    translucent/itemEntity/particles 与 `:679-689` 三处 copyDepthFrom 一致。
+  - 无绕过 step 编排的 draw 站点（render() 本体无 begin_render_pass 由源码
+    断言测试强制；跨文件运行时 pass 仅 PIP 的 encode 函数，由对应 step 调用）。
+  - 非错位备注：vanilla `addLateDebugPass`（debug gizmo → main，
+    `LevelRenderer.java:762-780`）bbb 无对应 step——debug gizmo 功能整体
+    未实现且无生产者，判 not-needed 直到 debug 工具面立项；
+    weather_target_pass 额外 copy main depth → weather 是 bbb 深度准备细节，
+    不移动任何 draw 的 target 归属。
+
 ### 2026-07-05 迁入：world border（forcefield）渲染补齐
 
 - [x] world border forcefield 渲染：weather target 内 rain/snow 之后新增

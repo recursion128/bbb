@@ -130,8 +130,8 @@ P1 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0 clean 时
 - `residual`：仅 `entity_models/dispatch.rs` 的"无 residual mesh-emitting
   arm"注释。
 - `unsupported`：screenshot surface format bail、dynamic-player texture
-  render-type defensive panic、pack parser validation bail、unknown packet /
-  component diagnostics、tests 和 docs 指针。
+  render-type defensive panic、pack / font 等资产解析校验 bail、unknown
+  packet / component diagnostics、tests 和 docs 指针。
 - `fallback`：colored debug/profile/terrain/HUD/map/test 或 vanilla fallback
   注释。
 
@@ -149,23 +149,26 @@ submission metadata，而不是只看顶点数量。
 - 架构重构两批次已完成并固化为上方结构不变量：2026-07-02 #1-7
   （2d19d2a3..cae7bcbf）与 2026-07-04 旧账清偿（1de8f14b..44244ea3）；明细
   见 memory `architecture-refactor-progress` 与 goal-archive。
+- P1 全部五个子队列 2026-07-05 清空（a0031d3a..bb4e8d34 loop run）：仅剩
+  P1-3 一项 blocked（creative preview，等 creative-screen 基建）与账本记录
+  的 defer 项（bidi/unihex、PIP item_layers GPU 绘制等），均有重启判据。
 
 ## 渲染管线差异优先级
 
-P1 子队列消化顺序：P1-1 target ownership 小 slice → P1-5 → P1-3 宽面；宽面
-项只按能关闭 checklist 的最小 slice 进入。P2/P3 在 P1 队列清空后进入。
+P1 队列已清空（blocked/defer 项见各节与账本）；按队列规则 P2/P3 进入：
+P2 两节按能关闭 checklist 的最小 slice 消化，新发现工作按优先级插队并在
+账本立条目。
 
 ### P1-1：GPU Render-State / Render-Graph Fidelity
 
 已完成项见 docs/goal-archive.md#p1-1gpu-render-state--render-graph-fidelity。
 
-仍在推进：
-
-- target ownership：main / itemEntity / translucent / particles / weather /
-  clouds / entity_outline target 的 draw ownership 继续收紧；text / item /
-  block / crumbling / line / selection 等 feature pass 的相对顺序继续按
-  vanilla `LevelRenderer` 和 `FeatureRenderDispatcher` 拆分。render.rs 的
-  step 方法 + `FRAME_STEPS` 已把此类调整降为"挪一个方法 + 改一行常量"。
+仍在推进：无 open 项。target ownership 伞形条目 2026-07-05 以逐 pass 审计
+闭项：19 个 step 的写入 target 与 feature pass 相对序对照 vanilla
+`LevelRenderer`/`FeatureRenderDispatcher`/`RenderTypes.setOutputTarget` 全部
+aligned（bbb 建模 fabulous-on 路径），无绕过 step 编排的 draw 站点（审计
+明细见 goal-archive P1-1）。新增 target/feature pass 按结构不变量进入
+（step 方法 + `FRAME_STEPS` 登记 + vanilla 依据），不再保留常驻开放项。
 
 完成标准：每个 GPU state slice 有 vanilla `RenderTypes.*`、shader json、
 post-chain 或 `LevelRenderer` 依据；测试覆盖 render plan / pipeline key /
