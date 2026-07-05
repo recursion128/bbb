@@ -3834,6 +3834,34 @@
   scale 几何（字格/阴影/effect bar）、首帧 fade-in alpha=0 丢弃、绘制次序
   （status bars 之后、screen 之前）源序锁。
 
+### 2026-07-05 迁入：boss bars 渲染
+
+- HUD overlay 第二片完成：boss bars 从 `ClientHudState.boss_bars` 经
+  `RendererFrame.hud_boss_bars`（`HudBossBar`：plain-run 名称 + 最新包
+  progress + `HudBossBarColor`/`HudBossBarOverlay` 枚举，`name()` 词汇即
+  vanilla `BossEvent` getName）投影到 `collect_hud_draws`，绘制点位于
+  status bars 之后、overlay message 之前（Gui.java:203-217 顺序）。
+- vanilla 常数（26.1 逐条核实，BossHealthOverlay.java）：182x5 sheet、
+  `x = guiWidth/2 - 91`、y 自 12 起每条 +（10+9）、先画后判 `guiHeight/3`
+  截断（:63-77，首条永画）；每条 bar 层序 colored background → notched
+  background →（width>0 时）colored progress → notched progress，裁剪宽度
+  `Mth.lerpDiscrete(progress,0,182) = floor(p*181)+(p>0?1:0)`（:84-106，
+  Mth.java:527-531），UV 取左侧 `width/182` 带；名称居中
+  `(guiWidth/2 - w/2, y-9)` 不透明白 + 默认阴影（:71-73）。22 张
+  `boss_bar/*` sprite 全部经 vanilla GUI atlas 单图上传（与 crosshair
+  同路径，资产树齐全）。
+- 边界：投影按 UUID 序（world 用 BTreeMap，vanilla LinkedHashMap 的包到达
+  序未建模）；progress 为最新包值（`LerpingBossEvent` 100ms wall-clock 平滑
+  未建模）；darken_screen/create_world_fog 仍是 world 侧
+  `boss_overlay_should_*` 查询（无天空/雾消费者）、play_music 无音频消费
+  者——三者继续 defer。
+- 测试：bbb-native 投影（UUID 序/字段透传/风格更新与移除/全 7 色 x 5
+  overlay 无丢弃）；bbb-renderer 层序（notched 双层、width=0 跳 fill）、
+  lerpDiscrete 公式与 UV 裁剪、行堆叠与 guiHeight/3 截断（首条永画）、
+  名称居中原点、getName 词汇 round-trip 与 ordinal-1 notched 索引、
+  progress sanitize clamp、绘制次序源序锁（status bars 后、overlay
+  message 前）；layout 矩形常数。
+
 ## 历史 audit 快照
 
 ### 2026-07-03（dolphin event slice 后复核，原 goal.md 当前边界）

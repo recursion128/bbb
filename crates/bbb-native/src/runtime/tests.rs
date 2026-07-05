@@ -879,6 +879,130 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
 }
 
 #[test]
+fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
+    let mut world = WorldStore::new();
+    assert!(hud_boss_bars_from_world(&world).is_empty());
+
+    // Insert the higher UUID first: the world keys bars in a BTreeMap, so
+    // the projection orders by UUID (deterministic across frames; vanilla's
+    // LinkedHashMap packet-arrival order is not tracked).
+    let dragon = uuid::Uuid::from_u128(7);
+    let wither = uuid::Uuid::from_u128(2);
+    world.apply_boss_event(bbb_protocol::packets::BossEvent {
+        id: dragon,
+        operation: bbb_protocol::packets::BossEventOperation::Add {
+            name: "Ender Dragon".to_string(),
+            progress: 0.75,
+            color: bbb_protocol::packets::BossBarColor::Purple,
+            overlay: bbb_protocol::packets::BossBarOverlay::Progress,
+            flags: bbb_protocol::packets::BossEventFlags {
+                darken_screen: true,
+                play_music: false,
+                create_world_fog: true,
+            },
+        },
+    });
+    world.apply_boss_event(bbb_protocol::packets::BossEvent {
+        id: wither,
+        operation: bbb_protocol::packets::BossEventOperation::Add {
+            name: "Wither".to_string(),
+            progress: 0.5,
+            color: bbb_protocol::packets::BossBarColor::Red,
+            overlay: bbb_protocol::packets::BossBarOverlay::Notched10,
+            flags: bbb_protocol::packets::BossEventFlags {
+                darken_screen: false,
+                play_music: false,
+                create_world_fog: false,
+            },
+        },
+    });
+
+    let bars = hud_boss_bars_from_world(&world);
+    assert_eq!(bars.len(), 2);
+    assert_eq!(
+        bars[0].name_runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Wither")]
+    );
+    assert_eq!(bars[0].progress, 0.5);
+    assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Red);
+    assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Notched10);
+    assert_eq!(
+        bars[1].name_runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Ender Dragon")]
+    );
+    assert_eq!(bars[1].color, bbb_renderer::HudBossBarColor::Purple);
+    assert_eq!(bars[1].overlay, bbb_renderer::HudBossBarOverlay::Progress);
+
+    // Style updates re-project; removing a bar drops it from the list. The
+    // darken/fog flags never ride the bar draw (they stay behind the world's
+    // `boss_overlay_should_*` queries).
+    world.apply_boss_event(bbb_protocol::packets::BossEvent {
+        id: wither,
+        operation: bbb_protocol::packets::BossEventOperation::UpdateStyle {
+            color: bbb_protocol::packets::BossBarColor::Yellow,
+            overlay: bbb_protocol::packets::BossBarOverlay::Notched20,
+        },
+    });
+    let bars = hud_boss_bars_from_world(&world);
+    assert_eq!(bars[0].color, bbb_renderer::HudBossBarColor::Yellow);
+    assert_eq!(bars[0].overlay, bbb_renderer::HudBossBarOverlay::Notched20);
+    world.apply_boss_event(bbb_protocol::packets::BossEvent {
+        id: wither,
+        operation: bbb_protocol::packets::BossEventOperation::Remove,
+    });
+    let bars = hud_boss_bars_from_world(&world);
+    assert_eq!(bars.len(), 1);
+    assert_eq!(bars[0].progress, 0.75);
+}
+
+#[test]
+fn hud_boss_bar_projection_covers_every_vanilla_color_and_overlay() {
+    // The world stores vanilla `getName` strings and the projection re-parses
+    // them (`HudBossBarColor::from_name` / `HudBossBarOverlay::from_name`):
+    // every protocol color x overlay combination must survive, or bars would
+    // silently vanish on a name mismatch.
+    let colors = [
+        bbb_protocol::packets::BossBarColor::Pink,
+        bbb_protocol::packets::BossBarColor::Blue,
+        bbb_protocol::packets::BossBarColor::Red,
+        bbb_protocol::packets::BossBarColor::Green,
+        bbb_protocol::packets::BossBarColor::Yellow,
+        bbb_protocol::packets::BossBarColor::Purple,
+        bbb_protocol::packets::BossBarColor::White,
+    ];
+    let overlays = [
+        bbb_protocol::packets::BossBarOverlay::Progress,
+        bbb_protocol::packets::BossBarOverlay::Notched6,
+        bbb_protocol::packets::BossBarOverlay::Notched10,
+        bbb_protocol::packets::BossBarOverlay::Notched12,
+        bbb_protocol::packets::BossBarOverlay::Notched20,
+    ];
+    let mut world = WorldStore::new();
+    let mut id = 0u128;
+    for color in colors {
+        for overlay in overlays {
+            id += 1;
+            world.apply_boss_event(bbb_protocol::packets::BossEvent {
+                id: uuid::Uuid::from_u128(id),
+                operation: bbb_protocol::packets::BossEventOperation::Add {
+                    name: format!("boss {id}"),
+                    progress: 1.0,
+                    color,
+                    overlay,
+                    flags: bbb_protocol::packets::BossEventFlags {
+                        darken_screen: false,
+                        play_music: false,
+                        create_world_fog: false,
+                    },
+                },
+            });
+        }
+    }
+    let bars = hud_boss_bars_from_world(&world);
+    assert_eq!(bars.len(), colors.len() * overlays.len());
+}
+
+#[test]
 fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source

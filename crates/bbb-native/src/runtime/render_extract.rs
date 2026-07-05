@@ -8,10 +8,10 @@
 use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudBlockItemModel,
-    HudInventoryScreen, HudStyledTextRun, HudTitleText, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
-    WorldBorderRenderState,
+    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudInventoryScreen, HudStyledTextRun,
+    HudTitleText, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, WorldBorderRenderState,
 };
 
 use super::*;
@@ -728,6 +728,35 @@ pub(crate) fn hud_title_text_from_world(
     })
 }
 
+/// Projects the world's tracked boss bars into the renderer's ordered frame
+/// list, mirroring `BossHealthOverlay.extractRenderState`'s walk over its
+/// event map (BossHealthOverlay.java:57-82). Vanilla iterates a
+/// LinkedHashMap in packet-arrival order; the world keys bars by UUID in a
+/// BTreeMap, so bars project in UUID order — deterministic and stable across
+/// frames, but not vanilla's insertion order (ledgered). The protocol layer
+/// flattens names to plain text, so each name is a single unstyled run, and
+/// progress is the latest packet value (`LerpingBossEvent`'s 100ms
+/// wall-clock smoothing is not modeled). Bars whose stored color/overlay
+/// names fall outside the vanilla `BossEvent` getName vocabularies
+/// (impossible via the protocol path, reachable only through deserialized
+/// state) are dropped. The darken-screen / world-fog flags stay behind the
+/// world's `boss_overlay_should_*` queries; they are sky/fog effects, not
+/// bar draws.
+pub(crate) fn hud_boss_bars_from_world(world: &WorldStore) -> Vec<HudBossBar> {
+    world
+        .boss_bars()
+        .values()
+        .filter_map(|bar| {
+            Some(HudBossBar {
+                name_runs: vec![HudStyledTextRun::plain(bar.name.clone())],
+                progress: bar.progress,
+                color: HudBossBarColor::from_name(&bar.color)?,
+                overlay: HudBossBarOverlay::from_name(&bar.overlay)?,
+            })
+        })
+        .collect()
+}
+
 /// One frame's worth of world->renderer state.
 ///
 /// `pump_network_and_terrain` extracts each field at a vanilla-verified
@@ -749,6 +778,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
+    pub(crate) hud_boss_bars: Vec<HudBossBar>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(crate) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(crate) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
@@ -809,6 +839,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
+    renderer.set_hud_boss_bars(frame.hud_boss_bars);
     renderer.set_item_entity_billboards(frame.item_entity_billboards);
     renderer.set_block_item_model_meshes(frame.block_item_model_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(

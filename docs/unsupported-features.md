@@ -483,10 +483,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Boss bars: `ClientHudState.boss_bars` (progress/color/overlay/darken/fog)
-    is fully applied and queryable; renderer has zero consumption. Needs
-    `boss_bars` sprites (5 colors × progress + notched overlays), top
-    stacking, and name text per `BossHealthOverlay.java`.
   - Experience level number (green centered text above the bar;
     `experience.level` is in world state but not projected) and the
     hunger-effect food-bar jitter variant.
@@ -504,6 +500,28 @@ When an agent does any of the following, update this file in the same slice:
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-05 — Boss bars render: `ClientHudState.boss_bars` projects
+    per frame as an ordered `Vec<HudBossBar>` (plain-run name + latest packet
+    progress + `HudBossBarColor`/`HudBossBarOverlay` enums whose `name()`
+    strings are the vanilla `BossEvent` getName vocabularies) and draws in
+    `collect_hud_draws` between the status bars and the overlay message
+    (vanilla `Gui.extractRenderState` order, Gui.java:203-217). Vanilla
+    anchors (BossHealthOverlay.java): 182x5 sheets at `x = guiWidth/2 - 91`,
+    stacked from y=12 stepping 10+9 with the draw-then-check `guiHeight/3`
+    cutoff (:63-77, first bar always draws); per-bar layer order colored
+    background → notched background → (only when width > 0) colored progress
+    → notched progress, cropped to `Mth.lerpDiscrete(progress, 0, 182)` =
+    `floor(p*181) + (p>0 ? 1 : 0)` with the UV taking the left `width/182`
+    band (:84-106, Mth.java:527-531); the name centers at
+    `(guiWidth/2 - w/2, y-9)` in opaque white with the default drop shadow
+    (:71-73). All 22 `boss_bar/*` sprites load from the vanilla GUI atlas
+    through the same single-texture upload path as the other HUD sprites.
+    Boundary: bars project in UUID order (the world keys a BTreeMap;
+    vanilla's LinkedHashMap packet-arrival order is not tracked); progress
+    renders the latest packet value (`LerpingBossEvent`'s 100ms wall-clock
+    lerp is not modeled); `darken_screen`/`create_world_fog` stay behind the
+    world's `boss_overlay_should_*` queries with no sky/fog consumer yet,
+    and `play_music` has no audio consumer — all three remain deferred here.
   - Done 2026-07-05 — Actionbar + titles + subtitles render: `Gui.tick`
     countdowns now advance in `WorldStore::advance_hud_text_ticks` (raw
     client ticks, outside the tick-rate freeze gate; titleTime→0 clears

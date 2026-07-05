@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use winit::dpi::PhysicalSize;
 
 use crate::entity_models::{EntityModelInstance, ENTITY_FULL_BRIGHT_LIGHT_COORDS};
@@ -16,17 +16,18 @@ pub(super) use self::gpu::{
     create_hud_sprite_gpu, HudSpriteGpu,
 };
 use self::layout::{
-    centered_hud_rect, experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement,
-    heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect,
-    hud_experience_progress_width, hud_food_fill, hud_heart_fill, hud_inventory_text_label_origin,
-    hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
-    hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
-    hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_overlay_message_text_origin, hud_quad_vertices, hud_styled_quad_vertices,
-    hud_subtitle_text_origin, hud_title_text_origin, inventory_background_hud_rect,
-    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE,
-    HUD_TITLE_TEXT_SCALE,
+    boss_bar_hud_rect, centered_hud_rect, experience_bar_hud_rect, food_hud_rect,
+    gui_item_slot_placement, heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect,
+    hotbar_selection_hud_rect, hud_boss_bar_fill_uv, hud_boss_bar_name_origin,
+    hud_boss_bar_progress_width, hud_boss_bar_rows, hud_experience_progress_width, hud_food_fill,
+    hud_heart_fill, hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
+    hud_inventory_tooltip_line_origin, hud_inventory_tooltip_sprite_segments,
+    hud_inventory_tooltip_text_height, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
+    hud_item_durability_bar_rect, hud_overlay_message_text_origin, hud_quad_vertices,
+    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
+    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
+    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
 };
 
 pub use bbb_render_types::{
@@ -88,6 +89,110 @@ pub struct HudTitleText {
     pub stay: i32,
     pub fade_out: i32,
     pub partial_tick: f32,
+}
+
+/// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
+/// `boss_bar/{name}_background` / `boss_bar/{name}_progress` sprite pair.
+/// Declaration order is the vanilla ordinal (the sprite-array index,
+/// BossHealthOverlay.java:20-37).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudBossBarColor {
+    Pink,
+    Blue,
+    Red,
+    Green,
+    Yellow,
+    Purple,
+    White,
+}
+
+impl HudBossBarColor {
+    pub const ALL: [Self; 7] = [
+        Self::Pink,
+        Self::Blue,
+        Self::Red,
+        Self::Green,
+        Self::Yellow,
+        Self::Purple,
+        Self::White,
+    ];
+
+    /// Vanilla `BossBarColor.getName()` — also the sprite-path fragment.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Pink => "pink",
+            Self::Blue => "blue",
+            Self::Red => "red",
+            Self::Green => "green",
+            Self::Yellow => "yellow",
+            Self::Purple => "purple",
+            Self::White => "white",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|color| color.name() == name)
+    }
+}
+
+/// Vanilla `BossEvent.BossBarOverlay` (BossEvent.java:122-127): `Progress`
+/// draws the plain bar; the notched variants layer a `boss_bar/notched_*`
+/// sheet over both the background and the fill.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudBossBarOverlay {
+    Progress,
+    Notched6,
+    Notched10,
+    Notched12,
+    Notched20,
+}
+
+impl HudBossBarOverlay {
+    const ALL: [Self; 5] = [
+        Self::Progress,
+        Self::Notched6,
+        Self::Notched10,
+        Self::Notched12,
+        Self::Notched20,
+    ];
+    pub const NOTCHED: [Self; 4] = [
+        Self::Notched6,
+        Self::Notched10,
+        Self::Notched12,
+        Self::Notched20,
+    ];
+
+    /// Vanilla `BossBarOverlay.getName()` — also the sprite-path fragment.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Progress => "progress",
+            Self::Notched6 => "notched_6",
+            Self::Notched10 => "notched_10",
+            Self::Notched12 => "notched_12",
+            Self::Notched20 => "notched_20",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|overlay| overlay.name() == name)
+    }
+
+    /// Index into the notched sprite arrays (vanilla `overlay.ordinal() - 1`,
+    /// BossHealthOverlay.java:103); `Progress` has no notched sheet.
+    fn notched_index(self) -> Option<usize> {
+        (self != Self::Progress).then(|| self as usize - 1)
+    }
+}
+
+/// One projected boss bar (the render-relevant slice of vanilla
+/// `LerpingBossEvent`): the styled name line, the latest packet progress,
+/// and the color/overlay style. The projection supplies the stacking order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudBossBar {
+    pub name_runs: Vec<HudStyledTextRun>,
+    pub progress: f32,
+    pub color: HudBossBarColor,
+    pub overlay: HudBossBarOverlay,
 }
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -1643,6 +1748,60 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_boss_bar_background(
+        &mut self,
+        color: HudBossBarColor,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_boss_bar_backgrounds[color as usize] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_boss_bar_progress(
+        &mut self,
+        color: HudBossBarColor,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_boss_bar_progress_sprites[color as usize] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_boss_bar_notched_background(
+        &mut self,
+        overlay: HudBossBarOverlay,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        let Some(index) = overlay.notched_index() else {
+            bail!("the progress overlay has no notched boss-bar sprite");
+        };
+        self.hud_boss_bar_notched_backgrounds[index] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_boss_bar_notched_progress(
+        &mut self,
+        overlay: HudBossBarOverlay,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        let Some(index) = overlay.notched_index() else {
+            bail!("the progress overlay has no notched boss-bar sprite");
+        };
+        self.hud_boss_bar_notched_progress_sprites[index] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn set_hud_code_of_conduct_overlay(
         &mut self,
         width: u32,
@@ -1693,6 +1852,32 @@ impl Renderer {
 
     pub fn set_hud_title_text(&mut self, title: Option<HudTitleText>) {
         self.hud_title_text = title.filter(|state| state.partial_tick.is_finite());
+    }
+
+    /// Replaces this frame's boss bars (the world's projection of vanilla
+    /// `BossHealthOverlay.events`), sanitizing each bar's progress.
+    pub fn set_hud_boss_bars(&mut self, bars: Vec<HudBossBar>) {
+        self.hud_boss_bars = bars.into_iter().map(sanitize_hud_boss_bar).collect();
+    }
+
+    /// The uploaded 182x5 sheet backing one bar layer (vanilla
+    /// `BAR_{BACKGROUND,PROGRESS}_SPRITES` / `OVERLAY_*_SPRITES` lookups,
+    /// BossHealthOverlay.java:101-103).
+    fn hud_boss_bar_sheet_sprite(&self, sheet: HudBossBarSheet) -> Option<&HudSpriteGpu> {
+        match sheet {
+            HudBossBarSheet::ColorBackground(color) => {
+                self.hud_boss_bar_backgrounds[color as usize].as_ref()
+            }
+            HudBossBarSheet::ColorProgress(color) => {
+                self.hud_boss_bar_progress_sprites[color as usize].as_ref()
+            }
+            HudBossBarSheet::NotchedBackground(overlay) => overlay
+                .notched_index()
+                .and_then(|index| self.hud_boss_bar_notched_backgrounds[index].as_ref()),
+            HudBossBarSheet::NotchedProgress(overlay) => overlay
+                .notched_index()
+                .and_then(|index| self.hud_boss_bar_notched_progress_sprites[index].as_ref()),
+        }
     }
 
     pub fn clear_hud_inventory_screen(&mut self) {
@@ -1929,6 +2114,39 @@ impl Renderer {
             }
         }
 
+        // Vanilla `Gui.extractRenderState` submits the boss overlay right
+        // after the hotbar/status decorations and before the overlay message
+        // / title strata (Gui.java:203-217). Per bar: the sprite layers, then
+        // the name line — opaque white with the default drop shadow
+        // (`graphics.text(..., -1)`, BossHealthOverlay.java:71-73).
+        for draw in hud_boss_bar_draws(&self.hud_boss_bars, &self.hud_font_glyphs, surface_size) {
+            for layer in &draw.layers {
+                if let Some(sprite) = self.hud_boss_bar_sheet_sprite(layer.sheet) {
+                    push_hud_draw_with_uv(
+                        &mut vertices,
+                        &mut commands,
+                        sprite,
+                        surface_size,
+                        boss_bar_hud_rect(surface_size, draw.y, layer.width),
+                        hud_boss_bar_fill_uv(layer.width),
+                    );
+                }
+            }
+            if let Some(font_atlas) = &self.hud_font_atlas {
+                push_hud_screen_text_draw(
+                    &mut vertices,
+                    &mut commands,
+                    &self.hud_white_pixel,
+                    font_atlas,
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    &draw.name,
+                );
+            }
+        }
+
         // Vanilla `Gui.extractRenderState` submits the overlay message and the
         // title/subtitle after the hotbar decorations (Gui.java:215-217); open
         // screens render in a later pass, so their draws stay above these.
@@ -1949,33 +2167,17 @@ impl Renderer {
                 ));
             }
             for draw in &screen_text_draws {
-                // Vanilla `textWithBackdrop` (GuiGraphicsExtractor.java:293-301)
-                // draws the accessibility backdrop only when the text-background
-                // opacity option is non-zero (default 0 — skipped here), then the
-                // line with shadow; pass order matches the label path (whole-line
-                // shadow first, then the main colour).
-                for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
-                    let geometry = hud_styled_text_pass_geometry(
-                        draw.runs,
-                        &self.hud_font_glyphs,
-                        &self.hud_obfuscated_glyph_pool,
-                        self.counters.frame_index,
-                        draw.origin,
-                        shadow_offset,
-                        is_shadow,
-                        draw.tint,
-                        None,
-                        draw.scale,
-                    );
-                    push_hud_styled_text_pass(
-                        &mut vertices,
-                        &mut commands,
-                        &self.hud_white_pixel,
-                        font_atlas,
-                        surface_size,
-                        &geometry,
-                    );
-                }
+                push_hud_screen_text_draw(
+                    &mut vertices,
+                    &mut commands,
+                    &self.hud_white_pixel,
+                    font_atlas,
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    draw,
+                );
             }
         }
 
@@ -2965,6 +3167,152 @@ fn hud_title_text_draws<'a>(
         });
     }
     draws
+}
+
+/// Clamps a projected bar's progress into `0.0..=1.0` (non-finite fills
+/// nothing): vanilla trusts the `ClientboundBossEventPacket` float verbatim,
+/// but an out-of-range fill would sample past the 182px sheet.
+fn sanitize_hud_boss_bar(bar: HudBossBar) -> HudBossBar {
+    HudBossBar {
+        progress: if bar.progress.is_finite() {
+            bar.progress.clamp(0.0, 1.0)
+        } else {
+            0.0
+        },
+        ..bar
+    }
+}
+
+/// Which 182x5 sheet one bar layer samples (vanilla
+/// `BAR_{BACKGROUND,PROGRESS}_SPRITES` / `OVERLAY_*_SPRITES`,
+/// BossHealthOverlay.java:20-49).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudBossBarSheet {
+    ColorBackground(HudBossBarColor),
+    NotchedBackground(HudBossBarOverlay),
+    ColorProgress(HudBossBarColor),
+    NotchedProgress(HudBossBarOverlay),
+}
+
+/// One sprite layer of a bar: the sheet and the drawn width — 182 for
+/// backgrounds, the discrete fill width for progress layers; the draw crops
+/// the rect and UV to the left `width / 182` band.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudBossBarLayer {
+    sheet: HudBossBarSheet,
+    width: u32,
+}
+
+/// One bar's resolved draw plan for this frame: the surviving stack row, the
+/// sprite layers in vanilla submission order, and the centered name line.
+#[derive(Debug, Clone, PartialEq)]
+struct HudBossBarDraw<'a> {
+    y: i32,
+    layers: Vec<HudBossBarLayer>,
+    name: HudScreenTextDraw<'a>,
+}
+
+/// Resolves the stacked boss bars, mirroring
+/// `BossHealthOverlay.extractRenderState` (BossHealthOverlay.java:57-82):
+/// bars walk top-down from y=12 stepping 10+9, dropping the remainder once
+/// the accumulated offset reaches `guiHeight / 3`; each bar submits its
+/// sprite layers and then its name, centered at `(guiWidth/2 - width/2,
+/// y - 9)` in opaque white at scale 1.
+fn hud_boss_bar_draws<'a>(
+    bars: &'a [HudBossBar],
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+) -> Vec<HudBossBarDraw<'a>> {
+    hud_boss_bar_rows(surface_size, bars.len())
+        .into_iter()
+        .zip(bars)
+        .map(|(y, bar)| {
+            let name_width = hud_font_runs_width(&bar.name_runs, glyphs).unwrap_or(0);
+            HudBossBarDraw {
+                y,
+                layers: hud_boss_bar_layers(bar),
+                name: HudScreenTextDraw {
+                    runs: &bar.name_runs,
+                    origin: hud_boss_bar_name_origin(surface_size, y, name_width),
+                    scale: 1.0,
+                    tint: HUD_TINT_WHITE,
+                },
+            }
+        })
+        .collect()
+}
+
+/// Sprite layers in vanilla submission order (`BossHealthOverlay.extractBar`,
+/// BossHealthOverlay.java:84-106): the full-width colored background, the
+/// notched background on top, then — only when `Mth.lerpDiscrete` yields a
+/// positive width — the colored and notched progress layers cropped to that
+/// width.
+fn hud_boss_bar_layers(bar: &HudBossBar) -> Vec<HudBossBarLayer> {
+    let mut layers = vec![HudBossBarLayer {
+        sheet: HudBossBarSheet::ColorBackground(bar.color),
+        width: HUD_BOSS_BAR_WIDTH,
+    }];
+    if bar.overlay != HudBossBarOverlay::Progress {
+        layers.push(HudBossBarLayer {
+            sheet: HudBossBarSheet::NotchedBackground(bar.overlay),
+            width: HUD_BOSS_BAR_WIDTH,
+        });
+    }
+    let progress_width = hud_boss_bar_progress_width(bar.progress);
+    if progress_width > 0 {
+        layers.push(HudBossBarLayer {
+            sheet: HudBossBarSheet::ColorProgress(bar.color),
+            width: progress_width,
+        });
+        if bar.overlay != HudBossBarOverlay::Progress {
+            layers.push(HudBossBarLayer {
+                sheet: HudBossBarSheet::NotchedProgress(bar.overlay),
+                width: progress_width,
+            });
+        }
+    }
+    layers
+}
+
+/// Draws one resolved screen text line through the styled pipeline with the
+/// vanilla `textWithBackdrop` pass order (GuiGraphicsExtractor.java:293-301):
+/// the accessibility backdrop only draws when the text-background opacity
+/// option is non-zero (default 0 — skipped here), then the whole-line shadow
+/// pass, then the main colour.
+#[allow(clippy::too_many_arguments)]
+fn push_hud_screen_text_draw<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    draw: &HudScreenTextDraw<'_>,
+) {
+    for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+        let geometry = hud_styled_text_pass_geometry(
+            draw.runs,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            draw.origin,
+            shadow_offset,
+            is_shadow,
+            draw.tint,
+            None,
+            draw.scale,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
 }
 
 /// Resolved main-pass colour of a styled run: the run's `Style` colour over
@@ -4786,6 +5134,170 @@ mod tests {
         assert!(
             food < overlay && overlay < title && title < screen,
             "overlay message and title submit after status bars and before screen content"
+        );
+    }
+
+    #[test]
+    fn boss_bar_names_round_trip_the_vanilla_getname_vocabularies() {
+        // Vanilla `BossEvent.BossBarColor`/`BossBarOverlay` getName strings
+        // (BossEvent.java:90-97,122-127) — the same names the world stores.
+        for color in HudBossBarColor::ALL {
+            assert_eq!(HudBossBarColor::from_name(color.name()), Some(color));
+        }
+        assert_eq!(HudBossBarColor::from_name("magenta"), None);
+        for overlay in [HudBossBarOverlay::Progress]
+            .into_iter()
+            .chain(HudBossBarOverlay::NOTCHED)
+        {
+            assert_eq!(HudBossBarOverlay::from_name(overlay.name()), Some(overlay));
+        }
+        assert_eq!(HudBossBarOverlay::from_name("notched_8"), None);
+
+        // Notched sprite arrays index by `ordinal() - 1`
+        // (BossHealthOverlay.java:103); Progress has no notched sheet.
+        assert_eq!(HudBossBarOverlay::Progress.notched_index(), None);
+        assert_eq!(HudBossBarOverlay::Notched6.notched_index(), Some(0));
+        assert_eq!(HudBossBarOverlay::Notched20.notched_index(), Some(3));
+    }
+
+    #[test]
+    fn sanitize_hud_boss_bar_clamps_progress_into_the_unit_range() {
+        let bar = |progress| HudBossBar {
+            name_runs: vec![HudStyledTextRun::plain("Wither")],
+            progress,
+            color: HudBossBarColor::Purple,
+            overlay: HudBossBarOverlay::Progress,
+        };
+        assert_eq!(sanitize_hud_boss_bar(bar(0.25)).progress, 0.25);
+        assert_eq!(sanitize_hud_boss_bar(bar(2.0)).progress, 1.0);
+        assert_eq!(sanitize_hud_boss_bar(bar(-1.0)).progress, 0.0);
+        assert_eq!(sanitize_hud_boss_bar(bar(f32::NAN)).progress, 0.0);
+        // The rest of the bar passes through untouched.
+        let sanitized = sanitize_hud_boss_bar(bar(f32::INFINITY));
+        assert_eq!(sanitized.progress, 0.0);
+        assert_eq!(sanitized.name_runs, vec![HudStyledTextRun::plain("Wither")]);
+        assert_eq!(sanitized.color, HudBossBarColor::Purple);
+    }
+
+    #[test]
+    fn boss_bar_layers_follow_vanilla_background_then_cropped_fill_order() {
+        let plain = HudBossBar {
+            name_runs: Vec::new(),
+            progress: 0.5,
+            color: HudBossBarColor::Red,
+            overlay: HudBossBarOverlay::Progress,
+        };
+        // Progress overlay: colored background, then the fill cropped to
+        // lerpDiscrete(0.5) = 91.
+        assert_eq!(
+            hud_boss_bar_layers(&plain),
+            vec![
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::ColorBackground(HudBossBarColor::Red),
+                    width: 182,
+                },
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::ColorProgress(HudBossBarColor::Red),
+                    width: 91,
+                },
+            ]
+        );
+
+        // Notched overlays double both the background and the fill
+        // (BossHealthOverlay.java:101-103), sharing the same crop width.
+        let notched = HudBossBar {
+            overlay: HudBossBarOverlay::Notched10,
+            ..plain.clone()
+        };
+        assert_eq!(
+            hud_boss_bar_layers(&notched),
+            vec![
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::ColorBackground(HudBossBarColor::Red),
+                    width: 182,
+                },
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::NotchedBackground(HudBossBarOverlay::Notched10),
+                    width: 182,
+                },
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::ColorProgress(HudBossBarColor::Red),
+                    width: 91,
+                },
+                HudBossBarLayer {
+                    sheet: HudBossBarSheet::NotchedProgress(HudBossBarOverlay::Notched10),
+                    width: 91,
+                },
+            ]
+        );
+
+        // Zero progress skips both fill layers (vanilla `if (width > 0)`,
+        // BossHealthOverlay.java:87), keeping the two backgrounds.
+        let empty = HudBossBar {
+            progress: 0.0,
+            overlay: HudBossBarOverlay::Notched20,
+            ..plain
+        };
+        let layers = hud_boss_bar_layers(&empty);
+        assert_eq!(layers.len(), 2);
+        assert_eq!(
+            layers[1].sheet,
+            HudBossBarSheet::NotchedBackground(HudBossBarOverlay::Notched20)
+        );
+    }
+
+    #[test]
+    fn boss_bar_draws_stack_rows_center_names_and_truncate() {
+        let glyphs = styled_test_glyphs();
+        let surface = PhysicalSize::new(320, 240);
+        let bars = vec![
+            HudBossBar {
+                name_runs: vec![HudStyledTextRun::plain("ab")],
+                progress: 1.0,
+                color: HudBossBarColor::Purple,
+                overlay: HudBossBarOverlay::Progress,
+            };
+            6
+        ];
+        let draws = hud_boss_bar_draws(&bars, &glyphs, surface);
+        // guiHeight / 3 = 80: rows 12, 31, 50, 69 survive, bars 5-6 drop.
+        assert_eq!(
+            draws.iter().map(|draw| draw.y).collect::<Vec<_>>(),
+            vec![12, 31, 50, 69]
+        );
+        // Name: centered `(guiWidth/2 - width/2, y - 9)` ("ab" is 12px), at
+        // scale 1 in opaque white (vanilla colour -1 with drop shadow).
+        assert_eq!(draws[0].name.origin, (154.0, 3.0));
+        assert_eq!(draws[1].name.origin, (154.0, 22.0));
+        assert_eq!(draws[0].name.scale, 1.0);
+        assert_eq!(draws[0].name.tint, HUD_TINT_WHITE);
+        // Full progress fills the whole sheet.
+        assert_eq!(draws[0].layers.last().unwrap().width, 182);
+        assert!(hud_boss_bar_draws(&[], &glyphs, surface).is_empty());
+    }
+
+    #[test]
+    fn boss_bar_draws_submit_after_status_bars_and_before_the_overlay_message() {
+        // Vanilla `Gui.extractRenderState` order: hotbar/status decorations,
+        // then the boss overlay stratum, then the overlay message / title
+        // (Gui.java:203-217).
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let food = collect_source
+            .find("hud_food_fill(")
+            .expect("food bar draws first");
+        let boss = collect_source
+            .find("hud_boss_bar_draws(")
+            .expect("boss bars are resolved");
+        let overlay = collect_source
+            .find("hud_action_bar_text_draw(")
+            .expect("action bar draw is resolved");
+        assert!(
+            food < boss && boss < overlay,
+            "boss bars submit after status bars and before the overlay message"
         );
     }
 

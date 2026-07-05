@@ -39,6 +39,17 @@ pub(super) const HUD_TITLE_TEXT_SCALE: f32 = 4.0;
 const HUD_TITLE_TEXT_Y: i32 = -10;
 pub(super) const HUD_SUBTITLE_TEXT_SCALE: f32 = 2.0;
 const HUD_SUBTITLE_TEXT_Y: i32 = 5;
+/// Vanilla `BossHealthOverlay` geometry: 182x5 sheets
+/// (`BAR_WIDTH`/`BAR_HEIGHT`, BossHealthOverlay.java:18-19) at
+/// `x = guiWidth / 2 - 91` (:66), stacked from `y = 12` stepping
+/// `10 + 9` (bar gap + font line height) per drawn bar (:63,74), and the
+/// name line at `y - 9` (:72).
+pub(super) const HUD_BOSS_BAR_WIDTH: u32 = 182;
+const HUD_BOSS_BAR_HEIGHT: u32 = 5;
+const HUD_BOSS_BAR_HALF_WIDTH: i32 = 91;
+const HUD_BOSS_BAR_TOP_Y: i32 = 12;
+const HUD_BOSS_BAR_ROW_ADVANCE: i32 = 10 + 9;
+const HUD_BOSS_BAR_NAME_Y_OFFSET: i32 = 9;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct HudRect {
@@ -96,6 +107,80 @@ pub(super) fn experience_bar_hud_rect(
 
 pub(super) fn hud_experience_progress_width(progress: f32) -> u32 {
     ((progress.clamp(0.0, 1.0) * 183.0).floor() as u32).min(HUD_EXPERIENCE_BAR_WIDTH)
+}
+
+/// One boss-bar sprite row: `x = guiWidth / 2 - 91` (Java int division,
+/// BossHealthOverlay.java:66), `width` is the full 182px sheet for
+/// backgrounds or the discrete fill width for progress layers, height 5.
+pub(super) fn boss_bar_hud_rect(surface_size: PhysicalSize<u32>, y: i32, width: u32) -> HudRect {
+    let center_x = (surface_size.width.max(1) / 2) as i32;
+    HudRect {
+        x: (center_x - HUD_BOSS_BAR_HALF_WIDTH) as f32,
+        y: y as f32,
+        width,
+        height: HUD_BOSS_BAR_HEIGHT,
+    }
+}
+
+/// Bar-row y offsets that survive vanilla's stacking cutoff
+/// (`BossHealthOverlay.extractRenderState`, BossHealthOverlay.java:63-77):
+/// rows start at 12 and advance `10 + 9` after each drawn bar; the loop
+/// draws first and checks after, so the first bar always renders and the
+/// remainder is dropped once the accumulated offset reaches `guiHeight / 3`
+/// (Java int division).
+pub(super) fn hud_boss_bar_rows(surface_size: PhysicalSize<u32>, bar_count: usize) -> Vec<i32> {
+    let cutoff = (surface_size.height.max(1) / 3) as i32;
+    let mut rows = Vec::new();
+    let mut y = HUD_BOSS_BAR_TOP_Y;
+    for _ in 0..bar_count {
+        rows.push(y);
+        y += HUD_BOSS_BAR_ROW_ADVANCE;
+        if y >= cutoff {
+            break;
+        }
+    }
+    rows
+}
+
+/// Vanilla `Mth.lerpDiscrete(progress, 0, 182)` (BossHealthOverlay.java:86,
+/// Mth.java:527-531): `floor(progress * 181) + (progress > 0 ? 1 : 0)`, so
+/// any positive progress fills at least one pixel and 1.0 fills all 182.
+/// The clamp keeps direct out-of-range inputs inside the sheet (the setter
+/// sanitizes upstream; vanilla trusts the packet float verbatim).
+pub(super) fn hud_boss_bar_progress_width(progress: f32) -> u32 {
+    let width =
+        (progress * (HUD_BOSS_BAR_WIDTH - 1) as f32).floor() as i32 + i32::from(progress > 0.0);
+    width.clamp(0, HUD_BOSS_BAR_WIDTH as i32) as u32
+}
+
+/// Left-anchored crop UV of a boss-bar layer drawn at `width` of the nominal
+/// 182px sheet: vanilla `blitSprite(sprite, 182, 5, 0, 0, x, y, width, 5)`
+/// samples the `(0..width, 0..5)` sub-rect (BossHealthOverlay.java:101-103).
+pub(super) fn hud_boss_bar_fill_uv(width: u32) -> HudUvRect {
+    HudUvRect {
+        min: [0.0, 0.0],
+        max: [
+            (width as f32 / HUD_BOSS_BAR_WIDTH as f32).clamp(0.0, 1.0),
+            1.0,
+        ],
+    }
+}
+
+/// Pen origin of a bar's centered name line: vanilla draws it at
+/// `(guiWidth / 2 - font.width(name) / 2, barY - 9)`
+/// (BossHealthOverlay.java:71-73) in opaque white with the default drop
+/// shadow (`graphics.text(..., -1)`, GuiGraphicsExtractor.java:261-263);
+/// Java int divisions throughout.
+pub(super) fn hud_boss_bar_name_origin(
+    surface_size: PhysicalSize<u32>,
+    bar_y: i32,
+    text_width: u32,
+) -> (f32, f32) {
+    let center_x = (surface_size.width.max(1) / 2) as i32;
+    (
+        (center_x - text_width as i32 / 2) as f32,
+        (bar_y - HUD_BOSS_BAR_NAME_Y_OFFSET) as f32,
+    )
 }
 
 pub(super) fn hotbar_selection_hud_rect(
@@ -873,6 +958,64 @@ mod tests {
         assert_eq!(hud_experience_progress_width(0.0), 0);
         assert_eq!(hud_experience_progress_width(0.5), 91);
         assert_eq!(hud_experience_progress_width(1.0), 182);
+    }
+
+    #[test]
+    fn hud_layout_matches_vanilla_boss_bar_positions() {
+        let surface_size = PhysicalSize::new(320, 240);
+        // x = guiWidth / 2 - 91 = 69, 182x5 sheet.
+        let bar = boss_bar_hud_rect(surface_size, 12, 182);
+        assert_eq!(bar.x, 69.0);
+        assert_eq!(bar.y, 12.0);
+        assert_eq!(bar.width, 182);
+        assert_eq!(bar.height, 5);
+
+        // Odd width: Java int division 321 / 2 = 160; a cropped fill keeps
+        // the bar's left edge.
+        let odd = boss_bar_hud_rect(PhysicalSize::new(321, 240), 31, 91);
+        assert_eq!(odd.x, 69.0);
+        assert_eq!(odd.y, 31.0);
+        assert_eq!(odd.width, 91);
+
+        // Name pen: (guiWidth / 2 - width / 2, barY - 9), int truncation.
+        assert_eq!(
+            hud_boss_bar_name_origin(surface_size, 31, 13),
+            (154.0, 22.0)
+        );
+        assert_eq!(hud_boss_bar_name_origin(surface_size, 12, 12), (154.0, 3.0));
+    }
+
+    #[test]
+    fn hud_boss_bar_rows_stack_and_truncate_at_a_third_of_the_screen() {
+        // guiHeight / 3 = 80: rows 12, 31, 50, 69 fit; after drawing the
+        // fourth bar the offset reaches 88 >= 80 and the rest is dropped.
+        let surface_size = PhysicalSize::new(320, 240);
+        assert_eq!(hud_boss_bar_rows(surface_size, 0), Vec::<i32>::new());
+        assert_eq!(hud_boss_bar_rows(surface_size, 2), vec![12, 31]);
+        assert_eq!(hud_boss_bar_rows(surface_size, 6), vec![12, 31, 50, 69]);
+        // Vanilla draws first and checks after, so one bar always renders
+        // even when y=12 already exceeds the cutoff.
+        assert_eq!(hud_boss_bar_rows(PhysicalSize::new(320, 30), 3), vec![12]);
+    }
+
+    #[test]
+    fn hud_boss_bar_progress_width_matches_vanilla_lerp_discrete() {
+        // Mth.lerpDiscrete(p, 0, 182) = floor(p * 181) + (p > 0 ? 1 : 0).
+        assert_eq!(hud_boss_bar_progress_width(0.0), 0);
+        assert_eq!(hud_boss_bar_progress_width(0.001), 1);
+        assert_eq!(hud_boss_bar_progress_width(0.5), 91);
+        assert_eq!(hud_boss_bar_progress_width(1.0), 182);
+        // Out-of-range/non-finite inputs (clamped upstream by the setter)
+        // stay inside the sheet.
+        assert_eq!(hud_boss_bar_progress_width(-1.0), 0);
+        assert_eq!(hud_boss_bar_progress_width(2.0), 182);
+        assert_eq!(hud_boss_bar_progress_width(f32::NAN), 0);
+
+        // The crop UV is the left `width / 182` band of the sheet.
+        assert_eq!(hud_boss_bar_fill_uv(91).min, [0.0, 0.0]);
+        assert_eq!(hud_boss_bar_fill_uv(91).max, [0.5, 1.0]);
+        assert_eq!(hud_boss_bar_fill_uv(182).max, [1.0, 1.0]);
+        assert_eq!(hud_boss_bar_fill_uv(0).max, [0.0, 1.0]);
     }
 
     #[test]

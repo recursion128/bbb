@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
-use bbb_renderer::HudNineSliceScaling;
+use bbb_renderer::{HudBossBarColor, HudBossBarOverlay, HudNineSliceScaling};
 
 use bbb_item_model::font::{
     hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
@@ -721,6 +721,41 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_food_full(food_full.width, food_full.height, &food_full.rgba)?;
     let food_half = hud_sprite(&sprites, "hud/food_half")?;
     renderer.upload_hud_food_half(food_half.width, food_half.height, &food_half.rgba)?;
+    // The 22 vanilla boss-bar sheets (`BossHealthOverlay`'s sprite arrays):
+    // a background/progress pair per `BossBarColor` plus one per notched
+    // `BossBarOverlay`, all plain 182x5 GUI-atlas sprites.
+    for color in HudBossBarColor::ALL {
+        let background = hud_sprite(&sprites, &format!("boss_bar/{}_background", color.name()))?;
+        renderer.upload_hud_boss_bar_background(
+            color,
+            background.width,
+            background.height,
+            &background.rgba,
+        )?;
+        let progress = hud_sprite(&sprites, &format!("boss_bar/{}_progress", color.name()))?;
+        renderer.upload_hud_boss_bar_progress(
+            color,
+            progress.width,
+            progress.height,
+            &progress.rgba,
+        )?;
+    }
+    for overlay in HudBossBarOverlay::NOTCHED {
+        let background = hud_sprite(&sprites, &format!("boss_bar/{}_background", overlay.name()))?;
+        renderer.upload_hud_boss_bar_notched_background(
+            overlay,
+            background.width,
+            background.height,
+            &background.rgba,
+        )?;
+        let progress = hud_sprite(&sprites, &format!("boss_bar/{}_progress", overlay.name()))?;
+        renderer.upload_hud_boss_bar_notched_progress(
+            overlay,
+            progress.width,
+            progress.height,
+            &progress.rgba,
+        )?;
+    }
     let ascii_font = load_ascii_font_texture(roots)?;
     let digit_atlas = hud_ascii_digit_atlas_from_image(&ascii_font)?;
     renderer.upload_hud_digit_atlas(

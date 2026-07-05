@@ -1528,6 +1528,9 @@ pub(crate) fn pump_network_and_terrain(
     // alpha per frame from these projected timers.
     let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);
+    // Vanilla `Gui.extractBossOverlay` re-walks the tracked boss events every
+    // frame with no countdown state, so the projection is pure world state.
+    let hud_boss_bars = hud_boss_bars_from_world(world);
     let item_model_keybind_context = input.item_model_keybind_context();
     let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
         world,
@@ -1741,6 +1744,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_inventory_screen,
             hud_action_bar_text,
             hud_title_text,
+            hud_boss_bars,
             item_entity_billboards,
             block_item_model_meshes: block_item_meshes,
             block_item_model_z_offset_forward_meshes: block_item_z_offset_forward_meshes,

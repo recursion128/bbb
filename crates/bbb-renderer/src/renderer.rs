@@ -473,6 +473,18 @@ pub struct Renderer {
     pub(super) hud_selected_slot: u8,
     pub(super) hud_action_bar_text: Option<crate::hud::HudActionBarText>,
     pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
+    /// This frame's projected boss bars plus the 182x5 sprite sheets (one
+    /// texture per vanilla `boss_bar/*` GUI sprite, indexed by the enum
+    /// ordinals like `BossHealthOverlay`'s sprite arrays).
+    pub(super) hud_boss_bars: Vec<crate::hud::HudBossBar>,
+    pub(super) hud_boss_bar_backgrounds:
+        [Option<HudSpriteGpu>; crate::hud::HudBossBarColor::ALL.len()],
+    pub(super) hud_boss_bar_progress_sprites:
+        [Option<HudSpriteGpu>; crate::hud::HudBossBarColor::ALL.len()],
+    pub(super) hud_boss_bar_notched_backgrounds:
+        [Option<HudSpriteGpu>; crate::hud::HudBossBarOverlay::NOTCHED.len()],
+    pub(super) hud_boss_bar_notched_progress_sprites:
+        [Option<HudSpriteGpu>; crate::hud::HudBossBarOverlay::NOTCHED.len()],
     pub(super) particles: ParticleRuntimeState,
 }
 
@@ -1356,6 +1368,11 @@ impl Renderer {
             hud_selected_slot: 0,
             hud_action_bar_text: None,
             hud_title_text: None,
+            hud_boss_bars: Vec::new(),
+            hud_boss_bar_backgrounds: Default::default(),
+            hud_boss_bar_progress_sprites: Default::default(),
+            hud_boss_bar_notched_backgrounds: Default::default(),
+            hud_boss_bar_notched_progress_sprites: Default::default(),
             particles: ParticleRuntimeState::default(),
         })
     }
