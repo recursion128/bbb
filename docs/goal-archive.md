@@ -3331,6 +3331,20 @@
     removal-gates 无 todo），共享根因归为 `[bounds]` / `[leaf-bounds]` /
     `[wake-grow]` / `[nearest-player]` 四组。账本 particle 条目 Next action
     改为 work the todo rows；后续 P1-5 slice 从表中取 todo 行。
+  - [x] 2026-07-05 `[bounds]` slice 完成：`collision_size()`
+    (crates/bbb-renderer/src/particles/descriptors.rs) 把 24 个 `[bounds]`
+    todo provider 的静态碰撞箱尺寸从默认 0.2x0.2 修正为 vanilla `setSize` 值——
+    Drip 全家 17 个 0.01（DripParticle.java:25）、rain/splash 0.01
+    （WaterDropParticle.java:16，Splash 经 super 继承）、bubble/bubble_column
+    0.02（BubbleParticle.java:22 / BubbleColumnUpParticle.java:24）、soul x2 与
+    firefly 0.3（`scale(1.5F)` → `Particle.scale` `setSize(0.2F*1.5F)`=0.3，
+    Particle.java:77-80 / SoulParticle.java:17 / FireflyParticle.java:94），
+    同族共享 match arm，每档带 vanilla 文件:行号注释。这些尺寸经
+    instance.rs `move_particle` 的 `ParticleCollisionQuery{half_width,height}`
+    喂给 collision-backed move 路径（非死数据）。新增 focused 测试
+    `collision_size_matches_vanilla_provider_set_size` 覆盖每档尺寸 + campfire/
+    wake 不回归。追踪表 24 行 collision `todo`→`covered`（30→6 todo：剩 3
+    `[leaf-bounds]` + 1 `[wake-grow]` + 2 `[nearest-player]`）。
 
 ## P2：Terrain / Block Render Presentation
 

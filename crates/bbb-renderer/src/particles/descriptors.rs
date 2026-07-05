@@ -2049,6 +2049,42 @@ impl ParticleDescriptor {
                 Some([0.25, 0.25])
             }
             "WakeParticle.Provider" => Some([0.01, 0.01]),
+            // Every `DripParticle.*` provider goes through the shared
+            // `DripParticle` constructor `this.setSize(0.01F, 0.01F)`
+            // (DripParticle.java:25).
+            "DripParticle.LavaHangProvider"
+            | "DripParticle.LavaFallProvider"
+            | "DripParticle.LavaLandProvider"
+            | "DripParticle.WaterHangProvider"
+            | "DripParticle.WaterFallProvider"
+            | "DripParticle.HoneyHangProvider"
+            | "DripParticle.HoneyFallProvider"
+            | "DripParticle.HoneyLandProvider"
+            | "DripParticle.NectarFallProvider"
+            | "DripParticle.SporeBlossomFallProvider"
+            | "DripParticle.ObsidianTearHangProvider"
+            | "DripParticle.ObsidianTearFallProvider"
+            | "DripParticle.ObsidianTearLandProvider"
+            | "DripParticle.DripstoneWaterHangProvider"
+            | "DripParticle.DripstoneWaterFallProvider"
+            | "DripParticle.DripstoneLavaHangProvider"
+            | "DripParticle.DripstoneLavaFallProvider" => Some([0.01, 0.01]),
+            // `WaterDropParticle` (`minecraft:rain`) `this.setSize(0.01F, 0.01F)`
+            // (WaterDropParticle.java:16); `SplashParticle` extends
+            // `WaterDropParticle` and inherits it through `super(...)`.
+            "WaterDropParticle.Provider" | "SplashParticle.Provider" => Some([0.01, 0.01]),
+            // `BubbleParticle` `this.setSize(0.02F, 0.02F)` (BubbleParticle.java:22)
+            // and `BubbleColumnUpParticle` `this.setSize(0.02F, 0.02F)`
+            // (BubbleColumnUpParticle.java:24).
+            "BubbleParticle.Provider" | "BubbleColumnUpParticle.Provider" => Some([0.02, 0.02]),
+            // `scale(1.5F)` resolves through `Particle.scale`
+            // (`this.setSize(0.2F * scale, 0.2F * scale)`, Particle.java:77-80) to
+            // `setSize(0.3F, 0.3F)` (`0.2F * 1.5F == 0.3F` exactly in `f32`).
+            // Soul (SoulParticle.java:17, both `Provider` and `EmissiveProvider`
+            // build a `SoulParticle`) and firefly (FireflyParticle.java:94).
+            "SoulParticle.Provider"
+            | "SoulParticle.EmissiveProvider"
+            | "FireflyParticle.FireflyProvider" => Some([0.3, 0.3]),
             _ => None,
         }
     }

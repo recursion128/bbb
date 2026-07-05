@@ -2279,6 +2279,73 @@ fn particle_descriptors_cover_vanilla_26_1_particle_resources() {
 }
 
 #[test]
+fn collision_size_matches_vanilla_provider_set_size() {
+    // Each bucket mirrors the vanilla `setSize` / `scale`-derived collision AABB
+    // for the `[bounds]` providers, plus the pre-existing campfire (0.25) and
+    // wake (0.01) special cases, and a default-bounds counterexample.
+    let expect = |particle_id: &str, size: Option<[f32; 2]>| {
+        assert_eq!(
+            ParticleDescriptor::for_particle(particle_id).collision_size(),
+            size,
+            "{particle_id}"
+        );
+    };
+
+    // Drip family (17 providers): shared `DripParticle` `setSize(0.01F, 0.01F)`
+    // (DripParticle.java:25).
+    for drip_id in [
+        "minecraft:dripping_lava",
+        "minecraft:falling_lava",
+        "minecraft:landing_lava",
+        "minecraft:dripping_water",
+        "minecraft:falling_water",
+        "minecraft:dripping_honey",
+        "minecraft:falling_honey",
+        "minecraft:landing_honey",
+        "minecraft:falling_nectar",
+        "minecraft:falling_spore_blossom",
+        "minecraft:dripping_obsidian_tear",
+        "minecraft:falling_obsidian_tear",
+        "minecraft:landing_obsidian_tear",
+        "minecraft:dripping_dripstone_water",
+        "minecraft:falling_dripstone_water",
+        "minecraft:dripping_dripstone_lava",
+        "minecraft:falling_dripstone_lava",
+    ] {
+        expect(drip_id, Some([0.01, 0.01]));
+    }
+
+    // rain / splash: `WaterDropParticle` `setSize(0.01F, 0.01F)`
+    // (WaterDropParticle.java:16), inherited by `SplashParticle`.
+    expect("minecraft:rain", Some([0.01, 0.01]));
+    expect("minecraft:splash", Some([0.01, 0.01]));
+
+    // bubble / bubble column: `setSize(0.02F, 0.02F)` (BubbleParticle.java:22 /
+    // BubbleColumnUpParticle.java:24).
+    expect("minecraft:bubble", Some([0.02, 0.02]));
+    expect("minecraft:bubble_column_up", Some([0.02, 0.02]));
+
+    // soul / firefly: `scale(1.5F)` -> `setSize(0.3F, 0.3F)` (Particle.java:77-80;
+    // SoulParticle.java:17; FireflyParticle.java:94).
+    expect("minecraft:soul", Some([0.3, 0.3]));
+    expect("minecraft:sculk_soul", Some([0.3, 0.3]));
+    expect("minecraft:firefly", Some([0.3, 0.3]));
+    // `0.2F * 1.5F` is representable exactly as `0.3F`, so the literal matches
+    // vanilla's runtime `setSize` value bit-for-bit.
+    assert_eq!(0.2_f32 * 1.5_f32, 0.3_f32);
+
+    // Pre-existing special cases must not regress.
+    expect("minecraft:campfire_cosy_smoke", Some([0.25, 0.25]));
+    expect("minecraft:campfire_signal_smoke", Some([0.25, 0.25]));
+    expect("minecraft:fishing", Some([0.01, 0.01]));
+
+    // Providers with no vanilla `setSize` keep the default 0.2x0.2 fallback
+    // (`collision_size` returns `None`).
+    expect("minecraft:smoke", None);
+    expect("minecraft:crit", None);
+}
+
+#[test]
 fn sprite_index_for_age_matches_vanilla_integer_frame_selection() {
     assert_eq!(sprite_index_for_age(8, 0, 20), Some(0));
     assert_eq!(sprite_index_for_age(8, 10, 20), Some(3));

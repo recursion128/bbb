@@ -1132,11 +1132,14 @@ Column definitions:
 Shared todo root causes (one slice may clear several rows):
 
 - `[bounds]`: vanilla per-provider collision AABB (`setSize` /
-  `scale`-derived) vs the current default 0.2x0.2 fallback in
-  `descriptors.rs collision_size()` (only campfire 0.25 and wake 0.01 are
-  special-cased today). Static per-provider sizes: drip family 0.01, rain /
-  splash 0.01, bubble / bubble column 0.02, soul 0.3 (`scale(1.5F)` →
-  `Particle.scale` → `setSize(0.3F)`), firefly 0.3 (provider `scale(1.5F)`).
+  `scale`-derived) vs the former default 0.2x0.2 fallback in
+  `descriptors.rs collision_size()`. RESOLVED (this slice): the 24 static
+  per-provider sizes are now table-driven in `collision_size()` — drip family
+  0.01 (DripParticle.java:25), rain / splash 0.01 (WaterDropParticle.java:16),
+  bubble / bubble column 0.02 (BubbleParticle.java:22 /
+  BubbleColumnUpParticle.java:24), soul 0.3 and firefly 0.3 (`scale(1.5F)` →
+  `Particle.scale` `setSize(0.2F * 1.5F)` = 0.3, Particle.java:77-80). The
+  remaining collision `todo` rows are `[leaf-bounds]` and `[wake-grow]`.
 - `[leaf-bounds]`: FallingLeaves uses a per-spawn random size
   (`setSize(size, size)`, `size = scale * (0.05F | 0.075F)`,
   FallingLeavesParticle.java:41-43) — needs per-instance collision size, not
@@ -1158,8 +1161,8 @@ Shared todo root causes (one slice may clear several rows):
 | BreakingItemParticle.SlimeProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
 | BreakingItemParticle.CobwebProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
 | BreakingItemParticle.SnowballProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
-| BubbleColumnUpParticle.Provider | todo | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleColumnUpParticle.java:24) vs default 0.2; non-water removal :35-37 covered (`required_fluid`, descriptors.rs:2071-2078) |
-| BubbleParticle.Provider | todo | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleParticle.java:22); +0.002 rise / 0.85 damping covered; non-water removal :43-45 covered |
+| BubbleColumnUpParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleColumnUpParticle.java:24) now in `collision_size()` (this slice); non-water removal :35-37 covered (`required_fluid`, descriptors.rs:2071-2078) |
+| BubbleParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleParticle.java:22) now in `collision_size()` (this slice); +0.002 rise / 0.85 damping covered; non-water removal :43-45 covered |
 | BubblePopParticle.Provider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; direct-gravity-no-friction tick covered |
 | CampfireSmokeParticle.CosyProvider | covered | not-needed | not-needed | not-needed | 0.25 bounds special-cased (descriptors.rs:2048-2050); `alpha<=0` removal + random drift covered |
 | CampfireSmokeParticle.SignalProvider | covered | not-needed | not-needed | not-needed | as CosyProvider |
@@ -1167,23 +1170,23 @@ Shared todo root causes (one slice may clear several rows):
 | CritParticle.DamageIndicatorProvider | not-needed | not-needed | not-needed | not-needed | as CritParticle.Provider |
 | CritParticle.MagicProvider | not-needed | not-needed | not-needed | not-needed | as CritParticle.Provider |
 | DragonBreathParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics=false` (DragonBreathParticle.java:34) — the `onGround`/`hasHitGround` branch (:48-55) is dead in vanilla because `move` never sets `onGround` without physics; bbb models the tick formula including the branch |
-| DripParticle.LavaHangProvider | todo | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (DripParticle.java:25); lava-surface removal :58-64 covered (`drip_fluid`); cooling RGB + hang damping + fall child covered |
-| DripParticle.LavaFallProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; `onGround` → land child covered; lava-surface removal covered |
-| DripParticle.LavaLandProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; lava-surface removal covered |
-| DripParticle.WaterHangProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; water-surface removal covered |
-| DripParticle.WaterFallProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; `onGround` → splash child covered; water-surface removal covered |
-| DripParticle.HoneyHangProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY` → no fluid gate (DripParticle.java:366-371) |
-| DripParticle.HoneyFallProvider | todo | not-needed | covered | not-needed | `[bounds]` 0.01; `BEEHIVE_DRIP` on land (DripParticle.java:313-320) covered via renderer particle sound events; `Fluids.EMPTY` |
-| DripParticle.HoneyLandProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY` |
-| DripParticle.NectarFallProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `onGround` removal covered; `Fluids.EMPTY` |
-| DripParticle.SporeBlossomFallProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY` |
-| DripParticle.ObsidianTearHangProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY`; glow light covered |
-| DripParticle.ObsidianTearFallProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY` |
-| DripParticle.ObsidianTearLandProvider | todo | not-needed | not-needed | not-needed | `[bounds]` 0.01; `Fluids.EMPTY` |
-| DripParticle.DripstoneWaterHangProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; water-surface removal covered |
-| DripParticle.DripstoneWaterFallProvider | todo | not-needed | covered | covered | `[bounds]` 0.01; `POINTED_DRIPSTONE_DRIP_WATER` on land (DripParticle.java:156-162) covered |
-| DripParticle.DripstoneLavaHangProvider | todo | not-needed | not-needed | covered | `[bounds]` 0.01; cooling RGB covered; lava-surface removal covered |
-| DripParticle.DripstoneLavaFallProvider | todo | not-needed | covered | covered | `[bounds]` 0.01; `POINTED_DRIPSTONE_DRIP_LAVA` on land covered |
+| DripParticle.LavaHangProvider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (DripParticle.java:25) now in `collision_size()` (this slice); lava-surface removal :58-64 covered (`drip_fluid`); cooling RGB + hang damping + fall child covered |
+| DripParticle.LavaFallProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` → land child covered; lava-surface removal covered |
+| DripParticle.LavaLandProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); lava-surface removal covered |
+| DripParticle.WaterHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); water-surface removal covered |
+| DripParticle.WaterFallProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` → splash child covered; water-surface removal covered |
+| DripParticle.HoneyHangProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` → no fluid gate (DripParticle.java:366-371) |
+| DripParticle.HoneyFallProvider | covered | not-needed | covered | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `BEEHIVE_DRIP` on land (DripParticle.java:313-320) covered via renderer particle sound events; `Fluids.EMPTY` |
+| DripParticle.HoneyLandProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
+| DripParticle.NectarFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` removal covered; `Fluids.EMPTY` |
+| DripParticle.SporeBlossomFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
+| DripParticle.ObsidianTearHangProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY`; glow light covered |
+| DripParticle.ObsidianTearFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
+| DripParticle.ObsidianTearLandProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
+| DripParticle.DripstoneWaterHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); water-surface removal covered |
+| DripParticle.DripstoneWaterFallProvider | covered | not-needed | covered | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `POINTED_DRIPSTONE_DRIP_WATER` on land (DripParticle.java:156-162) covered |
+| DripParticle.DripstoneLavaHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); cooling RGB covered; lava-surface removal covered |
+| DripParticle.DripstoneLavaFallProvider | covered | not-needed | covered | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `POINTED_DRIPSTONE_DRIP_LAVA` on land covered |
 | DustParticle.Provider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; `hasPhysics=true` + `speedUpWhenYMotionIsBlocked` via generic path |
 | DustColorTransitionParticle.Provider | covered | not-needed | not-needed | not-needed | as DustParticle.Provider; transition lerp covered |
 | DustPlumeParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (DustPlumeParticle.java:22, BaseAshSmoke last arg); gravity/friction decay covered |
@@ -1194,7 +1197,7 @@ Shared todo root causes (one slice may clear several rows):
 | FallingLeavesParticle.CherryProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` per-spawn `setSize(size, size)` (0.05/0.075); `onGround` + horizontal-block removal + first-tick grace covered — removal is collision-driven, no state query |
 | FallingLeavesParticle.PaleOakProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15); rest as CherryProvider |
 | FallingLeavesParticle.TintedLeavesProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15); ARGB tint covered |
-| FireflyParticle.FireflyProvider | todo | not-needed | not-needed | covered | `[bounds]` provider `scale(1.5F)` → `setSize(0.3F)` (FireflyParticle.java:94); generic move + non-air removal :50-51 covered |
+| FireflyParticle.FireflyProvider | covered | not-needed | not-needed | covered | `[bounds]` provider `scale(1.5F)` → `setSize(0.3F)` (FireflyParticle.java:94, Particle.java:77-80) now in `collision_size()` (this slice); generic move + non-air removal :50-51 covered |
 | FireworkParticles.FlashProvider | not-needed | not-needed | not-needed | not-needed | zero velocity, lifetime 4; overlay alpha/size covered |
 | FireworkParticles.SparkProvider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; SimpleAnimated physics via generic path; trail/twinkle children + fade covered; sounds live on the Starter row |
 | FlameParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` override (FlameParticle.java:29-32); in `moves_without_collision` |
@@ -1230,14 +1233,14 @@ Shared todo root causes (one slice may clear several rows):
 | SmokeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; blocked-Y speed-up via collision callback covered |
 | SnowflakeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; post-tick damping covered |
 | SonicBoomParticle.Provider | not-needed | not-needed | not-needed | not-needed | tick never calls `move` (inherits HugeExplosionParticle) |
-| SoulParticle.Provider | todo | not-needed | not-needed | not-needed | `[bounds]` `scale(1.5F)` → `setSize(0.3F)` (SoulParticle.java:17 + Particle.java:77-80); rising motion covered |
-| SoulParticle.EmissiveProvider | todo | not-needed | not-needed | not-needed | as SoulParticle.Provider |
+| SoulParticle.Provider | covered | not-needed | not-needed | not-needed | `[bounds]` `scale(1.5F)` → `setSize(0.3F)` (SoulParticle.java:17 + Particle.java:77-80) now in `collision_size()` (this slice); rising motion covered |
+| SoulParticle.EmissiveProvider | covered | not-needed | not-needed | not-needed | as SoulParticle.Provider; `[bounds]` 0.3 covered (this slice) |
 | SpellParticle.Provider | not-needed | covered | not-needed | not-needed | `hasPhysics=false` (SpellParticle.java:33); scoping alpha (:35-37, :49-53, :62-69) covered — vanilla itself only checks the local player |
 | SpellParticle.InstantProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; RGB + power covered |
 | SpellParticle.MobEffectProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; ARGB covered |
 | SpellParticle.WitchProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; magenta brightness covered |
 | SpitParticle.Provider | covered | not-needed | not-needed | not-needed | ExplodeParticle physics, gravity 0.5, default bounds |
-| SplashParticle.Provider | todo | not-needed | not-needed | covered | `[bounds]` WaterDrop `setSize(0.01F)` (WaterDropParticle.java:16); `onGround` 50% removal + collision-shape/fluid-surface gate :39-55 covered |
+| SplashParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` inherits WaterDrop `setSize(0.01F)` (WaterDropParticle.java:16 via `super`) now in `collision_size()` (this slice); `onGround` 50% removal + collision-shape/fluid-surface gate :39-55 covered |
 | SquidInkParticle.Provider | not-needed | not-needed | not-needed | covered | `hasPhysics=false`; in-air downward drift gate :43-45 covered (`air_downward_acceleration`) |
 | SquidInkParticle.GlowInkProvider | not-needed | not-needed | not-needed | covered | as SquidInkParticle.Provider |
 | SuspendedParticle.UnderwaterProvider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false`; `setSize(0.01F)` has no behavioral effect without physics |
@@ -1258,21 +1261,24 @@ Shared todo root causes (one slice may clear several rows):
 | VibrationSignalParticle.Provider | not-needed | not-needed | not-needed | covered | no `move`; entity-target-missing removal :77-79 covered via native entity target context |
 | WakeParticle.Provider | todo | not-needed | not-needed | not-needed | `[wake-grow]` initial `setSize(0.01F)` covered (descriptors.rs:2051), but per-tick `setSize(life * 0.001F)` growth :46-47 not modeled |
 | WaterCurrentDownParticle.Provider | not-needed | not-needed | not-needed | covered | `hasPhysics=false` (WaterCurrentDownParticle.java:17) — the `onGround` half of :45 is dead in vanilla; non-water removal covered |
-| WaterDropParticle.Provider | todo | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (WaterDropParticle.java:16); move + `onGround` 50% removal + collision-shape/fluid-surface gate covered |
+| WaterDropParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (WaterDropParticle.java:16) now in `collision_size()` (this slice); move + `onGround` 50% removal + collision-shape/fluid-surface gate covered |
 | WhiteAshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (WhiteAshParticle.java:22) |
 | WhiteSmokeParticle.Provider | covered | not-needed | not-needed | not-needed | as SmokeParticle.Provider |
 | TrackingEmitter (code-spawned) | not-needed | not-needed | not-needed | not-needed | NoRender emitter, no `move`; entity-AABB sampling covered for the wired paths (entity event 35, animate 4/5); other vanilla construction sites belong to their entity-event slices |
 | FireworkParticles.Starter (code-spawned) | not-needed | covered | covered | not-needed | no `move`; camera-distance far-variant selection (FireworkParticles.java:284-287) covered; life-0 blast / large_blast (:216-238) + delayed twinkle (:273-281) covered |
 | ItemPickupParticle (code-spawned) | not-needed | covered | not-needed | not-needed | follows target entity midpoint (ItemPickupParticle.java:45-49); covered incl. 3-tick lifetime and quadratic extract |
 
-Row and cell counts (2026-07-05):
+Row and cell counts (2026-07-05; collision counts updated after the
+`[bounds]` slice):
 
 - 113 rows: 110 distinct provider classes registered by vanilla 26.1
   `ParticleResources.registerProviders()` (lines 56-172; 117 registrations
   minus 7 duplicate-class registrations) plus 3 code-spawned particles
   (`TrackingEmitter`, `FireworkParticles.Starter`, `ItemPickupParticle`).
-- collision: 28 covered / 57 not-needed / 28 todo
+- collision: 52 covered / 57 not-needed / 4 todo (the `[bounds]` slice flipped
+  24 rows: 17 drip + rain/splash + bubble/bubble-column + soul x2 + firefly;
+  the remaining 4 collision `todo` rows are 3 `[leaf-bounds]` + 1 `[wake-grow]`)
 - player-coupled: 6 covered / 105 not-needed / 2 todo
 - sounds: 4 covered / 109 not-needed / 0 todo
 - removal-gates: 18 covered / 95 not-needed / 0 todo
-- 30 todo cells on 30 distinct rows (28 collision + 2 player-coupled).
+- 6 todo cells on 6 distinct rows (4 collision + 2 player-coupled).
