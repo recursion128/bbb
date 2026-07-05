@@ -234,6 +234,13 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
+  - Establish the per-provider tracking table in the detail file (goal.md
+    P1-5 contract, 2026-07-05): enumerate the vanilla
+    `net.minecraft.client.particle` provider list and mark each provider
+    `covered` / `not-needed (vanilla has no such behavior)` / `todo` for
+    special-context collision, player-coupled physics, local sounds, and
+    block-state removal gates. Subsequent P1-5 slices pick `todo` rows from
+    that table; goal.md no longer duplicates the list.
   - Implement remaining renderer slices for provider-specific behavior,
     non-particle-atlas terrain/item particle layer sorting, and
     collision/player-coupled physics (world collision clipping, cloud/sneeze

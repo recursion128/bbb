@@ -284,6 +284,26 @@
     gameplay input 再 `ParticleEngine.tick`，随后 `LevelRenderer.extractLevel` /
     `ParticleEngine.extract` 调用 `SingleQuadParticle.getLightCoords(partialTicks)`。
 
+
+### 2026-07-05 迁入：RendererFrame 逐字段提取时机核查（已审完，原文自 goal.md 当前边界）
+
+  `RendererFrame` sky-flash 相关 lightmap/clear/fog/sky/cloud 提取时机已按
+  vanilla `Minecraft.tick` -> `ClientLevel.tick` -> `GameRenderer.extract`
+  调整为 `advance_sky_flash_time` 后读取。
+  `RendererFrame` HUD local-player / hotbar / inventory-screen 投影也已按
+  vanilla keybind tick -> GUI extract 顺序验证为 input/use-item tick 后读取。
+  `RendererFrame` dropped/held/item-frame/entity-block item projections 和 entity
+  model instances 已验证为 entity animation / cooldown / input / use-item tick 后读取。
+  `RendererFrame` block-destroy overlay 已验证为本地 destroy render tick 后读取。
+  `RendererFrame` selection/entity outlines 已验证为 input/use-item/entity tick 后按
+  frame camera pose 读取。
+  `RendererFrame` cloud_frame 已验证为 client-time / partial tick / frame camera pose
+  后读取。
+  `RendererFrame` weather_render_state 已验证为 client-time / partial tick /
+  frame camera pose 后读取。
+  粒子 light refresh 已调整并验证为 input/use-item 后 tick、frame extract 输入绑定后采样，
+  当前 RendererFrame / adjacent renderer-state 提取时机清单已审完。
+
 ## P1-2：实体专用 Renderer 行为
 
 - Chicken / pig / cow variant livestock：
@@ -1330,6 +1350,48 @@
     already do. Tests use a constant-transform custom consumable with
     `UseAnimation.NONE` to prove idle, start, mid, and full use-duration
     branches produce distinct first-person meshes from local use ticks.
+
+
+### 2026-07-05 迁入：item glint 与 first-person presentation 完成史
+
+- item enchantment glint follow-ups：solid item-model `RenderTypes.glint()` 已覆盖 dropped /
+  held / item-frame / HUD 3D block items，含 `ItemStackSummary::has_foil()` 跨 crate 投影、
+  item glint mesh bucket、独立 `textures/misc/enchanted_glint_item.png` 上传、`GLINT_TEXTURING`
+  scale `8.0` shader、GLINT blend、depth-equal、no-lightmap draw；world/itemEntity-target
+  item-model translucent quads now also have `RenderTypes.glintTranslucent()` mesh/draw buckets；
+  clock / compass SPECIAL foil decal UVs are covered for current dropped / held / item-frame
+  item-model consumers；flat HUD/inventory item sprites now draw an alpha-masked standard
+  glint overlay after sprite layers and before durability/cooldown/count decorations, with
+  clock / `ItemTags.COMPASSES` GUI SPECIAL foil using the vanilla sheeted-decal UV scale；GUI
+  3D block-item icons now split translucent base quads and matching `glintTranslucent`
+  inside the GUI item pass；generated flat item layers now carry vanilla
+  material translucency (`force_translucent` or sprite translucent pixels) into
+  extruded item-model quads for dropped / held / item-frame consumers；普通
+  first-person local-player hand stacks now bake through `FIRST_PERSON_*_HAND`
+  display contexts into an after-world / before-HUD depth-cleared hand pass,
+  using vanilla `applyItemArmTransform` constants and ordinary WHACK `swingArm`
+  plus STAB `SpearAnimations.firstPersonAttack` from the local player's
+  `attackAnim` / `swingingArm`, first-person BLOCK/shield use pose, and
+  patch-carried/default consumable EAT/DRINK `applyEatTransform` use pose, and
+  goat horn `TOOT_HORN` base-arm use pose, and brush `BRUSH`
+  `applyBrushTransform` use pose, bundle `BUNDLE` use `swingArm`, and trident
+  `TRIDENT` throw-charge use pose, and bow `BOW` draw use pose / used-hand
+  selection, crossbow uncharged draw / charged idle poses, and spyglass idle /
+  scoping visibility, and filled-map decoded base surfaces via the vanilla
+  one-handed / two-handed map branches plus first-person `MapRenderer`
+  decorations/text plus map background/checkerboard quads, and custom
+  consumable BOW/TRIDENT/BRUSH/BUNDLE plus generic no-switch
+  NONE/CROSSBOW/SPYGLASS/TOOT_HORN first-person use animation, and SPEAR /
+  kinetic first-person use animation with local hit feedback, and first-person
+  local-player empty-hand / filled-map player arms using vanilla
+  `renderPlayerArm` / `renderMapHand` transforms, player skin sleeves,
+  `entityTranslucent`, local light, and dynamic skin atlas routing, and
+  first-person generated item consumers now pass the local active-use tick
+  context into `minecraft:use_duration` / `minecraft:use_cycle` item-model
+  range-dispatch properties, and attack-arm `SWING_ANIMATION(NONE)` stack
+  patches now project through native/render-state so PlayerModel and ordinary
+  piglin/brute inherited `HumanoidModel.setupAttackAnimation` keep the vanilla
+  prologue while skipping WHACK/STAB. 剩余是截图级 viewmodel 视觉校验。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
@@ -2817,6 +2879,400 @@
     the existing audio sink. Tests cover item, experience-orb, non-item entity,
     and missing-entity cases plus vanilla random pitch consumption order.
 
+
+### 2026-07-05 迁入：particle-target carried submit（elder guardian / item pickup / experience orb）
+
+- 2026-07-03 elder-guardian particle special-group model submit 已按 vanilla
+  `ElderGuardianParticleGroup` 接入 particle target：`ELDER_GUARDIANS` 在
+  single-quad 粒子后用 entity translucent pipeline 绘制 bind-pose elder guardian
+  模型，保留 vanilla alpha、camera-relative transform、full-bright light、no overlay、
+  `0.42553192` 粒子 scale 与 `2.35` elder baked-layer scale。后续同日 slice 已把
+  `ItemPickupParticle` 的普通 item-stack carried model submit 接进 particle target：
+  TakeItemEntity 命令携带 source entity id、`extractEntity(..., 1.0F)` 形状的
+  frozen age 与 source light，renderer 导出 quadratic target 插值位置，native 复用
+  dropped-item GROUND item-cluster bake 并在 `ITEM_PICKUP` group 顺序中绘制。剩余
+  experience-orb carried submit 也已接入：world 从 `ExperienceOrb.DATA_VALUE`
+  捕获 vanilla icon，按 `ExperienceOrbRenderer.getBlockLightLevel` 对 block
+  light `+7` 封顶，renderer 用 `textures/entity/experience/experience_orb.png`
+  的 16×16 icon billboard、alpha `128/255`、vanilla age 色彩曲线和
+  `entityTranslucentCullItemTarget` 形状在同一 `ITEM_PICKUP` group 绘制。剩余
+  carried submit 是 component-rich item stack 和更通用 `EntityRenderState`
+  entity-submit parity。
+
+### 2026-07-05 迁入：粒子 provider-specific behavior / sorting 完成史（含当时的排除式剩余清单，仅作历史存档）
+
+- 粒子 provider-specific behavior：
+  - `falling_dust` 的非 air `RenderShape.INVISIBLE` provider spawn rejection 已
+    对齐 vanilla（覆盖 water/lava、bubble column、barrier、structure void、
+    end portal/gateway、light、moving piston）；`FallingBlock#getDustColor`
+    分支的 sand/red_sand/gravel、
+    anvil、dragon_egg、concrete_powder RGB 已投影进 native spawn command 并由
+    renderer visual color 消费；非 FallingBlock 的 vanilla `BlockColors`
+    layer-0 tint 已覆盖常量、默认 colormap、redstone power、stem age 和 lily pad
+    world-color 分支；无 BlockColors tint 的 `falling_dust` 现已用 vanilla
+    static mapColor fallback 覆盖基础 stone/dirt/planks、wood/log/bamboo stem
+    axis 分支、wooden stairs/slabs/pressure plates/doors/trapdoors/fences/fence
+    gates/signs/hanging signs/shelves、banner/wall banner `WOOD`，以及 button /
+    glass / glass pane / iron bars / iron chain / copper bars / copper chains /
+    misc redstone/slime/bone/frosted-ice/dirt-path/petrified-slab static blocks /
+    ladder / torch / redstone torch / soul torch / copper torch / end rod /
+    rail / lever / repeater / comparator / tripwire / skull-head / potted /
+    cake / air / cave_air / void_air / test_instance_block 默认
+    `MapColor.NONE`、
+    crimson/warped stem/hyphae 静态色、DyeColor / colored terracotta 系列、
+    bed/candle/shulker decorative colored families、
+    amethyst/tuff/calcite/sculk/froglight cave/emissive families、copper
+    weathering families、nether flora / blackstone static families、
+    quartz/prismarine/End static families、construction stone/brick static
+    families、deepslate construction variants、infested stone CLAY variants、
+    resin/pale garden static families、plant/dripstone/moss/root/mud natural
+    static families、non-tinted foliage static families、crop/succulent static
+    families、produce/fungus static families、utility/mechanical static
+    families（含 stone/weighted pressure plates、utility fixtures、functional
+    blocks 与 redstone utility/control blocks）、aquatic/coral static
+    families、bamboo/honey/campfire utility static families、water plant/egg
+    static families、flower/tall flower static families、fire/cocoa/creaking heart
+    static families、glowstone/enchanting/beacon static families，以及
+    ore/deepslate/nether、
+    snow/ice/clay/sandstone/suspicious block、resource block、mycelium、
+    packed_mud、nether_brick_fence、nether_portal、stripped_pale_oak_wood
+    与 copper_lantern weathering/waxed variants；全量 mapColor catalog 现由
+    `falling_dust_colors_cover_all_accepted_vanilla_block_states` 枚举覆盖。
+    Biome-aware per-spawn BlockColors 现在按 vanilla provider 的
+    `BlockPos.containing(x, y, z)` 采样 `LevelParticles` 实际 spawn 位置：
+    terrain 粒子使用 `0.6 * colorAsTerrainParticle`，非 FallingBlock
+    `falling_dust` 使用原始 tint。Particle tick 现在从 native 获得 world
+    collision 回调，按 vanilla Y-first / largest-horizontal 轴顺序对
+    vanilla 0.2x0.2 粒子 AABB 做三轴 block-shape clipping，应用
+    `Particle.onGround` X/Z damping，并在落地后的 tick 清零
+    `FallingDustParticle` roll。Plain `DripParticle.FallingParticle`
+    providers (`falling_nectar` / `falling_spore_blossom`) 和
+    `FallAndLandParticle` falling providers (`falling_honey` /
+    `falling_obsidian_tear` / `falling_lava` / `falling_water` /
+    dripstone falling variants) 现在也通过 world collision callback 的 vanilla
+    `move` 路径在 `onGround` 时移除；
+    `WaterDropParticle.Provider` / `SplashParticle.Provider` (`rain` /
+    `splash`) 现在用同一 collision-backed `move` 路径，并在 `onGround` 时应用
+    vanilla 50% 随机移除与 X/Z damping；honey / obsidian tear / lava
+    landing providers 现在拆成 `DripLand` tick，使用 vanilla `DripParticle`
+    move/friction 而不套用 `WaterDropParticle` 的随机落地移除；
+    `WaterDropParticle` in-block removal 现在查询 world block/fluid surface，
+    按 vanilla `collisionShape.max(Y, localX, localZ)` 与 fluid height 的 max
+    删除落入方块/流体内部的 `rain` / `splash`；
+    `WakeParticle.Provider` (`fishing`) 现在使用 vanilla
+    `setSize(0.01F, 0.01F)` collision AABB，并在 0.98 friction 与 wake
+    sprite cycle 前走 collision-backed `move(xd, yd, zd)`；
+    DripParticle 的 water/lava matching-fluid removal 现在同样通过 world
+    fluid kind/height sample 覆盖 `dripping_*`、`falling_*` 与 lava landing
+    provider，`Fluids.EMPTY` 的 honey / obsidian tear / nectar / spore
+    blossom providers 不参与该门；
+    `BubbleParticle` / `BubbleColumnUpParticle` / `WaterCurrentDownParticle`
+    现在按 vanilla `FluidTags.WATER` gate 在当前位置格子不含 water fluid
+    时移除；
+    BaseAshSmoke 系 provider 的 `speedUpWhenYMotionIsBlocked` 也已通过
+    default tick 的 world collision callback 覆盖；
+    `CampfireSmokeParticle` 现在使用 vanilla `setSize(0.25F, 0.25F)` 的
+    0.25x0.25 AABB，通过 collision-backed `move` 路径移动，并在 alpha 已经
+    `<= 0` 时跳过运动直接移除；
+    `EndRodParticle` 保留 `hasPhysics=true` 元数据但按 vanilla 覆写走
+    collision-free `move`；
+    `FallingLeavesParticle` 现在通过 world collision callback 覆盖落地移除、
+    第二 tick 起的水平轴阻塞移除，以及第一 tick 水平阻塞 grace；
+    `FireflyParticle` 现在通过 world block-air sample 覆盖 vanilla
+    `super.tick()` 后的非 air block removal，并走 collision-backed default move；
+    `SquidInkParticle` / `GlowInkProvider` 现在通过同一 block-air sample 覆盖
+    vanilla post-`super.tick()` in-air downward drift；
+    `AshParticle` / `WhiteAshParticle` 的源码核对确认 vanilla `hasPhysics=false`，
+    不存在额外 collision removal 待办；
+    `DripParticle` hang-to-fall 与 fall-to-land/splash child spawning 已按
+    vanilla lifetime / `onGround` 触发接到 native child templates；
+    `SpellParticle` scoping alpha 现在接收 native local-player eye position /
+    first-person spyglass context，覆盖近距 alpha=0 与离开后按 0.05 lerp 回
+    `originalAlpha` 的 tick 行为；
+    firework rocket entity event `17` 的 empty/no-explosion `createFireworks`
+    分支现在按 vanilla 在 rocket 位置生成 `random.nextInt(3)+2` 个
+    `minecraft:poof` 粒子，使用 gaussian X/Z `*0.05` 与固定 Y `0.005`
+    速度，并保留 `ParticleTypes.POOF` 的 `overrideLimiter=true` 语义，绕过普通
+    距离 / 粒子状态门；non-empty explosions 现在从 rocket item metadata
+    投影 `FireworkParticles.Starter` 的 small/large ball、star、creeper、
+    burst 基础 spark 形状、中心 `flash`、per-spark fade-color，以及
+    trail 子 spark 复制 / twinkle 可见性 gate；同一路径现在还按 vanilla life-0
+    `Starter.tick()` 播放 local ambient blast / large_blast 声效，使用
+    camera distance squared `>=256` 的 far 变体、volume `20.0`、
+    `0.95 + random * 0.1` pitch 和 `distanceDelay=true`；含 twinkle 的
+    explosion 还会按 `explosions.size()*2 - 1 + 15` tick 延迟播放 local
+    ambient twinkle / twinkle_far 声效，释放时使用当前 camera distance
+    squared `>=256` 判定 far 变体、volume `20.0`、`0.9 + random * 0.15`
+    pitch 和 `distanceDelay=true`；`FireworkRocketEntity.tick` 的客户端 trail
+    现在每个 advanced client tick 在 rocket 当前 world transform 位置提交 1 个
+    sprite-backed `minecraft:firework` 粒子，速度为 vanilla
+    `random.nextGaussian()*0.05` X/Z 与 `-deltaMovement.y*0.5` Y；
+    `PlayerCloudParticle.Provider` / `SneezeProvider` 现在接收 native
+    local-player position / delta-movement context，覆盖 vanilla
+    `super.tick()` 后 2 格内、粒子高于玩家脚部 Y 时对 Y 与 Y 速度的 20% 牵引；
+    entity event `35` 的 totem `TrackingEmitter` 现在按 vanilla
+    构造时立即 tick、总计 30 tick，每 tick 做 16 次单位球采样，并按实体当前
+    AABB width/height 在实体周围生成 `minecraft:totem_of_undying` 粒子，使用
+    velocity `(xa, ya + 0.2, za)` 与 delay `0..29` 提交给 renderer；
+    `ClientboundAnimate` 动作 `4`/`5` 现在按 vanilla
+    `ClientPacketListener.handleAnimate` 生成 crit / enchanted-hit
+    `TrackingEmitter`，默认 3 tick，每 tick 16 次单位球采样，并复用实体当前
+    AABB width/height；
+    ravager entity event `69` 现在按 vanilla `Ravager.handleEntityEvent`
+    的 `addRoarParticleEffects` 生成 40 个 `minecraft:poof`：位置为 ravager
+    AABB center，速度为 vanilla gaussian `* 0.2` 三轴采样，并保留
+    `ParticleTypes.POOF` 的 `overrideLimiter=true`；同事件现在还按
+    `Ravager.applyRoarKnockbackClient` 对本地 authoritative、alive、非 ravager
+    living target（当前 native world 建模为本地玩家）在 ravager AABB
+    `inflate(4.0)` 命中时追加 `strongKnockback`：`dd=max(xd²+zd²,0.001)`，
+    delta 加 `(xd/dd*4.0, 0.2, zd/dd*4.0)`；
+    witch entity event `15` 现在按 vanilla `Witch.handleEntityEvent` 生成
+    `nextInt(35)+10` 个 `minecraft:witch` 粒子：位置为实体 `x/z` 与
+    `boundingBox.maxY + 0.5` 加三轴 gaussian `*0.13F`，速度为 0；
+    LivingEntity entity event `60` 现在按 vanilla `LivingEntity.makePoofParticles`
+    生成 20 个 `minecraft:poof` 粒子：速度为三轴 gaussian `*0.02`，位置为
+    `getRandomX(1.0) - vx*10`、`getRandomY() - vy*10`、
+    `getRandomZ(1.0) - vz*10`，并使用当前 living entity AABB width/height；
+    LivingEntity entity event `67` 现在按 vanilla `LivingEntity.makeDrownParticles`
+    生成 8 个 `minecraft:bubble` 粒子：位置为实体 position 加三轴
+    `random.triangle(0.0, 1.0)` 偏移，速度为当前 `deltaMovement`；
+    LivingEntity entity event `46` 现在按 vanilla `LivingEntity.handleEntityEvent`
+    生成 128 个 `minecraft:portal` 粒子：位置沿 `xo/yo/zo` 到当前 position
+    插值并加入 width/height 随机偏移，速度为 `(nextFloat()-0.5)*0.2`；
+    Snowball entity event `3` 现在按 vanilla `Snowball.handleEntityEvent`
+    生成 8 个命中粒子：默认 synced item stack 走 `minecraft:item` + snowball
+    stack，显式 empty stack 走 `minecraft:item_snowball`，位置为当前 snowball
+    position，速度为 0；
+    ThrownEgg entity event `3` 现在按 vanilla `ThrownEgg.handleEntityEvent`
+    为非空 item stack 生成 8 个 `minecraft:item` 粒子：缺失 metadata 时使用
+    默认 `Items.EGG`，显式 empty stack 不生成粒子，位置为当前 egg position，
+    三轴速度为 `(nextFloat()-0.5)*0.08`；
+    Arrow entity event `0` 现在按 vanilla `Arrow.handleEntityEvent` 在
+    synced `ID_EFFECT_COLOR != -1` 时生成 20 个 `minecraft:entity_effect`
+    粒子：位置按当前 arrow AABB 的 `getRandomX(0.5)` / `getRandomY()` /
+    `getRandomZ(0.5)` 采样，速度为 0，option RGB 来自 synced color；`-1`
+    不生成粒子，`0` 生成黑色粒子；
+    Animal entity event `18` 现在按 vanilla `Animal.handleEntityEvent`
+    生成 7 个 `minecraft:heart` love 粒子：速度为三轴 gaussian `*0.02`，
+    位置按当前 animal AABB 的 `getRandomX(1.0)` / `getRandomY()+0.5` /
+    `getRandomZ(1.0)` 采样；Allay entity event `18` 现在也按 vanilla
+    `Allay.handleEntityEvent` 生成 3 个复制反馈 `minecraft:heart` 粒子，使用
+    同一 `spawnHeartParticle` 速度和位置公式；TamableAnimal 与
+    AbstractHorse entity events `6`/`7` 现在按 vanilla `spawnTamingParticles`
+    生成驯服反馈粒子：event `7` 成功为 7 个 `minecraft:heart`，event `6`
+    失败为 7 个 `minecraft:smoke`，两者使用同一三轴 gaussian `*0.02`
+    速度和当前 AABB 位置采样；Villager entity events `12`/`13`/`14`/`42`
+    现在按 vanilla `Villager.handleEntityEvent` /
+    `AbstractVillager.addParticlesAroundSelf` 生成 5 个粒子，速度为三轴
+    gaussian `*0.02`，位置按当前 villager AABB 的 `getRandomX(1.0)` /
+    `getRandomY()+1.0` / `getRandomZ(1.0)` 采样，四个事件分别映射为
+    `minecraft:heart` / `minecraft:angry_villager` /
+    `minecraft:happy_villager` / `minecraft:splash`；Dolphin entity event
+    `38` 现在按 vanilla `Dolphin.handleEntityEvent` 生成 7 个
+    `minecraft:happy_villager` 粒子：速度为三轴 gaussian `*0.01`，位置按
+    当前 dolphin AABB 的 `getRandomX(1.0)` / `getRandomY()+0.2` /
+    `getRandomZ(1.0)` 采样；
+    Fox entity event `45` 现在按 vanilla `Fox.handleEntityEvent` 在主手非空时
+    生成 8 个 `minecraft:item` 粒子：位置为 `position + getLookAngle()/2`
+    的 x/z mouth anchor，item option 使用主手 stack，局部速度
+    `(rand-.5)*0.1, rand*0.1+0.1, 0` 先 `xRot(-xRot)` 再
+    `yRot(-yRot)`，并追加 `+0.05` Y；
+    HoneyBlock entity events `53`/`54` 现在按 vanilla `HoneyBlock.showParticles`
+    生成 `minecraft:block` 粒子：event `53` 基础 Entity slide 生成 5 个，
+    event `54` LivingEntity jump 生成 10 个，均使用
+    `Blocks.HONEY_BLOCK.defaultBlockState()`、实体当前位置和零速度；
+    Ravager stun client tick 现在按 vanilla `Ravager.aiStep` /
+    `stunEffect` 在 event `39` 的 40 tick stun 期间每 tick 消耗 Java-LCG
+    client RNG 执行 `nextInt(6)`，命中时在头部 anchor
+    `position - width*sin(yBodyRot)` / `position.y + height - 0.3` /
+    `position + width*cos(yBodyRot)` 加 `±0.3` x/z jitter 生成灰色
+    `minecraft:entity_effect`；EvokerFangs event `4` 启动 `lifeTicks`
+    后，tick 到 `14` 时按 vanilla 一次性生成 12 个 `minecraft:crit`
+    粒子，使用 `width*0.5` 水平范围、`1.05 + random` Y 偏移和
+    `0.3..0.6` Y 速度，并在 renderer `ParticleEngine.tick` 前提交，同一
+    event 现在还按 vanilla 在 fang 当前位置播放
+    `minecraft:entity.evoker_fangs.attack` positioned sound，source 为默认
+    neutral、volume `1.0`、pitch `random.nextFloat()*0.2+0.85`；
+    `ClientboundTakeItemEntity` 现在按 vanilla 在 shrink/remove 前创建
+    `ItemPickupParticle` runtime command：source 使用被拾取实体当前位置/速度，
+    target 使用目标 living entity 或本地玩家 fallback 的 `(feet + eyeY) / 2`
+    midpoint，item entity 传入 pre-shrink item stack；renderer 将其纳入
+    `ITEM_PICKUP` group，按 3 tick lifetime、target old/current 跟随和
+    `(life + partial) / 3` 平方插值推进。普通 item-stack carried model 现在还按
+    vanilla particle group 顺序在 single-quad 粒子后、elder guardian special
+    group 前绘制：source item render state 冻结 age/light，position 使用 quadratic
+    target 插值，GROUND item model/cluster 复用 dropped-item bake；experience
+    orb carried submit 现在捕获 `ExperienceOrbRenderState.icon`、经验球专用
+    `+7` block light、冻结 age，并用经验球 64×64 texture 的 16×16 icon
+    billboard 通过 entity translucent-cull item-target 形状绘制。剩余 carried
+    submit 是 component-rich item stack 与更通用 `EntityRenderState` GPU
+    entity-submit parity；
+    `ClientboundGameEvent` 的 elder-guardian effect 现在按 vanilla 在本地玩家
+    脚部位置生成 `minecraft:elder_guardian` 粒子，并在 param floor 为 1 时播放
+    `minecraft:entity.elder_guardian.curse`；同组 game event 的
+    `minecraft:entity.arrow.hit_player` 与 `minecraft:entity.puffer_fish.sting`
+    本地玩家位置声效也已接到 native audio；
+    同一 event `35` 现在还按 vanilla `SoundEvents.TOTEM_USE` 在实体当前位置
+    播放 `minecraft:item.totem.use` 本地位置声效，source 来自当前实体的
+    `getSoundSource()` 映射（player/hostile/default neutral 等）；
+    Ravager / IronGolem entity event `4` 现在按 vanilla 固定
+    `playSound(sound, 1.0, 1.0)` side effect 在当前实体位置播放
+    `minecraft:entity.ravager.attack` / `minecraft:entity.iron_golem.attack`，
+    遵守 silent gate 和 `getSoundSource()` 的 hostile / neutral 映射；
+    ZombieVillager entity event `16` 现在按 vanilla 在 `getEyeY()` 位置播放
+    `minecraft:entity.zombie_villager.cure`，遵守 silent gate，source 为
+    hostile，volume `1.0 + random.nextFloat()`，pitch
+    `random.nextFloat()*0.7+0.3`；
+    Armadillo entity event `64` 现在按 vanilla `Armadillo.handleEntityEvent`
+    在实体当前 `getX/getY/getZ` 位置播放 `minecraft:entity.armadillo.peek`，
+    source 为 neutral，volume/pitch 固定 `1.0`，并与该 vanilla 分支一致不走
+    generic silent gate；
+    ArmorStand entity event `32` 现在按 vanilla 命中分支在实体当前位置播放
+    `minecraft:entity.armor_stand.hit`，source 为 neutral，volume `0.3`，
+    pitch `1.0`，并与既有 hit-wiggle 状态投影一起应用；
+    ArmorStand LivingEntity death event `3` 现在按 vanilla `getDeathSound()`
+    播放 `minecraft:entity.armor_stand.break`，遵守 generic silent gate，
+    volume `1.0`，pitch 为 `(random.nextFloat()-random.nextFloat())*0.2+1.0`；
+    Zombie LivingEntity death event `3` 现在按 vanilla `Zombie.getDeathSound()`
+    播放 `minecraft:entity.zombie.death`，source 为 hostile，遵守 generic
+    silent gate，并使用相同 death-event pitch 随机公式；
+    ZombieVillager LivingEntity death event `3` 现在按 vanilla
+    `ZombieVillager.getDeathSound()` 播放
+    `minecraft:entity.zombie_villager.death`，沿用 hostile source、generic
+    silent gate 与 death-event pitch 随机公式；
+    Ravager / IronGolem LivingEntity death event `3` 现在按 vanilla
+    `getDeathSound()` 播放 `minecraft:entity.ravager.death` /
+    `minecraft:entity.iron_golem.death`，沿用 hostile / neutral source 映射、
+    generic silent gate 与 death-event pitch 随机公式；
+    Witch / Villager LivingEntity death event `3` 现在按 vanilla
+    `Witch.getDeathSound()` / `Villager.getDeathSound()` 播放
+    `minecraft:entity.witch.death` / `minecraft:entity.villager.death`，
+    沿用 hostile / neutral source 映射、generic silent gate 与同一
+    death-event pitch 随机公式；
+    Skeleton / Stray / Bogged LivingEntity death event `3` 现在按 vanilla
+    `getDeathSound()` 播放 `minecraft:entity.skeleton.death` /
+    `minecraft:entity.stray.death` / `minecraft:entity.bogged.death`，
+    沿用 hostile source、generic silent gate 与同一 death-event pitch
+    随机公式；
+    `vibration` entity `PositionSource` 现在保留 entity id / yOffset，并在
+    native level-particle command resolution 用当前 world entity transform
+    生成 `entity.position + (0, yOffset, 0)` 初始 target；renderer particle
+    tick 现在接收 native entity target context，每 tick 重算 entity target 并在
+    source entity 缺失时移除；
+    `DragonBreathParticle` 现在使用 vanilla 专用 tick motion：Y 未移动时先让
+    X/Z 速度 `*1.1` 再施加 friction，且 Y 速度只在 `onGround` 设置持久
+    `hasHitGround` 后追加 `0.002` 上升并参与摩擦；
+    `SuspendedTownParticle` 系 provider（happy_villager / composter /
+    dolphin / mycelium / egg_crack）现在表达 vanilla 覆写的 collision-free
+    `move`；
+    `CritParticle` 系 provider 现在覆盖 vanilla 构造函数尾部立即 `tick()` 的
+    spawn-time age/position/velocity 推进；
+    `FlameParticle` 与 `PortalParticle` / `ReversePortalParticle` 现在保留
+    vanilla `hasPhysics=true` metadata，并通过 collision-free `move` flag 表达其
+    覆写路径；
+    `PrimedTnt.tick` 的客户端 smoke side effect 现在按当前 world 实体位置和
+    synced/default fuse 元数据提交：entity tick clock 推进后，post-decrement fuse
+    仍为正的 TNT 每个 advanced tick 在 `x, y + 0.5, z` 生成一个
+    `minecraft:smoke`，速度为 0；
+    vault activation event-3015 现在解析 vault block-entity
+    `shared_data.connected_players` / `connected_particles_range`，按方块
+    `facing` 的 keyhole 位置向 in-range loaded player 生成
+    `minecraft:vault_connection` 粒子，并在 cage 粒子和 activate sound 前保持
+    vanilla 随机消费顺序；
+    `OminousItemSpawner.tickClient` 现在按 vanilla `level.gameTime % 5 == 0`
+    gate 在实体当前位置提交 `minecraft:ominous_spawning` 粒子：每次触发生成
+    `random.nextIntBetweenInclusive(1,3)` 个命令，速度为
+    `0.4*(gaussian-gaussian)` 三轴随机 offset 向量，并保留该 particle type 的
+    override-limiter 语义；
+    剩余 gravity/collision/player-coupled work 是其他特殊 context 和
+    player-coupled emitter（不含 TakeItemEntity `ItemPickupParticle` runtime/lifecycle、SpellParticle、本地 PlayerCloud 牵引、
+    totem event-35 TrackingEmitter、animate 4/5 crit/enchanted-hit TrackingEmitter、
+    ravager event-69 roar poof/knockback、GameEvent elder-guardian 粒子与
+    `ELDER_GUARDIANS` model submit、vibration entity target refresh、DragonBreath hit-ground motion 与 SuspendedTown
+    collision-free move、Crit constructor tick、Flame/Portal collision-free metadata、PrimedTnt smoke、Witch event-15 magic burst、LivingEntity event-60 poof burst、LivingEntity event-67 drown bubbles、LivingEntity event-46 portal burst、Snowball event-3 item burst、ThrownEgg event-3 item burst、Arrow event-0 entity-effect burst、Fox event-45 item burst、HoneyBlock event-53/54 block particles、OminousItemSpawner tickClient ominous_spawning 粒子），以及 local sound（不含 DripParticle
+    honey/dripstone fall-and-land 落地本地声效、totem event-35
+    `minecraft:item.totem.use` 本地位置声效、GameEvent arrow-hit / puffer-fish-sting /
+    elder-guardian-curse 本地玩家位置声效、TakeItemEntity item / experience-orb
+    pickup 本地位置声效、Ravager/IronGolem event-4 fixed attack positioned sounds）
+    / block-state removal gates。
+  - `TerrainParticle.createTerrainParticle` 的 air / `moving_piston` /
+    `shouldSpawnTerrainParticles=false` provider rejection 已覆盖 `block`、
+    `dust_pillar`、`block_crumble`；`block_marker` 保持 vanilla 未过滤分支。
+  - 初速度。**已收敛**：smoke 系、ash / white_ash、dust_plume、trial_spawner_detection /
+    _ominous 的 base-spread×dir 初速度均已对齐 vanilla（见 goal-archive P1-5）。剩余
+    仍用纯 `Command` 初速度的 provider（fishing、bubble_pop、squid_ink、glow_squid_ink、
+    enchant、nautilus、totem_of_undying、end_rod、sculk_charge、firework、portal、
+    reverse_portal 等）经逐个 vanilla-provider 审计确认本就是把 aux 速度直传 base
+    `Particle` ctor，flat `Command` 正确，无 gap。初速度这一档不再有可执行小 slice。
+  - alpha/color curve。**已收敛**：renderer 现在用显式 alpha/color
+    descriptors 覆盖 `SimpleAnimatedParticle` 半生命周期 fade、firework
+    spark 初始 `0.99` fade、firework flash extract-time overlay alpha、shriek
+    extract-time linear fade、vault connection `LifetimeAlpha`、firefly
+    `getFadeAmount`、EndRod fade color、dust transition lerp，以及 option /
+    random / fixed provider tints，以及 terrain particle 的 vanilla `BlockColors`
+    layer-0 tint，以及 `falling_dust` 的基础 static mapColor fallback（含
+    wood/log/stem、wooden stairs/slabs/pressure plates/doors/trapdoors/fences/
+    fence gates/signs/hanging signs/shelves、banner/wall banner `WOOD`，以及 button /
+    glass / glass pane / iron bars / iron chain / copper bars / copper chains /
+    misc redstone/slime/bone/frosted-ice/dirt-path/petrified-slab static blocks /
+    ladder / torch / redstone torch / soul torch / copper torch / end rod /
+    rail / lever / repeater / comparator / tripwire / skull-head / potted /
+    cake / air / cave_air / void_air / test_instance_block 默认
+    `MapColor.NONE`、colored block families、
+    decorative colored families、
+    cave/emissive block families、copper weathering families、nether flora /
+    blackstone static families、quartz/prismarine/End static families、
+    construction stone/brick static families、deepslate construction variants、
+    infested stone CLAY variants、resin/pale garden static families、
+    plant/dripstone/moss/root/mud natural static families、non-tinted foliage
+    static families、crop/succulent static families、produce/fungus static
+    families、ore/deepslate/nether 与 utility/mechanical（含 stone/weighted
+    pressure plates、utility fixtures、functional blocks 与 redstone utility/
+    control blocks）、aquatic/coral static families、bamboo/honey/campfire utility
+    static families、water plant/egg static families、flower/tall flower static
+    families、fire/cocoa/creaking heart static families、glowstone/enchanting/
+    beacon static families、矿物/自然 static block families，以及 final accepted
+    vanilla static states）。全量 mapColor catalog 与 biome-aware per-spawn
+    BlockColors 已收敛；firework 非空 explosions 的基础 `Starter`
+    spark/flash 与 per-spark fade-color 已由 firework event path 覆盖；
+    trail 子 spark 复制、twinkle 可见性 gate、life-0 blast 音效、twinkle
+    移除延迟音频，以及 FireworkRocketEntity 客户端 tick trail 粒子也已覆盖。
+  - gravity / collision / player-coupled physics。
+- 粒子 sorting：
+  - terrain/item particle atlas rendering：on-ground roll reset 和三轴
+    block-shape collision clipping 已通过 native world collision 回调接入；
+    EndRod collision-free move 与 WakeParticle (`fishing`) collision-backed
+    `move` 已覆盖，其他 special-context collision / player-coupled physics
+    仍属上一节 deferred work。
+    Renderer GPU draw ranges now bind particle / terrain / item atlas textures
+    once concrete sprite UVs are available; native terrain atlas upload supplies
+    block sprite UVs and native item atlas upload supplies item sprite UVs to
+    the particle renderer path. `TerrainParticle` providers now resolve
+    block-state particle material sprite ids for `minecraft:block`,
+    `minecraft:block_marker`, `minecraft:dust_pillar`, and
+    `minecraft:block_crumble`. Fixed item providers now resolve
+    `minecraft:item_slime`, `minecraft:item_cobweb`, and
+    `minecraft:item_snowball` to their vanilla item atlas sprite ids. Generic
+    `minecraft:item` particles now decode the `ItemStackTemplate`
+    `DataComponentPatch` into the protocol component summary and resolve the
+    concrete GROUND item particle material active-layer sprite ids through the
+    native item runtime, including component-driven root item-model changes.
+    LevelEvent `addDestroyBlockEffect` / brush-complete block particles now use
+    vanilla `TerrainParticle(..., blockState, pos)` tint semantics by sampling
+    `0.6 * BlockTintSource.colorAsTerrainParticle` at the event block position
+    biome.
+    LevelEvent splash-potion / ender-eye item-break particles now reuse the
+    installed empty-component item material sprite ids for their first eight
+    `minecraft:item` commands.
+    Terrain/item particle sprite metadata now carries atlas
+    `hasTranslucent`, and renderer vertex batching mirrors
+    `SingleQuadParticle.Layer.bySprite` by routing current terrain/item sprites
+    to `TRANSLUCENT_TERRAIN` / `TRANSLUCENT_ITEMS` when their uploaded sprite
+    has translucent pixels.
+    Terrain and non-FallingBlock `falling_dust` BlockColors now sample the
+    actual spawn block position's biome through the world probe path before
+    native emits `ParticleSpawnCommand.option_color`.
+
 ## P2：Terrain / Block Render Presentation
 
 - [x] fluid water overlay side texture：renderer terrain cells now carry the
@@ -2846,3 +3302,46 @@
   `ClientLevel.destroyBlockProgress`, `LevelRenderer.destroyBlockProgress`
   storing local/server updates in one per-position sorted set, and
   `extractBlockDestroyAnimation` extracting the sorted set's highest progress.
+
+### 2026-07-05 迁入：terrain presentation 已完成项
+
+    （submerged 视角可见，底面单面）。
+  - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色
+    （`BlockModelLighter`：shaded 面 `byFace(dir)`、非 shaded 面 `up()`），由
+    `DimensionType.cardinalLightType` 选择、经 `WorldStore` 穿进 `TerrainChunkSnapshot`：
+    Nether 维度用 `CardinalLighting.NETHER`（`down`/`up`=0.9，侧面同 DEFAULT），其余
+    内建维度用 `DEFAULT`。水侧面现在按 vanilla 对 HalfTransparent / Leaves
+    邻居选择 `water_overlay` 并抑制该侧背面；datapack 维度类型覆盖的
+    `cardinal_light` 字段现在从 `minecraft:dimension_type` registry NBT 解码。
+- 补齐 selection overlay、block entity 特殊 renderer、透明块排序等剩余 presentation；
+  破坏进度的 renderer-visible cube crack overlay 已覆盖官方 `destroy_stage_0..9`
+  atlas、本地/服务端同位置取最高 stage、400 render tick 过期和 crumbling
+  pipeline state；完整模型形状 crack decal 仍随 block destroy presentation 后续推进。
+
+## 历史 audit 快照
+
+### 2026-07-03（dolphin event slice 后复核，原 goal.md 当前边界）
+
+- 最新 audit 计数（2026-07-03 dolphin event slice 后复核）：
+  - `rg residual`：37 行（分类不变，均非 P0 类）
+  - `rg fallback`：899 行（ledger / vanilla fallback 文本，分类不变，均非
+    P0 类）
+  - `rg unsupported`：156 行（分类不变）
+
+## 架构重构批次记录（2026-07-02 / 2026-07-04，原 goal.md 当前边界）
+
+- 2026-07-02 架构重构 1-7 全部完成（13 commits，2d19d2a3..cae7bcbf；进度与
+  方法论见 memory `architecture-refactor-progress`）：包分发单点化
+  （apply_play_packet + NetEvent 收敛）、entity_scene/item_runtime 拆分、
+  实体 ID 常量下沉、EntityState 反转、renderer pipeline builder + 持久帧
+  buffer + render() pass 拆分、render_extract 层 + RendererFrame、
+  ItemProfiles 子 store、bbb-render-types 叶 crate。上方结构不变量即其产出。
+- 2026-07-04 旧账清偿批次全部完成（13 commits，1de8f14b..44244ea3）：
+  FRAME_STEPS 补登记+反向断言、粒子 id 常量注册表派生、四大文件内联测试
+  外抽（~2.4 万行）、particle_runtime/item_models/renderer particles 拆
+  facade+子模块、WorldCounters 宏化、两大测试套件域分组（13+9 子文件）、
+  bbb-platform crate 移除（WindowConfig 下沉 native）、音效 seed 确定性化
+  （bbb-world 零 wall-clock）、ControlSnapshot 反转（SharedWorld 共享 +
+  每帧深拷贝清零）、inventory 子 store 化（InventoryCtx 模式）、账本超大
+  条目拆 docs/unsupported/。2026-07-02 评估的 #8-11 旧账全部清偿；上方
+  2026-07-04 不变量即其产出。
