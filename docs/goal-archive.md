@@ -1520,6 +1520,39 @@
   height-12 页 advance 公式、fallback 先页胜出、多页堆叠 UV/NUL 槽跳过、
   é/ü/ñ/ж/λ 宽度与字形存在 + `钻` 无字形断言、é(-3px) vs e 基线偏移
   （render-types + layout rect 双处）、hud/map 宽度回退语义保留。
+- [x] vanilla font `space` provider（P1-3 font 子 slice 2，2026-07-05）：
+  `font/providers.rs` 新增 `FontProviderDefinition` 枚举（`Bitmap`/`Space`），
+  `flatten_into` 按 provider 在 `providers` 数组中的原始出现顺序把两种类型
+  一起推入同一个有序列表（不再只收 bitmap），解析 `space` provider
+  （`SpaceProvider.Definition` codec：`advances: Map<Integer, Float>`）——键
+  按 `.chars()` 取单码点（非单码点报错，覆盖 ZWNJ 等非 BMP-safe 场景）、值
+  narrrow 到 `u32`（vanilla 是 float，但 `font/include/space.json` 里
+  `" "=4`、`‌(ZWNJ)=0` 均为整数，故沿用现有 advance 管线的 `u32`，遇到
+  分数/负数 advance 直接报错而非静默截断）。`font.rs` 新增
+  `FontAtlasEntry::{Bitmap,Space}`，`build_hud_font_atlas` 按 provider 顺序
+  遍历：`Bitmap` 分支照旧铺 atlas 像素+收码点 glyph，`Space` 分支
+  `collect_space_glyphs` 直接把 `(codepoint, advance)` 插入
+  `HudFontGlyphMap`（`insert_first_wins`，零像素 `HudDigitGlyph`：
+  `width=height=0`、`uv` 沿用 `default()`——对应 vanilla `EmptyGlyph.bake`
+  返回 `createGlyph=null` 不产出可绘制内容）。atlas 宽高只从 `Bitmap` 分支
+  算（`space` 不贡献像素，至少需一个 bitmap 分支兜底，否则报错同旧行为）。
+  删除 font.rs 硬编码 `SPACE_ADVANCE=4` 特判：`' '` 的真实 advance 现在来自
+  排在 bitmap 页之前的 `space` provider（`FontSet.computeGlyphInfo`
+  first-provider-wins ——`font/include/space` 在 `font/default.json` 里排在
+  `include/default`（bitmap 页）之前），bitmap 页自己那格空白 space cell
+  仍会算出一个 advance 但被 first-wins 盖掉；`bbb-renderer` 的绘制循环
+  （`hud.rs` `push_hud_inventory_text_labels`/`push_hud_inventory_tooltip`）
+  本来就有 `glyph.width > 0 && glyph.height > 0` 才发 quad 的判断，零像素
+  glyph 天然只走 advance 累加分支，未改动绘制代码。测试：providers.rs
+  space provider 解析（含 ZWNJ 键、非单码点键报错、分数 advance 报错）、
+  reference 链顺序测试同步验证 space 排第一且和三张 bitmap 页共用一个有序
+  列表；font.rs `space_provider_advance_wins_over_the_blank_bitmap_space_cell`
+  （4 胜过 bitmap 页自算值）、`space_provider_precedes_a_bitmap_page_with_its_own_space_cell`、
+  `zero_width_non_joiner_advances_zero_and_bakes_no_pixels`；hud.rs
+  `space_provider_zero_pixel_glyphs_advance_without_a_visible_quad`
+  （ZWNJ 不退化 `?`、零像素不发 quad、`"a‌b"` 总宽等于 `"ab"`）。
+  剩余子项：文本样式宽度/几何、unihex/CJK、bidi（账本 "Vanilla Font
+  Provider Coverage" 条目）。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

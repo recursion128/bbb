@@ -217,19 +217,25 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-item-model` + `bbb-renderer` + `bbb-native`
 - Status: `partial`
 - Next action:
-  - Implement the `space` provider (`font/include/space.json` advances,
-    including `\u200c` = 0) instead of the hardcoded space advance 4.
   - Implement text styles (bold/italic/underline/strikethrough/obfuscated)
     on top of the baked glyph atlas.
 - Evidence / boundary:
-  - The `bitmap` + `reference` providers of `font/default.json` are parsed
-    and baked into one multi-page codepoint-keyed glyph atlas
+  - The `bitmap` + `space` + `reference` providers of `font/default.json`
+    are parsed and baked into one multi-page codepoint-keyed glyph atlas
     (`bbb-item-model/src/font.rs` + `font/providers.rs`), with vanilla
     `BitmapProvider` metrics (`height`/`ascent`/`pixelScale` advance
     formula) and `FontSet` first-provider-wins fallback order
-    (`nonlatin_european` -> `accented` -> `ascii`); HUD labels, tooltips,
-    and map decoration text consume it with `7 - ascent` baseline
+    (`space` -> `nonlatin_european` -> `accented` -> `ascii`); HUD labels,
+    tooltips, and map decoration text consume it with `7 - ascent` baseline
     alignment.
+  - The `space` provider (`font/include/space.json`: `" "` = 4, `\u200c`
+    (ZWNJ) = 0) bakes vanilla `EmptyGlyph` semantics — zero pixel size, pure
+    advance — ahead of the bitmap pages, replacing the former hardcoded
+    space-advance constant; codepoints resolve it directly rather than
+    through the `?` replacement fallback. Advances are parsed as
+    `SpaceProvider.Definition`'s `Map<Integer, Float>` but narrowed to `u32`
+    since every vanilla entry is a whole number; a fractional/negative
+    advance is rejected at parse time (none exist in the shipped assets).
   - `unihex` is deferred: the consumed assets tree ships no
     `font/unifont*.zip` archive, so the `include/unifont` reference cannot
     resolve its data; codepoints outside the bitmap pages (CJK etc.)
@@ -1457,11 +1463,11 @@ When an agent does any of the following, update this file in the same slice:
     outside the mechanically parsed `Blocks.java` declarations.
   - Commands: continue adding focused command queue and encode tests for
     inventory, interaction, chat, command, and sign editing.
-  - Inventory: implement remaining rich tooltip behavior (the `space` font
-    provider and text styles — the `font/default.json` bitmap provider
-    pages are now baked and consumed, see Vanilla Font Provider Coverage —
-    plus bidirectional text shaping and italic/complex component styles);
-    the official tooltip background/frame nine-slice sprites are now drawn.
+  - Inventory: implement remaining rich tooltip behavior (text styles — the
+    `font/default.json` bitmap + `space` provider pages are now baked and
+    consumed, see Vanilla Font Provider Coverage — plus bidirectional text
+    shaping and italic/complex component styles); the official tooltip
+    background/frame nine-slice sprites are now drawn.
   - Completion requires full vanilla movement and these flows to work
     through encoded serverbound packets end to end.
 - Evidence / boundary:

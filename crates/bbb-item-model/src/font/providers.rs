@@ -1,9 +1,8 @@
 //! Parses the vanilla `font/default.json` provider chain
 //! (`FontManager.FontDefinitionFile`) into a flattened, priority-ordered list
-//! of bitmap provider definitions.
+//! of provider definitions.
 //!
-//! Only `bitmap` and `reference` providers are consumed in this slice:
-//! - `space` advances stay hardcoded at the atlas builder (follow-up slice),
+//! `bitmap`, `space`, and `reference` providers are consumed in this slice:
 //! - `unihex` (unifont zips) is deferred — the assets tree ships no unifont
 //!   archive — so uncovered codepoints keep the `?` replacement fallback.
 
@@ -29,14 +28,36 @@ pub struct FontBitmapProviderDefinition {
     pub chars: Vec<Vec<char>>,
 }
 
-/// Loads and flattens the bitmap providers of `font_id` (e.g.
-/// `minecraft:default`) through the resource stack, recursing `reference`
-/// providers depth-first in place like vanilla `FontManager`'s builder stack,
-/// which preserves the referencing file's provider order.
-pub fn load_font_bitmap_providers(
+/// One flattened `"type": "space"` provider, mirroring vanilla
+/// `SpaceProvider.Definition` (codec field `advances`: a map of single-codepoint
+/// keys to a float advance). Every vanilla `font/include/space.json` entry
+/// (`" ": 4`, `"‌": 0`) is a whole number, so the advance stays `u32`
+/// like the rest of this crate's advance pipeline instead of widening to
+/// float; a fractional or negative advance is rejected at parse time.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FontSpaceProviderDefinition {
+    pub advances: Vec<(char, u32)>,
+}
+
+/// One flattened provider in `providers` order, after `reference` expansion.
+/// Vanilla `FontSet.computeGlyphInfo` walks providers of every type
+/// (`bitmap`, `space`, `unihex`, ...) in this same flattened order and takes
+/// the first one that supplies a codepoint, so callers must preserve
+/// occurrence order across variants when merging glyphs.
+#[derive(Debug, Clone, PartialEq)]
+pub enum FontProviderDefinition {
+    Bitmap(FontBitmapProviderDefinition),
+    Space(FontSpaceProviderDefinition),
+}
+
+/// Loads and flattens the providers of `font_id` (e.g. `minecraft:default`)
+/// through the resource stack, recursing `reference` providers depth-first in
+/// place like vanilla `FontManager`'s builder stack, which preserves the
+/// referencing file's provider order.
+pub fn load_font_providers(
     roots: &PackRoots,
     font_id: &str,
-) -> Result<Vec<FontBitmapProviderDefinition>> {
+) -> Result<Vec<FontProviderDefinition>> {
     let stack = roots.resource_stack();
     let mut load_definition = |id: &str| -> Result<String> {
         let location = font_definition_location(id)?;
@@ -46,7 +67,7 @@ pub fn load_font_bitmap_providers(
         std::fs::read_to_string(&resource.path)
             .with_context(|| format!("read font definition {}", resource.path.display()))
     };
-    flatten_font_bitmap_providers(font_id, &mut load_definition)
+    flatten_font_providers(font_id, &mut load_definition)
 }
 
 /// Resolves a font id to its definition asset path, e.g.
@@ -60,10 +81,10 @@ fn font_definition_location(id: &str) -> Result<ResourceLocation> {
     )
 }
 
-pub(crate) fn flatten_font_bitmap_providers(
+pub(crate) fn flatten_font_providers(
     font_id: &str,
     load_definition: &mut dyn FnMut(&str) -> Result<String>,
-) -> Result<Vec<FontBitmapProviderDefinition>> {
+) -> Result<Vec<FontProviderDefinition>> {
     let mut visited = HashSet::new();
     let mut providers = Vec::new();
     flatten_into(font_id, load_definition, &mut visited, &mut providers)?;
@@ -74,7 +95,7 @@ fn flatten_into(
     font_id: &str,
     load_definition: &mut dyn FnMut(&str) -> Result<String>,
     visited: &mut HashSet<String>,
-    out: &mut Vec<FontBitmapProviderDefinition>,
+    out: &mut Vec<FontProviderDefinition>,
 ) -> Result<()> {
     // Re-visiting a definition is a no-op: vanilla resolves glyphs first
     // provider wins (`FontSet.computeGlyphInfo`), so a second inclusion of the
@@ -96,7 +117,12 @@ fn flatten_into(
             .and_then(Value::as_str)
             .with_context(|| format!("font provider in {font_id} has no \"type\""))?;
         match provider_type {
-            "bitmap" => out.push(parse_bitmap_provider(font_id, provider)?),
+            "bitmap" => out.push(FontProviderDefinition::Bitmap(parse_bitmap_provider(
+                font_id, provider,
+            )?)),
+            "space" => out.push(FontProviderDefinition::Space(parse_space_provider(
+                font_id, provider,
+            )?)),
             "reference" => {
                 let id = provider
                     .get("id")
@@ -110,9 +136,9 @@ fn flatten_into(
                 // filters `uniform: false`), so it is intentionally ignored.
                 flatten_into(id, load_definition, visited, out)?;
             }
-            // `space` and `unihex` (and any other provider type) are outside
-            // this slice; skipping keeps first-provider-wins semantics intact
-            // for the codepoints the bitmap pages do cover.
+            // `unihex` (and any other provider type) is outside this slice;
+            // skipping keeps first-provider-wins semantics intact for the
+            // codepoints the bitmap/space providers do cover.
             _ => {}
         }
     }
@@ -173,6 +199,41 @@ fn parse_bitmap_provider(font_id: &str, provider: &Value) -> Result<FontBitmapPr
     })
 }
 
+/// `SpaceProvider.Definition.CODEC`: `Codec.unboundedMap(ExtraCodecs.CODEPOINT,
+/// Codec.FLOAT).fieldOf("advances")`. Each key is a single-codepoint string
+/// (`ExtraCodecs.CODEPOINT`); the advance is a float that this crate narrows
+/// to `u32`, rejecting fractional or negative values (none appear in vanilla
+/// assets).
+fn parse_space_provider(font_id: &str, provider: &Value) -> Result<FontSpaceProviderDefinition> {
+    let advances = provider
+        .get("advances")
+        .and_then(Value::as_object)
+        .with_context(|| format!("space font provider in {font_id} has no \"advances\" object"))?;
+    let mut parsed = Vec::with_capacity(advances.len());
+    for (key, value) in advances {
+        let mut chars = key.chars();
+        let codepoint = chars.next().with_context(|| {
+            format!("space font provider in {font_id} has an empty advances key")
+        })?;
+        if chars.next().is_some() {
+            bail!(
+                "space font provider in {font_id} advances key {key:?} is not a single codepoint"
+            );
+        }
+        let advance = value.as_f64().with_context(|| {
+            format!("space font provider in {font_id} has a non-numeric advance for {key:?}")
+        })?;
+        if advance < 0.0 || advance.fract() != 0.0 {
+            bail!(
+                "space font provider in {font_id} advance {advance} for {key:?} is not a \
+                 non-negative integer (fractional/negative space advances are unsupported)"
+            );
+        }
+        parsed.push((codepoint, advance as u32));
+    }
+    Ok(FontSpaceProviderDefinition { advances: parsed })
+}
+
 fn parse_provider_int(value: &Value) -> Result<i32> {
     value
         .as_i64()
@@ -196,6 +257,23 @@ mod tests {
                 .cloned()
                 .with_context(|| format!("missing font definition {id}"))
         }
+    }
+
+    /// Test convenience for fixtures that only exercise bitmap providers:
+    /// flattens and asserts every entry is a `Bitmap` variant.
+    fn flatten_bitmaps(
+        font_id: &str,
+        load_definition: &mut dyn FnMut(&str) -> Result<String>,
+    ) -> Result<Vec<FontBitmapProviderDefinition>> {
+        Ok(flatten_font_providers(font_id, load_definition)?
+            .into_iter()
+            .map(|provider| match provider {
+                FontProviderDefinition::Bitmap(bitmap) => bitmap,
+                FontProviderDefinition::Space(_) => {
+                    panic!("expected only bitmap providers in this fixture")
+                }
+            })
+            .collect())
     }
 
     #[test]
@@ -231,10 +309,26 @@ mod tests {
             ),
         ]);
 
-        let providers = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap();
+        let providers = flatten_font_providers("minecraft:default", &mut load).unwrap();
 
+        // The space provider is first (matching include/space's reference
+        // position ahead of include/default), followed by the three bitmap
+        // pages in include/default's priority order; include/unifont
+        // contributes nothing (unihex deferred).
+        let FontProviderDefinition::Space(space) = &providers[0] else {
+            panic!("expected the space provider first");
+        };
+        assert_eq!(space.advances, vec![(' ', 4), ('\u{200c}', 0)]);
+
+        let bitmaps: Vec<&FontBitmapProviderDefinition> = providers[1..]
+            .iter()
+            .map(|provider| match provider {
+                FontProviderDefinition::Bitmap(bitmap) => bitmap,
+                FontProviderDefinition::Space(_) => panic!("unexpected second space provider"),
+            })
+            .collect();
         assert_eq!(
-            providers
+            bitmaps
                 .iter()
                 .map(|provider| (provider.file.as_str(), provider.height, provider.ascent))
                 .collect::<Vec<_>>(),
@@ -244,8 +338,8 @@ mod tests {
                 ("minecraft:font/ascii.png", 8, 7),
             ]
         );
-        assert_eq!(providers[0].chars, vec![vec!['λ', 'ж']]);
-        assert_eq!(providers[1].chars, vec![vec!['é', 'ü']]);
+        assert_eq!(bitmaps[0].chars, vec![vec!['λ', 'ж']]);
+        assert_eq!(bitmaps[1].chars, vec![vec!['é', 'ü']]);
     }
 
     #[test]
@@ -267,7 +361,7 @@ mod tests {
             ),
         ]);
 
-        let providers = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap();
+        let providers = flatten_bitmaps("minecraft:default", &mut load).unwrap();
 
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].file, "minecraft:font/a.png");
@@ -280,7 +374,7 @@ mod tests {
             "minecraft:default",
             r#"{"providers":[{"type":"bitmap","file":"minecraft:font/x.png","ascent":7,"chars":["ab","cd"]}]}"#,
         )]);
-        let providers = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap();
+        let providers = flatten_bitmaps("minecraft:default", &mut load).unwrap();
         assert_eq!(providers[0].height, 8);
         assert_eq!(providers[0].chars.len(), 2);
 
@@ -289,7 +383,7 @@ mod tests {
             "minecraft:default",
             r#"{"providers":[{"type":"bitmap","file":"minecraft:font/x.png","height":8,"ascent":9,"chars":["a"]}]}"#,
         )]);
-        let err = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap_err();
+        let err = flatten_font_providers("minecraft:default", &mut load).unwrap_err();
         assert!(err.to_string().contains("higher than height"));
 
         // Ragged rows are rejected (validateDimensions).
@@ -297,7 +391,7 @@ mod tests {
             "minecraft:default",
             r#"{"providers":[{"type":"bitmap","file":"minecraft:font/x.png","ascent":7,"chars":["ab","c"]}]}"#,
         )]);
-        let err = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap_err();
+        let err = flatten_font_providers("minecraft:default", &mut load).unwrap_err();
         assert!(err.to_string().contains("different lengths"));
     }
 
@@ -310,8 +404,43 @@ mod tests {
             r#"{"providers":[{"type":"bitmap","file":"minecraft:font/x.png","ascent":7,"chars":["𐌰A"]}]}"#,
         )]);
 
-        let providers = flatten_font_bitmap_providers("minecraft:default", &mut load).unwrap();
+        let providers = flatten_bitmaps("minecraft:default", &mut load).unwrap();
 
         assert_eq!(providers[0].chars, vec![vec!['\u{10330}', 'A']]);
+    }
+
+    #[test]
+    fn space_provider_parses_advances_map_including_zwnj() {
+        // font/include/space.json: `" ": 4` (ascii space) and `"‌": 0`
+        // (zero-width non-joiner) (SpaceProvider.Definition.CODEC).
+        let mut load = test_loader(&[(
+            "minecraft:default",
+            r#"{"providers":[{"type":"space","advances":{" ":4,"‌":0}}]}"#,
+        )]);
+
+        let providers = flatten_font_providers("minecraft:default", &mut load).unwrap();
+
+        assert_eq!(providers.len(), 1);
+        let FontProviderDefinition::Space(space) = &providers[0] else {
+            panic!("expected a space provider");
+        };
+        assert_eq!(space.advances, vec![(' ', 4), ('\u{200c}', 0)]);
+    }
+
+    #[test]
+    fn space_provider_rejects_non_codepoint_keys_and_fractional_advances() {
+        let mut load = test_loader(&[(
+            "minecraft:default",
+            r#"{"providers":[{"type":"space","advances":{"ab":4}}]}"#,
+        )]);
+        let err = flatten_font_providers("minecraft:default", &mut load).unwrap_err();
+        assert!(err.to_string().contains("not a single codepoint"));
+
+        let mut load = test_loader(&[(
+            "minecraft:default",
+            r#"{"providers":[{"type":"space","advances":{" ":4.5}}]}"#,
+        )]);
+        let err = flatten_font_providers("minecraft:default", &mut load).unwrap_err();
+        assert!(err.to_string().contains("is not a non-negative integer"));
     }
 }

@@ -3633,6 +3633,47 @@ mod tests {
     }
 
     #[test]
+    fn space_provider_zero_pixel_glyphs_advance_without_a_visible_quad() {
+        // The `space` provider bakes zero-size `EmptyGlyph`s (`SpaceProvider`
+        // in `bbb-item-model`): the ZWNJ (U+200C) maps directly (not through
+        // the `?` replacement fallback) with advance 0 and no pixel size, so
+        // the draw loops' `width > 0 && height > 0` guard emits no quad for
+        // it while `hud_font_text_width` still walks past it for free.
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance, width, height) in [
+            ('a', 6, 6, 8),
+            ('b', 6, 6, 8),
+            ('?', 5, 6, 8),
+            (' ', 4, 0, 0),
+            ('\u{200c}', 0, 0, 0),
+        ] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    width,
+                    height,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        let zwnj = hud_font_glyph('\u{200c}', &glyphs);
+        assert_eq!(zwnj.advance, 0);
+        // No `?` fallback: the space provider glyph resolves directly.
+        assert_ne!(zwnj, hud_font_glyph('?', &glyphs));
+        // Zero pixel size means the draw loops' guard never emits a quad.
+        assert!(!(zwnj.width > 0 && zwnj.height > 0));
+
+        // Inserting a ZWNJ between two glyphs must not change the total
+        // advance width.
+        assert_eq!(
+            hud_font_text_width("a\u{200c}b", &glyphs),
+            hud_font_text_width("ab", &glyphs)
+        );
+    }
+
+    #[test]
     fn sanitize_hud_inventory_screen_keeps_slot_positions_and_sanitizes_icons() {
         let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
             width: 0,

@@ -9,17 +9,13 @@ use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
 use bbb_render_types::{HudDigitGlyph, HudFontGlyphMap, HudUvRect};
 
-use providers::FontBitmapProviderDefinition;
+use providers::{
+    FontBitmapProviderDefinition, FontProviderDefinition, FontSpaceProviderDefinition,
+};
 
 /// The font consumed by every current text consumer (HUD labels, tooltips,
 /// map decoration names): vanilla `Style.DEFAULT_FONT` `minecraft:default`.
 pub const DEFAULT_FONT_ID: &str = "minecraft:default";
-
-/// `font/include/space.json` pins `" ": 4` through a `space` provider listed
-/// ahead of the bitmap pages in `font/default.json`. The space provider type
-/// is a follow-up slice, so the blank `font/ascii.png` space cell keeps this
-/// hardcoded vanilla advance for now.
-const SPACE_ADVANCE: u32 = 4;
 
 const ASCII_FONT_GRID_COLUMNS: u32 = 16;
 const ASCII_FONT_GRID_ROWS: u32 = 16;
@@ -45,21 +41,34 @@ pub struct HudFontAtlasImage {
     pub glyphs: HudFontGlyphMap,
 }
 
-/// Loads the `minecraft:default` bitmap provider chain and bakes the
-/// multi-page glyph atlas.
+/// One flattened provider ready for atlas baking: bitmap providers carry
+/// their loaded page image, space providers carry only their advances (they
+/// contribute no atlas pixels, mirroring vanilla `EmptyGlyph`).
+enum FontAtlasEntry {
+    Bitmap(FontBitmapProviderDefinition, SpriteImage),
+    Space(FontSpaceProviderDefinition),
+}
+
+/// Loads the `minecraft:default` provider chain and bakes the multi-page
+/// glyph atlas.
 pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
-    let definitions = providers::load_font_bitmap_providers(roots, DEFAULT_FONT_ID)?;
+    let definitions = providers::load_font_providers(roots, DEFAULT_FONT_ID)?;
     if definitions.is_empty() {
-        bail!("font {DEFAULT_FONT_ID} resolved no bitmap providers");
+        bail!("font {DEFAULT_FONT_ID} resolved no providers");
     }
-    let pages = definitions
+    let entries = definitions
         .into_iter()
         .map(|definition| {
-            let image = load_font_bitmap_texture(roots, &definition.file)?;
-            Ok((definition, image))
+            Ok(match definition {
+                FontProviderDefinition::Bitmap(bitmap) => {
+                    let image = load_font_bitmap_texture(roots, &bitmap.file)?;
+                    FontAtlasEntry::Bitmap(bitmap, image)
+                }
+                FontProviderDefinition::Space(space) => FontAtlasEntry::Space(space),
+            })
         })
         .collect::<Result<Vec<_>>>()?;
-    build_hud_font_atlas(&pages)
+    build_hud_font_atlas(&entries)
 }
 
 pub fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
@@ -86,16 +95,20 @@ fn load_font_bitmap_texture(roots: &PackRoots, file: &str) -> Result<SpriteImage
     SpriteImage::from_png_file(location.id(), resource.path)
 }
 
-fn build_hud_font_atlas(
-    pages: &[(FontBitmapProviderDefinition, SpriteImage)],
-) -> Result<HudFontAtlasImage> {
-    let width = pages
-        .iter()
+fn build_hud_font_atlas(entries: &[FontAtlasEntry]) -> Result<HudFontAtlasImage> {
+    // The atlas dimensions come from the bitmap pages only: `space` providers
+    // contribute codepoint advances but no pixels (vanilla `EmptyGlyph`).
+    let bitmap_pages = || {
+        entries.iter().filter_map(|entry| match entry {
+            FontAtlasEntry::Bitmap(definition, image) => Some((definition, image)),
+            FontAtlasEntry::Space(_) => None,
+        })
+    };
+    let width = bitmap_pages()
         .map(|(_, image)| image.width)
         .max()
         .context("font atlas needs at least one bitmap page")?;
-    let height = pages
-        .iter()
+    let height = bitmap_pages()
         .try_fold(0u32, |height, (_, image)| height.checked_add(image.height))
         .context("font atlas height overflow")?;
     if width == 0 || height == 0 {
@@ -105,10 +118,15 @@ fn build_hud_font_atlas(
     let mut glyphs = HudFontGlyphMap::new();
 
     let mut page_y = 0u32;
-    for (definition, image) in pages {
-        blit_font_page(image, &mut rgba, width, page_y)?;
-        collect_page_glyphs(definition, image, width, height, page_y, &mut glyphs)?;
-        page_y += image.height;
+    for entry in entries {
+        match entry {
+            FontAtlasEntry::Bitmap(definition, image) => {
+                blit_font_page(image, &mut rgba, width, page_y)?;
+                collect_page_glyphs(definition, image, width, height, page_y, &mut glyphs)?;
+                page_y += image.height;
+            }
+            FontAtlasEntry::Space(space) => collect_space_glyphs(space, &mut glyphs),
+        }
     }
 
     Ok(HudFontAtlasImage {
@@ -183,14 +201,15 @@ fn collect_page_glyphs(
             let src_x =
                 u32::try_from(column_index).context("font grid column overflow")? * glyph_width;
             let src_y = u32::try_from(row_index).context("font grid row overflow")? * glyph_height;
-            let advance = if codepoint == ' ' {
-                SPACE_ADVANCE
-            } else {
-                let actual_width =
-                    glyph_actual_width(image, src_x, src_y, glyph_width, glyph_height);
-                // `(int)(0.5 + actualGlyphWidth * pixelScale) + 1` (BitmapProvider.load).
-                (0.5 + actual_width as f32 * pixel_scale) as u32 + 1
-            };
+            // Vanilla `BitmapProvider.load` computes every glyph's advance
+            // (including the blank space cell) from the actual pixel scan;
+            // the codepoint's real advance comes from a higher-priority
+            // `space` provider instead (`FontSet.computeGlyphInfo`
+            // first-provider-wins), inserted into the glyph map ahead of
+            // this page's provider order.
+            let actual_width = glyph_actual_width(image, src_x, src_y, glyph_width, glyph_height);
+            // `(int)(0.5 + actualGlyphWidth * pixelScale) + 1` (BitmapProvider.load).
+            let advance = (0.5 + actual_width as f32 * pixel_scale) as u32 + 1;
             let glyph = HudDigitGlyph {
                 uv: HudUvRect {
                     min: [
@@ -225,6 +244,24 @@ fn collect_page_glyphs(
         glyphs.insert_first_wins(codepoint, glyph);
     }
     Ok(())
+}
+
+/// Vanilla `SpaceProvider`: every codepoint maps to an `EmptyGlyph`, which
+/// carries only an advance and bakes to a `BakedGlyph` whose
+/// `createGlyph` returns `null` (no quad, no pixels). The zero-size UV/`width`
+/// `height` here rely on the draw loops' existing `width > 0 && height > 0`
+/// guard (`bbb-renderer` `hud.rs`) to skip emitting a quad while the advance
+/// still accumulates pen position.
+fn collect_space_glyphs(definition: &FontSpaceProviderDefinition, glyphs: &mut HudFontGlyphMap) {
+    for &(codepoint, advance) in &definition.advances {
+        glyphs.insert_first_wins(
+            codepoint,
+            HudDigitGlyph {
+                advance,
+                ..HudDigitGlyph::default()
+            },
+        );
+    }
 }
 
 pub fn hud_ascii_digit_atlas_from_image(image: &SpriteImage) -> Result<HudDigitAtlasImage> {
@@ -390,6 +427,19 @@ mod tests {
         }
     }
 
+    fn bitmap_entry(
+        definition: FontBitmapProviderDefinition,
+        image: SpriteImage,
+    ) -> FontAtlasEntry {
+        FontAtlasEntry::Bitmap(definition, image)
+    }
+
+    fn space_entry(advances: &[(char, u32)]) -> FontAtlasEntry {
+        FontAtlasEntry::Space(FontSpaceProviderDefinition {
+            advances: advances.to_vec(),
+        })
+    }
+
     #[test]
     fn bitmap_advance_uses_vanilla_pixel_scale_formula() {
         // A height-12 provider over 24px cells scales by 12/24 = 0.5
@@ -400,9 +450,11 @@ mod tests {
             pixels.push((10, y));
         }
         let image = page_image("page", 24, 24, &pixels);
-        let atlas =
-            build_hud_font_atlas(&[(definition("minecraft:font/big.png", 12, 10, &["é"]), image)])
-                .unwrap();
+        let atlas = build_hud_font_atlas(&[bitmap_entry(
+            definition("minecraft:font/big.png", 12, 10, &["é"]),
+            image,
+        )])
+        .unwrap();
 
         let glyph = atlas.glyphs.get('é').expect("é glyph");
         assert_eq!(glyph.advance, 7);
@@ -420,8 +472,8 @@ mod tests {
         let first = page_image("first", 8, 8, &[(0, 0), (3, 4)]);
         let second = page_image("second", 8, 8, &[(0, 0), (6, 2)]);
         let atlas = build_hud_font_atlas(&[
-            (definition("minecraft:font/first.png", 8, 7, &["λ"]), first),
-            (
+            bitmap_entry(definition("minecraft:font/first.png", 8, 7, &["λ"]), first),
+            bitmap_entry(
                 definition("minecraft:font/second.png", 8, 7, &["λ"]),
                 second,
             ),
@@ -441,11 +493,11 @@ mod tests {
         let ascii_like = page_image("ascii", 16, 8, &[(1, 1), (8 + 2, 3)]);
         let accented_like = page_image("accented", 18, 12, &[(4, 11)]);
         let atlas = build_hud_font_atlas(&[
-            (
+            bitmap_entry(
                 definition("minecraft:font/ascii.png", 8, 7, &["A\u{0}"]),
                 ascii_like,
             ),
-            (
+            bitmap_entry(
                 definition("minecraft:font/accented.png", 12, 10, &["é\u{0}"]),
                 accented_like,
             ),
@@ -484,15 +536,15 @@ mod tests {
         let accented = page_image("accented", 27, 12, &[(3, 1), (9 + 4, 5), (18 + 2, 6)]);
         let ascii = page_image("ascii", 8, 8, &[(3, 4)]);
         let atlas = build_hud_font_atlas(&[
-            (
+            bitmap_entry(
                 definition("minecraft:font/nonlatin_european.png", 8, 7, &["жλ"]),
                 nonlatin,
             ),
-            (
+            bitmap_entry(
                 definition("minecraft:font/accented.png", 12, 10, &["éüñ"]),
                 accented,
             ),
-            (definition("minecraft:font/ascii.png", 8, 7, &["e"]), ascii),
+            bitmap_entry(definition("minecraft:font/ascii.png", 8, 7, &["e"]), ascii),
         ])
         .unwrap();
 
@@ -520,15 +572,53 @@ mod tests {
     }
 
     #[test]
-    fn space_keeps_hardcoded_space_provider_advance() {
-        // font/include/space.json: `" ": 4` (space provider slice deferred).
+    fn space_provider_advance_wins_over_the_blank_bitmap_space_cell() {
+        // font/include/space.json: `" ": 4`, listed ahead of the bitmap pages
+        // in font/default.json (FontSet first-provider-wins). The ascii page
+        // still carries a (blank) space grid cell, whose own actual-width
+        // advance formula must lose to the space provider's.
         let image = page_image("ascii", 16, 8, &[(8 + 7, 0)]);
-        let atlas =
-            build_hud_font_atlas(&[(definition("minecraft:font/ascii.png", 8, 7, &[" ~"]), image)])
-                .unwrap();
+        let atlas = build_hud_font_atlas(&[
+            space_entry(&[(' ', 4), ('\u{200c}', 0)]),
+            bitmap_entry(definition("minecraft:font/ascii.png", 8, 7, &[" ~"]), image),
+        ])
+        .unwrap();
 
-        assert_eq!(atlas.glyphs.get(' ').unwrap().advance, SPACE_ADVANCE);
+        let space = atlas.glyphs.get(' ').expect("space glyph");
+        assert_eq!(space.advance, 4);
+        // The space provider's `EmptyGlyph` carries no pixels.
+        assert_eq!((space.width, space.height), (0, 0));
         assert_eq!(atlas.glyphs.get('~').unwrap().advance, 9);
+    }
+
+    #[test]
+    fn space_provider_precedes_a_bitmap_page_with_its_own_space_cell() {
+        // If a bitmap page also mapped ' ' to a real (non-blank) glyph cell,
+        // the space provider (listed first) still wins the codepoint.
+        let image = page_image("ascii", 16, 8, &[(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)]);
+        let atlas = build_hud_font_atlas(&[
+            space_entry(&[(' ', 4)]),
+            bitmap_entry(definition("minecraft:font/ascii.png", 8, 7, &[" "]), image),
+        ])
+        .unwrap();
+
+        assert_eq!(atlas.glyphs.get(' ').unwrap().advance, 4);
+    }
+
+    #[test]
+    fn zero_width_non_joiner_advances_zero_and_bakes_no_pixels() {
+        // The atlas always needs at least one bitmap page for its pixel
+        // dimensions; the space provider still contributes the ZWNJ glyph.
+        let image = page_image("ascii", 8, 8, &[(3, 4)]);
+        let atlas = build_hud_font_atlas(&[
+            space_entry(&[(' ', 4), ('\u{200c}', 0)]),
+            bitmap_entry(definition("minecraft:font/ascii.png", 8, 7, &["e"]), image),
+        ])
+        .unwrap();
+
+        let zwnj = atlas.glyphs.get('\u{200c}').expect("ZWNJ glyph");
+        assert_eq!(zwnj.advance, 0);
+        assert_eq!((zwnj.width, zwnj.height), (0, 0));
     }
 
     #[test]
@@ -543,9 +633,11 @@ mod tests {
         let offset = rgba_offset(8, 2, 3).unwrap();
         rgba[offset + 3] = 255;
         let image = SpriteImage::new("page", 8, 8, rgba).unwrap();
-        let atlas =
-            build_hud_font_atlas(&[(definition("minecraft:font/page.png", 8, 7, &["A"]), image)])
-                .unwrap();
+        let atlas = build_hud_font_atlas(&[bitmap_entry(
+            definition("minecraft:font/page.png", 8, 7, &["A"]),
+            image,
+        )])
+        .unwrap();
 
         assert_eq!(atlas.glyphs.get('A').unwrap().advance, 4);
     }
@@ -555,9 +647,11 @@ mod tests {
         // Vanilla CodepointMap.put overwrites earlier slots within one
         // provider (and only warns).
         let image = page_image("page", 16, 8, &[(2, 0), (8 + 5, 0)]);
-        let atlas =
-            build_hud_font_atlas(&[(definition("minecraft:font/page.png", 8, 7, &["AA"]), image)])
-                .unwrap();
+        let atlas = build_hud_font_atlas(&[bitmap_entry(
+            definition("minecraft:font/page.png", 8, 7, &["AA"]),
+            image,
+        )])
+        .unwrap();
 
         let glyph = atlas.glyphs.get('A').expect("A glyph");
         assert_eq!(glyph.advance, 7);
