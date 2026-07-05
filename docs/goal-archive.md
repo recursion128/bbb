@@ -1492,6 +1492,34 @@
   `hud_inventory_tooltip_sprite_segments_layer_background_then_frame_in_vanilla_order`
   （九宫格顶点/UV 确定性、退化 clamp、tile 平铺+裁剪、两层 source-order）。剩余
   rich tooltip 项：non-ASCII font provider 与 bidi 文本整形。
+- [x] vanilla font bitmap provider 通用化（P1-3 font 子 slice 1，2026-07-05）：
+  从 `font/default.json` 出发解析 `reference`（深度优先原位展开、visited 去重，
+  `filter` 在固定 FontOptions=全关下恒通过故忽略）与 `bitmap` provider
+  （`BitmapProvider.Definition` codec：`file`/`height` 默认 8/`ascent`/`chars`，
+  校验 ascent<=height 与等长行），按 `include/default.json` 顺序
+  `nonlatin_european`(ascent 7) → `accented`(height 12, ascent 10) →
+  `ascii`(ascent 7) 三页 PNG 纵向堆叠成单张多页 glyph atlas，构建码点键控
+  `HudFontGlyphMap`（页间 first-provider-wins 对齐 `FontSet.computeGlyphInfo`、
+  页内重复码点 last-wins 对齐 `CodepointMap.put`），advance 用 vanilla
+  `(int)(0.5+actualWidth*pixelScale)+1`、`pixelScale=height/glyphH`、
+  actualWidth 右向左扫列；像素可见性判定修正为 vanilla
+  `NativeImage.getLuminanceOrAlpha`（RGBA 只看 alpha 字节）——官方三张字体
+  PNG 是白色调色板+alpha0 透明，旧的 "alpha 或 RGB 非零" 判定在真实资产上
+  会把所有 advance 撑满 cell+1（连带修复 digit/ascii 旧路径同源的生产
+  bug，真实 `e` advance 由 9 修正为 6，已用真实资产 smoke 验证全链路）；
+  glyph 结构（`bbb-render-types`）加 `ascent`，绘制按
+  `GlyphBitmap.getTop()`=`7-ascent` 基线对齐（accented 页比 ascii 页高 3px）。
+  替换硬编码单页 ascii.png `[glyph;95]` 数组：HUD inventory label/tooltip、
+  map decoration 文字全部改码点查找（accented/非拉丁欧洲码点不再退化 `?`；
+  CJK 因 unihex/unifont defer——资产树无 unifont zip——仍退化 `?`）；item count
+  数字子集保留 ascii.png 数字行路径。space provider 沿用硬编码 space=4、样式
+  与 bidi 为后续子项。实现：`bbb-item-model/src/font.rs` + `font/providers.rs`
+  （原 ascii_font.rs 演进）、`hud_glyphs.rs`、renderer `hud.rs`/`hud/layout.rs`/
+  `item_models/map.rs`、native `hud_assets.rs`。测试：providers 解析
+  （reference 链展开顺序/height 默认/ascent 校验/ragged 行/surrogate 码点）、
+  height-12 页 advance 公式、fallback 先页胜出、多页堆叠 UV/NUL 槽跳过、
+  é/ü/ñ/ж/λ 宽度与字形存在 + `钻` 无字形断言、é(-3px) vs e 基线偏移
+  （render-types + layout rect 双处）、hud/map 宽度回退语义保留。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

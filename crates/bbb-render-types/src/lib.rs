@@ -14,10 +14,7 @@ pub use entity_textures::{
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
     EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
 };
-pub use hud_glyphs::{
-    HudAsciiGlyph, HudDigitGlyph, HudUvRect, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT,
-    HUD_ASCII_LAST_GLYPH,
-};
+pub use hud_glyphs::{HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudUvRect, HUD_FONT_BASELINE};
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::ItemFrameMapDecorationTexture;
 pub use player_skin::{

@@ -703,7 +703,7 @@ mod tests {
         assert_eq!(label.submission.render_type.vanilla_name(), "text");
         assert_eq!(
             label.submission.texture.vanilla_path(),
-            "minecraft:textures/font/ascii.png"
+            "minecraft:font/default"
         );
         assert_eq!(label.submission.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(label.submission.light, map_light);

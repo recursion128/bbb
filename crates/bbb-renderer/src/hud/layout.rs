@@ -284,7 +284,10 @@ pub(super) fn hud_inventory_tooltip_text_hud_rect(
     );
     HudRect {
         x: x + pen_x as f32 + shadow_offset,
-        y: y + tooltip_line_y(line_index) as f32 + shadow_offset,
+        // Baseline alignment across font pages: vanilla `GlyphBitmap.getTop()`
+        // offsets each glyph by `7 - ascent`, so accented-page glyphs
+        // (ascent 10) rise 3px above ascii-page glyphs on the same line.
+        y: y + tooltip_line_y(line_index) as f32 + shadow_offset + glyph.baseline_offset(),
         width: glyph.width,
         height: glyph.height,
     }
@@ -303,7 +306,9 @@ pub(super) fn hud_inventory_text_label_glyph_hud_rect(
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, screen_width, screen_height);
     HudRect {
         x: origin_x + label_x as f32 + pen_x as f32 + shadow_offset,
-        y: origin_y + label_y as f32 + shadow_offset,
+        // `7 - ascent` per-glyph top offset (vanilla `GlyphBitmap.getTop()`)
+        // keeps mixed-page text on one baseline.
+        y: origin_y + label_y as f32 + shadow_offset + glyph.baseline_offset(),
         width: glyph.width,
         height: glyph.height,
     }
@@ -1173,6 +1178,79 @@ mod tests {
         assert_eq!(rect.y, 62.0);
         assert_eq!(rect.width, 8);
         assert_eq!(rect.height, 8);
+    }
+
+    #[test]
+    fn glyph_rects_align_pages_on_the_vanilla_baseline() {
+        // `GlyphBitmap.getTop()` = 7 - ascent: an accented-page glyph (é,
+        // height 12, ascent 10) starts 3px above an ascii-page glyph (e,
+        // ascent 7) drawn at the same pen position.
+        let surface_size = PhysicalSize::new(320, 240);
+        let ascii_e = HudAsciiGlyph {
+            width: 8,
+            height: 8,
+            advance: 6,
+            ascent: 7,
+            ..HudAsciiGlyph::default()
+        };
+        let accented_e = HudAsciiGlyph {
+            width: 9,
+            height: 12,
+            advance: 6,
+            ascent: 10,
+            ..HudAsciiGlyph::default()
+        };
+
+        let label_e = hud_inventory_text_label_glyph_hud_rect(
+            surface_size,
+            176,
+            166,
+            62,
+            24,
+            0,
+            0.0,
+            ascii_e,
+        );
+        let label_e_accent = hud_inventory_text_label_glyph_hud_rect(
+            surface_size,
+            176,
+            166,
+            62,
+            24,
+            0,
+            0.0,
+            accented_e,
+        );
+        assert_eq!(label_e_accent.y, label_e.y - 3.0);
+        assert_eq!(label_e_accent.height, 12);
+
+        let tooltip_e = hud_inventory_tooltip_text_hud_rect(
+            surface_size,
+            176,
+            166,
+            8,
+            84,
+            36,
+            8,
+            0,
+            0,
+            0.0,
+            ascii_e,
+        );
+        let tooltip_e_accent = hud_inventory_tooltip_text_hud_rect(
+            surface_size,
+            176,
+            166,
+            8,
+            84,
+            36,
+            8,
+            0,
+            0,
+            0.0,
+            accented_e,
+        );
+        assert_eq!(tooltip_e_accent.y, tooltip_e.y - 3.0);
     }
 
     #[test]

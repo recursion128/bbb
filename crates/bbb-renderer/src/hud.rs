@@ -28,8 +28,7 @@ use self::layout::{
 };
 
 pub use bbb_render_types::{
-    HudAsciiGlyph, HudDigitGlyph, HudUvRect, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT,
-    HUD_ASCII_LAST_GLYPH,
+    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudUvRect, HUD_FONT_BASELINE,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
@@ -65,7 +64,10 @@ const HUD_ITEM_BAR_BACKGROUND_HEIGHT: u32 = 2;
 const HUD_ITEM_BAR_FOREGROUND_HEIGHT: u32 = 1;
 const HUD_ITEM_COOLDOWN_TINT: [f32; 4] = [1.0, 1.0, 1.0, 127.0 / 255.0];
 const HUD_TOOLTIP_BACKGROUND_TINT: [f32; 4] = [0.0625, 0.0, 0.0625, 0.94];
-const HUD_ASCII_REPLACEMENT_GLYPH: char = '?';
+/// Codepoints the `font/default.json` bitmap pages don't cover (CJK etc. —
+/// unihex/unifont is deferred) fall back to this glyph, standing in for the
+/// vanilla missing-glyph box.
+const HUD_FONT_REPLACEMENT_GLYPH: char = '?';
 const HUD_ITEM_SPECIAL_FOIL_GUI_SCALE: f32 = 0.5;
 const HUD_ITEM_SPECIAL_FOIL_TEXTURE_SCALE: f32 = 1.0 / 128.0;
 
@@ -528,15 +530,15 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn upload_hud_ascii_atlas(
+    pub fn upload_hud_font_atlas(
         &mut self,
         width: u32,
         height: u32,
         rgba: &[u8],
-        glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+        glyphs: HudFontGlyphMap,
     ) -> Result<()> {
-        self.hud_ascii_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
-        self.hud_ascii_glyphs = glyphs;
+        self.hud_font_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_font_glyphs = glyphs;
         Ok(())
     }
 
@@ -1989,8 +1991,8 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
-                self.hud_ascii_atlas.as_ref(),
-                &self.hud_ascii_glyphs,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
                 surface_size,
                 screen,
             );
@@ -2017,8 +2019,8 @@ impl Renderer {
                 &self.hud_white_pixel,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
-                self.hud_ascii_atlas.as_ref(),
-                &self.hud_ascii_glyphs,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
                 surface_size,
                 screen,
             );
@@ -2595,12 +2597,12 @@ fn push_hud_inventory_text_labels<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
-    ascii_atlas: Option<&'a HudSpriteGpu>,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
 ) {
-    let Some(ascii_atlas) = ascii_atlas else {
+    let Some(font_atlas) = font_atlas else {
         return;
     };
     for label in &screen.text_labels {
@@ -2634,7 +2636,7 @@ fn push_hud_inventory_text_labels<'a>(
         {
             let mut pen_x = 0u32;
             for ch in label.text.chars() {
-                let glyph = hud_ascii_glyph(ch, glyphs);
+                let glyph = hud_font_glyph(ch, glyphs);
                 if pen_x >= label.width {
                     break;
                 }
@@ -2645,7 +2647,7 @@ fn push_hud_inventory_text_labels<'a>(
                     push_hud_draw_with_uv_and_tint(
                         vertices,
                         commands,
-                        ascii_atlas,
+                        font_atlas,
                         surface_size,
                         hud_inventory_text_label_glyph_hud_rect(
                             surface_size,
@@ -2674,12 +2676,12 @@ fn push_hud_inventory_tooltip<'a>(
     white_pixel: &'a HudSpriteGpu,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
-    ascii_atlas: Option<&'a HudSpriteGpu>,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
 ) {
-    let (Some(ascii_atlas), Some(tooltip)) = (ascii_atlas, screen.tooltip.as_ref()) else {
+    let (Some(font_atlas), Some(tooltip)) = (font_atlas, screen.tooltip.as_ref()) else {
         return;
     };
     let Some(text_height) = hud_inventory_tooltip_text_height(tooltip.lines.len()) else {
@@ -2688,7 +2690,7 @@ fn push_hud_inventory_tooltip<'a>(
     let Some(text_width) = tooltip
         .lines
         .iter()
-        .filter_map(|line| hud_ascii_text_width(&line.text, glyphs))
+        .filter_map(|line| hud_font_text_width(&line.text, glyphs))
         .max()
     else {
         return;
@@ -2753,12 +2755,12 @@ fn push_hud_inventory_tooltip<'a>(
             };
             let mut pen_x = 0;
             for ch in line.text.chars() {
-                let glyph = hud_ascii_glyph(ch, glyphs);
+                let glyph = hud_font_glyph(ch, glyphs);
                 if glyph.width > 0 && glyph.height > 0 {
                     push_hud_draw_with_uv_and_tint(
                         vertices,
                         commands,
-                        ascii_atlas,
+                        font_atlas,
                         surface_size,
                         hud_inventory_tooltip_text_hud_rect(
                             surface_size,
@@ -2794,29 +2796,23 @@ fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32>
     (width > 0).then_some(width)
 }
 
-fn hud_ascii_text_width(
-    text: &str,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
-) -> Option<u32> {
+fn hud_font_text_width(text: &str, glyphs: &HudFontGlyphMap) -> Option<u32> {
     let mut width = 0u32;
     for ch in text.chars() {
-        width = width.checked_add(hud_ascii_glyph(ch, glyphs).advance)?;
+        width = width.checked_add(hud_font_glyph(ch, glyphs).advance)?;
     }
     (width > 0).then_some(width)
 }
 
-fn hud_ascii_glyph(ch: char, glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]) -> HudAsciiGlyph {
-    let byte = if ch.is_ascii() {
-        ch as u8
-    } else {
-        HUD_ASCII_REPLACEMENT_GLYPH as u8
-    };
-    let byte = if (HUD_ASCII_FIRST_GLYPH..=HUD_ASCII_LAST_GLYPH).contains(&byte) {
-        byte
-    } else {
-        HUD_ASCII_REPLACEMENT_GLYPH as u8
-    };
-    glyphs[(byte - HUD_ASCII_FIRST_GLYPH) as usize]
+/// Vanilla `FontSet.computeGlyphInfo` walks the flattened provider chain; the
+/// baked `HudFontGlyphMap` already encodes that first-provider-wins order, so
+/// lookup is direct, with `?` standing in for codepoints no bitmap page
+/// covers (unihex/unifont deferred).
+fn hud_font_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
+    glyphs
+        .get(ch)
+        .or_else(|| glyphs.get(HUD_FONT_REPLACEMENT_GLYPH))
+        .unwrap_or_default()
 }
 
 fn sanitize_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
@@ -3611,16 +3607,29 @@ mod tests {
     }
 
     #[test]
-    fn hud_ascii_text_width_uses_printable_ascii_with_replacement_fallback() {
-        let mut glyphs = [HudAsciiGlyph::default(); HUD_ASCII_GLYPH_COUNT];
-        glyphs[(b'A' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 6;
-        glyphs[(b' ' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 4;
-        glyphs[(b'?' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 5;
+    fn hud_font_text_width_uses_glyph_map_with_replacement_fallback() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance, ascent) in [('A', 6, 7), (' ', 4, 7), ('?', 5, 7), ('é', 7, 10)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    ascent,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
 
-        assert_eq!(hud_ascii_text_width("A A", &glyphs), Some(16));
-        assert_eq!(hud_ascii_text_width("A\u{0007}", &glyphs), Some(11));
-        assert_eq!(hud_ascii_text_width("钻", &glyphs), Some(5));
-        assert_eq!(hud_ascii_text_width("", &glyphs), None);
+        assert_eq!(hud_font_text_width("A A", &glyphs), Some(16));
+        assert_eq!(hud_font_text_width("A\u{0007}", &glyphs), Some(11));
+        // Mapped non-ASCII codepoints now resolve their own bitmap glyph.
+        assert_eq!(hud_font_text_width("é", &glyphs), Some(7));
+        assert_eq!(hud_font_glyph('é', &glyphs).ascent, 10);
+        // CJK stays outside the bitmap pages (unihex deferred) and still
+        // degrades to the `?` replacement glyph.
+        assert_eq!(hud_font_text_width("钻", &glyphs), Some(5));
+        assert_eq!(hud_font_glyph('钻', &glyphs), hud_font_glyph('?', &glyphs));
+        assert_eq!(hud_font_text_width("", &glyphs), None);
     }
 
     #[test]

@@ -85,7 +85,10 @@
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:
-        - non-ASCII font providers
+        - the `space` font provider and text styles (the `font/default.json`
+          bitmap provider pages are baked and consumed; `unihex`/unifont is
+          deferred for lack of a unifont archive in the consumed assets, so
+          uncovered codepoints such as CJK still degrade to `?`)
         - bidirectional text shaping
         - italic and complex component styles
         - component-specific detail lines
@@ -600,8 +603,11 @@
         - lore dark-purple lines
         - written-book author and generation detail lines
         - unbreakable component detail line
-      - renders hovered-slot item tooltip names as basic ASCII text using
-        official 26.1 `font/ascii.png` glyphs
+      - renders hovered-slot item tooltip names with the official 26.1
+        `font/default.json` bitmap glyph pages (`nonlatin_european`,
+        `accented`, `ascii`) baked into a codepoint-keyed multi-page atlas
+        with vanilla first-provider-wins fallback and `7 - ascent` baseline
+        alignment; codepoints outside those pages degrade to `?`
       - draws the tooltip background/frame with the official
         `tooltip/background` and `tooltip/frame` nine-slice sprites (vanilla
         `TooltipRenderUtil.extractTooltipBackground`: background then frame over
@@ -678,8 +684,9 @@
       - `2` for next page
     - LecternMenu Done closes the active container.
     - LecternMenu Take Book queues vanilla container-button id `3`.
-    - LecternMenu renders the current book page as basic ASCII text from
-      decoded writable/written book item components and server page data.
+    - LecternMenu renders the current book page as plain text (official
+      `font/default.json` bitmap glyph pages) from decoded writable/written
+      book item components and server page data.
     - `ClientboundOpenBook` opens a canonical active book screen when the
       requested hand holds decoded writable/written book item components.
       The native client renders the book background/page text, handles local

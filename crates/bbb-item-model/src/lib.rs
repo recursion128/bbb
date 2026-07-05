@@ -5,7 +5,7 @@
 //! item and entity rendering. Consumed by the `bbb-native` runtime, scene,
 //! and HUD paths.
 
-pub mod ascii_font;
+pub mod font;
 
 mod item_runtime;
 mod profile_resolver;

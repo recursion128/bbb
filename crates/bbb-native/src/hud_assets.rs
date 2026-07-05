@@ -4,8 +4,8 @@ use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::HudNineSliceScaling;
 
-use bbb_item_model::ascii_font::{
-    hud_ascii_atlas_from_image, hud_ascii_digit_atlas_from_image, load_ascii_font_texture,
+use bbb_item_model::font::{
+    hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
 };
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
@@ -729,18 +729,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         &digit_atlas.rgba,
         digit_atlas.glyphs,
     )?;
-    let ascii_atlas = hud_ascii_atlas_from_image(&ascii_font)?;
-    renderer.upload_hud_ascii_atlas(
-        ascii_atlas.width,
-        ascii_atlas.height,
-        &ascii_atlas.rgba,
-        ascii_atlas.glyphs,
+    // The `font/default.json` bitmap provider chain baked into one multi-page
+    // glyph atlas; HUD text and map decoration labels share the same texture.
+    let font_atlas = load_hud_font_atlas(roots)?;
+    renderer.upload_hud_font_atlas(
+        font_atlas.width,
+        font_atlas.height,
+        &font_atlas.rgba,
+        font_atlas.glyphs,
     )?;
-    renderer.upload_item_frame_map_text_font(
-        ascii_atlas.width,
-        ascii_atlas.height,
-        &ascii_atlas.rgba,
-    );
+    renderer.upload_item_frame_map_text_font(font_atlas.width, font_atlas.height, &font_atlas.rgba);
     tracing::info!(
         crosshair = ?(crosshair.width, crosshair.height),
         hotbar = ?(hotbar.width, hotbar.height),
@@ -763,7 +761,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),
         digits = ?(digit_atlas.width, digit_atlas.height),
-        ascii = ?(ascii_atlas.width, ascii_atlas.height),
+        font = ?(font_atlas.width, font_atlas.height),
         "loaded vanilla HUD sprites"
     );
     Ok(())
@@ -849,7 +847,6 @@ fn rgba_offset(width: u32, x: u32, y: u32) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_renderer::HUD_ASCII_FIRST_GLYPH;
 
     #[test]
     fn hud_sprite_uses_vanilla_gui_atlas_ids() {
@@ -891,38 +888,6 @@ mod tests {
         assert_eq!(
             atlas.rgba[rgba_offset(80, 4 * 8 + 5, 7).unwrap()
                 ..rgba_offset(80, 4 * 8 + 5, 7).unwrap() + 4],
-            [10, 20, 30, 255]
-        );
-    }
-
-    #[test]
-    fn hud_ascii_atlas_extracts_printable_glyphs_and_space_advance() {
-        let mut rgba = vec![0; rgba_len(128, 128).unwrap()];
-        set_pixel(&mut rgba, 128, 1 * 8 + 2, 4 * 8 + 6, [255, 255, 255, 255]);
-        set_pixel(&mut rgba, 128, 14 * 8 + 7, 7 * 8 + 1, [10, 20, 30, 255]);
-        let image = SpriteImage::new("minecraft:textures/font/ascii", 128, 128, rgba).unwrap();
-
-        let atlas = hud_ascii_atlas_from_image(&image).unwrap();
-        let a_index = (b'A' - HUD_ASCII_FIRST_GLYPH) as usize;
-        let tilde_index = (b'~' - HUD_ASCII_FIRST_GLYPH) as usize;
-
-        assert_eq!(atlas.width, 760);
-        assert_eq!(atlas.height, 8);
-        assert_eq!(atlas.glyphs[0].advance, 4);
-        assert_eq!(atlas.glyphs[a_index].width, 8);
-        assert_eq!(atlas.glyphs[a_index].height, 8);
-        assert_eq!(atlas.glyphs[a_index].advance, 4);
-        assert_eq!(atlas.glyphs[a_index].uv.min, [33.0 / 95.0, 0.0]);
-        assert_eq!(atlas.glyphs[a_index].uv.max, [34.0 / 95.0, 1.0]);
-        assert_eq!(atlas.glyphs[tilde_index].advance, 9);
-        assert_eq!(
-            atlas.rgba[rgba_offset(760, 33 * 8 + 2, 6).unwrap()
-                ..rgba_offset(760, 33 * 8 + 2, 6).unwrap() + 4],
-            [255, 255, 255, 255]
-        );
-        assert_eq!(
-            atlas.rgba[rgba_offset(760, 94 * 8 + 7, 1).unwrap()
-                ..rgba_offset(760, 94 * 8 + 7, 1).unwrap() + 4],
             [10, 20, 30, 255]
         );
     }

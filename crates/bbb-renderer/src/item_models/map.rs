@@ -4,9 +4,7 @@ use std::collections::BTreeMap;
 
 use glam::{Mat4, Vec3};
 
-use crate::{
-    HudAsciiGlyph, Renderer, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT, HUD_ASCII_LAST_GLYPH,
-};
+use crate::{HudAsciiGlyph, HudFontGlyphMap, Renderer};
 
 use super::{ItemModelMesh, ItemModelVertex};
 
@@ -18,8 +16,11 @@ const ITEM_FRAME_MAP_SIZE: u32 = 128;
 const ITEM_FRAME_MAP_RGBA_LEN: usize =
     ITEM_FRAME_MAP_SIZE as usize * ITEM_FRAME_MAP_SIZE as usize * 4;
 const ITEM_FRAME_MAP_DECORATION_ATLAS_PATH: &str = "minecraft:textures/atlas/map_decorations.png";
-const ITEM_FRAME_MAP_TEXT_FONT_PATH: &str = "minecraft:textures/font/ascii.png";
-const ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH: u8 = b'?';
+/// The uploaded map-text font texture is the baked multi-page
+/// `minecraft:default` glyph atlas (vanilla `Style.DEFAULT_FONT`), not a
+/// single provider page.
+const ITEM_FRAME_MAP_TEXT_FONT_PATH: &str = "minecraft:font/default";
+const ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH: char = '?';
 const FIRST_PERSON_MAP_BACKGROUND_BORDER: f32 = 7.0;
 const FIRST_PERSON_MAP_BACKGROUND_SIZE: f32 = 142.0;
 
@@ -567,7 +568,7 @@ fn bake_map_decoration_surface(
 /// Bakes one item-frame-visible vanilla `MapRenderer` decoration name submit. `MapRenderer.render`
 /// submits these labels through `submitNodeCollector.order(1).submitText(...)` after the order-0
 /// base map and decoration sprite submissions. The width and clamp mirror vanilla `Font.width` plus
-/// `Mth.clamp(25.0F / width, 0.0F, 6.0F / 9.0F)` for the currently supported ASCII font atlas.
+/// `Mth.clamp(25.0F / width, 0.0F, 6.0F / 9.0F)` over the `minecraft:default` bitmap glyph pages.
 pub fn bake_item_frame_map_text_surface(
     type_id: i32,
     text: impl Into<String>,
@@ -577,7 +578,7 @@ pub fn bake_item_frame_map_text_surface(
     map_transform: Mat4,
     light: [f32; 2],
     submit_sequence: u32,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    glyphs: &HudFontGlyphMap,
 ) -> Option<ItemFrameMapTextSurface> {
     bake_map_text_surface(
         type_id,
@@ -602,7 +603,7 @@ pub fn bake_first_person_map_text_surface(
     map_transform: Mat4,
     light: [f32; 2],
     submit_sequence: u32,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    glyphs: &HudFontGlyphMap,
 ) -> Option<ItemFrameMapTextSurface> {
     bake_map_text_surface(
         type_id,
@@ -627,7 +628,7 @@ fn bake_map_text_surface(
     map_transform: Mat4,
     light: [f32; 2],
     submit_sequence: u32,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    glyphs: &HudFontGlyphMap,
     show_only_frame: bool,
 ) -> Option<ItemFrameMapTextSurface> {
     let decoration_type = item_frame_map_decoration_type(type_id)?;
@@ -653,8 +654,11 @@ fn bake_map_text_surface(
         if glyph.width > 0 && glyph.height > 0 {
             let x0 = pen_x;
             let x1 = pen_x + glyph.width as f32;
-            let y0 = 0.0;
-            let y1 = glyph.height as f32;
+            // Baseline alignment across font pages (vanilla
+            // `GlyphBitmap.getTop()` = `7 - ascent`): ascent-7 pages keep
+            // y0 = 0, the accented page rises 3px above the line top.
+            let y0 = glyph.baseline_offset();
+            let y1 = y0 + glyph.height as f32;
             let corners = [
                 transform
                     .transform_point3(Vec3::new(x0, y0, 0.0))
@@ -703,10 +707,7 @@ fn bake_map_text_surface(
     })
 }
 
-pub fn item_frame_map_text_width(
-    text: &str,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
-) -> Option<u32> {
+pub fn item_frame_map_text_width(text: &str, glyphs: &HudFontGlyphMap) -> Option<u32> {
     let mut width = 0u32;
     for ch in text.chars() {
         width = width.checked_add(item_frame_map_text_glyph(ch, glyphs).advance)?;
@@ -714,21 +715,13 @@ pub fn item_frame_map_text_width(
     (width > 0).then_some(width)
 }
 
-fn item_frame_map_text_glyph(
-    ch: char,
-    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
-) -> HudAsciiGlyph {
-    let byte = if ch.is_ascii() {
-        ch as u8
-    } else {
-        ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH
-    };
-    let byte = if (HUD_ASCII_FIRST_GLYPH..=HUD_ASCII_LAST_GLYPH).contains(&byte) {
-        byte
-    } else {
-        ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH
-    };
-    glyphs[(byte - HUD_ASCII_FIRST_GLYPH) as usize]
+/// Codepoint lookup over the baked first-provider-wins glyph map; codepoints
+/// outside the bitmap pages (unihex deferred) degrade to `?`.
+fn item_frame_map_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
+    glyphs
+        .get(ch)
+        .or_else(|| glyphs.get(ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH))
+        .unwrap_or_default()
 }
 
 pub(crate) fn merge_item_frame_map_surfaces(
@@ -1870,7 +1863,7 @@ mod tests {
         assert_eq!(surface.submission.render_type.vanilla_name(), "text");
         assert_eq!(
             surface.submission.texture.vanilla_path(),
-            "minecraft:textures/font/ascii.png"
+            "minecraft:font/default"
         );
         assert_eq!(surface.submission.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(surface.submission.transform, expected_transform);
@@ -1926,9 +1919,22 @@ mod tests {
     }
 
     #[test]
-    fn item_frame_map_text_width_uses_ascii_replacement_fallback() {
-        let glyphs = test_map_text_glyphs();
+    fn item_frame_map_text_width_uses_glyph_map_replacement_fallback() {
+        let mut glyphs = test_map_text_glyphs();
+        glyphs.insert_first_wins(
+            'é',
+            HudAsciiGlyph {
+                width: 6,
+                height: 12,
+                advance: 7,
+                ascent: 10,
+                ..HudAsciiGlyph::default()
+            },
+        );
         assert_eq!(item_frame_map_text_width("A A", &glyphs), Some(16));
+        // Mapped accented codepoints resolve their own glyph now.
+        assert_eq!(item_frame_map_text_width("é", &glyphs), Some(7));
+        // CJK stays outside the bitmap pages (unihex deferred): still `?`.
         assert_eq!(item_frame_map_text_width("钻", &glyphs), Some(5));
         assert_eq!(item_frame_map_text_width("", &glyphs), None);
     }
@@ -1981,18 +1987,27 @@ mod tests {
         assert_eq!(vertices[2].uv, [1.0, 0.5]);
     }
 
-    fn test_map_text_glyphs() -> [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT] {
-        let mut glyphs = [HudAsciiGlyph {
-            uv: crate::HudUvRect {
-                min: [0.0, 0.0],
-                max: [1.0, 1.0],
-            },
-            width: 6,
-            height: 8,
-            advance: 6,
-        }; HUD_ASCII_GLYPH_COUNT];
-        glyphs[(b' ' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 4;
-        glyphs[(b'?' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 5;
+    fn test_map_text_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for byte in b' '..=b'~' {
+            glyphs.insert_first_wins(
+                char::from(byte),
+                HudAsciiGlyph {
+                    uv: crate::HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    width: 6,
+                    height: 8,
+                    advance: match byte {
+                        b' ' => 4,
+                        b'?' => 5,
+                        _ => 6,
+                    },
+                    ascent: 7,
+                },
+            );
+        }
         glyphs
     }
 }

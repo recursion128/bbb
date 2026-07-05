@@ -198,7 +198,7 @@ impl NativeItemRuntime {
         &self.map_decoration_textures
     }
 
-    pub fn map_text_glyphs(&self) -> Option<&[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
+    pub fn map_text_glyphs(&self) -> Option<&HudFontGlyphMap> {
         self.map_text_glyphs.as_ref()
     }
 

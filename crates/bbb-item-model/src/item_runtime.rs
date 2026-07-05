@@ -39,8 +39,8 @@ use bbb_render_types::{
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
     EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
-    FirstPersonMapBackgroundTexture, HudAsciiGlyph, ItemFrameMapDecorationTexture, ItemSpriteRect,
-    SpriteAlphaMask, HUD_ASCII_GLYPH_COUNT,
+    FirstPersonMapBackgroundTexture, HudFontGlyphMap, ItemFrameMapDecorationTexture,
+    ItemSpriteRect, SpriteAlphaMask,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
@@ -73,7 +73,7 @@ pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
 use profile_skin::{entity_player_skin_model, profile_default_player_skin, profile_texture_handle};
 
-use crate::ascii_font::{hud_ascii_atlas_from_image, load_ascii_font_texture};
+use crate::font::load_hud_font_atlas;
 
 mod icon;
 mod profiles;
@@ -163,23 +163,28 @@ fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapB
     .collect()
 }
 
-fn load_map_text_glyphs(roots: &PackRoots) -> Result<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
-    let ascii_font = load_ascii_font_texture(roots)?;
-    Ok(hud_ascii_atlas_from_image(&ascii_font)?.glyphs)
+fn load_map_text_glyphs(roots: &PackRoots) -> Result<HudFontGlyphMap> {
+    Ok(load_hud_font_atlas(roots)?.glyphs)
 }
 
 #[cfg(any(test, feature = "test-support"))]
-fn test_map_text_glyphs() -> [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT] {
-    let mut glyphs = [HudAsciiGlyph {
-        uv: HudUvRect {
-            min: [0.0, 0.0],
-            max: [1.0, 1.0],
-        },
-        width: 6,
-        height: 8,
-        advance: 6,
-    }; HUD_ASCII_GLYPH_COUNT];
-    glyphs[(b' ' - b' ') as usize].advance = 4;
+fn test_map_text_glyphs() -> HudFontGlyphMap {
+    let mut glyphs = HudFontGlyphMap::new();
+    for byte in b' '..=b'~' {
+        glyphs.insert_first_wins(
+            char::from(byte),
+            bbb_render_types::HudAsciiGlyph {
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                width: 6,
+                height: 8,
+                advance: if byte == b' ' { 4 } else { 6 },
+                ascent: 7,
+            },
+        );
+    }
     glyphs
 }
 
@@ -289,7 +294,7 @@ pub struct NativeItemRuntime {
     language: LanguageCatalog,
     map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
-    map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
+    map_text_glyphs: Option<HudFontGlyphMap>,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
@@ -740,7 +745,7 @@ impl NativeItemRuntime {
         language: LanguageCatalog,
         map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
         map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
-        map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
+        map_text_glyphs: Option<HudFontGlyphMap>,
         item_tags: Option<TagCatalog>,
         enchantment_tags: Option<TagCatalog>,
         trim_material_tags: Option<TagCatalog>,
