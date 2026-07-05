@@ -4807,9 +4807,21 @@
       sequences `(0, 2)` / `(0, 3)`, uses the vanilla `432` seed, `rayCount` formula, inner white /
       outer magenta colours, additive position-colour GPU pipeline, and depth-only replay pipeline;
       missing-atlas coverage pins that ray submissions and folded geometry survive absent dragon
-      textures. The remaining dragon death visual parity is GPU-side `DISSOLVE` mask sampling
-      precision. The colored debug path stays as a fallback (it renders the body dark and the wing
-      membranes a lighter tint)
+      textures. The dying-dragon body is now GPU-eroded by the DISSOLVE mask: the
+      `entityCutoutDissolve` submission folds into a dedicated dissolve mesh/pipeline
+      (`RenderPipelines.ENTITY_CUTOUT_DISSOLVE` = `ENTITY_SNIPPET` + `ALPHA_CUTOUT 0.1` +
+      `PER_FACE_LIGHTING` + `DISSOLVE` + `withCull(false)`, no colour-target blend so its surface state
+      matches the plain entity cutout draw). Each dissolve vertex carries a second `mask_uv` set baked
+      to `dragon_exploding.png`'s atlas sub-rect for the same normalized model UV as the base texture,
+      and the WGSL reproduces `entity.fsh` (lines 33–63) exactly: the base `ALPHA_CUTOUT 0.1` discard
+      runs first, then `if (faceVertexColor.a < texture(DissolveMaskSampler, texCoord0).a) discard;`
+      with the vertex-colour alpha (`1 - deathTime/200`) forced to `1.0` on survivors ("the dissolve
+      effect entirely replaces translucency"). A deterministic headless GPU readback (pure-red base +
+      two-step mask alpha `0.2`/`0.8`, vertex `tint.a = 0.5`) pins that the below-mask half is eroded to
+      background while the above-mask half renders opaque red, and `tint.a = 1.0` keeps every fragment;
+      a companion CPU test pins the `mask_uv = mask.min + (base_uv - base.min)/base.size * mask.size`
+      mapping per vertex. The colored debug path stays as a fallback (it renders the body dark and the
+      wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which is a dispatch-owned no-submit path and emits no geometry — exact parity with vanilla, whose
       `EntityRenderers` registers all three to `NoopRenderer` (the area effect cloud is drawn as

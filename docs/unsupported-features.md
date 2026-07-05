@@ -336,6 +336,11 @@ When an agent does any of the following, update this file in the same slice:
     (`ChunkSectionsToRender.java:55-56`, MC 26.1); the 2026-07-05 audit
     confirmed within-section/composite/particle/within-target orders were
     already consistent and only this segment order diverged.
+    The dying ender dragon body is now GPU-eroded by the DISSOLVE mask: a
+    dedicated dissolve mesh/pipeline (`RenderPipelines.ENTITY_CUTOUT_DISSOLVE`)
+    samples `dragon_exploding.png` at the model's `texCoord0` and discards
+    `if (tint.a < mask.a)` per `entity.fsh`, closing the last dragon-death
+    visual-parity gap (deterministic headless GPU readback + CPU mask-UV tests).
   - Entity presentation migration off wrong-model proxies is complete; the
     `EntityRenderState` projection carries packed-light shading, the hurt red
     overlay, creeper swelling, death animation, riptide spin, the

@@ -102,6 +102,91 @@ impl EntityModelScrollMesh {
     }
 }
 
+/// A vertex of the GPU dissolve mesh (vanilla `RenderTypes.entityCutoutDissolve` — the dying ender
+/// dragon body). It carries the ordinary textured vertex attributes plus a second `mask_uv` set that
+/// samples the dissolve mask (`dragon_exploding.png`) at the *same* normalized model UV as the base
+/// texture, matching vanilla `entity.fsh`: `texture(DissolveMaskSampler, texCoord0)`. Because both the
+/// base texture and the mask live in the shared entity atlas, `mask_uv` is baked to the mask's atlas
+/// sub-rect at mesh-build time (see [`append_dissolve_textured_mesh`]).
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct EntityModelDissolveVertex {
+    pub(super) position: [f32; 3],
+    pub(super) uv: [f32; 2],
+    pub(super) mask_uv: [f32; 2],
+    pub(super) tint: [f32; 4],
+    pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
+    pub(super) normal: [f32; 3],
+}
+
+pub(super) struct EntityModelDissolveMesh {
+    pub(super) vertices: Vec<EntityModelDissolveVertex>,
+    pub(super) indices: Vec<u32>,
+    pub(super) cutout_faces: usize,
+}
+
+impl EntityModelDissolveMesh {
+    pub(super) fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            cutout_faces: 0,
+        }
+    }
+}
+
+/// Appends a normal textured render (`textured`, carrying atlas-absolute base UVs) to the dissolve
+/// mesh, deriving each vertex's `mask_uv` from its base `uv`: the base atlas UV is inverted to a
+/// normalized `0..1` model UV within `base_rect`, then re-projected into the dissolve mask's atlas
+/// sub-rect `mask_rect`. This reproduces vanilla `entity.fsh` sampling `DissolveMaskSampler` at the
+/// same `texCoord0` the base texture uses (`dragon.png` and `dragon_exploding.png` share the model's
+/// UV layout). Indices are re-based onto `dissolve`'s current vertex count.
+pub(super) fn append_dissolve_textured_mesh(
+    dissolve: &mut EntityModelDissolveMesh,
+    textured: &EntityModelTexturedMesh,
+    base_rect: EntityModelUvRect,
+    mask_rect: EntityModelUvRect,
+) {
+    let base = u32::try_from(dissolve.vertices.len()).expect("dissolve vertex count fits in u32");
+    let base_size = [
+        base_rect.max[0] - base_rect.min[0],
+        base_rect.max[1] - base_rect.min[1],
+    ];
+    let mask_size = [
+        mask_rect.max[0] - mask_rect.min[0],
+        mask_rect.max[1] - mask_rect.min[1],
+    ];
+    for vertex in &textured.vertices {
+        let normalized_u = if base_size[0] != 0.0 {
+            (vertex.uv[0] - base_rect.min[0]) / base_size[0]
+        } else {
+            0.0
+        };
+        let normalized_v = if base_size[1] != 0.0 {
+            (vertex.uv[1] - base_rect.min[1]) / base_size[1]
+        } else {
+            0.0
+        };
+        dissolve.vertices.push(EntityModelDissolveVertex {
+            position: vertex.position,
+            uv: vertex.uv,
+            mask_uv: [
+                mask_rect.min[0] + normalized_u * mask_size[0],
+                mask_rect.min[1] + normalized_v * mask_size[1],
+            ],
+            tint: vertex.tint,
+            light: vertex.light,
+            overlay: vertex.overlay,
+            normal: vertex.normal,
+        });
+    }
+    dissolve
+        .indices
+        .extend(textured.indices.iter().map(|index| index + base));
+    dissolve.cutout_faces += textured.cutout_faces;
+}
+
 /// Appends a normal textured render (`textured`, carrying atlas-absolute UVs) to the scrolling-overlay
 /// mesh, converting each vertex: the atlas UV is inverted back to a local `0..1` UV within `rect`, the
 /// per-instance `offset` is added, and `rect` is carried so the shader `fract`-wraps the scrolled local

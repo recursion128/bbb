@@ -24,8 +24,9 @@ use super::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
     first_person_player_arm_textured_meshes,
     geometry::{
-        EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
-        EntityModelTexturedVertex, EntityModelVertex,
+        EntityModelDissolveMesh, EntityModelDissolveVertex, EntityModelMesh, EntityModelScrollMesh,
+        EntityModelScrollVertex, EntityModelTexturedMesh, EntityModelTexturedVertex,
+        EntityModelVertex,
     },
     instances::EntityModelInstance,
     textured::{
@@ -82,6 +83,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
 pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
+pub(super) const ENTITY_MODEL_DISSOLVE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x2, 5 => Float32x2, 6 => Float32x3];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
@@ -311,6 +313,153 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
         discard;
     }
     let texel = sample * input.tint;
+    var rgb = texel.rgb;
+    if (input.overlay.y < 8.0) {
+        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+    }
+    let light_color = sample_lightmap(input.light);
+    return apply_fog(vec4<f32>(rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
+// Vanilla `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` (`entity.fsh` with the `DISSOLVE` +
+// `PER_FACE_LIGHTING` + `ALPHA_CUTOUT 0.1` defines): the dying ender dragon body. Identical to
+// `ENTITY_MODEL_TEXTURED_SHADER` except for the DISSOLVE branch, which samples the dissolve mask from
+// the shared atlas at `mask_uv` (baked to `dragon_exploding.png`'s atlas rect for the same normalized
+// model UV as the base texture) and reproduces `entity.fsh` exactly:
+//   color = texture(Sampler0, texCoord0);
+//   if (color.a < 0.1) discard;                                    // ALPHA_CUTOUT, first
+//   faceVertexColor = per-face color (tint, alpha = 1 - deathTime/200);
+//   if (faceVertexColor.a < texture(DissolveMaskSampler, texCoord0).a) discard;  // DISSOLVE
+//   faceVertexColor.a = 1.0;                                       // erosion replaces translucency
+//   color *= faceVertexColor * ColorModulator; ...overlay...lightmap...fog
+pub(super) const ENTITY_MODEL_DISSOLVE_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) mask_uv: vec2<f32>,
+    @location(3) tint: vec4<f32>,
+    @location(4) light: vec2<f32>,
+    @location(5) overlay: vec2<f32>,
+    @location(6) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) mask_uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
+    @location(5) normal: vec3<f32>,
+    @location(6) spherical_distance: f32,
+    @location(7) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.mask_uv = input.mask_uv;
+    out.tint = input.tint;
+    out.light = input.light;
+    out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if sample.a < 0.1 {
+        discard;
+    }
+    let mask = textureSample(entity_texture_atlas, entity_sampler, input.mask_uv);
+    if input.tint.a < mask.a {
+        discard;
+    }
+    // The dissolve effect entirely replaces translucency: surviving fragments render fully opaque.
+    let tint = vec4<f32>(input.tint.rgb, 1.0);
+    let texel = sample * tint;
     var rgb = texel.rgb;
     if (input.overlay.y < 8.0) {
         rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
@@ -1298,6 +1447,37 @@ pub(crate) fn create_entity_model_cutout_z_offset_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` (`RenderTypes.entityCutoutDissolve`, the dying
+/// ender dragon body): built from `ENTITY_SNIPPET` with `ALPHA_CUTOUT 0.1` + `PER_FACE_LIGHTING` +
+/// `DISSOLVE` + `withCull(false)` and no colour-target blend override, so its surface state matches
+/// the plain entity cutout pipeline (opaque `REPLACE`, depth write + `LESS_EQUAL`, cull off). It
+/// differs only in shader (the DISSOLVE mask sample) and vertex layout (the extra `mask_uv` set).
+pub(crate) fn create_entity_model_dissolve_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-entity-model-dissolve-pipeline")
+        .shader(
+            "bbb-entity-model-dissolve-shader",
+            ENTITY_MODEL_DISSOLVE_SHADER,
+        )
+        .layout(
+            "bbb-entity-model-dissolve-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_dissolve_vertex_layout()])
+        .color_target(format, ENTITY_MODEL_SURFACE_OPAQUE_BLEND)
+        .cull_mode(ENTITY_MODEL_SURFACE_NO_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+        ))
+        .build()
+}
+
 /// Vanilla `RenderPipelines.ARMOR_CUTOUT_NO_CULL` / `ARMOR_TRANSLUCENT`: entity
 /// shader with `NO_OVERLAY`, `PER_FACE_LIGHTING`, alpha cutoff `0.1`, default
 /// depth writes, and no cull. The translucent variant enables vanilla
@@ -1967,6 +2147,11 @@ impl Renderer {
                 meshes.cutout_cull,
                 "bbb-entity-model-textured-cull",
             );
+            self.entity_model_dissolve_mesh = create_entity_model_dissolve_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.dissolve,
+                "bbb-entity-model-dissolve",
+            );
             self.entity_model_cutout_z_offset_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -2134,6 +2319,7 @@ impl Renderer {
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
+            self.entity_model_dissolve_mesh = None;
             self.entity_model_cutout_z_offset_mesh = None;
             self.entity_model_armor_cutout_mesh = None;
             self.entity_model_translucent_mesh = None;
@@ -2176,6 +2362,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_textured_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_dissolve_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_cutout_z_offset_mesh
@@ -2935,6 +3124,14 @@ fn entity_model_scroll_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     }
 }
 
+fn entity_model_dissolve_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<EntityModelDissolveVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ENTITY_MODEL_DISSOLVE_VERTEX_ATTRIBUTES,
+    }
+}
+
 fn create_entity_model_scroll_mesh_gpu_from_mesh(
     device: &wgpu::Device,
     mesh: EntityModelScrollMesh,
@@ -2969,14 +3166,52 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
     })
 }
 
+/// The dissolve mesh reuses [`EntityModelTexturedMeshGpu`] (buffers + index count + bounds are layout
+/// agnostic); only the vertex bytes differ (the extra `mask_uv` set), so the dedicated dissolve
+/// pipeline's vertex layout consumes them.
+fn create_entity_model_dissolve_mesh_gpu_from_mesh(
+    device: &wgpu::Device,
+    mesh: EntityModelDissolveMesh,
+    label_prefix: &str,
+) -> Option<EntityModelTexturedMeshGpu> {
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let bounds = TerrainBounds::from_points(
+        mesh.vertices
+            .iter()
+            .map(|vertex| Vec3::from_array(vertex.position)),
+    );
+    let vertex_label = format!("{label_prefix}-vertices");
+    let index_label = format!("{label_prefix}-indices");
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(vertex_label.as_str()),
+        contents: bytemuck::cast_slice(&mesh.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(index_label.as_str()),
+        contents: bytemuck::cast_slice(&mesh.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    Some(EntityModelTexturedMeshGpu {
+        vertex_buffer,
+        index_buffer,
+        index_count: mesh.indices.len() as u32,
+        bounds,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader,
         ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
-        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DRAGON_RAYS_BLEND,
-        ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
+        ENTITY_MODEL_DRAGON_RAYS_BLEND, ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_EYES_BLEND,
@@ -2997,6 +3232,56 @@ mod tests {
         ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_WATER_MASK_SHADER,
     };
+
+    #[test]
+    fn entity_model_dissolve_shader_matches_vanilla_entity_fsh_branch_order() {
+        // Vanilla `entity.fsh` (DISSOLVE + ALPHA_CUTOUT + PER_FACE_LIGHTING): the base ALPHA_CUTOUT
+        // discard runs first, then the DISSOLVE mask compare discards `if (faceVertexColor.a <
+        // texture(DissolveMaskSampler, texCoord0).a)`, and surviving fragments force the vertex-colour
+        // alpha to 1.0 ("the dissolve effect entirely replaces translucency") before the tint multiply.
+        let cutout_discard = ENTITY_MODEL_DISSOLVE_SHADER
+            .find("if sample.a < 0.1 {")
+            .expect("dissolve shader keeps the base ALPHA_CUTOUT 0.1 discard");
+        let mask_sample = ENTITY_MODEL_DISSOLVE_SHADER
+            .find("textureSample(entity_texture_atlas, entity_sampler, input.mask_uv)")
+            .expect("dissolve shader samples the mask from the shared atlas at mask_uv");
+        let dissolve_discard = ENTITY_MODEL_DISSOLVE_SHADER
+            .find("if input.tint.a < mask.a {")
+            .expect("dissolve shader discards where tint alpha is below the mask alpha");
+        let force_opaque = ENTITY_MODEL_DISSOLVE_SHADER
+            .find("let tint = vec4<f32>(input.tint.rgb, 1.0);")
+            .expect("dissolve shader forces surviving fragments fully opaque");
+        assert!(
+            cutout_discard < mask_sample
+                && mask_sample < dissolve_discard
+                && dissolve_discard < force_opaque,
+            "vanilla entity.fsh order: ALPHA_CUTOUT discard, then DISSOLVE mask compare, then force alpha 1.0"
+        );
+    }
+
+    #[test]
+    fn entity_model_dissolve_pipeline_state_matches_vanilla_entity_cutout_dissolve() {
+        // `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` is `ENTITY_SNIPPET` + ALPHA_CUTOUT + PER_FACE_LIGHTING
+        // + DISSOLVE + withCull(false), with no colour-target blend override: opaque surface state
+        // identical to the plain entity cutout pipeline, cull off.
+        assert_eq!(
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            Some(wgpu::BlendState::REPLACE),
+            "dissolve draws opaque like the entity cutout surface (no translucent blend)"
+        );
+        assert!(
+            ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+            "dissolve writes depth like an opaque cutout draw"
+        );
+        assert_eq!(
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE, None,
+            "vanilla ENTITY_CUTOUT_DISSOLVE.withCull(false)"
+        );
+        assert_eq!(
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+    }
 
     #[test]
     fn entity_model_outline_shader_matches_vanilla_rendertype_outline_shape() {

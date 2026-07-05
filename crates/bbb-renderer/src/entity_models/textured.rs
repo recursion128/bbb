@@ -27,12 +27,12 @@ use super::{
     },
     entity_model_root_transform,
     geometry::{
-        append_scrolled_textured_mesh, argb_to_tint, emit_textured_model_cube,
-        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
-        part_pose_transform, EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex,
-        EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex, PartPose,
-        TexturedModelCubeDesc, TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
-        ENTITY_VERTEX_NO_OVERLAY,
+        append_dissolve_textured_mesh, append_scrolled_textured_mesh, argb_to_tint,
+        emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
+        fill_entity_textured_overlay, part_pose_transform, EntityModelDissolveMesh,
+        EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+        EntityModelTexturedVertex, EntityModelVertex, PartPose, TexturedModelCubeDesc,
+        TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -265,6 +265,11 @@ struct PendingSortedScrollUpload {
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
+    /// Vanilla `RenderTypes.entityCutoutDissolve(dragon.png, dragon_exploding.png)` geometry (the
+    /// dying ender dragon body). Its base UVs match the plain cutout bucket, but each vertex also
+    /// carries a `mask_uv` set so the GPU dissolve pipeline can sample `dragon_exploding.png` for the
+    /// per-fragment erosion; kept out of the plain cutout bucket so it can own that pipeline.
+    pub(super) dissolve: EntityModelDissolveMesh,
     /// Vanilla `RenderTypes.entityCutoutZOffset(texture)` geometry. Its shader state matches
     /// `entityCutout`, but vanilla also applies `VIEW_OFFSET_Z_LAYERING`; keep it out of the plain
     /// cutout bucket so the GPU path can own the z-offset pipeline separately.
@@ -347,6 +352,7 @@ impl EntityModelTexturedMeshes {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
+            dissolve: EntityModelDissolveMesh::new(),
             cutout_z_offset: EntityModelTexturedMesh::new(),
             armor_cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
@@ -424,10 +430,11 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::Eyes => &mut self.eyes,
             EntityModelLayerRenderBucket::OutlineOnly => &mut self.outline,
-            EntityModelLayerRenderBucket::Scroll
+            EntityModelLayerRenderBucket::Dissolve
+            | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::PositionColor => {
-                panic!("scroll render types are not emitted into textured mesh buckets")
+                panic!("scroll/dissolve render types are not emitted into textured mesh buckets")
             }
             EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("non-color render types are not emitted into textured mesh buckets")
@@ -460,6 +467,7 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::TranslucentEmissive
+            | EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::PositionColor
@@ -501,6 +509,7 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::TranslucentEmissive
+            | EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::PositionColor
@@ -1529,6 +1538,20 @@ fn render_textured_submission(
                 entry.uv,
                 [0.0, 0.0],
             );
+            return;
+        }
+        if submission.render_type.mesh_bucket() == EntityModelLayerRenderBucket::Dissolve {
+            // The mask atlas entry is guaranteed present here: a dissolve submission whose
+            // `dissolve_texture` is missing from the atlas is suppressed by the early return above.
+            let mask_uv_rect = submit
+                .dissolve_texture
+                .and_then(|texture| entity_model_texture_atlas_entry(atlas, texture))
+                .map(|mask_entry| mask_entry.uv)
+                .expect("dissolve submission without a mask atlas entry is suppressed earlier");
+            let mut scratch = EntityModelTexturedMesh::new();
+            emit(&mut scratch, entry);
+            fill_textured_submission_vertices(&mut scratch, 0, submission);
+            append_dissolve_textured_mesh(&mut meshes.dissolve, &scratch, entry.uv, mask_uv_rect);
             return;
         }
         if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {

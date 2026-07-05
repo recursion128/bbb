@@ -326,6 +326,21 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 stats.entity_model_draw_calls += 1;
             }
+            // Vanilla `RenderTypes.entityCutoutDissolve` (the dying ender dragon body): opaque cutout
+            // family, drawn in the main pass through the dedicated DISSOLVE-mask pipeline.
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_dissolve_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_dissolve_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_cutout_z_offset_mesh,
                 &self.entity_model_texture_atlas,

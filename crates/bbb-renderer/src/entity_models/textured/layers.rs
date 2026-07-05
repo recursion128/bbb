@@ -213,6 +213,11 @@ pub(crate) enum EntityModelLayerRenderType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Cutout,
+    /// Vanilla `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` (`RenderTypes.entityCutoutDissolve`): opaque
+    /// cutout state plus a per-fragment DISSOLVE mask sample (the dying ender dragon). Kept out of the
+    /// plain [`Self::Cutout`] bucket so the GPU path can own the dedicated dissolve pipeline and its
+    /// second `mask_uv` vertex set.
+    Dissolve,
     CutoutZOffset,
     Translucent,
     TranslucentEmissive,
@@ -256,8 +261,8 @@ impl EntityModelLayerRenderType {
             Self::EntitySolid
             | Self::ArmorCutoutNoCull
             | Self::EntityCutout
-            | Self::EntityCutoutDissolve
             | Self::EntityCutoutCull => EntityModelLayerRenderBucket::Cutout,
+            Self::EntityCutoutDissolve => EntityModelLayerRenderBucket::Dissolve,
             Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::CutoutZOffset,
             Self::ArmorTranslucent | Self::EntityTranslucent => {
                 EntityModelLayerRenderBucket::Translucent

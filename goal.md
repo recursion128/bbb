@@ -178,7 +178,6 @@ target order；能 readback 的视觉路径补 deterministic pixel proof。
 
 仍在推进：
 
-- GPU `DISSOLVE` mask sampling 精度（后续视觉 parity，不阻塞其它队列）。
 - 通用 `EntityRenderState` submit 管线（vanilla `EntityRenderDispatcher.submit`
   的泛化路径；当前唯一已知消费场景是 ItemPickupParticle 捡箭/三叉戟的
   3-tick 闪现，2026-07-05 自 P1-5 移入，payoff 低、按宽面最小 slice 进入）。

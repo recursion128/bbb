@@ -658,6 +658,20 @@
     light. Tests cover metadata/age projection, scene `NoRender`, transform
     math, and flat item mesh emission. Ominous spawning particles and sounds
     remain tracked with particle/audio presentation work.
+  - [x] P1-2 dying ender dragon GPU `DISSOLVE` mask sampling：`entityCutoutDissolve`
+    的垂死龙 body 现在落入专用 dissolve mesh/pipeline
+    （`RenderPipelines.ENTITY_CUTOUT_DISSOLVE` = `ENTITY_SNIPPET` + `ALPHA_CUTOUT 0.1`
+    + `PER_FACE_LIGHTING` + `DISSOLVE` + `withCull(false)`，无 color-target blend，故
+    surface state 与普通 entity cutout 相同、depth write + `LESS_EQUAL`、cull off）。
+    每个 dissolve 顶点携带第二组 `mask_uv`，在 mesh-build 时按基础 UV 的归一化模型
+    坐标重投影进 `dragon_exploding.png` 的图集 sub-rect（复用同一 entity 图集/sampler，
+    无需新 bind group）；WGSL 逐字复刻 `entity.fsh:33-63`：先做基础贴图 `ALPHA_CUTOUT 0.1`
+    discard，再 `if (faceVertexColor.a < texture(DissolveMaskSampler, texCoord0).a) discard;`，
+    幸存像素把顶点色 alpha（`1 - deathTime/200`）强制为 `1.0`。确定性 headless GPU
+    readback（纯红基础贴图 + 两档 mask alpha `0.2`/`0.8`、顶点 `tint.a=0.5`）固定：低于
+    mask 的半屏被侵蚀成背景、高于的半屏输出不透明红，`tint.a=1.0`（存活龙）全保留；
+    另有 CPU 测试固定 `mask_uv = mask.min + (base_uv - base.min)/base.size * mask.size`
+    的逐顶点映射。至此垂死龙死亡视觉 parity 的最后一块 GPU-side DISSOLVE 缺口闭合。
 
 ## P1-3：物品、Frame 与第一人称表现
 
