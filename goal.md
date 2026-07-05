@@ -194,17 +194,20 @@ glint 全家族与 first-person 手持/手臂/use-pose 完成史）。
 
 仍在推进：
 
-- HUD / inventory：vanilla font 剩余两子项——`space` provider
-  （`font/include/space.json` advances，替换硬编码 space=4）与文本样式
-  （bold/italic/underline/strikethrough/obfuscated）——及 tooltip 文本 bidi
-  整形与 screen depth behavior（`font/default.json` bitmap provider 多页
-  glyph atlas 已完成，accented/非拉丁欧洲码点不再退化 `?`；unihex/unifont
-  因资产树无 unifont zip defer，CJK 仍退化 `?`；tooltip 官方
-  background/frame nine-slice sprite 与 count / durability / cooldown 均已
-  完成）。
-- creative inventory-tab preview（需要 creative screen state）与 entity
-  preview 实际 GPU PIP drawing（后续视觉渲染面）。
-- touchscreen snapback（宽面，按最小 slice 进入）。
+- vanilla font 剩余子项：`space` provider（`font/include/space.json`
+  advances，替换硬编码 space=4）→ 文本样式宽度/几何（bold +1 与二次描边、
+  italic shear、shadow 样式驱动，依据 `Font.java`/`BakedSheetGlyph.java`）。
+  unihex/CJK（资产树无 unifont zip）与 bidi 的 defer 判据见账本
+  "Vanilla Font Provider Coverage" 条目。
+- entity preview 实际 GPU PIP drawing：消费已 sanitize 的
+  `HudEntityPreview`（local/mount/smithing 三屏生产者已实时产出），新增
+  隔离 PIP target + GUI-ortho 实体绘制 + blit，登记 FRAME_STEPS step，
+  readback 测试锁定（2026-07-05 预探确认不 blocked）。
+- creative inventory-tab preview：blocked on creative-screen 基建（客户端
+  `CreativeModeInventoryScreen` 外壳 + `CreativeModeTabs` 物品目录均缺失；
+  玩家预览调用点零成本，随外壳落地折叠）。touchscreen snapback 判
+  not-needed（vanilla 100% 由 `Options.touchscreen` 门控而 bbb 无 touch
+  输入模式），判据记账本，不再列为开放项。
 
 完成标准：每个 item consumer 都以 vanilla `ItemDisplayContext`、display
 transform 和 renderer 源码为依据；GUI/world 使用不同 lighting context 时

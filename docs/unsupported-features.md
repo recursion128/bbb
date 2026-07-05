@@ -1420,8 +1420,12 @@ When an agent does any of the following, update this file in the same slice:
     GUI inventory cursor-carried item path, which now renders the world cursor
     stack as a floating GUI item at vanilla's non-dragging cursor offset and
     applies the vanilla quick-craft remainder count while drag-distributing
-    across multiple slots. Touchscreen split-stack and snapback animation remain
-    GUI follow-up.
+    across multiple slots. Touchscreen split-stack and snapback animation are
+    not-needed until a touchscreen input mode exists: vanilla gates both
+    entirely behind `Options.touchscreen` (`AbstractContainerScreen.java:336,
+    342, 411, 489`; snapback interpolation `:146-158`), and bbb has no touch
+    input mode or plan, so implementing them now would be dead code
+    (adjudicated 2026-07-05).
     `minecraft:component` is wired for the scalar / enum / simple literal
     custom-name component select subset listed above, and the condition form
     covers component-type / AnyValue,
