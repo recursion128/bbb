@@ -13,9 +13,11 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
+#[cfg(test)]
+use bbb_protocol::packets::ItemStackTemplateSummary;
 use bbb_protocol::packets::{
     ConsumableSummary, DataComponentPatchSummary, EquipmentSlot, InteractionHand, ItemStackSummary,
-    ItemStackTemplateSummary, ItemUseAnimationSummary, SwingAnimationTypeSummary,
+    ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
     allay_hand_attach_transform, bake_first_person_map_background_surface,
@@ -45,13 +47,16 @@ use crate::entity_scene::default_spear_kinetic_weapon_for_resource_id;
 use crate::map_textures::map_item_texture;
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
+#[cfg(test)]
 use bbb_protocol::entity_types::*;
 
 mod dropped;
 mod first_person;
 mod transforms;
 
+#[cfg(test)]
 use dropped::*;
+#[cfg(test)]
 use first_person::*;
 use transforms::*;
 

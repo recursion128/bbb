@@ -27,6 +27,7 @@ use super::{
     },
     ClientInputState,
 };
+#[cfg(test)]
 use bbb_protocol::entity_types::*;
 
 const USE_ITEM_REPEAT_DELAY_TICKS: u8 = 4;

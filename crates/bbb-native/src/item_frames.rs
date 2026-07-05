@@ -24,6 +24,7 @@ use crate::item_models::{display_matrix, item_stack_foil_mode};
 use crate::map_textures::{map_item_texture, MAP_SIZE};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
+#[cfg(test)]
 use bbb_protocol::entity_types::*;
 
 /// Vanilla `ItemFrameRenderer` pushes the framed item `0.4375` out of the visible frame surface toward

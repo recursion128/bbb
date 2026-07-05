@@ -175,6 +175,7 @@ fn alpha_transparency(alpha: u8) -> TerrainTransparency {
 }
 
 impl TerrainTextureState {
+    #[cfg(test)]
     pub(crate) fn from_layout(
         layout: &AtlasLayout,
         block_models: Option<BlockModelCatalog>,

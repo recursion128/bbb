@@ -16,6 +16,7 @@ use bbb_renderer::{
 
 use super::*;
 
+#[cfg(test)]
 pub(crate) fn lightmap_environment_for_world(
     world: &WorldStore,
     brightness_factor: f32,
@@ -30,6 +31,7 @@ pub(crate) fn lightmap_environment_for_world(
     )
 }
 
+#[cfg(test)]
 pub(crate) fn lightmap_environment_for_world_at_tick(
     world: &WorldStore,
     brightness_factor: f32,
@@ -121,6 +123,7 @@ pub(crate) fn particle_light_for_world(world: &WorldStore, position: [f64; 3]) -
     ]
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bool) -> ClearColor {
     clear_color_for_world_with_environment_colors(
         world,
@@ -130,6 +133,7 @@ pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bo
     )
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_world_at_camera(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -145,6 +149,7 @@ pub(crate) fn clear_color_for_world_at_camera(
     )
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_world_at_camera_with_render_distance(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -177,6 +182,7 @@ pub(crate) fn clear_color_for_world_at_camera_with_water_vision(
     )
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_world_with_environment_colors(
     world: &WorldStore,
     colors: CameraEnvironmentColors,

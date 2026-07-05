@@ -17,6 +17,7 @@ pub(crate) struct BlockOutlineTarget {
 }
 
 impl BlockOutlineTarget {
+    #[cfg(test)]
     pub(crate) fn full_block(material: TerrainMaterialClass) -> Self {
         Self {
             material,

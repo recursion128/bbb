@@ -1,5 +1,6 @@
 use super::*;
 
+#[cfg(test)]
 pub(super) fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
@@ -16,6 +17,7 @@ pub(super) fn entity_model_kind(
     )
 }
 
+#[cfg(test)]
 pub(super) fn entity_model_kind_with_registries(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],

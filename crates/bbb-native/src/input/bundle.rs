@@ -1,6 +1,8 @@
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{ContainerInput, SelectBundleItem};
+use bbb_protocol::packets::ContainerInput;
+#[cfg(test)]
+use bbb_protocol::packets::SelectBundleItem;
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::event::MouseScrollDelta;

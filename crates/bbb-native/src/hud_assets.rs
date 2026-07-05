@@ -855,6 +855,7 @@ fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
     SpriteImage::from_png_file(id, resource.path)
 }
 
+#[cfg(test)]
 fn rgba_len(width: u32, height: u32) -> Result<usize> {
     usize::try_from(width)
         .ok()
@@ -867,6 +868,7 @@ fn rgba_len(width: u32, height: u32) -> Result<usize> {
         .context("RGBA image size overflow")
 }
 
+#[cfg(test)]
 fn rgba_offset(width: u32, x: u32, y: u32) -> Result<usize> {
     if x >= width {
         bail!("RGBA x coordinate is outside image width");

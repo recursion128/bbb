@@ -5,9 +5,11 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     ContainerInput, ItemStackSummary, RenameItem, SelectTradeCommand, SetBeacon,
 };
+#[cfg(test)]
+use bbb_world::ItemEquipmentSlot;
 use bbb_world::{
-    ContainerClickBuildError, ContainerClickSlotRequest, ItemEquipmentSlot,
-    MountEquipmentSlotVisibility, MountInventoryKind, WorldStore,
+    ContainerClickBuildError, ContainerClickSlotRequest, MountEquipmentSlotVisibility,
+    MountInventoryKind, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -31,10 +33,11 @@ use bbb_item_model::NativeItemRuntime;
 
 mod layout;
 
+#[cfg(test)]
+pub(crate) use layout::local_inventory_slot_layouts;
 pub(crate) use layout::{
-    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id,
-    local_inventory_slot_layouts, InventoryScreenBackground, InventoryScreenLayout,
-    InventorySlotLayout,
+    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, InventoryScreenBackground,
+    InventoryScreenLayout, InventorySlotLayout,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;

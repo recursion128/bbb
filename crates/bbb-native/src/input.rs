@@ -574,6 +574,7 @@ fn book_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) {
     )
 }
 
+#[cfg(test)]
 pub(crate) fn handle_key_input(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -876,6 +877,7 @@ fn should_queue_start_fall_flying(
         && world.local_player_has_equipped_elytra()
 }
 
+#[cfg(test)]
 pub(crate) fn handle_text_input(
     input: &mut ClientInputState,
     counters: &mut NetCounters,

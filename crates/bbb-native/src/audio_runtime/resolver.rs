@@ -1,3 +1,4 @@
+#[cfg(test)]
 use std::sync::OnceLock;
 
 use bbb_audio::{
@@ -18,6 +19,7 @@ use thiserror::Error;
 use super::random::LegacyRandom;
 
 const MAX_SOUND_EVENT_DEPTH: usize = 32;
+#[cfg(test)]
 static VANILLA_JUKEBOX_REGISTRY: OnceLock<JukeboxSongRegistry> = OnceLock::new();
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -53,6 +55,7 @@ pub struct AudioCommandResolver<'a> {
 }
 
 impl<'a> AudioCommandResolver<'a> {
+    #[cfg(test)]
     pub fn new(catalog: &'a SoundCatalog, registry: &'a SoundEventRegistry) -> Self {
         Self::with_jukebox_registry(
             catalog,
@@ -62,6 +65,7 @@ impl<'a> AudioCommandResolver<'a> {
         )
     }
 
+    #[cfg(test)]
     pub fn with_volume_settings(
         catalog: &'a SoundCatalog,
         registry: &'a SoundEventRegistry,
@@ -136,6 +140,7 @@ impl<'a> AudioCommandResolver<'a> {
         }))
     }
 
+    #[cfg(test)]
     pub fn play_entity_sound(
         &self,
         state: &SoundEntityEventState,
@@ -385,6 +390,7 @@ impl<'a> AudioCommandResolver<'a> {
     }
 }
 
+#[cfg(test)]
 fn vanilla_jukebox_registry() -> &'static JukeboxSongRegistry {
     VANILLA_JUKEBOX_REGISTRY.get_or_init(JukeboxSongRegistry::vanilla_26_1)
 }

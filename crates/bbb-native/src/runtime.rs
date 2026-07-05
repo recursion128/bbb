@@ -114,6 +114,7 @@ const VANILLA_WEATHER_RAIN_CLOUD_GRAY_BRIGHTNESS: f32 = 0.24;
 const VANILLA_WEATHER_RAIN_CLOUD_GRAY_FACTOR: f32 = 0.5;
 const VANILLA_WEATHER_THUNDER_CLOUD_GRAY_BRIGHTNESS: f32 = 0.095;
 const VANILLA_WEATHER_THUNDER_CLOUD_GRAY_FACTOR: f32 = 0.94;
+#[cfg(test)]
 const VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS: f32 = 12.0;
 const VANILLA_SUNRISE_SUNSET_MIN_RENDER_DISTANCE_CHUNKS: u32 = 4;
 const VANILLA_DEFAULT_FOG_START_DISTANCE: f32 = 0.0;
@@ -525,6 +526,7 @@ impl LightmapTickState {
         }
     }
 
+    #[cfg(test)]
     fn advance(&mut self, ticks: u32) -> f32 {
         for _ in 0..ticks {
             self.tick();
@@ -2088,6 +2090,7 @@ fn merge_block_destroy_stage(
     }
 }
 
+#[cfg(test)]
 fn hotbar_item_icons(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -2102,6 +2105,7 @@ fn hotbar_item_icons(
     )
 }
 
+#[cfg(test)]
 fn hotbar_item_icons_with_extended_view(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -5623,6 +5627,7 @@ fn dimension_fog_color_for_kind(kind: VanillaLightmapDimensionKind) -> Option<[u
     }
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_day_time(
     day_time: i64,
     rain_level: f64,
@@ -5638,6 +5643,7 @@ pub(crate) fn clear_color_for_day_time(
     )
 }
 
+#[cfg(test)]
 fn clear_color_for_day_time_with_environment_colors(
     day_time: i64,
     rain_level: f64,
@@ -5887,6 +5893,7 @@ fn argb_scale_rgb(color: i32, red: f32, green: f32, blue: f32) -> i32 {
     )
 }
 
+#[cfg(test)]
 fn camera_biome_sky_color(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -5895,6 +5902,7 @@ fn camera_biome_sky_color(
     camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Sky)
 }
 
+#[cfg(test)]
 fn camera_biome_fog_color(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -5903,6 +5911,7 @@ fn camera_biome_fog_color(
     camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Fog)
 }
 
+#[cfg(test)]
 fn camera_biome_water_fog_color(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -5950,6 +5959,7 @@ fn camera_environment_colors(
     }
 }
 
+#[cfg(test)]
 fn camera_biome_rgb_color(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,

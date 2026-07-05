@@ -77,6 +77,7 @@ impl ParticleCommandResolver {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn resolve_level_particles(
         &mut self,
         packet: &LevelParticles,
@@ -249,6 +250,7 @@ impl ParticleCommandResolver {
         particle_level
     }
 
+    #[cfg(test)]
     pub(super) fn resolve_level_event_particles(
         &self,
         event: &LevelEvent,
