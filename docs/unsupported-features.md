@@ -236,14 +236,16 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Work the todo rows of the per-provider tracking table established
     2026-07-05 in the detail file (section "Per-provider tracking table"):
-    6 todo cells on 6 of 113 provider rows — 4 collision
-    (`[leaf-bounds]` FallingLeaves per-spawn size x3, `[wake-grow]` per-tick
-    wake growth x1) and 2 player-coupled (`[nearest-player]` PlayerCloud
-    pull); sounds and removal-gates have no open todo. The shared `[bounds]`
-    root cause (vanilla per-provider `setSize` collision AABBs vs the former
-    default 0.2x0.2) was closed by flipping its 24 rows — drip family 0.01,
-    rain / splash 0.01, bubble / bubble-column 0.02, soul and firefly 0.3 —
-    to `collision_size()` (down from the original 30 todo / 28 collision).
+    2 todo cells on 2 of 113 provider rows — both player-coupled
+    (`[nearest-player]` PlayerCloud + Sneeze pull toward the nearest of all
+    players); collision, sounds, and removal-gates have no open todo. The
+    shared `[bounds]` root cause (vanilla per-provider `setSize` collision
+    AABBs vs the former default 0.2x0.2) was closed by flipping its 24 rows —
+    drip family 0.01, rain / splash 0.01, bubble / bubble-column 0.02, soul and
+    firefly 0.3 — to `collision_size()`; the dynamic-collision-size slice then
+    cleared the last 4 collision todos (`[leaf-bounds]` FallingLeaves per-spawn
+    size x3 sized from the sampled `base_quad_size`, `[wake-grow]` per-tick wake
+    growth `life * 0.001`), down from the original 30 todo / 28 collision.
     Flip cells to `covered` with commit hashes as slices land; goal.md no
     longer duplicates the list.
   - Implement remaining renderer slices for provider-specific behavior,

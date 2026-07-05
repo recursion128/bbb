@@ -1260,6 +1260,57 @@ fn particle_runtime_wake_uses_collision_backed_move() {
 }
 
 #[test]
+fn particle_runtime_wake_grows_collision_size_each_tick() {
+    // WakeParticle.java:46-47: `float size = life * 0.001F; this.setSize(size,
+    // size);` with `life = 60 - this.lifetime`, applied every tick. In bbb
+    // `life = 60 - (lifetime_ticks - age_ticks)`, evaluated with the pre-increment
+    // age, so with lifetime 40 the first tick sees life 20 and each later tick
+    // adds one more 0.001 step.
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    let mut instance = test_instance_with_lifetime("minecraft:fishing", 40);
+    instance.velocity = [0.0, 0.0, 0.0];
+    instance.gravity = 0.0;
+    // Constructor `setSize(0.01F, 0.01F)` is the initial box (WakeParticle.java:20).
+    assert_eq!(instance.collision_width, 0.01);
+    assert_eq!(instance.collision_height, 0.01);
+    particles.active_instances.push_back(instance);
+
+    for age_before in 0..5u32 {
+        particles.advance(1);
+        let instance = &particles.active_instances()[0];
+        let life = 60 - (40 - age_before);
+        let expected = life as f32 * 0.001;
+        assert_close_f32(instance.collision_width, expected);
+        assert_close_f32(instance.collision_height, expected);
+    }
+}
+
+#[test]
+fn particle_runtime_wake_move_uses_previous_tick_grown_size() {
+    // The per-tick `setSize` trails `move` (WakeParticle.java:44 move, :46 setSize),
+    // so tick N's move must consume the box grown at the end of tick N-1: tick 1
+    // uses the constructor 0.01 box, tick 2 uses life(20) * 0.001 = 0.020.
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    let mut instance = test_instance_with_lifetime("minecraft:fishing", 40);
+    instance.position = [0.0, 5.0, 0.0];
+    instance.previous_position = instance.position;
+    instance.velocity = [0.0, -0.1, 0.0];
+    instance.gravity = 0.0;
+    instance.friction = 1.0;
+    particles.active_instances.push_back(instance);
+
+    let mut half_widths = Vec::new();
+    for _ in 0..2 {
+        particles.advance_with_collision(1, |query| {
+            half_widths.push(query.half_width);
+            query.movement
+        });
+    }
+    assert_close_f64(half_widths[0], 0.005);
+    assert_close_f64(half_widths[1], 0.010);
+}
+
+#[test]
 fn particle_runtime_campfire_smoke_drifts_up_and_fades_near_lifetime_end() {
     let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
     let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
@@ -2904,6 +2955,60 @@ fn particle_runtime_falling_leaves_removes_on_later_horizontal_collision() {
 
     assert_eq!(summary.expired_instances, 1);
     assert_eq!(summary.active_instances, 0);
+}
+
+#[test]
+fn particle_runtime_falling_leaves_collision_size_matches_per_spawn_quad_size() {
+    // FallingLeavesParticle.java:41-43: `float size = scale * (nextBoolean ? 0.05F
+    // : 0.075F); this.quadSize = size; this.setSize(size, size);`. bbb reuses the
+    // sampled `base_quad_size` for the collision box, so the two must stay in
+    // lockstep bit-for-bit and land on one of the two vanilla per-spawn choices.
+    // `scale` = 1.0 (Cherry) / 2.0 (PaleOak & Tinted).
+    for (particle_id, provider, scale) in [
+        (
+            "minecraft:cherry_leaves",
+            "FallingLeavesParticle.CherryProvider",
+            1.0_f32,
+        ),
+        (
+            "minecraft:pale_oak_leaves",
+            "FallingLeavesParticle.PaleOakProvider",
+            2.0,
+        ),
+        (
+            "minecraft:tinted_leaves",
+            "FallingLeavesParticle.TintedLeavesProvider",
+            2.0,
+        ),
+    ] {
+        let small = scale * 0.05;
+        let large = scale * 0.075;
+        let mut saw_small = false;
+        let mut saw_large = false;
+        for seed in 0..24 {
+            let instance = falling_leaves_instance(particle_id, seed);
+            assert_eq!(instance.provider, provider);
+            // Collision box tracks the sampled quad size exactly.
+            assert_eq!(instance.collision_width, instance.base_quad_size);
+            assert_eq!(instance.collision_height, instance.base_quad_size);
+            // And equals one of the two vanilla per-spawn `size` choices.
+            if instance.collision_width == small {
+                saw_small = true;
+            } else if instance.collision_width == large {
+                saw_large = true;
+            } else {
+                panic!(
+                    "{particle_id} seed {seed}: collision {} not in {{{small}, {large}}}",
+                    instance.collision_width
+                );
+            }
+        }
+        // The `nextBoolean` branch is genuinely per-spawn random: both sizes appear.
+        assert!(
+            saw_small && saw_large,
+            "{particle_id}: expected both per-spawn sizes"
+        );
+    }
 }
 
 #[test]

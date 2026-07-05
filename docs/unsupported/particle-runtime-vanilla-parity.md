@@ -1143,9 +1143,15 @@ Shared todo root causes (one slice may clear several rows):
 - `[leaf-bounds]`: FallingLeaves uses a per-spawn random size
   (`setSize(size, size)`, `size = scale * (0.05F | 0.075F)`,
   FallingLeavesParticle.java:41-43) — needs per-instance collision size, not
-  a static table entry.
+  a static table entry. RESOLVED (this slice): `from_spawn_command_*` sets the
+  collision box to the already-sampled `visual.base_quad_size` (= vanilla
+  `size`) for all three leaf providers, reusing the existing `nextBoolean`
+  draw so the spawn RNG sequence is unchanged.
 - `[wake-grow]`: WakeParticle re-sizes its collision box every tick
-  (`setSize(life * 0.001F)`, WakeParticle.java:46-47).
+  (`setSize(life * 0.001F)`, WakeParticle.java:46-47). RESOLVED (this slice):
+  the Wake tick arm updates `collision_width`/`collision_height` to
+  `life * 0.001` after `move`, so the growth trails the move exactly as in
+  vanilla (initial 0.01 box still comes from `collision_size()`).
 - `[nearest-player]`: PlayerCloudParticle pulls toward
   `level.getNearestPlayer(x, y, z, 2.0, false)` — the nearest of all
   players, not only the local one (PlayerCloudParticle.java:51-58); bbb
@@ -1194,9 +1200,9 @@ Shared todo root causes (one slice may clear several rows):
 | EndRodParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` override (EndRodParticle.java:22-25); in `moves_without_collision` |
 | ExplodeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; physics, gravity -0.1, friction 0.9 |
 | FallingDustParticle.Provider | covered | not-needed | not-needed | not-needed | custom tick move + `onGround` roll reset covered; spawn `INVISIBLE` rejection + tint covered; no removal gate in vanilla |
-| FallingLeavesParticle.CherryProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` per-spawn `setSize(size, size)` (0.05/0.075); `onGround` + horizontal-block removal + first-tick grace covered — removal is collision-driven, no state query |
-| FallingLeavesParticle.PaleOakProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15); rest as CherryProvider |
-| FallingLeavesParticle.TintedLeavesProvider | todo | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15); ARGB tint covered |
+| FallingLeavesParticle.CherryProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` per-spawn `setSize(size, size)` (0.05/0.075) now driven by the sampled `base_quad_size` in `from_spawn_command_*` (this slice); `onGround` + horizontal-block removal + first-tick grace covered — removal is collision-driven, no state query |
+| FallingLeavesParticle.PaleOakProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15) covered (this slice); rest as CherryProvider |
+| FallingLeavesParticle.TintedLeavesProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15) covered (this slice); ARGB tint covered |
 | FireflyParticle.FireflyProvider | covered | not-needed | not-needed | covered | `[bounds]` provider `scale(1.5F)` → `setSize(0.3F)` (FireflyParticle.java:94, Particle.java:77-80) now in `collision_size()` (this slice); generic move + non-air removal :50-51 covered |
 | FireworkParticles.FlashProvider | not-needed | not-needed | not-needed | not-needed | zero velocity, lifetime 4; overlay alpha/size covered |
 | FireworkParticles.SparkProvider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; SimpleAnimated physics via generic path; trail/twinkle children + fade covered; sounds live on the Starter row |
@@ -1259,7 +1265,7 @@ Shared todo root causes (one slice may clear several rows):
 | TrailParticle.Provider | not-needed | not-needed | not-needed | not-needed | tick lerps toward fixed target, no `move` |
 | TrialSpawnerDetectionParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics=true` (TrialSpawnerDetectionParticle.java:39), default bounds; LOOKAT_Y covered |
 | VibrationSignalParticle.Provider | not-needed | not-needed | not-needed | covered | no `move`; entity-target-missing removal :77-79 covered via native entity target context |
-| WakeParticle.Provider | todo | not-needed | not-needed | not-needed | `[wake-grow]` initial `setSize(0.01F)` covered (descriptors.rs:2051), but per-tick `setSize(life * 0.001F)` growth :46-47 not modeled |
+| WakeParticle.Provider | covered | not-needed | not-needed | not-needed | `[wake-grow]` initial `setSize(0.01F)` covered (descriptors.rs:2051) + per-tick `setSize(life * 0.001F)` growth :46-47 now applied after `move` in the Wake tick arm (this slice) |
 | WaterCurrentDownParticle.Provider | not-needed | not-needed | not-needed | covered | `hasPhysics=false` (WaterCurrentDownParticle.java:17) — the `onGround` half of :45 is dead in vanilla; non-water removal covered |
 | WaterDropParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (WaterDropParticle.java:16) now in `collision_size()` (this slice); move + `onGround` 50% removal + collision-shape/fluid-surface gate covered |
 | WhiteAshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (WhiteAshParticle.java:22) |
@@ -1269,16 +1275,17 @@ Shared todo root causes (one slice may clear several rows):
 | ItemPickupParticle (code-spawned) | not-needed | covered | not-needed | not-needed | follows target entity midpoint (ItemPickupParticle.java:45-49); covered incl. 3-tick lifetime and quadratic extract |
 
 Row and cell counts (2026-07-05; collision counts updated after the
-`[bounds]` slice):
+dynamic-collision-size slice cleared `[leaf-bounds]` + `[wake-grow]`):
 
 - 113 rows: 110 distinct provider classes registered by vanilla 26.1
   `ParticleResources.registerProviders()` (lines 56-172; 117 registrations
   minus 7 duplicate-class registrations) plus 3 code-spawned particles
   (`TrackingEmitter`, `FireworkParticles.Starter`, `ItemPickupParticle`).
-- collision: 52 covered / 57 not-needed / 4 todo (the `[bounds]` slice flipped
-  24 rows: 17 drip + rain/splash + bubble/bubble-column + soul x2 + firefly;
-  the remaining 4 collision `todo` rows are 3 `[leaf-bounds]` + 1 `[wake-grow]`)
+- collision: 56 covered / 57 not-needed / 0 todo (the dynamic-collision-size
+  slice flipped the last 4: 3 `[leaf-bounds]` leaf providers now sized from the
+  sampled `base_quad_size`, and `[wake-grow]` Wake now grows `life * 0.001`
+  per tick)
 - player-coupled: 6 covered / 105 not-needed / 2 todo
 - sounds: 4 covered / 109 not-needed / 0 todo
 - removal-gates: 18 covered / 95 not-needed / 0 todo
-- 6 todo cells on 6 distinct rows (4 collision + 2 player-coupled).
+- 2 todo cells on 2 distinct rows (both `[nearest-player]` player-coupled).

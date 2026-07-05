@@ -157,10 +157,21 @@ impl ParticleInstance {
         } else {
             descriptor.color_fade_target()
         };
-        let [collision_width, collision_height] = descriptor.collision_size().unwrap_or([
-            DEFAULT_PARTICLE_COLLISION_WIDTH,
-            DEFAULT_PARTICLE_COLLISION_HEIGHT,
-        ]);
+        // `FallingLeavesParticle` sizes its collision AABB to the same per-spawn
+        // random `size` it uses for `quadSize`: `setSize(size, size)` with
+        // `size = scale * (this.random.nextBoolean() ? 0.05F : 0.075F)`
+        // (FallingLeavesParticle.java:41-43; `scale` = 1.0 Cherry / 2.0 PaleOak &
+        // Tinted). `visual.base_quad_size` already holds that sampled `size`, so
+        // reuse it here — no extra random draw, so the spawn RNG sequence is
+        // unchanged.
+        let [collision_width, collision_height] = if falling_leaves.is_some() {
+            [visual.base_quad_size, visual.base_quad_size]
+        } else {
+            descriptor.collision_size().unwrap_or([
+                DEFAULT_PARTICLE_COLLISION_WIDTH,
+                DEFAULT_PARTICLE_COLLISION_HEIGHT,
+            ])
+        };
         let item_pickup_target = if command.particle_id == ITEM_PICKUP_PARTICLE_ID {
             command.option_target.or(Some(position))
         } else {
@@ -562,6 +573,14 @@ impl ParticleInstance {
                 self.velocity[0] *= friction;
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
+                // `WakeParticle` grows its collision AABB every tick, applied
+                // AFTER `move`: `float size = life * 0.001F; this.setSize(size, size);`
+                // (WakeParticle.java:46-47). Because the update trails the move,
+                // this tick's move used the previous (grown-so-far) size and the
+                // next tick sees the box grown by one more `0.001 * life` step.
+                let size = life as f32 * 0.001;
+                self.collision_width = size;
+                self.collision_height = size;
                 if let Some(index) = sprite_index_for_age(self.sprite_ids.len(), life % 4, 4) {
                     self.current_sprite_index = Some(index);
                     self.current_sprite_id = self.sprite_ids.get(index).cloned();

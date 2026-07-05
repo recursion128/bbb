@@ -3345,6 +3345,24 @@
     `collision_size_matches_vanilla_provider_set_size` 覆盖每档尺寸 + campfire/
     wake 不回归。追踪表 24 行 collision `todo`→`covered`（30→6 todo：剩 3
     `[leaf-bounds]` + 1 `[wake-grow]` + 2 `[nearest-player]`）。
+  - [x] 2026-07-05 动态碰撞尺寸 slice 完成（清 `[leaf-bounds]` + `[wake-grow]`）：
+    把碰撞尺寸从纯静态查表扩展为支持 per-spawn / per-tick 两种动态形态，机制改动
+    集中在 instance.rs（未重构 descriptor 体系）。per-spawn：FallingLeaves
+    Cherry/PaleOak/Tinted 三 provider 的 `setSize(size,size)`（`size = scale *
+    (nextBoolean ? 0.05F : 0.075F)`，FallingLeavesParticle.java:41-43）在
+    `from_spawn_command_*` 直接复用已采样的 `visual.base_quad_size`（= vanilla
+    `size`）写入 `collision_width/height`，不新增随机抽取，spawn RNG 序不变。
+    per-tick：Wake tick arm 在 `move` 之后按 `life * 0.001`（`life = 60 -
+    (lifetime_ticks - age_ticks)`，WakeParticle.java:46-47）更新碰撞箱，增长滞后
+    于 move——本 tick 的 move 用上一步尺寸，与 vanilla move-then-setSize 顺序一致；
+    初始 0.01 仍由 `collision_size()` 提供。新增 3 个确定性测试：
+    `particle_runtime_falling_leaves_collision_size_matches_per_spawn_quad_size`
+    （固定 seed 断言 collision==base_quad_size 且落在两档 vanilla 尺寸、两档都出现）、
+    `particle_runtime_wake_grows_collision_size_each_tick`（断言 tick N 尺寸序列
+    = life*0.001）、`particle_runtime_wake_move_uses_previous_tick_grown_size`
+    （断言 move 用滞后一 tick 的尺寸：tick1 half_width 0.005 → tick2 0.010）；既有
+    collision 测试不回归。追踪表最后 4 个 collision `todo`→`covered`（6→2 todo：
+    仅剩 2 `[nearest-player]` player-coupled）。
 
 ## P2：Terrain / Block Render Presentation
 
