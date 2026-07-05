@@ -527,6 +527,7 @@ pub(super) fn item_pickup_particle_render_states<'a>(
             Some(ItemPickupParticleRenderState {
                 source_entity_id,
                 item,
+                component_patch: instance.option_item_pickup_component_patch.clone(),
                 position: [position[0] as f32, position[1] as f32, position[2] as f32],
                 age_ticks: instance
                     .option_item_pickup_age_ticks

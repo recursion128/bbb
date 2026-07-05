@@ -877,6 +877,7 @@ impl ParticleCommandResolver {
             option_item_pickup_age_ticks: None,
             option_item_pickup_light: None,
             option_item_pickup_experience_orb_icon: None,
+            option_item_pickup_component_patch: None,
             option_firework_trail: false,
             option_firework_twinkle: false,
             option_firework_half_lifetime_age: false,

@@ -335,6 +335,47 @@ fn particle_runtime_item_pickup_tracks_target_midpoint_and_expires_on_third_tick
 }
 
 #[test]
+fn particle_runtime_item_pickup_round_trips_opaque_component_patch() {
+    // The pickup channel carries the picked-up stack's serialized
+    // DataComponentPatchSummary as an opaque blob so the native bake can rebuild
+    // the component-rich stack after the renderer owns the target
+    // interpolation. The renderer must round-trip the payload byte-for-byte
+    // through command -> instance -> render state without inspecting it.
+    let patch_bytes: Vec<u8> = vec![7, 42, 255, 0, 13];
+    let mut command = item_pickup_spawn_command();
+    command.option_item_pickup_component_patch = Some(patch_bytes.clone());
+
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    particles.submit_batch(ParticleSpawnBatch {
+        commands: vec![command],
+        ..ParticleSpawnBatch::default()
+    });
+    particles.advance(0);
+
+    let instance = &particles.active_instances()[0];
+    assert_eq!(
+        instance.option_item_pickup_component_patch,
+        Some(patch_bytes.clone())
+    );
+
+    particles.advance_with_world_and_particle_contexts(
+        1,
+        |query| query.movement,
+        |_| ParticleBlockFluidSurfaceSample::default(),
+        None,
+        &[],
+        &[ParticleEntityTargetContext {
+            entity_id: 20,
+            position: [6.0, 71.0, -4.0],
+        }],
+    );
+
+    let render_states = item_pickup_particle_render_states(particles.active_instances().iter());
+    assert_eq!(render_states.len(), 1);
+    assert_eq!(render_states[0].component_patch, Some(patch_bytes));
+}
+
+#[test]
 fn particle_runtime_item_pickup_extracts_experience_orb_render_state() {
     let mut command = item_pickup_spawn_command();
     command.option_item = None;
@@ -6619,6 +6660,7 @@ fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> Partic
         option_item_pickup_age_ticks: None,
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
+        option_item_pickup_component_patch: None,
         firework_trail: false,
         firework_twinkle: false,
         item_pickup_previous_target: None,
@@ -6658,6 +6700,7 @@ fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
         option_item_pickup_age_ticks: None,
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
+        option_item_pickup_component_patch: None,
         option_firework_trail: false,
         option_firework_twinkle: false,
         option_firework_half_lifetime_age: false,

@@ -97,6 +97,13 @@ pub struct ParticleSpawnCommand {
     pub option_item_pickup_light: Option<[f32; 2]>,
     #[serde(default)]
     pub option_item_pickup_experience_orb_icon: Option<i32>,
+    /// Opaque, serialized `DataComponentPatchSummary` bytes for the picked-up
+    /// item stack. The renderer never inspects this payload (it cannot name the
+    /// protocol summary types); it round-trips the blob so the native
+    /// item-pickup bake can rebuild the component-rich stack after the renderer
+    /// owns the target interpolation. `None` for empty/default patches.
+    #[serde(default)]
+    pub option_item_pickup_component_patch: Option<Vec<u8>>,
     #[serde(default)]
     pub option_firework_trail: bool,
     #[serde(default)]
@@ -213,10 +220,15 @@ pub struct ParticleItemOptionState {
     pub component_patch_len: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ItemPickupParticleRenderState {
     pub source_entity_id: i32,
     pub item: ParticleItemOptionState,
+    /// Opaque, serialized `DataComponentPatchSummary` bytes carried through the
+    /// pickup channel. The renderer treats it as an uninterpreted blob; the
+    /// native bake deserializes it to rebuild the component-rich stack. `None`
+    /// for empty/default patches.
+    pub component_patch: Option<Vec<u8>>,
     pub position: [f32; 3],
     pub age_ticks: f32,
     pub light: [f32; 2],
@@ -411,6 +423,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_item_pickup_light: Option<[f32; 2]>,
     #[serde(default)]
     pub(crate) option_item_pickup_experience_orb_icon: Option<i32>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_component_patch: Option<Vec<u8>>,
     #[serde(default)]
     pub(crate) firework_trail: bool,
     #[serde(default)]

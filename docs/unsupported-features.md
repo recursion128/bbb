@@ -710,8 +710,13 @@ When an agent does any of the following, update this file in the same slice:
         `ParticleResources.registerProviders()` id list and reject any entry
         that falls back to generic `Particle`; remaining particle gaps are
         terrain/item atlas rendering, world-coupled collision/tint, LevelEvent
-        branches, or the remaining component-rich / generic entity branches of
-        `ItemPickupParticle` carried-entity submit.
+        branches, or the generic carried-entity branch of `ItemPickupParticle`
+        submit (arrow/trident flash, moved to the P1-2 entity-renderer queue).
+        The component-rich item-stack branch is done: the picked-up stack's
+        already-decoded `DataComponentPatchSummary` rides the pickup channel as
+        an opaque blob and the native bake reuses the dropped-item GROUND
+        projection, so the pickup carried bake is byte-identical to the
+        dropped-item bake for the same stack.
       - particle descriptors map `ElderGuardianParticle.Provider` to
         definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
         aux/motion/gravity provider metadata, translucent

@@ -556,13 +556,24 @@ pub(crate) fn item_pickup_particle_item_models(
     };
 
     for state in states {
-        if state.item.component_patch_len != 0 || state.item.item_id < 0 || state.item.count <= 0 {
+        if state.item.item_id < 0 || state.item.count <= 0 {
             continue;
         }
+        // Rebuild the component-rich stack from the opaque patch the pickup
+        // channel round-tripped through the renderer. The bytes are the
+        // `DataComponentPatchSummary` that `ClientboundTakeItemEntity` already
+        // decoded (serialized in `pickup_item_component_patch_bytes`); this is a
+        // serde round-trip, not a second wire decode. `None` means the empty
+        // default patch, matching the dropped-item bake for a plain stack.
+        let component_patch = state
+            .component_patch
+            .as_deref()
+            .and_then(|bytes| serde_json::from_slice::<DataComponentPatchSummary>(bytes).ok())
+            .unwrap_or_default();
         let stack = ItemStackSummary {
             item_id: Some(state.item.item_id),
             count: state.item.count,
-            component_patch: Default::default(),
+            component_patch,
         };
         let count = rendered_amount(stack.count);
         let seed = state.item.item_id as i64;

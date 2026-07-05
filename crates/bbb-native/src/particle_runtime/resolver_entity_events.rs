@@ -90,6 +90,10 @@ impl ParticleCommandResolver {
                 option_item_pickup_age_ticks: Some(state.item_age_ticks),
                 option_item_pickup_light: Some(particle_shader_light(state.item_light)),
                 option_item_pickup_experience_orb_icon: state.experience_orb_icon,
+                option_item_pickup_component_patch: state
+                    .item_stack
+                    .as_ref()
+                    .and_then(pickup_item_component_patch_bytes),
                 option_firework_trail: false,
                 option_firework_twinkle: false,
                 option_firework_half_lifetime_age: false,

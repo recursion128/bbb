@@ -612,6 +612,19 @@ fn particle_item_option_state_for_stack(
     })
 }
 
+/// Serializes the picked-up stack's `DataComponentPatchSummary` for carriage
+/// through the renderer's item-pickup channel. The renderer never inspects the
+/// payload (it cannot name protocol summary types), so this reuses the
+/// component summary that `ClientboundTakeItemEntity` already decoded — no
+/// second wire decode. `None` for empty/default patches, which the native bake
+/// reconstructs as `DataComponentPatchSummary::default()`.
+fn pickup_item_component_patch_bytes(stack: &ItemStackSummary) -> Option<Vec<u8>> {
+    if stack.component_patch == Default::default() {
+        return None;
+    }
+    serde_json::to_vec(&stack.component_patch).ok()
+}
+
 fn particle_shader_light(light: TerrainLight) -> [f32; 2] {
     [
         light.block.min(15) as f32 / 15.0,

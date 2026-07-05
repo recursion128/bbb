@@ -53,8 +53,20 @@
         vanilla `ExperienceOrbRenderState.icon`, the orb renderer's `+7`
         block-light rule, frozen age, and draw the 16x16 icon from
         `textures/entity/experience/experience_orb.png` through the same
-        `ITEM_PICKUP` group. Component-rich item stacks and generic carried
-        `EntityRenderState` submit remain deferred GPU entity-submit slices.
+        `ITEM_PICKUP` group. Component-rich item stacks now bake through the
+        pickup channel too: native serializes the picked-up
+        `DataComponentPatchSummary` (already decoded by
+        `ClientboundTakeItemEntity`, no second wire decode) as an opaque blob on
+        `option_item_pickup_component_patch`, the renderer round-trips it
+        command -> instance -> `ItemPickupParticleRenderState` without inspecting
+        it, and the native bake rebuilds the component-rich stack to reuse the
+        exact dropped-item GROUND projection (`item_display_transform_for_stack`
+        / `generated_item_layers_for_stack_with_registry_context`), so the pickup
+        carried bake is byte-identical to the dropped-item bake for the same
+        stack (ITEM_MODEL / custom_model_data / damage / block_state_properties
+        driven models). Generic carried `EntityRenderState` submit (the
+        arrow/trident 3-tick flash) is the remaining deferred GPU entity-submit
+        slice, moved to the P1-2 entity-renderer queue (goal.md f184f598).
       - Ravager entity event `69` now emits vanilla roar `minecraft:poof`
         particles: 40 commands at the ravager AABB center with gaussian
         velocity scaled by `0.2`, preserving the particle type's
@@ -361,8 +373,15 @@
       cluster bake. Experience-orb carried models now draw in the same
       `ITEM_PICKUP` group with captured icon, frozen age, the orb renderer's
       `+7` block-light rule, and the vanilla 64x64 experience-orb texture
-      atlas subdivisions. Component-rich item stacks and generic carried entity
-      render-state submission remain deferred.
+      atlas subdivisions. Component-rich item stacks now also draw in the pickup
+      target: the picked-up stack's `DataComponentPatchSummary` (already decoded
+      by `ClientboundTakeItemEntity`) rides the pickup channel as an opaque blob
+      that the renderer round-trips without inspecting, and the native bake
+      rebuilds the stack to reuse the dropped-item GROUND projection, making the
+      pickup carried bake byte-identical to the dropped-item bake for the same
+      component-rich stack. Only the generic carried `EntityRenderState` submit
+      (arrow/trident flash) remains deferred, moved to the P1-2 entity-renderer
+      queue.
       Native ravager event `69` now emits the vanilla roar `minecraft:poof`
       burst from the ravager AABB center with gaussian `0.2` velocity and
       applies the vanilla local-authoritative roar knockback to the local player

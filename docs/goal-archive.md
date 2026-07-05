@@ -2943,6 +2943,21 @@
   `entityTranslucentCullItemTarget` 形状在同一 `ITEM_PICKUP` group 绘制。剩余
   carried submit 是 component-rich item stack 和更通用 `EntityRenderState`
   entity-submit parity。
+- 2026-07-05 P1-5 收尾 slice：component-rich item stack 的 pickup carried bake
+  已完成。被捡起的 stack 由 `ClientboundTakeItemEntity` 早已解码出的
+  `DataComponentPatchSummary` 提供（不新增第二份 wire decode），native 把它序列化
+  成不透明字节挂在 pickup 专用字段 `option_item_pickup_component_patch` 上；
+  `ParticleItemOptionState` 保持 `Copy` 不动（level-particle 的 `minecraft:item`
+  option 调用面零扰动），renderer 只把该 blob 原样过 command -> instance ->
+  `ItemPickupParticleRenderState` 而从不解读它（bbb-renderer 无 bbb-protocol
+  依赖）；native bake 反序列化重建 component-rich stack，复用与 dropped item
+  完全相同的 GROUND 投影（`item_display_transform_for_stack` /
+  `generated_item_layers_for_stack_with_registry_context`）。确定性测试断言同一
+  component-rich stack（ITEM_MODEL 覆盖样本）的 pickup carried bake mesh 输出
+  与 dropped-item bake 逐字节相等，并断言去掉 patch 后 mesh 变化以证明 patch
+  确被消费；renderer 侧另加 patch 过 command -> instance -> render state 的
+  round-trip 测试。generic `EntityRenderState` submit（捡箭/三叉戟 3-tick 闪现）
+  已移居 P1-2 entity-renderer 队列。
 
 ### 2026-07-05 迁入：粒子 provider-specific behavior / sorting 完成史（含当时的排除式剩余清单，仅作历史存档）
 

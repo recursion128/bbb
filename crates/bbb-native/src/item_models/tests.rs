@@ -3742,6 +3742,7 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
             count: 18,
             component_patch_len: 0,
         },
+        component_patch: None,
         position: [1.25, 65.5, -3.0],
         age_ticks: 9.5,
         light: [6.0 / 15.0, 12.0 / 15.0],
@@ -3755,14 +3756,87 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
         None,
         None,
     );
-    let skipped = item_pickup_particle_item_models(
-        &[ItemPickupParticleRenderState {
-            item: ParticleItemOptionState {
-                component_patch_len: 1,
-                ..state.item
-            },
-            ..state
+
+    assert!(models.block_meshes.is_empty());
+    assert_eq!(models.flat_meshes.len(), 1);
+    assert!(!models.flat_meshes[0].is_empty());
+    assert!(models.handled_entity_ids.is_empty());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
+    // A component-rich pickup stack must bake through the SAME item-model
+    // projection as a dropped item entity. Here the ITEM_MODEL component
+    // overrides the root model (vanilla `ItemModelResolver.appendItemLayers`),
+    // so the resolved item texture differs from the plain item. With identical
+    // geometry inputs (position / age / entity id / light / count / seed) the
+    // pickup carried bake must be byte-identical to the dropped-item bake.
+    const ITEM_ENTITY_DATA_ITEM_STACK_ID: u8 = 8;
+    const ENTITY_ID: i32 = 555;
+    const POSITION: [f32; 3] = [0.0, 64.0, 0.0];
+    const AGE_TICKS: f32 = 9.5;
+    const COUNT: i32 = 1;
+
+    let root = unique_item_model_temp_dir("item-pickup-component-rich");
+    write_flat_item_runtime_fixture(&root, &["pickup_tool", "override_skin"]);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let item_id = item_runtime
+        .item_protocol_id("minecraft:pickup_tool")
+        .expect("fixture item registered");
+
+    // ITEM_MODEL override -> the resolved icon uses `override_skin`'s atlas rect
+    // instead of `pickup_tool`'s, changing the baked mesh.
+    let component_patch = DataComponentPatchSummary {
+        item_model: Some("minecraft:override_skin".to_string()),
+        ..DataComponentPatchSummary::default()
+    };
+    let stack = ItemStackSummary {
+        item_id: Some(item_id),
+        count: COUNT,
+        component_patch: component_patch.clone(),
+    };
+
+    // Dropped-item bake: a real item entity carrying the component-rich stack.
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(ENTITY_ID, VANILLA_ENTITY_TYPE_ITEM_ID));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: ENTITY_ID,
+        values: vec![EntityDataValue {
+            data_id: ITEM_ENTITY_DATA_ITEM_STACK_ID,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(stack.clone()),
         }],
+    }));
+    let dropped = dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        AGE_TICKS,
+        None,
+        None,
+        None,
+    );
+
+    // Pickup carried bake: the same stack rebuilt from the opaque patch bytes
+    // the pickup channel round-tripped through the renderer, with geometry
+    // inputs aligned to the dropped item entity.
+    let patch_bytes = serde_json::to_vec(&component_patch).expect("serialize component patch");
+    let component_rich_state = ItemPickupParticleRenderState {
+        source_entity_id: ENTITY_ID,
+        item: ParticleItemOptionState {
+            item_id,
+            count: COUNT,
+            component_patch_len: 1,
+        },
+        component_patch: Some(patch_bytes),
+        position: POSITION,
+        age_ticks: AGE_TICKS,
+        light: [1.0, 1.0],
+    };
+    let pickup = item_pickup_particle_item_models(
+        &[component_rich_state.clone()],
         Some(&item_runtime),
         &TerrainTextureState::default(),
         None,
@@ -3770,11 +3844,38 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
         None,
     );
 
-    assert!(models.block_meshes.is_empty());
-    assert_eq!(models.flat_meshes.len(), 1);
-    assert!(!models.flat_meshes[0].is_empty());
-    assert!(models.handled_entity_ids.is_empty());
-    assert!(skipped.flat_meshes.is_empty());
+    assert!(dropped.block_meshes.is_empty());
+    assert_eq!(dropped.flat_meshes.len(), 1);
+    assert!(!dropped.flat_meshes[0].is_empty());
+    // Equality: the component-rich pickup bake matches the dropped-item bake.
+    assert_eq!(pickup.block_meshes, dropped.block_meshes);
+    assert_eq!(pickup.flat_meshes, dropped.flat_meshes);
+    assert_eq!(
+        pickup.flat_translucent_meshes,
+        dropped.flat_translucent_meshes
+    );
+
+    // Consumption proof: dropping the patch selects `pickup_tool`'s own model,
+    // producing a different mesh -- so the patch demonstrably drives the bake.
+    let plain_state = ItemPickupParticleRenderState {
+        component_patch: None,
+        item: ParticleItemOptionState {
+            component_patch_len: 0,
+            ..component_rich_state.item
+        },
+        ..component_rich_state
+    };
+    let plain = item_pickup_particle_item_models(
+        &[plain_state],
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        None,
+        None,
+    );
+    assert_eq!(plain.flat_meshes.len(), 1);
+    assert_ne!(pickup.flat_meshes, plain.flat_meshes);
+
     std::fs::remove_dir_all(root).unwrap();
 }
 

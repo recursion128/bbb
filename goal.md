@@ -223,10 +223,6 @@ particle-target carried submit 完成史）。
 2026-07-05 建表并清零全部 30 个 todo——collision/player-coupled/sounds/
 removal-gates 四维已收敛，新增缺口按表头流程先加行再立 slice）：
 
-- carried submit：component-rich item stack 的 pickup carried bake（patch
-  已全量解码、item-model 投影已可消费，缺口是 pickup 通道三处 plumbing——
-  见账本 ItemPickupParticle 条目）。generic `EntityRenderState` submit
-  （捡箭/三叉戟闪现）已确认属实体渲染大面，移居 P1-2 队列。
 - 透明排序：跨 target 的 translucent 粒子/对象排序差异按最小 slice 审计
   进入（当前无已知 blocker，audit 发现即立项）。
 

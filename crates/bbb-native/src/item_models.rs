@@ -14,8 +14,8 @@ use std::{
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{
-    ConsumableSummary, EquipmentSlot, InteractionHand, ItemStackSummary, ItemStackTemplateSummary,
-    ItemUseAnimationSummary, SwingAnimationTypeSummary,
+    ConsumableSummary, DataComponentPatchSummary, EquipmentSlot, InteractionHand, ItemStackSummary,
+    ItemStackTemplateSummary, ItemUseAnimationSummary, SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
     allay_hand_attach_transform, bake_first_person_map_background_surface,
