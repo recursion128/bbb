@@ -419,6 +419,53 @@ When an agent does any of the following, update this file in the same slice:
   - Backend GPU resources stay outside `WorldStore`.
 - Detailed per-slice history: docs/unsupported/renderer-scene-parity.md
 
+### Terrain Block Presentation Parity
+
+- Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
+- Status: `partial`
+- Next action (2026-07-05 entry audit; the umbrella claims in goal.md P2 were
+  re-verified and most surfaces are already aligned — see Evidence):
+  - Biome color blending radius: per-cell tints are single-biome lookups
+    (`terrain_runtime.rs` passes one `biome_id` per cell;
+    `terrain_runtime/textures.rs` `grass_tint`/foliage/`water_tint` are point
+    queries) with no `biomeBlendRadius` (default 2, 5×5) neighborhood
+    averaging per vanilla `BiomeColors.getAverage*Color` /
+    `Level.getBlockTint` — biome borders show hard color seams.
+  - Breaking crack decal shape: `block_destroy.rs` always emits a unit cube
+    (`DESTROY_OVERLAY_FACES`) regardless of the block's render shape; vanilla
+    `BlockRenderDispatcher.renderBreakingTexture` re-renders the model's own
+    faces with the crumbling texture. First step: consume the cell's
+    `TerrainRenderShape` faces (Box/Boxes first).
+  - Per-face occlusion-shape culling: only fully-opaque cube neighbors cull
+    faces (`terrain.rs` `occludes_terrain` = `Opaque`); vanilla
+    `Block.shouldRenderFace` matches per-face occlusion shapes
+    (`Shapes.blockOccludes`), so adjacent non-full blocks (slabs, stairs)
+    keep hidden faces. First step: full-face occlusion for slab/stairs
+    top/bottom faces.
+  - Block-entity special renderers (chest, sign text, banner, bell, shulker
+    box, bed, conduit, …): no BER surface exists at all; these blocks bake
+    particle-only models into near-empty terrain geometry. Vanilla:
+    `BlockEntityRenderDispatcher` + per-BE renderers. Large umbrella — enter
+    by smallest sub-slice (chest via the existing entity-model pipeline, or
+    sign text via the HUD font map); audit the `Custom`→`Cube` shape
+    fallback (`block_models/shape.rs` → `textures.rs`) alongside, since
+    unclassifiable elements are mostly BE-driven models.
+- Evidence / boundary:
+  - Verified aligned on 2026-07-05 (no code gap): vanilla four-corner AO +
+    smooth lighting (`terrain/mesh/emitter.rs` per
+    `ModelBlockRenderer.AmbientOcclusionCalculator`), face culling between
+    cells, model-JSON render shapes via `bbb-pack` blockstate/model baking
+    (multipart, weighted variants, rotations, uvlock), fluid side overlays
+    and inverted backfaces, selection outline (vanilla view-offset layering,
+    alpha 102, LINES depth semantics, non-cube shapes from `block_outline/`),
+    translucent sorting both within sections (camera resort with index
+    re-upload) and across sections (back-to-front order), and atlas state:
+    terrain = 4 mip levels + Nearest/Nearest/Linear-mip samplers
+    (`TextureAtlas` blur=false mipmap=true), entity atlas = 1 level all-
+    Nearest (vanilla entity textures are not mipmapped), lightmap =
+    Linear/Linear (`LightTexture`). This asymmetry is vanilla-correct.
+- Detailed audit anchors live in the 2026-07-05 goal-archive P2 entry.
+
 ### Audio Runtime Parity
 
 - Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
