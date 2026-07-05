@@ -922,6 +922,337 @@ fn first_person_player_arm_submits_selected_arm_as_entity_translucent() {
     assert_ne!(bare.translucent.vertices, sleeved.translucent.vertices);
 }
 
+/// End-to-end GPU proof of the player-arm content of [`crate::render`]'s `first_person_item_pass`:
+/// bakes the real first-person right-arm translucent mesh (`first_person_player_arm_textured_meshes`,
+/// the exact geometry the pass draws) in front of a fixed perspective first-person camera, renders it
+/// through the real [`create_entity_model_translucent_pipeline`] + entity texture atlas + lightmap (the
+/// pass's `entity_model_translucent_pipeline` path), reads the framebuffer back, and asserts the arm's
+/// projected centroid shows the arm's texture colour while a far corner stays background — the
+/// remaining first-person sentinel state (2). Skips (no assertion) when no GPU adapter is available.
+#[test]
+fn first_person_player_arm_renders_visible_pixels() {
+    use wgpu::util::DeviceExt;
+
+    use crate::camera::{CameraPose, CameraUniform, LightmapEnvironment};
+    use crate::entity_models::gpu::create_entity_model_translucent_pipeline;
+    use crate::gpu::{create_camera_buffer, create_depth_target, create_terrain_bind_group_layout};
+    use crate::lightmap::{
+        create_lightmap_bind_group_layout, create_lightmap_gpu,
+        create_lightmap_sample_bind_group_layout,
+    };
+
+    const WIDTH: u32 = 320;
+    const HEIGHT: u32 = 240;
+    // Non-sRGB target so the readback bytes are the shader's linear output verbatim. `320 * 4 = 1280`
+    // is a multiple of 256, so the texture-to-buffer copy needs no row padding.
+    const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::PRIMARY,
+        ..Default::default()
+    });
+    let Some(adapter) =
+        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))
+    else {
+        // No GPU / software adapter on this machine — skip rather than fail the suite.
+        return;
+    };
+    let Ok((device, queue)) = pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            label: Some("bbb-first-person-arm-test-device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::downlevel_defaults(),
+        },
+        None,
+    )) else {
+        return;
+    };
+
+    // Fixed first-person camera looking straight down +Z (yaw = pitch = 0); `CameraUniform::from_pose`
+    // is the exact perspective `view_proj` the first-person pass uploads, and `camera_world =
+    // view.inverse()` mirrors `first_person_camera_world_transform` in bbb-native.
+    let aspect = WIDTH as f32 / HEIGHT as f32;
+    let pose = CameraPose {
+        position: [0.0, 64.0, 0.0],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    };
+    let camera_uniform = CameraUniform::from_pose(pose, aspect);
+    let view_proj = camera_uniform.view_proj();
+    let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
+    let camera_world = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y).inverse();
+
+    // Entity texture atlas filled with opaque green in the WideSteve skin slot, so the arm's textured
+    // faces sample an unambiguous, non-background colour (the shipped `steve` test images are a
+    // transparent 0-fill, which would render nothing). The atlas layout drives the real arm mesh baker.
+    let green = |texture: EntityModelTextureRef| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        let mut rgba = vec![0u8; len];
+        for pixel in rgba.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[0, 255, 0, 255]);
+        }
+        EntityModelTextureImage::new(texture, rgba)
+    };
+    let images = [
+        green(PLAYER_WIDE_STEVE_TEXTURE_REF),
+        green(PLAYER_SLIM_STEVE_TEXTURE_REF),
+    ];
+    let (atlas_layout, atlas_rgba) =
+        build_entity_model_texture_atlas(&images).expect("entity atlas");
+
+    // Probe the real right-arm mesh at identity to find its model-space centroid, then seat that
+    // centroid a fixed offset in front of the camera (`camera_world * T(view_offset)`, scaled down): the
+    // arm anchor is derived from the mesh, not guessed. `first_person_player_arm_textured_meshes` is the
+    // exact production baker the renderer feeds into the first-person pass.
+    let arm = FirstPersonPlayerArm {
+        left: false,
+        skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        sleeve_visible: false,
+        transform: Mat4::IDENTITY,
+        light: [1.0, 1.0],
+    };
+    let probe = first_person_player_arm_textured_meshes(&[arm], &atlas_layout, None);
+    assert!(
+        !probe.translucent.vertices.is_empty(),
+        "arm mesh has geometry"
+    );
+    let mut centroid = Vec3::ZERO;
+    for vertex in &probe.translucent.vertices {
+        centroid += Vec3::from_array(vertex.position);
+    }
+    centroid /= probe.translucent.vertices.len() as f32;
+
+    // Seat the centroid at `VIEW_OFFSET` (right + slightly up + forward) in camera-local space, scaled
+    // so the ~12-unit arm becomes a fraction of a metre — small enough that a far corner stays clear.
+    const SCALE: f32 = 0.03;
+    let view_offset = Vec3::new(0.15, -0.10, -0.75);
+    let placed_transform = camera_world
+        * Mat4::from_translation(view_offset)
+        * Mat4::from_scale(Vec3::splat(SCALE))
+        * Mat4::from_translation(-centroid);
+    let placed_arm = FirstPersonPlayerArm {
+        transform: placed_transform,
+        ..arm
+    };
+    let mesh =
+        first_person_player_arm_textured_meshes(&[placed_arm], &atlas_layout, None).translucent;
+
+    // Anchor: the centroid maps to `camera_world * VIEW_OFFSET`; project it through the same `view_proj`
+    // the shader uses, then apply wgpu's viewport transform (origin top-left, NDC y up so y is flipped).
+    let clip = view_proj * (placed_transform * centroid.extend(1.0));
+    let ndc = clip.truncate() / clip.w;
+    let anchor_px = ((ndc.x * 0.5 + 0.5) * WIDTH as f32).round() as u32;
+    let anchor_py = ((0.5 - ndc.y * 0.5) * HEIGHT as f32).round() as u32;
+    assert!(
+        anchor_px < WIDTH && anchor_py < HEIGHT,
+        "arm centroid projects on-screen, got ({anchor_px},{anchor_py})"
+    );
+
+    // Upload the green atlas as the entity texture atlas bound at group 0 (camera @0, texture @1,
+    // sampler @2 — the terrain-style layout the entity pipeline shares).
+    let bind_group_layout = create_terrain_bind_group_layout(&device);
+    let camera_buffer = create_camera_buffer(&device);
+    queue.write_buffer(&camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
+    let atlas_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("fp-arm-test-atlas"),
+        size: wgpu::Extent3d {
+            width: atlas_layout.width,
+            height: atlas_layout.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &atlas_texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &atlas_rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(atlas_layout.width * 4),
+            rows_per_image: Some(atlas_layout.height),
+        },
+        wgpu::Extent3d {
+            width: atlas_layout.width,
+            height: atlas_layout.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let atlas_view = atlas_texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let atlas_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("fp-arm-test-sampler"),
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("fp-arm-test-bind-group"),
+        layout: &bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&atlas_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&atlas_sampler),
+            },
+        ],
+    });
+    let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+    let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
+    let lightmap = create_lightmap_gpu(
+        &device,
+        &queue,
+        &lightmap_bind_group_layout,
+        &lightmap_sample_bind_group_layout,
+        LightmapEnvironment::default(),
+    );
+    let pipeline = create_entity_model_translucent_pipeline(
+        &device,
+        COLOR_FORMAT,
+        &bind_group_layout,
+        &lightmap_sample_bind_group_layout,
+    );
+
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("fp-arm-test-vertices"),
+        contents: bytemuck::cast_slice(&mesh.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("fp-arm-test-indices"),
+        contents: bytemuck::cast_slice(&mesh.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    let color_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("fp-arm-test-color"),
+        size: wgpu::Extent3d {
+            width: WIDTH,
+            height: HEIGHT,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: COLOR_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let color_view = color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let depth = create_depth_target(&device, WIDTH, HEIGHT);
+    let bytes_per_row = WIDTH * 4;
+    let readback = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("fp-arm-test-readback"),
+        size: (bytes_per_row * HEIGHT) as u64,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("fp-arm-test-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &color_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    // Blue background — distinct from the green arm.
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 1.0,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&pipeline);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.set_bind_group(1, &lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+    }
+    encoder.copy_texture_to_buffer(
+        wgpu::ImageCopyTexture {
+            texture: &color_texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::ImageCopyBuffer {
+            buffer: &readback,
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: Some(HEIGHT),
+            },
+        },
+        wgpu::Extent3d {
+            width: WIDTH,
+            height: HEIGHT,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit(std::iter::once(encoder.finish()));
+
+    let slice = readback.slice(..);
+    slice.map_async(wgpu::MapMode::Read, |_| {});
+    device.poll(wgpu::Maintain::Wait);
+    let data = slice.get_mapped_range();
+    let pixel = |x: u32, y: u32| -> [u8; 4] {
+        let o = (y * bytes_per_row + x * 4) as usize;
+        [data[o], data[o + 1], data[o + 2], data[o + 3]]
+    };
+    let anchor_pixel = pixel(anchor_px, anchor_py);
+    let corner_pixel = pixel(0, 0);
+
+    // (2) arm visible: the arm centroid shows the green arm texture (green dominant, not the blue
+    // background); the top-left corner stays blue background.
+    assert!(
+        anchor_pixel[1] > 64
+            && anchor_pixel[1] > anchor_pixel[2]
+            && anchor_pixel[0] < anchor_pixel[1],
+        "arm centroid should show the green player arm, got {anchor_pixel:?}"
+    );
+    assert!(
+        corner_pixel[2] > 128 && corner_pixel[1] < 128,
+        "corner should stay background, got {corner_pixel:?}"
+    );
+
+    drop(data);
+    readback.unmap();
+}
+
 #[test]
 fn first_person_ready_dynamic_player_arm_uses_dynamic_skin_translucent_bucket() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();

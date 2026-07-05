@@ -1450,6 +1450,23 @@
   patches now project through native/render-state so PlayerModel and ordinary
   piglin/brute inherited `HumanoidModel.setupAttackAnimation` keep the vanilla
   prologue while skipping WHACK/STAB. 剩余是截图级 viewmodel 视觉校验。
+- [x] first-person viewmodel 截图级（headless GPU readback）视觉校验：以
+  sentinel-pixel 模式（不做 golden PNG / 全帧 hash，规避驱动/浮点抖动）在真
+  wgpu device（本机 lavapipe / llvmpipe Vulkan，测试内确认 adapter 真拿到）上
+  真跑三态断言。(1) 手持 item 经 `first_person_item_pass` 的真实
+  `item_model_pipeline` + item atlas 渲染，锚点像素（由 item mesh 中心经
+  `CameraUniform::from_pose` 的 view_proj 投影 + wgpu 视口变换推导，非盲猜）命中
+  item 色、角落保持背景色。(2) 手臂经真实
+  `first_person_player_arm_textured_meshes` 产出的 `entityTranslucent` 网格 +
+  `entity_model_translucent_pipeline` + entity texture atlas + lightmap 渲染，
+  锚点像素（由手臂 mesh centroid 投影推导）命中手臂纹理色、角落保持背景色。
+  (3) vanilla WHACK swing 帧 vs 静止帧的同一静止锚点像素 `assert_ne`，把既有
+  几何级 `assert_ne!(mesh)`（`first_person_item_models_apply_local_player_whack_swing`）
+  抬升为像素级。测试：`bbb-renderer` `item_models.rs`
+  `first_person_held_item_renders_visible_pixels_and_swing_moves_them` 与
+  `entity_models/tests/player.rs`
+  `first_person_player_arm_renders_visible_pixels`（无 GPU adapter 时 skip，
+  不在无 adapter 机器上误 fail）。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

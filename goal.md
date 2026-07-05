@@ -194,7 +194,6 @@ glint 全家族与 first-person 手持/手臂/use-pose 完成史）。
 
 仍在推进：
 
-- first-person viewmodel 截图级视觉校验（deterministic screenshot/readback）。
 - HUD / inventory：vanilla font / count / durability / cooldown / tooltip /
   screen depth behavior。
 - creative inventory-tab preview（需要 creative screen state）与 entity

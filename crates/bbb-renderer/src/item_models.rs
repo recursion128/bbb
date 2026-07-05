@@ -1728,4 +1728,301 @@ mod tests {
         assert!(!ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 0.0, 0.0)"));
         assert!(ITEM_MODEL_SHADER.contains("texel.rgb * diffuse * light_color"));
     }
+
+    /// End-to-end GPU proof of the held-item content of [`crate::render`]'s `first_person_item_pass`:
+    /// bakes a hand-attached item quad in front of a fixed perspective first-person camera, renders it
+    /// through the real [`create_item_model_pipeline`] (the exact pipeline the pass draws held flat/block
+    /// items with), reads the framebuffer back, and asserts two of the three first-person sentinel
+    /// claims: (1) the item's projected center shows the item colour while a far corner stays background,
+    /// and (3) advancing the vanilla WHACK swing changes that same framebuffer pixel — lifting the
+    /// native geometric `assert_ne!(mesh)` (item_models/tests.rs
+    /// `first_person_item_models_apply_local_player_whack_swing`) to pixel level. Skips (no assertion)
+    /// when no GPU adapter is available, so it never fails the suite on adapter-less machines.
+    #[test]
+    fn first_person_held_item_renders_visible_pixels_and_swing_moves_them() {
+        use wgpu::util::DeviceExt;
+
+        use crate::camera::{CameraPose, CameraUniform, LightmapEnvironment};
+        use crate::gpu::{
+            create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
+            create_terrain_bind_group, create_terrain_bind_group_layout,
+        };
+        use crate::lightmap::{
+            create_lightmap_bind_group_layout, create_lightmap_gpu,
+            create_lightmap_sample_bind_group_layout,
+        };
+        use glam::{Mat4, Vec3, Vec4};
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+        // Non-sRGB target so the readback bytes are the shader's linear output verbatim (no colour
+        // conversion to reason about). `320 * 4 = 1280 = 5 * 256` so the copy needs no row padding.
+        const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let Some(adapter) =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::LowPower,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            }))
+        else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-first-person-item-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        )) else {
+            return;
+        };
+
+        // Fixed first-person camera standing at the origin looking straight down +Z (yaw = pitch = 0);
+        // `CameraUniform::from_pose` is the exact perspective `view_proj` the world/first-person pass
+        // uploads, and its `view` matches `first_person_camera_view_matrix` in bbb-native.
+        let aspect = WIDTH as f32 / HEIGHT as f32;
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let camera_uniform = CameraUniform::from_pose(pose, aspect);
+        let view_proj = camera_uniform.view_proj();
+        // `first_person_item_models` seats the hand item at `camera_world * T(hand)` where
+        // `camera_world = first_person_camera_world_transform(pose) = view.inverse()`. Reproduce the same
+        // view so the item sits a fixed offset in front of the camera.
+        let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
+        let camera_world = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y).inverse();
+
+        // A 1x1 opaque-red atlas: every UV samples red, so the baked item quad is unambiguously visible.
+        let atlas =
+            create_terrain_atlas_gpu(&device, &queue, 1, 1, &[255, 0, 0, 255]).expect("1x1 atlas");
+        let bind_group_layout = create_terrain_bind_group_layout(&device);
+        let camera_buffer = create_camera_buffer(&device);
+        queue.write_buffer(&camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
+        let bind_group =
+            create_terrain_bind_group(&device, &bind_group_layout, &camera_buffer, &atlas);
+        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+        let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
+        let lightmap = create_lightmap_gpu(
+            &device,
+            &queue,
+            &lightmap_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+            LightmapEnvironment::default(),
+        );
+        let pipeline = create_item_model_pipeline(
+            &device,
+            COLOR_FORMAT,
+            &bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+
+        // A camera-facing full-face quad (0..=16 model space, +Z front, full atlas UVs), matching the
+        // HUD GPU precedent's fronto-parallel quad so its front side is never back-face culled.
+        let quad = ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 8.0],
+                [16.0, 0.0, 8.0],
+                [16.0, 16.0, 8.0],
+                [0.0, 16.0, 8.0],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+
+        // Hand attach: seat the centered unit quad `HAND` units in front of the camera, scaled to
+        // `SCALE`. `HAND` is a first-person right-hand-style offset (right + slightly down + forward)
+        // chosen so the item center projects on-screen (derived below) rather than off the bottom edge
+        // where the raw vanilla `(0.56,-0.52,-0.72)` attach would land it. Centering (`T(-0.5)`, like the
+        // HUD precedent's `gui_display`) maps the model center (8,8,8) — normalized (0.5,0.5,0.5) — onto
+        // the attach origin.
+        const SCALE: f32 = 0.4;
+        let hand = Vec3::new(0.30, -0.20, -0.72);
+        let center = Mat4::from_translation(Vec3::splat(-0.5));
+        let still_transform = camera_world
+            * Mat4::from_translation(hand)
+            * Mat4::from_scale(Vec3::splat(SCALE))
+            * center;
+
+        // Vanilla `ItemInHandRenderer` WHACK swing (mirrors `first_person_apply_whack_swing` in
+        // bbb-native) at a mid-swing attack progress — the transform delta the native geometric test
+        // triggers via `apply_entity_animation` + `advance_entity_client_animations`.
+        let whack = |transform: Mat4, arm_left: bool, attack: f32| -> Mat4 {
+            let attack = attack.clamp(0.0, 1.0);
+            let invert = if arm_left { -1.0 } else { 1.0 };
+            let sqrt_attack = attack.sqrt();
+            let x_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+            let y_swing_position = 0.2 * (sqrt_attack * std::f32::consts::TAU).sin();
+            let z_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+            let y_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+            let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+            transform
+                * Mat4::from_translation(Vec3::new(
+                    invert * x_swing_position,
+                    y_swing_position,
+                    z_swing_position,
+                ))
+                * Mat4::from_rotation_y((invert * (45.0 + y_swing_rotation * -20.0)).to_radians())
+                * Mat4::from_rotation_z((invert * xz_swing_rotation * -20.0).to_radians())
+                * Mat4::from_rotation_x((xz_swing_rotation * -80.0).to_radians())
+                * Mat4::from_rotation_y((invert * -45.0).to_radians())
+        };
+        // Swing modifies the hand pose before the item display transform, matching native ordering.
+        let swung_transform = whack(camera_world * Mat4::from_translation(hand), false, 0.6)
+            * Mat4::from_scale(Vec3::splat(SCALE))
+            * center;
+
+        // Anchor: project the still item's center through the same `view_proj` the shader uses, then
+        // apply wgpu's viewport transform (framebuffer origin top-left, NDC y up so y is flipped).
+        let clip = view_proj * (still_transform * Vec4::new(0.5, 0.5, 0.5, 1.0));
+        let ndc = clip.truncate() / clip.w;
+        let anchor_px = ((ndc.x * 0.5 + 0.5) * WIDTH as f32).round() as u32;
+        let anchor_py = ((0.5 - ndc.y * 0.5) * HEIGHT as f32).round() as u32;
+        assert!(
+            anchor_px < WIDTH && anchor_py < HEIGHT,
+            "item center projects on-screen, got ({anchor_px},{anchor_py})"
+        );
+
+        let bytes_per_row = WIDTH * 4;
+        let render = |transform: Mat4| -> Vec<u8> {
+            let mesh = bake_item_model_mesh(&[quad], transform);
+            let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("fp-item-test-vertices"),
+                contents: bytemuck::cast_slice(&mesh.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+            let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("fp-item-test-indices"),
+                contents: bytemuck::cast_slice(&mesh.indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+            let color_texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("fp-item-test-color"),
+                size: wgpu::Extent3d {
+                    width: WIDTH,
+                    height: HEIGHT,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: COLOR_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let color_view = color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let depth = create_depth_target(&device, WIDTH, HEIGHT);
+            let readback = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("fp-item-test-readback"),
+                size: (bytes_per_row * HEIGHT) as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("fp-item-test-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &color_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            // Blue background — distinct from the red item icon.
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 1.0,
+                                a: 1.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &depth.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.set_bind_group(1, &lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+            }
+            encoder.copy_texture_to_buffer(
+                wgpu::ImageCopyTexture {
+                    texture: &color_texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyBuffer {
+                    buffer: &readback,
+                    layout: wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(bytes_per_row),
+                        rows_per_image: Some(HEIGHT),
+                    },
+                },
+                wgpu::Extent3d {
+                    width: WIDTH,
+                    height: HEIGHT,
+                    depth_or_array_layers: 1,
+                },
+            );
+            queue.submit(std::iter::once(encoder.finish()));
+            let slice = readback.slice(..);
+            slice.map_async(wgpu::MapMode::Read, |_| {});
+            device.poll(wgpu::Maintain::Wait);
+            let data = slice.get_mapped_range().to_vec();
+            readback.unmap();
+            data
+        };
+
+        let still = render(still_transform);
+        let swung = render(swung_transform);
+        let pixel = |data: &[u8], x: u32, y: u32| -> [u8; 4] {
+            let o = (y * bytes_per_row + x * 4) as usize;
+            [data[o], data[o + 1], data[o + 2], data[o + 3]]
+        };
+
+        // (1) held item visible: the still item's projected center shows the red icon (R high, B low);
+        // the top-left corner is far from the bottom-right hand item, so it stays blue background.
+        let anchor_pixel = pixel(&still, anchor_px, anchor_py);
+        let corner_pixel = pixel(&still, 0, 0);
+        assert!(
+            anchor_pixel[0] > 128 && anchor_pixel[2] < 128,
+            "item center should show the held item, got {anchor_pixel:?}"
+        );
+        assert!(
+            corner_pixel[2] > 128 && corner_pixel[0] < 128,
+            "corner should stay background, got {corner_pixel:?}"
+        );
+
+        // (3) swing moves pixels: the WHACK swing rotates/translates the item off its rest pose, so the
+        // rest-anchor framebuffer pixel changes between the still and swung frames.
+        let swung_anchor_pixel = pixel(&swung, anchor_px, anchor_py);
+        assert_ne!(
+            anchor_pixel, swung_anchor_pixel,
+            "vanilla WHACK swing should change the held item's rest-anchor pixel"
+        );
+    }
 }

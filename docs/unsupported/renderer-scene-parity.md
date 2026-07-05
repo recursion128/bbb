@@ -98,10 +98,21 @@
     consumers now also pass the local active-use tick context into
     `minecraft:use_duration` / `minecraft:use_cycle` item-model range-dispatch
     properties, matching vanilla's owner-backed `ItemModelResolver` path.
-    Remaining item presentation follow-ups are screenshot-level viewmodel
-    refinements, combat arm poses, and custom ground transforms. Standalone
-    mip/sampler generalization belongs to P3 resource parity, and remaining
-    diffuse/fog polish is handled only by later scoped visual slices.
+    The screenshot-level first-person viewmodel readback validation is now
+    DONE: headless GPU sentinel-pixel tests (real wgpu device / lavapipe) render
+    the held item through the real `item_model_pipeline` and the player arm
+    through `first_person_player_arm_textured_meshes` +
+    `entity_model_translucent_pipeline`, assert the projected anchor pixels show
+    the item/arm colour vs. a background corner, and assert the vanilla WHACK
+    swing changes the held item's rest-anchor pixel (`item_models.rs`
+    `first_person_held_item_renders_visible_pixels_and_swing_moves_them`,
+    `entity_models/tests/player.rs`
+    `first_person_player_arm_renders_visible_pixels`). Remaining item
+    presentation follow-ups are combat arm poses and custom ground transforms;
+    exact golden pixel parity to vanilla screenshots is intentionally out of
+    scope (no golden PNG / full-frame hash — driver/float jitter risk).
+    Standalone mip/sampler generalization belongs to P3 resource parity, and
+    remaining diffuse/fog polish is handled only by later scoped visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
@@ -1970,9 +1981,11 @@
         scale. GUI 3D block-item stacks now also split translucent base quads and
         matching `glintTranslucent` into the same depth-isolated GUI item pass
         after the solid base/glint draw. First-person generated consumers now
-        have their ordinary and active-use hand pass; remaining first-person
-        refinements are screenshot-level viewmodel parity rather than a missing
-        item-model consumer.
+        have their ordinary and active-use hand pass; the screenshot-level
+        first-person readback validation is now covered by headless GPU
+        sentinel-pixel tests (held item + player arm visibility, WHACK-swing
+        pixel delta), and remaining first-person refinements are exact vanilla
+        pixel parity rather than a missing item-model consumer.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.
@@ -2202,8 +2215,10 @@
         non-melee-pose WHACK/STAB/NONE now use the inherited
         `HumanoidModel.setupAttackAnimation` branches, and PlayerModel's attack-arm
         `SWING_ANIMATION(NONE)` keeps the vanilla body/arm-anchor prologue while skipping WHACK/STAB.
-      - remaining slices: held-item refinements (screenshot-level viewmodel
-        parity;
+      - remaining slices: held-item refinements (exact vanilla pixel parity —
+        the screenshot-level readback validation itself is now DONE via headless
+        GPU sentinel-pixel tests for held item, player arm, and WHACK-swing pixel
+        delta;
         broader non-profile dynamic texture loading). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
         vanilla `core/item.vsh` multiplies submitted color by
