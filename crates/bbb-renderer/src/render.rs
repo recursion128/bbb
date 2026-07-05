@@ -19,6 +19,7 @@ use crate::{
         ParticleVertexBatches,
     },
     weather::{build_lightning_mesh, build_weather_mesh},
+    world_border::build_world_border_mesh,
     Renderer,
 };
 
@@ -1472,6 +1473,18 @@ impl Renderer {
                 bytemuck::cast_slice(&mesh.indices),
             )
         });
+        let world_border_mesh = build_world_border_mesh(&self.world_border_render_state);
+        let has_world_border_buffers = world_border_mesh.as_ref().is_some_and(|mesh| {
+            self.frame_world_border_vertices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&mesh.vertices),
+            ) && self.frame_world_border_indices.upload(
+                &self.device,
+                &self.queue,
+                bytemuck::cast_slice(&mesh.indices),
+            )
+        });
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -1546,6 +1559,28 @@ impl Renderer {
                         pass.draw_indexed(mesh.snow_indices.clone(), 0, 0..1);
                         stats.weather_draw_calls += 1;
                     }
+                }
+            }
+            // Vanilla `LevelRenderer.addWeatherPass` runs
+            // `worldBorderRenderer.render(...)` after
+            // `weatherEffectRenderer.render(...)` (LevelRenderer.java:751-758),
+            // and the border draws into the weather target's color+depth when
+            // that target exists (WorldBorderRenderer.java:143-150). The mesh
+            // indices already carry the closest-face-first sorted visible-side
+            // draw list, so one indexed draw replays vanilla's
+            // `drawMultipleIndexed` order (WorldBorderRenderer.java:176-183).
+            if let (Some(mesh), true) = (&world_border_mesh, has_world_border_buffers) {
+                if let Some(texture) = &self.world_border_texture {
+                    let vertex_buffer =
+                        self.frame_world_border_vertices.buffer().expect("uploaded");
+                    let index_buffer = self.frame_world_border_indices.buffer().expect("uploaded");
+                    pass.set_pipeline(&self.world_border_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_bind_group(0, &texture.bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+                    stats.weather_draw_calls += 1;
                 }
             }
         }
@@ -4638,6 +4673,44 @@ mod tests {
         assert!(
             source[lightning..weather].contains("pass.set_bind_group(0, &self.terrain_bind_group"),
             "lightning uses the renderer camera bind group and no weather texture"
+        );
+    }
+
+    #[test]
+    fn world_border_draws_into_weather_target_after_rain_snow_and_before_combine() {
+        let source = include_str!("render.rs");
+        let target = source
+            .find("label: Some(WEATHER_TARGET_PASS_LABEL)")
+            .expect("weather target pass label is used");
+        let weather = source[target..]
+            .find("pass.set_pipeline(&self.weather_pipeline)")
+            .map(|index| target + index)
+            .expect("weather target pass draws rain/snow pipeline");
+        let world_border = source[target..]
+            .find("pass.set_pipeline(&self.world_border_pipeline)")
+            .map(|index| target + index)
+            .expect("weather target pass draws world border pipeline");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        // Vanilla LevelRenderer.addWeatherPass runs worldBorderRenderer.render
+        // after weatherEffectRenderer.render (LevelRenderer.java:751-758), and
+        // WorldBorderRenderer.render targets the weather color+depth when the
+        // weather target exists (WorldBorderRenderer.java:143-150).
+        assert!(
+            target < weather && weather < world_border && world_border < combine,
+            "world border draws into the weather target after rain/snow and before transparency combine"
+        );
+        assert!(
+            source[world_border..combine]
+                .contains("pass.set_bind_group(0, &texture.bind_group, &[])"),
+            "world border binds the forcefield texture bind group (camera + Sampler0)"
+        );
+        assert!(
+            source[weather..world_border].contains("stats.weather_draw_calls += 1;")
+                && source[world_border..combine].contains("stats.weather_draw_calls += 1;"),
+            "world border draw is tallied with the weather target pass draws"
         );
     }
 

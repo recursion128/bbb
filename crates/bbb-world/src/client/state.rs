@@ -63,4 +63,4 @@ pub use crate::client::ui::{
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,
 };
-pub use crate::client::world_border::WorldBorderState;
+pub use crate::client::world_border::{WorldBorderState, WorldBorderStatus};

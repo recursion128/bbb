@@ -103,6 +103,10 @@ use crate::{
         create_lightning_pipeline, create_weather_pipeline, create_weather_texture_gpu,
         WeatherRenderState, WeatherTextureGpu, WeatherTextureImage, WeatherTextureKind,
     },
+    world_border::{
+        create_world_border_pipeline, create_world_border_texture_gpu, WorldBorderRenderState,
+        WorldBorderTextureGpu,
+    },
 };
 
 pub struct Renderer {
@@ -160,10 +164,13 @@ pub struct Renderer {
     pub(super) frame_weather_indices: FrameDataBuffer,
     pub(super) frame_lightning_vertices: FrameDataBuffer,
     pub(super) frame_lightning_indices: FrameDataBuffer,
+    pub(super) frame_world_border_vertices: FrameDataBuffer,
+    pub(super) frame_world_border_indices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
     pub(super) lightning_pipeline: wgpu::RenderPipeline,
+    pub(super) world_border_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
@@ -283,6 +290,8 @@ pub struct Renderer {
     pub(super) weather_rain_texture: Option<WeatherTextureGpu>,
     pub(super) weather_snow_texture: Option<WeatherTextureGpu>,
     pub(super) weather_render_state: WeatherRenderState,
+    pub(super) world_border_texture: Option<WorldBorderTextureGpu>,
+    pub(super) world_border_render_state: WorldBorderRenderState,
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
     pub(super) item_glint_texture: Option<ItemGlintTextureGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
@@ -748,6 +757,8 @@ impl Renderer {
         );
         let lightning_pipeline =
             create_lightning_pipeline(&device, format, &terrain_bind_group_layout);
+        let world_border_pipeline =
+            create_world_border_pipeline(&device, format, &terrain_bind_group_layout);
         let item_entity_pipeline = create_item_entity_pipeline(
             &device,
             format,
@@ -977,10 +988,13 @@ impl Renderer {
             frame_weather_indices: FrameDataBuffer::index("bbb-weather-frame-indices"),
             frame_lightning_vertices: FrameDataBuffer::vertex("bbb-lightning-frame-vertices"),
             frame_lightning_indices: FrameDataBuffer::index("bbb-lightning-frame-indices"),
+            frame_world_border_vertices: FrameDataBuffer::vertex("bbb-world-border-frame-vertices"),
+            frame_world_border_indices: FrameDataBuffer::index("bbb-world-border-frame-indices"),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
             lightning_pipeline,
+            world_border_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
             item_model_z_offset_forward_pipeline,
@@ -1095,6 +1109,8 @@ impl Renderer {
             weather_rain_texture: None,
             weather_snow_texture: None,
             weather_render_state: WeatherRenderState::default(),
+            world_border_texture: None,
+            world_border_render_state: WorldBorderRenderState::default(),
             item_entity_atlas: None,
             item_glint_texture: None,
             item_entity_billboards: Vec::new(),
@@ -1815,6 +1831,31 @@ impl Renderer {
 
     pub fn set_weather_render_state(&mut self, state: WeatherRenderState) {
         self.weather_render_state = state;
+    }
+
+    /// Uploads the vanilla `textures/misc/forcefield.png` bytes
+    /// (`WorldBorderRenderer.FORCEFIELD_LOCATION`, `WorldBorderRenderer.java:34`);
+    /// the bytes are fed from the native side so this crate stays pack-free.
+    pub fn upload_world_border_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.world_border_texture = Some(create_world_border_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            width,
+            height,
+            rgba,
+        )?);
+        Ok(())
+    }
+
+    pub fn set_world_border_render_state(&mut self, state: WorldBorderRenderState) {
+        self.world_border_render_state = state;
     }
 
     fn rebuild_clouds(&mut self) {

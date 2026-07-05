@@ -318,6 +318,37 @@
   粒子 light refresh 已调整并验证为 input/use-item 后 tick、frame extract 输入绑定后采样，
   当前 RendererFrame / adjacent renderer-state 提取时机清单已审完。
 
+### 2026-07-05 迁入：world border（forcefield）渲染补齐
+
+- [x] world border forcefield 渲染：weather target 内 rain/snow 之后新增
+  world border draw，逐行转写 vanilla 26.1 `WorldBorderRenderer`。world 侧
+  `WorldBorderState` 补齐 `MovingBorderExtent` lerp 字段
+  （`lerp_duration`/`current_size`/`previous_size`），
+  `WorldStore::advance_world_border` 按 `ClientLevel.tick ->
+  WorldBorder.tick()` 每 tick 递减 lerp 并在归零时坍缩为 static extent；
+  `min/max_at(partial_tick)`、`distance_to_border`、`status()`（GROWING
+  0x40FF80 / SHRINKING 0xFF3030 / STATIONARY 0x20A0FF）均按
+  `WorldBorder.java` / `BorderStatus.java` 转写。提取侧
+  `world_border_render_state_for_world` 转写 `WorldBorderRenderer.extract`
+  （近边/扩界可见性判据、`alpha = clamp((1 - dist/renderDistance)^4)`、
+  status tint）并携带 `renderDistance = chunks * 16`、`depthFar =
+  max(renderDistance * 4, 128 * 16)`、`millis % 3000 / 3000` UV 滚动，pump
+  中在 border tick 与 weather 提取之后读取（vanilla "border" profiler 段
+  顺序），经新增 `RendererFrame.world_border_render_state` 单次提交。
+  renderer 侧 `build_world_border_mesh` 每帧重建 vanilla
+  `rebuildWorldBorderBuffer` 四面墙 quad（`(floor(min) & 1) * 0.5` U 相位、
+  每格 0.5 U、`v0 = -frac(cameraY * 0.5)`、`±depthFar` 墙高）加
+  `closestBorder` 距离排序可见面索引（`6 * get2DDataValue`），pipeline 按
+  `RenderPipelines.WORLD_BORDER`：`BlendFunction.OVERLAY`
+  （SRC_ALPHA/ONE/ONE/ZERO）、cull off、depth-write `LESS_EQUAL` + -3/-3
+  depth bias、texel alpha==0 discard、ColorModulator 烘焙进逐顶点颜色；
+  `textures/misc/forcefield.png` 由 native 从 pack 读字节经
+  `upload_world_border_texture` 上传（repeat/nearest sampler）。测试：
+  render.rs 源码顺序断言（weather target 内 rain/snow 之后、combine 之前）、
+  pump 源码顺序断言（border tick 在 client time 前、提取在 weather 后）、
+  mesh/UV/颜色/剔除确定性单测、lerp tick 与 extract alpha/tint 单测、
+  forcefield 纹理加载单测。
+
 ## P1-2：实体专用 Renderer 行为
 
 - Chicken / pig / cow variant livestock：

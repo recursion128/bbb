@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::PathBuf,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
@@ -1414,6 +1414,12 @@ pub(crate) fn pump_network_and_terrain(
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
+    // Vanilla `ClientLevel.tick` runs `this.getWorldBorder().tick()` right
+    // before `this.tickTime()` when the tick rate manager runs normally
+    // (ClientLevel.java:276-281); the border lerp therefore advances on the
+    // same running ticks as the client clock, before render extraction reads
+    // the interpolated border bounds.
+    world.advance_world_border(running_ticks);
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
@@ -1682,6 +1688,18 @@ pub(crate) fn pump_network_and_terrain(
     // level ticks, `deltaPartialTick`, and camera position during render extraction.
     let weather_render_state =
         weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);
+    // Vanilla `LevelRenderer` extraction runs `worldBorderRenderer.extract` in
+    // the "border" profiler section right after the weather/sky extraction
+    // (LevelRenderer.java:573-585), after `ClientLevel.tick` has advanced the
+    // border lerp above; the forcefield UV scroll samples `Util.getMillis()`
+    // (WorldBorderRenderer.java:134).
+    let world_border_render_state = world_border_render_state_for_world(
+        world,
+        camera_pose,
+        render_distance_chunks,
+        entity_partial_tick,
+        wall_clock_millis(),
+    );
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
     let selection_outline = selection_outline_from_camera(world, camera_pose);
@@ -1768,6 +1786,7 @@ pub(crate) fn pump_network_and_terrain(
             camera_pose,
             cloud_frame,
             weather_render_state,
+            world_border_render_state,
             selection_outline,
             entity_scene_outline,
             entity_target_outline,
@@ -5920,6 +5939,17 @@ fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
         camera.position[1] + camera.eye_height,
         camera.position[2],
     ]
+}
+
+/// Wall-clock milliseconds standing in for vanilla `Util.getMillis()`; render
+/// animations only consume it modulo a fixed period (e.g. the forcefield UV
+/// scroll's `% 3000L`, `WorldBorderRenderer.java:134`), so the epoch is
+/// irrelevant.
+fn wall_clock_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 fn particle_local_player_scope_context(

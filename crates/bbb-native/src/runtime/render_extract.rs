@@ -10,7 +10,7 @@ use bbb_renderer::{
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudBlockItemModel, HudInventoryScreen,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline,
+    SelectionOutline, WorldBorderRenderState,
 };
 
 use super::*;
@@ -449,6 +449,86 @@ pub(crate) fn weather_render_state_for_world(
     WeatherRenderState::with_lightning(frame, rain_columns, snow_columns, lightning_bolts)
 }
 
+/// Projects the client world border into the renderer's world border state,
+/// transcribing vanilla `WorldBorderRenderer.extract`
+/// (`WorldBorderRenderer.java:102-124`) plus the render-call inputs vanilla
+/// threads alongside the state (`LevelRenderer.addWeatherPass:744,751-758`,
+/// `Camera.java:91-92`, `WorldBorderRenderer.render:134`).
+///
+/// `scroll_millis` is the wall-clock milliseconds feeding vanilla's
+/// `Util.getMillis() % 3000L` forcefield UV scroll.
+pub(crate) fn world_border_render_state_for_world(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    render_distance_chunks: u32,
+    partial_tick: f32,
+    scroll_millis: u64,
+) -> WorldBorderRenderState {
+    let Some(camera_pose) = camera_pose else {
+        return WorldBorderRenderState::default();
+    };
+    let eye = camera_eye_position(camera_pose);
+    if !eye.into_iter().all(f32::is_finite) {
+        return WorldBorderRenderState::default();
+    }
+    let camera = [f64::from(eye[0]), f64::from(eye[1]), f64::from(eye[2])];
+    let border = world.world_border();
+    // Vanilla passes `options.getEffectiveRenderDistance() * 16` blocks to both
+    // extract (LevelRenderer.java:583) and render (LevelRenderer.addWeatherPass:744).
+    let render_distance = f64::from(render_distance_chunks) * 16.0;
+    // Vanilla Camera.update (Camera.java:91-92):
+    // `depthFar = max(renderDistanceBlocks * 4, cloudRangeChunks * 16)`; bbb has
+    // no cloud-range option, so the vanilla default (128 chunks,
+    // Options.java:166-171) applies.
+    let depth_far =
+        (render_distance * 4.0).max(f64::from(VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS) * 16.0) as f32;
+    // Vanilla forcefield UV scroll offset (WorldBorderRenderer.java:134).
+    let texture_offset = (scroll_millis % 3000) as f32 / 3000.0;
+
+    // WorldBorderRenderer.extract (WorldBorderRenderer.java:102-106): the state
+    // bounds use the frame partial tick.
+    let min_x = border.min_x_at(partial_tick);
+    let max_x = border.max_x_at(partial_tick);
+    let min_z = border.min_z_at(partial_tick);
+    let max_z = border.max_z_at(partial_tick);
+    // Visibility condition (WorldBorderRenderer.java:107-116): the camera is
+    // within renderDistance of some border edge (not strictly inside the
+    // shrunk box) AND not further than renderDistance outside the border.
+    let near_some_edge = !(camera[0] < max_x - render_distance)
+        || !(camera[0] > min_x + render_distance)
+        || !(camera[2] < max_z - render_distance)
+        || !(camera[2] > min_z + render_distance);
+    let inside_expanded_box = !(camera[0] < min_x - render_distance)
+        && !(camera[0] > max_x + render_distance)
+        && !(camera[2] < min_z - render_distance)
+        && !(camera[2] > max_z + render_distance);
+    let (alpha, tint) = if near_some_edge && inside_expanded_box {
+        // alpha = clamp((1 - distanceToBorder / renderDistance)^4, 0, 1);
+        // tint = border.getStatus().getColor()
+        // (WorldBorderRenderer.java:117-120).
+        let alpha = (1.0 - border.distance_to_border(camera[0], camera[2]) / render_distance)
+            .powi(4)
+            .clamp(0.0, 1.0);
+        (alpha, border.status().color())
+    } else {
+        // WorldBorderRenderer.java:121-123.
+        (0.0, 0)
+    };
+
+    WorldBorderRenderState {
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+        tint,
+        alpha,
+        camera_position: camera,
+        render_distance,
+        depth_far,
+        texture_offset,
+    }
+}
+
 pub(crate) fn lightning_bolts_for_world(world: &WorldStore) -> Vec<LightningBoltRenderState> {
     world
         .entity_transforms()
@@ -652,6 +732,7 @@ pub(crate) struct RendererFrame {
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) cloud_frame: CloudFrame,
     pub(crate) weather_render_state: WeatherRenderState,
+    pub(crate) world_border_render_state: WorldBorderRenderState,
     pub(crate) selection_outline: Option<SelectionOutline>,
     pub(crate) entity_scene_outline: Option<SelectionOutline>,
     pub(crate) entity_target_outline: Option<SelectionOutline>,
@@ -733,6 +814,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_cloud_frame(frame.cloud_frame);
     renderer.set_weather_render_state(frame.weather_render_state);
+    renderer.set_world_border_render_state(frame.world_border_render_state);
     renderer.set_selection_outline(frame.selection_outline);
     renderer.set_entity_scene_outline(frame.entity_scene_outline);
     renderer.set_entity_target_outline(frame.entity_target_outline);

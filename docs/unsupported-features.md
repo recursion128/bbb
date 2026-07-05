@@ -292,6 +292,10 @@ When an agent does any of the following, update this file in the same slice:
     particles/weather/clouds/entity_outline) is pinned by tests, and cull /
     translucent / outline GPU submission buckets follow vanilla constants.
     Screenshot/readback now gates the surface format before the copy.
+    The world border forcefield now draws into the weather target after
+    rain/snow with vanilla `WorldBorderRenderer` mesh/alpha/tint/UV-scroll
+    formulas and `RenderPipelines.WORLD_BORDER` state (2026-07-05, detail in
+    the per-slice history file).
   - Entity presentation migration off wrong-model proxies is complete; the
     `EntityRenderState` projection carries packed-light shading, the hurt red
     overlay, creeper swelling, death animation, riptide spin, the

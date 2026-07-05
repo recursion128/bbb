@@ -192,6 +192,38 @@
     additive blending, default back-face culling, and default depth-write
     `LESS_EQUAL`; native projects active lightning bolt entities into that
     weather state instead of the old placeholder box.
+    The world border forcefield is now rendered end to end (2026-07-05,
+    P1-1 slice): world side, `WorldBorderState` carries the vanilla
+    `MovingBorderExtent` lerp fields (`lerp_duration`, `current_size`,
+    `previous_size`), `WorldStore::advance_world_border` mirrors
+    `ClientLevel.tick` -> `WorldBorder.tick()` (per-tick `lerpProgress`
+    decrement, `previousSize`/`size` roll, collapse to a static extent at the
+    lerp target), and `min/max_at(partialTick)` / `distance_to_border` /
+    `status()` transcribe `WorldBorder.java:104-152,352-420,494-556` with the
+    `BorderStatus` colors (GROWING 0x40FF80, SHRINKING 0xFF3030, STATIONARY
+    0x20A0FF). Extraction side, `world_border_render_state_for_world`
+    transcribes `WorldBorderRenderer.extract` (near-edge/within-expansion
+    visibility clauses, `alpha = clamp((1 - dist/renderDistance)^4)`, status
+    tint) plus the render inputs (`renderDistance = chunks * 16`, `depthFar =
+    max(renderDistance * 4, 128 * 16)`, `Util.getMillis() % 3000 / 3000` UV
+    scroll), runs after the border tick and weather extraction in the pump
+    (vanilla "border" profiler section order), and commits through a new
+    `RendererFrame.world_border_render_state` field. Renderer side,
+    `build_world_border_mesh` rebuilds the vanilla `rebuildWorldBorderBuffer`
+    four-wall quad buffer each frame (camera/render-distance clamped extents,
+    `(floor(min) & 1) * 0.5` U phase, 0.5-per-block U scale, `v0 =
+    -frac(cameraY * 0.5)`, `±depthFar` wall height) with the sorted
+    `closestBorder` visible-face index selection
+    (`6 * Direction.get2DDataValue`), and the draw runs inside the weather
+    target pass after rain/snow with a vanilla `RenderPipelines.WORLD_BORDER`
+    shaped pipeline: `BlendFunction.OVERLAY` (`SRC_ALPHA, ONE, ONE, ZERO`),
+    cull off, depth-write `LESS_EQUAL` with -3/-3 depth bias, alpha==0 texel
+    discard, and the `ColorModulator` tint baked per vertex. The
+    `textures/misc/forcefield.png` bytes load pack-side and upload through
+    `upload_world_border_texture` with a repeat/nearest sampler. Source-order
+    tests pin the weather-target draw order and pump extraction timing;
+    deterministic unit tests pin the mesh/UV/color formulas, the lerp tick,
+    and the extract alpha/tint values.
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.

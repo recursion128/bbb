@@ -122,3 +122,4 @@ pub use crate::weather::{
     LightningBoltRenderState, WeatherColumn, WeatherFrame, WeatherRenderState, WeatherTextureImage,
     WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
 };
+pub use crate::world_border::{WorldBorderRenderState, WORLD_BORDER_FORCEFIELD_TEXTURE_PATH};

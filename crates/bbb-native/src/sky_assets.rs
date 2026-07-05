@@ -3,6 +3,7 @@ use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
 use bbb_renderer::{
     CelestialTextureImage, CelestialTextureKind, CloudTextureImage, WeatherTextureImage,
     WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
+    WORLD_BORDER_FORCEFIELD_TEXTURE_PATH,
 };
 
 const END_SKY_TEXTURE: &str = "textures/environment/end_sky.png";
@@ -77,6 +78,12 @@ pub(crate) fn load_sky_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
     if let Err(err) = try_load_weather_textures(renderer, roots) {
         tracing::warn!(?err, "continuing without vanilla weather textures");
     }
+    if let Err(err) = try_load_world_border_texture(renderer, roots) {
+        tracing::warn!(
+            ?err,
+            "continuing without vanilla world border forcefield texture"
+        );
+    }
 }
 
 fn try_load_end_sky_texture(
@@ -113,6 +120,16 @@ fn try_load_weather_textures(
     let images = load_weather_images(roots)?;
     renderer.upload_weather_textures(&images)?;
     tracing::info!("loaded vanilla rain/snow weather textures");
+    Ok(())
+}
+
+fn try_load_world_border_texture(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let image = load_world_border_image(roots)?;
+    renderer.upload_world_border_texture(image.width, image.height, &image.rgba)?;
+    tracing::info!("loaded vanilla world border forcefield texture");
     Ok(())
 }
 
@@ -174,6 +191,21 @@ fn load_weather_image(
         height: image.height,
         rgba: image.rgba,
     })
+}
+
+/// Loads vanilla `textures/misc/forcefield.png`
+/// (`WorldBorderRenderer.FORCEFIELD_LOCATION`, `WorldBorderRenderer.java:34`)
+/// from the pack resource stack; the decoded bytes are fed to the renderer so
+/// `bbb-renderer` stays free of `bbb-pack`.
+fn load_world_border_image(roots: &PackRoots) -> Result<SpriteImage> {
+    let location = ResourceLocation::parse(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH)?;
+    let resource = roots
+        .resource_stack()
+        .get_resource(&location)
+        .with_context(|| {
+            format!("missing world border texture minecraft:{WORLD_BORDER_FORCEFIELD_TEXTURE_PATH}")
+        })?;
+    SpriteImage::from_png_file("minecraft:textures/misc/forcefield", resource.path)
 }
 
 fn load_celestial_images(roots: &PackRoots) -> Result<Vec<CelestialTextureImage>> {
@@ -313,6 +345,32 @@ mod tests {
         assert!(images
             .iter()
             .all(|image| (image.width, image.height, image.rgba.len()) == (4, 4, 4 * 4 * 4)));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_world_border_forcefield_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-world-border-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 32, 32);
+        let roots = PackRoots {
+            mc_code_root: temp.clone(),
+            sources_dir: sources,
+            assets_dir: temp.join("unused-assets"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+
+        let image = load_world_border_image(&roots).unwrap();
+
+        assert_eq!(image.id, "minecraft:textures/misc/forcefield");
+        assert_eq!((image.width, image.height), (32, 32));
+        assert_eq!(image.rgba.len(), 32 * 32 * 4);
         std::fs::remove_dir_all(temp).unwrap();
     }
 

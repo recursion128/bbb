@@ -13,9 +13,10 @@ use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
-    DataComponentPatchSummary, DialogHolder, GameEvent as ProtocolGameEvent, InteractionHand,
-    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
-    RemoveMobEffect, SetCursorItem as ProtocolSetCursorItem,
+    DataComponentPatchSummary, DialogHolder, GameEvent as ProtocolGameEvent,
+    InitializeBorder as ProtocolInitializeBorder, InteractionHand, MerchantOffer, MerchantOffers,
+    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
+    SetBorderLerpSize as ProtocolSetBorderLerpSize, SetCursorItem as ProtocolSetCursorItem,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
     WrittenBookContentSummary,
 };
@@ -1493,6 +1494,135 @@ fn weather_render_state_projects_lightning_bolts_without_rain() {
     assert_eq!(
         state.lightning_bolts[0].seed,
         lightning_bolt_seed(uuid::Uuid::from_u128(0x1234_5678_9abc_def0))
+    );
+}
+
+fn apply_static_border(world: &mut WorldStore, center: (f64, f64), size: f64) {
+    world.apply_initialize_border(ProtocolInitializeBorder {
+        new_center_x: center.0,
+        new_center_z: center.1,
+        old_size: size,
+        new_size: size,
+        lerp_time: 0,
+        new_absolute_max_size: 29_999_984,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+}
+
+#[test]
+fn world_border_render_state_matches_vanilla_extract_alpha_and_tint() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    apply_static_border(&mut world, (0.0, 0.0), 64.0);
+    // Camera eye at x = 24: 8 blocks from the east border edge (+32).
+    world.set_local_player_pose(local_player_pose([24.0, 64.0, 0.0], 0.0, 0.0));
+
+    let state =
+        world_border_render_state_for_world(&world, camera_pose_from_world(&world), 2, 0.0, 4_500);
+
+    assert_eq!(state.min_x, -32.0);
+    assert_eq!(state.max_x, 32.0);
+    assert_eq!(state.min_z, -32.0);
+    assert_eq!(state.max_z, 32.0);
+    // renderDistance = renderDistanceChunks * 16 (LevelRenderer.java:583,744).
+    assert_eq!(state.render_distance, 32.0);
+    // alpha = clamp((1 - distanceToBorder / renderDistance)^4, 0, 1)
+    // (WorldBorderRenderer.java:117-119) = (1 - 8/32)^4.
+    assert_eq!(state.alpha, 0.75_f64.powi(4));
+    // Stationary border tint (BorderStatus.java:6).
+    assert_eq!(state.tint, 2_138_367);
+    // depthFar = max(renderDistanceBlocks * 4, 128 chunks * 16)
+    // (Camera.java:91-92, Options.java:166-171) = max(128, 2048).
+    assert_eq!(state.depth_far, 2_048.0);
+    // offset = (millis % 3000) / 3000 (WorldBorderRenderer.java:134).
+    assert_eq!(state.texture_offset, 0.5);
+    assert_eq!(state.camera_position[0], 24.0);
+    assert_eq!(state.camera_position[1], f64::from(64.0_f32 + 1.62_f32));
+    assert_eq!(state.camera_position[2], 0.0);
+}
+
+#[test]
+fn world_border_render_state_is_invisible_away_from_the_border() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    apply_static_border(&mut world, (0.0, 0.0), 400.0);
+
+    // Camera deep inside the border (further than renderDistance from every
+    // edge): the first extract clause fails (WorldBorderRenderer.java:107-112).
+    world.set_local_player_pose(local_player_pose([0.0, 64.0, 0.0], 0.0, 0.0));
+    let inside =
+        world_border_render_state_for_world(&world, camera_pose_from_world(&world), 2, 0.0, 0);
+    assert_eq!(inside.alpha, 0.0);
+
+    // Camera further than renderDistance outside the border: the second
+    // clause fails (WorldBorderRenderer.java:113-116).
+    world.set_local_player_pose(local_player_pose([250.0, 64.0, 0.0], 0.0, 0.0));
+    let outside =
+        world_border_render_state_for_world(&world, camera_pose_from_world(&world), 2, 0.0, 0);
+    assert_eq!(outside.alpha, 0.0);
+
+    // No camera pose: nothing to extract.
+    assert_eq!(
+        world_border_render_state_for_world(&world, None, 2, 0.0, 0).alpha,
+        0.0
+    );
+}
+
+#[test]
+fn world_border_render_state_interpolates_lerping_bounds_and_uses_shrinking_tint() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    apply_static_border(&mut world, (0.0, 0.0), 100.0);
+    world.apply_set_border_lerp_size(ProtocolSetBorderLerpSize {
+        old_size: 100.0,
+        new_size: 50.0,
+        lerp_time: 10,
+    });
+    // One border tick: previousSize = 100, size = lerp(1/10, 100, 50) = 95
+    // (WorldBorder.java:397-400,431-441).
+    world.advance_world_border(1);
+    world.set_local_player_pose(local_player_pose([45.0, 64.0, 0.0], 0.0, 0.0));
+
+    let state =
+        world_border_render_state_for_world(&world, camera_pose_from_world(&world), 2, 0.5, 0);
+
+    // Bounds interpolate previousSize -> size at the frame partial tick
+    // (WorldBorder.java:353-386): lerp(0.5, 100, 95) / 2 = 48.75.
+    assert_eq!(state.min_x, -48.75);
+    assert_eq!(state.max_x, 48.75);
+    // Shrinking border tint (BorderStatus.java:5).
+    assert_eq!(state.tint, 16_724_016);
+    // getDistanceToBorder uses the partial-tick-0 bounds (WorldBorder.java:104-112):
+    // east distance = lerp(0, 100, 95) / 2 - 45 = 5.
+    assert_eq!(state.alpha, (1.0 - 5.0 / 32.0_f64).powi(4));
+}
+
+#[test]
+fn renderer_frame_world_border_extracts_after_border_tick_and_weather() {
+    let source = include_str!("../runtime.rs");
+    let border_tick = source
+        .find("world.advance_world_border(running_ticks);")
+        .expect("pump should tick the world border");
+    let client_time = source
+        .find("world.advance_client_time(running_ticks);")
+        .expect("pump should advance the client clock");
+    let weather_extract = source
+        .find("let weather_render_state =")
+        .expect("pump should extract the weather render state");
+    let border_extract = source
+        .find("let world_border_render_state = world_border_render_state_for_world(")
+        .expect("pump should extract the world border render state");
+
+    // Vanilla ClientLevel.tick runs getWorldBorder().tick() right before
+    // tickTime() (ClientLevel.java:276-281).
+    assert!(
+        border_tick < client_time,
+        "world border ticks before the client clock, like vanilla ClientLevel.tick"
+    );
+    // Vanilla LevelRenderer extraction runs worldBorderRenderer.extract in the
+    // "border" profiler section after the weather extraction
+    // (LevelRenderer.java:573-585).
+    assert!(
+        client_time < border_extract && weather_extract < border_extract,
+        "world border render state extracts after the client tick and weather extraction"
     );
 }
 

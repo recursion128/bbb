@@ -22,6 +22,7 @@ mod selection;
 mod sky;
 mod transparency;
 mod weather;
+mod world_border;
 
 pub mod terrain;
 
