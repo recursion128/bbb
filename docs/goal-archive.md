@@ -3287,6 +3287,20 @@
     actual spawn block position's biome through the world probe path before
     native emits `ParticleSpawnCommand.option_color`.
 
+- 逐 provider 三态追踪表：
+  - [x] 2026-07-05 建表完成：
+    docs/unsupported/particle-runtime-vanilla-parity.md 新增
+    `## Per-provider tracking table (established 2026-07-05)`，以 vanilla
+    26.1 `ParticleResources.registerProviders()` 的全部 110 个 provider 类
+    加 3 个代码路径粒子（`TrackingEmitter` / `FireworkParticles.Starter` /
+    `ItemPickupParticle`）为行（113 行），逐 provider 对照 vanilla 源码判定
+    special-context collision / player-coupled physics / local sounds /
+    block-state removal gates 四维的 covered / not-needed / todo 三态。
+    结果：30 个 todo 单元格（28 collision + 2 player-coupled；sounds 与
+    removal-gates 无 todo），共享根因归为 `[bounds]` / `[leaf-bounds]` /
+    `[wake-grow]` / `[nearest-player]` 四组。账本 particle 条目 Next action
+    改为 work the todo rows；后续 P1-5 slice 从表中取 todo 行。
+
 ## P2：Terrain / Block Render Presentation
 
 - [x] fluid water overlay side texture：renderer terrain cells now carry the
