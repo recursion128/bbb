@@ -1073,6 +1073,25 @@
       `frametime: 1`, and `particles/vibration.json` references
       `minecraft:vibration`.
     - Draws active particles as camera-facing textured billboards.
+    - 2026-07-05 target-ownership alignment: opaque
+      (`translucent == false`) single-quad particles now draw into the main
+      color+depth target during the new `opaque_particle_main_pass` step,
+      before `copy_main_depth_to_feature_targets` copies the main depth into the
+      translucent / item-entity / particle feature targets; only translucent
+      particles keep rendering into the dedicated particles target in
+      `particle_target_pass`. This mirrors vanilla
+      `ParticleFeatureRenderer.render`
+      (`net/minecraft/client/renderer/feature/ParticleFeatureRenderer.java`
+      26.1 lines 46-57,
+      `useParticleTarget = particleTarget != null && translucent`) and
+      `LevelRenderer.addMainPass` ordering
+      (`net/minecraft/client/renderer/LevelRenderer.java` 26.1:
+      `renderSolidFeatures` at line 675 runs before the three `copyDepthFrom`
+      calls at lines 680-689, translucent particles trail at
+      `renderTranslucentParticles` line 714). Both particle pipelines share
+      vanilla `DepthStencilState.DEFAULT` (`LESS_THAN_OR_EQUAL`, depth write on),
+      so the opaque pipeline writes main depth exactly like vanilla
+      `OPAQUE_PARTICLE`, and that depth now propagates into every feature target.
   - Follow-up work in the plan:
     - full vanilla provider behavior
     - presentation parity

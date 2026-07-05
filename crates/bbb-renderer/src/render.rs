@@ -14,7 +14,10 @@ use crate::{
         EntityModelTranslucentDrawRange,
     },
     lightmap::write_lightmap_uniform,
-    particles::{ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind},
+    particles::{
+        ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind,
+        ParticleVertexBatches,
+    },
     weather::{build_lightning_mesh, build_weather_mesh},
     Renderer,
 };
@@ -48,6 +51,7 @@ const ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL: &str = "bbb-native-entity-transluce
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
+const OPAQUE_PARTICLE_MAIN_PASS_LABEL: &str = "bbb-native-opaque-particle-main-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
@@ -110,6 +114,7 @@ impl Renderer {
         );
         self.lightmap_pass(&mut encoder, &mut stats);
         self.main_world_pass(&mut encoder, &mut stats);
+        let particle_vertex_batches = self.opaque_particle_main_pass(&mut encoder, &mut stats);
         self.copy_main_depth_to_feature_targets(&mut encoder);
         self.entity_translucent_feature_pass(&mut encoder, &mut stats);
         self.item_entity_target_pass(&mut encoder, &mut stats);
@@ -117,7 +122,7 @@ impl Renderer {
         self.entity_outline_target_pass(&mut encoder, &mut stats);
         self.translucent_target_pass(&mut encoder, &mut stats);
         self.item_entity_line_target_pass(&mut encoder, &mut stats);
-        self.particle_target_pass(&mut encoder, &mut stats);
+        self.particle_target_pass(&mut encoder, &mut stats, particle_vertex_batches);
         self.entity_outline_post_chain(&mut encoder, &mut stats);
         self.clouds_pass(&mut encoder, &mut stats);
         self.weather_target_pass(&mut encoder, &mut stats);
@@ -562,6 +567,71 @@ impl Renderer {
         }
     }
 
+    /// Vanilla `ParticleFeatureRenderer.render` (26.1 lines 46-57) picks the render target with
+    /// `useParticleTarget = particleTarget != null && translucent`: opaque particles
+    /// (`translucent == false`) draw into the **main** color+depth attachment during
+    /// `renderSolidFeatures`, only translucent particles use the dedicated particles target.
+    /// In `LevelRenderer.addMainPass` (26.1) that solid pass runs before the three
+    /// `copyDepthFrom` calls (lines 680-689), so opaque-particle depth propagates into every
+    /// feature target. Mirroring that, opaque particles draw here into main just before
+    /// `copy_main_depth_to_feature_targets`; translucent particles stay in
+    /// `particle_target_pass`.
+    ///
+    /// Both particle pipelines share vanilla `DepthStencilState.DEFAULT`
+    /// (`CompareOp.LESS_THAN_OR_EQUAL`, depth write on), so drawing the opaque pipeline against
+    /// the main depth attachment writes depth exactly like vanilla `OPAQUE_PARTICLE`.
+    ///
+    /// The full particle vertex batches (opaque + translucent) are collected once here and
+    /// returned so `particle_target_pass` can upload and draw the translucent half without
+    /// rebuilding the CPU billboard geometry.
+    fn opaque_particle_main_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) -> ParticleVertexBatches {
+        let main_view = &self.main_target.view;
+        let particle_vertex_batches = self.collect_particle_vertex_batches();
+        let has_opaque_particles = self.frame_opaque_particle_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&particle_vertex_batches.opaque.vertices),
+        );
+        if let Some(vertex_buffer) =
+            has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(OPAQUE_PARTICLE_MAIN_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.opaque_particle_pipeline);
+            stats.pipeline_switches += 1;
+            self.draw_particle_vertex_batch(
+                &mut pass,
+                vertex_buffer.expect("uploaded"),
+                &particle_vertex_batches.opaque,
+                stats,
+            );
+        }
+        particle_vertex_batches
+    }
+
     fn copy_main_depth_to_feature_targets(&self, encoder: &mut wgpu::CommandEncoder) {
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
@@ -976,14 +1046,12 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        particle_vertex_batches: ParticleVertexBatches,
     ) {
         let particle_view = &self.particle_target.view;
-        let particle_vertex_batches = self.collect_particle_vertex_batches();
-        let has_opaque_particles = self.frame_opaque_particle_vertices.upload(
-            &self.device,
-            &self.queue,
-            bytemuck::cast_slice(&particle_vertex_batches.opaque.vertices),
-        );
+        // Opaque particles already drew into main color+depth in `opaque_particle_main_pass`;
+        // only the translucent half renders into the dedicated particles target here, matching
+        // vanilla `ParticleFeatureRenderer.renderTranslucent`.
         let has_translucent_particles = self.frame_translucent_particle_vertices.upload(
             &self.device,
             &self.queue,
@@ -1074,18 +1142,6 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if let Some(vertex_buffer) =
-                has_opaque_particles.then(|| self.frame_opaque_particle_vertices.buffer())
-            {
-                pass.set_pipeline(&self.opaque_particle_pipeline);
-                stats.pipeline_switches += 1;
-                self.draw_particle_vertex_batch(
-                    &mut pass,
-                    vertex_buffer.expect("uploaded"),
-                    &particle_vertex_batches.opaque,
-                    stats,
-                );
-            }
             if let Some(vertex_buffer) =
                 has_translucent_particles.then(|| self.frame_translucent_particle_vertices.buffer())
             {
@@ -2745,6 +2801,7 @@ mod tests {
     const FRAME_STEPS: &[&str] = &[
         "lightmap_pass",
         "main_world_pass",
+        "opaque_particle_main_pass",
         "copy_main_depth_to_feature_targets",
         "entity_translucent_feature_pass",
         "item_entity_target_pass",
@@ -4321,17 +4378,27 @@ mod tests {
             .find("upload_elder_guardian_particle_textured_mesh(")
             .map(|index| particle_fn + index)
             .expect("elder guardian particle model mesh is uploaded before the render pass");
-        let opaque_particle_pipeline = source[target..]
+        // Opaque particles draw into the main color+depth target during
+        // `opaque_particle_main_pass`, before the main depth is copied into the feature
+        // targets; only the translucent half remains in the particles target.
+        let opaque_main_fn = source
+            .find("fn opaque_particle_main_pass")
+            .expect("opaque particle main pass function is present");
+        let opaque_main_label = source[opaque_main_fn..]
+            .find("label: Some(OPAQUE_PARTICLE_MAIN_PASS_LABEL)")
+            .map(|index| opaque_main_fn + index)
+            .expect("opaque particle main pass label is used");
+        let opaque_particle_pipeline = source[opaque_main_label..]
             .find("pass.set_pipeline(&self.opaque_particle_pipeline)")
-            .map(|index| target + index)
-            .expect("opaque particle pipeline is drawn into the target");
+            .map(|index| opaque_main_label + index)
+            .expect("opaque particle pipeline is drawn into main");
         let opaque_particle_draw = source[opaque_particle_pipeline..]
             .find("&particle_vertex_batches.opaque")
             .map(|index| opaque_particle_pipeline + index)
-            .expect("opaque particle vertex batch is drawn into the target");
-        let translucent_particle_pipeline = source[opaque_particle_draw..]
+            .expect("opaque particle vertex batch is drawn into main");
+        let translucent_particle_pipeline = source[target..]
             .find("pass.set_pipeline(&self.translucent_particle_pipeline)")
-            .map(|index| opaque_particle_draw + index)
+            .map(|index| target + index)
             .expect("translucent particle pipeline is drawn into the target");
         let translucent_particle_draw = source[translucent_particle_pipeline..]
             .find("&particle_vertex_batches.translucent")
@@ -4379,21 +4446,30 @@ mod tests {
             .expect("transparency combine pass label is used");
 
         assert!(
-            copy_depth < entity_translucent_features
+            opaque_main_label < opaque_particle_pipeline
+                && opaque_particle_pipeline < opaque_particle_draw
+                && opaque_particle_draw < copy_depth
+                && copy_depth < entity_translucent_features
                 && entity_translucent_features < target
                 && experience_orb_upload < target
                 && experience_orb_upload < elder_upload
                 && elder_upload < target
-                && target < opaque_particle_pipeline
-                && opaque_particle_pipeline < opaque_particle_draw
-                && opaque_particle_pipeline < translucent_particle_pipeline
+                && target < translucent_particle_pipeline
                 && translucent_particle_pipeline < translucent_particle_draw
                 && translucent_particle_draw < experience_orb_particle_pipeline
                 && experience_orb_particle_pipeline < experience_orb_particle_draw
                 && experience_orb_particle_draw < elder_particle_pipeline
                 && elder_particle_pipeline < elder_particle_draw
                 && elder_particle_draw < combine,
-            "particle target copies main depth, clears transparent, draws opaque then translucent particles, then transparency combine consumes it"
+            "opaque particles draw into main before the main depth copy; the particles target then copies main depth, clears transparent, draws translucent particles, and transparency combine consumes it"
+        );
+        assert!(
+            source[opaque_main_label..opaque_particle_draw].contains("view: main_view")
+                && source[opaque_main_label..opaque_particle_draw]
+                    .contains("view: &self.depth.view")
+                && source[opaque_main_label..opaque_particle_draw]
+                    .contains("load: wgpu::LoadOp::Load"),
+            "opaque particles draw into the main color+depth target with a load so they never clear the main pass output, matching vanilla ParticleFeatureRenderer opaque draws"
         );
         assert!(
             source[experience_orb_upload..target]
@@ -4457,7 +4533,7 @@ mod tests {
             "particle target depth is copied from the renderer-owned main depth texture"
         );
         assert!(
-            source[target..opaque_particle_pipeline]
+            source[target..translucent_particle_pipeline]
                 .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
             "particle target color is cleared every frame so missing particle draws do not reuse stale color"
         );

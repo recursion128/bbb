@@ -103,6 +103,20 @@
     `VIEW_OFFSET_Z_LAYERING`、translucent blend、depth-write `LESS_EQUAL`、
     普通 block-hit outline `ARGB.black(102)` alpha。屏幕空间线宽与
     high-contrast secondary outline 仍属后续视觉 polish。
+  - [x] opaque 粒子 target ownership（2026-07-05，新增 `opaque_particle_main_pass`
+    step）：opaque（`translucent == false`）single-quad 粒子从 `particle_target_pass`
+    挪到新的 `opaque_particle_main_pass`，画进 main color+depth，且位于
+    `copy_main_depth_to_feature_targets` 之前，使 opaque 粒子深度随主深度拷贝进入
+    translucent / itemEntity / particles feature target；translucent 粒子继续留在
+    `particle_target_pass` 的 particles target。vanilla 依据：
+    `ParticleFeatureRenderer.render`（26.1 lines 46-57，
+    `useParticleTarget = particleTarget != null && translucent`）与
+    `LevelRenderer.addMainPass`（26.1：`renderSolidFeatures` line 675 在三个
+    `copyDepthFrom` line 680-689 之前，translucent 粒子在帧尾
+    `renderTranslucentParticles` line 714）。两个粒子 pipeline 共用 vanilla
+    `DepthStencilState.DEFAULT`（`LESS_THAN_OR_EQUAL`、depth write on），故 opaque
+    pipeline 写主深度与 vanilla `OPAQUE_PARTICLE` 一致。剩余其它 target ownership
+    条目继续留 P1-1 队列。
 - sorting：
   - [x] blended texture-backed model submit 的 draw-plan sort：main
     translucent 与 itemEntity target 的 `EntityModelTexturedDrawRange` 现在携带

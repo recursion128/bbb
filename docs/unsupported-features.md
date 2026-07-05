@@ -255,7 +255,12 @@ When an agent does any of the following, update this file in the same slice:
     opaque/translucent split, `ParticleEngine` group order, terrain/item atlas
     sub-rect UVs), uploads a stitched official particle atlas when assets are
     available, and draws active particles as camera-facing textured
-    billboards.
+    billboards. Per-target ownership follows vanilla
+    `ParticleFeatureRenderer`'s
+    `useParticleTarget = particleTarget != null && translucent`: opaque
+    particles draw into the main color+depth target before the feature-target
+    depth copies, and only translucent particles render into the dedicated
+    particles target.
 - Detailed per-slice history: docs/unsupported/particle-runtime-vanilla-parity.md
 
 ### Renderer Scene Parity
