@@ -39,10 +39,42 @@ const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
 
-fn tooltip_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
+/// A hover-name tooltip line: rarity colour run, italic when custom-named
+/// (vanilla `ItemStack.getStyledHoverName`).
+fn tooltip_name_line(
+    text: &str,
+    tint: [f32; 4],
+    color: u32,
+    italic: bool,
+) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
         text: text.to_string(),
         tint,
+        runs: vec![bbb_renderer::HudStyledTextRun {
+            text: text.to_string(),
+            style: bbb_renderer::HudTextStyle {
+                italic,
+                ..Default::default()
+            },
+            color: Some(color),
+        }],
+    }
+}
+
+/// A lore tooltip line carrying vanilla `ItemLore.LORE_STYLE`
+/// (DARK_PURPLE + italic).
+fn tooltip_lore_line(text: &str) -> HudInventoryTooltipLine {
+    HudInventoryTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEST_DARK_PURPLE,
+        runs: vec![bbb_renderer::HudStyledTextRun {
+            text: text.to_string(),
+            style: bbb_renderer::HudTextStyle {
+                italic: true,
+                ..Default::default()
+            },
+            color: Some(0xAA_00_AA),
+        }],
     }
 }
 
@@ -2447,6 +2479,7 @@ fn server_container_open_releases_held_movement() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
 
@@ -2954,6 +2987,7 @@ fn server_container_open_releases_held_mouse_actions() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
 
@@ -3519,6 +3553,7 @@ fn hud_container_screen_uses_selected_item_condition_for_server_opened_hotbar_sl
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 63];
     items[54] = stack.clone();
@@ -5154,7 +5189,12 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
             slot_id: 36,
             x: 8,
             y: 142,
-            lines: vec![tooltip_line("Test Combo", TOOLTIP_TEST_WHITE)],
+            lines: vec![tooltip_name_line(
+                "Test Combo",
+                TOOLTIP_TEST_WHITE,
+                0xFF_FF_FF,
+                false
+            )],
         })
     );
 
@@ -5175,9 +5215,9 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
             x: 8,
             y: 142,
             lines: vec![
-                tooltip_line("Custom Combo", TOOLTIP_TEST_AQUA),
-                tooltip_line("First lore", TOOLTIP_TEST_DARK_PURPLE),
-                tooltip_line("Second lore", TOOLTIP_TEST_DARK_PURPLE),
+                tooltip_name_line("Custom Combo", TOOLTIP_TEST_AQUA, 0x55_FF_FF, true),
+                tooltip_lore_line("First lore"),
+                tooltip_lore_line("Second lore"),
             ],
         })
     );
@@ -5192,6 +5232,7 @@ fn hud_inventory_screen_projects_generic_container_layout() {
         container_id: 7,
         menu_type_id: 5,
         title: "Large Chest".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5244,6 +5285,7 @@ fn hud_inventory_screen_projects_generic_3x3_layout() {
         container_id: 7,
         menu_type_id: 6,
         title: "Dispenser".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5283,6 +5325,7 @@ fn hud_inventory_screen_projects_crafter_layout() {
         container_id: 7,
         menu_type_id: 7,
         title: "Crafter".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5335,6 +5378,7 @@ fn hud_inventory_screen_projects_crafter_state_layers() {
         container_id: 7,
         menu_type_id: 7,
         title: "Crafter".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5410,6 +5454,7 @@ fn hud_inventory_screen_projects_crafting_table_layout() {
         container_id: 7,
         menu_type_id: 12,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5451,6 +5496,7 @@ fn hud_inventory_screen_projects_enchanting_table_layout_and_lapis_slot_layer() 
         container_id: 7,
         menu_type_id: 13,
         title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5530,6 +5576,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
         container_id: 7,
         menu_type_id: 13,
         title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
     items[1] = item_stack(42, 2);
@@ -5584,6 +5631,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             tint: ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR,
             background: None,
             shadow: false,
+            runs: Vec::new(),
         }]
     );
 }
@@ -5595,6 +5643,7 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
         container_id: 7,
         menu_type_id: 13,
         title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
     items[1] = item_stack(42, 1);
@@ -5649,6 +5698,7 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             tint: ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR,
             background: None,
             shadow: false,
+            runs: Vec::new(),
         }]
     );
 }
@@ -5660,6 +5710,7 @@ fn hud_inventory_screen_projects_anvil_layout() {
         container_id: 7,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5714,6 +5765,7 @@ fn hud_inventory_screen_projects_beacon_layout() {
         container_id: 7,
         menu_type_id: 9,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -5833,6 +5885,7 @@ fn hud_inventory_screen_projects_active_beacon_confirm_button() {
         container_id: 7,
         menu_type_id: 9,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 37];
     items[0] = item_stack(42, 1);
@@ -5881,6 +5934,7 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
         container_id: 7,
         menu_type_id: 9,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 37];
     items[0] = item_stack(42, 1);
@@ -5977,6 +6031,7 @@ fn hud_inventory_screen_projects_anvil_text_field_and_error_layers() {
         container_id: 7,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 1);
@@ -6030,6 +6085,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
         container_id: 7,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 1);
@@ -6063,6 +6119,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
             tint: ANVIL_RENAME_TEXT_COLOR,
             background: None,
             shadow: false,
+            runs: Vec::new(),
         }]
     );
 }
@@ -6074,6 +6131,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
         container_id: 7,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 1);
@@ -6113,6 +6171,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
                 tint: ANVIL_COST_BACKGROUND_TINT,
             }),
             shadow: false,
+            runs: Vec::new(),
         }]
     );
 }
@@ -6124,6 +6183,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
         container_id: 7,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 1);
@@ -6162,6 +6222,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
                 tint: ANVIL_COST_BACKGROUND_TINT,
             }),
             shadow: false,
+            runs: Vec::new(),
         }]
     );
 }
@@ -6173,6 +6234,7 @@ fn hud_inventory_screen_projects_brewing_stand_layout() {
         container_id: 7,
         menu_type_id: 11,
         title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -6216,6 +6278,7 @@ fn hud_inventory_screen_projects_brewing_stand_progress_layers() {
         container_id: 7,
         menu_type_id: 11,
         title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -6295,6 +6358,7 @@ fn hud_inventory_screen_projects_furnace_like_layouts() {
             container_id: 7,
             menu_type_id,
             title: title.to_string(),
+            title_styled: Vec::new(),
         });
         world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
             container_id: 7,
@@ -6339,6 +6403,7 @@ fn hud_inventory_screen_projects_furnace_progress_layers() {
         container_id: 7,
         menu_type_id: 14,
         title: "Furnace".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -6410,6 +6475,7 @@ fn hud_inventory_screen_projects_grindstone_layout() {
         container_id: 7,
         menu_type_id: 15,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -6453,6 +6519,7 @@ fn hud_inventory_screen_projects_grindstone_error_layer() {
         container_id: 7,
         menu_type_id: 15,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 1);
@@ -6497,6 +6564,7 @@ fn hud_inventory_screen_projects_hopper_layout() {
         container_id: 7,
         menu_type_id: 16,
         title: "Hopper".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -6813,6 +6881,7 @@ fn hud_inventory_screen_projects_lectern_book_layout() {
         container_id: 7,
         menu_type_id: 17,
         title: "Lectern".to_string(),
+        title_styled: Vec::new(),
     });
 
     let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
@@ -6861,6 +6930,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
         container_id: 7,
         menu_type_id: 17,
         title: "Lectern".to_string(),
+        title_styled: Vec::new(),
     });
     let mut book = item_stack(42, 1);
     book.component_patch.written_book = Some(bbb_protocol::packets::WrittenBookContentSummary {
@@ -6900,6 +6970,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             },
             HudInventoryTextLabel {
                 x: BOOK_PAGE_TEXT_X,
@@ -6909,6 +6980,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             },
             HudInventoryTextLabel {
                 x: BOOK_PAGE_TEXT_X,
@@ -6918,6 +6990,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             },
         ]
     );
@@ -6973,6 +7046,7 @@ fn hud_inventory_screen_projects_current_book_screen() {
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             },
             HudInventoryTextLabel {
                 x: BOOK_PAGE_TEXT_X,
@@ -6982,6 +7056,7 @@ fn hud_inventory_screen_projects_current_book_screen() {
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             },
         ]
     );
@@ -6994,6 +7069,7 @@ fn hud_inventory_screen_projects_shulker_box_layout() {
         container_id: 7,
         menu_type_id: 20,
         title: "Shulker Box".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7035,6 +7111,7 @@ fn hud_inventory_screen_projects_loom_layout_and_empty_slot_layers() {
         container_id: 7,
         menu_type_id: 18,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7118,6 +7195,7 @@ fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
         container_id: 7,
         menu_type_id: 18,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
     items[0] = item_stack(42, 1);
@@ -7197,6 +7275,7 @@ fn hud_inventory_screen_projects_merchant_layout() {
         container_id: 7,
         menu_type_id: 19,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7243,6 +7322,7 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
         container_id: 7,
         menu_type_id: 19,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7371,6 +7451,7 @@ fn hud_inventory_screen_projects_smithing_layout() {
         container_id: 7,
         menu_type_id: 21,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7416,6 +7497,7 @@ fn hud_inventory_screen_projects_smithing_armor_stand_preview() {
         container_id: 7,
         menu_type_id: 21,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7604,6 +7686,7 @@ fn smithing_preview_for_result_stack(
         container_id: 7,
         menu_type_id: 21,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
     items[3] = stack;
@@ -7714,6 +7797,7 @@ fn hud_inventory_screen_projects_smithing_error_layer() {
         container_id: 7,
         menu_type_id: 21,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7761,6 +7845,7 @@ fn hud_inventory_screen_projects_cartography_table_layout() {
         container_id: 7,
         menu_type_id: 23,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7942,6 +8027,7 @@ fn hud_inventory_screen_projects_stonecutter_layout() {
         container_id: 7,
         menu_type_id: 24,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -7994,6 +8080,7 @@ fn hud_inventory_screen_projects_stonecutter_recipe_buttons_and_scroller() {
         container_id: 7,
         menu_type_id: 24,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
     items[0] = item_stack(42, 1);
@@ -8722,6 +8809,7 @@ fn cartography_table_world_with_items(
         container_id: 7,
         menu_type_id: 23,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,

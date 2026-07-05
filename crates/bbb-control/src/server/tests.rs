@@ -2028,6 +2028,7 @@ fn client_inventory_reads_canonical_world_state() {
             container_id: 7,
             menu_type_id: 2,
             title: "Chest".to_string(),
+            title_styled: Vec::new(),
         });
         store.apply_container_set_content(ContainerSetContent {
             container_id: 7,
@@ -2091,6 +2092,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
             container_id: 7,
             menu_type_id: 19,
             title: "Merchant".to_string(),
+            title_styled: Vec::new(),
         });
         assert!(store.apply_merchant_offers(MerchantOffers {
             container_id: 7,

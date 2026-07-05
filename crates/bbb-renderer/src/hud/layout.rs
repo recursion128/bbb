@@ -1,9 +1,7 @@
 use glam::{Mat4, Vec3};
 use winit::dpi::PhysicalSize;
 
-use super::{
-    HudAsciiGlyph, HudDigitGlyph, HudNineSliceScaling, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS,
-};
+use super::{HudDigitGlyph, HudNineSliceScaling, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
@@ -260,7 +258,12 @@ pub(super) fn hud_inventory_tooltip_background_hud_rect(
     }
 }
 
-pub(super) fn hud_inventory_tooltip_text_hud_rect(
+/// Pen origin (line top-left) of a tooltip text line in HUD pixels. Glyph
+/// geometry from this origin — including the `7 - ascent` baseline offset
+/// (vanilla `GlyphBitmap.getTop()`) and every style pass — comes from
+/// `HudDigitGlyph::styled_quads` / `styled_effect_rects`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn hud_inventory_tooltip_line_origin(
     surface_size: PhysicalSize<u32>,
     screen_width: u32,
     screen_height: u32,
@@ -269,10 +272,7 @@ pub(super) fn hud_inventory_tooltip_text_hud_rect(
     text_width: u32,
     text_height: u32,
     line_index: usize,
-    pen_x: u32,
-    shadow_offset: f32,
-    glyph: HudAsciiGlyph,
-) -> HudRect {
+) -> (f32, f32) {
     let (x, y) = inventory_tooltip_text_origin(
         surface_size,
         screen_width,
@@ -282,36 +282,21 @@ pub(super) fn hud_inventory_tooltip_text_hud_rect(
         text_width,
         text_height,
     );
-    HudRect {
-        x: x + pen_x as f32 + shadow_offset,
-        // Baseline alignment across font pages: vanilla `GlyphBitmap.getTop()`
-        // offsets each glyph by `7 - ascent`, so accented-page glyphs
-        // (ascent 10) rise 3px above ascii-page glyphs on the same line.
-        y: y + tooltip_line_y(line_index) as f32 + shadow_offset + glyph.baseline_offset(),
-        width: glyph.width,
-        height: glyph.height,
-    }
+    (x, y + tooltip_line_y(line_index) as f32)
 }
 
-pub(super) fn hud_inventory_text_label_glyph_hud_rect(
+/// Pen origin (line top-left) of an inventory-screen text label in HUD
+/// pixels; glyph geometry is produced by `HudDigitGlyph::styled_quads` /
+/// `styled_effect_rects` from this origin.
+pub(super) fn hud_inventory_text_label_origin(
     surface_size: PhysicalSize<u32>,
     screen_width: u32,
     screen_height: u32,
     label_x: i32,
     label_y: i32,
-    pen_x: u32,
-    shadow_offset: f32,
-    glyph: HudAsciiGlyph,
-) -> HudRect {
+) -> (f32, f32) {
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, screen_width, screen_height);
-    HudRect {
-        x: origin_x + label_x as f32 + pen_x as f32 + shadow_offset,
-        // `7 - ascent` per-glyph top offset (vanilla `GlyphBitmap.getTop()`)
-        // keeps mixed-page text on one baseline.
-        y: origin_y + label_y as f32 + shadow_offset + glyph.baseline_offset(),
-        width: glyph.width,
-        height: glyph.height,
-    }
+    (origin_x + label_x as f32, origin_y + label_y as f32)
 }
 
 pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, height: u32) -> HudRect {
@@ -426,46 +411,67 @@ pub(super) fn hud_quad_vertices(
     let y0 = rect.y;
     let x1 = rect.x + rect.width as f32;
     let y1 = rect.y + rect.height as f32;
+    hud_styled_quad_vertices(
+        surface_size,
+        [[x0, y0], [x0, y1], [x1, y1], [x1, y0]],
+        uv,
+        tint,
+    )
+}
+
+/// Corner-based variant of [`hud_quad_vertices`] for styled glyph quads:
+/// `corners` are in HUD pixels using the `HudDigitGlyph::styled_quads` /
+/// `HudGlyphQuad` order `[top_left, bottom_left, bottom_right, top_right]`
+/// (vanilla `BakedSheetGlyph.render` winding). For an axis-aligned quad this
+/// emits exactly the vertices of [`hud_quad_vertices`].
+pub(super) fn hud_styled_quad_vertices(
+    surface_size: PhysicalSize<u32>,
+    corners: [[f32; 2]; 4],
+    uv: HudUvRect,
+    tint: [f32; 4],
+) -> [HudVertex; 6] {
     let width = surface_size.width.max(1) as f32;
     let height = surface_size.height.max(1) as f32;
-    let left = x0 / width * 2.0 - 1.0;
-    let right = x1 / width * 2.0 - 1.0;
-    let top = 1.0 - y0 / height * 2.0;
-    let bottom = 1.0 - y1 / height * 2.0;
+    let [top_left, bottom_left, bottom_right, top_right] =
+        corners.map(|[x, y]| [x / width * 2.0 - 1.0, 1.0 - y / height * 2.0]);
+    let uv_top_left = uv.min;
+    let uv_top_right = [uv.max[0], uv.min[1]];
+    let uv_bottom_right = uv.max;
+    let uv_bottom_left = [uv.min[0], uv.max[1]];
     [
         HudVertex {
-            position: [left, top],
-            uv: uv.min,
+            position: top_left,
+            uv: uv_top_left,
             tint,
             local_uv: [0.0, 0.0],
         },
         HudVertex {
-            position: [right, top],
-            uv: [uv.max[0], uv.min[1]],
+            position: top_right,
+            uv: uv_top_right,
             tint,
             local_uv: [1.0, 0.0],
         },
         HudVertex {
-            position: [right, bottom],
-            uv: uv.max,
+            position: bottom_right,
+            uv: uv_bottom_right,
             tint,
             local_uv: [1.0, 1.0],
         },
         HudVertex {
-            position: [left, top],
-            uv: uv.min,
+            position: top_left,
+            uv: uv_top_left,
             tint,
             local_uv: [0.0, 0.0],
         },
         HudVertex {
-            position: [right, bottom],
-            uv: uv.max,
+            position: bottom_right,
+            uv: uv_bottom_right,
             tint,
             local_uv: [1.0, 1.0],
         },
         HudVertex {
-            position: [left, bottom],
-            uv: [uv.min[0], uv.max[1]],
+            position: bottom_left,
+            uv: uv_bottom_left,
             tint,
             local_uv: [0.0, 1.0],
         },
@@ -708,6 +714,7 @@ pub(super) fn hud_inventory_tooltip_sprite_segments(
 
 #[cfg(test)]
 mod tests {
+    use super::super::{HudAsciiGlyph, HudTextStyle};
     use super::*;
 
     #[test]
@@ -901,23 +908,21 @@ mod tests {
             advance: 6,
             ..HudAsciiGlyph::default()
         };
-        let text = hud_inventory_tooltip_text_hud_rect(
-            surface_size,
-            176,
-            166,
-            8,
-            84,
-            36,
-            8,
-            1,
-            6,
-            1.0,
-            glyph,
+        // Line 1 pen origin + a pen advance of 6 with the 1px shadow offset:
+        // the glyph quad is the axis-aligned 8x8 cell at (99, 122).
+        let (line_x, line_y) =
+            hud_inventory_tooltip_line_origin(surface_size, 176, 166, 8, 84, 36, 8, 1);
+        let quads = glyph.styled_quads(
+            line_x + 6.0 + 1.0,
+            line_y + 1.0,
+            HudTextStyle::default(),
+            false,
         );
-        assert_eq!(text.x, 99.0);
-        assert_eq!(text.y, 122.0);
-        assert_eq!(text.width, 8);
-        assert_eq!(text.height, 8);
+        assert_eq!(quads.len(), 1);
+        assert_eq!(
+            quads[0].corners,
+            [[99.0, 122.0], [99.0, 130.0], [107.0, 130.0], [107.0, 122.0],]
+        );
     }
 
     #[test]
@@ -1156,32 +1161,30 @@ mod tests {
     }
 
     #[test]
-    fn hud_inventory_text_label_glyph_rect_uses_inventory_origin() {
+    fn hud_inventory_text_label_glyph_quad_uses_inventory_origin() {
         let glyph = HudAsciiGlyph {
             width: 8,
             height: 8,
             advance: 6,
             ..HudAsciiGlyph::default()
         };
-        let rect = hud_inventory_text_label_glyph_hud_rect(
-            PhysicalSize::new(320, 240),
-            176,
-            166,
-            62,
-            24,
-            12,
-            1.0,
-            glyph,
+        let (label_x, label_y) =
+            hud_inventory_text_label_origin(PhysicalSize::new(320, 240), 176, 166, 62, 24);
+        let quads = glyph.styled_quads(
+            label_x + 12.0 + 1.0,
+            label_y + 1.0,
+            HudTextStyle::default(),
+            false,
         );
-
-        assert_eq!(rect.x, 147.0);
-        assert_eq!(rect.y, 62.0);
-        assert_eq!(rect.width, 8);
-        assert_eq!(rect.height, 8);
+        assert_eq!(quads.len(), 1);
+        assert_eq!(
+            quads[0].corners,
+            [[147.0, 62.0], [147.0, 70.0], [155.0, 70.0], [155.0, 62.0],]
+        );
     }
 
     #[test]
-    fn glyph_rects_align_pages_on_the_vanilla_baseline() {
+    fn glyph_quads_align_pages_on_the_vanilla_baseline() {
         // `GlyphBitmap.getTop()` = 7 - ascent: an accented-page glyph (é,
         // height 12, ascent 10) starts 3px above an ascii-page glyph (e,
         // ascent 7) drawn at the same pen position.
@@ -1201,56 +1204,21 @@ mod tests {
             ..HudAsciiGlyph::default()
         };
 
-        let label_e = hud_inventory_text_label_glyph_hud_rect(
-            surface_size,
-            176,
-            166,
-            62,
-            24,
-            0,
-            0.0,
-            ascii_e,
-        );
-        let label_e_accent = hud_inventory_text_label_glyph_hud_rect(
-            surface_size,
-            176,
-            166,
-            62,
-            24,
-            0,
-            0.0,
-            accented_e,
-        );
-        assert_eq!(label_e_accent.y, label_e.y - 3.0);
-        assert_eq!(label_e_accent.height, 12);
+        let (label_x, label_y) = hud_inventory_text_label_origin(surface_size, 176, 166, 62, 24);
+        let plain = HudTextStyle::default();
+        let label_e = glyph_top_left(ascii_e, label_x, label_y, plain);
+        let label_e_accent = glyph_top_left(accented_e, label_x, label_y, plain);
+        assert_eq!(label_e_accent[1], label_e[1] - 3.0);
 
-        let tooltip_e = hud_inventory_tooltip_text_hud_rect(
-            surface_size,
-            176,
-            166,
-            8,
-            84,
-            36,
-            8,
-            0,
-            0,
-            0.0,
-            ascii_e,
-        );
-        let tooltip_e_accent = hud_inventory_tooltip_text_hud_rect(
-            surface_size,
-            176,
-            166,
-            8,
-            84,
-            36,
-            8,
-            0,
-            0,
-            0.0,
-            accented_e,
-        );
-        assert_eq!(tooltip_e_accent.y, tooltip_e.y - 3.0);
+        let (tooltip_x, tooltip_y) =
+            hud_inventory_tooltip_line_origin(surface_size, 176, 166, 8, 84, 36, 8, 0);
+        let tooltip_e = glyph_top_left(ascii_e, tooltip_x, tooltip_y, plain);
+        let tooltip_e_accent = glyph_top_left(accented_e, tooltip_x, tooltip_y, plain);
+        assert_eq!(tooltip_e_accent[1], tooltip_e[1] - 3.0);
+    }
+
+    fn glyph_top_left(glyph: HudAsciiGlyph, x: f32, y: f32, style: HudTextStyle) -> [f32; 2] {
+        glyph.styled_quads(x, y, style, false)[0].corners[0]
     }
 
     #[test]

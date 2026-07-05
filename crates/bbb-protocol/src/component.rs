@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::codec::{Decoder, ProtocolError, Result};
 
 const MAX_NBT_DEPTH: usize = 64;
@@ -5,22 +7,89 @@ const MAX_NBT_LIST_ITEMS: usize = 4096;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum NbtValue {
+    Byte(i8),
     String(String),
     List(Vec<NbtValue>),
     Compound(Vec<(String, NbtValue)>),
     Other,
 }
 
-pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<String> {
-    let root = read_nbt_any(decoder)?;
+/// The render-relevant subset of vanilla `net.minecraft.network.chat.Style`
+/// (codec keys `bold` / `italic` / `underlined` / `strikethrough` /
+/// `obfuscated` / `color`, `Style.Serializer.MAP_CODEC`). Each key is `None`
+/// when the component chain never set it, mirroring vanilla's nullable style
+/// fields so downstream default-style merges (`ComponentUtils.mergeStyles`,
+/// e.g. the lore style) can still fill unset keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ComponentStyle {
+    #[serde(default)]
+    pub bold: Option<bool>,
+    #[serde(default)]
+    pub italic: Option<bool>,
+    #[serde(default)]
+    pub underlined: Option<bool>,
+    #[serde(default)]
+    pub strikethrough: Option<bool>,
+    #[serde(default)]
+    pub obfuscated: Option<bool>,
+    /// Resolved text colour as `0xRRGGBB` (vanilla `TextColor.getValue()`),
+    /// parsed from either a named `ChatFormatting` colour or a `#RRGGBB`
+    /// literal (`TextColor.parseColor`).
+    #[serde(default)]
+    pub color: Option<u32>,
+}
 
-    let mut out = String::new();
-    append_component_text(&root, &mut out);
-    if out.is_empty() {
-        Ok("component nbt".to_string())
-    } else {
-        Ok(out)
+impl ComponentStyle {
+    /// Vanilla `Style.applyTo(other)`: keys set on `self` win, unset keys
+    /// inherit from `parent`.
+    pub fn apply_to(&self, parent: &ComponentStyle) -> ComponentStyle {
+        ComponentStyle {
+            bold: self.bold.or(parent.bold),
+            italic: self.italic.or(parent.italic),
+            underlined: self.underlined.or(parent.underlined),
+            strikethrough: self.strikethrough.or(parent.strikethrough),
+            obfuscated: self.obfuscated.or(parent.obfuscated),
+            color: self.color.or(parent.color),
+        }
     }
+}
+
+/// One flattened chat-component run: contiguous text with its fully inherited
+/// style (parent styles already merged via [`ComponentStyle::apply_to`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StyledTextRun {
+    pub text: String,
+    #[serde(default)]
+    pub style: ComponentStyle,
+}
+
+/// Concatenated plain text of a run list; the empty-component fallback matches
+/// the legacy plain-text decoder (`"component nbt"`), keeping the old API a
+/// pure delegation of the styled one.
+pub fn styled_runs_summary_text(runs: &[StyledTextRun]) -> String {
+    let mut out = String::new();
+    for run in runs {
+        out.push_str(&run.text);
+    }
+    if out.is_empty() {
+        "component nbt".to_string()
+    } else {
+        out
+    }
+}
+
+pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<String> {
+    let runs = decode_styled_component_summary_from_decoder(decoder)?;
+    Ok(styled_runs_summary_text(&runs))
+}
+
+pub(crate) fn decode_styled_component_summary_from_decoder(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<StyledTextRun>> {
+    let root = read_nbt_any(decoder)?;
+    let mut runs = RunCollector::default();
+    append_component_runs(&root, &ComponentStyle::default(), &mut runs);
+    Ok(runs.runs)
 }
 
 pub(crate) fn skip_nbt_tag_from_decoder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -42,6 +111,21 @@ pub(crate) fn decode_component_summary(payload: &[u8]) -> Result<String> {
     }
 }
 
+/// Decodes a network chat component into flattened styled runs. The companion
+/// of [`decode_component_summary`]: same NBT traversal and text extraction,
+/// but each contiguous piece of text keeps its inherited vanilla `Style`
+/// subset instead of being flattened to a bare string.
+pub fn decode_styled_component_summary(payload: &[u8]) -> Result<Vec<StyledTextRun>> {
+    let mut decoder = Decoder::new(payload);
+    let runs = decode_styled_component_summary_from_decoder(&mut decoder)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after component nbt".to_string(),
+        ));
+    }
+    Ok(runs)
+}
+
 fn read_nbt_any(decoder: &mut Decoder<'_>) -> Result<NbtValue> {
     let tag_id = decoder.read_u8()?;
     if tag_id == 0 {
@@ -58,10 +142,7 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
     }
 
     match tag_id {
-        1 => {
-            decoder.read_exact(1, "nbt byte")?;
-            Ok(NbtValue::Other)
-        }
+        1 => Ok(NbtValue::Byte(decoder.read_u8()? as i8)),
         2 => {
             decoder.read_exact(2, "nbt short")?;
             Ok(NbtValue::Other)
@@ -193,48 +274,143 @@ fn read_modified_utf8(decoder: &mut Decoder<'_>) -> Result<String> {
         .map_err(|_| ProtocolError::InvalidData("invalid modified utf-8 string".to_string()))
 }
 
-fn append_component_text(value: &NbtValue, out: &mut String) {
-    match value {
-        NbtValue::String(text) => out.push_str(text),
-        NbtValue::List(items) => {
-            for item in items {
-                append_component_text(item, out);
+/// Accumulates flattened runs, merging adjacent same-style text so the run
+/// list is canonical and its concatenation reproduces the legacy plain-text
+/// traversal byte for byte.
+#[derive(Default)]
+struct RunCollector {
+    runs: Vec<StyledTextRun>,
+}
+
+impl RunCollector {
+    fn push(&mut self, text: &str, style: ComponentStyle) {
+        if text.is_empty() {
+            return;
+        }
+        if let Some(last) = self.runs.last_mut() {
+            if last.style == style {
+                last.text.push_str(text);
+                return;
             }
         }
-        NbtValue::Compound(entries) => {
-            append_primary_component_text(entries, out);
-            if let Some(extra) = find_entry(entries, "extra") {
-                append_component_text(extra, out);
-            }
-        }
-        NbtValue::Other => {}
+        self.runs.push(StyledTextRun {
+            text: text.to_string(),
+            style,
+        });
+    }
+
+    fn is_empty(&self) -> bool {
+        self.runs.is_empty()
     }
 }
 
-fn append_primary_component_text(entries: &[(String, NbtValue)], out: &mut String) {
+fn append_component_runs(value: &NbtValue, inherited: &ComponentStyle, out: &mut RunCollector) {
+    match value {
+        NbtValue::String(text) => out.push(text, *inherited),
+        NbtValue::List(items) => {
+            for item in items {
+                append_component_runs(item, inherited, out);
+            }
+        }
+        NbtValue::Compound(entries) => {
+            // Vanilla component inheritance: the node's own style keys win,
+            // unset keys inherit the parent chain (`Style.applyTo` inside
+            // `Component.visit`); siblings in `extra` inherit this node's
+            // effective style.
+            let style = component_style_from_entries(entries).apply_to(inherited);
+            append_primary_component_runs(entries, &style, out);
+            if let Some(extra) = find_entry(entries, "extra") {
+                append_component_runs(extra, &style, out);
+            }
+        }
+        NbtValue::Byte(_) | NbtValue::Other => {}
+    }
+}
+
+fn append_primary_component_runs(
+    entries: &[(String, NbtValue)],
+    style: &ComponentStyle,
+    out: &mut RunCollector,
+) {
     if let Some(text) = find_entry(entries, "text") {
-        append_component_text(text, out);
+        append_component_runs(text, style, out);
         return;
     }
 
     if let Some(fallback) = find_entry(entries, "fallback") {
-        append_component_text(fallback, out);
+        append_component_runs(fallback, style, out);
     } else if let Some(translate) = find_entry(entries, "translate") {
-        append_component_text(translate, out);
+        append_component_runs(translate, style, out);
     } else if let Some(keybind) = find_entry(entries, "keybind") {
-        append_component_text(keybind, out);
+        append_component_runs(keybind, style, out);
     } else if let Some(selector) = find_entry(entries, "selector") {
-        append_component_text(selector, out);
+        append_component_runs(selector, style, out);
     } else if let Some(nbt) = find_entry(entries, "nbt") {
-        append_component_text(nbt, out);
+        append_component_runs(nbt, style, out);
     }
 
     if let Some(with) = find_entry(entries, "with") {
         if !out.is_empty() {
-            out.push(' ');
+            out.push(" ", *style);
         }
-        append_component_text(with, out);
+        append_component_runs(with, style, out);
     }
+}
+
+/// Extracts the render-relevant vanilla `Style` keys from a component
+/// compound (`Style.Serializer.MAP_CODEC` field names). Booleans arrive as
+/// NBT bytes (`Codec.BOOL` via `NbtOps`), the colour as a string
+/// (`TextColor.CODEC`); malformed values are treated as unset, matching the
+/// summary decoder's lenient posture.
+fn component_style_from_entries(entries: &[(String, NbtValue)]) -> ComponentStyle {
+    ComponentStyle {
+        bold: style_flag(entries, "bold"),
+        italic: style_flag(entries, "italic"),
+        underlined: style_flag(entries, "underlined"),
+        strikethrough: style_flag(entries, "strikethrough"),
+        obfuscated: style_flag(entries, "obfuscated"),
+        color: match find_entry(entries, "color") {
+            Some(NbtValue::String(color)) => parse_text_color(color),
+            _ => None,
+        },
+    }
+}
+
+fn style_flag(entries: &[(String, NbtValue)], key: &str) -> Option<bool> {
+    match find_entry(entries, key) {
+        Some(NbtValue::Byte(value)) => Some(*value != 0),
+        _ => None,
+    }
+}
+
+/// Vanilla `TextColor.parseColor`: `#`-prefixed hex literal in `0..=0xFFFFFF`,
+/// otherwise an exact named `ChatFormatting` colour (`getName()` =
+/// lowercased enum name, underscores kept — the `NAMED_COLORS` map).
+fn parse_text_color(color: &str) -> Option<u32> {
+    if let Some(hex) = color.strip_prefix('#') {
+        let value = u32::from_str_radix(hex, 16).ok()?;
+        return (value <= 0xFF_FF_FF).then_some(value);
+    }
+    // ChatFormatting colour table (enum name -> colour int).
+    Some(match color {
+        "black" => 0x00_00_00,
+        "dark_blue" => 0x00_00_AA,
+        "dark_green" => 0x00_AA_00,
+        "dark_aqua" => 0x00_AA_AA,
+        "dark_red" => 0xAA_00_00,
+        "dark_purple" => 0xAA_00_AA,
+        "gold" => 0xFF_AA_00,
+        "gray" => 0xAA_AA_AA,
+        "dark_gray" => 0x55_55_55,
+        "blue" => 0x55_55_FF,
+        "green" => 0x55_FF_55,
+        "aqua" => 0x55_FF_FF,
+        "red" => 0xFF_55_55,
+        "light_purple" => 0xFF_55_FF,
+        "yellow" => 0xFF_FF_55,
+        "white" => 0xFF_FF_FF,
+        _ => return None,
+    })
 }
 
 fn find_entry<'a>(entries: &'a [(String, NbtValue)], key: &str) -> Option<&'a NbtValue> {
@@ -278,10 +454,176 @@ mod tests {
         );
     }
 
+    #[test]
+    fn styled_runs_of_plain_string_root_carry_default_style() {
+        let payload = nbt_string_root("Hello");
+        assert_eq!(
+            decode_styled_component_summary(&payload).unwrap(),
+            vec![StyledTextRun {
+                text: "Hello".to_string(),
+                style: ComponentStyle::default(),
+            }]
+        );
+    }
+
+    #[test]
+    fn styled_runs_decode_every_style_key_and_named_color() {
+        // {text:"Styled", bold:1b, italic:0b, underlined:1b, strikethrough:1b,
+        //  obfuscated:1b, color:"dark_purple"}
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "Styled");
+        write_named_byte(&mut payload, "bold", 1);
+        write_named_byte(&mut payload, "italic", 0);
+        write_named_byte(&mut payload, "underlined", 1);
+        write_named_byte(&mut payload, "strikethrough", 1);
+        write_named_byte(&mut payload, "obfuscated", 1);
+        write_named_string(&mut payload, "color", "dark_purple");
+        payload.push(0);
+
+        assert_eq!(
+            decode_styled_component_summary(&payload).unwrap(),
+            vec![StyledTextRun {
+                text: "Styled".to_string(),
+                style: ComponentStyle {
+                    bold: Some(true),
+                    italic: Some(false),
+                    underlined: Some(true),
+                    strikethrough: Some(true),
+                    obfuscated: Some(true),
+                    color: Some(0xAA_00_AA),
+                },
+            }]
+        );
+    }
+
+    #[test]
+    fn styled_runs_parse_hex_color_and_reject_invalid_colors() {
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "Hex");
+        write_named_string(&mut payload, "color", "#1A2b3C");
+        payload.push(0);
+        assert_eq!(
+            decode_styled_component_summary(&payload).unwrap()[0]
+                .style
+                .color,
+            Some(0x1A_2B_3C)
+        );
+
+        // Out-of-range hex and unknown names are unset (vanilla parseColor errors).
+        for bad in ["#1FFFFFF", "#nothex", "purple", "DARK_PURPLE"] {
+            let mut payload = vec![10];
+            write_named_string(&mut payload, "text", "Bad");
+            write_named_string(&mut payload, "color", bad);
+            payload.push(0);
+            assert_eq!(
+                decode_styled_component_summary(&payload).unwrap()[0]
+                    .style
+                    .color,
+                None,
+                "color {bad:?} should not parse"
+            );
+        }
+    }
+
+    #[test]
+    fn styled_runs_inherit_parent_style_into_extra_children() {
+        // {text:"Kicked", bold:1b, color:"red", extra:[
+        //    {text:" by"},                       // inherits bold + red
+        //    {text:" server", bold:0b, italic:1b} // overrides bold, keeps red
+        // ]}
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "Kicked");
+        write_named_byte(&mut payload, "bold", 1);
+        write_named_string(&mut payload, "color", "red");
+        payload.push(9);
+        write_mutf8(&mut payload, "extra");
+        payload.push(10);
+        payload.extend_from_slice(&2i32.to_be_bytes());
+        write_named_string(&mut payload, "text", " by");
+        payload.push(0);
+        write_named_string(&mut payload, "text", " server");
+        write_named_byte(&mut payload, "bold", 0);
+        write_named_byte(&mut payload, "italic", 1);
+        payload.push(0);
+        payload.push(0);
+
+        let bold_red = ComponentStyle {
+            bold: Some(true),
+            color: Some(0xFF_55_55),
+            ..ComponentStyle::default()
+        };
+        assert_eq!(
+            decode_styled_component_summary(&payload).unwrap(),
+            vec![
+                StyledTextRun {
+                    text: "Kicked by".to_string(),
+                    style: bold_red,
+                },
+                StyledTextRun {
+                    text: " server".to_string(),
+                    style: ComponentStyle {
+                        bold: Some(false),
+                        italic: Some(true),
+                        color: Some(0xFF_55_55),
+                        ..ComponentStyle::default()
+                    },
+                },
+            ]
+        );
+
+        // The plain-text API is a pure delegation: concatenated run text.
+        assert_eq!(
+            decode_component_summary(&payload).unwrap(),
+            "Kicked by server"
+        );
+    }
+
+    #[test]
+    fn apply_to_matches_vanilla_style_apply_to() {
+        let child = ComponentStyle {
+            bold: Some(false),
+            color: Some(0x12_34_56),
+            ..ComponentStyle::default()
+        };
+        let parent = ComponentStyle {
+            bold: Some(true),
+            italic: Some(true),
+            color: Some(0xFF_FF_FF),
+            ..ComponentStyle::default()
+        };
+        assert_eq!(
+            child.apply_to(&parent),
+            ComponentStyle {
+                bold: Some(false),
+                italic: Some(true),
+                color: Some(0x12_34_56),
+                ..ComponentStyle::default()
+            }
+        );
+    }
+
+    #[test]
+    fn styled_runs_summary_text_falls_back_like_the_legacy_decoder() {
+        assert_eq!(styled_runs_summary_text(&[]), "component nbt");
+        assert_eq!(
+            styled_runs_summary_text(&[StyledTextRun {
+                text: "ab".to_string(),
+                style: ComponentStyle::default(),
+            }]),
+            "ab"
+        );
+    }
+
     fn nbt_string_root(value: &str) -> Vec<u8> {
         let mut payload = vec![8];
         write_mutf8(&mut payload, value);
         payload
+    }
+
+    fn write_named_byte(out: &mut Vec<u8>, name: &str, value: u8) {
+        out.push(1);
+        write_mutf8(out, name);
+        out.push(value);
     }
 
     fn write_named_string(out: &mut Vec<u8>, name: &str, value: &str) {

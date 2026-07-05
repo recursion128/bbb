@@ -1671,6 +1671,7 @@ mod tests {
                 container_id: 7,
                 menu_type_id: VANILLA_MERCHANT_MENU_TYPE_ID,
                 title: "Merchant".to_string(),
+                title_styled: Vec::new(),
             }))
             .await
             .unwrap();

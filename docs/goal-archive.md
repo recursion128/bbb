@@ -1622,6 +1622,41 @@
   默认与旧函数一致、非 bold 样式不改宽）。剩余子项：style 输入端 chat
   component 投影、italic-capable 绘制原语、unihex/CJK、bidi（账本 "Vanilla
   Font Provider Coverage" 条目）。
+- [x] vanilla font style 输入端投影 + HUD live 样式渲染（P1-3 font 子
+  slice 4，2026-07-05）：补上子 slice 3 记录的输入端缺口。protocol：
+  `bbb_protocol::component` 新增 `ComponentStyle`（bold/italic/underlined/
+  strikethrough/obfuscated 为 `Option<bool>`，`color` 为解析后 `0xRRGGBB`；
+  `apply_to` 即 vanilla `Style.applyTo` 子键胜出继承）与
+  `decode_styled_component_summary` → `Vec<StyledTextRun>`（扁平 run，继承
+  已解析；NBT byte 布尔 + `TextColor.parseColor` 命名色/#hex，非法色按宽松
+  解码丢键）；旧纯文本 API 改为纯委托（run 拼接 + `"component nbt"` 空回
+  退），全部旧消费者逐字节不变。输入面：`OpenScreen.title_styled`、
+  `DataComponentPatchSummary.{custom_name_styled,item_name_styled,
+  lore_styled}`、world `ContainerState.title_styled`（均 `#[serde(default)]`
+  兼容；容器标题现无 HUD label 消费端，仅投影存储）。item-model tooltip
+  投影（`item_runtime/tooltip.rs`）：`NativeItemTooltipLine` 增 `runs`
+  （`bbb-render-types::HudStyledTextRun`{text,style,color}）；lore 行按
+  `ItemLore.LORE_STYLE`（DARK_PURPLE+italic，`ComponentUtils.mergeStyles`
+  语义——行内显式键胜出）注入默认样式，hover name 按
+  `ItemStack.getStyledHoverName`（rarity 色 wrapper + custom_name 时
+  ITALIC）。renderer live：label/tooltip 循环消费 runs——
+  `hud_styled_text_pass_geometry`（bold 双 quad/`extraThickness`/bold-aware
+  advance、per-run 色 tint、shadow 色 `ARGB.scaleRGB(textColor,0.25)` 样式
+  驱动（顺带修正彩色行 shadow 曾固定灰的偏差）、underline/strikethrough
+  条按 `StringRenderOutput.visit` 序在该 pass glyph 后绘制），全部几何出自
+  已锁定 `styled_quads`/`styled_effect_rects`；`hud_styled_quad_vertices`
+  任意角点 quad 原语落地（axis-aligned 时与旧 `hud_quad_vertices` 逐字节
+  等价），italic 几何暂剥离（斜切待视觉核对 slice）、obfuscated 原字形；
+  count label 保持无样式（vanilla 即无样式）。sanitize 归一：空 runs 合成
+  单默认 run，绘制环只有 runs 一条路径。测试：protocol 嵌套 extra 继承/
+  各布尔键/命名+hex 色/非法色丢键/`apply_to`/委托等价；data-components
+  styled name+lore 解码；world styled title 存储与 set_content 保留；
+  item-model lore 默认样式注入与显式 italic:0b/色覆盖、custom name
+  italic+rarity 色；renderer plain-run 与旧 cell 逐字节一致、bold 双
+  quad+加宽 pen、underline/strikethrough 条 y 带与行首 -1、shadow pass
+  偏移+色缩放（白字==旧固定灰）、宽度预算截断、italic/obfuscated 退化
+  等价。剩余：italic 斜切放开 + obfuscated 逐 tick 随机字形（账本
+  "Vanilla Font Provider Coverage" 条目 Next action）。
 - [x] entity preview 实际 GPU PIP drawing（2026-07-05）：完成记录随历史归属
   归档在下方 P1-4 段 entity-in-UI 小节（`entity_preview_pip_passes` step +
   per-preview 隔离 PIP target + GUI-ortho 实体绘制 + HUD blit + headless

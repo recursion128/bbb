@@ -1,5 +1,9 @@
 mod component;
 
+pub use component::{
+    decode_styled_component_summary, styled_runs_summary_text, ComponentStyle, StyledTextRun,
+};
+
 pub mod codec;
 pub mod entity_types;
 pub mod frame;

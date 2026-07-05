@@ -1,9 +1,76 @@
+use bbb_protocol::{ComponentStyle, StyledTextRun};
+
 use super::*;
+
+/// Vanilla `ItemLore.LORE_STYLE`
+/// (`net.minecraft.world.item.component.ItemLore`):
+/// `Style.EMPTY.withColor(ChatFormatting.DARK_PURPLE).withItalic(true)`. The
+/// canonical `ItemLore` constructor merges it into every lore line via
+/// `ComponentUtils.mergeStyles`, i.e. keys the line set itself win and unset
+/// keys are filled from this default.
+const LORE_STYLE: ComponentStyle = ComponentStyle {
+    bold: None,
+    italic: Some(true),
+    underlined: None,
+    strikethrough: None,
+    obfuscated: None,
+    color: Some(0xAA_00_AA),
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
     pub text: String,
     pub tint: [f32; 4],
+    /// Styled draw runs for the line; concatenating the run texts reproduces
+    /// `text`. Unstyled lines carry a single default-style run with no colour
+    /// override (the renderer then falls back to `tint`).
+    pub runs: Vec<HudStyledTextRun>,
+}
+
+impl NativeItemTooltipLine {
+    fn plain(text: String, tint: [f32; 4]) -> Self {
+        let runs = vec![HudStyledTextRun::plain(text.clone())];
+        Self { text, tint, runs }
+    }
+}
+
+/// Projects one flattened protocol run into the renderer's resolved run type,
+/// first merging `base` under the run's own style (vanilla
+/// `ComponentUtils.mergeStyles` / wrapper `withStyle` semantics: the run's own
+/// keys win, unset keys inherit `base`).
+fn hud_run_from_component(run: &StyledTextRun, base: &ComponentStyle) -> HudStyledTextRun {
+    let style = run.style.apply_to(base);
+    HudStyledTextRun {
+        text: run.text.clone(),
+        style: HudTextStyle {
+            bold: style.bold == Some(true),
+            italic: style.italic == Some(true),
+            underlined: style.underlined == Some(true),
+            strikethrough: style.strikethrough == Some(true),
+            obfuscated: style.obfuscated == Some(true),
+        },
+        color: style.color,
+    }
+}
+
+/// Styled-run projection with a plain-text fallback for data decoded before
+/// the styled fields existed (or synthesized names): the fallback text becomes
+/// a single unstyled run that still receives the `base` style merge.
+fn hud_runs_from_component(
+    runs: &[StyledTextRun],
+    plain_fallback: &str,
+    base: &ComponentStyle,
+) -> Vec<HudStyledTextRun> {
+    if runs.is_empty() {
+        let fallback = StyledTextRun {
+            text: plain_fallback.to_string(),
+            style: ComponentStyle::default(),
+        };
+        return vec![hud_run_from_component(&fallback, base)];
+    }
+    runs.iter()
+        .map(|run| hud_run_from_component(run, base))
+        .collect()
 }
 
 pub(super) fn localized_item_name(language: &LanguageCatalog, resource_id: &str) -> String {
@@ -39,23 +106,66 @@ pub(super) fn hover_name_for_stack(
     localized_item_name(language, resource_id)
 }
 
+/// Source runs of the hover name (same precedence as [`hover_name_for_stack`])
+/// plus whether they came from `minecraft:custom_name` (which vanilla
+/// `ItemStack.getStyledHoverName` additionally italicizes).
+fn hover_name_source_runs(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    stack: &ItemStackSummary,
+) -> (Vec<StyledTextRun>, bool) {
+    let patch = &stack.component_patch;
+    if let Some(name) = &patch.custom_name {
+        let runs = match &patch.custom_name_styled {
+            Some(runs) if !runs.is_empty() => runs.clone(),
+            _ => vec![StyledTextRun {
+                text: name.clone(),
+                style: ComponentStyle::default(),
+            }],
+        };
+        return (runs, true);
+    }
+    let plain = |text: String| {
+        vec![StyledTextRun {
+            text,
+            style: ComponentStyle::default(),
+        }]
+    };
+    if let Some(title) = patch
+        .written_book
+        .as_ref()
+        .map(|book| book.title.as_str())
+        .filter(|title| !title.trim().is_empty())
+    {
+        return (plain(title.to_string()), false);
+    }
+    if let Some(name) = &patch.item_name {
+        let runs = match &patch.item_name_styled {
+            Some(runs) if !runs.is_empty() => runs.clone(),
+            _ => plain(name.clone()),
+        };
+        return (runs, false);
+    }
+    (plain(localized_item_name(language, resource_id)), false)
+}
+
 pub(super) fn push_written_book_tooltip_lines(
     language: &LanguageCatalog,
     book: &bbb_protocol::packets::WrittenBookContentSummary,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if !book.author.trim().is_empty() {
-        lines.push(NativeItemTooltipLine {
-            text: translate_with_first_arg(language, "book.byAuthor", &book.author),
-            tint: TOOLTIP_TEXT_GRAY,
-        });
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_first_arg(language, "book.byAuthor", &book.author),
+            TOOLTIP_TEXT_GRAY,
+        ));
     }
-    lines.push(NativeItemTooltipLine {
-        text: language
+    lines.push(NativeItemTooltipLine::plain(
+        language
             .get_or_key(&format!("book.generation.{}", book.generation))
             .to_string(),
-        tint: TOOLTIP_TEXT_GRAY,
-    });
+        TOOLTIP_TEXT_GRAY,
+    ));
 }
 
 pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
@@ -90,6 +200,17 @@ pub(super) fn item_rarity_tint(rarity: ItemRaritySummary) -> [f32; 4] {
     }
 }
 
+/// Vanilla `Rarity.color()` as a text colour value (`ChatFormatting` colour
+/// ints); the `[f32; 4]` twin of [`item_rarity_tint`].
+fn item_rarity_color(rarity: ItemRaritySummary) -> u32 {
+    match rarity {
+        ItemRaritySummary::Common => 0xFF_FF_FF,   // WHITE
+        ItemRaritySummary::Uncommon => 0xFF_FF_55, // YELLOW
+        ItemRaritySummary::Rare => 0x55_FF_FF,     // AQUA
+        ItemRaritySummary::Epic => 0xFF_55_FF,     // LIGHT_PURPLE
+    }
+}
+
 pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
     let (namespace, path) = resource_id
         .split_once(':')
@@ -106,24 +227,56 @@ impl NativeItemRuntime {
             return None;
         }
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+
+        // Vanilla `ItemStack.getStyledHoverName`: the hover name is wrapped in
+        // the rarity colour, plus ITALIC when the stack carries a custom name;
+        // the name component's own style keys win over the wrapper.
+        let rarity = item_rarity_for_stack(&stack.component_patch);
+        let (name_runs, name_is_custom) = hover_name_source_runs(&self.language, item_id, stack);
+        let name_wrapper = ComponentStyle {
+            italic: name_is_custom.then_some(true),
+            color: Some(item_rarity_color(rarity)),
+            ..ComponentStyle::default()
+        };
         let mut lines = vec![NativeItemTooltipLine {
             text: hover_name_for_stack(&self.language, item_id, stack),
-            tint: item_rarity_tint(item_rarity_for_stack(&stack.component_patch)),
+            tint: item_rarity_tint(rarity),
+            runs: name_runs
+                .iter()
+                .map(|run| hud_run_from_component(run, &name_wrapper))
+                .collect(),
         }];
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
-        lines.extend(stack.component_patch.lore.iter().cloned().map(|text| {
-            NativeItemTooltipLine {
-                text,
-                tint: TOOLTIP_TEXT_DARK_PURPLE,
-            }
-        }));
+        // Vanilla `ItemLore.styledLines`: every lore line gets `LORE_STYLE`
+        // (DARK_PURPLE + italic) merged under its own style keys.
+        lines.extend(
+            stack
+                .component_patch
+                .lore
+                .iter()
+                .enumerate()
+                .map(|(index, text)| NativeItemTooltipLine {
+                    text: text.clone(),
+                    tint: TOOLTIP_TEXT_DARK_PURPLE,
+                    runs: hud_runs_from_component(
+                        stack
+                            .component_patch
+                            .lore_styled
+                            .get(index)
+                            .map(Vec::as_slice)
+                            .unwrap_or(&[]),
+                        text,
+                        &LORE_STYLE,
+                    ),
+                }),
+        );
         if stack.component_patch.unbreakable {
-            lines.push(NativeItemTooltipLine {
-                text: self.language.get_or_key("item.unbreakable").to_string(),
-                tint: TOOLTIP_TEXT_BLUE,
-            });
+            lines.push(NativeItemTooltipLine::plain(
+                self.language.get_or_key("item.unbreakable").to_string(),
+                TOOLTIP_TEXT_BLUE,
+            ));
         }
         Some(lines)
     }

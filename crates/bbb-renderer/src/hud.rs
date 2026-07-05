@@ -18,18 +18,21 @@ pub(super) use self::gpu::{
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement,
     heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect,
-    hud_experience_progress_width, hud_food_fill, hud_heart_fill,
-    hud_inventory_text_label_glyph_hud_rect, hud_inventory_tooltip_background_hud_rect,
+    hud_experience_progress_width, hud_food_fill, hud_heart_fill, hud_inventory_text_label_origin,
+    hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
-    hud_inventory_tooltip_text_hud_rect, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
-    hud_item_durability_bar_rect, hud_quad_vertices, inventory_background_hud_rect,
+    hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
+    hud_quad_vertices, hud_styled_quad_vertices, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
     HudTooltipSpriteLayer, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
-    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
+    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudStyledTextRun, HudTextStyle, HudUvRect,
+    HUD_FONT_BASELINE,
 };
+
+use bbb_render_types::{HudEffectRect, HudGlyphQuad};
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
 
@@ -420,12 +423,20 @@ pub struct HudInventoryTextLabel {
     pub tint: [f32; 4],
     pub background: Option<HudInventoryTextBackground>,
     pub shadow: bool,
+    /// Styled draw runs; concatenated run text matches `text`. Leave empty
+    /// for plain labels — sanitization synthesizes a single default-style run
+    /// from `text`.
+    pub runs: Vec<HudStyledTextRun>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTooltipLine {
     pub text: String,
     pub tint: [f32; 4],
+    /// Styled draw runs; concatenated run text matches `text`. Leave empty
+    /// for plain lines — sanitization synthesizes a single default-style run
+    /// from `text`.
+    pub runs: Vec<HudStyledTextRun>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2682,44 +2693,184 @@ fn push_hud_inventory_text_labels<'a>(
                 background.tint,
             );
         }
-        for (shadow_offset, tint) in label
+        let origin = hud_inventory_text_label_origin(
+            surface_size,
+            screen.width,
+            screen.height,
+            label.x,
+            label.y,
+        );
+        // Vanilla pass order: the whole line's shadow first, then the main
+        // colour (the shadow geometry is the main geometry at +1,+1).
+        for (shadow_offset, is_shadow) in label
             .shadow
-            .then_some((1.0, HUD_TEXT_SHADOW_TINT))
+            .then_some((1.0, true))
             .into_iter()
-            .chain(std::iter::once((0.0, label.tint)))
+            .chain(std::iter::once((0.0, false)))
         {
-            let mut pen_x = 0u32;
-            for ch in label.text.chars() {
-                let glyph = hud_font_glyph(ch, glyphs);
-                if pen_x >= label.width {
-                    break;
-                }
-                if glyph.width > 0
-                    && glyph.height > 0
-                    && pen_x.saturating_add(glyph.width) <= label.width
-                {
-                    push_hud_draw_with_uv_and_tint(
-                        vertices,
-                        commands,
-                        font_atlas,
-                        surface_size,
-                        hud_inventory_text_label_glyph_hud_rect(
-                            surface_size,
-                            screen.width,
-                            screen.height,
-                            label.x,
-                            label.y,
-                            pen_x,
-                            shadow_offset,
-                            glyph,
-                        ),
-                        glyph.uv,
-                        tint,
-                    );
-                }
-                pen_x = pen_x.saturating_add(glyph.advance);
-            }
+            let geometry = hud_styled_text_pass_geometry(
+                &label.runs,
+                glyphs,
+                origin,
+                shadow_offset,
+                is_shadow,
+                label.tint,
+                Some(label.width),
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
         }
+    }
+}
+
+/// Resolved main-pass colour of a styled run: the run's `Style` colour over
+/// the line's base tint (vanilla `StringRenderOutput.getTextColor`), keeping
+/// the base alpha.
+fn hud_run_color_tint(run: &HudStyledTextRun, base_tint: [f32; 4]) -> [f32; 4] {
+    match run.color {
+        Some(rgb) => [
+            ((rgb >> 16) & 0xFF) as f32 / 255.0,
+            ((rgb >> 8) & 0xFF) as f32 / 255.0,
+            (rgb & 0xFF) as f32 / 255.0,
+            base_tint[3],
+        ],
+        None => base_tint,
+    }
+}
+
+/// Vanilla `StringRenderOutput.getShadowColor` default branch:
+/// `ARGB.scaleRGB(textColor, 0.25)` — the drop shadow is the text colour at a
+/// quarter brightness (alpha kept).
+fn hud_text_shadow_tint(tint: [f32; 4]) -> [f32; 4] {
+    [tint[0] * 0.25, tint[1] * 0.25, tint[2] * 0.25, tint[3]]
+}
+
+/// One draw pass (shadow or main) of a styled text line: glyph quads in draw
+/// order followed by underline/strikethrough bars, mirroring vanilla
+/// `Font.StringRenderOutput.visit` (glyphs first, effects after). All
+/// geometry is produced by the locked `styled_quads` / `styled_effect_rects`
+/// mechanisms; tints are resolved per run (shadow passes scale the run
+/// colour, vanilla `getShadowColor`).
+#[derive(Debug, Clone, PartialEq)]
+struct HudStyledTextPassGeometry {
+    glyph_quads: Vec<(HudGlyphQuad, [f32; 4])>,
+    effect_rects: Vec<(HudEffectRect, [f32; 4])>,
+}
+
+/// Computes one pass of a styled line at `origin` (line top-left in HUD
+/// pixels). `width_limit` reproduces the label budget semantics: the walk
+/// stops once the pen reaches the limit and a glyph/effect is only emitted
+/// when its cell/advance still fits.
+///
+/// Italic runs are drawn upright and obfuscated runs keep their original
+/// glyphs for now — both need draw primitives a later slice adds (shear
+/// submission / per-tick glyph substitution); advances are already
+/// style-correct via `styled_advance`.
+fn hud_styled_text_pass_geometry(
+    runs: &[HudStyledTextRun],
+    glyphs: &HudFontGlyphMap,
+    origin: (f32, f32),
+    shadow_offset: f32,
+    is_shadow: bool,
+    base_tint: [f32; 4],
+    width_limit: Option<u32>,
+) -> HudStyledTextPassGeometry {
+    let mut geometry = HudStyledTextPassGeometry {
+        glyph_quads: Vec::new(),
+        effect_rects: Vec::new(),
+    };
+    let mut pen_x = 0u32;
+    let mut first_in_line = true;
+    'runs: for run in runs {
+        let run_tint = hud_run_color_tint(run, base_tint);
+        let tint = if is_shadow {
+            hud_text_shadow_tint(run_tint)
+        } else {
+            run_tint
+        };
+        let geometry_style = HudTextStyle {
+            italic: false,
+            ..run.style
+        };
+        for ch in run.text.chars() {
+            if width_limit.is_some_and(|limit| pen_x >= limit) {
+                break 'runs;
+            }
+            let glyph = hud_font_glyph(ch, glyphs);
+            let advance = glyph.styled_advance(run.style);
+            let x = origin.0 + pen_x as f32 + shadow_offset;
+            let y = origin.1 + shadow_offset;
+            if glyph.width > 0
+                && glyph.height > 0
+                && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
+            {
+                for quad in glyph.styled_quads(x, y, geometry_style, false) {
+                    geometry.glyph_quads.push((quad, tint));
+                }
+            }
+            if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
+                for rect in glyph.styled_effect_rects(x, y, run.style, first_in_line) {
+                    geometry.effect_rects.push((rect, tint));
+                }
+            }
+            pen_x = pen_x.saturating_add(advance);
+            first_in_line = false;
+        }
+    }
+    geometry
+}
+
+fn push_hud_styled_text_pass<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    geometry: &HudStyledTextPassGeometry,
+) {
+    for (quad, tint) in &geometry.glyph_quads {
+        let start = vertices.len() as u32;
+        vertices.extend_from_slice(&hud_styled_quad_vertices(
+            surface_size,
+            quad.corners,
+            quad.uv,
+            *tint,
+        ));
+        let end = vertices.len() as u32;
+        commands.push(HudDrawCommand::Sprite {
+            sprite: font_atlas,
+            start,
+            end,
+        });
+    }
+    for (rect, tint) in &geometry.effect_rects {
+        let start = vertices.len() as u32;
+        vertices.extend_from_slice(&hud_styled_quad_vertices(
+            surface_size,
+            [
+                [rect.x0, rect.y0],
+                [rect.x0, rect.y1],
+                [rect.x1, rect.y1],
+                [rect.x1, rect.y0],
+            ],
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            *tint,
+        ));
+        let end = vertices.len() as u32;
+        commands.push(HudDrawCommand::Sprite {
+            sprite: white_pixel,
+            start,
+            end,
+        });
     }
 }
 
@@ -2744,7 +2895,7 @@ fn push_hud_inventory_tooltip<'a>(
     let Some(text_width) = tooltip
         .lines
         .iter()
-        .filter_map(|line| hud_font_text_width(&line.text, glyphs))
+        .filter_map(|line| hud_font_runs_width(&line.runs, glyphs))
         .max()
     else {
         return;
@@ -2800,41 +2951,37 @@ fn push_hud_inventory_tooltip<'a>(
         }
     }
 
-    for shadow_offset in [1.0, 0.0] {
+    // Vanilla pass order kept from the plain path: every line's shadow first,
+    // then every line's main colour; per-run tints resolve inside each pass.
+    for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
         for (line_index, line) in tooltip.lines.iter().enumerate() {
-            let tint = if shadow_offset > 0.0 {
-                HUD_TEXT_SHADOW_TINT
-            } else {
-                line.tint
-            };
-            let mut pen_x = 0;
-            for ch in line.text.chars() {
-                let glyph = hud_font_glyph(ch, glyphs);
-                if glyph.width > 0 && glyph.height > 0 {
-                    push_hud_draw_with_uv_and_tint(
-                        vertices,
-                        commands,
-                        font_atlas,
-                        surface_size,
-                        hud_inventory_tooltip_text_hud_rect(
-                            surface_size,
-                            screen.width,
-                            screen.height,
-                            tooltip.x,
-                            tooltip.y,
-                            text_width,
-                            text_height,
-                            line_index,
-                            pen_x,
-                            shadow_offset,
-                            glyph,
-                        ),
-                        glyph.uv,
-                        tint,
-                    );
-                }
-                pen_x = pen_x.saturating_add(glyph.advance);
-            }
+            let origin = hud_inventory_tooltip_line_origin(
+                surface_size,
+                screen.width,
+                screen.height,
+                tooltip.x,
+                tooltip.y,
+                text_width,
+                text_height,
+                line_index,
+            );
+            let geometry = hud_styled_text_pass_geometry(
+                &line.runs,
+                glyphs,
+                origin,
+                shadow_offset,
+                is_shadow,
+                line.tint,
+                None,
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
         }
     }
 }
@@ -2850,21 +2997,39 @@ fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32>
     (width > 0).then_some(width)
 }
 
+/// Test-only single-style wrappers over [`hud_font_runs_width`], the one
+/// width implementation.
+#[cfg(test)]
 fn hud_font_text_width(text: &str, glyphs: &HudFontGlyphMap) -> Option<u32> {
     hud_font_text_width_styled(text, glyphs, HudTextStyle::default())
 }
 
-/// Vanilla `Font.width`: sum of per-glyph `GlyphInfo.getAdvance(style.isBold())`.
-/// Bold widens each glyph by one font pixel; the unstyled default reproduces the
-/// prior plain-advance width exactly.
+#[cfg(test)]
 fn hud_font_text_width_styled(
     text: &str,
     glyphs: &HudFontGlyphMap,
     style: HudTextStyle,
 ) -> Option<u32> {
+    hud_font_runs_width(
+        &[HudStyledTextRun {
+            text: text.to_string(),
+            style,
+            color: None,
+        }],
+        glyphs,
+    )
+}
+
+/// Vanilla `Font.width` across a line's styled runs: sum of per-glyph
+/// `GlyphInfo.getAdvance(style.isBold())` — bold widens each glyph by one
+/// font pixel; the unstyled default reproduces the prior plain-advance width
+/// exactly.
+fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> Option<u32> {
     let mut width = 0u32;
-    for ch in text.chars() {
-        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(style))?;
+    for run in runs {
+        for ch in run.text.chars() {
+            width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.style))?;
+        }
     }
     (width > 0).then_some(width)
 }
@@ -3055,6 +3220,7 @@ fn sanitize_hud_inventory_text_label(
         .background
         .and_then(sanitize_hud_inventory_text_background);
     let text = sanitize_hud_text_line(label.text)?;
+    let runs = sanitize_hud_styled_runs(label.runs, &text);
     (width > 0).then_some(HudInventoryTextLabel {
         x,
         y,
@@ -3063,6 +3229,7 @@ fn sanitize_hud_inventory_text_label(
         tint: tint.map(|component| component.clamp(0.0, 1.0)),
         background,
         shadow: label.shadow,
+        runs,
     })
 }
 
@@ -3100,9 +3267,12 @@ fn sanitize_hud_inventory_tooltip_line(
     if !line.tint.iter().all(|component| component.is_finite()) {
         return None;
     }
+    let text = sanitize_hud_text_line(line.text)?;
+    let runs = sanitize_hud_styled_runs(line.runs, &text);
     Some(HudInventoryTooltipLine {
-        text: sanitize_hud_text_line(line.text)?,
+        text,
         tint: line.tint.map(|component| component.clamp(0.0, 1.0)),
+        runs,
     })
 }
 
@@ -3113,6 +3283,44 @@ fn sanitize_hud_text_line(line: String) -> Option<String> {
         .take(256)
         .collect::<String>();
     (!line.is_empty()).then_some(line)
+}
+
+/// Sanitizes a line's styled runs under the same rules as
+/// [`sanitize_hud_text_line`] (control characters stripped, 256-char budget
+/// across the line) and clamps run colours to `0xRRGGBB`. Empty run lists —
+/// plain producers — synthesize a single default-style run from the already
+/// sanitized `fallback_text`, so the draw loops always consume runs.
+fn sanitize_hud_styled_runs(
+    runs: Vec<HudStyledTextRun>,
+    fallback_text: &str,
+) -> Vec<HudStyledTextRun> {
+    let mut budget = 256usize;
+    let mut sanitized = Vec::new();
+    for run in runs {
+        if budget == 0 {
+            break;
+        }
+        let text = run
+            .text
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .take(budget)
+            .collect::<String>();
+        if text.is_empty() {
+            continue;
+        }
+        budget -= text.chars().count();
+        sanitized.push(HudStyledTextRun {
+            text,
+            style: run.style,
+            color: run.color.map(|color| color & 0xFF_FF_FF),
+        });
+    }
+    if sanitized.is_empty() {
+        vec![HudStyledTextRun::plain(fallback_text)]
+    } else {
+        sanitized
+    }
 }
 
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
@@ -3170,6 +3378,7 @@ fn sanitize_hud_item_cooldown_progress(progress: Option<f32>) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_render_types::{HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET};
 
     #[test]
     fn hud_block_item_mesh_splits_translucent_quads_and_matching_glint_buckets() {
@@ -3817,6 +4026,226 @@ mod tests {
         );
     }
 
+    fn styled_test_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in ['a', 'b'] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance: 6,
+                    width: 5,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        glyphs
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_plain_runs_match_the_legacy_axis_aligned_cells() {
+        // Default-style runs must reproduce the old per-glyph rect path
+        // exactly: one axis-aligned cell per glyph at the pen position, no
+        // effects, the line's base tint untouched.
+        let glyphs = styled_test_glyphs();
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("ab")],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            [1.0, 0.5, 0.25, 1.0],
+            None,
+        );
+        assert!(geometry.effect_rects.is_empty());
+        assert_eq!(geometry.glyph_quads.len(), 2);
+        assert_eq!(
+            geometry.glyph_quads[0].0.corners,
+            [[100.0, 50.0], [100.0, 58.0], [105.0, 58.0], [105.0, 50.0],]
+        );
+        // Second glyph pen-advanced by the plain advance (6).
+        assert_eq!(geometry.glyph_quads[1].0.corners[0], [106.0, 50.0]);
+        assert!(geometry
+            .glyph_quads
+            .iter()
+            .all(|(_, tint)| *tint == [1.0, 0.5, 0.25, 1.0]));
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_bold_runs_double_quads_and_widen_the_pen() {
+        let glyphs = styled_test_glyphs();
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "ab".to_string(),
+                style: HudTextStyle {
+                    bold: true,
+                    ..Default::default()
+                },
+                color: None,
+            }],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        // Vanilla bold: each glyph renders twice, the second pass shifted by
+        // getBoldOffset()=1.
+        assert_eq!(geometry.glyph_quads.len(), 4);
+        for pair in geometry.glyph_quads.chunks(2) {
+            for (main_corner, bold_corner) in pair[0].0.corners.iter().zip(pair[1].0.corners.iter())
+            {
+                assert!((bold_corner[0] - main_corner[0] - HUD_FONT_BOLD_OFFSET).abs() < 1e-4);
+                assert!((bold_corner[1] - main_corner[1]).abs() < 1e-4);
+            }
+        }
+        // The pen advances by the bold-aware advance (6 + 1), with the
+        // extraThickness=0.1 expansion on the cell.
+        let second_char_left = geometry.glyph_quads[2].0.corners[0][0];
+        assert!((second_char_left - (107.0 - HUD_FONT_BOLD_EXTRA_THICKNESS)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_emits_underline_and_strikethrough_bars_after_glyphs() {
+        let glyphs = styled_test_glyphs();
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "a".to_string(),
+                style: HudTextStyle {
+                    underlined: true,
+                    strikethrough: true,
+                    ..Default::default()
+                },
+                color: None,
+            }],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        assert_eq!(geometry.glyph_quads.len(), 1);
+        assert_eq!(geometry.effect_rects.len(), 2);
+        let (strike, _) = &geometry.effect_rects[0];
+        let (underline, _) = &geometry.effect_rects[1];
+        assert_eq!(strike.kind, bbb_render_types::HudEffectKind::Strikethrough);
+        assert_eq!(underline.kind, bbb_render_types::HudEffectKind::Underline);
+        // First-in-line bars extend one pixel left (vanilla position == 0)
+        // and span to x + advance.
+        assert!((strike.x0 - 99.0).abs() < 1e-4);
+        assert!((strike.x1 - 106.0).abs() < 1e-4);
+        // Vanilla bar bands: strikethrough y+3.5..y+4.5, underline y+8..y+9.
+        assert!((strike.y0 - 53.5).abs() < 1e-4);
+        assert!((strike.y1 - 54.5).abs() < 1e-4);
+        assert!((underline.y0 - 58.0).abs() < 1e-4);
+        assert!((underline.y1 - 59.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_shadow_pass_offsets_and_scales_the_run_color() {
+        let glyphs = styled_test_glyphs();
+        let run = HudStyledTextRun {
+            text: "a".to_string(),
+            style: HudTextStyle::default(),
+            color: Some(0xFF_55_55), // ChatFormatting RED
+        };
+        let main = hud_styled_text_pass_geometry(
+            &[run.clone()],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        let shadow = hud_styled_text_pass_geometry(
+            &[run],
+            &glyphs,
+            (100.0, 50.0),
+            1.0,
+            true,
+            HUD_TINT_WHITE,
+            None,
+        );
+        // Run colour overrides the line tint on the main pass.
+        assert_eq!(
+            main.glyph_quads[0].1,
+            [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0]
+        );
+        // Shadow pass: same glyph at +1,+1 in the vanilla shadow colour
+        // (ARGB.scaleRGB(textColor, 0.25)).
+        assert_eq!(
+            shadow.glyph_quads[0].1,
+            [0.25, 85.0 / 255.0 * 0.25, 85.0 / 255.0 * 0.25, 1.0]
+        );
+        for (shadow_corner, main_corner) in shadow.glyph_quads[0]
+            .0
+            .corners
+            .iter()
+            .zip(main.glyph_quads[0].0.corners.iter())
+        {
+            assert!((shadow_corner[0] - main_corner[0] - 1.0).abs() < 1e-4);
+            assert!((shadow_corner[1] - main_corner[1] - 1.0).abs() < 1e-4);
+        }
+        // White text keeps the historical fixed shadow tint.
+        assert_eq!(hud_text_shadow_tint(HUD_TINT_WHITE), HUD_TEXT_SHADOW_TINT);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_honors_the_label_width_budget() {
+        let glyphs = styled_test_glyphs();
+        // Budget of 10: 'a' (cell 5 <= 10) draws, pen 6; 'b' cell needs
+        // 6 + 5 = 11 > 10 so its quad is skipped, like the old label loop.
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("ab")],
+            &glyphs,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            Some(10),
+        );
+        assert_eq!(geometry.glyph_quads.len(), 1);
+        assert_eq!(geometry.glyph_quads[0].0.corners[0], [0.0, 0.0]);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_italic_and_obfuscated_degrade_to_plain_cells() {
+        // Italic shear and obfuscated substitution await their draw
+        // primitives: geometry stays the axis-aligned cell (advance already
+        // style-correct).
+        let glyphs = styled_test_glyphs();
+        let plain = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("ab")],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        let styled = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "ab".to_string(),
+                style: HudTextStyle {
+                    italic: true,
+                    obfuscated: true,
+                    ..Default::default()
+                },
+                color: None,
+            }],
+            &glyphs,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        assert_eq!(plain, styled);
+    }
+
     #[test]
     fn sanitize_hud_inventory_screen_keeps_slot_positions_and_sanitizes_icons() {
         let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
@@ -3912,6 +4341,7 @@ mod tests {
                         tint: [0.0, 0.0, 0.0, 1.5],
                     }),
                     shadow: false,
+                    runs: Vec::new(),
                 },
                 HudInventoryTextLabel {
                     x: 10,
@@ -3921,6 +4351,7 @@ mod tests {
                     tint: HUD_TINT_WHITE,
                     background: None,
                     shadow: true,
+                    runs: Vec::new(),
                 },
             ],
             hovered_slot_id: Some(7),
@@ -3932,14 +4363,17 @@ mod tests {
                     HudInventoryTooltipLine {
                         text: "Diamond Sword".to_string(),
                         tint: [1.5, 1.0, 0.5, 1.0],
+                        runs: Vec::new(),
                     },
                     HudInventoryTooltipLine {
                         text: String::new(),
                         tint: HUD_TINT_WHITE,
+                        runs: Vec::new(),
                     },
                     HudInventoryTooltipLine {
                         text: "Attack\u{0007}Damage".to_string(),
                         tint: [0.25, 0.5, 0.75, 2.0],
+                        runs: Vec::new(),
                     },
                 ],
             }),
@@ -3996,6 +4430,9 @@ mod tests {
                     tint: [0.0, 0.0, 0.0, 1.0],
                 }),
                 shadow: false,
+                // Plain labels (empty runs in) synthesize one default-style
+                // run from the sanitized text.
+                runs: vec![HudStyledTextRun::plain("Name")],
             }]
         );
         assert_eq!(
@@ -4008,10 +4445,12 @@ mod tests {
                     HudInventoryTooltipLine {
                         text: "Diamond Sword".to_string(),
                         tint: [1.0, 1.0, 0.5, 1.0],
+                        runs: vec![HudStyledTextRun::plain("Diamond Sword")],
                     },
                     HudInventoryTooltipLine {
                         text: "AttackDamage".to_string(),
                         tint: [0.25, 0.5, 0.75, 1.0],
+                        runs: vec![HudStyledTextRun::plain("AttackDamage")],
                     },
                 ],
             })

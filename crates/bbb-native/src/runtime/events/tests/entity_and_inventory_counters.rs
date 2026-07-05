@@ -259,6 +259,7 @@ fn merchant_offers_event_updates_world_inventory_state_and_world_counters() {
         container_id: 7,
         menu_type_id: 19,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::MerchantOffers(

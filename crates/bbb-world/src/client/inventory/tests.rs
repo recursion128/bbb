@@ -48,6 +48,7 @@ fn tracks_player_inventory_and_container_state() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -1257,6 +1258,7 @@ fn local_container_close_does_not_count_clientbound_close_packet() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
 
     assert!(store.close_local_container(7));
@@ -1280,6 +1282,7 @@ fn merchant_offers_apply_only_to_matching_open_container() {
         container_id: 7,
         menu_type_id: 18,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     assert!(!store.apply_merchant_offers(merchant_offers(7, 1)));
     assert!(store
@@ -1293,6 +1296,7 @@ fn merchant_offers_apply_only_to_matching_open_container() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     assert!(!store.apply_merchant_offers(merchant_offers(99, 1)));
     assert!(store.apply_merchant_offers(merchant_offers(7, 2)));
@@ -1349,6 +1353,7 @@ fn merchant_offer_scroll_offset_clamps_to_visible_window() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     assert!(store.apply_merchant_offers(merchant_offers(7, 8)));
 
@@ -1391,6 +1396,7 @@ fn build_container_click_slot_uses_open_container_state_and_cursor_item() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -2153,6 +2159,7 @@ fn apply_local_container_pickup_all_rejects_non_inventory_menu() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -2418,6 +2425,7 @@ fn apply_local_container_quick_craft_rejects_non_inventory_menu() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -3245,6 +3253,7 @@ fn apply_local_generic_container_quick_move_moves_chest_to_player_reverse() {
         container_id: 7,
         menu_type_id: 5,
         title: "Large Chest".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 90];
     items[0] = item_stack(42, 3);
@@ -3287,6 +3296,7 @@ fn apply_local_generic_container_quick_move_merges_player_to_chest_forward() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[0] = item_stack(42, 15);
@@ -3330,6 +3340,7 @@ fn apply_local_generic_3x3_quick_move_moves_dispenser_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     items[0] = item_stack(42, 3);
@@ -3369,6 +3380,7 @@ fn apply_local_generic_3x3_quick_move_moves_player_to_dispenser_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     items[9] = item_stack(42, 3);
@@ -3408,6 +3420,7 @@ fn apply_local_crafting_menu_quick_move_moves_grid_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[1] = item_stack(42, 3);
@@ -3447,6 +3460,7 @@ fn apply_local_crafting_menu_quick_move_moves_player_to_grid_then_between_player
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[10] = item_stack(42, 3);
@@ -3504,6 +3518,7 @@ fn apply_local_crafting_menu_result_quick_move_consumes_single_inputs() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3546,6 +3561,7 @@ fn apply_local_crafting_menu_result_quick_move_repeats_until_inputs_empty() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3590,6 +3606,7 @@ fn apply_local_crafting_menu_result_pickup_leaves_result_when_inputs_remain() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3630,6 +3647,7 @@ fn apply_local_crafting_menu_result_pickup_consumes_single_inputs_to_cursor() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3674,6 +3692,7 @@ fn apply_local_crafting_menu_result_places_default_remainder_in_crafting_slot() 
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3716,6 +3735,7 @@ fn apply_local_crafting_menu_result_needing_remainder_inventory_insert_stays_ser
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3755,6 +3775,7 @@ fn apply_local_crafting_menu_result_keeps_recipe_specific_remainders_server_auth
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -3790,6 +3811,7 @@ fn apply_local_crafter_quick_move_moves_grid_to_player_backwards() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
         title: "Crafter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[2] = item_stack(42, 3);
@@ -3829,6 +3851,7 @@ fn apply_local_crafter_quick_move_skips_disabled_grid_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
         title: "Crafter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[9] = item_stack(42, 3);
@@ -3877,6 +3900,7 @@ fn apply_local_crafter_result_slot_requires_server_authority() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
         title: "Crafter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[CRAFTER_RESULT_SLOT as usize] = item_stack(90, 1);
@@ -3924,6 +3948,7 @@ fn apply_local_anvil_input_quick_move_moves_input_slots_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4056,6 +4081,7 @@ fn apply_local_anvil_result_quick_move_consumes_single_input_when_cost_allows() 
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4118,6 +4144,7 @@ fn apply_local_anvil_result_pickup_consumes_single_input_to_cursor_when_cost_all
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4176,6 +4203,7 @@ fn apply_local_anvil_result_quick_move_keeps_low_experience_server_authoritative
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4227,6 +4255,7 @@ fn apply_local_anvil_result_pickup_keeps_low_experience_server_authoritative() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4279,6 +4308,7 @@ fn apply_local_anvil_result_quick_move_keeps_material_input_server_authoritative
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -4335,6 +4365,7 @@ fn apply_local_beacon_quick_move_moves_payment_slot_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -4378,6 +4409,7 @@ fn apply_local_beacon_quick_move_routes_single_payment_item_to_payment_slot() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -4459,6 +4491,7 @@ fn apply_local_beacon_confirm_consumes_payment_and_updates_effect_data() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -4492,6 +4525,7 @@ fn apply_local_beacon_confirm_clears_missing_secondary_effect_data() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -4526,6 +4560,7 @@ fn apply_local_beacon_confirm_requires_beacon_payment() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -4553,6 +4588,7 @@ fn apply_local_beacon_confirm_requires_beacon_payment() {
         container_id: 8,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -4577,6 +4613,7 @@ fn apply_local_loom_result_quick_move_consumes_single_banner_and_dye() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
@@ -4631,6 +4668,7 @@ fn apply_local_loom_result_pickup_consumes_single_banner_and_dye_to_cursor() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
@@ -4682,6 +4720,7 @@ fn apply_local_loom_result_quick_move_keeps_stacked_inputs_server_authoritative(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 2);
@@ -4739,6 +4778,7 @@ fn apply_local_loom_result_pickup_keeps_pattern_item_result_server_authoritative
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[0] = item_stack(42, 1);
@@ -4788,6 +4828,7 @@ fn apply_local_loom_quick_move_moves_input_slots_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 3);
@@ -4885,6 +4926,7 @@ fn apply_local_loom_quick_move_routes_tagged_items_to_input_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -4986,6 +5028,7 @@ fn apply_local_merchant_quick_move_moves_non_result_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -5133,6 +5176,7 @@ fn apply_local_merchant_result_quick_move_consumes_exact_selected_offer_payments
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -5214,6 +5258,7 @@ fn apply_local_merchant_result_pickup_places_result_on_cursor_and_keeps_payable_
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -5281,6 +5326,7 @@ fn apply_local_merchant_result_secondary_pickup_requires_server_authority() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -5330,6 +5376,7 @@ fn apply_local_merchant_result_quick_move_consumes_overfilled_payment_remainder(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 4);
@@ -5393,6 +5440,7 @@ fn apply_local_merchant_result_quick_move_repopulates_result_when_remainder_stil
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -5461,6 +5509,7 @@ fn apply_local_merchant_result_quick_move_consumes_swapped_payment_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(43, 2);
@@ -5529,6 +5578,7 @@ fn apply_local_merchant_result_quick_move_clears_result_when_offer_runs_out_of_s
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -5599,6 +5649,7 @@ fn apply_local_merchant_result_quick_move_rejects_component_predicate_cost() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -5657,6 +5708,7 @@ fn set_local_merchant_selected_offer_autofills_payment_slots_from_offer_costs() 
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(99, 2);
@@ -5731,6 +5783,7 @@ fn set_local_merchant_selected_offer_keeps_component_predicate_cost_server_autho
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PLAYER_MAIN_START as usize] = item_stack(42, 5);
@@ -5784,6 +5837,7 @@ fn apply_local_enchantment_quick_move_moves_menu_slots_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
         title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT];
     items[0] = item_stack(42, 1);
@@ -5873,6 +5927,7 @@ fn apply_local_enchantment_quick_move_routes_player_items_to_lapis_and_input_slo
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
         title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize];
     items[ENCHANTMENT_HOTBAR_START as usize] = item_stack(43, 3);
@@ -5946,6 +6001,7 @@ fn apply_local_smithing_input_quick_move_moves_input_slots_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -6072,6 +6128,7 @@ fn apply_local_smithing_result_quick_move_consumes_single_inputs() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -6132,6 +6189,7 @@ fn apply_local_smithing_result_pickup_consumes_single_inputs_to_cursor() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -6188,6 +6246,7 @@ fn apply_local_smithing_result_quick_move_keeps_stacked_inputs_server_authoritat
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 2);
@@ -6239,6 +6298,7 @@ fn apply_local_smithing_result_pickup_keeps_stacked_inputs_server_authoritative(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 2);
@@ -6288,6 +6348,7 @@ fn apply_local_smithing_quick_move_routes_property_set_items_to_inputs_and_playe
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_PLAYER_MAIN_START as usize] = item_stack(50, 2);
@@ -6385,6 +6446,7 @@ fn apply_local_cartography_table_result_pickup_consumes_single_inputs_to_cursor(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6439,6 +6501,7 @@ fn apply_local_cartography_table_result_quick_move_predicts_single_input_consump
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6518,6 +6581,7 @@ fn apply_local_cartography_table_result_quick_move_keeps_stacked_inputs_server_a
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6575,6 +6639,7 @@ fn apply_local_cartography_table_quick_move_moves_input_slots_to_player_forward(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6655,6 +6720,7 @@ fn apply_local_cartography_table_quick_move_routes_additional_and_player_ranges(
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6744,6 +6810,7 @@ fn apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6794,6 +6861,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6854,6 +6922,7 @@ fn cartography_table_map_id_unhashable_component_requires_server_authority() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -6899,6 +6968,7 @@ fn apply_local_stonecutter_quick_move_moves_input_slot_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 3);
@@ -6941,6 +7011,7 @@ fn apply_local_stonecutter_quick_move_moves_player_main_and_hotbar_ranges() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -7006,6 +7077,7 @@ fn apply_local_stonecutter_quick_move_routes_valid_recipe_input_to_input_slot() 
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -7048,6 +7120,7 @@ fn apply_local_stonecutter_result_pickup_consumes_single_input_to_cursor() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7093,6 +7166,7 @@ fn apply_local_stonecutter_result_quick_move_predicts_single_input_consumption()
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7141,6 +7215,7 @@ fn apply_local_stonecutter_result_pickup_keeps_remaining_input_server_authoritat
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 2);
@@ -7183,6 +7258,7 @@ fn apply_local_stonecutter_result_quick_move_keeps_blocked_transfer_server_autho
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7223,6 +7299,7 @@ fn apply_local_brewing_stand_quick_move_moves_brewing_slots_to_player_reverse() 
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
         title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
@@ -7293,6 +7370,7 @@ fn apply_local_brewing_stand_quick_move_routes_player_items_to_brewing_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
         title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
@@ -7404,6 +7482,7 @@ fn apply_local_grindstone_input_quick_move_moves_inputs_to_player_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7469,6 +7548,7 @@ fn apply_local_grindstone_player_to_input_quick_move_requires_server_authority()
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -7512,6 +7592,7 @@ fn apply_local_grindstone_quick_move_routes_default_damageable_items_to_inputs()
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -7577,6 +7658,7 @@ fn apply_local_grindstone_quick_move_moves_player_ranges_when_inputs_full() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(10, 1);
@@ -7640,6 +7722,7 @@ fn apply_local_grindstone_result_pickup_consumes_inputs_to_cursor() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7691,6 +7774,7 @@ fn apply_local_grindstone_result_secondary_pickup_requires_server_authority() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7729,6 +7813,7 @@ fn apply_local_grindstone_result_quick_move_predicts() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7776,6 +7861,7 @@ fn apply_local_grindstone_result_quick_move_keeps_blocked_transfer_server_author
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -7816,6 +7902,7 @@ fn apply_local_hopper_quick_move_moves_hopper_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 41];
     items[0] = item_stack(42, 3);
@@ -7855,6 +7942,7 @@ fn apply_local_hopper_quick_move_moves_player_to_hopper_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 41];
     items[5] = item_stack(42, 3);
@@ -7894,6 +7982,7 @@ fn apply_local_shulker_box_quick_move_moves_shulker_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 63];
     items[0] = item_stack(42, 3);
@@ -7933,6 +8022,7 @@ fn apply_local_shulker_box_quick_move_moves_player_to_shulker_forward() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 63];
     items[27] = item_stack(42, 3);
@@ -7972,6 +8062,7 @@ fn apply_local_furnace_quick_move_moves_result_to_player_reverse() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[2] = item_stack(42, 3);
@@ -8016,6 +8107,7 @@ fn apply_local_furnace_quick_move_routes_input_and_fuel_to_furnace_slots() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[3] = item_stack(42, 3);
@@ -8076,6 +8168,7 @@ fn apply_local_furnace_quick_move_uses_menu_specific_input_property_set() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
         title: "Blast Furnace".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[3] = item_stack(42, 3);
@@ -8149,6 +8242,7 @@ fn apply_local_furnace_quick_move_prioritizes_input_over_fuel() {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMOKER_ID,
         title: "Smoker".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[30] = item_stack(42, 3);
@@ -8188,6 +8282,7 @@ fn apply_local_furnace_quick_move_moves_input_and_fuel_slots_to_player_forward()
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 3);
@@ -8239,6 +8334,7 @@ fn apply_local_container_quick_move_rejects_non_inventory_menu() {
         container_id: 7,
         menu_type_id: 99,
         title: "Unsupported".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8357,6 +8453,7 @@ fn apply_local_container_throw_rejects_non_inventory_menu() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8537,6 +8634,7 @@ fn apply_local_container_swap_requires_empty_cursor_and_inventory_menu() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8565,6 +8663,7 @@ fn apply_local_container_clone_copies_slot_stack_to_cursor_at_max_count() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8599,6 +8698,7 @@ fn apply_local_container_clone_does_not_apply_without_instabuild() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8633,6 +8733,7 @@ fn apply_local_container_clone_does_not_apply_with_non_empty_cursor() {
         container_id: 7,
         menu_type_id: 1,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -9154,6 +9255,7 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
         container_id: 5,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
 
     let value = serde_json::to_value(&store).unwrap();
@@ -9190,9 +9292,49 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
             "slots",
             "state_id",
             "title",
+            "title_styled",
         ]
     );
 
     let restored: WorldStore = serde_json::from_value(value).unwrap();
     assert_eq!(restored.inventory(), store.inventory());
+}
+
+#[test]
+fn open_screen_styled_title_is_stored_and_survives_set_content() {
+    let styled_title = vec![bbb_protocol::StyledTextRun {
+        text: "Chest".to_string(),
+        style: bbb_protocol::ComponentStyle {
+            bold: Some(true),
+            color: Some(0xFF_55_55),
+            ..Default::default()
+        },
+    }];
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: "Chest".to_string(),
+        title_styled: styled_title.clone(),
+    });
+    assert_eq!(
+        store
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
+            .title_styled,
+        styled_title
+    );
+
+    // Content refresh keeps the styled title alongside the plain one.
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 5,
+        state_id: 1,
+        items: vec![ProtocolItemStackSummary::empty(); 9],
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.title.as_deref(), Some("Chest"));
+    assert_eq!(container.title_styled, styled_title);
 }

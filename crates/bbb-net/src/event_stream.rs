@@ -2211,6 +2211,7 @@ mod tests {
             container_id: 7,
             menu_type_id: 19,
             title: "Merchant".to_string(),
+            title_styled: Vec::new(),
         };
         stream
             .handle_play_packet(PlayClientbound::OpenScreen(open_screen.clone()))

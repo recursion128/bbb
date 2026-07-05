@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::{
+        decode_styled_component_summary_from_decoder, styled_runs_summary_text, StyledTextRun,
+    },
     packets::data_components,
 };
 
@@ -80,6 +82,10 @@ pub struct OpenScreen {
     pub container_id: i32,
     pub menu_type_id: i32,
     pub title: String,
+    /// Styled-run projection of `title` (same component decode, style kept);
+    /// `title` is its plain-text concatenation.
+    #[serde(default)]
+    pub title_styled: Vec<StyledTextRun>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,10 +148,14 @@ pub(super) fn decode_container_set_slot(decoder: &mut Decoder<'_>) -> Result<Con
 }
 
 pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen> {
+    let container_id = decoder.read_var_i32()?;
+    let menu_type_id = decoder.read_var_i32()?;
+    let title_styled = decode_styled_component_summary_from_decoder(decoder)?;
     Ok(OpenScreen {
-        container_id: decoder.read_var_i32()?,
-        menu_type_id: decoder.read_var_i32()?,
-        title: decode_component_summary_from_decoder(decoder)?,
+        container_id,
+        menu_type_id,
+        title: styled_runs_summary_text(&title_styled),
+        title_styled,
     })
 }
 
@@ -378,6 +388,10 @@ mod tests {
                 container_id: 7,
                 menu_type_id: 2,
                 title: "Chest".to_string(),
+                title_styled: vec![StyledTextRun {
+                    text: "Chest".to_string(),
+                    style: Default::default(),
+                }],
             })
         );
 

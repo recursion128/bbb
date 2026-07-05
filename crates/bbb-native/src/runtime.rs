@@ -2720,6 +2720,7 @@ fn hud_inventory_text_labels(
                     tint: ANVIL_RENAME_TEXT_COLOR,
                     background: None,
                     shadow: false,
+                    runs: Vec::new(),
                 });
             }
             if let Some(label) = anvil_cost_text_label(world) {
@@ -2755,6 +2756,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             });
         }
     }
@@ -2772,6 +2774,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 shadow: false,
+                runs: Vec::new(),
             });
         }
     }
@@ -2863,6 +2866,7 @@ fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryText
             },
             background: None,
             shadow: false,
+            runs: Vec::new(),
         });
     }
     labels
@@ -2912,6 +2916,7 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
             tint: ANVIL_COST_BACKGROUND_TINT,
         }),
         shadow: false,
+        runs: Vec::new(),
     })
 }
 
@@ -2952,6 +2957,7 @@ fn hud_inventory_tooltip(
             .map(|line| HudInventoryTooltipLine {
                 text: line.text,
                 tint: line.tint,
+                runs: line.runs,
             })
             .collect(),
     })

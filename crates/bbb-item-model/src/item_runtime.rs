@@ -39,8 +39,8 @@ use bbb_render_types::{
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
     EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
-    FirstPersonMapBackgroundTexture, HudFontGlyphMap, ItemFrameMapDecorationTexture,
-    ItemSpriteRect, SpriteAlphaMask,
+    FirstPersonMapBackgroundTexture, HudFontGlyphMap, HudStyledTextRun, HudTextStyle,
+    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.

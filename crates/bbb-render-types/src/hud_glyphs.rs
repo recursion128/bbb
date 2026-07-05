@@ -69,12 +69,12 @@ pub const HUD_FONT_BOLD_EXTRA_THICKNESS: f32 = 0.1;
 /// glyph's advance width and/or draw geometry. All-false is the default
 /// (unstyled) text path, so existing HUD callers are unaffected.
 ///
-/// INPUT-END GAP: bbb's chat-component decoder
-/// (`bbb_protocol::component::decode_component_summary`) flattens every
-/// component to a plain `String`, discarding the `bold` / `italic` /
-/// `underlined` / `strikethrough` / `obfuscated` NBT keys, so no HUD text
-/// currently carries style. This type is the mechanism a future styled-component
-/// projection will drive; today every HUD text path uses the `default()`.
+/// Input end: `bbb_protocol::decode_styled_component_summary` preserves these
+/// keys as flattened `StyledTextRun`s, which world/native project into
+/// [`HudStyledTextRun`]s consumed by the HUD text draw loops. The `italic`
+/// shear and per-tick `obfuscated` glyph substitution are still pending draw
+/// primitives; both flags are carried (widths already correct) but drawn as
+/// upright/original glyphs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct HudTextStyle {
     pub bold: bool,
@@ -82,6 +82,31 @@ pub struct HudTextStyle {
     pub underlined: bool,
     pub strikethrough: bool,
     pub obfuscated: bool,
+}
+
+/// One styled run of HUD text: contiguous characters sharing a resolved
+/// vanilla `Style`. The projection of a flattened chat-component run into the
+/// renderer's vocabulary: booleans are resolved (`Style.isBold()` ==
+/// `bold == Some(true)`), the colour is the resolved `TextColor` value.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HudStyledTextRun {
+    pub text: String,
+    pub style: HudTextStyle,
+    /// Per-run text colour override as `0xRRGGBB` (vanilla
+    /// `Style.getColor().getValue()`); `None` keeps the line's base colour
+    /// (vanilla `StringRenderOutput.getTextColor` falls back to the draw
+    /// call's colour).
+    pub color: Option<u32>,
+}
+
+impl HudStyledTextRun {
+    pub fn plain(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            style: HudTextStyle::default(),
+            color: None,
+        }
+    }
 }
 
 /// One glyph-quad draw pass in font-pixel space, mirroring a single

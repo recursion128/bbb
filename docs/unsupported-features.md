@@ -217,23 +217,43 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-item-model` + `bbb-renderer` + `bbb-native` + `bbb-protocol`
 - Status: `partial`
 - Next action:
-  - Wire a styled chat-component projection into the input end: the decoder
-    `bbb_protocol::component::decode_component_summary` flattens every
-    component to a plain `String`, discarding the `bold` / `italic` /
-    `underlined` / `strikethrough` / `obfuscated` NBT keys, so no HUD text
-    reaches the renderer with style. Until that lands, the width/geometry
-    mechanism runs on `HudTextStyle::default()` everywhere (zero behavior
-    change).
-  - Give the live HUD text draw path an italic-shear-capable primitive: the
-    current loops emit axis-aligned `HudRect` quads only, so the sheared
-    (non-axis-aligned) italic corners the mechanism computes cannot yet be
-    submitted; wire `styled_quads` / `styled_effect_rects` once a per-vertex
-    glyph quad primitive exists and style input is present.
+  - Give the italic shear a live submission path end to end: the HUD draw
+    loops now push arbitrary-corner glyph quads (`hud_styled_quad_vertices`),
+    but they deliberately strip `italic` from the geometry style
+    (`hud_styled_text_pass_geometry`) so italic text renders upright until
+    the sheared corners are visually verified against vanilla (shear values
+    are already computed and test-locked in `styled_quads`); flip the strip
+    and lock a sheared-corner draw test.
   - Add per-tick obfuscated random-glyph substitution (equal-advance glyph
-    swap, vanilla `FontSet.getRandomGlyph`) when a deterministic per-frame
-    random source and a consuming style input both exist; the flag is carried
-    but currently a geometry no-op (advance is already correct).
+    swap, vanilla `FontSet.getRandomGlyph`) — needs a deterministic per-frame
+    random source; the flag is carried through the styled runs but is a
+    glyph-selection no-op (advance is already correct).
 - Evidence / boundary:
+  - Input end is wired (2026-07-05): `bbb_protocol::decode_styled_component_summary`
+    flattens chat components into `StyledTextRun`s carrying the vanilla
+    `Style` subset (`bold`/`italic`/`underlined`/`strikethrough`/`obfuscated`
+    as `Option<bool>`, `color` resolved from named `ChatFormatting` or
+    `#RRGGBB` via `TextColor.parseColor`), with `Style.applyTo` inheritance
+    down `extra`/`with` children. The plain-text decoder is a pure delegation
+    (run concatenation), so every legacy consumer is byte-identical.
+    Styled fields ride next to the plain ones with `#[serde(default)]`:
+    `OpenScreen.title_styled`, `DataComponentPatchSummary.{custom_name_styled,
+    item_name_styled, lore_styled}`, and `ContainerState.title_styled`
+    (world projection; the container title itself has no HUD label consumer
+    yet).
+  - Tooltip projection applies vanilla default styles in `bbb-item-model`
+    (`item_runtime/tooltip.rs`): lore lines merge `ItemLore.LORE_STYLE`
+    (DARK_PURPLE + italic, `ComponentUtils.mergeStyles` semantics — explicit
+    line keys win) and the hover name gets `ItemStack.getStyledHoverName`'s
+    rarity-colour wrapper plus ITALIC when a `custom_name` is present.
+  - Live rendering: HUD label/tooltip loops consume `HudStyledTextRun`s —
+    bold double-quad + `extraThickness` + bold-aware advance, per-run colour
+    tint, style-driven shadow colour (`ARGB.scaleRGB(textColor, 0.25)`,
+    which also fixes the previously fixed-grey shadow under coloured tooltip
+    lines), and underline/strikethrough bars drawn after the line's glyphs
+    per pass (vanilla `StringRenderOutput.visit` order). All geometry comes
+    from the locked `styled_quads`/`styled_effect_rects`; the item count
+    label stays digit-only (vanilla renders counts unstyled).
   - Text-style width + draw geometry mechanism is implemented and test-locked
     in `bbb-render-types` (`hud_glyphs.rs`): `HudTextStyle`
     (bold/italic/underlined/strikethrough/obfuscated, all-false default) plus
@@ -245,11 +265,11 @@ When an agent does any of the following, update this file in the same slice:
     `1-0.25*up` and the bottom by `1-0.25*down`), and `styled_effect_rects`
     (`Font.StringRenderOutput.accept`: strikethrough bar `y+3.5..y+4.5`,
     underline bar `y+8.0..y+9.0`, both `effectX0`..`x+advance`, `effectX0` = one
-    pixel left for the first glyph in a line). `bbb-renderer`'s
-    `hud_font_text_width` now delegates to `hud_font_text_width_styled` so the
-    real width path sums bold-aware advances; the default-style call is
-    byte-for-byte the old behavior. Advances stay integer (`u32`) so vanilla's
-    `Mth.ceil` over fractional TTF advances is a no-op here.
+    pixel left for the first glyph in a line). `bbb-renderer`'s width path
+    (`hud_font_runs_width`) sums per-run bold-aware advances; the
+    default-style path is byte-for-byte the old behavior. Advances stay
+    integer (`u32`) so vanilla's `Mth.ceil` over fractional TTF advances is a
+    no-op here.
   - The `bitmap` + `space` + `reference` providers of `font/default.json`
     are parsed and baked into one multi-page codepoint-keyed glyph atlas
     (`bbb-item-model/src/font.rs` + `font/providers.rs`), with vanilla
@@ -1512,11 +1532,12 @@ When an agent does any of the following, update this file in the same slice:
     outside the mechanically parsed `Blocks.java` declarations.
   - Commands: continue adding focused command queue and encode tests for
     inventory, interaction, chat, command, and sign editing.
-  - Inventory: implement remaining rich tooltip behavior (text styles — the
-    `font/default.json` bitmap + `space` provider pages are now baked and
-    consumed, see Vanilla Font Provider Coverage — plus bidirectional text
-    shaping and italic/complex component styles); the official tooltip
-    background/frame nine-slice sprites are now drawn.
+  - Inventory: implement remaining rich tooltip behavior (styled component
+    runs — bold/colour/underline/strikethrough/shadow — now render live in
+    tooltips and labels, see Vanilla Font Provider Coverage; remaining:
+    italic shear submission, obfuscated glyph cycling, and bidirectional
+    text shaping); the official tooltip background/frame nine-slice sprites
+    are now drawn.
   - Completion requires full vanilla movement and these flows to work
     through encoded serverbound packets end to end.
 - Evidence / boundary:

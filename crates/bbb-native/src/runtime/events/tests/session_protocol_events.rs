@@ -1154,6 +1154,7 @@ fn inventory_events_update_world_and_world_counters() {
         container_id: 7,
         menu_type_id: 18,
         title: "Inventory".to_string(),
+        title_styled: Vec::new(),
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::ContainerSetContent(

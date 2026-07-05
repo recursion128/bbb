@@ -1217,6 +1217,7 @@ mod tests {
             container_id: 7,
             menu_type_id: 2,
             title: "Chest".to_string(),
+            title_styled: Vec::new(),
         });
         world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
             container_id: 7,
@@ -1378,6 +1379,7 @@ mod tests {
             container_id: 7,
             menu_type_id: 18,
             title: "Inventory".to_string(),
+            title_styled: Vec::new(),
         });
         let mut counters = NetCounters::default();
 

@@ -21,6 +21,40 @@ fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.to_string(),
         tint,
+        runs: vec![HudStyledTextRun::plain(text)],
+    }
+}
+
+/// A hover-name line: vanilla `getStyledHoverName` wraps the name in the
+/// rarity colour and italicizes custom names.
+fn name_line(text: &str, tint: [f32; 4], color: u32, italic: bool) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                italic,
+                ..HudTextStyle::default()
+            },
+            color: Some(color),
+        }],
+    }
+}
+
+/// A lore line carrying vanilla `ItemLore.LORE_STYLE` (DARK_PURPLE + italic).
+fn lore_line(text: &str) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEXT_DARK_PURPLE,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xAA_00_AA),
+        }],
     }
 }
 
@@ -303,7 +337,12 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         }),
-        Some(vec![tooltip_line("Test Combo", TOOLTIP_TEXT_WHITE)])
+        Some(vec![name_line(
+            "Test Combo",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
@@ -325,9 +364,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             },
         }),
         Some(vec![
-            tooltip_line("Custom Pick", TOOLTIP_TEXT_WHITE),
-            tooltip_line("First lore", TOOLTIP_TEXT_DARK_PURPLE),
-            tooltip_line("Second lore", TOOLTIP_TEXT_DARK_PURPLE),
+            name_line("Custom Pick", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, true),
+            lore_line("First lore"),
+            lore_line("Second lore"),
         ])
     );
     assert_eq!(
@@ -350,10 +389,10 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             },
         }),
         Some(vec![
-            tooltip_line("Book Title", TOOLTIP_TEXT_WHITE),
+            name_line("Book Title", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("by Alex", TOOLTIP_TEXT_GRAY),
             tooltip_line("Original", TOOLTIP_TEXT_GRAY),
-            tooltip_line("Book lore", TOOLTIP_TEXT_DARK_PURPLE),
+            lore_line("Book lore"),
         ])
     );
     assert_eq!(
@@ -374,7 +413,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             },
         }),
         Some(vec![
-            tooltip_line("Copy", TOOLTIP_TEXT_WHITE),
+            name_line("Copy", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Copy of a copy", TOOLTIP_TEXT_GRAY),
         ])
     );
@@ -388,9 +427,11 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..DataComponentPatchSummary::default()
             },
         }),
-        Some(vec![tooltip_line(
+        Some(vec![name_line(
             "Component Item Name",
-            TOOLTIP_TEXT_YELLOW
+            TOOLTIP_TEXT_YELLOW,
+            0xFF_FF_55,
+            false
         )])
     );
     assert_eq!(
@@ -404,7 +445,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             },
         }),
         Some(vec![
-            tooltip_line("Durable Item", TOOLTIP_TEXT_WHITE),
+            name_line("Durable Item", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
         ])
     );
@@ -421,7 +462,12 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..DataComponentPatchSummary::default()
             },
         }),
-        Some(vec![tooltip_line("Enchanted Item", TOOLTIP_TEXT_AQUA)])
+        Some(vec![name_line(
+            "Enchanted Item",
+            TOOLTIP_TEXT_AQUA,
+            0x55_FF_FF,
+            false
+        )])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
@@ -437,10 +483,67 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..DataComponentPatchSummary::default()
             },
         }),
-        Some(vec![tooltip_line(
+        Some(vec![name_line(
             "Rare Enchanted Item",
-            TOOLTIP_TEXT_LIGHT_PURPLE
+            TOOLTIP_TEXT_LIGHT_PURPLE,
+            0xFF_55_FF,
+            false
         )])
+    );
+    // Styled component runs flow through: the custom name keeps its own keys
+    // over the rarity wrapper (colour) while inheriting the custom-name
+    // italic; an explicit `italic:0b` lore key beats the injected
+    // `ItemLore.LORE_STYLE` and its colour override beats DARK_PURPLE.
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                custom_name: Some("Bold Red".to_string()),
+                custom_name_styled: Some(vec![bbb_protocol::StyledTextRun {
+                    text: "Bold Red".to_string(),
+                    style: bbb_protocol::ComponentStyle {
+                        bold: Some(true),
+                        color: Some(0xFF_55_55),
+                        ..Default::default()
+                    },
+                }]),
+                lore: vec!["Upright gold".to_string()],
+                lore_styled: vec![vec![bbb_protocol::StyledTextRun {
+                    text: "Upright gold".to_string(),
+                    style: bbb_protocol::ComponentStyle {
+                        italic: Some(false),
+                        color: Some(0xFF_AA_00),
+                        ..Default::default()
+                    },
+                }]],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            NativeItemTooltipLine {
+                text: "Bold Red".to_string(),
+                tint: TOOLTIP_TEXT_WHITE,
+                runs: vec![HudStyledTextRun {
+                    text: "Bold Red".to_string(),
+                    style: HudTextStyle {
+                        bold: true,
+                        italic: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0xFF_55_55),
+                }],
+            },
+            NativeItemTooltipLine {
+                text: "Upright gold".to_string(),
+                tint: TOOLTIP_TEXT_DARK_PURPLE,
+                runs: vec![HudStyledTextRun {
+                    text: "Upright gold".to_string(),
+                    style: HudTextStyle::default(),
+                    color: Some(0xFF_AA_00),
+                }],
+            },
+        ])
     );
 
     let stack_icon = runtime

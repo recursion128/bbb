@@ -345,6 +345,10 @@ pub struct ContainerState {
     pub container_id: i32,
     pub menu_type_id: Option<i32>,
     pub title: Option<String>,
+    /// Styled-run projection of `title` (empty when unknown or plain);
+    /// carried alongside the plain text like the packet's `title_styled`.
+    #[serde(default)]
+    pub title_styled: Vec<bbb_protocol::StyledTextRun>,
     #[serde(default)]
     pub mount: Option<MountScreenState>,
     pub state_id: i32,
@@ -571,6 +575,7 @@ impl InventoryState {
             container_id: packet.container_id,
             menu_type_id: Some(packet.menu_type_id),
             title: Some(packet.title),
+            title_styled: packet.title_styled,
             mount: None,
             state_id: existing.state_id,
             slots: existing.slots,
@@ -610,6 +615,7 @@ impl InventoryState {
                 container_id,
                 menu_type_id: existing.menu_type_id,
                 title: existing.title,
+                title_styled: existing.title_styled,
                 mount: existing.mount,
                 state_id,
                 slots,
@@ -634,6 +640,10 @@ impl InventoryState {
             title: existing
                 .as_ref()
                 .and_then(|container| container.title.clone()),
+            title_styled: existing
+                .as_ref()
+                .map(|container| container.title_styled.clone())
+                .unwrap_or_default(),
             mount: existing.as_ref().and_then(|container| container.mount),
             state_id,
             slots,
@@ -688,6 +698,7 @@ impl InventoryState {
             container_id: mount.container_id,
             menu_type_id: None,
             title: existing.title,
+            title_styled: existing.title_styled,
             mount: Some(mount),
             state_id: existing.state_id,
             slots: existing.slots,

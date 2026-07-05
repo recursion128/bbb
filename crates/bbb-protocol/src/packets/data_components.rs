@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use super::{chunks, read_resource_location};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
+    component::{
+        decode_component_summary_from_decoder, decode_styled_component_summary_from_decoder,
+        skip_nbt_tag_from_decoder, styled_runs_summary_text, StyledTextRun,
+    },
 };
 use uuid::Uuid;
 
@@ -49,12 +52,23 @@ pub struct DataComponentPatchSummary {
     pub unbreakable: bool,
     #[serde(default)]
     pub custom_name: Option<String>,
+    /// Styled-run projection of `custom_name` (same decode, style kept);
+    /// `custom_name` is its plain-text concatenation.
+    #[serde(default)]
+    pub custom_name_styled: Option<Vec<StyledTextRun>>,
     #[serde(default)]
     pub item_name: Option<String>,
+    /// Styled-run projection of `item_name` (same decode, style kept).
+    #[serde(default)]
+    pub item_name_styled: Option<Vec<StyledTextRun>>,
     #[serde(default)]
     pub item_model: Option<String>,
     #[serde(default)]
     pub lore: Vec<String>,
+    /// Styled-run projection of `lore` (same decode, style kept), one run
+    /// list per lore line.
+    #[serde(default)]
+    pub lore_styled: Vec<Vec<StyledTextRun>>,
     #[serde(default)]
     pub rarity: Option<ItemRaritySummary>,
     #[serde(default)]
@@ -583,16 +597,25 @@ fn decode_typed_data_component_patch_summary(
                 summary.unbreakable = true;
             }
             6 => {
-                summary.custom_name = Some(decode_component_summary_from_decoder(decoder)?);
+                let runs = decode_styled_component_summary_from_decoder(decoder)?;
+                summary.custom_name = Some(styled_runs_summary_text(&runs));
+                summary.custom_name_styled = Some(runs);
             }
             9 => {
-                summary.item_name = Some(decode_component_summary_from_decoder(decoder)?);
+                let runs = decode_styled_component_summary_from_decoder(decoder)?;
+                summary.item_name = Some(styled_runs_summary_text(&runs));
+                summary.item_name_styled = Some(runs);
             }
             10 => {
                 summary.item_model = Some(read_resource_location(decoder)?);
             }
             11 => {
-                summary.lore = decode_lore(decoder)?;
+                summary.lore_styled = decode_lore(decoder)?;
+                summary.lore = summary
+                    .lore_styled
+                    .iter()
+                    .map(|line| styled_runs_summary_text(line))
+                    .collect();
             }
             12 => {
                 summary.rarity = Some(decode_item_rarity(decoder)?);
@@ -1165,11 +1188,11 @@ fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<LodestoneTargetSummary
     })
 }
 
-fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
+fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<StyledTextRun>>> {
     let line_count = read_bounded_len(decoder, MAX_LORE_LINES)?;
     let mut lines = Vec::with_capacity(line_count);
     for _ in 0..line_count {
-        lines.push(decode_component_summary_from_decoder(decoder)?);
+        lines.push(decode_styled_component_summary_from_decoder(decoder)?);
     }
     Ok(lines)
 }
@@ -2306,6 +2329,7 @@ mod tests {
                 damage: Some(431),
                 unbreakable: true,
                 custom_name: Some("Named".to_string()),
+                custom_name_styled: Some(plain_runs("Named")),
                 item_model: Some("minecraft:diamond_sword".to_string()),
                 enchantment_glint_override: Some(true),
                 use_cooldown_ticks: Some(30),
@@ -2621,13 +2645,70 @@ mod tests {
                 added_type_ids: vec![6, 9, 11, 12],
                 removed_type_ids: Vec::new(),
                 custom_name: Some("Custom Name".to_string()),
+                custom_name_styled: Some(plain_runs("Custom Name")),
                 item_name: Some("Item Name".to_string()),
+                item_name_styled: Some(plain_runs("Item Name")),
                 lore: vec!["Lore one".to_string(), "Lore two".to_string()],
+                lore_styled: vec![plain_runs("Lore one"), plain_runs("Lore two")],
                 rarity: Some(ItemRaritySummary::Rare),
                 ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_styled_name_and_lore_component_runs() {
+        // custom_name = {text:"Sword", bold:1b, color:"gold"};
+        // lore line = {text:"Old blade", italic:0b}.
+        let mut styled_name = vec![10u8];
+        write_named_nbt_string(&mut styled_name, "text", "Sword");
+        write_named_nbt_byte(&mut styled_name, "bold", 1);
+        write_named_nbt_string(&mut styled_name, "color", "gold");
+        styled_name.push(0);
+        let mut styled_lore = vec![10u8];
+        write_named_nbt_string(&mut styled_lore, "text", "Old blade");
+        write_named_nbt_byte(&mut styled_lore, "italic", 0);
+        styled_lore.push(0);
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_var_i32(6);
+        payload.write_bytes(&styled_name);
+        payload.write_var_i32(11);
+        payload.write_var_i32(1);
+        payload.write_bytes(&styled_lore);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert!(decoder.is_empty());
+
+        // Plain fields stay the concatenated text (old API delegation).
+        assert_eq!(patch.custom_name.as_deref(), Some("Sword"));
+        assert_eq!(patch.lore, vec!["Old blade".to_string()]);
+        assert_eq!(
+            patch.custom_name_styled,
+            Some(vec![StyledTextRun {
+                text: "Sword".to_string(),
+                style: crate::ComponentStyle {
+                    bold: Some(true),
+                    color: Some(0xFF_AA_00),
+                    ..Default::default()
+                },
+            }])
+        );
+        assert_eq!(
+            patch.lore_styled,
+            vec![vec![StyledTextRun {
+                text: "Old blade".to_string(),
+                style: crate::ComponentStyle {
+                    italic: Some(false),
+                    ..Default::default()
+                },
+            }]]
+        );
     }
 
     #[test]
@@ -3006,6 +3087,7 @@ mod tests {
                 custom_model_data_strings: vec!["variant".to_string()],
                 custom_model_data_colors: vec![0x112233, 0x445566],
                 lore: vec!["Line one".to_string(), "Line two".to_string()],
+                lore_styled: vec![plain_runs("Line one"), plain_runs("Line two")],
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -3909,6 +3991,13 @@ mod tests {
         let mut out = vec![8];
         write_mutf8(&mut out, value);
         out
+    }
+
+    fn plain_runs(text: &str) -> Vec<StyledTextRun> {
+        vec![StyledTextRun {
+            text: text.to_string(),
+            style: Default::default(),
+        }]
     }
 
     fn empty_nbt_compound_root() -> Vec<u8> {

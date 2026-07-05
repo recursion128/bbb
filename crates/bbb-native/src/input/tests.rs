@@ -3838,6 +3838,7 @@ fn escape_key_closes_open_container_and_queues_command() {
         container_id: 7,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
 
     handle_key_input(
@@ -3869,6 +3870,7 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
         container_id: 8,
         menu_type_id: 2,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
 
     handle_key_input(
@@ -3901,6 +3903,7 @@ fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
         container_id: 9,
         menu_type_id: 19,
         title: "Merchant".to_string(),
+        title_styled: Vec::new(),
     });
 
     for code in [KeyCode::Digit5, KeyCode::KeyQ] {
@@ -5247,6 +5250,7 @@ fn generic_9x1_container_world(
         container_id,
         menu_type_id: 0,
         title: "Chest".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     if let Some((slot, stack)) = item {
@@ -5282,6 +5286,7 @@ fn anvil_container_world(
         container_id,
         menu_type_id: 8,
         title: "Anvil".to_string(),
+        title_styled: Vec::new(),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     if let Some(stack) = input_item {
