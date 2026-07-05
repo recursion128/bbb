@@ -1567,6 +1567,40 @@
   （ZWNJ 不退化 `?`、零像素不发 quad、`"a‌b"` 总宽等于 `"ab"`）。
   剩余子项：文本样式宽度/几何、unihex/CJK、bidi（账本 "Vanilla Font
   Provider Coverage" 条目）。
+- [x] vanilla font 文本样式宽度/几何机制（P1-3 font 子 slice 3，2026-07-05）：
+  调研结论（决定性）——bbb 无 style 输入源：chat component 解码
+  `bbb_protocol::component::decode_component_summary` 把任意组件递归拍平成纯
+  `String`（只取 `text`/`translate`/`fallback`/`keybind`/`selector`/`nbt`/
+  `extra`/`with`），完全丢弃 `bold`/`italic`/`underlined`/`strikethrough`/
+  `obfuscated`/`color` 键，故容器标题、tooltip、count 等 HUD 文本零 style；
+  解码器本身缺 style 字段，本 slice 缩小为"机制 + 单测锁定 + 账本记输入端
+  缺口"，不伪造 style 数据源。实现（`bbb-render-types/src/hud_glyphs.rs`）：
+  `HudTextStyle`（bold/italic/underlined/strikethrough/obfuscated 布尔组，
+  全 false 默认）；`HudDigitGlyph::styled_advance`（vanilla
+  `GlyphInfo.getAdvance(bold)`=advance+`getBoldOffset()`=1，其余样式含
+  obfuscated 等宽不改 advance）；`styled_quads`（`BakedSheetGlyph.renderChar`
+  顺序：先 shadow 于 `+shadowOffset`=(1,1)、bold 时 shadow 首遍也带 bold 厚度
+  再补 `+boldOffset+shadowOffset` 遍，然后 main、bold 补 `+boldOffset`=1 遍；
+  每 bold 遍 `extraThickness`=0.1 四向外扩；italic 顶边 shear
+  `1-0.25*up`、底边 `1-0.25*down`，`up=getTop()=7-ascent`、
+  `down=getTop()+height`）；`styled_effect_rects`
+  （`Font.StringRenderOutput.accept`：strikethrough 条 `y+3.5..y+4.5`、
+  underline 条 `y+8.0..y+9.0`，均 `effectX0..x+advance`，行首 glyph
+  `effectX0=x-1`，advance bold-aware）。`bbb-renderer/src/hud.rs`
+  `hud_font_text_width` 改为委托新 `hud_font_text_width_styled`（累加
+  `styled_advance`），默认样式与旧纯 advance 宽度逐字节一致（advance 恒整
+  `u32`，vanilla 对分数 TTF advance 的 `Mth.ceil` 在此为 no-op）。绘制端未接
+  live：HUD 现为 axis-aligned `HudRect` quad，表达不了 italic 斜切，且无 style
+  输入，故 `styled_quads`/`styled_effect_rects` 是就绪机制、暂不入实时循环
+  （账本记两处输入/原语缺口 + obfuscated 逐 tick 随机字形待随机源与消费端
+  落地）。测试：render-types 侧 styled_advance 仅 bold 加宽/其余不变、默认
+  单 quad 无斜切无厚度、shadow 首遍偏移 (1,1)、bold 双 quad x 差 1 且带 0.1
+  外扩、bold+shadow 四遍序 [T,T,F,F]、italic 顶/底 shear 量与纯水平位移、
+  effect 矩形 y 范围/span/行首 -1/bold 加宽；hud.rs 侧
+  `hud_font_text_width_styled_adds_bold_offset_per_glyph`（bold "ab"==纯 +2、
+  默认与旧函数一致、非 bold 样式不改宽）。剩余子项：style 输入端 chat
+  component 投影、italic-capable 绘制原语、unihex/CJK、bidi（账本 "Vanilla
+  Font Provider Coverage" 条目）。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

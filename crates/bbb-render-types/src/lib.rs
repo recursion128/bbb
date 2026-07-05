@@ -14,7 +14,11 @@ pub use entity_textures::{
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
     EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
 };
-pub use hud_glyphs::{HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudUvRect, HUD_FONT_BASELINE};
+pub use hud_glyphs::{
+    HudAsciiGlyph, HudDigitGlyph, HudEffectKind, HudEffectRect, HudFontGlyphMap, HudGlyphQuad,
+    HudTextStyle, HudUvRect, HUD_FONT_BASELINE, HUD_FONT_BOLD_EXTRA_THICKNESS,
+    HUD_FONT_BOLD_OFFSET, HUD_FONT_SHADOW_OFFSET,
+};
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::ItemFrameMapDecorationTexture;
 pub use player_skin::{

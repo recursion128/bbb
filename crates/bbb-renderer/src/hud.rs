@@ -28,7 +28,7 @@ use self::layout::{
 };
 
 pub use bbb_render_types::{
-    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudUvRect, HUD_FONT_BASELINE,
+    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
@@ -2797,9 +2797,20 @@ fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32>
 }
 
 fn hud_font_text_width(text: &str, glyphs: &HudFontGlyphMap) -> Option<u32> {
+    hud_font_text_width_styled(text, glyphs, HudTextStyle::default())
+}
+
+/// Vanilla `Font.width`: sum of per-glyph `GlyphInfo.getAdvance(style.isBold())`.
+/// Bold widens each glyph by one font pixel; the unstyled default reproduces the
+/// prior plain-advance width exactly.
+fn hud_font_text_width_styled(
+    text: &str,
+    glyphs: &HudFontGlyphMap,
+    style: HudTextStyle,
+) -> Option<u32> {
     let mut width = 0u32;
     for ch in text.chars() {
-        width = width.checked_add(hud_font_glyph(ch, glyphs).advance)?;
+        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(style))?;
     }
     (width > 0).then_some(width)
 }
@@ -3630,6 +3641,55 @@ mod tests {
         assert_eq!(hud_font_text_width("钻", &glyphs), Some(5));
         assert_eq!(hud_font_glyph('钻', &glyphs), hud_font_glyph('?', &glyphs));
         assert_eq!(hud_font_text_width("", &glyphs), None);
+    }
+
+    #[test]
+    fn hud_font_text_width_styled_adds_bold_offset_per_glyph() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance) in [('a', 6), ('b', 6), ('?', 5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        // Vanilla Font.width: bold adds getBoldOffset() (1) per glyph, so bold
+        // "ab" is the plain width plus one pixel per character.
+        let plain = hud_font_text_width("ab", &glyphs).unwrap();
+        let bold = hud_font_text_width_styled(
+            "ab",
+            &glyphs,
+            HudTextStyle {
+                bold: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(plain, 12);
+        assert_eq!(bold, plain + 2);
+        // The default style keeps the existing plain-advance width unchanged.
+        assert_eq!(
+            hud_font_text_width_styled("ab", &glyphs, HudTextStyle::default()),
+            hud_font_text_width("ab", &glyphs)
+        );
+        // Non-bold flags leave the width alone (obfuscated is equal-advance).
+        assert_eq!(
+            hud_font_text_width_styled(
+                "ab",
+                &glyphs,
+                HudTextStyle {
+                    italic: true,
+                    underlined: true,
+                    strikethrough: true,
+                    obfuscated: true,
+                    ..Default::default()
+                },
+            ),
+            Some(plain)
+        );
     }
 
     #[test]

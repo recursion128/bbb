@@ -214,12 +214,42 @@ When an agent does any of the following, update this file in the same slice:
 
 ### Vanilla Font Provider Coverage
 
-- Owner: `bbb-item-model` + `bbb-renderer` + `bbb-native`
+- Owner: `bbb-item-model` + `bbb-renderer` + `bbb-native` + `bbb-protocol`
 - Status: `partial`
 - Next action:
-  - Implement text styles (bold/italic/underline/strikethrough/obfuscated)
-    on top of the baked glyph atlas.
+  - Wire a styled chat-component projection into the input end: the decoder
+    `bbb_protocol::component::decode_component_summary` flattens every
+    component to a plain `String`, discarding the `bold` / `italic` /
+    `underlined` / `strikethrough` / `obfuscated` NBT keys, so no HUD text
+    reaches the renderer with style. Until that lands, the width/geometry
+    mechanism runs on `HudTextStyle::default()` everywhere (zero behavior
+    change).
+  - Give the live HUD text draw path an italic-shear-capable primitive: the
+    current loops emit axis-aligned `HudRect` quads only, so the sheared
+    (non-axis-aligned) italic corners the mechanism computes cannot yet be
+    submitted; wire `styled_quads` / `styled_effect_rects` once a per-vertex
+    glyph quad primitive exists and style input is present.
+  - Add per-tick obfuscated random-glyph substitution (equal-advance glyph
+    swap, vanilla `FontSet.getRandomGlyph`) when a deterministic per-frame
+    random source and a consuming style input both exist; the flag is carried
+    but currently a geometry no-op (advance is already correct).
 - Evidence / boundary:
+  - Text-style width + draw geometry mechanism is implemented and test-locked
+    in `bbb-render-types` (`hud_glyphs.rs`): `HudTextStyle`
+    (bold/italic/underlined/strikethrough/obfuscated, all-false default) plus
+    `HudDigitGlyph::styled_advance` (vanilla `GlyphInfo.getAdvance(bold)` =
+    advance + `getBoldOffset()`=1 per bold glyph), `styled_quads`
+    (`BakedSheetGlyph.renderChar` pass order: shadow at `+shadowOffset`=1,1
+    first, then main; bold doubles each pass shifted `+boldOffset`=1 with
+    `extraThickness`=0.1 on every side; italic shears the top edge by
+    `1-0.25*up` and the bottom by `1-0.25*down`), and `styled_effect_rects`
+    (`Font.StringRenderOutput.accept`: strikethrough bar `y+3.5..y+4.5`,
+    underline bar `y+8.0..y+9.0`, both `effectX0`..`x+advance`, `effectX0` = one
+    pixel left for the first glyph in a line). `bbb-renderer`'s
+    `hud_font_text_width` now delegates to `hud_font_text_width_styled` so the
+    real width path sums bold-aware advances; the default-style call is
+    byte-for-byte the old behavior. Advances stay integer (`u32`) so vanilla's
+    `Mth.ceil` over fractional TTF advances is a no-op here.
   - The `bitmap` + `space` + `reference` providers of `font/default.json`
     are parsed and baked into one multi-page codepoint-keyed glyph atlas
     (`bbb-item-model/src/font.rs` + `font/providers.rs`), with vanilla

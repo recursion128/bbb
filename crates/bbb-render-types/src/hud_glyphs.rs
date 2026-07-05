@@ -54,6 +54,212 @@ impl Default for HudDigitGlyph {
 
 pub type HudAsciiGlyph = HudDigitGlyph;
 
+/// Vanilla `GlyphInfo.getBoldOffset()` default (`1.0`): bold redraws each glyph
+/// shifted this many font pixels right and widens every advance by the same
+/// amount (`GlyphInfo.getAdvance(bold)`).
+pub const HUD_FONT_BOLD_OFFSET: f32 = 1.0;
+/// Vanilla `GlyphInfo.getShadowOffset()` default (`1.0`): the drop shadow is a
+/// second draw of the glyph offset one font pixel down and right.
+pub const HUD_FONT_SHADOW_OFFSET: f32 = 1.0;
+/// Vanilla `BakedSheetGlyph.extraThickness(true)` (`0.1`): bold expands each
+/// glyph quad by this many font pixels on every side.
+pub const HUD_FONT_BOLD_EXTRA_THICKNESS: f32 = 0.1;
+
+/// Vanilla text-style flags (`net.minecraft.network.chat.Style`) that change a
+/// glyph's advance width and/or draw geometry. All-false is the default
+/// (unstyled) text path, so existing HUD callers are unaffected.
+///
+/// INPUT-END GAP: bbb's chat-component decoder
+/// (`bbb_protocol::component::decode_component_summary`) flattens every
+/// component to a plain `String`, discarding the `bold` / `italic` /
+/// `underlined` / `strikethrough` / `obfuscated` NBT keys, so no HUD text
+/// currently carries style. This type is the mechanism a future styled-component
+/// projection will drive; today every HUD text path uses the `default()`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct HudTextStyle {
+    pub bold: bool,
+    pub italic: bool,
+    pub underlined: bool,
+    pub strikethrough: bool,
+    pub obfuscated: bool,
+}
+
+/// One glyph-quad draw pass in font-pixel space, mirroring a single
+/// `BakedSheetGlyph.render` call. `corners` are `[top_left, bottom_left,
+/// bottom_right, top_right]` (vanilla vertex winding); `shadow` marks the passes
+/// vanilla draws in the shadow colour.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudGlyphQuad {
+    pub corners: [[f32; 2]; 4],
+    pub uv: HudUvRect,
+    pub shadow: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudEffectKind {
+    Underline,
+    Strikethrough,
+}
+
+/// An underline / strikethrough bar in font-pixel space, mirroring the
+/// rectangles `Font.StringRenderOutput.accept` feeds to `createEffect`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudEffectRect {
+    pub kind: HudEffectKind,
+    pub x0: f32,
+    pub y0: f32,
+    pub x1: f32,
+    pub y1: f32,
+}
+
+impl HudDigitGlyph {
+    /// Vanilla `GlyphInfo.getAdvance(bold)`: bold widens the pen advance by
+    /// `getBoldOffset()` (1) font pixel. Every other style flag leaves the
+    /// advance unchanged — obfuscated substitutes an equal-advance glyph, and
+    /// italic/underline/strikethrough only affect geometry.
+    pub fn styled_advance(&self, style: HudTextStyle) -> u32 {
+        self.advance + u32::from(style.bold)
+    }
+
+    /// Glyph cell top edge relative to the pen `y`, mirroring
+    /// `GlyphBitmap.getTop()` = `7 - ascent` (== [`Self::baseline_offset`]).
+    fn cell_up(&self) -> f32 {
+        self.baseline_offset()
+    }
+
+    /// Glyph cell bottom edge, mirroring `GlyphBitmap.getBottom()` =
+    /// `getTop() + pixelHeight`.
+    fn cell_down(&self) -> f32 {
+        self.baseline_offset() + self.height as f32
+    }
+
+    /// Italic shear applied to the cell top edge:
+    /// `BakedSheetGlyph.shearTop()` = `1 - 0.25 * up`.
+    fn shear_top(&self) -> f32 {
+        1.0 - 0.25 * self.cell_up()
+    }
+
+    /// Italic shear applied to the cell bottom edge:
+    /// `BakedSheetGlyph.shearBottom()` = `1 - 0.25 * down`.
+    fn shear_bottom(&self) -> f32 {
+        1.0 - 0.25 * self.cell_down()
+    }
+
+    /// One glyph quad in font-pixel space, mirroring `BakedSheetGlyph.render`.
+    /// `x`/`y` are the pass origin (already shifted for shadow/bold), `italic`
+    /// applies the shear, and `bold` applies `extraThickness`.
+    fn render_corners(&self, x: f32, y: f32, italic: bool, bold: bool) -> [[f32; 2]; 4] {
+        let x0 = x; // getLeft() == bearingLeft == 0
+        let x1 = x + self.width as f32; // getRight() == left + pixelWidth
+        let y0 = y + self.cell_up();
+        let y1 = y + self.cell_down();
+        let shear_y0 = if italic { self.shear_top() } else { 0.0 };
+        let shear_y1 = if italic { self.shear_bottom() } else { 0.0 };
+        let thickness = if bold {
+            HUD_FONT_BOLD_EXTRA_THICKNESS
+        } else {
+            0.0
+        };
+        [
+            [x0 + shear_y0 - thickness, y0 - thickness],
+            [x0 + shear_y1 - thickness, y1 + thickness],
+            [x1 + shear_y1 + thickness, y1 + thickness],
+            [x1 + shear_y0 + thickness, y0 - thickness],
+        ]
+    }
+
+    /// Ordered glyph quads for a styled glyph at pen (`x`, `y`), mirroring
+    /// `BakedSheetGlyph.renderChar`: the shadow pass(es) first (drawn in the
+    /// shadow colour at `+shadowOffset`), then the main pass(es). Bold doubles
+    /// each pass into a second quad shifted right by `getBoldOffset()`, and the
+    /// shadow's first pass carries the bold thickness too (matching vanilla,
+    /// which passes the `bold` flag into that `render` call).
+    pub fn styled_quads(
+        &self,
+        x: f32,
+        y: f32,
+        style: HudTextStyle,
+        shadow: bool,
+    ) -> Vec<HudGlyphQuad> {
+        let mut quads = Vec::new();
+        let HudTextStyle { bold, italic, .. } = style;
+        if shadow {
+            quads.push(HudGlyphQuad {
+                corners: self.render_corners(
+                    x + HUD_FONT_SHADOW_OFFSET,
+                    y + HUD_FONT_SHADOW_OFFSET,
+                    italic,
+                    bold,
+                ),
+                uv: self.uv,
+                shadow: true,
+            });
+            if bold {
+                quads.push(HudGlyphQuad {
+                    corners: self.render_corners(
+                        x + HUD_FONT_BOLD_OFFSET + HUD_FONT_SHADOW_OFFSET,
+                        y + HUD_FONT_SHADOW_OFFSET,
+                        italic,
+                        true,
+                    ),
+                    uv: self.uv,
+                    shadow: true,
+                });
+            }
+        }
+        quads.push(HudGlyphQuad {
+            corners: self.render_corners(x, y, italic, bold),
+            uv: self.uv,
+            shadow: false,
+        });
+        if bold {
+            quads.push(HudGlyphQuad {
+                corners: self.render_corners(x + HUD_FONT_BOLD_OFFSET, y, italic, true),
+                uv: self.uv,
+                shadow: false,
+            });
+        }
+        quads
+    }
+
+    /// Underline / strikethrough bars for a styled glyph, mirroring
+    /// `Font.StringRenderOutput.accept`: strikethrough spans `y+3.5..y+4.5`,
+    /// underline spans `y+8.0..y+9.0`, both from `effectX0` to `x + advance`
+    /// where advance is bold-aware. `first_in_line` extends the bar one pixel
+    /// left (vanilla `position == 0`). Empty when the style sets neither.
+    pub fn styled_effect_rects(
+        &self,
+        x: f32,
+        y: f32,
+        style: HudTextStyle,
+        first_in_line: bool,
+    ) -> Vec<HudEffectRect> {
+        let mut rects = Vec::new();
+        let advance = self.styled_advance(style) as f32;
+        let effect_x0 = if first_in_line { x - 1.0 } else { x };
+        let x1 = x + advance;
+        if style.strikethrough {
+            rects.push(HudEffectRect {
+                kind: HudEffectKind::Strikethrough,
+                x0: effect_x0,
+                y0: y + 4.5 - 1.0,
+                x1,
+                y1: y + 4.5,
+            });
+        }
+        if style.underlined {
+            rects.push(HudEffectRect {
+                kind: HudEffectKind::Underline,
+                x0: effect_x0,
+                y0: y + 9.0 - 1.0,
+                x1,
+                y1: y + 9.0,
+            });
+        }
+        rects
+    }
+}
+
 /// Codepoint-keyed glyph table resolved from the vanilla `font/default.json`
 /// bitmap provider chain. Lookup priority mirrors vanilla
 /// `FontSet.computeGlyphInfo`: providers are walked in flattened `providers`
@@ -131,6 +337,199 @@ mod tests {
         assert_eq!(map.get('é'), Some(first));
         assert_eq!(map.get('e'), None);
         assert_eq!(map.len(), 1);
+    }
+
+    fn styled_glyph() -> HudAsciiGlyph {
+        // width 5, height 8, ascent 7 -> cell up 0, cell down 8.
+        HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.1, 0.2],
+                max: [0.3, 0.4],
+            },
+            width: 5,
+            height: 8,
+            advance: 6,
+            ascent: 7,
+        }
+    }
+
+    fn assert_close(a: f32, b: f32) {
+        assert!((a - b).abs() < 1e-4, "expected {a} ~= {b}");
+    }
+
+    #[test]
+    fn styled_advance_only_bold_widens_the_pen() {
+        let glyph = styled_glyph();
+        // Vanilla GlyphInfo.getAdvance(bold) = advance + (bold ? 1 : 0).
+        assert_eq!(glyph.styled_advance(HudTextStyle::default()), 6);
+        assert_eq!(
+            glyph.styled_advance(HudTextStyle {
+                bold: true,
+                ..Default::default()
+            }),
+            7
+        );
+        // italic / underline / strikethrough / obfuscated leave the advance
+        // untouched; obfuscated substitutes an equal-advance glyph.
+        for style in [
+            HudTextStyle {
+                italic: true,
+                ..Default::default()
+            },
+            HudTextStyle {
+                underlined: true,
+                ..Default::default()
+            },
+            HudTextStyle {
+                strikethrough: true,
+                ..Default::default()
+            },
+            HudTextStyle {
+                obfuscated: true,
+                ..Default::default()
+            },
+        ] {
+            assert_eq!(glyph.styled_advance(style), 6);
+        }
+    }
+
+    #[test]
+    fn default_style_no_shadow_is_a_single_plain_quad() {
+        let glyph = styled_glyph();
+        let quads = glyph.styled_quads(2.0, 3.0, HudTextStyle::default(), false);
+        assert_eq!(quads.len(), 1);
+        assert!(!quads[0].shadow);
+        // No shear, no thickness: an axis-aligned cell [x, x+width] x [y+up, y+down].
+        assert_eq!(
+            quads[0].corners,
+            [[2.0, 3.0], [2.0, 11.0], [7.0, 11.0], [7.0, 3.0]]
+        );
+        assert_eq!(quads[0].uv, glyph.uv);
+    }
+
+    #[test]
+    fn shadow_pass_is_drawn_first_offset_by_one_one() {
+        let glyph = styled_glyph();
+        let quads = glyph.styled_quads(2.0, 3.0, HudTextStyle::default(), true);
+        assert_eq!(quads.len(), 2);
+        // Shadow first, then the main pass.
+        assert!(quads[0].shadow);
+        assert!(!quads[1].shadow);
+        // Vanilla shadow = the same glyph at (x + shadowOffset, y + shadowOffset).
+        for (shadow_corner, main_corner) in quads[0].corners.iter().zip(quads[1].corners.iter()) {
+            assert_close(shadow_corner[0], main_corner[0] + HUD_FONT_SHADOW_OFFSET);
+            assert_close(shadow_corner[1], main_corner[1] + HUD_FONT_SHADOW_OFFSET);
+        }
+    }
+
+    #[test]
+    fn bold_adds_a_second_quad_shifted_by_the_bold_offset() {
+        let glyph = styled_glyph();
+        let style = HudTextStyle {
+            bold: true,
+            ..Default::default()
+        };
+        let quads = glyph.styled_quads(2.0, 3.0, style, false);
+        // Bold, no shadow -> main pass + bold pass.
+        assert_eq!(quads.len(), 2);
+        assert!(quads.iter().all(|quad| !quad.shadow));
+        // Both quads carry the 0.1 extraThickness; the second is shifted right
+        // by exactly boldOffset (the thickness cancels in the delta).
+        for (bold_corner, main_corner) in quads[1].corners.iter().zip(quads[0].corners.iter()) {
+            assert_close(bold_corner[0] - main_corner[0], HUD_FONT_BOLD_OFFSET);
+            assert_close(bold_corner[1], main_corner[1]);
+        }
+        // Thickness expands the main cell outward on every side.
+        assert_close(quads[0].corners[0][0], 2.0 - HUD_FONT_BOLD_EXTRA_THICKNESS);
+        assert_close(quads[0].corners[0][1], 3.0 - HUD_FONT_BOLD_EXTRA_THICKNESS);
+        assert_close(quads[0].corners[2][0], 7.0 + HUD_FONT_BOLD_EXTRA_THICKNESS);
+        assert_close(quads[0].corners[2][1], 11.0 + HUD_FONT_BOLD_EXTRA_THICKNESS);
+    }
+
+    #[test]
+    fn bold_with_shadow_emits_four_passes() {
+        let glyph = styled_glyph();
+        let style = HudTextStyle {
+            bold: true,
+            ..Default::default()
+        };
+        let quads = glyph.styled_quads(2.0, 3.0, style, true);
+        // Vanilla renderChar with shadow+bold: shadow, shadow-bold, main, bold.
+        assert_eq!(quads.len(), 4);
+        assert_eq!(
+            quads.iter().map(|quad| quad.shadow).collect::<Vec<_>>(),
+            [true, true, false, false]
+        );
+    }
+
+    #[test]
+    fn italic_shears_top_and_bottom_edges() {
+        let glyph = styled_glyph();
+        let plain = glyph.styled_quads(2.0, 3.0, HudTextStyle::default(), false)[0].corners;
+        let italic = glyph.styled_quads(
+            2.0,
+            3.0,
+            HudTextStyle {
+                italic: true,
+                ..Default::default()
+            },
+            false,
+        )[0]
+        .corners;
+        // shearTop = 1 - 0.25*up = 1.0 ; shearBottom = 1 - 0.25*down = -1.0.
+        let shear_top = 1.0 - 0.25 * 0.0;
+        let shear_bottom = 1.0 - 0.25 * 8.0;
+        // Corners are [top_left, bottom_left, bottom_right, top_right].
+        assert_close(italic[0][0] - plain[0][0], shear_top); // top-left
+        assert_close(italic[3][0] - plain[3][0], shear_top); // top-right
+        assert_close(italic[1][0] - plain[1][0], shear_bottom); // bottom-left
+        assert_close(italic[2][0] - plain[2][0], shear_bottom); // bottom-right
+                                                                // Shear is purely horizontal.
+        for (sheared, straight) in italic.iter().zip(plain.iter()) {
+            assert_close(sheared[1], straight[1]);
+        }
+    }
+
+    #[test]
+    fn effect_rects_match_vanilla_y_ranges_and_span() {
+        let glyph = styled_glyph();
+        let style = HudTextStyle {
+            underlined: true,
+            strikethrough: true,
+            ..Default::default()
+        };
+        // Mid-line glyph: effectX0 == x, span to x + advance.
+        let rects = glyph.styled_effect_rects(2.0, 3.0, style, false);
+        assert_eq!(rects.len(), 2);
+        // Strikethrough emitted before underline (vanilla accept order).
+        assert_eq!(rects[0].kind, HudEffectKind::Strikethrough);
+        assert_eq!(rects[1].kind, HudEffectKind::Underline);
+        // Strikethrough bar: y in [3.5, 4.5] relative to y=3.
+        assert_close(rects[0].y0, 3.0 + 3.5);
+        assert_close(rects[0].y1, 3.0 + 4.5);
+        // Underline bar: y in [8.0, 9.0].
+        assert_close(rects[1].y0, 3.0 + 8.0);
+        assert_close(rects[1].y1, 3.0 + 9.0);
+        for rect in &rects {
+            assert_close(rect.x0, 2.0);
+            assert_close(rect.x1, 2.0 + 6.0); // x + advance (no bold)
+        }
+    }
+
+    #[test]
+    fn effect_first_in_line_extends_left_and_bold_widens_span() {
+        let glyph = styled_glyph();
+        let style = HudTextStyle {
+            underlined: true,
+            bold: true,
+            ..Default::default()
+        };
+        let rects = glyph.styled_effect_rects(4.0, 0.0, style, true);
+        assert_eq!(rects.len(), 1);
+        // Vanilla position==0: effectX0 = x - 1.
+        assert_close(rects[0].x0, 4.0 - 1.0);
+        // Bold-aware advance widens the bar: x + (advance + boldOffset).
+        assert_close(rects[0].x1, 4.0 + 7.0);
     }
 
     #[test]
