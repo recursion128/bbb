@@ -28,11 +28,11 @@ use self::layout::{
 };
 
 pub use bbb_render_types::{
-    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudStyledTextRun, HudTextStyle, HudUvRect,
-    HUD_FONT_BASELINE,
+    HudAsciiGlyph, HudDigitGlyph, HudFontGlyphMap, HudObfuscatedGlyphPool, HudStyledTextRun,
+    HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
 };
 
-use bbb_render_types::{HudEffectRect, HudGlyphQuad};
+use bbb_render_types::{HudEffectRect, HudGlyphQuad, HudObfuscatedRandom};
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
 
@@ -560,6 +560,8 @@ impl Renderer {
         glyphs: HudFontGlyphMap,
     ) -> Result<()> {
         self.hud_font_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        // Rebuild the advance-grouped obfuscated pool once here, not per frame.
+        self.hud_obfuscated_glyph_pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
         self.hud_font_glyphs = glyphs;
         Ok(())
     }
@@ -2058,6 +2060,8 @@ impl Renderer {
                 &self.hud_white_pixel,
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
                 surface_size,
                 screen,
             );
@@ -2086,6 +2090,8 @@ impl Renderer {
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
                 surface_size,
                 screen,
             );
@@ -2658,12 +2664,15 @@ fn push_hud_item_count_label<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn push_hud_inventory_text_labels<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
 ) {
@@ -2711,6 +2720,8 @@ fn push_hud_inventory_text_labels<'a>(
             let geometry = hud_styled_text_pass_geometry(
                 &label.runs,
                 glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
                 origin,
                 shadow_offset,
                 is_shadow,
@@ -2768,13 +2779,18 @@ struct HudStyledTextPassGeometry {
 /// stops once the pen reaches the limit and a glyph/effect is only emitted
 /// when its cell/advance still fits.
 ///
-/// Italic runs are drawn upright and obfuscated runs keep their original
-/// glyphs for now — both need draw primitives a later slice adds (shear
-/// submission / per-tick glyph substitution); advances are already
-/// style-correct via `styled_advance`.
+/// Italic runs are sheared through the locked `styled_quads` primitive (top
+/// edge `1-0.25*up`, bottom `1-0.25*down`). Obfuscated (`§k`) non-space glyphs
+/// draw a random equal-advance substitute (`FontSet.getRandomGlyph`) picked
+/// from `obfuscated_pool`; `obfuscated_seed` (the render frame counter) seeds a
+/// deterministic per-pass LCG so the jitter is reproducible and the shadow pass
+/// picks the same substitutes as the main pass. The pen advance always follows
+/// the original glyph, so obfuscation and italic never shift layout.
 fn hud_styled_text_pass_geometry(
     runs: &[HudStyledTextRun],
     glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
     origin: (f32, f32),
     shadow_offset: f32,
     is_shadow: bool,
@@ -2787,6 +2803,11 @@ fn hud_styled_text_pass_geometry(
     };
     let mut pen_x = 0u32;
     let mut first_in_line = true;
+    // One LCG per pass, reset from the frame seed so the shadow and main passes
+    // choose identical substitutes (the shadow is the main glyph at +1,+1); it
+    // advances only when an obfuscated glyph is actually substituted, matching
+    // vanilla `Font.random` (touched once per `getRandomGlyph`).
+    let mut obfuscated_random = HudObfuscatedRandom::with_seed(obfuscated_seed);
     'runs: for run in runs {
         let run_tint = hud_run_color_tint(run, base_tint);
         let tint = if is_shadow {
@@ -2794,28 +2815,37 @@ fn hud_styled_text_pass_geometry(
         } else {
             run_tint
         };
-        let geometry_style = HudTextStyle {
-            italic: false,
-            ..run.style
-        };
         for ch in run.text.chars() {
             if width_limit.is_some_and(|limit| pen_x >= limit) {
                 break 'runs;
             }
-            let glyph = hud_font_glyph(ch, glyphs);
-            let advance = glyph.styled_advance(run.style);
+            let base_glyph = hud_font_glyph(ch, glyphs);
+            // Layout stays on the original glyph's advance (equal for the
+            // substitute, but this keeps the pen frame-stable regardless).
+            let advance = base_glyph.styled_advance(run.style);
+            // Vanilla `Font.getGlyph`: obfuscated non-space codepoints draw a
+            // random equal-advance glyph; everything else draws its own glyph.
+            let glyph = if run.style.obfuscated && ch != ' ' {
+                obfuscated_pool
+                    .random_glyph(base_glyph.advance, &mut obfuscated_random)
+                    .unwrap_or(base_glyph)
+            } else {
+                base_glyph
+            };
             let x = origin.0 + pen_x as f32 + shadow_offset;
             let y = origin.1 + shadow_offset;
             if glyph.width > 0
                 && glyph.height > 0
                 && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
             {
-                for quad in glyph.styled_quads(x, y, geometry_style, false) {
+                for quad in glyph.styled_quads(x, y, run.style, false) {
                     geometry.glyph_quads.push((quad, tint));
                 }
             }
+            // Underline/strikethrough bars follow the advance, unaffected by the
+            // obfuscated bitmap swap, so they read the original glyph.
             if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
-                for rect in glyph.styled_effect_rects(x, y, run.style, first_in_line) {
+                for rect in base_glyph.styled_effect_rects(x, y, run.style, first_in_line) {
                     geometry.effect_rects.push((rect, tint));
                 }
             }
@@ -2883,6 +2913,8 @@ fn push_hud_inventory_tooltip<'a>(
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
 ) {
@@ -2968,6 +3000,8 @@ fn push_hud_inventory_tooltip<'a>(
             let geometry = hud_styled_text_pass_geometry(
                 &line.runs,
                 glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
                 origin,
                 shadow_offset,
                 is_shadow,
@@ -4051,6 +4085,8 @@ mod tests {
         let geometry = hud_styled_text_pass_geometry(
             &[HudStyledTextRun::plain("ab")],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             0.0,
             false,
@@ -4084,6 +4120,8 @@ mod tests {
                 color: None,
             }],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             0.0,
             false,
@@ -4120,6 +4158,8 @@ mod tests {
                 color: None,
             }],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             0.0,
             false,
@@ -4154,6 +4194,8 @@ mod tests {
         let main = hud_styled_text_pass_geometry(
             &[run.clone()],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             0.0,
             false,
@@ -4163,6 +4205,8 @@ mod tests {
         let shadow = hud_styled_text_pass_geometry(
             &[run],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             1.0,
             true,
@@ -4201,6 +4245,8 @@ mod tests {
         let geometry = hud_styled_text_pass_geometry(
             &[HudStyledTextRun::plain("ab")],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (0.0, 0.0),
             0.0,
             false,
@@ -4211,39 +4257,236 @@ mod tests {
         assert_eq!(geometry.glyph_quads[0].0.corners[0], [0.0, 0.0]);
     }
 
-    #[test]
-    fn styled_text_pass_geometry_italic_and_obfuscated_degrade_to_plain_cells() {
-        // Italic shear and obfuscated substitution await their draw
-        // primitives: geometry stays the axis-aligned cell (advance already
-        // style-correct).
-        let glyphs = styled_test_glyphs();
-        let plain = hud_styled_text_pass_geometry(
-            &[HudStyledTextRun::plain("ab")],
-            &glyphs,
-            (100.0, 50.0),
-            0.0,
-            false,
-            HUD_TINT_WHITE,
-            None,
-        );
-        let styled = hud_styled_text_pass_geometry(
-            &[HudStyledTextRun {
-                text: "ab".to_string(),
-                style: HudTextStyle {
-                    italic: true,
-                    obfuscated: true,
-                    ..Default::default()
+    /// Distinct-uv glyph map for obfuscated observability: three advance-6
+    /// glyphs ('a'/'b'/'c') plus one advance-4 glyph ('d').
+    fn obfuscated_test_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, uv_min, advance) in [
+            ('a', 0.1, 6u32),
+            ('b', 0.2, 6),
+            ('c', 0.3, 6),
+            ('d', 0.4, 4),
+        ] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [uv_min, 0.0],
+                        max: [uv_min + 0.05, 0.1],
+                    },
+                    advance,
+                    width: 5,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
                 },
+            );
+        }
+        glyphs
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_italic_shears_through_the_mechanism_primitive() {
+        // The live path now feeds `run.style` straight into `styled_quads`, so
+        // an italic run's corners must equal the locked mechanism output for the
+        // same glyph/pen — a direct comparison against `styled_quads`.
+        let glyphs = styled_test_glyphs();
+        let style = HudTextStyle {
+            italic: true,
+            ..Default::default()
+        };
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "a".to_string(),
+                style,
                 color: None,
             }],
             &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
             (100.0, 50.0),
             0.0,
             false,
             HUD_TINT_WHITE,
             None,
         );
-        assert_eq!(plain, styled);
+        let expected = hud_font_glyph('a', &glyphs).styled_quads(100.0, 50.0, style, false);
+        assert_eq!(geometry.glyph_quads.len(), expected.len());
+        for (drawn, mech) in geometry.glyph_quads.iter().zip(expected.iter()) {
+            assert_eq!(drawn.0.corners, mech.corners);
+        }
+        // Shear is real: the top edge shifts right of the plain cell.
+        let plain =
+            hud_font_glyph('a', &glyphs).styled_quads(100.0, 50.0, HudTextStyle::default(), false);
+        assert!(geometry.glyph_quads[0].0.corners[0][0] > plain[0].corners[0][0]);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_non_italic_runs_do_not_regress() {
+        // Releasing italic must leave every non-italic run byte-identical: a
+        // bold+underlined run drawn upright equals the mechanism output.
+        let glyphs = styled_test_glyphs();
+        let style = HudTextStyle {
+            bold: true,
+            underlined: true,
+            ..Default::default()
+        };
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "a".to_string(),
+                style,
+                color: None,
+            }],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            7,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        let glyph = hud_font_glyph('a', &glyphs);
+        let expected = glyph.styled_quads(100.0, 50.0, style, false);
+        for (drawn, mech) in geometry.glyph_quads.iter().zip(expected.iter()) {
+            assert_eq!(drawn.0.corners, mech.corners);
+        }
+        // No shear on any corner (italic false).
+        for quad in &geometry.glyph_quads {
+            assert_eq!(quad.0.corners[0][0], quad.0.corners[1][0]);
+        }
+        // The seed is inert for non-obfuscated runs.
+        let reseeded = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "a".to_string(),
+                style,
+                color: None,
+            }],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            999,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+        );
+        assert_eq!(geometry, reseeded);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_obfuscated_substitutes_equal_advance_glyphs() {
+        let glyphs = obfuscated_test_glyphs();
+        let pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
+        let run = |text: &str| HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                obfuscated: true,
+                ..Default::default()
+            },
+            color: None,
+        };
+        let pass = |seed: u64| {
+            hud_styled_text_pass_geometry(
+                &[run("aaaa")],
+                &glyphs,
+                &pool,
+                seed,
+                (0.0, 0.0),
+                0.0,
+                false,
+                HUD_TINT_WHITE,
+                None,
+            )
+        };
+        // Fixed seed -> deterministic, reproducible glyph sequence.
+        let first = pass(42);
+        assert_eq!(first, pass(42));
+        assert_eq!(first.glyph_quads.len(), 4);
+        // Every substitute is an advance-6 pooled glyph (one of the three uvs);
+        // pen positions stay on the advance-6 grid (0, 6, 12, 18), so obfuscation
+        // never shifts layout.
+        let advance6_uvs = [0.1_f32, 0.2, 0.3];
+        for (index, (quad, _)) in first.glyph_quads.iter().enumerate() {
+            assert!(advance6_uvs.contains(&quad.uv.min[0]));
+            assert_eq!(quad.corners[0][0], (index as f32) * 6.0);
+        }
+        // The four draws are not all the same glyph (the LCG actually varies).
+        let uvs: Vec<f32> = first.glyph_quads.iter().map(|(q, _)| q.uv.min[0]).collect();
+        assert!(uvs.iter().any(|uv| *uv != uvs[0]));
+        // A different frame seed changes the sequence (per-frame jitter).
+        let other = pass(43);
+        let other_uvs: Vec<f32> = other.glyph_quads.iter().map(|(q, _)| q.uv.min[0]).collect();
+        assert_ne!(uvs, other_uvs);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_obfuscated_never_substitutes_spaces() {
+        // Vanilla `Font.getGlyph` guards `codepoint != 32`: spaces stay spaces.
+        // Map: visible 'a' (advance 6) + empty space (advance 4) + a *visible*
+        // advance-4 glyph 'd', so a broken guard would draw 'd' where the space
+        // is. The space must stay invisible for every seed.
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            'a',
+            HudAsciiGlyph {
+                uv: HudUvRect {
+                    min: [0.1, 0.0],
+                    max: [0.15, 0.1],
+                },
+                advance: 6,
+                width: 5,
+                height: 8,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        glyphs.insert_first_wins(
+            ' ',
+            HudAsciiGlyph {
+                advance: 4,
+                width: 0,
+                height: 0,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        glyphs.insert_first_wins(
+            'd',
+            HudAsciiGlyph {
+                uv: HudUvRect {
+                    min: [0.4, 0.0],
+                    max: [0.45, 0.1],
+                },
+                advance: 4,
+                width: 5,
+                height: 8,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
+        for seed in 0..16u64 {
+            let geometry = hud_styled_text_pass_geometry(
+                &[HudStyledTextRun {
+                    text: "a a".to_string(),
+                    style: HudTextStyle {
+                        obfuscated: true,
+                        ..Default::default()
+                    },
+                    color: None,
+                }],
+                &glyphs,
+                &pool,
+                seed,
+                (0.0, 0.0),
+                0.0,
+                false,
+                HUD_TINT_WHITE,
+                None,
+            );
+            // Only the two visible 'a's draw; the space never becomes a glyph.
+            assert_eq!(geometry.glyph_quads.len(), 2, "seed {seed}");
+            // The space advances by 4, so the second glyph sits at pen 6 + 4.
+            assert_eq!(geometry.glyph_quads[0].0.corners[0][0], 0.0);
+            assert_eq!(geometry.glyph_quads[1].0.corners[0][0], 10.0);
+        }
     }
 
     #[test]

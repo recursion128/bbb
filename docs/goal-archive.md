@@ -1657,6 +1657,36 @@
   偏移+色缩放（白字==旧固定灰）、宽度预算截断、italic/obfuscated 退化
   等价。剩余：italic 斜切放开 + obfuscated 逐 tick 随机字形（账本
   "Vanilla Font Provider Coverage" 条目 Next action）。
+- [x] vanilla font italic 斜切放开 + obfuscated 逐帧随机字形（P1-3 font 子
+  slice 5，2026-07-05）：关掉子 slice 4 记录的最后两处退化。italic——
+  `hud_styled_text_pass_geometry` 删去刻意剥离 italic 的 `geometry_style`，
+  直接把 `run.style` 喂给已锁定的 `styled_quads`，italic run 遂绘制斜切角点
+  （顶边 `1-0.25*up`、底边 `1-0.25*down`）；非 italic run 因 shear=0 逐字节
+  不变。obfuscated——非空格 obfuscated 字形按 vanilla
+  `Font.getGlyph`/`FontSet.getRandomGlyph` 替换成等 advance 随机字形。随机链
+  设计（结构不变量：禁 wall-clock 随机）：`bbb-render-types/src/hud_glyphs.rs`
+  新增 `HudObfuscatedRandom`（vanilla `LegacyRandomSource` 48-bit LCG 克隆，
+  常量同 audio.rs：mult=25214903917/inc=11/mask=2^48-1，只用 `next_int_bound`）
+  与 `HudObfuscatedGlyphPool`（按 advance 分桶的 `HudFontGlyphMap` 镜像
+  `FontSet.glyphsByWidth`，`from_glyph_map` 一次构建、renderer 在
+  `upload_hud_font_atlas` 缓存进新字段 `hud_obfuscated_glyph_pool`，绝不逐帧
+  扫全表；advance 恒整 `u32`，vanilla `Mth.ceil` 为 no-op，桶键即 advance）。
+  种子来源：renderer `self.counters.frame_index`（确定性、非快照、非
+  wall-clock）——每 pass 用它 `with_seed` 重置一条 LCG，仅在实际替换时前进
+  一步（对齐 vanilla `Font.random` 每 `getRandomGlyph` 触碰一次），故 shadow
+  pass 与 main pass 选同一替身、固定帧→固定字形序列、帧号递增→逐帧抖动。
+  pen advance 恒取原字形（等 advance 也保 layout 帧稳），空格（码点 32）不
+  替换。线路：`hud_styled_text_pass_geometry` 增 `obfuscated_pool`+
+  `obfuscated_seed` 两参，`push_hud_inventory_text_labels`/
+  `push_hud_inventory_tooltip` 透传，`collect_hud_draws` 两处调用喂
+  `&self.hud_obfuscated_glyph_pool` + `self.counters.frame_index`；
+  `HudObfuscatedGlyphPool` 经 `crate::hud` 重导出给 renderer。测试：
+  render-types 侧 LCG 同种子同流/异种子分流/`next_int_bound` 有界、pool 按
+  advance 分桶/选中等 advance/空桶或缺桶 None；renderer 侧 italic live 角点
+  对拍 `styled_quads`（含斜切真实位移）、非 italic run 与机制层逐字节且种子
+  惰性、obfuscated 固定种子确定性+等 advance+pen 网格不移+序列非全同、异种子
+  序列变化、空格永不替身（多种子 2 quad/pen 6+4）。剩余：bidi / unihex
+  defer（账本 "Vanilla Font Provider Coverage"）。
 - [x] entity preview 实际 GPU PIP drawing（2026-07-05）：完成记录随历史归属
   归档在下方 P1-4 段 entity-in-UI 小节（`entity_preview_pip_passes` step +
   per-preview 隔离 PIP target + GUI-ortho 实体绘制 + HUD blit + headless

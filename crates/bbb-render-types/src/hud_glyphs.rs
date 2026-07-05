@@ -338,6 +338,120 @@ impl HudFontGlyphMap {
     }
 }
 
+/// Vanilla `LegacyRandomSource` (`RandomSource.create()`) 48-bit LCG constants.
+/// `Font.random` advances this generator once per obfuscated glyph
+/// (`FontSet.getRandomGlyph`). Vanilla seeds it from a wall-clock
+/// `RandomSupport.generateUniqueSeed()`; bbb substitutes a caller-supplied
+/// deterministic seed (the render frame counter) so the obfuscated jitter stays
+/// reproducible — same frame -> same glyph sequence — never wall-clock random.
+const OBFUSCATED_RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const OBFUSCATED_RANDOM_INCREMENT: u64 = 11;
+const OBFUSCATED_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+
+/// Deterministic clone of vanilla `LegacyRandomSource`, driving the per-frame
+/// obfuscated (`§k`) glyph substitution. Only `nextInt(bound)` is needed
+/// (`FontSet.getRandomGlyph` picks `chars.getInt(random.nextInt(size))`).
+#[derive(Debug, Clone)]
+pub struct HudObfuscatedRandom {
+    seed: u64,
+}
+
+impl HudObfuscatedRandom {
+    /// Seeds the generator, mirroring `LegacyRandomSource.setSeed`
+    /// (`(seed ^ multiplier) & mask`).
+    pub fn with_seed(seed: u64) -> Self {
+        Self {
+            seed: (seed ^ OBFUSCATED_RANDOM_MULTIPLIER) & OBFUSCATED_RANDOM_MASK,
+        }
+    }
+
+    /// Vanilla `RandomSource.nextInt(bound)` for a positive `bound`: the
+    /// power-of-two fast path plus the rejection loop that removes modulo bias.
+    pub fn next_int_bound(&mut self, bound: u32) -> u32 {
+        debug_assert!(bound > 0, "bound must be positive");
+        let bound = bound as i32;
+        if (bound & (bound - 1)) == 0 {
+            return ((i64::from(bound) * i64::from(self.next_bits(31))) >> 31) as u32;
+        }
+        loop {
+            let sample = self.next_bits(31) as i32;
+            let modulo = sample % bound;
+            if sample.wrapping_sub(modulo).wrapping_add(bound - 1) >= 0 {
+                return modulo as u32;
+            }
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(OBFUSCATED_RANDOM_MULTIPLIER)
+            .wrapping_add(OBFUSCATED_RANDOM_INCREMENT)
+            & OBFUSCATED_RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+}
+
+/// Same-advance glyph pool for obfuscated (`§k`) text, mirroring vanilla
+/// `FontSet.glyphsByWidth` (`Int2ObjectMap<IntList>` keyed by
+/// `Mth.ceil(getAdvance(false))`). Built once from a resolved
+/// [`HudFontGlyphMap`] and cached by the renderer, so obfuscated draws never
+/// rescan the full table per frame. `random_glyph` substitutes an equal-advance
+/// glyph, keeping the pen width fixed while the drawn bitmap jitters.
+///
+/// Advances are already integer here (`u32`), so vanilla's `Mth.ceil` over
+/// fractional TTF advances is a no-op and the bucket key is the advance itself.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HudObfuscatedGlyphPool {
+    /// Sorted by advance for binary-search lookup; each bucket lists every
+    /// glyph with that advance in codepoint order (the map iterates sorted),
+    /// so the pool ordering is deterministic.
+    buckets: Vec<(u32, Vec<HudAsciiGlyph>)>,
+}
+
+impl HudObfuscatedGlyphPool {
+    /// Groups every glyph in the map by advance, mirroring vanilla's
+    /// `glyphsByWidth.computeIfAbsent(...).add(codepoint)` sweep over supported
+    /// glyphs. The map already holds only resolved provider glyphs in
+    /// first-wins order, matching the non-missing filter vanilla applies.
+    pub fn from_glyph_map(map: &HudFontGlyphMap) -> Self {
+        let mut buckets: Vec<(u32, Vec<HudAsciiGlyph>)> = Vec::new();
+        for (_codepoint, glyph) in map.iter() {
+            match buckets.binary_search_by_key(&glyph.advance, |(advance, _)| *advance) {
+                Ok(index) => buckets[index].1.push(glyph),
+                Err(index) => buckets.insert(index, (glyph.advance, vec![glyph])),
+            }
+        }
+        Self { buckets }
+    }
+
+    /// Uniformly picks a glyph sharing `advance` (vanilla
+    /// `FontSet.getRandomGlyph`), advancing `random` exactly once. Returns
+    /// `None` when no glyph has that advance, so the caller keeps the original
+    /// glyph (vanilla falls back to the invisible missing glyph).
+    pub fn random_glyph(
+        &self,
+        advance: u32,
+        random: &mut HudObfuscatedRandom,
+    ) -> Option<HudAsciiGlyph> {
+        let index = self
+            .buckets
+            .binary_search_by_key(&advance, |(bucket_advance, _)| *bucket_advance)
+            .ok()?;
+        let bucket = &self.buckets[index].1;
+        if bucket.is_empty() {
+            return None;
+        }
+        let pick = random.next_int_bound(bucket.len() as u32) as usize;
+        Some(bucket[pick])
+    }
+
+    /// Number of distinct advance buckets (test/introspection aid).
+    pub fn bucket_count(&self) -> usize {
+        self.buckets.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,5 +686,67 @@ mod tests {
         assert_eq!(ascii.baseline_offset(), 0.0);
         assert_eq!(accented.baseline_offset(), -3.0);
         assert_eq!(HudAsciiGlyph::default().baseline_offset(), 0.0);
+    }
+
+    fn advance_glyph(advance: u32, uv_min: f32) -> HudAsciiGlyph {
+        // Distinct uv per glyph so a substitution is observable; width/height
+        // are non-zero so the drawn quad survives the width>0 gate.
+        HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [uv_min, 0.0],
+                max: [uv_min + 0.1, 0.1],
+            },
+            width: 5,
+            height: 8,
+            advance,
+            ascent: 7,
+        }
+    }
+
+    #[test]
+    fn obfuscated_random_is_deterministic_and_seed_sensitive() {
+        // Same seed -> same stream; the LCG never touches wall-clock state.
+        let mut a = HudObfuscatedRandom::with_seed(7);
+        let mut b = HudObfuscatedRandom::with_seed(7);
+        let seq_a: Vec<u32> = (0..8).map(|_| a.next_int_bound(10)).collect();
+        let seq_b: Vec<u32> = (0..8).map(|_| b.next_int_bound(10)).collect();
+        assert_eq!(seq_a, seq_b);
+        assert!(seq_a.iter().all(|value| *value < 10));
+        // A different seed diverges.
+        let mut c = HudObfuscatedRandom::with_seed(8);
+        let seq_c: Vec<u32> = (0..8).map(|_| c.next_int_bound(10)).collect();
+        assert_ne!(seq_a, seq_c);
+    }
+
+    #[test]
+    fn obfuscated_pool_groups_by_advance_and_picks_equal_advance() {
+        let mut map = HudFontGlyphMap::new();
+        // Two advance-6 glyphs and one advance-4 glyph.
+        map.insert_first_wins('a', advance_glyph(6, 0.1));
+        map.insert_first_wins('b', advance_glyph(6, 0.2));
+        map.insert_first_wins('c', advance_glyph(4, 0.3));
+        let pool = HudObfuscatedGlyphPool::from_glyph_map(&map);
+        assert_eq!(pool.bucket_count(), 2);
+
+        // Every draw from the advance-6 bucket keeps advance 6 and lands on one
+        // of the two pooled uvs.
+        let mut random = HudObfuscatedRandom::with_seed(1);
+        for _ in 0..32 {
+            let glyph = pool.random_glyph(6, &mut random).expect("advance-6 bucket");
+            assert_eq!(glyph.advance, 6);
+            assert!(glyph.uv.min[0] == 0.1 || glyph.uv.min[0] == 0.2);
+        }
+        // The advance-4 bucket only yields its single member.
+        let mut random = HudObfuscatedRandom::with_seed(1);
+        let glyph = pool.random_glyph(4, &mut random).expect("advance-4 bucket");
+        assert_eq!(glyph.advance, 4);
+        assert_eq!(glyph.uv.min[0], 0.3);
+        // No bucket for an unseen advance.
+        assert!(pool
+            .random_glyph(9, &mut HudObfuscatedRandom::with_seed(1))
+            .is_none());
+        assert!(HudObfuscatedGlyphPool::default()
+            .random_glyph(6, &mut HudObfuscatedRandom::with_seed(1))
+            .is_none());
     }
 }

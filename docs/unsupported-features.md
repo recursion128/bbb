@@ -217,17 +217,12 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-item-model` + `bbb-renderer` + `bbb-native` + `bbb-protocol`
 - Status: `partial`
 - Next action:
-  - Give the italic shear a live submission path end to end: the HUD draw
-    loops now push arbitrary-corner glyph quads (`hud_styled_quad_vertices`),
-    but they deliberately strip `italic` from the geometry style
-    (`hud_styled_text_pass_geometry`) so italic text renders upright until
-    the sheared corners are visually verified against vanilla (shear values
-    are already computed and test-locked in `styled_quads`); flip the strip
-    and lock a sheared-corner draw test.
-  - Add per-tick obfuscated random-glyph substitution (equal-advance glyph
-    swap, vanilla `FontSet.getRandomGlyph`) — needs a deterministic per-frame
-    random source; the flag is carried through the styled runs but is a
-    glyph-selection no-op (advance is already correct).
+  - Deferred only (defer criteria unchanged, documented under Evidence):
+    `unihex`/CJK (assets tree ships no `font/unifont*.zip`, codepoints outside
+    the bitmap pages degrade to `?`) and bidirectional shaping (vanilla routes
+    through ICU4J `ArabicShaping`/`Bidi`). Italic shear and obfuscated
+    random-glyph substitution are live (2026-07-05); no font-style work
+    remains open.
 - Evidence / boundary:
   - Input end is wired (2026-07-05): `bbb_protocol::decode_styled_component_summary`
     flattens chat components into `StyledTextRun`s carrying the vanilla
@@ -254,6 +249,21 @@ When an agent does any of the following, update this file in the same slice:
     per pass (vanilla `StringRenderOutput.visit` order). All geometry comes
     from the locked `styled_quads`/`styled_effect_rects`; the item count
     label stays digit-only (vanilla renders counts unstyled).
+  - Italic shear is live (2026-07-05): `hud_styled_text_pass_geometry` feeds
+    `run.style` straight into `styled_quads`, so italic runs draw the sheared
+    corners (top edge `1-0.25*up`, bottom `1-0.25*down`) instead of the old
+    upright degrade; non-italic runs are byte-identical (shear no-op).
+  - Obfuscated (`§k`) substitution is live (2026-07-05): non-space obfuscated
+    glyphs draw a random equal-advance substitute (vanilla
+    `Font.getGlyph`/`FontSet.getRandomGlyph`) from a `HudObfuscatedGlyphPool`
+    built once per font upload (advance-bucketed `HudFontGlyphMap`, mirroring
+    `glyphsByWidth`). Randomness is deterministic, not wall-clock: a
+    `HudObfuscatedRandom` (LegacyRandomSource LCG) seeded from the render
+    `frame_index` and reset per pass, advanced once per substituted glyph, so
+    the shadow pass matches the main pass and a fixed frame yields a fixed
+    glyph sequence (per-frame jitter as the counter advances). The pen advance
+    always follows the original glyph, so substitution never shifts layout;
+    spaces (codepoint 32) are never substituted.
   - Text-style width + draw geometry mechanism is implemented and test-locked
     in `bbb-render-types` (`hud_glyphs.rs`): `HudTextStyle`
     (bold/italic/underlined/strikethrough/obfuscated, all-false default) plus
@@ -1533,10 +1543,10 @@ When an agent does any of the following, update this file in the same slice:
   - Commands: continue adding focused command queue and encode tests for
     inventory, interaction, chat, command, and sign editing.
   - Inventory: implement remaining rich tooltip behavior (styled component
-    runs — bold/colour/underline/strikethrough/shadow — now render live in
-    tooltips and labels, see Vanilla Font Provider Coverage; remaining:
-    italic shear submission, obfuscated glyph cycling, and bidirectional
-    text shaping); the official tooltip background/frame nine-slice sprites
+    runs — bold/colour/underline/strikethrough/shadow/italic-shear/obfuscated
+    — now render live in tooltips and labels, see Vanilla Font Provider
+    Coverage; remaining: bidirectional text shaping only); the official
+    tooltip background/frame nine-slice sprites
     are now drawn.
   - Completion requires full vanilla movement and these flows to work
     through encoded serverbound packets end to end.
