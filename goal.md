@@ -179,6 +179,9 @@ target order；能 readback 的视觉路径补 deterministic pixel proof。
 仍在推进：
 
 - GPU `DISSOLVE` mask sampling 精度（后续视觉 parity，不阻塞其它队列）。
+- 通用 `EntityRenderState` submit 管线（vanilla `EntityRenderDispatcher.submit`
+  的泛化路径；当前唯一已知消费场景是 ItemPickupParticle 捡箭/三叉戟的
+  3-tick 闪现，2026-07-05 自 P1-5 移入，payoff 低、按宽面最小 slice 进入）。
 
 完成标准：每个实体差异先定位 vanilla renderer/model/layer 源码再改测试；
 每个特殊 renderer branch 至少一个状态化测试；不再新增只验证 vertex count
@@ -216,16 +219,14 @@ collision/on-ground 接入、firework 与 entity/level event 粒子及声效、
 particle-target carried submit 完成史）。
 
 仍在推进（逐 provider 追踪表放账本 particle 条目
-`docs/unsupported/particle-runtime-vanilla-parity.md`，本文件不复制清单）：
+`docs/unsupported/particle-runtime-vanilla-parity.md`，本文件不复制清单；
+2026-07-05 建表并清零全部 30 个 todo——collision/player-coupled/sounds/
+removal-gates 四维已收敛，新增缺口按表头流程先加行再立 slice）：
 
-- 剩余特殊-context collision / player-coupled emitter 覆盖：以 vanilla
-  `net.minecraft.client.particle` 包 provider 清单为基准，在账本 particle
-  条目维护"已覆盖 / 无需（vanilla 无该行为）/ 待办"三态表；每个待办
-  provider 一个 slice。
-- 剩余 level-event / entity-event 的 local sound 与 block-state removal
-  gate 覆盖，同样按账本三态表推进。
-- carried submit 剩余两项：component-rich item stack、更通用
-  `EntityRenderState` entity-submit parity。
+- carried submit：component-rich item stack 的 pickup carried bake（patch
+  已全量解码、item-model 投影已可消费，缺口是 pickup 通道三处 plumbing——
+  见账本 ItemPickupParticle 条目）。generic `EntityRenderState` submit
+  （捡箭/三叉戟闪现）已确认属实体渲染大面，移居 P1-2 队列。
 - 透明排序：跨 target 的 translucent 粒子/对象排序差异按最小 slice 审计
   进入（当前无已知 blocker，audit 发现即立项）。
 
