@@ -3801,6 +3801,39 @@
   atlas、本地/服务端同位置取最高 stage、400 render tick 过期和 crumbling
   pipeline state；完整模型形状 crack decal 仍随 block destroy presentation 后续推进。
 
+## P2：屏幕、HUD、字体与截图
+
+### 2026-07-05 迁入：actionbar + titles + subtitles 渲染
+
+- HUD overlay 首片完成：actionbar（overlay message）与 title/subtitle 从
+  world 状态经 `RendererFrame` 投影（`HudActionBarText`/`HudTitleText`：
+  styled runs + post-tick 剩余 tick + fade 窗口 + partial tick + jukebox
+  `animate_color` flag）到 `collect_hud_draws` 三个绘制分支，全部走既有
+  styled-text 管线（`hud_styled_text_pass_geometry` 增加 pose `scale` 入参，
+  1.0 与 label 路径逐位一致；4x title / 2x subtitle 的 pen/字格/阴影偏移/
+  effect bar 全量等比，等价 vanilla PoseStack.scale）。
+- tick 链补齐：`WorldStore::advance_hud_text_ticks` = vanilla `Gui.tick`
+  （Gui.java:1152-1166，Minecraft.tick 每客户端 tick 调用、不受 tick-rate
+  freeze 门控 → 用 raw client ticks 而非 running ticks；titleTime 归零时清
+  title+subtitle，overlay 计时地板 0 保留文本）。renderer 不自攒状态，每帧
+  由剩余 tick + partialTick 现算 alpha。
+- vanilla 常数（26.1 逐条核实）：overlay fade `(int)(t*255/20)` 上限 255、
+  丢弃门 `alpha > 0`、位置 `(guiWidth/2, guiHeight-68)` + `(-w/2, -4)`
+  （Gui.java:308-336）；title fade-in `(total-t)*255/fadeIn`、fade-out
+  `t*255/fadeOut`、clamp 0..255、屏心 pose + 4x `(-w/2, -10)`、subtitle 2x
+  `(-w/2, 5)`、`ARGB.white(alpha)`（Gui.java:338-377）；彩虹分支
+  `Mth.hsvToArgb(t/50, 0.7, 0.6, alpha)`（hue 由剩余时间驱动、确定性；
+  h mod 6 但 f 不回卷的 Java quirk 原样保留，Mth.java:451-497）。26.1 无
+  旧版 `alpha < 8` 丢弃、无低 alpha 强制不透明。
+- 边界：协议层仍将这三类 component 压平为纯文本（单 plain run 投影）；
+  accessibility text backdrop（默认 opacity 0）跳过；jukebox now-playing
+  （唯一 `animate_color=true` 生产者）未接，flag 已全链路携带；
+  `extractSubtitleOverlay` 是声音字幕 overlay（非 title subtitle），仍缓。
+- 测试：bbb-world tick 倒数/清理/地板；bbb-native 投影字段透传 + tick 先于
+  投影的源序锁；bbb-renderer alpha 公式、彩虹 quirk 确定性、居中/缩放原点、
+  scale 几何（字格/阴影/effect bar）、首帧 fade-in alpha=0 丢弃、绘制次序
+  （status bars 之后、screen 之前）源序锁。
+
 ## 历史 audit 快照
 
 ### 2026-07-03（dolphin event slice 后复核，原 goal.md 当前边界）

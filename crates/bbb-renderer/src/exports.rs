@@ -72,12 +72,13 @@ pub use crate::entity_models::{
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{
-    HudAsciiGlyph, HudDigitGlyph, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap,
-    HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudNineSliceScaling, HudStyledTextRun, HudTextStyle, HudUvRect,
+    HudActionBarText, HudAsciiGlyph, HudDigitGlyph, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFontGlyphMap, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudNineSliceScaling, HudStyledTextRun, HudTextStyle, HudTitleText, HudUvRect,
     HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{

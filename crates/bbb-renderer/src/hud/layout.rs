@@ -28,6 +28,17 @@ const HUD_TOOLTIP_BACKGROUND_INSET: f32 = 12.0;
 const HUD_TOOLTIP_BACKGROUND_PADDING: u32 = 24;
 const HUD_TOOLTIP_LINE_HEIGHT: u32 = 10;
 const HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP: u32 = 2;
+/// Vanilla `Gui.extractOverlayMessage` pose: `translate(guiWidth / 2,
+/// guiHeight - 68)` (Gui.java:321), text at `(-width / 2, -4)` (:330).
+const HUD_OVERLAY_MESSAGE_BOTTOM_OFFSET: i32 = 68;
+const HUD_OVERLAY_MESSAGE_TEXT_Y: i32 = -4;
+/// Vanilla `Gui.extractTitle` pose: `translate(guiWidth / 2, guiHeight / 2)`
+/// (Gui.java:357), title `scale(4, 4)` at `(-width / 2, -10)` (:359-362),
+/// subtitle `scale(2, 2)` at `(-width / 2, 5)` (:366-368).
+pub(super) const HUD_TITLE_TEXT_SCALE: f32 = 4.0;
+const HUD_TITLE_TEXT_Y: i32 = -10;
+pub(super) const HUD_SUBTITLE_TEXT_SCALE: f32 = 2.0;
+const HUD_SUBTITLE_TEXT_Y: i32 = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct HudRect {
@@ -297,6 +308,52 @@ pub(super) fn hud_inventory_text_label_origin(
 ) -> (f32, f32) {
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, screen_width, screen_height);
     (origin_x + label_x as f32, origin_y + label_y as f32)
+}
+
+/// Pen origin (line top-left, HUD pixels) of the centered action-bar overlay
+/// message: vanilla `Gui.extractOverlayMessage` translates to
+/// `(guiWidth / 2, guiHeight - 68)` and draws at `(-width / 2, -4)`
+/// (Gui.java:321,330); all divisions are Java int truncations.
+pub(super) fn hud_overlay_message_text_origin(
+    surface_size: PhysicalSize<u32>,
+    text_width: u32,
+) -> (f32, f32) {
+    let center_x = (surface_size.width.max(1) / 2) as i32;
+    let base_y = surface_size.height.max(1) as i32 - HUD_OVERLAY_MESSAGE_BOTTOM_OFFSET;
+    (
+        (center_x - text_width as i32 / 2) as f32,
+        (base_y + HUD_OVERLAY_MESSAGE_TEXT_Y) as f32,
+    )
+}
+
+/// Pen origin of the 4x-scaled title line: vanilla `Gui.extractTitle`
+/// translates to the screen center `(guiWidth / 2, guiHeight / 2)`
+/// (Gui.java:357), then draws at `(-width / 2, -10)` under `scale(4, 4)`
+/// (:359-362), so the font-pixel offset is multiplied by the pose scale.
+pub(super) fn hud_title_text_origin(
+    surface_size: PhysicalSize<u32>,
+    text_width: u32,
+) -> (f32, f32) {
+    let center_x = (surface_size.width.max(1) / 2) as f32;
+    let center_y = (surface_size.height.max(1) / 2) as f32;
+    (
+        center_x + HUD_TITLE_TEXT_SCALE * (-(text_width as i32 / 2)) as f32,
+        center_y + HUD_TITLE_TEXT_SCALE * HUD_TITLE_TEXT_Y as f32,
+    )
+}
+
+/// Pen origin of the 2x-scaled subtitle line: same screen-center pose as the
+/// title, drawn at `(-width / 2, 5)` under `scale(2, 2)` (Gui.java:366-368).
+pub(super) fn hud_subtitle_text_origin(
+    surface_size: PhysicalSize<u32>,
+    text_width: u32,
+) -> (f32, f32) {
+    let center_x = (surface_size.width.max(1) / 2) as f32;
+    let center_y = (surface_size.height.max(1) / 2) as f32;
+    (
+        center_x + HUD_SUBTITLE_TEXT_SCALE * (-(text_width as i32 / 2)) as f32,
+        center_y + HUD_SUBTITLE_TEXT_SCALE * HUD_SUBTITLE_TEXT_Y as f32,
+    )
 }
 
 pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, height: u32) -> HudRect {

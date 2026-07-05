@@ -1421,6 +1421,10 @@ pub(crate) fn pump_network_and_terrain(
     // the interpolated border bounds.
     world.advance_world_border(running_ticks);
     world.advance_client_time(running_ticks);
+    // Vanilla `Minecraft.tick` calls `Gui.tick` once per client tick (Gui.java:
+    // 1145-1166), outside the tick-rate manager's freeze gate, so the action
+    // bar / title countdowns advance on raw client ticks, not running ticks.
+    world.advance_hud_text_ticks(advanced_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
@@ -1519,6 +1523,11 @@ pub(crate) fn pump_network_and_terrain(
         .experience
         .map(|experience| experience.progress);
     let hud_selected_slot = local_player.selected_hotbar_slot;
+    // Vanilla `Gui.extractOverlayMessage` / `extractTitle` read the post-tick
+    // countdowns with the frame partial tick; the renderer resolves fade
+    // alpha per frame from these projected timers.
+    let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);
+    let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);
     let item_model_keybind_context = input.item_model_keybind_context();
     let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(
         world,
@@ -1730,6 +1739,8 @@ pub(crate) fn pump_network_and_terrain(
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,
             hud_inventory_screen,
+            hud_action_bar_text,
+            hud_title_text,
             item_entity_billboards,
             block_item_model_meshes: block_item_meshes,
             block_item_model_z_offset_forward_meshes: block_item_z_offset_forward_meshes,

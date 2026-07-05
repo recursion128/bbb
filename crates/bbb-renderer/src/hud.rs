@@ -22,9 +22,11 @@ use self::layout::{
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_quad_vertices, hud_styled_quad_vertices, inventory_background_hud_rect,
+    hud_overlay_message_text_origin, hud_quad_vertices, hud_styled_quad_vertices,
+    hud_subtitle_text_origin, hud_title_text_origin, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
+    HudTooltipSpriteLayer, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE,
+    HUD_TITLE_TEXT_SCALE,
 };
 
 pub use bbb_render_types::{
@@ -57,6 +59,35 @@ pub struct HudNineSliceScaling {
 pub(crate) struct HudNineSliceSprite {
     pub(crate) gpu: HudSpriteGpu,
     pub(crate) scaling: HudNineSliceScaling,
+}
+
+/// One frame's action-bar overlay message state (vanilla
+/// `Gui.extractOverlayMessage` inputs): the styled line, the post-tick
+/// `overlayMessageTime`, the frame partial tick, and the jukebox rainbow flag
+/// (`Gui.animateOverlayMessageColor`). The renderer derives fade alpha and
+/// position per frame; it keeps no countdown state of its own.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudActionBarText {
+    pub runs: Vec<HudStyledTextRun>,
+    /// Vanilla `overlayMessageTime` after `Gui.tick` (starts at 60).
+    pub remaining_ticks: i32,
+    pub partial_tick: f32,
+    pub animate_color: bool,
+}
+
+/// One frame's title/subtitle overlay state (vanilla `Gui.extractTitle`
+/// inputs): styled lines, the post-tick `titleTime`, the fade windows, and
+/// the frame partial tick. An empty `subtitle_runs` means no subtitle is set.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudTitleText {
+    pub title_runs: Vec<HudStyledTextRun>,
+    pub subtitle_runs: Vec<HudStyledTextRun>,
+    /// Vanilla `titleTime` after `Gui.tick` (starts at fade_in+stay+fade_out).
+    pub remaining_ticks: i32,
+    pub fade_in: i32,
+    pub stay: i32,
+    pub fade_out: i32,
+    pub partial_tick: f32,
 }
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -1656,6 +1687,14 @@ impl Renderer {
         self.hud_inventory_screen = screen.map(sanitize_hud_inventory_screen);
     }
 
+    pub fn set_hud_action_bar_text(&mut self, action_bar: Option<HudActionBarText>) {
+        self.hud_action_bar_text = action_bar.filter(|state| state.partial_tick.is_finite());
+    }
+
+    pub fn set_hud_title_text(&mut self, title: Option<HudTitleText>) {
+        self.hud_title_text = title.filter(|state| state.partial_tick.is_finite());
+    }
+
     pub fn clear_hud_inventory_screen(&mut self) {
         self.hud_inventory_screen = None;
     }
@@ -1885,6 +1924,56 @@ impl Renderer {
                         sprite,
                         surface_size,
                         food_hud_rect(surface_size, index, sprite.width, sprite.height),
+                    );
+                }
+            }
+        }
+
+        // Vanilla `Gui.extractRenderState` submits the overlay message and the
+        // title/subtitle after the hotbar decorations (Gui.java:215-217); open
+        // screens render in a later pass, so their draws stay above these.
+        if let Some(font_atlas) = &self.hud_font_atlas {
+            let mut screen_text_draws = Vec::new();
+            if let Some(action_bar) = &self.hud_action_bar_text {
+                screen_text_draws.extend(hud_action_bar_text_draw(
+                    action_bar,
+                    &self.hud_font_glyphs,
+                    surface_size,
+                ));
+            }
+            if let Some(title) = &self.hud_title_text {
+                screen_text_draws.extend(hud_title_text_draws(
+                    title,
+                    &self.hud_font_glyphs,
+                    surface_size,
+                ));
+            }
+            for draw in &screen_text_draws {
+                // Vanilla `textWithBackdrop` (GuiGraphicsExtractor.java:293-301)
+                // draws the accessibility backdrop only when the text-background
+                // opacity option is non-zero (default 0 — skipped here), then the
+                // line with shadow; pass order matches the label path (whole-line
+                // shadow first, then the main colour).
+                for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+                    let geometry = hud_styled_text_pass_geometry(
+                        draw.runs,
+                        &self.hud_font_glyphs,
+                        &self.hud_obfuscated_glyph_pool,
+                        self.counters.frame_index,
+                        draw.origin,
+                        shadow_offset,
+                        is_shadow,
+                        draw.tint,
+                        None,
+                        draw.scale,
+                    );
+                    push_hud_styled_text_pass(
+                        &mut vertices,
+                        &mut commands,
+                        &self.hud_white_pixel,
+                        font_atlas,
+                        surface_size,
+                        &geometry,
                     );
                 }
             }
@@ -2727,6 +2816,7 @@ fn push_hud_inventory_text_labels<'a>(
                 is_shadow,
                 label.tint,
                 Some(label.width),
+                1.0,
             );
             push_hud_styled_text_pass(
                 vertices,
@@ -2738,6 +2828,143 @@ fn push_hud_inventory_text_labels<'a>(
             );
         }
     }
+}
+
+/// One centered HUD overlay text line resolved for this frame: the styled
+/// runs, the pen origin in HUD pixels, the vanilla pose scale, and the
+/// fade-resolved base tint.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct HudScreenTextDraw<'a> {
+    runs: &'a [HudStyledTextRun],
+    origin: (f32, f32),
+    scale: f32,
+    tint: [f32; 4],
+}
+
+/// Vanilla `Gui.extractOverlayMessage` fade (Gui.java:312-316):
+/// `alpha = (int)(t * 255 / 20)` capped at 255; the draw is dropped when the
+/// result is not `> 0` (:318). `t` is `overlayMessageTime - partialTick`.
+fn hud_overlay_message_alpha(t: f32) -> i32 {
+    let alpha = (t * 255.0 / 20.0) as i32;
+    alpha.min(255)
+}
+
+/// Vanilla jukebox now-playing rainbow (Gui.java:323-324):
+/// `Mth.hsvToArgb(t / 50, 0.7, 0.6, alpha)`. The hue derives from the
+/// remaining display time, so the colour cycle is deterministic per frame
+/// state (no wall clock). `Mth.hsvToArgb` keeps its Java quirk verbatim: `h`
+/// is wrapped mod 6 but `f` is taken against the wrapped `h`, and the final
+/// channels are clamped to 0..255 (Mth.java:451-497).
+fn hud_overlay_message_rainbow_rgb(t: f32) -> [f32; 3] {
+    const SATURATION: f32 = 0.7;
+    const VALUE: f32 = 0.6;
+    let hue = t / 50.0;
+    let h = ((hue * 6.0) as i32) % 6;
+    let f = hue * 6.0 - h as f32;
+    let p = VALUE * (1.0 - SATURATION);
+    let q = VALUE * (1.0 - f * SATURATION);
+    let s = VALUE * (1.0 - (1.0 - f) * SATURATION);
+    // `t > 0` whenever the alpha gate passes, so `h` is in 0..6 here.
+    let (red, green, blue) = match h {
+        1 => (q, VALUE, p),
+        2 => (p, VALUE, s),
+        3 => (p, q, VALUE),
+        4 => (s, p, VALUE),
+        5 => (VALUE, p, q),
+        _ => (VALUE, s, p),
+    };
+    [red, green, blue].map(|channel| ((channel * 255.0) as i32).clamp(0, 255) as f32 / 255.0)
+}
+
+/// Vanilla `Gui.extractTitle` fade (Gui.java:342-353): full alpha during the
+/// stay window, `(fadeIn+stay+fadeOut - t) * 255 / fadeIn` while fading in,
+/// `t * 255 / fadeOut` while fading out, clamped to 0..255. `t` is
+/// `titleTime - partialTick`.
+fn hud_title_alpha(state: &HudTitleText) -> i32 {
+    let t = state.remaining_ticks as f32 - state.partial_tick;
+    let mut alpha = 255;
+    if state.remaining_ticks > state.fade_out.saturating_add(state.stay) {
+        let total = state
+            .fade_in
+            .saturating_add(state.stay)
+            .saturating_add(state.fade_out);
+        alpha = ((total as f32 - t) * 255.0 / state.fade_in as f32) as i32;
+    }
+    if state.remaining_ticks <= state.fade_out {
+        alpha = (t * 255.0 / state.fade_out as f32) as i32;
+    }
+    alpha.clamp(0, 255)
+}
+
+/// Resolves the action-bar overlay message into a centered draw, mirroring
+/// `Gui.extractOverlayMessage` (Gui.java:308-336): shown only while
+/// `overlayMessageTime > 0`, alpha-gated (`alpha > 0`), centered above the
+/// hotbar at `(guiWidth/2 - width/2, guiHeight - 68 - 4)`, white (or the
+/// jukebox rainbow colour) at the fade alpha.
+fn hud_action_bar_text_draw<'a>(
+    state: &'a HudActionBarText,
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+) -> Option<HudScreenTextDraw<'a>> {
+    if state.remaining_ticks <= 0 {
+        return None;
+    }
+    let t = state.remaining_ticks as f32 - state.partial_tick;
+    let alpha = hud_overlay_message_alpha(t);
+    if alpha <= 0 {
+        return None;
+    }
+    let [red, green, blue] = if state.animate_color {
+        hud_overlay_message_rainbow_rgb(t)
+    } else {
+        [1.0, 1.0, 1.0]
+    };
+    let width = hud_font_runs_width(&state.runs, glyphs).unwrap_or(0);
+    Some(HudScreenTextDraw {
+        runs: &state.runs,
+        origin: hud_overlay_message_text_origin(surface_size, width),
+        scale: 1.0,
+        tint: [red, green, blue, alpha as f32 / 255.0],
+    })
+}
+
+/// Resolves the title (4x) and subtitle (2x) overlay lines, mirroring
+/// `Gui.extractTitle` (Gui.java:338-377): shown only while `titleTime > 0`
+/// and the fade alpha is `> 0`; both lines share the screen-center pose and
+/// the same `ARGB.white(alpha)` tint, and the subtitle draws only while a
+/// title is active (an empty title line still keeps the subtitle visible,
+/// matching vanilla's non-null check).
+fn hud_title_text_draws<'a>(
+    state: &'a HudTitleText,
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+) -> Vec<HudScreenTextDraw<'a>> {
+    let mut draws = Vec::new();
+    if state.remaining_ticks <= 0 {
+        return draws;
+    }
+    let alpha = hud_title_alpha(state);
+    if alpha <= 0 {
+        return draws;
+    }
+    let tint = [1.0, 1.0, 1.0, alpha as f32 / 255.0];
+    let title_width = hud_font_runs_width(&state.title_runs, glyphs).unwrap_or(0);
+    draws.push(HudScreenTextDraw {
+        runs: &state.title_runs,
+        origin: hud_title_text_origin(surface_size, title_width),
+        scale: HUD_TITLE_TEXT_SCALE,
+        tint,
+    });
+    if !state.subtitle_runs.is_empty() {
+        let subtitle_width = hud_font_runs_width(&state.subtitle_runs, glyphs).unwrap_or(0);
+        draws.push(HudScreenTextDraw {
+            runs: &state.subtitle_runs,
+            origin: hud_subtitle_text_origin(surface_size, subtitle_width),
+            scale: HUD_SUBTITLE_TEXT_SCALE,
+            tint,
+        });
+    }
+    draws
 }
 
 /// Resolved main-pass colour of a styled run: the run's `Style` colour over
@@ -2777,7 +3004,13 @@ struct HudStyledTextPassGeometry {
 /// Computes one pass of a styled line at `origin` (line top-left in HUD
 /// pixels). `width_limit` reproduces the label budget semantics: the walk
 /// stops once the pen reaches the limit and a glyph/effect is only emitted
-/// when its cell/advance still fits.
+/// when its cell/advance still fits (the limit is in font pixels, pre-scale).
+///
+/// `scale` mirrors a vanilla pose scale around `origin`
+/// (`PoseStack.scale` before the draw, as `Gui.extractTitle` does for the
+/// 4x title / 2x subtitle): every font-pixel offset — pen, glyph cells,
+/// shadow offset, bold offset and effect bars — is multiplied uniformly.
+/// `1.0` reproduces the unscaled label path.
 ///
 /// Italic runs are sheared through the locked `styled_quads` primitive (top
 /// edge `1-0.25*up`, bottom `1-0.25*down`). Obfuscated (`§k`) non-space glyphs
@@ -2786,6 +3019,7 @@ struct HudStyledTextPassGeometry {
 /// deterministic per-pass LCG so the jitter is reproducible and the shadow pass
 /// picks the same substitutes as the main pass. The pen advance always follows
 /// the original glyph, so obfuscation and italic never shift layout.
+#[allow(clippy::too_many_arguments)]
 fn hud_styled_text_pass_geometry(
     runs: &[HudStyledTextRun],
     glyphs: &HudFontGlyphMap,
@@ -2796,6 +3030,7 @@ fn hud_styled_text_pass_geometry(
     is_shadow: bool,
     base_tint: [f32; 4],
     width_limit: Option<u32>,
+    scale: f32,
 ) -> HudStyledTextPassGeometry {
     let mut geometry = HudStyledTextPassGeometry {
         glyph_quads: Vec::new(),
@@ -2832,13 +3067,22 @@ fn hud_styled_text_pass_geometry(
             } else {
                 base_glyph
             };
-            let x = origin.0 + pen_x as f32 + shadow_offset;
-            let y = origin.1 + shadow_offset;
+            // Glyph geometry is produced in font pixels relative to `origin`
+            // and mapped through `origin + scale * offset`, exactly a vanilla
+            // pose scale (the shadow offset scales with the pose too).
+            let x = pen_x as f32 + shadow_offset;
+            let y = shadow_offset;
             if glyph.width > 0
                 && glyph.height > 0
                 && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
             {
                 for quad in glyph.styled_quads(x, y, run.style, false) {
+                    let quad = HudGlyphQuad {
+                        corners: quad
+                            .corners
+                            .map(|[cx, cy]| [origin.0 + cx * scale, origin.1 + cy * scale]),
+                        ..quad
+                    };
                     geometry.glyph_quads.push((quad, tint));
                 }
             }
@@ -2846,6 +3090,13 @@ fn hud_styled_text_pass_geometry(
             // obfuscated bitmap swap, so they read the original glyph.
             if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
                 for rect in base_glyph.styled_effect_rects(x, y, run.style, first_in_line) {
+                    let rect = HudEffectRect {
+                        x0: origin.0 + rect.x0 * scale,
+                        y0: origin.1 + rect.y0 * scale,
+                        x1: origin.0 + rect.x1 * scale,
+                        y1: origin.1 + rect.y1 * scale,
+                        ..rect
+                    };
                     geometry.effect_rects.push((rect, tint));
                 }
             }
@@ -3007,6 +3258,7 @@ fn push_hud_inventory_tooltip<'a>(
                 is_shadow,
                 line.tint,
                 None,
+                1.0,
             );
             push_hud_styled_text_pass(
                 vertices,
@@ -4092,6 +4344,7 @@ mod tests {
             false,
             [1.0, 0.5, 0.25, 1.0],
             None,
+            1.0,
         );
         assert!(geometry.effect_rects.is_empty());
         assert_eq!(geometry.glyph_quads.len(), 2);
@@ -4127,6 +4380,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         // Vanilla bold: each glyph renders twice, the second pass shifted by
         // getBoldOffset()=1.
@@ -4165,6 +4419,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         assert_eq!(geometry.glyph_quads.len(), 1);
         assert_eq!(geometry.effect_rects.len(), 2);
@@ -4201,6 +4456,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         let shadow = hud_styled_text_pass_geometry(
             &[run],
@@ -4212,6 +4468,7 @@ mod tests {
             true,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         // Run colour overrides the line tint on the main pass.
         assert_eq!(
@@ -4252,9 +4509,284 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             Some(10),
+            1.0,
         );
         assert_eq!(geometry.glyph_quads.len(), 1);
         assert_eq!(geometry.glyph_quads[0].0.corners[0], [0.0, 0.0]);
+    }
+
+    #[test]
+    fn styled_text_pass_geometry_scale_multiplies_pen_cells_shadow_and_effects() {
+        // `scale` mirrors a vanilla pose scale around the origin: cells, the
+        // pen advance, the shadow offset and effect bars all multiply.
+        let glyphs = styled_test_glyphs();
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("ab")],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            4.0,
+        );
+        assert_eq!(geometry.glyph_quads.len(), 2);
+        // 5x8 cell at the origin becomes 20x32.
+        assert_eq!(
+            geometry.glyph_quads[0].0.corners,
+            [[100.0, 50.0], [100.0, 82.0], [120.0, 82.0], [120.0, 50.0]]
+        );
+        // Second glyph: pen advance 6 font px -> 24 HUD px.
+        assert_eq!(geometry.glyph_quads[1].0.corners[0], [124.0, 50.0]);
+
+        // The +1,+1 shadow offset rides the pose scale too (vanilla scales the
+        // whole `textWithBackdrop` draw).
+        let shadow = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("a")],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (100.0, 50.0),
+            1.0,
+            true,
+            HUD_TINT_WHITE,
+            None,
+            4.0,
+        );
+        assert_eq!(shadow.glyph_quads[0].0.corners[0], [104.0, 54.0]);
+
+        // Underline bar: first-in-line -1 font px, span to advance 6, band
+        // y+8..y+9, all doubled at scale 2.
+        let effects = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun {
+                text: "a".to_string(),
+                style: HudTextStyle {
+                    underlined: true,
+                    ..Default::default()
+                },
+                color: None,
+            }],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (100.0, 50.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            2.0,
+        );
+        let (bar, _) = &effects.effect_rects[0];
+        assert_eq!((bar.x0, bar.x1), (98.0, 112.0));
+        assert_eq!((bar.y0, bar.y1), (66.0, 68.0));
+    }
+
+    #[test]
+    fn overlay_message_alpha_matches_vanilla_ramp_and_cap() {
+        // Vanilla Gui.extractOverlayMessage:313-316: alpha = (int)(t*255/20),
+        // capped at 255; the draw gate is alpha > 0.
+        assert_eq!(hud_overlay_message_alpha(60.0), 255);
+        assert_eq!(hud_overlay_message_alpha(20.0), 255);
+        assert_eq!(hud_overlay_message_alpha(10.0), 127);
+        assert_eq!(hud_overlay_message_alpha(0.05), 0);
+        assert!(hud_overlay_message_alpha(-0.5) <= 0);
+    }
+
+    #[test]
+    fn overlay_message_rainbow_rgb_is_deterministic_and_matches_the_hsv_quirk() {
+        // hue = t / 50 (Gui.java:324): remaining-time driven, so the same
+        // frame state always yields the same colour (no wall clock).
+        let mid = hud_overlay_message_rainbow_rgb(25.0);
+        // hue 0.5 -> h=3, f=0: (p, q, v) = (0.18, 0.6, 0.6) -> (45, 153, 153).
+        assert_eq!(mid, [45.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0]);
+        assert_eq!(mid, hud_overlay_message_rainbow_rgb(25.0));
+        // hue 1.2 -> hue*6 = 7.2: vanilla wraps h to 1 but keeps f = 6.2, so
+        // q goes negative and clamps to 0 (Mth.hsvToArgb quirk kept verbatim).
+        assert_eq!(
+            hud_overlay_message_rainbow_rgb(60.0),
+            [0.0, 153.0 / 255.0, 45.0 / 255.0]
+        );
+    }
+
+    #[test]
+    fn action_bar_draw_centers_above_the_hotbar_and_fades_out() {
+        let glyphs = styled_test_glyphs();
+        let surface = PhysicalSize::new(320, 240);
+        let state = HudActionBarText {
+            runs: vec![HudStyledTextRun::plain("ab")],
+            remaining_ticks: 60,
+            partial_tick: 0.5,
+            animate_color: false,
+        };
+        let draw = hud_action_bar_text_draw(&state, &glyphs, surface).expect("visible");
+        // (guiWidth/2 - width/2, guiHeight - 68 - 4) = (160 - 6, 240 - 72).
+        assert_eq!(draw.origin, (154.0, 168.0));
+        assert_eq!(draw.scale, 1.0);
+        // t = 59.5 -> alpha 758 capped at 255 -> opaque white.
+        assert_eq!(draw.tint, [1.0, 1.0, 1.0, 1.0]);
+
+        // t = 10 -> alpha 127.
+        let fading = HudActionBarText {
+            remaining_ticks: 10,
+            partial_tick: 0.0,
+            ..state.clone()
+        };
+        assert_eq!(
+            hud_action_bar_text_draw(&fading, &glyphs, surface)
+                .expect("fading")
+                .tint,
+            [1.0, 1.0, 1.0, 127.0 / 255.0]
+        );
+
+        // alpha == 0 is dropped (vanilla `if (alpha > 0)`).
+        let nearly_out = HudActionBarText {
+            remaining_ticks: 1,
+            partial_tick: 0.999,
+            ..state.clone()
+        };
+        assert_eq!(
+            hud_action_bar_text_draw(&nearly_out, &glyphs, surface),
+            None
+        );
+        // An expired timer never draws.
+        let expired = HudActionBarText {
+            remaining_ticks: 0,
+            partial_tick: 0.0,
+            ..state.clone()
+        };
+        assert_eq!(hud_action_bar_text_draw(&expired, &glyphs, surface), None);
+
+        // Jukebox rainbow: hue from remaining time, fade alpha kept.
+        let rainbow = HudActionBarText {
+            remaining_ticks: 25,
+            partial_tick: 0.0,
+            animate_color: true,
+            ..state.clone()
+        };
+        assert_eq!(
+            hud_action_bar_text_draw(&rainbow, &glyphs, surface)
+                .expect("rainbow")
+                .tint,
+            [45.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn title_draws_center_and_scale_title_4x_and_subtitle_2x() {
+        let glyphs = styled_test_glyphs();
+        let surface = PhysicalSize::new(320, 240);
+        let state = HudTitleText {
+            title_runs: vec![HudStyledTextRun::plain("ab")],
+            subtitle_runs: vec![HudStyledTextRun::plain("a")],
+            remaining_ticks: 50,
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20,
+            partial_tick: 0.25,
+        };
+        let draws = hud_title_text_draws(&state, &glyphs, surface);
+        assert_eq!(draws.len(), 2);
+        // Title: center (160, 120) + 4 * (-12/2, -10) = (136, 80).
+        assert_eq!(draws[0].origin, (136.0, 80.0));
+        assert_eq!(draws[0].scale, 4.0);
+        // Stay window -> full alpha.
+        assert_eq!(draws[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        // Subtitle: center + 2 * (-6/2, 5) = (154, 130), same tint.
+        assert_eq!(draws[1].origin, (154.0, 130.0));
+        assert_eq!(draws[1].scale, 2.0);
+        assert_eq!(draws[1].tint, draws[0].tint);
+
+        // No subtitle set -> only the title line.
+        let title_only = HudTitleText {
+            subtitle_runs: Vec::new(),
+            ..state.clone()
+        };
+        assert_eq!(hud_title_text_draws(&title_only, &glyphs, surface).len(), 1);
+
+        // Expired timer -> nothing.
+        let expired = HudTitleText {
+            remaining_ticks: 0,
+            ..state.clone()
+        };
+        assert!(hud_title_text_draws(&expired, &glyphs, surface).is_empty());
+
+        // The very first frame after SetTitleText (t == fadeIn+stay+fadeOut at
+        // partial 0) computes fade-in alpha 0 and is dropped, like vanilla.
+        let first_frame = HudTitleText {
+            remaining_ticks: 100,
+            partial_tick: 0.0,
+            ..state.clone()
+        };
+        assert!(hud_title_text_draws(&first_frame, &glyphs, surface).is_empty());
+    }
+
+    #[test]
+    fn title_alpha_follows_the_fade_in_stay_fade_out_windows() {
+        let base = HudTitleText {
+            title_runs: vec![HudStyledTextRun::plain("ab")],
+            subtitle_runs: Vec::new(),
+            remaining_ticks: 50,
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20,
+            partial_tick: 0.0,
+        };
+        // Stay window (fade_out < remaining <= fade_out + stay): full alpha.
+        assert_eq!(hud_title_alpha(&base), 255);
+        // Fade in (remaining > fade_out + stay): (total - t) * 255 / fade_in;
+        // t = 94.5 -> 5.5 * 25.5 = 140.25 -> 140.
+        let fade_in = HudTitleText {
+            remaining_ticks: 95,
+            partial_tick: 0.5,
+            ..base.clone()
+        };
+        assert_eq!(hud_title_alpha(&fade_in), 140);
+        // Fade out (remaining <= fade_out): t * 255 / fade_out;
+        // t = 9.75 -> 9.75 * 12.75 = 124.3125 -> 124.
+        let fade_out = HudTitleText {
+            remaining_ticks: 10,
+            partial_tick: 0.25,
+            ..base.clone()
+        };
+        assert_eq!(hud_title_alpha(&fade_out), 124);
+        // Freshly set title at partial 0: fade-in alpha starts at 0.
+        let fresh = HudTitleText {
+            remaining_ticks: 100,
+            partial_tick: 0.0,
+            ..base.clone()
+        };
+        assert_eq!(hud_title_alpha(&fresh), 0);
+    }
+
+    #[test]
+    fn overlay_message_and_title_draws_submit_after_status_bars_and_below_screens() {
+        // Vanilla `Gui.extractRenderState` submits the overlay message and the
+        // title after the hotbar/status decorations (Gui.java:215-217); open
+        // screens render in a later pass, so `collect_hud_draws` must push
+        // these before the inventory-screen branch.
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let food = collect_source
+            .find("hud_food_fill(")
+            .expect("food bar draws first");
+        let overlay = collect_source
+            .find("hud_action_bar_text_draw(")
+            .expect("action bar draw is resolved");
+        let title = collect_source
+            .find("hud_title_text_draws(")
+            .expect("title draws are resolved");
+        let screen = collect_source
+            .find("if let Some(screen) = &self.hud_inventory_screen")
+            .expect("inventory screen branch follows");
+        assert!(
+            food < overlay && overlay < title && title < screen,
+            "overlay message and title submit after status bars and before screen content"
+        );
     }
 
     /// Distinct-uv glyph map for obfuscated observability: three advance-6
@@ -4308,6 +4840,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         let expected = hud_font_glyph('a', &glyphs).styled_quads(100.0, 50.0, style, false);
         assert_eq!(geometry.glyph_quads.len(), expected.len());
@@ -4344,6 +4877,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         let glyph = hud_font_glyph('a', &glyphs);
         let expected = glyph.styled_quads(100.0, 50.0, style, false);
@@ -4369,6 +4903,7 @@ mod tests {
             false,
             HUD_TINT_WHITE,
             None,
+            1.0,
         );
         assert_eq!(geometry, reseeded);
     }
@@ -4396,6 +4931,7 @@ mod tests {
                 false,
                 HUD_TINT_WHITE,
                 None,
+                1.0,
             )
         };
         // Fixed seed -> deterministic, reproducible glyph sequence.
@@ -4480,6 +5016,7 @@ mod tests {
                 false,
                 HUD_TINT_WHITE,
                 None,
+                1.0,
             );
             // Only the two visible 'a's draw; the space never becomes a glyph.
             assert_eq!(geometry.glyph_quads.len(), 2, "seed {seed}");

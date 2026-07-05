@@ -775,6 +775,110 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
 }
 
 #[test]
+fn hud_text_timers_tick_before_projection_like_gui_tick() {
+    // Vanilla `Minecraft.tick` runs `Gui.tick` (overlayMessageTime-- /
+    // titleTime--, Gui.java:1152-1166) once per client tick — outside the
+    // tick-rate manager's freeze gate — before `GameRenderer.extractGui`
+    // reads the countdowns with the frame partial tick.
+    let source = include_str!("../runtime.rs");
+    let gui_tick = source
+        .find("world.advance_hud_text_ticks(advanced_ticks);")
+        .expect("pump should tick the HUD text timers like Gui.tick");
+    let action_bar_extract = source
+        .find(
+            "let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);",
+        )
+        .expect("pump should project the action bar state");
+    let title_extract = source
+        .find("let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);")
+        .expect("pump should project the title state");
+    assert!(
+        gui_tick < action_bar_extract && action_bar_extract < title_extract,
+        "vanilla `Minecraft.tick` runs `Gui.tick` before `GameRenderer.extractGui`"
+    );
+}
+
+#[test]
+fn hud_action_bar_and_title_projection_matches_world_state() {
+    let mut world = WorldStore::new();
+    assert_eq!(hud_action_bar_text_from_world(&world, 0.25), None);
+    assert_eq!(hud_title_text_from_world(&world, 0.25), None);
+
+    world.apply_action_bar_text(bbb_protocol::packets::SetActionBarText {
+        content: "Action ready".to_string(),
+    });
+    world.apply_titles_animation(bbb_protocol::packets::SetTitlesAnimation {
+        fade_in: 5,
+        stay: 40,
+        fade_out: 15,
+    });
+    world.apply_title_text(bbb_protocol::packets::SetTitleText {
+        content: "Quest complete".to_string(),
+    });
+    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText {
+        content: "Return to camp".to_string(),
+    });
+
+    let action_bar = hud_action_bar_text_from_world(&world, 0.25).expect("action bar projected");
+    assert_eq!(
+        action_bar.runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Action ready")]
+    );
+    assert_eq!(action_bar.remaining_ticks, 60);
+    assert_eq!(action_bar.partial_tick, 0.25);
+    // Both packet paths are vanilla `setOverlayMessage(component, false)`;
+    // only the jukebox now-playing path animates.
+    assert!(!action_bar.animate_color);
+
+    let title = hud_title_text_from_world(&world, 0.25).expect("title projected");
+    assert_eq!(
+        title.title_runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Quest complete")]
+    );
+    assert_eq!(
+        title.subtitle_runs,
+        vec![bbb_renderer::HudStyledTextRun::plain("Return to camp")]
+    );
+    assert_eq!(title.remaining_ticks, 60);
+    assert_eq!((title.fade_in, title.stay, title.fade_out), (5, 40, 15));
+    assert_eq!(title.partial_tick, 0.25);
+
+    // Post-tick countdowns flow through; expired timers stop projecting.
+    world.advance_hud_text_ticks(59);
+    assert_eq!(
+        hud_action_bar_text_from_world(&world, 0.0)
+            .expect("last action bar tick")
+            .remaining_ticks,
+        1
+    );
+    assert_eq!(
+        hud_title_text_from_world(&world, 0.0)
+            .expect("last title tick")
+            .remaining_ticks,
+        1
+    );
+    world.advance_hud_text_ticks(1);
+    assert_eq!(hud_action_bar_text_from_world(&world, 0.0), None);
+    assert_eq!(hud_title_text_from_world(&world, 0.0), None);
+
+    // A re-set title without a subtitle projects an empty subtitle line.
+    world.apply_title_text(bbb_protocol::packets::SetTitleText {
+        content: "Solo".to_string(),
+    });
+    let solo = hud_title_text_from_world(&world, 0.5).expect("title without subtitle");
+    assert!(solo.subtitle_runs.is_empty());
+    assert_eq!(solo.remaining_ticks, 60);
+
+    // A subtitle without an active title never projects (vanilla draws the
+    // subtitle only inside the title branch, Gui.java:364).
+    world.apply_clear_titles(bbb_protocol::packets::ClearTitles { reset_times: false });
+    world.apply_subtitle_text(bbb_protocol::packets::SetSubtitleText {
+        content: "Orphan".to_string(),
+    });
+    assert_eq!(hud_title_text_from_world(&world, 0.0), None);
+}
+
+#[test]
 fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source

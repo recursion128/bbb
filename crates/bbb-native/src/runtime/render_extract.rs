@@ -7,10 +7,11 @@
 
 use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
-    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudBlockItemModel, HudInventoryScreen,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline, WorldBorderRenderState,
+    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudBlockItemModel,
+    HudInventoryScreen, HudStyledTextRun, HudTitleText, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
+    WorldBorderRenderState,
 };
 
 use super::*;
@@ -676,6 +677,57 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
     }
 }
 
+/// Projects the world's action-bar overlay state into the renderer's frame
+/// vocabulary, mirroring `Gui.extractOverlayMessage`'s inputs (Gui.java:310):
+/// present only while `overlayMessageTime > 0`. The protocol layer flattens
+/// chat components to plain text (`decode_component_summary_from_decoder`),
+/// so the line is a single unstyled run today; the fade alpha itself is
+/// resolved by the renderer from `remaining_ticks` and `partial_tick`.
+pub(crate) fn hud_action_bar_text_from_world(
+    world: &WorldStore,
+    partial_tick: f32,
+) -> Option<HudActionBarText> {
+    let action_bar = world.action_bar()?;
+    if action_bar.display_ticks <= 0 {
+        return None;
+    }
+    Some(HudActionBarText {
+        runs: vec![HudStyledTextRun::plain(action_bar.content.clone())],
+        remaining_ticks: action_bar.display_ticks,
+        partial_tick,
+        animate_color: action_bar.animate_color,
+    })
+}
+
+/// Projects the world's title/subtitle overlay state, mirroring
+/// `Gui.extractTitle`'s inputs (Gui.java:339): present only while a title is
+/// set and `titleTime > 0`. The subtitle rides along only while a title is
+/// active (vanilla draws it inside the title branch); fade windows pass
+/// through so the renderer computes the vanilla alpha ramp per frame.
+pub(crate) fn hud_title_text_from_world(
+    world: &WorldStore,
+    partial_tick: f32,
+) -> Option<HudTitleText> {
+    let title = world.title();
+    let title_text = title.title.as_ref()?;
+    if title.title_time <= 0 {
+        return None;
+    }
+    Some(HudTitleText {
+        title_runs: vec![HudStyledTextRun::plain(title_text.clone())],
+        subtitle_runs: title
+            .subtitle
+            .as_ref()
+            .map(|subtitle| vec![HudStyledTextRun::plain(subtitle.clone())])
+            .unwrap_or_default(),
+        remaining_ticks: title.title_time,
+        fade_in: title.fade_in,
+        stay: title.stay,
+        fade_out: title.fade_out,
+        partial_tick,
+    })
+}
+
 /// One frame's worth of world->renderer state.
 ///
 /// `pump_network_and_terrain` extracts each field at a vanilla-verified
@@ -695,6 +747,8 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(crate) hud_action_bar_text: Option<HudActionBarText>,
+    pub(crate) hud_title_text: Option<HudTitleText>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(crate) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(crate) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
@@ -753,6 +807,8 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
     renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
+    renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
+    renderer.set_hud_title_text(frame.hud_title_text);
     renderer.set_item_entity_billboards(frame.item_entity_billboards);
     renderer.set_block_item_model_meshes(frame.block_item_model_meshes);
     renderer.set_block_item_model_z_offset_forward_meshes(

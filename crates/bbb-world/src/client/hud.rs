@@ -85,6 +85,13 @@ pub struct SystemChatLineState {
 pub struct ActionBarState {
     pub content: String,
     pub display_ticks: i32,
+    /// Vanilla `Gui.animateOverlayMessageColor` (`setOverlayMessage(component,
+    /// animate)`): only the jukebox now-playing path (`Gui.setNowPlaying`)
+    /// passes `true`; both packet paths modeled here pass `false`
+    /// (`ChatListener` overlay chat and `ClientPacketListener`
+    /// `handleSetActionBarText`).
+    #[serde(default)]
+    pub animate_color: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -307,7 +314,32 @@ impl WorldStore {
         self.client_hud.action_bar = Some(ActionBarState {
             content,
             display_ticks: 60,
+            animate_color: false,
         });
+    }
+
+    /// Vanilla `Gui.tick` (Gui.java:1152-1166, run from `Minecraft.tick` once
+    /// per client tick): `overlayMessageTime` counts down while positive, and
+    /// `titleTime` counts down while positive, clearing `title`/`subtitle`
+    /// when it reaches zero. Fade times are untouched.
+    pub fn advance_hud_text_ticks(&mut self, ticks: u32) {
+        if ticks == 0 {
+            return;
+        }
+        let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);
+        if let Some(action_bar) = self.client_hud.action_bar.as_mut() {
+            if action_bar.display_ticks > 0 {
+                action_bar.display_ticks = action_bar.display_ticks.saturating_sub(ticks).max(0);
+            }
+        }
+        let title = &mut self.client_hud.title;
+        if title.title_time > 0 {
+            title.title_time = title.title_time.saturating_sub(ticks).max(0);
+            if title.title_time <= 0 {
+                title.title = None;
+                title.subtitle = None;
+            }
+        }
     }
 }
 
@@ -589,6 +621,7 @@ mod tests {
             Some(&ActionBarState {
                 content: "Overlay warning".to_string(),
                 display_ticks: 60,
+                animate_color: false,
             })
         );
 
@@ -600,6 +633,7 @@ mod tests {
             Some(&ActionBarState {
                 content: "Action ready".to_string(),
                 display_ticks: 60,
+                animate_color: false,
             })
         );
 
@@ -671,5 +705,70 @@ mod tests {
         assert_eq!(counters.title_text_packets, 1);
         assert_eq!(counters.subtitle_text_packets, 1);
         assert_eq!(counters.clear_titles_packets, 2);
+    }
+
+    #[test]
+    fn hud_text_ticks_count_down_like_vanilla_gui_tick() {
+        let mut store = WorldStore::new();
+
+        // No state: ticking is a no-op.
+        store.advance_hud_text_ticks(3);
+        assert_eq!(store.action_bar(), None);
+        assert_eq!(store.title().title_time, 0);
+
+        store.apply_action_bar_text(ProtocolSetActionBarText {
+            content: "Action ready".to_string(),
+        });
+        store.apply_title_text(ProtocolSetTitleText {
+            content: "Quest complete".to_string(),
+        });
+        store.apply_subtitle_text(ProtocolSetSubtitleText {
+            content: "Return to camp".to_string(),
+        });
+        assert_eq!(store.action_bar().unwrap().display_ticks, 60);
+        assert_eq!(store.title().title_time, 100);
+
+        store.advance_hud_text_ticks(1);
+        assert_eq!(store.action_bar().unwrap().display_ticks, 59);
+        assert_eq!(store.title().title_time, 99);
+
+        // Vanilla `Gui.tick` clears title and subtitle when titleTime hits 0;
+        // the overlay message string is kept with its timer floored at 0.
+        store.advance_hud_text_ticks(99);
+        assert_eq!(
+            store.action_bar(),
+            Some(&ActionBarState {
+                content: "Action ready".to_string(),
+                display_ticks: 0,
+                animate_color: false,
+            })
+        );
+        assert_eq!(store.title().title, None);
+        assert_eq!(store.title().subtitle, None);
+        assert_eq!(store.title().title_time, 0);
+        // Fade times survive the countdown (only ClearTitles(reset) resets them).
+        assert_eq!(store.title().fade_in, 10);
+        assert_eq!(store.title().stay, 70);
+        assert_eq!(store.title().fade_out, 20);
+
+        // Timers never go negative on further ticks.
+        store.advance_hud_text_ticks(5);
+        assert_eq!(store.action_bar().unwrap().display_ticks, 0);
+        assert_eq!(store.title().title_time, 0);
+    }
+
+    #[test]
+    fn hud_text_tick_zero_and_partial_advances_keep_title_visible() {
+        let mut store = WorldStore::new();
+        store.apply_title_text(ProtocolSetTitleText {
+            content: "Quest complete".to_string(),
+        });
+
+        store.advance_hud_text_ticks(0);
+        assert_eq!(store.title().title_time, 100);
+
+        store.advance_hud_text_ticks(40);
+        assert_eq!(store.title().title.as_deref(), Some("Quest complete"));
+        assert_eq!(store.title().title_time, 60);
     }
 }

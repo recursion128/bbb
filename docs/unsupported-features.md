@@ -483,12 +483,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Actionbar, titles, subtitles: `ClientHudState`
-    (`bbb-world/src/client/hud.rs` — `ActionBarState`, `HudTitleState` with
-    fade timing) is fully packet-fed and tested, but `RendererFrame` carries
-    none of it and `collect_hud_draws` has no branch; needs projection +
-    centered styled-text drawing + fade alpha per `Gui.extractOverlayMessage`
-    / `extractTitle` / `extractSubtitleOverlay`.
   - Boss bars: `ClientHudState.boss_bars` (progress/color/overlay/darken/fog)
     is fully applied and queryable; renderer has zero consumption. Needs
     `boss_bars` sprites (5 colors × progress + notched overlays), top
@@ -510,6 +504,31 @@ When an agent does any of the following, update this file in the same slice:
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-05 — Actionbar + titles + subtitles render: `Gui.tick`
+    countdowns now advance in `WorldStore::advance_hud_text_ticks` (raw
+    client ticks, outside the tick-rate freeze gate; titleTime→0 clears
+    title+subtitle), projected per frame as
+    `HudActionBarText`/`HudTitleText` (styled runs + post-tick remaining
+    ticks + fade windows + partial tick + jukebox `animate_color` flag) and
+    drawn in `collect_hud_draws` through the one styled-text pipeline
+    (`hud_styled_text_pass_geometry` gained a pose-`scale` input; 1.0
+    reproduces the label path bit-for-bit). Vanilla anchors: overlay fade
+    `(int)(t*255/20)` cap 255, gate `alpha > 0`, pos `(guiWidth/2,
+    guiHeight-68)` + `(-w/2, -4)` (Gui.java:308-336); title fade-in
+    `(total-t)*255/fadeIn`, fade-out `t*255/fadeOut`, clamp 0..255, center
+    pose + 4x `(-w/2, -10)` / subtitle 2x `(-w/2, 5)`, `ARGB.white(alpha)`
+    (Gui.java:338-377); rainbow `Mth.hsvToArgb(t/50, 0.7, 0.6, alpha)` with
+    its h-mod-6/f-unwrapped quirk kept (Mth.java:451-497) — hue is
+    remaining-time-driven, so deterministic. 26.1 has no legacy `alpha < 8`
+    discard and no low-alpha force-opaque (`Font.java` alpha passthrough).
+    Boundary: protocol still flattens these components to plain text
+    (`decode_component_summary_from_decoder`), so lines project as single
+    unstyled runs; the accessibility text backdrop
+    (`textWithBackdrop`, option default 0) is skipped; the jukebox
+    now-playing path (`Gui.setNowPlaying`, the only `animate_color=true`
+    producer) is not yet wired — the flag is carried end-to-end. Note
+    `extractSubtitleOverlay` is the sound-captions overlay, not the title
+    subtitle (which draws inside `extractTitle`), and stays deferred.
   - Verified aligned on 2026-07-05: crosshair, hotbar + selection + item
     icons (flat + 3D pass), hearts/food base tiers, experience progress bar,
     the 22-variant container screen family incl. merchant trading UI and

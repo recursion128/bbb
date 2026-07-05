@@ -471,6 +471,8 @@ pub struct Renderer {
     pub(super) hud_food: Option<i32>,
     pub(super) hud_experience_progress_value: Option<f32>,
     pub(super) hud_selected_slot: u8,
+    pub(super) hud_action_bar_text: Option<crate::hud::HudActionBarText>,
+    pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
     pub(super) particles: ParticleRuntimeState,
 }
 
@@ -1352,6 +1354,8 @@ impl Renderer {
             hud_food: None,
             hud_experience_progress_value: None,
             hud_selected_slot: 0,
+            hud_action_bar_text: None,
+            hud_title_text: None,
             particles: ParticleRuntimeState::default(),
         })
     }

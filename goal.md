@@ -259,8 +259,6 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- actionbar + titles + subtitles：world 数据全 ready（`ClientHudState`），
-  只缺 RendererFrame 投影 + HUD 居中文本绘制 + fade timing。
 - boss bars：数据全 ready（`boss_bars()`），需贴图/5 色 progress + notched
   overlay/顶部堆叠/名称文本。
 - 经验等级数字（level 已在 world，未投影）；饥饿 hunger-effect 抖动。
