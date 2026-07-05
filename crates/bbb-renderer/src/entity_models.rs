@@ -4,6 +4,7 @@ mod colored;
 mod dispatch;
 mod geometry;
 mod gpu;
+mod gui_preview;
 mod held_item;
 mod instances;
 mod keyframe;
@@ -41,13 +42,14 @@ use geometry::*;
 #[cfg(test)]
 use glam::{Mat4, Vec3};
 #[cfg(test)]
+pub(crate) use gpu::build_entity_model_texture_atlas;
+#[cfg(test)]
 use gpu::{
     build_dynamic_player_skin_atlas, build_dynamic_player_texture_atlas,
-    build_entity_model_texture_atlas, entity_model_vertex_layout, rgba_offset,
-    sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
-    ENTITY_MODEL_SCROLL_SHADER, ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_CULL_SHADER,
-    ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-    ENTITY_MODEL_VERTEX_ATTRIBUTES,
+    entity_model_vertex_layout, rgba_offset, sanitize_entity_model_instances,
+    ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SCROLL_SHADER,
+    ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_CULL_SHADER, ENTITY_MODEL_TEXTURED_SHADER,
+    ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES, ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
 pub(crate) use gpu::{
     create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
@@ -67,6 +69,9 @@ pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
     EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
 };
+#[cfg(test)]
+pub(crate) use gui_preview::bake_hud_entity_preview_pip_geometry;
+pub(crate) use gui_preview::HudEntityPreviewPipTarget;
 pub use held_item::{
     allay_hand_attach_transform, copper_golem_hand_attach_transform, custom_head_item_transform,
     custom_head_item_transforms, dolphin_carried_item_transform, fox_held_item_transform,

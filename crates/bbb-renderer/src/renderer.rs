@@ -41,6 +41,7 @@ use crate::{
         EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
         EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedDrawRange,
         EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange, FirstPersonPlayerArm,
+        HudEntityPreviewPipTarget,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -449,6 +450,9 @@ pub struct Renderer {
     pub(super) hud_slot_highlight_back: Option<HudSpriteGpu>,
     pub(super) hud_slot_highlight_front: Option<HudSpriteGpu>,
     pub(super) hud_inventory_screen: Option<HudInventoryScreen>,
+    /// One persistent PIP target per sanitized `hud_inventory_screen` entity preview, indexed by
+    /// preview order (vanilla `PictureInPictureRenderer` private color+depth textures).
+    pub(super) hud_entity_preview_pip_targets: Vec<HudEntityPreviewPipTarget>,
     pub(super) hud_experience_background: Option<HudSpriteGpu>,
     pub(super) hud_experience_progress: Option<HudSpriteGpu>,
     pub(super) hud_heart_container: Option<HudSpriteGpu>,
@@ -1322,6 +1326,7 @@ impl Renderer {
             hud_slot_highlight_back: None,
             hud_slot_highlight_front: None,
             hud_inventory_screen: None,
+            hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,
             hud_experience_progress: None,
             hud_heart_container: None,

@@ -54,7 +54,6 @@ pub(crate) enum LightingEntry {
     #[allow(dead_code)]
     ItemsFlat,
     Items3d,
-    #[allow(dead_code)]
     EntityInUi,
 }
 
@@ -340,6 +339,52 @@ impl CameraUniform {
             )
             .to_cols_array_2d(),
             ..Self::identity().with_lighting_entry(LightingEntry::Items3d)
+        }
+    }
+
+    /// The camera for one GUI entity picture-in-picture target (vanilla
+    /// `PictureInPictureRenderer.prepare` + `GuiEntityRenderer`): the private texture's ortho
+    /// projection `setupOrtho(-1000, 1000, width, height, invertY)` (the same y-down GUI pixel ortho
+    /// as [`Self::gui_ortho`]) with the pose-stack chain folded into the view-projection —
+    /// `translate(width/2, height/2, 0)` (`GuiEntityRenderer.getTranslateY` returns `height / 2`)
+    /// `· scale(s, s, -s) · translate(state.translation) · rotate(state.rotation)` — under
+    /// `Lighting.Entry.ENTITY_IN_UI`. bbb draws HUD GUI pixels 1:1 with surface pixels, so the
+    /// vanilla `guiScale` factor in both the texture size and the pose scale is 1 and
+    /// `s == state.scale`. `width`/`height` are the PIP texture size in pixels; `rotation` is a
+    /// `[x, y, z, w]` quaternion (JOML `Quaternionf` order). Vanilla's blit-side vertical UV flip is
+    /// a GL framebuffer-origin artifact; under wgpu (row 0 = top) the rendered texture is already
+    /// GUI-oriented and the blit samples it with identity UVs.
+    pub(crate) fn hud_entity_preview_pip(
+        width: f32,
+        height: f32,
+        scale: f32,
+        translation: [f32; 3],
+        rotation: [f32; 4],
+    ) -> Self {
+        let width = width.max(1.0);
+        let height = height.max(1.0);
+        let projection = Mat4::orthographic_rh(0.0, width, height, 0.0, -1000.0, 1000.0);
+        let rotation = glam::Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
+        let rotation = if rotation.length_squared() > f32::EPSILON {
+            rotation.normalize()
+        } else {
+            glam::Quat::IDENTITY
+        };
+        let model = Mat4::from_translation(Vec3::new(width / 2.0, height / 2.0, 0.0))
+            * Mat4::from_scale(Vec3::new(scale, scale, -scale))
+            * Mat4::from_translation(Vec3::from_array(translation))
+            * Mat4::from_quat(rotation);
+        Self {
+            view_proj: (projection * model).to_cols_array_2d(),
+            projection: projection.to_cols_array_2d(),
+            sky_model_view: Mat4::IDENTITY.to_cols_array_2d(),
+            view_proj_view_offset_z: orthographic_view_offset_z_projection(projection, model)
+                .to_cols_array_2d(),
+            view_proj_view_offset_z_forward: orthographic_view_offset_z_forward_projection(
+                projection, model,
+            )
+            .to_cols_array_2d(),
+            ..Self::identity().with_lighting_entry(LightingEntry::EntityInUi)
         }
     }
 
@@ -857,6 +902,72 @@ mod tests {
 
         assert_eq!(gui, expected);
         assert_ne!(gui, level);
+    }
+
+    #[test]
+    fn hud_entity_preview_pip_folds_vanilla_pip_pose_chain_into_gui_ortho() {
+        // Fixed smithing-screen preview: 40x60 texture (vanilla `SmithingScreen` rect 121..161 x
+        // 20..80 at guiScale 1), scale 25, translation (0, 1, 0), rotation rotX(0.43633232) *
+        // rotZ(PI). Expect exactly `ortho(0, w, h, 0, -1000, 1000) * T(w/2, h/2, 0) * S(s, s, -s)
+        // * T(translation) * R(rotation)` — `PictureInPictureRenderer.prepare` +
+        // `GuiEntityRenderer.renderToTexture`, with `getTranslateY == height / 2`.
+        let rotation = glam::Quat::from_rotation_x(0.43633232)
+            * glam::Quat::from_rotation_z(std::f32::consts::PI);
+        let uniform = CameraUniform::hud_entity_preview_pip(
+            40.0,
+            60.0,
+            25.0,
+            [0.0, 1.0, 0.0],
+            rotation.to_array(),
+        );
+
+        let projection = Mat4::orthographic_rh(0.0, 40.0, 60.0, 0.0, -1000.0, 1000.0);
+        let model = Mat4::from_translation(Vec3::new(20.0, 30.0, 0.0))
+            * Mat4::from_scale(Vec3::new(25.0, 25.0, -25.0))
+            * Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0))
+            * Mat4::from_quat(rotation);
+        assert_mat4_close(uniform.view_proj(), projection * model);
+        assert_mat4_close(uniform.projection(), projection);
+        // The vanilla ortho layering transforms fold the same model chain.
+        assert_mat4_close(
+            uniform.view_proj_view_offset_z(),
+            orthographic_view_offset_z_projection(projection, model),
+        );
+
+        // `GuiEntityRenderer` renders under `Lighting.Entry.ENTITY_IN_UI`, with fog disabled.
+        assert_eq!(
+            uniform.shader_lighting(),
+            CameraUniform::identity()
+                .with_lighting_entry(LightingEntry::EntityInUi)
+                .shader_lighting()
+        );
+        assert_eq!(uniform.fog_environment(), FogEnvironment::disabled());
+
+        // The entity's feet anchor (model origin) projects to the texture center shifted by the
+        // scaled translation: the vanilla pose chain applies `state.translation` before
+        // `state.rotation`, in the y-down scaled GUI space, so +y translation moves the origin
+        // down — y = h/2 + scale * translation.y (the rotZ(PI) flip then draws the y-up model
+        // body upward from that anchor). x stays centered.
+        let clip = uniform.view_proj() * Vec4::new(0.0, 0.0, 0.0, 1.0);
+        let ndc = clip / clip.w;
+        let px = (ndc.x * 0.5 + 0.5) * 40.0;
+        let py = (0.5 - ndc.y * 0.5) * 60.0;
+        assert!((px - 20.0).abs() < 1.0e-3, "origin x pixel, got {px}");
+        assert!((py - 55.0).abs() < 1.0e-3, "origin y pixel, got {py}");
+    }
+
+    #[test]
+    fn hud_entity_preview_pip_normalizes_degenerate_rotation() {
+        let uniform =
+            CameraUniform::hud_entity_preview_pip(40.0, 60.0, 25.0, [0.0, 0.0, 0.0], [0.0; 4]);
+        let expected = CameraUniform::hud_entity_preview_pip(
+            40.0,
+            60.0,
+            25.0,
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        );
+        assert_mat4_close(uniform.view_proj(), expected.view_proj());
     }
 
     #[test]

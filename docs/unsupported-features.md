@@ -377,6 +377,15 @@ When an agent does any of the following, update this file in the same slice:
     Dinnerbone/Grumm upside-down easter egg, sleeping pose, uniform model
     scale, walk-animation limb swing, body-shake rotation, and head-look —
     all implemented end to end.
+  - GUI entity previews (local inventory player, horse/nautilus mount,
+    smithing armor stand) now draw through an actual GPU picture-in-picture
+    path (2026-07-05): a dedicated `entity_preview_pip_passes` frame step
+    renders each sanitized `HudEntityPreview` entity model into a persistent
+    private color+depth PIP target under the vanilla GUI-ortho pose chain and
+    `ENTITY_IN_UI` lighting, and the HUD pass blits the texture in vanilla
+    GUI submission order; headless GPU readback pins the pixels. Preview
+    `item_layers` GPU drawing and the creative inventory tab remain deferred
+    (detail in the per-slice history file).
   - Backend GPU resources stay outside `WorldStore`.
 - Detailed per-slice history: docs/unsupported/renderer-scene-parity.md
 

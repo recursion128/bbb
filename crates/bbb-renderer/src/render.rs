@@ -130,6 +130,7 @@ impl Renderer {
         self.transparency_combine_pass(&mut encoder, &mut stats);
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
+        self.entity_preview_pip_passes(&mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats);
         self.finish_frame(encoder, frame, screenshot, stats)
     }
@@ -1885,6 +1886,45 @@ impl Renderer {
         }
     }
 
+    /// GUI entity picture-in-picture targets (vanilla `GuiRenderer.preparePictureInPicture` →
+    /// `PictureInPictureRenderer.prepare` + `GuiEntityRenderer`): before the GUI draws, each
+    /// sanitized `HudEntityPreview` renders through the entity model pipelines into its own
+    /// persistent color+depth PIP target — cleared per preview, GUI-ortho `hud_entity_preview_pip`
+    /// camera under `ENTITY_IN_UI` lighting, depth fully isolated from the world depth target.
+    /// `collect_hud_draws` then blits each target's color texture into the HUD frame in GUI
+    /// submission order (background, then preview blit, then slot items / overlays), matching
+    /// vanilla `blitTexture`'s `addBlitToCurrentLayer`.
+    fn entity_preview_pip_passes(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let previews = match &self.hud_inventory_screen {
+            Some(screen) if !screen.entity_previews.is_empty() => screen.entity_previews.clone(),
+            _ => {
+                self.hud_entity_preview_pip_targets.clear();
+                return;
+            }
+        };
+        let mut retired = std::mem::take(&mut self.hud_entity_preview_pip_targets);
+        retired.truncate(previews.len());
+        let mut reusable = retired.into_iter();
+        let mut targets = Vec::with_capacity(previews.len());
+        for preview in &previews {
+            let mut target = self.ensure_hud_entity_preview_pip_target(
+                reusable.next(),
+                preview.rect.width,
+                preview.rect.height,
+            );
+            let (draw_calls, pipeline_switches) =
+                self.encode_hud_entity_preview_pip(encoder, &mut target, preview);
+            stats.entity_model_draw_calls += draw_calls;
+            stats.pipeline_switches += pipeline_switches;
+            targets.push(target);
+        }
+        self.hud_entity_preview_pip_targets = targets;
+    }
+
     fn hud_passes(
         &mut self,
         frame: &wgpu::SurfaceTexture,
@@ -2321,6 +2361,27 @@ impl Renderer {
                         pipeline_switches += 1;
                     }
                     pass.set_bind_group(1, &mask.bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
+                // Vanilla `PictureInPictureRenderer.blitTexture`: the preview's private PIP color
+                // texture draws as a GUI-textured quad on the current layer. The PIP pass rendered
+                // the texture earlier this frame (`entity_preview_pip_passes`).
+                crate::hud::HudDrawCommand::EntityPreviewBlit {
+                    target_index,
+                    start,
+                    end,
+                } => {
+                    let Some(target) = self.hud_entity_preview_pip_targets.get(*target_index)
+                    else {
+                        continue;
+                    };
+                    if active_pipeline != Some(HudActivePipeline::Sprite) {
+                        pass.set_pipeline(&self.hud_pipeline);
+                        active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, &target.blit_bind_group, &[]);
                     pass.draw(*start..*end, 0..1);
                     draw_calls += 1;
                 }
@@ -2879,6 +2940,7 @@ mod tests {
         "transparency_combine_pass",
         "transparency_blit_pass",
         "first_person_item_pass",
+        "entity_preview_pip_passes",
         "hud_passes",
         "finish_frame",
     ];

@@ -203,10 +203,6 @@ glint 全家族与 first-person 手持/手臂/use-pose 完成史）。
   glyph quad 原语（现为 axis-aligned `HudRect`）+ obfuscated 逐 tick 随机字形
   替换。unihex/CJK（资产树无 unifont zip）与 bidi 的 defer 判据同见账本
   "Vanilla Font Provider Coverage" 条目。
-- entity preview 实际 GPU PIP drawing：消费已 sanitize 的
-  `HudEntityPreview`（local/mount/smithing 三屏生产者已实时产出），新增
-  隔离 PIP target + GUI-ortho 实体绘制 + blit，登记 FRAME_STEPS step，
-  readback 测试锁定（2026-07-05 预探确认不 blocked）。
 - creative inventory-tab preview：blocked on creative-screen 基建（客户端
   `CreativeModeInventoryScreen` 外壳 + `CreativeModeTabs` 物品目录均缺失；
   玩家预览调用点零成本，随外壳落地折叠）。touchscreen snapback 判
@@ -221,7 +217,9 @@ transform 和 renderer 源码为依据；GUI/world 使用不同 lighting context
 
 狭义 surface closeout 已完成，无未完成项；已完成项与完成标准见
 docs/goal-archive.md#p1-4gui-lighting-surface--entity-in-ui。creative
-preview / GPU PIP 归 P1-3。
+preview 归 P1-3；entity preview 实际 GPU PIP drawing 已于 2026-07-05 完成
+（完成记录归档在 goal-archive P1-4 段 entity-in-UI 小节，preview
+item_layers 的 GPU 绘制仍为后续 entity-in-UI 子项）。
 
 ### P1-5：透明排序、粒子与 Level Events
 

@@ -1601,6 +1601,10 @@
   默认与旧函数一致、非 bold 样式不改宽）。剩余子项：style 输入端 chat
   component 投影、italic-capable 绘制原语、unihex/CJK、bidi（账本 "Vanilla
   Font Provider Coverage" 条目）。
+- [x] entity preview 实际 GPU PIP drawing（2026-07-05）：完成记录随历史归属
+  归档在下方 P1-4 段 entity-in-UI 小节（`entity_preview_pip_passes` step +
+  per-preview 隔离 PIP target + GUI-ortho 实体绘制 + HUD blit + headless
+  readback）。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
@@ -1657,6 +1661,36 @@
     sequence. Tests pin item id/count, foil, full-bright light, no-overlay,
     order, submit_sequence, and display context. Actual GPU PIP item drawing
     remains a later entity-in-UI surface.
+  - [x] entity preview 实际 GPU PIP drawing（P1-3 slice，2026-07-05，完成记录
+    归档于此 P1-4 段）：新增 `entity_preview_pip_passes` frame step（登记
+    `FRAME_STEPS`，位于 `first_person_item_pass` 与 `hud_passes` 之间——对应
+    vanilla `GuiRenderer.prepare` 在 GUI draw 前执行 `preparePictureInPicture`），
+    每个已 sanitize 的 `HudEntityPreview` 渲染进 per-preview 持久 PIP target
+    （私有 color+depth 纹理，尺寸=preview rect（bbb GUI 像素 1:1 surface 像素，
+    vanilla `bounds×guiScale` 之 guiScale=1），仅 bounds 变化时重建
+    （`needsAResize`），逐 preview 清空
+    `clearColorAndDepthTextures(color,0,depth,1.0)`）。实体 mesh 走生产
+    entity-model dispatch/layer 管线在原点烘焙
+    （`bake_hud_entity_preview_pip_geometry` 把 cutout/armor/glint/translucent/
+    dynamic-skin/dynamic-texture 桶拼接进 `FrameDataBuffer` 流 + 逐桶 draw
+    range），用现有 entity model pipelines 绘制；相机
+    `CameraUniform::hud_entity_preview_pip` = vanilla
+    `setupOrtho(-1000,1000,w,h,invertY)` GUI ortho ×
+    `T(w/2,h/2,0)·S(s,s,-s)·T(translation)·R(rotation)`
+    （`GuiEntityRenderer.getTranslateY==height/2`），
+    `Lighting.Entry.ENTITY_IN_UI` 光照、fog 关闭。HUD pass 以新增
+    `HudDrawCommand::EntityPreviewBlit` 在 inventory background 之后、slot
+    高亮/物品之前 blit PIP 纹理（vanilla `blitTexture`→
+    `addBlitToCurrentLayer` 的提交序）；scissor 预览 blit `rect ∩ scissor`
+    并采样对应子 UV，wgpu row-0-top 使 vanilla `v0=1,v1=0` GL 翻转为恒等。
+    测试：PIP 相机矩阵链确定性（camera.rs）、桶拼接/index 重基/armor+glint
+    路由（gui_preview.rs）、隔离 clear 与共享深度零引用 source-pin、NEAREST
+    blit 采样 + resize-only 重建 pin、blit UV 子矩形（hud.rs）、FRAME_STEPS
+    顺序自动断言、端到端 headless GPU readback（llvmpipe：blit rect 内实体
+    像素命中、PIP 透明像素保留 HUD 背景、rect 外背景不受影响）。剩余：
+    preview `item_layers`（仅含 item id 元数据，GPU 绘制需 native 侧烘焙
+    item quad 交接）、override-camera orientation 消费（当前 preview 实体无
+    billboard 特性受其影响）、PIP glint 滚动时间、creative inventory tab。
 - screen integration：
   - [x] inventory local-player entity preview call point：
     native local inventory screen now emits a `HudEntityPreview` for the logged-in

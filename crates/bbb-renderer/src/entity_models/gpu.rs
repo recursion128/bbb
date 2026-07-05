@@ -64,6 +64,16 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     pub(crate) layout: EntityModelTextureAtlasLayout,
 }
 
+impl EntityModelTextureAtlasGpu {
+    /// The atlas texture view + sampler, for bind groups that pair the atlas with a camera other
+    /// than the world camera (the GUI entity PIP targets).
+    pub(in crate::entity_models) fn view_and_sampler(
+        &self,
+    ) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self._view, &self._sampler)
+    }
+}
+
 pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
@@ -72,12 +82,28 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
 }
 
+impl EntityDynamicPlayerSkinAtlasGpu {
+    pub(in crate::entity_models) fn view_and_sampler(
+        &self,
+    ) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self._view, &self._sampler)
+    }
+}
+
 pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
+}
+
+impl EntityDynamicPlayerTextureAtlasGpu {
+    pub(in crate::entity_models) fn view_and_sampler(
+        &self,
+    ) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self._view, &self._sampler)
+    }
 }
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
@@ -2811,7 +2837,7 @@ pub(super) fn build_dynamic_player_texture_atlas(
     ))
 }
 
-pub(super) fn build_entity_model_texture_atlas(
+pub(crate) fn build_entity_model_texture_atlas(
     images: &[EntityModelTextureImage],
 ) -> Result<(EntityModelTextureAtlasLayout, Vec<u8>)> {
     if images.is_empty() {

@@ -913,10 +913,47 @@
     `ItemInHandLayer` slot and `ItemDisplayContext.HEAD` for the
     `CustomHeadLayer` slot, with full-bright light, no-overlay, foil, order,
     and submit_sequence pinned in tests. This closes the narrow P1-4 GUI
-    lighting / entity-in-UI render-plan surface. Actual GPU PIP drawing for
-    those item layers, creative inventory-tab state, and broader layer-order
-    drawing remain subsequent visual / screen-state parity work rather than
-    reopening the narrow lighting surface.
+    lighting / entity-in-UI render-plan surface.
+    Actual GPU PIP drawing for the preview entity model is DONE (2026-07-05):
+    a new `entity_preview_pip_passes` frame step (registered in `FRAME_STEPS`
+    between `first_person_item_pass` and `hud_passes`, mirroring vanilla
+    `GuiRenderer.prepare` → `preparePictureInPicture` running before GUI
+    draws) renders each sanitized `HudEntityPreview` into a persistent
+    per-preview PIP target — private color + depth textures sized to the
+    preview rect (bbb GUI pixels are 1:1 surface pixels, so vanilla's
+    `bounds × guiScale` is `bounds × 1`), recreated only on bounds resize
+    (vanilla `needsAResize`) and cleared per preview
+    (`clearColorAndDepthTextures(color, 0, depth, 1.0)`). The preview's
+    `EntityModelInstance` is baked at the origin through the production
+    entity-model dispatch/layer mesh pipeline
+    (`bake_hud_entity_preview_pip_geometry` concatenates the cutout / armor /
+    glint / translucent / dynamic-skin / dynamic-texture buckets into
+    `FrameDataBuffer` streams with per-bucket draw ranges) and drawn with the
+    existing entity model pipelines under a
+    `CameraUniform::hud_entity_preview_pip` camera — vanilla
+    `setupOrtho(-1000, 1000, w, h, invertY)` GUI ortho times the pose chain
+    `T(w/2, h/2, 0) · S(s, s, -s) · T(translation) · R(rotation)`
+    (`GuiEntityRenderer.getTranslateY == height / 2`) — with
+    `Lighting.Entry.ENTITY_IN_UI` shader lighting, fog disabled, and the
+    full-bright light coords sampling the shared lightmap. The HUD pass then
+    blits each PIP color texture through the HUD sprite pipeline as a
+    `HudDrawCommand::EntityPreviewBlit` submitted right after the inventory
+    background layers (vanilla `blitTexture` → `addBlitToCurrentLayer` in
+    `renderBg` submission order, below slot highlights / items / overlays);
+    scissored previews blit `rect ∩ scissor` with the matching texture
+    sub-UVs, and wgpu's row-0-top origin makes vanilla's `v0=1, v1=0` GL
+    flip an identity. Tests pin the PIP camera matrix chain, bucket
+    concatenation/rebasing, isolated per-preview clears (no shared world
+    depth reference), NEAREST blit sampling with resize-only texture
+    recreation, blit UV sub-rects, and an end-to-end headless GPU readback
+    (llvmpipe) asserting entity pixels inside the blit rect, preserved HUD
+    background for transparent PIP pixels, and untouched pixels outside the
+    rect. Remaining entity-in-UI follow-ups: GPU drawing for the preview's
+    `item_layers` metadata (hand/head item models need a native-side baked
+    item-quad handoff — the `HudEntityPreviewItemLayer` plan carries ids
+    only), per-preview override-camera orientation consumption (affects only
+    billboard-style features absent from the current preview entities),
+    PIP-camera glint scroll animation time, and creative inventory-tab state.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

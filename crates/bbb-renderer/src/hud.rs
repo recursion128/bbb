@@ -366,9 +366,11 @@ pub struct HudEntityPreviewItemLayer {
 ///
 /// `GuiGraphicsExtractor.entity` submits a `GuiEntityRenderState`, forces the entity render-state light
 /// to `LightCoordsUtil.FULL_BRIGHT`, and `GuiEntityRenderer` renders it through an isolated
-/// color+depth PIP target under `Lighting.Entry.ENTITY_IN_UI`. The native screen layer can fill this
-/// structure before the GPU entity-in-UI draw path exists; sanitizer keeps the vanilla lighting, bounds,
-/// scissor, transform, and depth-isolation contract explicit.
+/// color+depth PIP target under `Lighting.Entry.ENTITY_IN_UI`. The sanitizer keeps the vanilla
+/// lighting, bounds, scissor, transform, and depth-isolation contract explicit; the
+/// `entity_preview_pip_passes` frame step renders each sanitized preview into its persistent PIP
+/// target (`entity_models/gui_preview.rs`) and `collect_hud_draws` blits it in GUI submission
+/// order. `item_layers` stays render-plan metadata: hand/head item models are not GPU-drawn yet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudEntityPreview {
     pub entity: EntityModelInstance,
@@ -460,6 +462,15 @@ pub(super) enum HudDrawCommand<'a> {
     },
     ItemGlint {
         mask: &'a HudSpriteGpu,
+        start: u32,
+        end: u32,
+    },
+    /// Blit of an entity preview's private PIP color texture into the HUD frame (vanilla
+    /// `PictureInPictureRenderer.blitTexture` → `BlitRenderState` on the current GUI layer).
+    /// Indexes `Renderer::hud_entity_preview_pip_targets` (same order as the sanitized
+    /// `entity_previews`), which `entity_preview_pip_passes` filled earlier in the frame.
+    EntityPreviewBlit {
+        target_index: usize,
         start: u32,
         end: u32,
     },
@@ -1888,6 +1899,49 @@ impl Renderer {
                 }
             }
 
+            // Vanilla screens submit the entity preview right after the background blit
+            // (`InventoryScreen.renderBg` / `SmithingScreen.renderBg`), and
+            // `PictureInPictureRenderer.blitTexture` adds the PIP color texture to the current GUI
+            // layer — above the background, below slot highlights / items / overlays. A scissored
+            // preview blits only `rect ∩ scissor`, sampling the matching texture sub-rect (vanilla
+            // scissors the full-rect blit; for an axis-aligned scissor the two are equivalent).
+            // Under wgpu the PIP texture is already GUI-oriented (row 0 = top), so the UVs are
+            // identity fractions of the rect — vanilla's `v0=1, v1=0` flip is a GL
+            // framebuffer-origin artifact.
+            for (target_index, preview) in screen.entity_previews.iter().enumerate() {
+                if self
+                    .hud_entity_preview_pip_targets
+                    .get(target_index)
+                    .is_none()
+                {
+                    continue;
+                }
+                let Some(visible) = preview.visible_bounds() else {
+                    continue;
+                };
+                let uv = hud_entity_preview_blit_uv(preview.rect, visible);
+                let start = vertices.len() as u32;
+                vertices.extend_from_slice(&hud_quad_vertices(
+                    surface_size,
+                    inventory_background_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        visible.x,
+                        visible.y,
+                        visible.width,
+                        visible.height,
+                    ),
+                    uv,
+                    [1.0, 1.0, 1.0, 1.0],
+                ));
+                commands.push(HudDrawCommand::EntityPreviewBlit {
+                    target_index,
+                    start,
+                    end: vertices.len() as u32,
+                });
+            }
+
             let hovered_slot = screen
                 .hovered_slot_id
                 .and_then(|slot_id| screen.slots.iter().find(|slot| slot.slot_id == slot_id));
@@ -2911,6 +2965,30 @@ fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
     model.lighting == GuiItemLightingEntry::Items3d && !model.quads.is_empty()
 }
 
+/// The PIP-texture sub-rect (as `0..1` UV fractions of the preview rect) a scissored blit
+/// samples: `visible == rect ∩ scissor` maps to the matching texture region, identity UVs when
+/// no scissor applies. Vanilla scissors the full-rect blit instead; for an axis-aligned scissor
+/// the two are pixel-equivalent. wgpu's row-0-top texture origin means the PIP render is already
+/// GUI-oriented — vanilla's `v0=1, v1=0` vertical flip is a GL framebuffer-origin artifact and
+/// has no bbb counterpart.
+fn hud_entity_preview_blit_uv(
+    rect: HudEntityPreviewRect,
+    visible: HudEntityPreviewRect,
+) -> HudUvRect {
+    let width = rect.width.max(1) as f32;
+    let height = rect.height.max(1) as f32;
+    HudUvRect {
+        min: [
+            (visible.x - rect.x) as f32 / width,
+            (visible.y - rect.y) as f32 / height,
+        ],
+        max: [
+            (visible.right() - i64::from(rect.x)) as f32 / width,
+            (visible.bottom() - i64::from(rect.y)) as f32 / height,
+        ],
+    }
+}
+
 fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntityPreview> {
     if preview.lighting != GuiItemLightingEntry::EntityInUi || !preview.depth_isolated {
         return None;
@@ -2954,7 +3032,13 @@ fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntit
 }
 
 fn sanitize_hud_entity_preview_rect(rect: HudEntityPreviewRect) -> Option<HudEntityPreviewRect> {
-    (rect.width > 0 && rect.height > 0).then_some(rect)
+    // Preview bounds live inside the (512-clamped) inventory screen; the clamp also bounds the
+    // per-preview PIP color/depth texture allocation.
+    (rect.width > 0 && rect.height > 0).then_some(HudEntityPreviewRect {
+        width: rect.width.min(512),
+        height: rect.height.min(512),
+        ..rect
+    })
 }
 
 fn sanitize_hud_inventory_text_label(
@@ -4007,6 +4091,509 @@ mod tests {
                 cooldown_progress: Some(1.0),
             }
         );
+    }
+
+    #[test]
+    fn hud_entity_preview_blit_submits_after_background_and_before_slot_content() {
+        // Vanilla submission order: `renderBg` blits the background, then the entity preview PIP
+        // (`addBlitToCurrentLayer`), then slot highlights / items draw above. `collect_hud_draws`
+        // must push the preview blit between the background layers and the hovered-slot lookup.
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let background = collect_source
+            .find("for layer in &screen.background_layers")
+            .expect("background layers draw first");
+        let blit = collect_source
+            .find("HudDrawCommand::EntityPreviewBlit")
+            .expect("preview blit command is pushed");
+        let hovered = collect_source
+            .find("let hovered_slot = screen")
+            .expect("hovered slot content follows");
+        assert!(
+            background < blit && blit < hovered,
+            "preview blit submits after backgrounds and before slot content"
+        );
+    }
+
+    #[test]
+    fn hud_entity_preview_blit_uv_is_identity_without_scissor() {
+        let rect = HudEntityPreviewRect {
+            x: 26,
+            y: 8,
+            width: 49,
+            height: 70,
+        };
+        assert_eq!(
+            hud_entity_preview_blit_uv(rect, rect),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }
+        );
+    }
+
+    #[test]
+    fn hud_entity_preview_blit_uv_samples_scissored_sub_rect() {
+        // rect 26..75 x 8..78 (49x70), visible sub-rect 30..40 x 20..32: the blit samples the
+        // matching PIP texture fractions, with no vertical flip (wgpu row 0 is the texture top).
+        let rect = HudEntityPreviewRect {
+            x: 26,
+            y: 8,
+            width: 49,
+            height: 70,
+        };
+        let visible = HudEntityPreviewRect {
+            x: 30,
+            y: 20,
+            width: 10,
+            height: 12,
+        };
+        let uv = hud_entity_preview_blit_uv(rect, visible);
+        assert_eq!(uv.min, [4.0 / 49.0, 12.0 / 70.0]);
+        assert_eq!(uv.max, [14.0 / 49.0, 24.0 / 70.0]);
+    }
+
+    #[test]
+    fn sanitize_hud_entity_preview_rect_clamps_texture_dimensions() {
+        assert_eq!(
+            sanitize_hud_entity_preview_rect(HudEntityPreviewRect {
+                x: 4,
+                y: 6,
+                width: 4096,
+                height: 9999,
+            }),
+            Some(HudEntityPreviewRect {
+                x: 4,
+                y: 6,
+                width: 512,
+                height: 512,
+            })
+        );
+    }
+
+    /// End-to-end GPU proof of the entity-preview PIP consumer: bakes the vanilla smithing-screen
+    /// armor-stand preview through the production `bake_hud_entity_preview_pip_geometry` path,
+    /// renders it into an isolated 40x60 PIP color+depth target under the real
+    /// [`CameraUniform::hud_entity_preview_pip`] camera (private depth cleared to 1.0 — the
+    /// `depth_isolated` contract: no world depth is attached), then blits the PIP texture into a
+    /// HUD frame through the real HUD sprite pipeline at the preview's screen rect. Asserts the
+    /// projected first-face anchor shows the entity texture, the in-rect empty corner keeps the
+    /// HUD background (transparent PIP pixels do not overwrite the frame), and pixels outside the
+    /// rect stay background. Skips (no assertion) when no GPU adapter is available.
+    #[test]
+    fn hud_entity_preview_pip_renders_and_blits_isolated_entity_pixels() {
+        use wgpu::util::DeviceExt;
+
+        use crate::camera::{CameraUniform, LightmapEnvironment};
+        use crate::entity_models::{
+            armor_stand_entity_texture_refs, bake_hud_entity_preview_pip_geometry,
+            build_entity_model_texture_atlas, create_entity_model_textured_pipeline,
+            EntityModelTextureImage, EntityModelTextureRef, DEFAULT_ARMOR_STAND_MODEL_POSE,
+        };
+        use crate::gpu::{
+            create_camera_buffer, create_depth_target, create_terrain_bind_group_layout,
+        };
+        use crate::lightmap::{
+            create_lightmap_bind_group_layout, create_lightmap_gpu,
+            create_lightmap_sample_bind_group_layout,
+        };
+        use glam::{Quat, Vec4};
+
+        const FRAME_WIDTH: u32 = 320;
+        const FRAME_HEIGHT: u32 = 240;
+        const PIP_WIDTH: u32 = 40;
+        const PIP_HEIGHT: u32 = 60;
+        // Non-sRGB frame so readback bytes are the shader's output verbatim; `320 * 4 = 1280` is a
+        // multiple of 256, so the copy needs no row padding.
+        const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let Some(adapter) =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::LowPower,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            }))
+        else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-hud-entity-preview-pip-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        )) else {
+            return;
+        };
+
+        // Entity atlas with the armor-stand texture filled opaque green, so every textured face
+        // samples an unambiguous non-background colour.
+        let green = |texture: EntityModelTextureRef| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            let mut rgba = vec![0u8; len];
+            for pixel in rgba.chunks_exact_mut(4) {
+                pixel.copy_from_slice(&[0, 255, 0, 255]);
+            }
+            EntityModelTextureImage::new(texture, rgba)
+        };
+        let images: Vec<EntityModelTextureImage> = armor_stand_entity_texture_refs()
+            .iter()
+            .copied()
+            .map(green)
+            .collect();
+        let (atlas_layout, atlas_rgba) =
+            build_entity_model_texture_atlas(&images).expect("entity atlas");
+
+        // The vanilla smithing-screen preview: armor stand at the origin, bodyRot 210, head pitch
+        // 25, rect 121..161 x 20..80 (40x60), scale 25, translation (0, 1, 0), rotation
+        // rotX(0.43633232) * rotZ(PI) — the exact `hud_smithing_entity_preview` producer values.
+        let entity = EntityModelInstance::armor_stand(
+            -1,
+            [0.0, 0.0, 0.0],
+            210.0,
+            false,
+            true,
+            false,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )
+        .with_head_look(0.0, 25.0);
+        let rotation =
+            Quat::from_rotation_x(0.43633232) * Quat::from_rotation_z(std::f32::consts::PI);
+        let geometry = bake_hud_entity_preview_pip_geometry(&entity, &atlas_layout, None, None);
+        assert!(
+            !geometry.textured_indices.is_empty(),
+            "armor stand preview bakes textured PIP geometry"
+        );
+        assert!(
+            !geometry.textured_draws.is_empty(),
+            "armor stand preview records PIP draw ranges"
+        );
+        let camera_uniform = CameraUniform::hud_entity_preview_pip(
+            PIP_WIDTH as f32,
+            PIP_HEIGHT as f32,
+            25.0,
+            [0.0, 1.0, 0.0],
+            rotation.to_array(),
+        );
+
+        // Anchor: the first textured face's model-space center, projected through the same PIP
+        // view-projection the shader uses — its own (green) face covers that pixel no matter which
+        // equally-green part wins the depth test.
+        let face_center = geometry
+            .first_textured_face_center()
+            .expect("baked geometry has a first face");
+        let clip = camera_uniform.view_proj() * Vec4::from((face_center, 1.0));
+        let ndc = clip.truncate() / clip.w;
+        let anchor_px = ((ndc.x * 0.5 + 0.5) * PIP_WIDTH as f32).round() as u32;
+        let anchor_py = ((0.5 - ndc.y * 0.5) * PIP_HEIGHT as f32).round() as u32;
+        assert!(
+            anchor_px < PIP_WIDTH && anchor_py < PIP_HEIGHT,
+            "anchor projects into the PIP texture, got ({anchor_px},{anchor_py})"
+        );
+
+        // Entity atlas + PIP camera bind group (terrain layout: camera @0, texture @1, sampler @2).
+        let bind_group_layout = create_terrain_bind_group_layout(&device);
+        let camera_buffer = create_camera_buffer(&device);
+        queue.write_buffer(&camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
+        let atlas_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("pip-test-atlas"),
+            size: wgpu::Extent3d {
+                width: atlas_layout.width,
+                height: atlas_layout.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &atlas_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &atlas_rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(atlas_layout.width * 4),
+                rows_per_image: Some(atlas_layout.height),
+            },
+            wgpu::Extent3d {
+                width: atlas_layout.width,
+                height: atlas_layout.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let atlas_view = atlas_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let atlas_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("pip-test-atlas-sampler"),
+            ..Default::default()
+        });
+        let entity_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pip-test-entity-bind-group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&atlas_sampler),
+                },
+            ],
+        });
+        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+        let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
+        let lightmap = create_lightmap_gpu(
+            &device,
+            &queue,
+            &lightmap_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+            LightmapEnvironment::default(),
+        );
+        // The armor stand's buckets are all cutout-family; one no-cull cutout pipeline covers the
+        // whole concatenated index stream for the sentinel.
+        let entity_pipeline = create_entity_model_textured_pipeline(
+            &device,
+            COLOR_FORMAT,
+            &bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let entity_vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("pip-test-entity-vertices"),
+            contents: geometry.textured_vertex_bytes(),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let entity_indices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("pip-test-entity-indices"),
+            contents: bytemuck::cast_slice(&geometry.textured_indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        // Isolated PIP target: private color texture (sampled by the blit) + private depth.
+        let pip_color = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("pip-test-color"),
+            size: wgpu::Extent3d {
+                width: PIP_WIDTH,
+                height: PIP_HEIGHT,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: COLOR_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let pip_color_view = pip_color.create_view(&wgpu::TextureViewDescriptor::default());
+        let pip_depth = create_depth_target(&device, PIP_WIDTH, PIP_HEIGHT);
+
+        // HUD frame + blit resources: the production HUD sprite pipeline and vertex path.
+        let hud_bind_group_layout = create_hud_bind_group_layout(&device);
+        let hud_pipeline = create_hud_pipeline(&device, COLOR_FORMAT, &hud_bind_group_layout);
+        let blit_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("pip-test-blit-sampler"),
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        let blit_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pip-test-blit-bind-group"),
+            layout: &hud_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&pip_color_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&blit_sampler),
+                },
+            ],
+        });
+        // The preview blit rect at the smithing screen position, through the production screen
+        // layout mapping (screen 176x166 centered; preview rect origin 121,20).
+        let surface_size = PhysicalSize::new(FRAME_WIDTH, FRAME_HEIGHT);
+        let blit_rect =
+            inventory_background_hud_rect(surface_size, 176, 166, 121, 20, PIP_WIDTH, PIP_HEIGHT);
+        let rect = HudEntityPreviewRect {
+            x: 121,
+            y: 20,
+            width: PIP_WIDTH,
+            height: PIP_HEIGHT,
+        };
+        let blit_vertices_data = hud_quad_vertices(
+            surface_size,
+            blit_rect,
+            hud_entity_preview_blit_uv(rect, rect),
+            [1.0, 1.0, 1.0, 1.0],
+        );
+        let blit_vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("pip-test-blit-vertices"),
+            contents: bytemuck::cast_slice(&blit_vertices_data),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let frame_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("pip-test-frame"),
+            size: wgpu::Extent3d {
+                width: FRAME_WIDTH,
+                height: FRAME_HEIGHT,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: COLOR_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let frame_view = frame_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let bytes_per_row = FRAME_WIDTH * 4;
+        let readback = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("pip-test-readback"),
+            size: (bytes_per_row * FRAME_HEIGHT) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        // PIP pass: isolated color cleared to transparent + private depth cleared to 1.0 (the
+        // depth_isolated contract — the frame's depth is never attached here).
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("pip-test-pip-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &pip_color_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &pip_depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&entity_pipeline);
+            pass.set_bind_group(0, &entity_bind_group, &[]);
+            pass.set_bind_group(1, &lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, entity_vertices.slice(..));
+            pass.set_index_buffer(entity_indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..geometry.textured_indices.len() as u32, 0, 0..1);
+        }
+        // HUD pass: blue background, then the PIP blit quad through the HUD sprite pipeline.
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("pip-test-hud-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &frame_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 1.0,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&hud_pipeline);
+            pass.set_bind_group(0, &blit_bind_group, &[]);
+            pass.set_vertex_buffer(0, blit_vertices.slice(..));
+            pass.draw(0..blit_vertices_data.len() as u32, 0..1);
+        }
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &frame_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &readback,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: Some(FRAME_HEIGHT),
+                },
+            },
+            wgpu::Extent3d {
+                width: FRAME_WIDTH,
+                height: FRAME_HEIGHT,
+                depth_or_array_layers: 1,
+            },
+        );
+        queue.submit(std::iter::once(encoder.finish()));
+
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let pixel = |x: u32, y: u32| -> [u8; 4] {
+            let o = (y * bytes_per_row + x * 4) as usize;
+            [data[o], data[o + 1], data[o + 2], data[o + 3]]
+        };
+        // The screen origin is ((320-176)/2, (240-166)/2) = (72, 37); the preview rect lands at
+        // (193, 57)..(233, 117) in frame pixels.
+        let rect_origin_x = 72 + 121;
+        let rect_origin_y = 37 + 20;
+        let anchor_pixel = pixel(rect_origin_x + anchor_px, rect_origin_y + anchor_py);
+        let in_rect_empty_pixel = pixel(rect_origin_x + 1, rect_origin_y + 1);
+        let outside_pixel = pixel(0, 0);
+
+        // The projected anchor shows the green entity texture through the blit.
+        assert!(
+            anchor_pixel[1] > 64
+                && anchor_pixel[1] > anchor_pixel[2]
+                && anchor_pixel[0] < anchor_pixel[1],
+            "preview anchor should show the green entity, got {anchor_pixel:?}"
+        );
+        // Transparent PIP pixels inside the rect keep the HUD background (the blit alpha-blends
+        // the isolated texture; it does not stamp the whole rect).
+        assert!(
+            in_rect_empty_pixel[2] > 128 && in_rect_empty_pixel[1] < 64,
+            "empty preview pixel should keep the HUD background, got {in_rect_empty_pixel:?}"
+        );
+        // Pixels outside the preview rect stay background.
+        assert!(
+            outside_pixel[2] > 128 && outside_pixel[1] < 64,
+            "outside pixel should stay background, got {outside_pixel:?}"
+        );
+
+        drop(data);
+        readback.unmap();
     }
 
     fn hud_entity_preview_for_test() -> HudEntityPreview {
