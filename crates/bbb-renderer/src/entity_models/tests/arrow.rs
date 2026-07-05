@@ -183,6 +183,74 @@ fn arrow_textured_render_matches_vanilla_renderer() {
 }
 
 #[test]
+fn arrow_pickup_particle_mesh_uses_item_pickup_group_submission() {
+    // The item-pickup carried arrow (vanilla `ItemPickupParticleGroup.State.submit`
+    // -> `ArrowRenderer`): baked like the elder-guardian particle model with the
+    // pass forced to `EntityTranslucent` for the blended particles target, the
+    // world-space interpolated pickup transform passed through, and the frozen
+    // pickup light applied per-vertex. The texture keeps the vanilla
+    // normal / tipped / spectral selection.
+    use crate::ParticleItemPickupProjectileKind;
+
+    let images: Vec<EntityModelTextureImage> = arrow_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for (kind, texture_ref) in [
+        (ParticleItemPickupProjectileKind::Arrow, ARROW_TEXTURE_REF),
+        (
+            ParticleItemPickupProjectileKind::TippedArrow,
+            ARROW_TIPPED_TEXTURE_REF,
+        ),
+        (
+            ParticleItemPickupProjectileKind::SpectralArrow,
+            ARROW_SPECTRAL_TEXTURE_REF,
+        ),
+    ] {
+        let transform =
+            Mat4::from_translation(Vec3::new(1.0, 65.0, -2.0)) * Mat4::from_rotation_y(0.5);
+        let instance = ProjectilePickupParticleRenderInstance {
+            transform,
+            kind,
+            light: [0.4, 0.8],
+        };
+
+        let meshes = projectile_pickup_particle_textured_meshes(&[instance], &atlas);
+
+        assert!(meshes.cutout.vertices.is_empty());
+        assert!(meshes.cutout_cull.vertices.is_empty());
+        assert!(
+            !meshes.translucent.vertices.is_empty(),
+            "{kind:?} emits textured translucent geometry"
+        );
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::EntityTranslucent
+        );
+        assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+        assert_eq!(submit.texture, texture_ref);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, transform);
+        assert_eq!(submit.light, [0.4, 0.8]);
+        assert_eq!(submit.overlay, ENTITY_VERTEX_NO_OVERLAY);
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert!(meshes.translucent.vertices.iter().all(|vertex| {
+            vertex.tint == submit.tint
+                && vertex.light == [0.4, 0.8]
+                && vertex.overlay == ENTITY_VERTEX_NO_OVERLAY
+        }));
+    }
+}
+
+#[test]
 fn glowing_arrow_outline_copy_uses_source_cull_bucket() {
     // Vanilla `RenderType.outline()` forwards `state.pipeline.isCull()`, so an
     // `entityCutoutCull` arrow outline derives `OUTLINE_CULL`.

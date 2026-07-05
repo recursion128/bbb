@@ -183,6 +183,8 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
             y: 0.2,
             z: -0.3,
         },
+        item_y_rot: 20.0,
+        item_x_rot: -10.0,
         item_age_ticks: 9.5,
         item_light: TerrainLight { block: 6, sky: 12 },
         target_entity_id: 20,
@@ -198,6 +200,7 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
             component_patch: Default::default(),
         }),
         experience_orb_icon: None,
+        projectile_model: None,
     };
 
     let batch = resolver.take_item_entity_pickup_particle_batch(&state);
@@ -229,6 +232,7 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
         Some([6.0 / 15.0, 12.0 / 15.0])
     );
     assert_eq!(command.option_item_pickup_experience_orb_icon, None);
+    assert_eq!(command.option_item_pickup_projectile_model, None);
     assert_eq!(
         command.option_item,
         Some(ParticleItemOptionState {
@@ -255,6 +259,8 @@ fn take_item_entity_pickup_batch_preserves_experience_orb_icon() {
             y: 0.1,
             z: 0.0,
         },
+        item_y_rot: 0.0,
+        item_x_rot: 0.0,
         item_age_ticks: 4.5,
         item_light: TerrainLight { block: 15, sky: 9 },
         target_entity_id: 20,
@@ -266,6 +272,7 @@ fn take_item_entity_pickup_batch_preserves_experience_orb_icon() {
         target_eye_height: 1.62,
         item_stack: None,
         experience_orb_icon: Some(8),
+        projectile_model: None,
     };
 
     let batch = resolver.take_item_entity_pickup_particle_batch(&state);
@@ -276,6 +283,92 @@ fn take_item_entity_pickup_batch_preserves_experience_orb_icon() {
     assert_eq!(command.option_item_pickup_age_ticks, Some(4.5));
     assert_eq!(command.option_item_pickup_light, Some([1.0, 9.0 / 15.0]));
     assert_eq!(command.option_item_pickup_experience_orb_icon, Some(8));
+    assert_eq!(command.option_item_pickup_projectile_model, None);
+}
+
+#[test]
+fn take_item_entity_pickup_batch_projects_projectile_models() {
+    // Vanilla `ItemPickupParticle` extracts the picked entity's render state
+    // (`extractEntity(entity, 1.0F)`); `ArrowRenderer` / `ThrownTridentRenderer`
+    // consume its `yRot`/`xRot`, so the carried-model command field bundles the
+    // kind with the extracted rotations.
+    let mut resolver = test_resolver(0);
+    let base_state = TakeItemEntityPickupParticleState {
+        item_entity_id: 12,
+        item_entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        item_position: bbb_world::EntityVec3 {
+            x: 2.0,
+            y: 65.0,
+            z: -3.0,
+        },
+        item_delta_movement: bbb_world::EntityVec3 {
+            x: 0.0,
+            y: 0.1,
+            z: 0.0,
+        },
+        item_y_rot: 35.0,
+        item_x_rot: -12.0,
+        item_age_ticks: 4.5,
+        item_light: TerrainLight { block: 6, sky: 12 },
+        target_entity_id: 20,
+        target_position: bbb_world::EntityVec3 {
+            x: 4.0,
+            y: 70.0,
+            z: 8.0,
+        },
+        target_eye_height: 1.62,
+        item_stack: None,
+        experience_orb_icon: None,
+        projectile_model: Some(TakeItemEntityPickupProjectileModel::Trident { foil: true }),
+    };
+
+    let batch = resolver.take_item_entity_pickup_particle_batch(&base_state);
+    let command = &batch.commands[0];
+    assert_eq!(command.option_item, None);
+    assert_eq!(command.option_item_pickup_experience_orb_icon, None);
+    assert_eq!(
+        command.option_item_pickup_projectile_model,
+        Some(ParticleItemPickupProjectileModel {
+            kind: ParticleItemPickupProjectileKind::Trident { foil: true },
+            y_rot: 35.0,
+            x_rot: -12.0,
+        })
+    );
+
+    for (projectile_model, expected_kind) in [
+        (
+            TakeItemEntityPickupProjectileModel::Arrow { tipped: false },
+            ParticleItemPickupProjectileKind::Arrow,
+        ),
+        (
+            TakeItemEntityPickupProjectileModel::Arrow { tipped: true },
+            ParticleItemPickupProjectileKind::TippedArrow,
+        ),
+        (
+            TakeItemEntityPickupProjectileModel::SpectralArrow,
+            ParticleItemPickupProjectileKind::SpectralArrow,
+        ),
+        (
+            TakeItemEntityPickupProjectileModel::Trident { foil: false },
+            ParticleItemPickupProjectileKind::Trident { foil: false },
+        ),
+    ] {
+        let state = TakeItemEntityPickupParticleState {
+            projectile_model: Some(projectile_model),
+            ..base_state.clone()
+        };
+        let batch = resolver.take_item_entity_pickup_particle_batch(&state);
+        let command = &batch.commands[0];
+        assert_eq!(
+            command.option_item_pickup_projectile_model,
+            Some(ParticleItemPickupProjectileModel {
+                kind: expected_kind,
+                y_rot: 35.0,
+                x_rot: -12.0,
+            }),
+            "kind {projectile_model:?}"
+        );
+    }
 }
 
 #[test]

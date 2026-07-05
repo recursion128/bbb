@@ -15,6 +15,6 @@ pub use crate::entities::{
     OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PolarBearStandingAnimationState,
     PrimedTntSmokeParticleState, ProjectilePowerUpdateState, RavagerRoarParticleState,
     RavagerStunParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState, WolfArmorCrackiness,
+    TakeItemEntityPickupProjectileModel, ThrownEggHitParticleState, VehicleMoveReport,
+    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WolfArmorCrackiness,
 };

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     entity_models::{
         ElderGuardianParticleRenderInstance, ExperienceOrbPickupParticleRenderInstance,
+        ProjectilePickupParticleRenderInstance,
     },
     Renderer,
 };
@@ -105,11 +106,51 @@ pub struct ParticleSpawnCommand {
     #[serde(default)]
     pub option_item_pickup_component_patch: Option<Vec<u8>>,
     #[serde(default)]
+    pub option_item_pickup_projectile_model: Option<ParticleItemPickupProjectileModel>,
+    #[serde(default)]
     pub option_firework_trail: bool,
     #[serde(default)]
     pub option_firework_twinkle: bool,
     #[serde(default)]
     pub option_firework_half_lifetime_age: bool,
+}
+
+/// The carried projectile model for a `minecraft:item_pickup` particle whose
+/// picked-up source entity is an arrow / spectral arrow / thrown trident.
+/// Vanilla `ItemPickupParticleGroup.State.submit` renders the extracted
+/// `EntityRenderState` through the entity render dispatcher;
+/// `ArrowRenderer.submit` / `ThrownTridentRenderer.submit` orient the
+/// projectile model with the entity's `yRot`/`xRot`. Projected by native from
+/// the world pickup state (the renderer cannot name world/protocol types);
+/// item stacks and experience orbs use the dedicated option fields instead.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ParticleItemPickupProjectileModel {
+    pub kind: ParticleItemPickupProjectileKind,
+    pub y_rot: f32,
+    pub x_rot: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ParticleItemPickupProjectileKind {
+    /// Plain `arrow.png` (vanilla `TippableArrowRenderer`, `getColor() <= 0`).
+    Arrow,
+    /// `arrow_tipped.png` (vanilla `TippableArrowRenderer.isTipped`).
+    TippedArrow,
+    /// `arrow_spectral.png` (vanilla `SpectralArrowRenderer`).
+    SpectralArrow,
+    /// `trident.png`, plus the `entityGlint` foil pass when
+    /// `ThrownTridentRenderState.isFoil` (vanilla `ThrownTridentRenderer`).
+    Trident { foil: bool },
+}
+
+/// One `minecraft:item_pickup` particle whose carried model is a projectile
+/// (arrow/trident), extracted at the vanilla quadratic-interpolated position
+/// (`ItemPickupParticleGroup.ParticleInstance.fromParticle`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ProjectilePickupParticleRenderState {
+    pub(crate) model: ParticleItemPickupProjectileModel,
+    pub(crate) position: [f32; 3],
+    pub(crate) light: [f32; 2],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -425,6 +466,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_item_pickup_experience_orb_icon: Option<i32>,
     #[serde(default)]
     pub(crate) option_item_pickup_component_patch: Option<Vec<u8>>,
+    #[serde(default)]
+    pub(crate) option_item_pickup_projectile_model: Option<ParticleItemPickupProjectileModel>,
     #[serde(default)]
     pub(crate) firework_trail: bool,
     #[serde(default)]

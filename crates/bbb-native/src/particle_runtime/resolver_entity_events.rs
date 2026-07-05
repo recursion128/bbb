@@ -94,6 +94,7 @@ impl ParticleCommandResolver {
                     .item_stack
                     .as_ref()
                     .and_then(pickup_item_component_patch_bytes),
+                option_item_pickup_projectile_model: particle_item_pickup_projectile_model(state),
                 option_firework_trail: false,
                 option_firework_twinkle: false,
                 option_firework_half_lifetime_age: false,

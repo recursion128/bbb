@@ -275,6 +275,12 @@ impl Renderer {
     pub fn item_pickup_particle_render_states(&self) -> Vec<ItemPickupParticleRenderState> {
         item_pickup_particle_render_states(self.particles.active_instances.iter())
     }
+
+    pub(crate) fn collect_projectile_pickup_particle_render_instances(
+        &self,
+    ) -> Vec<ProjectilePickupParticleRenderInstance> {
+        projectile_pickup_particle_render_instances(self.particles.active_instances.iter())
+    }
 }
 
 fn particle_sprite_uv_map(
@@ -565,6 +571,66 @@ pub(super) fn experience_orb_pickup_particle_render_states<'a>(
             })
         })
         .collect()
+}
+
+pub(super) fn projectile_pickup_particle_render_states<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+) -> Vec<ProjectilePickupParticleRenderState> {
+    instances
+        .into_iter()
+        .filter(|instance| instance.render_group == ParticleRenderGroup::ItemPickup)
+        .filter(|instance| instance.delay_ticks == 0)
+        .filter_map(|instance| {
+            let model = instance.option_item_pickup_projectile_model?;
+            let position = instance
+                .item_pickup_position_at_partial_tick(DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)?;
+            Some(ProjectilePickupParticleRenderState {
+                model,
+                position: [position[0] as f32, position[1] as f32, position[2] as f32],
+                light: instance
+                    .option_item_pickup_light
+                    .unwrap_or(DEFAULT_PARTICLE_LIGHT),
+            })
+        })
+        .collect()
+}
+
+pub(super) fn projectile_pickup_particle_render_instances<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+) -> Vec<ProjectilePickupParticleRenderInstance> {
+    projectile_pickup_particle_render_states(instances)
+        .into_iter()
+        .map(|state| ProjectilePickupParticleRenderInstance {
+            transform: projectile_pickup_particle_model_transform(state.model, state.position),
+            kind: state.model.kind,
+            light: state.light,
+        })
+        .collect()
+}
+
+/// Vanilla `ArrowRenderer.submit` / `ThrownTridentRenderer.submit`: translate to
+/// the extracted (quadratic-interpolated) pickup position, then
+/// `Axis.YP.rotationDegrees(yRot - 90)` and `Axis.ZP.rotationDegrees(xRot)`
+/// (`xRot + 90` for the trident's upright pole). `ArrowModel.createBodyLayer`
+/// bakes `mesh.transformed(pose -> pose.scaled(0.9))`, carried as the trailing
+/// scale exactly like `arrow_model_root_transform`.
+pub(super) fn projectile_pickup_particle_model_transform(
+    model: ParticleItemPickupProjectileModel,
+    position: [f32; 3],
+) -> Mat4 {
+    let base = Mat4::from_translation(Vec3::from_array(position))
+        * Mat4::from_rotation_y((model.y_rot - 90.0).to_radians());
+    match model.kind {
+        ParticleItemPickupProjectileKind::Trident { .. } => {
+            base * Mat4::from_rotation_z((model.x_rot + 90.0).to_radians())
+        }
+        ParticleItemPickupProjectileKind::Arrow
+        | ParticleItemPickupProjectileKind::TippedArrow
+        | ParticleItemPickupProjectileKind::SpectralArrow => {
+            base * Mat4::from_rotation_z(model.x_rot.to_radians())
+                * Mat4::from_scale(Vec3::splat(0.9))
+        }
+    }
 }
 
 fn experience_orb_pickup_particle_render_instances<'a>(

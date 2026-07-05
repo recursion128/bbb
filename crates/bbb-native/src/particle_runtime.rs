@@ -17,8 +17,9 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
-    ParticleItemOptionState, ParticleScheduledSoundEvent, ParticleSoundEvent, ParticleSpawnBatch,
-    ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
+    ParticleItemOptionState, ParticleItemPickupProjectileKind, ParticleItemPickupProjectileModel,
+    ParticleScheduledSoundEvent, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    ParticleSpriteUv, ParticleUvRect, Renderer,
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
@@ -28,9 +29,10 @@ use bbb_world::{
     FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainLight,
-    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState,
+    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
+    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState,
 };
 
 use crate::{
@@ -623,6 +625,35 @@ fn pickup_item_component_patch_bytes(stack: &ItemStackSummary) -> Option<Vec<u8>
         return None;
     }
     serde_json::to_vec(&stack.component_patch).ok()
+}
+
+/// Projects the world pickup projectile descriptor into the renderer's
+/// item-pickup carried-model field (the renderer cannot name world types).
+/// The extracted yaw/pitch travel alongside the kind because vanilla
+/// `ArrowRenderer.submit` / `ThrownTridentRenderer.submit` orient the model
+/// with the picked entity's `yRot`/`xRot`.
+fn particle_item_pickup_projectile_model(
+    state: &TakeItemEntityPickupParticleState,
+) -> Option<ParticleItemPickupProjectileModel> {
+    let kind = match state.projectile_model? {
+        TakeItemEntityPickupProjectileModel::Arrow { tipped: false } => {
+            ParticleItemPickupProjectileKind::Arrow
+        }
+        TakeItemEntityPickupProjectileModel::Arrow { tipped: true } => {
+            ParticleItemPickupProjectileKind::TippedArrow
+        }
+        TakeItemEntityPickupProjectileModel::SpectralArrow => {
+            ParticleItemPickupProjectileKind::SpectralArrow
+        }
+        TakeItemEntityPickupProjectileModel::Trident { foil } => {
+            ParticleItemPickupProjectileKind::Trident { foil }
+        }
+    };
+    Some(ParticleItemPickupProjectileModel {
+        kind,
+        y_rot: state.item_y_rot,
+        x_rot: state.item_x_rot,
+    })
 }
 
 fn particle_shader_light(light: TerrainLight) -> [f32; 2] {

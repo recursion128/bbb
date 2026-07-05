@@ -64,9 +64,23 @@
         / `generated_item_layers_for_stack_with_registry_context`), so the pickup
         carried bake is byte-identical to the dropped-item bake for the same
         stack (ITEM_MODEL / custom_model_data / damage / block_state_properties
-        driven models). Generic carried `EntityRenderState` submit (the
-        arrow/trident 3-tick flash) is the remaining deferred GPU entity-submit
-        slice, moved to the P1-2 entity-renderer queue (goal.md f184f598).
+        driven models). The arrow/trident carried-model branch (the last
+        picked-up entity family) is done: world projects
+        `TakeItemEntityPickupProjectileModel` — normal / tipped
+        (`TippableArrowRenderer.isTipped = getColor() > 0`) / spectral arrow and
+        trident with `ThrownTrident.ID_FOIL` — plus the extracted `yRot`/`xRot`
+        (vanilla `extractEntity(entity, 1.0F)` render-state rotations); native
+        carries it on `option_item_pickup_projectile_model`; the renderer bakes
+        `ArrowModel` / `TridentModel` (foil glint pass included) with the
+        vanilla `Ry(yRot-90) * Rz(xRot [+90 trident])` root transform at the
+        quadratic-interpolated pickup position and draws it inside the
+        `ITEM_PICKUP` group between the orb-icon and elder-guardian draws
+        through the entity translucent-cull pipeline. With item stacks,
+        experience orbs, and arrow/trident projectiles all submitting carried
+        models, the consumer surface of vanilla's generic `EntityRenderState`
+        submit (`ItemPickupParticleGroup.State.submit` ->
+        `EntityRenderDispatcher.submit`) is fully covered — no picked-up entity
+        kind renders through any other path.
       - Ravager entity event `69` now emits vanilla roar `minecraft:poof`
         particles: 40 commands at the ravager AABB center with gaussian
         velocity scaled by `0.2`, preserving the particle type's
@@ -379,9 +393,14 @@
       that the renderer round-trips without inspecting, and the native bake
       rebuilds the stack to reuse the dropped-item GROUND projection, making the
       pickup carried bake byte-identical to the dropped-item bake for the same
-      component-rich stack. Only the generic carried `EntityRenderState` submit
-      (arrow/trident flash) remains deferred, moved to the P1-2 entity-renderer
-      queue.
+      component-rich stack. Arrow/trident carried models (the last picked-up
+      entity family) now also draw in the same `ITEM_PICKUP` group: world
+      projects the projectile kind (normal/tipped/spectral arrow, foiled
+      trident) with the extracted render-state rotations, and the renderer bakes
+      `ArrowModel`/`TridentModel` with the vanilla renderer root transform at
+      the quadratic-interpolated pickup position, so vanilla's generic
+      `EntityRenderState` submit surface is fully covered by its three actual
+      consumers.
       Native ravager event `69` now emits the vanilla roar `minecraft:poof`
       burst from the ravager AABB center with gaussian `0.2` velocity and
       applies the vanilla local-authoritative roar knockback to the local player

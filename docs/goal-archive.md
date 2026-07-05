@@ -672,6 +672,27 @@
     mask 的半屏被侵蚀成背景、高于的半屏输出不透明红，`tint.a=1.0`（存活龙）全保留；
     另有 CPU 测试固定 `mask_uv = mask.min + (base_uv - base.min)/base.size * mask.size`
     的逐顶点映射。至此垂死龙死亡视觉 parity 的最后一块 GPU-side DISSOLVE 缺口闭合。
+- ItemPickupParticle 泛化 `EntityRenderState` submit 消费面：
+  - [x] arrow/trident pickup carried 实体模型（2026-07-05，P1-2 最后一项）：
+    world `take_item_entity_pickup_particle_state` 对 arrow/spectral/tipped/trident
+    追加 `TakeItemEntityPickupProjectileModel`（tipped 按 vanilla
+    `TippableArrowRenderer.isTipped = getColor() > 0` 读 `ID_EFFECT_COLOR` id 11，
+    trident foil 读 `ThrownTrident.ID_FOIL` id 12）并携带 extract 时的
+    `yRot`/`xRot`；native 投影为 renderer 侧
+    `option_item_pickup_projectile_model`（renderer 不依赖 world/protocol，枚举
+    定义在 bbb-renderer）；renderer 新提取器复用
+    `item_pickup_position_at_partial_tick` 的 vanilla 二次插值位置，bake 克隆
+    elder-guardian 模式（`ArrowModel`/`TridentModel` + 强制 `EntityTranslucent`
+    + 冻结 pickup light），root transform 逐字复刻 `Ry(yRot-90) * Rz(xRot)`
+    （arrow 尾随 0.9 bake scale；trident `Rz(xRot+90)`，foil 追加 order(1)
+    glint pass），draw 在 `ITEM_PICKUP` group 内接在 orb billboard 之后、
+    elder-guardian 之前，走同一 entity translucent-cull pipeline。测试三层
+    GPU-free：world 四态投影（tipped 颜色断言 + item/orb 不回归）、native 命令
+    携带、renderer bake 非空 translucent mesh + 插值位置 transform + render.rs
+    source-assertion 锁 draw 顺序。至此 vanilla
+    `ItemPickupParticleGroup.State.submit` 的三类被捡实体（item stack /
+    experience orb / arrow+trident）全部覆盖，"通用 EntityRenderState submit
+    管线"开放项随消费面闭合而关闭。
 
 ## P1-3：物品、Frame 与第一人称表现
 
@@ -3155,7 +3176,8 @@
   与 dropped-item bake 逐字节相等，并断言去掉 patch 后 mesh 变化以证明 patch
   确被消费；renderer 侧另加 patch 过 command -> instance -> render state 的
   round-trip 测试。generic `EntityRenderState` submit（捡箭/三叉戟 3-tick 闪现）
-  已移居 P1-2 entity-renderer 队列。
+  已移居 P1-2 entity-renderer 队列（2026-07-05 已在 P1-2 完成，见
+  P1-2 归档"arrow/trident pickup carried 实体模型"条目）。
 
 ### 2026-07-05 迁入：粒子 provider-specific behavior / sorting 完成史（含当时的排除式剩余清单，仅作历史存档）
 

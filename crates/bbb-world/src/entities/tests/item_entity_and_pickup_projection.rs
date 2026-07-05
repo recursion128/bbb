@@ -445,6 +445,7 @@ fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
     );
     assert_eq!(state.item_stack, None);
     assert_eq!(state.experience_orb_icon, Some(6));
+    assert_eq!(state.projectile_model, None);
     assert_eq!(
         take_item_entity_pickup_light(
             VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
@@ -466,4 +467,137 @@ fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
         ),
         TerrainLight { block: 6, sky: 12 }
     );
+}
+
+#[test]
+fn take_item_entity_pickup_particle_state_captures_projectile_models() {
+    // Vanilla `ClientboundTakeItemEntity` spawns `ItemPickupParticle` for any
+    // picked entity; arrows and tridents render their projectile models through
+    // `ArrowRenderer` / `TippableArrowRenderer` / `SpectralArrowRenderer` /
+    // `ThrownTridentRenderer` using the extracted `yRot`/`xRot`.
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        11,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        12,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        13,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        14,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        15,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        16,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    // Tipped arrow: vanilla `TippableArrowRenderer.isTipped = getColor() > 0`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 11,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(0x38_5DC6),
+        }],
+    }));
+    // Color 0 is NOT tipped (vanilla uses a strict `> 0`).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 12,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(0),
+        }],
+    }));
+    // Enchanted trident: vanilla `ThrownTrident.ID_FOIL`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 15,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_TRIDENT_FOIL_DATA_ID,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 16,
+        values: vec![item_stack_entity_data(item_stack(42, 5))],
+    }));
+
+    let state = store
+        .take_item_entity_pickup_particle_state(10, 20)
+        .expect("untipped arrow pickup particle state");
+    assert_eq!(
+        state.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: false })
+    );
+    assert_eq!(state.item_stack, None);
+    assert_eq!(state.experience_orb_icon, None);
+    // The extracted render-state rotations travel with the descriptor
+    // (`protocol_add_entity_with_type` spawns with yRot 20 / xRot -10).
+    assert_eq!(state.item_y_rot, 20.0);
+    assert_eq!(state.item_x_rot, -10.0);
+
+    let tipped = store
+        .take_item_entity_pickup_particle_state(11, 20)
+        .expect("tipped arrow pickup particle state");
+    assert_eq!(
+        tipped.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: true })
+    );
+
+    let zero_color = store
+        .take_item_entity_pickup_particle_state(12, 20)
+        .expect("zero-color arrow pickup particle state");
+    assert_eq!(
+        zero_color.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: false })
+    );
+
+    let spectral = store
+        .take_item_entity_pickup_particle_state(13, 20)
+        .expect("spectral arrow pickup particle state");
+    assert_eq!(
+        spectral.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::SpectralArrow)
+    );
+
+    let trident = store
+        .take_item_entity_pickup_particle_state(14, 20)
+        .expect("trident pickup particle state");
+    assert_eq!(
+        trident.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Trident { foil: false })
+    );
+
+    let foil_trident = store
+        .take_item_entity_pickup_particle_state(15, 20)
+        .expect("foil trident pickup particle state");
+    assert_eq!(
+        foil_trident.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Trident { foil: true })
+    );
+
+    // Item entities keep the dedicated stack channel; no carried projectile.
+    let item = store
+        .take_item_entity_pickup_particle_state(16, 20)
+        .expect("item pickup particle state");
+    assert_eq!(item.projectile_model, None);
+    assert_eq!(item.item_stack, Some(item_stack(42, 5)));
 }

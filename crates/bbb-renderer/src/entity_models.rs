@@ -64,6 +64,7 @@ pub(crate) use gpu::{
     create_entity_model_translucent_emissive_pipeline, create_entity_model_translucent_pipeline,
     create_entity_model_water_mask_pipeline, upload_elder_guardian_particle_textured_mesh,
     upload_experience_orb_pickup_particle_textured_mesh,
+    upload_projectile_pickup_particle_textured_mesh,
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
@@ -154,7 +155,8 @@ use textured::{
     dynamic_player_texture_test_meshes, elder_guardian_particle_textured_meshes,
     entity_model_textured_meshes, entity_model_textured_meshes_with_dynamic_skins,
     entity_model_textured_meshes_with_dynamic_textures,
-    experience_orb_pickup_particle_textured_mesh, EntityModelTexturedMeshes,
+    experience_orb_pickup_particle_textured_mesh, projectile_pickup_particle_textured_meshes,
+    EntityModelTexturedMeshes,
 };
 use textured::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
@@ -164,7 +166,7 @@ pub(crate) use textured::{
     ElderGuardianParticleRenderInstance, EntityModelLayerRenderType,
     EntityModelPositionColorDrawRange, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
     EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
-    ExperienceOrbPickupParticleRenderInstance,
+    ExperienceOrbPickupParticleRenderInstance, ProjectilePickupParticleRenderInstance,
 };
 
 #[cfg(test)]

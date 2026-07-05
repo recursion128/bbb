@@ -376,6 +376,94 @@ fn particle_runtime_item_pickup_round_trips_opaque_component_patch() {
 }
 
 #[test]
+fn particle_runtime_item_pickup_extracts_projectile_model_render_state() {
+    // Vanilla `ItemPickupParticleGroup.ParticleInstance.fromParticle`: the
+    // carried entity model renders at the quadratic-interpolated extract
+    // position; `ArrowRenderer` / `ThrownTridentRenderer` then orient the model
+    // with the extracted yRot/xRot.
+    let model = ParticleItemPickupProjectileModel {
+        kind: ParticleItemPickupProjectileKind::Trident { foil: true },
+        y_rot: 35.0,
+        x_rot: -12.0,
+    };
+    let mut command = item_pickup_spawn_command();
+    command.option_item = None;
+    command.option_item_pickup_projectile_model = Some(model);
+    let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+    particles.submit_batch(ParticleSpawnBatch {
+        commands: vec![command],
+        ..ParticleSpawnBatch::default()
+    });
+    particles.advance(0);
+    particles.advance_with_world_and_particle_contexts(
+        1,
+        |query| query.movement,
+        |_| ParticleBlockFluidSurfaceSample::default(),
+        None,
+        &[],
+        &[ParticleEntityTargetContext {
+            entity_id: 20,
+            position: [6.0, 71.0, -4.0],
+        }],
+    );
+
+    assert!(item_pickup_particle_render_states(particles.active_instances().iter()).is_empty());
+    assert!(
+        experience_orb_pickup_particle_render_states(particles.active_instances().iter())
+            .is_empty()
+    );
+    let render_states =
+        projectile_pickup_particle_render_states(particles.active_instances().iter());
+    assert_eq!(render_states.len(), 1);
+    assert_eq!(render_states[0].model, model);
+    assert_eq!(render_states[0].light, [0.4, 0.8]);
+    let expected_position = particles.active_instances()[0]
+        .item_pickup_position_at_partial_tick(0.5)
+        .expect("projectile pickup particle has an extract position");
+    assert_close3_f32(
+        render_states[0].position,
+        [
+            expected_position[0] as f32,
+            expected_position[1] as f32,
+            expected_position[2] as f32,
+        ],
+    );
+
+    // The baked instance transform poses the model at that interpolated
+    // position with the vanilla trident orientation (`Ry(yRot - 90)` then
+    // `Rz(xRot + 90)`).
+    let instances =
+        projectile_pickup_particle_render_instances(particles.active_instances().iter());
+    assert_eq!(instances.len(), 1);
+    assert_eq!(
+        instances[0].kind,
+        ParticleItemPickupProjectileKind::Trident { foil: true }
+    );
+    assert_eq!(instances[0].light, [0.4, 0.8]);
+    let expected_transform = Mat4::from_translation(Vec3::from_array(render_states[0].position))
+        * Mat4::from_rotation_y((35.0_f32 - 90.0).to_radians())
+        * Mat4::from_rotation_z((-12.0_f32 + 90.0).to_radians());
+    assert_eq!(instances[0].transform, expected_transform);
+
+    // Arrows carry the trailing vanilla `ArrowModel` bake scale (0.9) and the
+    // plain `Rz(xRot)` orientation.
+    let arrow_model = ParticleItemPickupProjectileModel {
+        kind: ParticleItemPickupProjectileKind::TippedArrow,
+        y_rot: 35.0,
+        x_rot: -12.0,
+    };
+    let arrow_transform =
+        projectile_pickup_particle_model_transform(arrow_model, render_states[0].position);
+    assert_eq!(
+        arrow_transform,
+        Mat4::from_translation(Vec3::from_array(render_states[0].position))
+            * Mat4::from_rotation_y((35.0_f32 - 90.0).to_radians())
+            * Mat4::from_rotation_z((-12.0_f32).to_radians())
+            * Mat4::from_scale(Vec3::splat(0.9))
+    );
+}
+
+#[test]
 fn particle_runtime_item_pickup_extracts_experience_orb_render_state() {
     let mut command = item_pickup_spawn_command();
     command.option_item = None;
@@ -6661,6 +6749,7 @@ fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> Partic
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
         option_item_pickup_component_patch: None,
+        option_item_pickup_projectile_model: None,
         firework_trail: false,
         firework_twinkle: false,
         item_pickup_previous_target: None,
@@ -6701,6 +6790,7 @@ fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
         option_item_pickup_light: None,
         option_item_pickup_experience_orb_icon: None,
         option_item_pickup_component_patch: None,
+        option_item_pickup_projectile_model: None,
         option_firework_trail: false,
         option_firework_twinkle: false,
         option_firework_half_lifetime_age: false,

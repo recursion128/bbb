@@ -574,6 +574,15 @@ impl EntityStore {
         self.metadata_int(id, data_id, default)
     }
 
+    pub(crate) fn metadata_bool_for_entity(
+        &self,
+        id: i32,
+        data_id: u8,
+        default: bool,
+    ) -> Option<bool> {
+        self.metadata_bool(id, data_id, default)
+    }
+
     fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;

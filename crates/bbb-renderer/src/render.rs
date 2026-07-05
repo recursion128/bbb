@@ -8,7 +8,8 @@ use crate::{
     clouds::CloudShape,
     entity_models::{
         upload_elder_guardian_particle_textured_mesh,
-        upload_experience_orb_pickup_particle_textured_mesh, EntityModelLayerRenderType,
+        upload_experience_orb_pickup_particle_textured_mesh,
+        upload_projectile_pickup_particle_textured_mesh, EntityModelLayerRenderType,
         EntityModelMeshGpu, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
         EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
         EntityModelTranslucentDrawRange,
@@ -1136,6 +1137,21 @@ impl Renderer {
             } else {
                 None
             };
+        let projectile_pickup_particles =
+            self.collect_projectile_pickup_particle_render_instances();
+        let projectile_pickup_particle_index_count =
+            if let Some(atlas) = &self.entity_model_texture_atlas {
+                upload_projectile_pickup_particle_textured_mesh(
+                    &self.device,
+                    &self.queue,
+                    &mut self.frame_projectile_pickup_particle_vertices,
+                    &mut self.frame_projectile_pickup_particle_indices,
+                    &projectile_pickup_particles,
+                    &atlas.layout,
+                )
+            } else {
+                None
+            };
         let elder_guardian_particles = self.collect_elder_guardian_particle_render_instances();
         let elder_guardian_particle_index_count =
             if let Some(atlas) = &self.entity_model_texture_atlas {
@@ -1271,6 +1287,36 @@ impl Renderer {
                     self.frame_experience_orb_pickup_particle_indices
                         .buffer()
                         .expect("experience orb pickup particle indices uploaded")
+                        .slice(..),
+                    wgpu::IndexFormat::Uint32,
+                );
+                pass.draw_indexed(0..index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            // Item-pickup carried arrow/trident models (vanilla
+            // `ItemPickupParticleGroup.State.submit` -> `ArrowRenderer` /
+            // `ThrownTridentRenderer`): drawn inside the ITEM_PICKUP group after
+            // the item-cluster and orb-icon draws, through the same
+            // translucent-cull entity pipeline as the orb billboard.
+            if let (Some(index_count), Some(atlas)) = (
+                projectile_pickup_particle_index_count,
+                self.entity_model_texture_atlas.as_ref(),
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(
+                    0,
+                    self.frame_projectile_pickup_particle_vertices
+                        .buffer()
+                        .expect("projectile pickup particle vertices uploaded")
+                        .slice(..),
+                );
+                pass.set_index_buffer(
+                    self.frame_projectile_pickup_particle_indices
+                        .buffer()
+                        .expect("projectile pickup particle indices uploaded")
                         .slice(..),
                     wgpu::IndexFormat::Uint32,
                 );
@@ -4652,6 +4698,37 @@ mod tests {
                 && source[elder_particle_pipeline..elder_particle_draw]
                     .contains("self.frame_elder_guardian_particle_indices"),
             "elder guardian particles bind the entity atlas, lightmap, and persistent frame buffers before drawing"
+        );
+        // Item-pickup carried arrow/trident models: uploaded before the pass and
+        // drawn inside the ITEM_PICKUP group order, after the orb-icon draw and
+        // before the elder-guardian group, through the same translucent-cull
+        // entity pipeline as the orb billboard.
+        let projectile_pickup_upload = source[particle_fn..target]
+            .find("upload_projectile_pickup_particle_textured_mesh(")
+            .map(|index| particle_fn + index)
+            .expect("projectile pickup particle mesh is uploaded before the render pass");
+        let projectile_pickup_pipeline = source[experience_orb_particle_draw..particle_fn_end]
+            .find("pass.set_pipeline(&self.entity_model_translucent_cull_pipeline)")
+            .map(|index| experience_orb_particle_draw + index)
+            .expect(
+                "projectile pickup particles draw through the entity translucent-cull pipeline",
+            );
+        assert!(
+            projectile_pickup_upload < target
+                && experience_orb_particle_draw < projectile_pickup_pipeline
+                && projectile_pickup_pipeline < elder_particle_pipeline,
+            "projectile pickup carried models draw between the orb-icon and elder-guardian particle draws"
+        );
+        assert!(
+            source[projectile_pickup_pipeline..elder_particle_pipeline]
+                .contains("pass.set_bind_group(0, &atlas.bind_group, &[])")
+                && source[projectile_pickup_pipeline..elder_particle_pipeline]
+                    .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+                && source[projectile_pickup_pipeline..elder_particle_pipeline]
+                    .contains("self.frame_projectile_pickup_particle_vertices")
+                && source[projectile_pickup_pipeline..elder_particle_pipeline]
+                    .contains("self.frame_projectile_pickup_particle_indices"),
+            "projectile pickup particles bind the entity atlas, lightmap, and persistent frame buffers before drawing"
         );
         assert!(
             !source[particle_fn..particle_fn_end].contains("create_buffer_init"),

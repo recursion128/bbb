@@ -226,6 +226,76 @@ fn foiled_trident_records_vanilla_entity_glint_submission() {
 }
 
 #[test]
+fn trident_pickup_particle_mesh_uses_item_pickup_group_submission() {
+    // The item-pickup carried trident (vanilla `ItemPickupParticleGroup.State.submit`
+    // -> `ThrownTridentRenderer`): the base model pass and, for `isFoil`, the
+    // order(1) glint submit are both baked into the blended particles target
+    // with the pass forced to `EntityTranslucent`, the world-space interpolated
+    // pickup transform passed through, and the frozen pickup light applied.
+    use crate::ParticleItemPickupProjectileKind;
+
+    let images: Vec<EntityModelTextureImage> = trident_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let transform =
+        Mat4::from_translation(Vec3::new(1.0, 65.0, -2.0)) * Mat4::from_rotation_z(0.25);
+
+    let plain = projectile_pickup_particle_textured_meshes(
+        &[ProjectilePickupParticleRenderInstance {
+            transform,
+            kind: ParticleItemPickupProjectileKind::Trident { foil: false },
+            light: [0.4, 0.8],
+        }],
+        &atlas,
+    );
+    assert!(plain.cutout.vertices.is_empty());
+    assert!(plain.entity_glint.vertices.is_empty());
+    assert_eq!(plain.submissions.len(), 1);
+    assert_eq!(plain.translucent.vertices.len(), 120);
+    let base = plain.submissions[0];
+    assert_eq!(
+        base.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(base.texture, TRIDENT_TEXTURE_REF);
+    assert_eq!(base.transform, transform);
+    assert_eq!(base.light, [0.4, 0.8]);
+    assert_eq!(base.overlay, ENTITY_VERTEX_NO_OVERLAY);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let foiled = projectile_pickup_particle_textured_meshes(
+        &[ProjectilePickupParticleRenderInstance {
+            transform,
+            kind: ParticleItemPickupProjectileKind::Trident { foil: true },
+            light: [0.4, 0.8],
+        }],
+        &atlas,
+    );
+    assert_eq!(foiled.submissions.len(), 2);
+    assert_eq!(foiled.translucent.vertices.len(), 240);
+    let foil = foiled.submissions[1];
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(foil.texture, ENCHANTED_GLINT_ITEM_TEXTURE_REF);
+    assert_eq!(foil.transform, transform);
+    assert_eq!(foil.light, [0.4, 0.8]);
+    assert_eq!((foil.order, foil.submit_sequence), (1, 1));
+    assert!(foiled.translucent.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == [0.4, 0.8]
+            && vertex.overlay == ENTITY_VERTEX_NO_OVERLAY
+    }));
+}
+
+#[test]
 fn foiled_trident_submissions_survive_missing_texture_atlas_entry() {
     // `ThrownTridentRenderer.submit` explicitly records order(0) base and order(1) foil submits;
     // missing atlas data suppresses only the folded cutout geometry.

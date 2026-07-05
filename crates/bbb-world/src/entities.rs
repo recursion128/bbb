@@ -59,6 +59,9 @@ pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 // Vanilla `Arrow.ID_EFFECT_COLOR` (INT): Entity data ids 0-7 are from `Entity`, ids 8-10
 // are from `AbstractArrow`, then `Arrow` adds its potion/effect color at id 11.
 pub(crate) const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
+// Vanilla `ThrownTrident.ID_FOIL` (BOOLEAN): ids 8-10 from `AbstractArrow`, then
+// `ThrownTrident` adds `ID_LOYALTY` at 11 and `ID_FOIL` at 12.
+pub(crate) const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
 /// Vanilla 26.1 `Items.EGG` protocol id from `bbb-pack`'s `Items.java` registry parser.
 pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
 /// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
@@ -369,6 +372,13 @@ pub struct TakeItemEntityPickupParticleState {
     pub item_entity_type_id: i32,
     pub item_position: EntityVec3,
     pub item_delta_movement: EntityVec3,
+    /// The picked entity's yaw at extraction (vanilla `ItemPickupParticle` runs
+    /// `extractEntity(entity, 1.0F)`; `ArrowRenderer`/`ThrownTridentRenderer`
+    /// orient the projectile with `state.yRot`/`state.xRot`).
+    #[serde(default)]
+    pub item_y_rot: f32,
+    #[serde(default)]
+    pub item_x_rot: f32,
     #[serde(default)]
     pub item_age_ticks: f32,
     #[serde(default = "entity_model_source_full_bright_light")]
@@ -380,6 +390,31 @@ pub struct TakeItemEntityPickupParticleState {
     pub item_stack: Option<ProtocolItemStackSummary>,
     #[serde(default)]
     pub experience_orb_icon: Option<i32>,
+    #[serde(default)]
+    pub projectile_model: Option<TakeItemEntityPickupProjectileModel>,
+}
+
+/// The carried 3D model when the picked-up entity is an `AbstractArrow` /
+/// thrown trident. Vanilla `ClientboundTakeItemEntity` spawns an
+/// `ItemPickupParticle` for any entity kind and renders the extracted
+/// `EntityRenderState` through `EntityRenderDispatcher.submit`
+/// (`ItemPickupParticleGroup.State.submit`); the three picked-up families are
+/// item entities (the `item_stack` field), experience orbs
+/// (`experience_orb_icon`), and these projectiles. The shape mirrors bbb's
+/// entity-scene kind projection (`EntityModelKind::Arrow { texture }` /
+/// `EntityModelKind::Trident`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TakeItemEntityPickupProjectileModel {
+    Arrow {
+        /// Vanilla `TippableArrowRenderer.isTipped = getColor() > 0`
+        /// (`Arrow.ID_EFFECT_COLOR`): swaps `arrow.png` for `arrow_tipped.png`.
+        tipped: bool,
+    },
+    SpectralArrow,
+    Trident {
+        /// Vanilla `ThrownTrident.isFoil()` (`ID_FOIL`): the enchant glint pass.
+        foil: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -2076,12 +2111,34 @@ impl WorldStore {
             self.sample_block_light(entity_light_block_pos(item.position))
                 .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT),
         );
+        let projectile_model = match item.entity_type_id {
+            // Vanilla `TippableArrowRenderer.isTipped = getColor() > 0`.
+            VANILLA_ENTITY_TYPE_ARROW_ID => Some(TakeItemEntityPickupProjectileModel::Arrow {
+                tipped: self
+                    .entities
+                    .metadata_int_for_entity(item_entity_id, VANILLA_ARROW_EFFECT_COLOR_DATA_ID, -1)
+                    .unwrap_or(-1)
+                    > 0,
+            }),
+            VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
+                Some(TakeItemEntityPickupProjectileModel::SpectralArrow)
+            }
+            VANILLA_ENTITY_TYPE_TRIDENT_ID => Some(TakeItemEntityPickupProjectileModel::Trident {
+                foil: self
+                    .entities
+                    .metadata_bool_for_entity(item_entity_id, VANILLA_TRIDENT_FOIL_DATA_ID, false)
+                    .unwrap_or(false),
+            }),
+            _ => None,
+        };
 
         Some(TakeItemEntityPickupParticleState {
             item_entity_id,
             item_entity_type_id: item.entity_type_id,
             item_position: item.position,
             item_delta_movement: item.delta_movement,
+            item_y_rot: item.y_rot,
+            item_x_rot: item.x_rot,
             item_age_ticks,
             item_light,
             target_entity_id: target.0,
@@ -2089,6 +2146,7 @@ impl WorldStore {
             target_eye_height: target.2,
             item_stack,
             experience_orb_icon,
+            projectile_model,
         })
     }
 

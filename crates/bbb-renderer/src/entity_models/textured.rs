@@ -14,8 +14,8 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
+        ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial,
+        EntityCustomHeadSkull, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
@@ -42,13 +42,13 @@ use super::{
         equine_head_pose, equine_leg_pose, equine_tail_pose, head_look_at_rest,
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
-        wolf_body_armor_texture_layers, ArmorStandModel, BoatWaterPatchModel, BreezeWindModel,
-        CamelModel, CreeperModel, CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel,
-        CustomHeadSkullModel, ElytraModel, EquineAnimationPose, GuardianModel,
-        HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
-        NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel, TridentModel,
-        VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        wolf_body_armor_texture_layers, ArmorStandModel, ArrowModel, BoatWaterPatchModel,
+        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
+        CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel, EquineAnimationPose,
+        GuardianModel, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
+        LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
+        PlayerModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
+        TridentModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
         ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
@@ -85,6 +85,7 @@ use super::{
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
+use crate::particles::ParticleItemPickupProjectileKind;
 use glam::{Mat4, Quat, Vec3};
 use std::cmp::Ordering;
 
@@ -186,6 +187,17 @@ pub(crate) struct ExperienceOrbPickupParticleRenderInstance {
     pub(crate) transform: Mat4,
     pub(crate) icon: i32,
     pub(crate) age_ticks: f32,
+    pub(crate) light: [f32; 2],
+}
+
+/// One item-pickup particle whose carried model is an arrow / trident, posed at
+/// the world-space interpolated pickup position (vanilla
+/// `ItemPickupParticleGroup.State.submit` renders the extracted projectile
+/// render state through the entity render dispatcher).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ProjectilePickupParticleRenderInstance {
+    pub(crate) transform: Mat4,
+    pub(crate) kind: ParticleItemPickupProjectileKind,
     pub(crate) light: [f32; 2],
 }
 
@@ -1030,6 +1042,94 @@ pub(super) fn elder_guardian_particle_textured_meshes(
     }
     meshes.flush_sorted_uploads();
     meshes
+}
+
+/// Bakes the item-pickup carried arrow / trident models. Vanilla
+/// `ItemPickupParticleGroup.State.submit` runs the picked-up projectile's
+/// extracted render state through `EntityRenderDispatcher.submit`
+/// (`ArrowRenderer` / `ThrownTridentRenderer`); bbb draws the pickup group into
+/// the blended particles target, so the passes are forced to
+/// `EntityTranslucent` (alpha stays 1.0) like the elder guardian particle
+/// model. The trident foil keeps its vanilla second submit
+/// (`entityGlint` over the same model), carried here as a statically-sampled
+/// glint pass for the 3-tick flash.
+pub(super) fn projectile_pickup_particle_textured_meshes(
+    instances: &[ProjectilePickupParticleRenderInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    let mut submit_sequence = 0_u32;
+    for instance in instances.iter().copied() {
+        match instance.kind {
+            ParticleItemPickupProjectileKind::Arrow
+            | ParticleItemPickupProjectileKind::TippedArrow
+            | ParticleItemPickupProjectileKind::SpectralArrow => {
+                let texture = match instance.kind {
+                    ParticleItemPickupProjectileKind::TippedArrow => ArrowModelTexture::Tipped,
+                    ParticleItemPickupProjectileKind::SpectralArrow => ArrowModelTexture::Spectral,
+                    _ => ArrowModelTexture::Normal,
+                };
+                render_projectile_pickup_particle_pass(
+                    &mut meshes,
+                    &ArrowModel::new(),
+                    arrow_textured_layer_passes(texture)[0],
+                    instance,
+                    &mut submit_sequence,
+                    atlas,
+                );
+            }
+            ParticleItemPickupProjectileKind::Trident { foil } => {
+                let model = TridentModel::new();
+                let passes = trident_textured_layer_passes();
+                render_projectile_pickup_particle_pass(
+                    &mut meshes,
+                    &model,
+                    passes[0],
+                    instance,
+                    &mut submit_sequence,
+                    atlas,
+                );
+                if foil {
+                    render_projectile_pickup_particle_pass(
+                        &mut meshes,
+                        &model,
+                        passes[1],
+                        instance,
+                        &mut submit_sequence,
+                        atlas,
+                    );
+                }
+            }
+        }
+    }
+    meshes.flush_sorted_uploads();
+    meshes
+}
+
+fn render_projectile_pickup_particle_pass<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    base_pass: EntityModelLayerPass,
+    instance: ProjectilePickupParticleRenderInstance,
+    submit_sequence: &mut u32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let pass = EntityModelLayerPass {
+        render_type: EntityModelLayerRenderType::EntityTranslucent,
+        submit_sequence: *submit_sequence,
+        ..base_pass
+    };
+    *submit_sequence += 1;
+    let submit = no_overlay_layer_submission(pass, instance.transform).with_light(instance.light);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 pub(super) fn experience_orb_pickup_particle_textured_mesh(
