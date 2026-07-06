@@ -3803,6 +3803,49 @@
 
 ## P2：屏幕、HUD、字体与截图
 
+### 2026-07-06 迁入：生命 heart 变体 + 多行堆叠（P2 HUD 队列该行末片）
+
+- 投影链：`RendererFrame.hud_player_health`（新 `HudPlayerHealth`）取代旧单行
+  `hud_health: f32`，携带 health、MAX_HEALTH 属性、absorption、基础 `HeartType`、
+  hardcore、Regeneration 门与 client tick。world 侧新增
+  `WorldStore::local_player_max_health`（MAX_HEALTH 属性，registry index 19，
+  默认 20.0）、`local_player_is_fully_frozen`（`EntityStore::is_fully_frozen` =
+  `ticksFrozen >= 140`，从抖动身体判定里抽出复用）；复用已存的
+  `local_player_absorption`；login `hardcore` flag 现存入 `WorldGameplayState`
+  （`WorldStore::is_hardcore`）。`HeartType.forPlayer` 优先级
+  （Gui.java:1438-1450）= poison > wither > fully-frozen > normal，MobEffect id
+  按 0 起注册序推导（MobEffects.java：regeneration=9、poison=18、wither=19，与既有
+  night_vision=15 / hunger=16 互证）。
+- 渲染：`HudHeartKind`（Container/Normal/Poisoned/Withered/Absorbing/Frozen）
+  带 `sprite_name(hardcore, half, blinking)`，复现 vanilla 资产命名不对称
+  （Normal 前缀 `hardcore_`，带类型的 kind 把 hardcore 嵌在自身前缀之后，
+  Container 追加 `_hardcore` 且忽略 half）；sprite 按 `[kind][variant]` 存，
+  asset loader 遍历全组合上传（blink 变体不上传）。`hud_player_heart_instances`
+  重放 `extractHearts`（Gui.java:820-873）：递减 container 循环画 Container →
+  absorbing 叠加（`WITHERED` 保留自身 sprite，否则 `ABSORBING`）→ 基础 fill，
+  `xLeft = guiWidth/2-91` 按 `healthRowHeight` 向上堆叠
+  （`numHealthRows = ceil((maxHealth+ceil(absorption))/2/10)`，
+  `healthRowHeight = max(10-(numHealthRows-2),3)`）。Regeneration 波把
+  container `tickCount % ceil(maxHealth+5)` 抬 2px；`currentHealth+absorption
+  <= 4` 时每心按 `nextInt(2)` 抖动，种子 `tickCount*312871` 的
+  `LegacyRandomSource`——精确复现（vanilla 在 Gui.java:764 重播种，故不同于
+  food/air 的 wall-clock 抖动，本片与 vanilla 序列一致）。`armor_hud_rect` 改吃
+  投影 `(numHealthRows, healthRowHeight)`，多行生命把护甲行随心上抬
+  （`yLineBase-(numHealthRows-1)*healthRowHeight-10`，Gui.java:801；单行默认保持
+  原 10px 间距，无回归）。
+- 边界（如实 defer）：受击/回血 **blink** 闪烁未实现——需未追踪的
+  `player.invulnerableTime`（客户端无同步）与 wall-clock `displayHealth`/
+  `lastHealthTime` 延迟保持，均不可确定性复现；`HudPlayerHealth` 恒以
+  `blinking = false` 绘制，但 `HeartType::sprite_name` 与已上传的 `*_blinking`
+  命名保持完整（矩阵测试覆盖），待 invulnerableTime 落地即可接。
+- 测试：bbb-world（hardcore login flag、MAX_HEALTH 属性 + 20.0 回退、140 tick
+  冻结阈值）；bbb-renderer layout（`hud_health_rows` 行数/行高、半/空心拆分、
+  基础类型跟随、absorption 追加含奇数半心 + withered 覆盖、2 行堆叠、regen 2px
+  抬升索引手算、低血抖动序列逐 draw 重放校验、护甲多行上抬）+ sprite 名矩阵
+  （kind×hardcore×half×blink 全组合命中真实 vanilla 资产 + hardcore 命名不对称）
+  + 一个离屏 readback sentinel（poison 换基础 fill sprite）；氧气/坐骑/护甲联动
+  y 布局测试无回归。四条门禁全绿。
+
 ### 2026-07-06 迁入：氧气泡条 + 坐骑血量条（含 world metadata 补链）
 
 - world metadata 补链（索引全部按 vanilla 26.1 继承链逐类推导并写入常量注释，

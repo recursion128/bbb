@@ -74,12 +74,12 @@ pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, Sprit
 pub use crate::hud::{
     HudActionBarText, HudAirSupply, HudAsciiGlyph, HudBossBar, HudBossBarColor, HudBossBarOverlay,
     HudDigitGlyph, HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
-    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap, HudFoodEffect, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
+    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap, HudFoodEffect, HudHeartKind,
+    HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudNineSliceScaling, HudStyledTextRun, HudTextStyle, HudTitleText,
-    HudUvRect, HudVehicleHealth, HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
+    HudItemFoil, HudItemIcon, HudNineSliceScaling, HudPlayerHealth, HudStyledTextRun, HudTextStyle,
+    HudTitleText, HudUvRect, HudVehicleHealth, HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,

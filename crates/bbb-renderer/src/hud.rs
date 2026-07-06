@@ -17,21 +17,22 @@ pub(super) use self::gpu::{
 };
 use self::layout::{
     air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
-    experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, heart_hud_rect,
-    hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
+    experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, hotbar_hud_rect,
+    hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
     hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
     hud_experience_level_text_origin, hud_experience_progress_width, hud_food_fill,
-    hud_food_jitter_offsets, hud_heart_fill, hud_inventory_text_label_origin,
+    hud_food_jitter_offsets, hud_health_row_geometry, hud_inventory_text_label_origin,
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_overlay_message_text_origin, hud_quad_vertices, hud_styled_quad_vertices,
-    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
-    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
-    inventory_slot_item_hud_rect, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
-    HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
+    hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
+    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
+    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, vehicle_heart_hud_rect,
+    HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW,
+    HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
     HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
@@ -138,6 +139,88 @@ pub struct HudVehicleHealth {
     pub health: f32,
     /// Vanilla `vehicle.getMaxHealth()` (the MAX_HEALTH attribute value).
     pub max_health: f32,
+}
+
+/// Vanilla `Gui.HeartType` (Gui.java:1333-1452): the heart sprite family a
+/// container/overlay draws. `Container` is the always-drawn background;
+/// `Normal`/`Poisoned`/`Withered`/`Frozen` are the mutually exclusive base
+/// fills picked by `HeartType.forPlayer`; `Absorbing` overlays the extra
+/// absorption hearts. Declaration order is the storage index into the
+/// renderer's per-kind sprite array.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudHeartKind {
+    Container,
+    Normal,
+    Poisoned,
+    Withered,
+    Absorbing,
+    Frozen,
+}
+
+impl HudHeartKind {
+    pub const ALL: [Self; 6] = [
+        Self::Container,
+        Self::Normal,
+        Self::Poisoned,
+        Self::Withered,
+        Self::Absorbing,
+        Self::Frozen,
+    ];
+
+    /// Vanilla `HeartType.getSprite(isHardcore, isHalf, isBlink)` path fragment
+    /// under `hud/heart/` (Gui.java:1334-1435). `Container` ignores `half`
+    /// (vanilla routes both slots to the container sprite) and, like `Normal`,
+    /// carries no type prefix; the other kinds prefix their name. `Container`
+    /// takes the hardcore marker as a `_hardcore` suffix, while the fill kinds
+    /// take it as a `hardcore_` prefix — matching vanilla's asset names.
+    pub fn sprite_name(self, hardcore: bool, half: bool, blinking: bool) -> String {
+        let blink = if blinking { "_blinking" } else { "" };
+        if matches!(self, Self::Container) {
+            let hardcore = if hardcore { "_hardcore" } else { "" };
+            return format!("container{hardcore}{blink}");
+        }
+        let hardcore = if hardcore { "hardcore_" } else { "" };
+        let shape = if half { "half" } else { "full" };
+        match self {
+            Self::Container => unreachable!("handled above"),
+            Self::Normal => format!("{hardcore}{shape}{blink}"),
+            Self::Poisoned => format!("poisoned_{hardcore}{shape}{blink}"),
+            Self::Withered => format!("withered_{hardcore}{shape}{blink}"),
+            Self::Absorbing => format!("absorbing_{hardcore}{shape}{blink}"),
+            Self::Frozen => format!("frozen_{hardcore}{shape}{blink}"),
+        }
+    }
+}
+
+/// One frame's player-health inputs (vanilla `Gui.extractPlayerHealth` /
+/// `extractHearts`, Gui.java:743-873): the synced health, the resolved
+/// MAX_HEALTH attribute, the absorption amount, the base `HeartType`, the
+/// hardcore flag, the Regeneration wave gate, and the client tick. The
+/// renderer derives the container/absorption rows, `numHealthRows` /
+/// `healthRowHeight`, the regen per-heart lift, and the low-health shake.
+///
+/// Blink (vanilla's damage/heal flash) is intentionally not modeled: it needs
+/// the untracked `player.invulnerableTime` and the wall-clock `displayHealth`
+/// hold, so `blinking` is always `false` here (see the ledger deferral).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudPlayerHealth {
+    /// Vanilla `player.getHealth()`; the draw ceils it (Gui.java:746).
+    pub health: f32,
+    /// Vanilla `player.getAttributeValue(Attributes.MAX_HEALTH)` (Gui.java:768).
+    pub max_health: f32,
+    /// Vanilla `player.getAbsorptionAmount()` (Gui.java:769); the draw ceils it.
+    pub absorption: f32,
+    /// Vanilla `HeartType.forPlayer(player)` base fill (Gui.java:833): one of
+    /// `Normal`/`Poisoned`/`Withered`/`Frozen`.
+    pub heart_type: HudHeartKind,
+    /// Vanilla `player.level().getLevelData().isHardcore()` (Gui.java:834).
+    pub hardcore: bool,
+    /// Vanilla `player.hasEffect(MobEffects.REGENERATION)` (Gui.java:774) —
+    /// arms the per-heart lift wave.
+    pub regen: bool,
+    /// Client tick counter (vanilla `Gui.tickCount`) driving the regen wave
+    /// index and the low-health shake seed.
+    pub tick_count: u64,
 }
 
 /// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
@@ -1788,23 +1871,24 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn upload_hud_heart_container(
+    /// Uploads one player-heart sprite (vanilla `hud/heart/*`) into the
+    /// per-kind slot keyed by `(kind, hardcore, half)`. The asset loader walks
+    /// [`HudHeartKind::ALL`] × hardcore × half and resolves each PNG name with
+    /// [`HudHeartKind::sprite_name`]; blink variants are not uploaded (blink is
+    /// deferred). `Container`'s half is ignored (its half slot mirrors full).
+    pub fn upload_hud_heart_sprite(
         &mut self,
+        kind: HudHeartKind,
+        hardcore: bool,
+        half: bool,
         width: u32,
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
-        self.hud_heart_container = Some(self.upload_hud_sprite(width, height, rgba)?);
-        Ok(())
-    }
-
-    pub fn upload_hud_heart_full(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
-        self.hud_heart_full = Some(self.upload_hud_sprite(width, height, rgba)?);
-        Ok(())
-    }
-
-    pub fn upload_hud_heart_half(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
-        self.hud_heart_half = Some(self.upload_hud_sprite(width, height, rgba)?);
+        let sprite = self.upload_hud_sprite(width, height, rgba)?;
+        let half = half && !matches!(kind, HudHeartKind::Container);
+        let variant = usize::from(hardcore) * 2 + usize::from(half);
+        self.hud_heart_sprites[kind as usize][variant] = Some(sprite);
         Ok(())
     }
 
@@ -2010,8 +2094,17 @@ impl Renderer {
         self.hud_code_of_conduct_overlay = None;
     }
 
-    pub fn set_hud_health(&mut self, health: Option<f32>) {
-        self.hud_health = health.filter(|health| health.is_finite());
+    /// Projects `Gui.extractPlayerHealth`'s inputs (health, max health,
+    /// absorption, base heart type, hardcore, regen, tick). `collect_hud_draws`
+    /// derives the container/absorption rows, `numHealthRows`, the regen wave,
+    /// and the low-health shake. Non-finite health/max/absorption (malformed
+    /// projection) clear the row.
+    pub fn set_hud_player_health(&mut self, health: Option<HudPlayerHealth>) {
+        self.hud_player_health = health.filter(|health| {
+            health.health.is_finite()
+                && health.max_health.is_finite()
+                && health.absorption.is_finite()
+        });
     }
 
     pub fn set_hud_food(&mut self, food: Option<i32>) {
@@ -2103,6 +2196,20 @@ impl Renderer {
             HudFoodSprite::Full => (&self.hud_food_full_hunger, &self.hud_food_full),
         };
         hud_food_sprite_variant(hunger, hunger_sprite.as_ref(), base_sprite.as_ref())
+    }
+
+    /// One player-heart sprite by `(kind, hardcore, half)` (vanilla
+    /// `HeartType.getSprite`, blink always false). `Container`'s half normalizes
+    /// to full (its half slots mirror the full sprite).
+    fn hud_heart_sprite(
+        &self,
+        kind: HudHeartKind,
+        hardcore: bool,
+        half: bool,
+    ) -> Option<&HudSpriteGpu> {
+        let half = half && !matches!(kind, HudHeartKind::Container);
+        let variant = usize::from(hardcore) * 2 + usize::from(half);
+        self.hud_heart_sprites[kind as usize][variant].as_ref()
     }
 
     /// The uploaded 182x5 sheet backing one bar layer (vanilla
@@ -2304,8 +2411,15 @@ impl Renderer {
         // Vanilla `Gui.extractPlayerHealth` extracts the armor row before the
         // hearts (Gui.java:779 then :781); it only draws when `armor > 0`
         // (`Gui.extractArmor`, Gui.java:800), each of the 10 icons picking
-        // full/half/empty per `hud_armor_fill`.
+        // full/half/empty per `hud_armor_fill`. The row sits
+        // `(numHealthRows - 1) * healthRowHeight + 10` above the heart baseline
+        // (Gui.java:801), so multi-row health pushes it up; with no projected
+        // health it falls back to a single row (the fixed 10px gap).
         if let Some(armor) = self.hud_armor.filter(|&armor| armor > 0) {
+            let (num_health_rows, health_row_height) = self
+                .hud_player_health
+                .map(hud_health_row_geometry)
+                .unwrap_or((1, HUD_SINGLE_HEALTH_ROW_HEIGHT));
             for index in 0..HUD_ARMOR_ICONS_PER_ROW {
                 let sprite = match hud_armor_fill(armor, index) {
                     HudIconFill::Empty => self.hud_armor_empty.as_ref(),
@@ -2318,36 +2432,34 @@ impl Renderer {
                         &mut commands,
                         sprite,
                         surface_size,
-                        armor_hud_rect(surface_size, index, sprite.width, sprite.height),
+                        armor_hud_rect(
+                            surface_size,
+                            index,
+                            num_health_rows,
+                            health_row_height,
+                            sprite.width,
+                            sprite.height,
+                        ),
                     );
                 }
             }
         }
 
-        if let (Some(health), Some(container)) = (self.hud_health, &self.hud_heart_container) {
-            for index in 0..HUD_HEARTS_PER_ROW {
-                push_hud_draw(
-                    &mut vertices,
-                    &mut commands,
-                    container,
-                    surface_size,
-                    heart_hud_rect(surface_size, index, container.width, container.height),
-                );
-            }
-
-            for index in 0..HUD_HEARTS_PER_ROW {
-                let sprite = match hud_heart_fill(health, index) {
-                    HudIconFill::Empty => None,
-                    HudIconFill::Half => self.hud_heart_half.as_ref(),
-                    HudIconFill::Full => self.hud_heart_full.as_ref(),
-                };
-                if let Some(sprite) = sprite {
+        // Vanilla `Gui.extractHearts` (Gui.java:820-873, blink deferred): the
+        // ordered container / absorption / fill sprites for the player's
+        // health + absorption, stacked into `numHealthRows` and carrying the
+        // regen lift and low-health shake (`hud_player_heart_instances`).
+        if let Some(health) = self.hud_player_health {
+            for instance in hud_player_heart_instances(surface_size, health) {
+                if let Some(sprite) =
+                    self.hud_heart_sprite(instance.kind, health.hardcore, instance.half)
+                {
                     push_hud_draw(
                         &mut vertices,
                         &mut commands,
                         sprite,
                         surface_size,
-                        heart_hud_rect(surface_size, index, sprite.width, sprite.height),
+                        instance.rect(sprite.width, sprite.height),
                     );
                 }
             }
@@ -4507,6 +4619,106 @@ mod tests {
     use bbb_render_types::{HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET};
 
     #[test]
+    fn hud_heart_sprite_names_match_vanilla_assets() {
+        // Every vanilla `hud/heart/*` sprite name (Gui.HeartType, Gui.java
+        // :1334-1393), excluding the vehicle_* trio.
+        let known: std::collections::HashSet<&str> = [
+            "container",
+            "container_blinking",
+            "container_hardcore",
+            "container_hardcore_blinking",
+            "full",
+            "full_blinking",
+            "half",
+            "half_blinking",
+            "hardcore_full",
+            "hardcore_full_blinking",
+            "hardcore_half",
+            "hardcore_half_blinking",
+            "poisoned_full",
+            "poisoned_full_blinking",
+            "poisoned_half",
+            "poisoned_half_blinking",
+            "poisoned_hardcore_full",
+            "poisoned_hardcore_full_blinking",
+            "poisoned_hardcore_half",
+            "poisoned_hardcore_half_blinking",
+            "withered_full",
+            "withered_full_blinking",
+            "withered_half",
+            "withered_half_blinking",
+            "withered_hardcore_full",
+            "withered_hardcore_full_blinking",
+            "withered_hardcore_half",
+            "withered_hardcore_half_blinking",
+            "absorbing_full",
+            "absorbing_full_blinking",
+            "absorbing_half",
+            "absorbing_half_blinking",
+            "absorbing_hardcore_full",
+            "absorbing_hardcore_full_blinking",
+            "absorbing_hardcore_half",
+            "absorbing_hardcore_half_blinking",
+            "frozen_full",
+            "frozen_full_blinking",
+            "frozen_half",
+            "frozen_half_blinking",
+            "frozen_hardcore_full",
+            "frozen_hardcore_full_blinking",
+            "frozen_hardcore_half",
+            "frozen_hardcore_half_blinking",
+        ]
+        .into_iter()
+        .collect();
+
+        // Every kind × hardcore × half × blink resolves to a real vanilla asset.
+        for kind in HudHeartKind::ALL {
+            for hardcore in [false, true] {
+                for half in [false, true] {
+                    for blink in [false, true] {
+                        let name = kind.sprite_name(hardcore, half, blink);
+                        assert!(known.contains(name.as_str()), "unknown heart sprite {name}");
+                    }
+                }
+            }
+        }
+
+        // The hardcore naming asymmetry: `Normal` prefixes `hardcore_`, the
+        // typed kinds embed it after their own prefix, `Container` appends
+        // `_hardcore`.
+        assert_eq!(
+            HudHeartKind::Normal.sprite_name(true, false, false),
+            "hardcore_full"
+        );
+        assert_eq!(
+            HudHeartKind::Poisoned.sprite_name(true, false, false),
+            "poisoned_hardcore_full"
+        );
+        assert_eq!(
+            HudHeartKind::Container.sprite_name(true, false, false),
+            "container_hardcore"
+        );
+        // `Container` ignores half; blink still applies to it.
+        assert_eq!(
+            HudHeartKind::Container.sprite_name(false, true, false),
+            "container"
+        );
+        assert_eq!(
+            HudHeartKind::Container.sprite_name(false, true, true),
+            "container_blinking"
+        );
+        // Half + blinking on a typed kind.
+        assert_eq!(
+            HudHeartKind::Withered.sprite_name(false, true, true),
+            "withered_half_blinking"
+        );
+        assert_eq!(
+            HudHeartKind::Frozen.sprite_name(true, true, true),
+            "frozen_hardcore_half_blinking"
+        );
+    }
+
+    #[test]
     fn hud_block_item_mesh_splits_translucent_quads_and_matching_glint_buckets() {
         let solid = crate::item_models::ItemModelQuad {
             corners: [
@@ -4843,6 +5055,76 @@ mod tests {
         assert!(
             slot_pixel[0] > 128 && slot_pixel[1] < 128,
             "a 0-heart vehicle should keep the red food row, got {slot_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn poison_heart_offscreen_frame_uses_the_poisoned_sprite() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        // A blue container under a red normal fill vs a green poisoned fill,
+        // all 9x9 and opaque so the fill covers the container.
+        let red: Vec<u8> = (0..81).flat_map(|_| [255u8, 0, 0, 255]).collect();
+        let green: Vec<u8> = (0..81).flat_map(|_| [0u8, 255, 0, 255]).collect();
+        let blue: Vec<u8> = (0..81).flat_map(|_| [0u8, 0, 255, 255]).collect();
+        renderer
+            .upload_hud_heart_sprite(HudHeartKind::Container, false, false, 9, 9, &blue)
+            .expect("container");
+        renderer
+            .upload_hud_heart_sprite(HudHeartKind::Normal, false, false, 9, 9, &red)
+            .expect("normal full");
+        renderer
+            .upload_hud_heart_sprite(HudHeartKind::Poisoned, false, false, 9, 9, &green)
+            .expect("poisoned full");
+
+        // The leftmost heart (container index 0, column 0) at xLeft = W/2 - 91,
+        // yLineBase = H - 39, sampled at its center.
+        let heart_px = WIDTH / 2 - 91 + 4;
+        let heart_py = HEIGHT - 39 + 4;
+
+        let full_normal = HudPlayerHealth {
+            health: 20.0,
+            max_health: 20.0,
+            absorption: 0.0,
+            heart_type: HudHeartKind::Normal,
+            hardcore: false,
+            regen: false,
+            tick_count: 0,
+        };
+        renderer.set_hud_player_health(Some(full_normal));
+        let pixels = renderer.render_offscreen_frame().expect("normal frame");
+        let px = pixels.pixel(heart_px, heart_py);
+        assert!(
+            px[0] > 128 && px[1] < 128,
+            "a normal heart should draw the red normal fill, got {px:?}"
+        );
+
+        // `HeartType.forPlayer` picks POISONED under the Poison effect: the same
+        // slot now draws the green poisoned fill.
+        renderer.set_hud_player_health(Some(HudPlayerHealth {
+            heart_type: HudHeartKind::Poisoned,
+            ..full_normal
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("poison frame");
+        let px = pixels.pixel(heart_px, heart_py);
+        assert!(
+            px[1] > 128 && px[0] < 128,
+            "a poisoned heart should draw the green poisoned fill, got {px:?}"
         );
     }
 

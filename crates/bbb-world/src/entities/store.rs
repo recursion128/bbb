@@ -582,6 +582,14 @@ impl EntityStore {
         self.metadata_int(id, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 0)
     }
 
+    /// Vanilla `Entity.isFullyFrozen()` = `getTicksFrozen() >=
+    /// getTicksRequiredToFreeze()` (140): the powder-snow freeze is complete
+    /// (drives the shaking body and, for the local player, the frozen heart
+    /// sprites in `Gui.HeartType.forPlayer`).
+    pub(crate) fn is_fully_frozen(&self, id: i32) -> bool {
+        self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE
+    }
+
     /// Vanilla `Entity.getAirSupply()`: the synced `DATA_AIR_SUPPLY_ID` int,
     /// defaulting to the define-time `getMaxAirSupply()` (300, Entity.java:312)
     /// while the server has not synced a non-default value.
@@ -1487,8 +1495,8 @@ impl EntityStore {
             .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
-        let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
-            && self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE;
+        let is_fully_frozen =
+            vanilla_living_entity_type(identity.entity_type_id) && self.is_fully_frozen(id);
         // Vanilla `LivingEntityRenderer.extractRenderState`: `isInvisibleToPlayer =
         // state.isInvisible && entity.isInvisibleTo(minecraft.player)`. The store-local baseline is
         // the non-spectator / no-friendly-team-override branch, so the world aggregation can clear it

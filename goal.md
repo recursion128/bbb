@@ -262,9 +262,6 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- 生命扩展 heart 变体（absorption/poison/wither/hardcore/regen 闪烁）+
-  多行生命堆叠（氧气泡/坐骑血量与 world metadata 补链已于 07-06 完成，
-  absorption 已存未画，见账本 Evidence）。
 - sign edit / recipe-book overlay / advancement screen（大件；recipe/
   advancement state 已 ready，sign 缺 block-entity 文本 store）；马跳跃条；
   debug overlay（F3，低优先）。

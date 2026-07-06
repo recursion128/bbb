@@ -9,10 +9,10 @@ use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
     HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudFoodEffect,
-    HudInventoryScreen, HudStyledTextRun, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
-    WorldBorderRenderState,
+    HudInventoryScreen, HudPlayerHealth, HudStyledTextRun, HudTitleText, HudVehicleHealth,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
+    SelectionOutline, WorldBorderRenderState,
 };
 
 use super::*;
@@ -776,7 +776,7 @@ pub(crate) struct RendererFrame {
     pub(crate) fog_environment: FogEnvironment,
     pub(crate) sky_environment: SkyEnvironment,
     pub(crate) cloud_environment: CloudEnvironment,
-    pub(crate) hud_health: Option<f32>,
+    pub(crate) hud_player_health: Option<HudPlayerHealth>,
     pub(crate) hud_food: Option<i32>,
     pub(crate) hud_food_effect: HudFoodEffect,
     pub(crate) hud_armor: Option<i32>,
@@ -842,7 +842,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_fog_environment(frame.fog_environment);
     renderer.set_sky_environment(frame.sky_environment);
     renderer.set_cloud_environment(frame.cloud_environment);
-    renderer.set_hud_health(frame.hud_health);
+    renderer.set_hud_player_health(frame.hud_player_health);
     renderer.set_hud_food(frame.hud_food);
     renderer.set_hud_food_effect(frame.hud_food_effect);
     renderer.set_hud_armor(frame.hud_armor);

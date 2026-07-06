@@ -2,7 +2,10 @@ use bbb_render_types::HudObfuscatedRandom;
 use glam::{Mat4, Vec3};
 use winit::dpi::PhysicalSize;
 
-use super::{HudDigitGlyph, HudNineSliceScaling, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
+use super::{
+    HudDigitGlyph, HudHeartKind, HudNineSliceScaling, HudPlayerHealth, HudUvRect, HudVertex,
+    HUD_HOTBAR_SLOTS,
+};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
@@ -11,7 +14,6 @@ const HUD_HOTBAR_ITEM_SIZE: u32 = 16;
 const HUD_EXPERIENCE_BAR_WIDTH: u32 = 182;
 const HUD_EXPERIENCE_BAR_HEIGHT: u32 = 5;
 const HUD_EXPERIENCE_MARGIN_BOTTOM: f32 = 24.0;
-pub(super) const HUD_HEARTS_PER_ROW: u32 = 10;
 const HUD_HEART_SPACING: f32 = 8.0;
 pub(super) const HUD_FOOD_ICONS_PER_ROW: u32 = 10;
 const HUD_FOOD_SPACING: f32 = 8.0;
@@ -19,11 +21,15 @@ pub(super) const HUD_ARMOR_ICONS_PER_ROW: u32 = 10;
 const HUD_ARMOR_SPACING: f32 = 8.0;
 /// Vanilla `Gui.extractArmor` seats the armor row at
 /// `yLineArmor = yLineBase - (numHealthRows - 1) * healthRowHeight - 10`
-/// (Gui.java:801). bbb draws a single health row (it does not yet project
-/// `maxHealth` / absorption, so `numHealthRows == 1`), which collapses the
-/// `(numHealthRows - 1) * healthRowHeight` term to `0` and leaves a fixed 10px
-/// gap above the `yLineBase` heart baseline (`surface_height - 39`).
+/// (Gui.java:801): this is the fixed 10px term above the `yLineBase` heart
+/// baseline (`surface_height - 39`); the `(numHealthRows - 1) * healthRowHeight`
+/// term is added by `armor_hud_rect` from the projected health-row geometry.
 const HUD_ARMOR_ROW_Y_OFFSET: f32 = 10.0;
+/// `healthRowHeight` for the single-row default (`max(10 - (1 - 2), 3) = 11`),
+/// used for the armor row when no player health is projected. The armor
+/// `(numHealthRows - 1) * healthRowHeight` term is zero for one row, so this
+/// only documents the single-row case.
+pub(super) const HUD_SINGLE_HEALTH_ROW_HEIGHT: i32 = 11;
 /// Vanilla `Gui.NUM_AIR_BUBBLES` (Gui.java:126): one row of 10 bubbles.
 pub(super) const HUD_AIR_BUBBLES_PER_ROW: u32 = 10;
 /// Vanilla `Gui.AIR_BUBBLE_SEPERATION` (Gui.java:128): the 8px bubble stride
@@ -242,20 +248,150 @@ pub(super) fn gui_item_slot_placement(rect: HudRect) -> Mat4 {
         * Mat4::from_scale(Vec3::new(size, -size, size))
 }
 
-pub(super) fn heart_hud_rect(
+/// One heart sprite to draw (vanilla `Gui.extractHeart`), produced by
+/// [`hud_player_heart_instances`]. `x`/`y` are the top-left HUD pixel; hearts
+/// blit at the sprite's own 9x9 size.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudHeartInstance {
+    pub kind: HudHeartKind,
+    pub half: bool,
+    pub x: f32,
+    pub y: f32,
+}
+
+impl HudHeartInstance {
+    /// This heart's draw rect at the given sprite size (9x9 for every heart).
+    pub(super) fn rect(self, width: u32, height: u32) -> HudRect {
+        HudRect {
+            x: self.x,
+            y: self.y,
+            width,
+            height,
+        }
+    }
+}
+
+/// Vanilla `Gui.extractPlayerHealth` health-row geometry from the raw player
+/// state (Gui.java:746,768,770-771): resolves `currentHealth = ceil(health)`
+/// and `maxHealth = max(attr, currentHealth)` (blink deferred, so `oldHealth ==
+/// currentHealth`), then `numHealthRows = ceil((maxHealth + ceil(absorption)) /
+/// 2 / 10)` and `healthRowHeight = max(10 - (numHealthRows - 2), 3)`.
+pub(super) fn hud_health_row_geometry(health: HudPlayerHealth) -> (u32, i32) {
+    let current_health = health.health.ceil().max(0.0);
+    let max_health = health.max_health.max(current_health);
+    hud_health_rows(max_health, health.absorption)
+}
+
+/// Core of [`hud_health_row_geometry`]: `numHealthRows` /`healthRowHeight` from
+/// an already-resolved `maxHealth` float and the raw absorption amount
+/// (Gui.java:769-771). `absorption` is ceiled to `totalAbsorption` first.
+pub(super) fn hud_health_rows(max_health: f32, absorption: f32) -> (u32, i32) {
+    let total_absorption = absorption.ceil().max(0.0) as i32;
+    let num_rows = ((max_health + total_absorption as f32) / 2.0 / 10.0)
+        .ceil()
+        .max(0.0) as i32;
+    // Vanilla `Math.max(10 - (numHealthRows - 2), 3)`.
+    let row_height = (10 - (num_rows - 2)).max(3);
+    (num_rows.max(0) as u32, row_height)
+}
+
+/// Vanilla `Gui.extractHearts` (Gui.java:820-873) with blink omitted (blink is
+/// deferred: it needs the untracked `invulnerableTime` and wall-clock
+/// `displayHealth`). Walks containers from `healthContainerCount +
+/// absorptionContainerCount - 1` down to `0` (the vanilla descending loop),
+/// emitting for each: the `Container` background, then the absorbing overlay
+/// (`Withered` keeps its own sprite, else `Absorbing`) while its half is inside
+/// the absorption amount, then the base fill while its half is inside
+/// `currentHealth`. `xLeft = guiWidth/2 - 91`, `yLineBase = guiHeight - 39`;
+/// rows stack up by `healthRowHeight`. The Regeneration wave lifts one health
+/// heart (`containerIndex == tickCount % ceil(maxHealth + 5)`) by 2px, and at
+/// `currentHealth + absorption <= 4` every heart shakes by `nextInt(2)` from a
+/// `tickCount * 312871`-seeded LCG (vanilla reseeds the identical
+/// `LegacyRandomSource` at Gui.java:764, so this reproduces its sequence
+/// exactly — unlike the food/air shakes whose seed is wall-clock).
+pub(super) fn hud_player_heart_instances(
     surface_size: PhysicalSize<u32>,
-    index: u32,
-    width: u32,
-    height: u32,
-) -> HudRect {
+    health: HudPlayerHealth,
+) -> Vec<HudHeartInstance> {
     let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;
-    HudRect {
-        x: surface_width * 0.5 - 91.0 + index as f32 * HUD_HEART_SPACING,
-        y: surface_height - 39.0,
-        width,
-        height,
+    let x_left = surface_width * 0.5 - 91.0;
+    let y_line_base = surface_height - 39.0;
+
+    let current_health = health.health.ceil().max(0.0) as i32;
+    let absorption = health.absorption.ceil().max(0.0) as i32;
+    let max_health = health.max_health.max(current_health as f32);
+    let (_, health_row_height) = hud_health_rows(max_health, health.absorption);
+
+    let health_container_count = (max_health / 2.0).ceil().max(0.0) as i32;
+    let absorption_container_count = (absorption as f32 / 2.0).ceil().max(0.0) as i32;
+    let max_health_halves = health_container_count * 2;
+
+    // Vanilla `heartOffsetIndex = tickCount % ceil(maxHealth + 5)` under
+    // Regeneration, else `-1` (never matches a container index).
+    let heart_offset_index = if health.regen {
+        let period = (max_health + 5.0).ceil().max(1.0) as i64;
+        (health.tick_count as i64 % period) as i32
+    } else {
+        -1
+    };
+
+    // Low-health shake: one `nextInt(2)` per container consumed in the
+    // descending order, from a per-tick reseed (Gui.java:764,844-846).
+    let mut shake = ((current_health + absorption) <= 4).then(|| {
+        let seed = (health.tick_count as i32).wrapping_mul(312871) as i64 as u64;
+        HudObfuscatedRandom::with_seed(seed)
+    });
+
+    let total_containers = health_container_count + absorption_container_count;
+    let mut instances = Vec::new();
+    for container_index in (0..total_containers).rev() {
+        let row = container_index / 10;
+        let column = container_index % 10;
+        let xo = x_left + column as f32 * HUD_HEART_SPACING;
+        let mut yo = y_line_base - row as f32 * health_row_height as f32;
+        if let Some(random) = shake.as_mut() {
+            yo += random.next_int_bound(2) as f32;
+        }
+        if container_index < health_container_count && container_index == heart_offset_index {
+            yo -= 2.0;
+        }
+
+        instances.push(HudHeartInstance {
+            kind: HudHeartKind::Container,
+            half: false,
+            x: xo,
+            y: yo,
+        });
+
+        let halves = container_index * 2;
+        if container_index >= health_container_count {
+            let absorption_halves = halves - max_health_halves;
+            if absorption_halves < absorption {
+                let kind = if health.heart_type == HudHeartKind::Withered {
+                    HudHeartKind::Withered
+                } else {
+                    HudHeartKind::Absorbing
+                };
+                instances.push(HudHeartInstance {
+                    kind,
+                    half: absorption_halves + 1 == absorption,
+                    x: xo,
+                    y: yo,
+                });
+            }
+        }
+
+        if halves < current_health {
+            instances.push(HudHeartInstance {
+                kind: health.heart_type,
+                half: halves + 1 == current_health,
+                x: xo,
+                y: yo,
+            });
+        }
     }
+    instances
 }
 
 /// One food icon's rect. `y_offset` is vanilla `Gui.extractFood`'s per-icon
@@ -338,18 +474,24 @@ pub(super) fn vehicle_heart_hud_rect(
 
 /// One armor icon's rect. Vanilla `Gui.extractArmor` walks `xo = xLeft + i * 8`
 /// (Gui.java:804) along the same `xLeft = guiWidth / 2 - 91` left edge as the
-/// hearts, one row (`HUD_ARMOR_ROW_Y_OFFSET`) above the heart baseline.
+/// hearts, at `yLineArmor = yLineBase - (numHealthRows - 1) * healthRowHeight -
+/// 10` (Gui.java:801): a fixed `HUD_ARMOR_ROW_Y_OFFSET` (10px) above the heart
+/// baseline plus one `healthRowHeight` step per extra health row, so multi-row
+/// health pushes the armor bar up with the hearts.
 pub(super) fn armor_hud_rect(
     surface_size: PhysicalSize<u32>,
     index: u32,
+    num_health_rows: u32,
+    health_row_height: i32,
     width: u32,
     height: u32,
 ) -> HudRect {
     let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;
+    let extra_rows = num_health_rows.saturating_sub(1) as f32;
     HudRect {
         x: surface_width * 0.5 - 91.0 + index as f32 * HUD_ARMOR_SPACING,
-        y: surface_height - 39.0 - HUD_ARMOR_ROW_Y_OFFSET,
+        y: surface_height - 39.0 - extra_rows * health_row_height as f32 - HUD_ARMOR_ROW_Y_OFFSET,
         width,
         height,
     }
@@ -618,18 +760,6 @@ fn tooltip_line_y(line_index: usize) -> u32 {
             .and_then(|line_index| line_index.checked_mul(HUD_TOOLTIP_LINE_HEIGHT))
             .and_then(|line_y| line_y.checked_add(HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP))
             .unwrap_or(u32::MAX)
-    }
-}
-
-pub(super) fn hud_heart_fill(health: f32, index: u32) -> HudIconFill {
-    let current_halves = health.ceil().clamp(0.0, (HUD_HEARTS_PER_ROW * 2) as f32) as u32;
-    let start_half = index * 2;
-    if start_half >= current_halves {
-        HudIconFill::Empty
-    } else if start_half + 1 == current_halves {
-        HudIconFill::Half
-    } else {
-        HudIconFill::Full
     }
 }
 
@@ -1301,15 +1431,212 @@ mod tests {
         assert_eq!(hud_boss_bar_fill_uv(0).max, [0.0, 1.0]);
     }
 
+    fn player_health(health: f32) -> HudPlayerHealth {
+        HudPlayerHealth {
+            health,
+            max_health: 20.0,
+            absorption: 0.0,
+            heart_type: HudHeartKind::Normal,
+            hardcore: false,
+            regen: false,
+            tick_count: 0,
+        }
+    }
+
+    fn container_hearts(instances: &[HudHeartInstance]) -> Vec<HudHeartInstance> {
+        instances
+            .iter()
+            .copied()
+            .filter(|i| i.kind == HudHeartKind::Container)
+            .collect()
+    }
+
+    fn fill_hearts(instances: &[HudHeartInstance]) -> Vec<HudHeartInstance> {
+        instances
+            .iter()
+            .copied()
+            .filter(|i| i.kind != HudHeartKind::Container)
+            .collect()
+    }
+
     #[test]
     fn hud_layout_places_player_hearts_above_hotbar() {
         let surface_size = PhysicalSize::new(1280, 720);
-        let first = heart_hud_rect(surface_size, 0, 9, 9);
-        let last = heart_hud_rect(surface_size, 9, 9, 9);
-        assert_eq!(first.x, 549.0);
-        assert_eq!(first.y, 681.0);
-        assert_eq!(last.x, 621.0);
-        assert_eq!(last.y, 681.0);
+        let instances = hud_player_heart_instances(surface_size, player_health(20.0));
+        // Full 20 health / 20 max: 10 container backgrounds + 10 Normal fulls,
+        // all on the single row baseline (720 - 39 = 681).
+        let containers = container_hearts(&instances);
+        assert_eq!(containers.len(), 10);
+        let left = containers
+            .iter()
+            .min_by(|a, b| a.x.total_cmp(&b.x))
+            .unwrap();
+        let right = containers
+            .iter()
+            .max_by(|a, b| a.x.total_cmp(&b.x))
+            .unwrap();
+        assert_eq!((left.x, left.y), (549.0, 681.0));
+        assert_eq!((right.x, right.y), (621.0, 681.0));
+        assert!(containers.iter().all(|i| i.y == 681.0 && !i.half));
+
+        let fills = fill_hearts(&instances);
+        assert_eq!(fills.len(), 10);
+        assert!(fills
+            .iter()
+            .all(|i| i.kind == HudHeartKind::Normal && !i.half));
+    }
+
+    #[test]
+    fn hud_player_heart_instances_split_half_and_empty() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        // ceil(15) = 15 half-hearts: 7 full + 1 half (halves 0..=12 full, 14
+        // half), the remaining containers draw background only.
+        let fills = fill_hearts(&hud_player_heart_instances(
+            surface_size,
+            player_health(15.0),
+        ));
+        assert_eq!(fills.iter().filter(|i| !i.half).count(), 7);
+        assert_eq!(fills.iter().filter(|i| i.half).count(), 1);
+        assert!(fills.iter().all(|i| i.kind == HudHeartKind::Normal));
+
+        // ceil(0.5) = 1 -> a single half heart; ceil rounds fractional health up.
+        let fills = fill_hearts(&hud_player_heart_instances(
+            surface_size,
+            player_health(0.5),
+        ));
+        assert_eq!(fills.len(), 1);
+        assert!(fills[0].half && fills[0].kind == HudHeartKind::Normal);
+
+        // Zero health: only the 10 container backgrounds, no fills.
+        let instances = hud_player_heart_instances(surface_size, player_health(0.0));
+        assert_eq!(container_hearts(&instances).len(), 10);
+        assert!(fill_hearts(&instances).is_empty());
+    }
+
+    #[test]
+    fn hud_player_heart_instances_follow_the_base_heart_type() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        for kind in [
+            HudHeartKind::Normal,
+            HudHeartKind::Poisoned,
+            HudHeartKind::Withered,
+            HudHeartKind::Frozen,
+        ] {
+            let mut health = player_health(20.0);
+            health.heart_type = kind;
+            let fills = fill_hearts(&hud_player_heart_instances(surface_size, health));
+            assert_eq!(fills.len(), 10);
+            assert!(fills.iter().all(|i| i.kind == kind && !i.half));
+        }
+    }
+
+    #[test]
+    fn hud_player_heart_instances_append_absorption_hearts() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let mut health = player_health(20.0);
+        health.absorption = 6.0; // 3 absorption hearts beyond the 10 health hearts
+        let instances = hud_player_heart_instances(surface_size, health);
+        // 13 containers (10 health + 3 absorption), 10 Normal fulls, 3 Absorbing.
+        assert_eq!(container_hearts(&instances).len(), 13);
+        let normals = instances
+            .iter()
+            .filter(|i| i.kind == HudHeartKind::Normal)
+            .count();
+        let absorbing = instances
+            .iter()
+            .filter(|i| i.kind == HudHeartKind::Absorbing)
+            .count();
+        assert_eq!(normals, 10);
+        assert_eq!(absorbing, 3);
+
+        // An odd absorption amount ends in a half absorbing heart.
+        health.absorption = 5.0; // ceil -> 5 -> 3 containers, last is half
+        let instances = hud_player_heart_instances(surface_size, health);
+        let absorbing: Vec<_> = instances
+            .iter()
+            .filter(|i| i.kind == HudHeartKind::Absorbing)
+            .collect();
+        assert_eq!(absorbing.len(), 3);
+        assert_eq!(absorbing.iter().filter(|i| i.half).count(), 1);
+
+        // Withered players keep their own sprite for the absorption hearts
+        // (vanilla `type == WITHERED ? type : ABSORBING`).
+        let mut withered = player_health(20.0);
+        withered.heart_type = HudHeartKind::Withered;
+        withered.absorption = 6.0;
+        let instances = hud_player_heart_instances(surface_size, withered);
+        assert!(instances.iter().all(|i| i.kind != HudHeartKind::Absorbing));
+        assert_eq!(
+            instances
+                .iter()
+                .filter(|i| i.kind == HudHeartKind::Withered)
+                .count(),
+            13
+        );
+    }
+
+    #[test]
+    fn hud_player_heart_instances_stack_multiple_rows() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let mut health = player_health(40.0);
+        health.max_health = 40.0; // 20 hearts -> 2 rows
+        health.health = 40.0;
+        let instances = hud_player_heart_instances(surface_size, health);
+        assert_eq!(container_hearts(&instances).len(), 20);
+        // numHealthRows = ceil(40/2/10) = 2 -> healthRowHeight = max(10-0,3) = 10.
+        assert_eq!(hud_health_rows(40.0, 0.0), (2, 10));
+        // Row 0 sits at 681, row 1 one healthRowHeight (10px) above at 671.
+        let ys: std::collections::BTreeSet<i64> = container_hearts(&instances)
+            .iter()
+            .map(|i| i.y as i64)
+            .collect();
+        assert_eq!(ys.into_iter().collect::<Vec<_>>(), vec![671, 681]);
+    }
+
+    #[test]
+    fn hud_player_heart_instances_regeneration_lifts_one_heart() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let mut health = player_health(20.0);
+        health.regen = true;
+        // heartOffsetIndex = tickCount % ceil(maxHealth + 5) = 3 % ceil(25) = 3.
+        health.tick_count = 3;
+        let instances = hud_player_heart_instances(surface_size, health);
+        let lifted: Vec<_> = container_hearts(&instances)
+            .into_iter()
+            .filter(|i| i.y == 679.0)
+            .collect();
+        // Container index 3 = column 3 (x = 549 + 3*8 = 573) lifted by 2px.
+        assert_eq!(lifted.len(), 1);
+        assert_eq!(lifted[0].x, 573.0);
+
+        // No regeneration: no heart is lifted.
+        health.regen = false;
+        let instances = hud_player_heart_instances(surface_size, health);
+        assert!(container_hearts(&instances).iter().all(|i| i.y == 681.0));
+    }
+
+    #[test]
+    fn hud_player_heart_instances_shake_only_at_low_health() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        // 2 health (<= 4): every container jitters by nextInt(2) from the
+        // tickCount * 312871 seed, drawn in descending container order.
+        let mut health = player_health(2.0);
+        health.tick_count = 5;
+        let shaken = hud_player_heart_instances(surface_size, health);
+        let seed = 5i32.wrapping_mul(312871) as i64 as u64;
+        let mut rng = HudObfuscatedRandom::with_seed(seed);
+        for container in container_hearts(&shaken) {
+            assert_eq!(container.y, 681.0 + rng.next_int_bound(2) as f32);
+        }
+        // Deterministic for a given tick.
+        assert_eq!(shaken, hud_player_heart_instances(surface_size, health));
+
+        // Above the 4-half-heart threshold nothing shakes.
+        let mut steady = player_health(6.0);
+        steady.tick_count = 5;
+        assert!(hud_player_heart_instances(surface_size, steady)
+            .iter()
+            .all(|i| i.y == 681.0));
     }
 
     #[test]
@@ -1326,16 +1653,23 @@ mod tests {
     #[test]
     fn hud_layout_places_armor_row_one_row_above_the_hearts() {
         let surface_size = PhysicalSize::new(1280, 720);
-        let first = armor_hud_rect(surface_size, 0, 9, 9);
-        let last = armor_hud_rect(surface_size, 9, 9, 9);
-        // Same left edge and 8px stride as the hearts (xLeft = guiWidth/2 - 91).
+        // Single health row (numHealthRows = 1): the armor row sits the fixed
+        // 10px above the heart baseline (720 - 39 - 10 = 671), the same as the
+        // pre-multi-row layout, regardless of healthRowHeight.
+        let first = armor_hud_rect(surface_size, 0, 1, HUD_SINGLE_HEALTH_ROW_HEIGHT, 9, 9);
+        let last = armor_hud_rect(surface_size, 9, 1, HUD_SINGLE_HEALTH_ROW_HEIGHT, 9, 9);
         assert_eq!(first.x, 549.0);
         assert_eq!(last.x, 621.0);
-        // 10px above the heart baseline (720 - 39 - 10).
         assert_eq!(first.y, 671.0);
         assert_eq!(last.y, 671.0);
-        // Exactly one 10px row above the hearts (yLineBase - 10).
-        assert_eq!(heart_hud_rect(surface_size, 0, 9, 9).y - first.y, 10.0);
+        // The heart baseline (yLineBase) is 720 - 39 = 681, one 10px gap below.
+        assert_eq!(681.0 - first.y, 10.0);
+
+        // Multi-row health lifts the armor row by (numHealthRows - 1) *
+        // healthRowHeight on top of the 10px gap: 2 rows @ 10px -> 671 - 10 =
+        // 661; 3 rows @ 9px -> 671 - 18 = 653.
+        assert_eq!(armor_hud_rect(surface_size, 0, 2, 10, 9, 9).y, 661.0);
+        assert_eq!(armor_hud_rect(surface_size, 0, 3, 9, 9, 9).y, 653.0);
     }
 
     #[test]
@@ -1787,13 +2121,25 @@ mod tests {
     }
 
     #[test]
-    fn hud_heart_fill_uses_ceiled_health_halves() {
-        assert_eq!(hud_heart_fill(0.0, 0), HudIconFill::Empty);
-        assert_eq!(hud_heart_fill(5.0, 0), HudIconFill::Full);
-        assert_eq!(hud_heart_fill(5.0, 2), HudIconFill::Half);
-        assert_eq!(hud_heart_fill(5.5, 2), HudIconFill::Full);
-        assert_eq!(hud_heart_fill(20.0, 9), HudIconFill::Full);
-        assert_eq!(hud_heart_fill(25.0, 9), HudIconFill::Full);
+    fn hud_health_rows_scale_rows_and_compress_height() {
+        // 20 max / no absorption -> 1 row (healthRowHeight is unused for a
+        // single row but follows max(10-(1-2),3) = 11).
+        assert_eq!(hud_health_rows(20.0, 0.0), (1, 11));
+        // Health Boost / absorption push into more rows and shrink the step.
+        assert_eq!(hud_health_rows(40.0, 0.0), (2, 10));
+        assert_eq!(hud_health_rows(20.0, 20.0), (2, 10));
+        assert_eq!(hud_health_rows(60.0, 0.0), (3, 9));
+        // The row height floors at 3 for very tall stacks.
+        assert_eq!(hud_health_rows(200.0, 0.0).1, 3);
+        // Absorption is ceiled before adding: 20 max + ceil(0.5) = 1 -> 21 HP,
+        // ceil(21 / 2 / 10) = 2 rows.
+        assert_eq!(hud_health_rows(20.0, 0.5), (2, 10));
+
+        // hud_health_row_geometry resolves currentHealth/maxHealth first:
+        // maxHealth falls back to currentHealth when the attribute is lower.
+        let mut health = player_health(30.0);
+        health.max_health = 20.0; // ceil(30) forces maxHealth up to 30
+        assert_eq!(hud_health_row_geometry(health), (2, 10));
     }
 
     #[test]

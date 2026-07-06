@@ -483,18 +483,59 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Heart variants (absorption, poison, wither, hardcore, regen flash,
-    frozen) plus multi-row health stacking (`numHealthRows` from
-    maxHealth+absorption shifting the armor/air rows and compressing
-    `healthRowHeight`) — the world metadata chain is now complete (air
-    supply / LivingEntity health / absorption landed 2026-07-06 with the air
-    bubbles + vehicle hearts, see Evidence; `local_player_absorption` is
-    stored and queryable, just not drawn).
   - Sign edit screen (needs a sign block-entity text store; input flow
     exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-06 — Heart variants + multi-row health stacking. New heart
+    projection `RendererFrame.hud_player_health` (`HudPlayerHealth`) replaces
+    the old single-row `hud_health: f32`, carrying health, the MAX_HEALTH
+    attribute, absorption, the base `HeartType`, the hardcore flag, the
+    Regeneration gate and the client tick. World inputs:
+    `WorldStore::local_player_max_health` (MAX_HEALTH attribute, registry
+    index 19, default 20.0), `local_player_is_fully_frozen`
+    (`EntityStore::is_fully_frozen` = `ticksFrozen >= 140`, refactored out of
+    the shaking-body check), the already-stored `local_player_absorption`, and
+    the login `hardcore` flag now stored on `WorldGameplayState`
+    (`WorldStore::is_hardcore`). `HeartType.forPlayer` precedence
+    (Gui.java:1438-1450) = poison > wither > fully-frozen > normal, with the
+    MobEffect ids derived by 0-indexed registration order (MobEffects.java:
+    regeneration=9, poison=18, wither=19; consistent with the sibling
+    night_vision=15 / hunger=16). Renderer: `HudHeartKind`
+    (Container/Normal/Poisoned/Withered/Absorbing/Frozen) with a
+    `sprite_name(hardcore, half, blinking)` that reproduces vanilla's asset
+    naming asymmetry (Normal prefixes `hardcore_`, typed kinds embed it after
+    their own prefix, Container appends `_hardcore` and ignores half); sprites
+    stored per `[kind][variant]` and loaded by walking every combination.
+    `hud_player_heart_instances` replays `extractHearts` (Gui.java:820-873):
+    the descending container loop draws Container then the absorbing overlay
+    (`WITHERED` keeps its own sprite, else `ABSORBING`) then the base fill, at
+    `xLeft = guiWidth/2 - 91` stacking up by `healthRowHeight`
+    (`numHealthRows = ceil((maxHealth + ceil(absorption)) / 2 / 10)`,
+    `healthRowHeight = max(10 - (numHealthRows - 2), 3)`). The Regeneration
+    wave lifts container `tickCount % ceil(maxHealth + 5)` by 2px, and at
+    `currentHealth + absorption <= 4` every heart shakes by `nextInt(2)` from a
+    `tickCount * 312871`-seeded `LegacyRandomSource` — reproduced exactly
+    (vanilla reseeds at Gui.java:764, so unlike the wall-clock food/air shakes
+    this matches the vanilla sequence). `armor_hud_rect` now takes the
+    projected `(numHealthRows, healthRowHeight)` so multi-row health pushes the
+    armor row up with the hearts (`yLineBase - (numHealthRows-1)*healthRowHeight
+    - 10`, Gui.java:801; single-row default keeps the prior 10px gap). Boundary:
+    the damage/heal **blink** flash is deferred — it needs the untracked
+    `player.invulnerableTime` (no client-side sync) and the wall-clock
+    `displayHealth`/`lastHealthTime` hold, neither reproducible
+    deterministically; `HudPlayerHealth` therefore always draws `blinking =
+    false`, though `HeartType::sprite_name` and the uploaded `*_blinking` names
+    remain complete (matrix-tested) for when it lands. Tests: bbb-world
+    (hardcore login flag, MAX_HEALTH attribute + 20.0 fallback, 140-tick freeze
+    threshold); bbb-renderer layout (`hud_health_rows` row/height, half/empty
+    splits, base-type follow, absorption append incl. odd-half + withered
+    override, 2-row stacking, regen 2px lift index, hand-replayed low-health
+    shake sequence, armor multi-row shift) + the sprite-name matrix (every
+    kind×hardcore×half×blink resolves to a real vanilla asset, plus the
+    hardcore-naming asymmetry) + an offscreen readback sentinel (poison swaps
+    the base fill sprite). Air/vehicle/armor linked-y layout tests unchanged.
   - Done 2026-07-06 — Air bubbles + vehicle hearts + the world metadata
     chain. Synched-data ids derived per inheritance chain (never from bbb
     tests): `Entity.DATA_AIR_SUPPLY_ID` = 1 (Entity.java:255-271 field

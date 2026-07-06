@@ -1666,4 +1666,62 @@ mod tests {
         mount(&mut world, 32);
         assert_eq!(world.local_player_vehicle_health(), None);
     }
+
+    #[test]
+    fn local_player_max_health_reads_the_synced_attribute() {
+        // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
+        // index 19 (Attributes.java field order); the `RangedAttribute` default
+        // is 20.0 (Attributes.java:58-60).
+        const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
+
+        // No local player / no synced attribute: the RangedAttribute default.
+        assert_eq!(WorldStore::new().local_player_max_health(), 20.0);
+        let mut world = spawned_player_world();
+        assert_eq!(world.local_player_max_health(), 20.0);
+
+        // A Health Boost / attribute bump folds through `calculateValue`.
+        assert!(
+            world.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                    base: 30.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+        assert_eq!(world.local_player_max_health(), 30.0);
+    }
+
+    #[test]
+    fn local_player_is_fully_frozen_tracks_the_freeze_threshold() {
+        // Vanilla `isFullyFrozen()` = `getTicksFrozen() >= 140`.
+        // `DATA_TICKS_FROZEN_ID` is `Entity` id 7 (INT, wire serializer 1).
+        const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+        const INT_SERIALIZER_ID: i32 = 1;
+
+        assert!(!WorldStore::new().local_player_is_fully_frozen());
+        let mut world = spawned_player_world();
+        assert!(!world.local_player_is_fully_frozen());
+
+        // One tick short of the threshold: not yet fully frozen.
+        assert!(set_entity_data(
+            &mut world,
+            7,
+            VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+            INT_SERIALIZER_ID,
+            bbb_protocol::packets::EntityDataValueKind::Int(139),
+        ));
+        assert!(!world.local_player_is_fully_frozen());
+
+        // At the 140-tick threshold: fully frozen.
+        assert!(set_entity_data(
+            &mut world,
+            7,
+            VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+            INT_SERIALIZER_ID,
+            bbb_protocol::packets::EntityDataValueKind::Int(140),
+        ));
+        assert!(world.local_player_is_fully_frozen());
+    }
 }

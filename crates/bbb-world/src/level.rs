@@ -83,6 +83,11 @@ pub struct WorldGameplayState {
     pub previous_game_type_name: Option<String>,
     pub show_death_screen: bool,
     pub do_limited_crafting: bool,
+    /// Vanilla `ClientLevel.Data.isHardcore` from the `ClientboundLoginPacket`
+    /// `hardcore` flag (read by `Gui.extractHearts` for the hardcore heart
+    /// sprite variants, Gui.java:834).
+    #[serde(default)]
+    pub hardcore: bool,
 }
 
 impl Default for WorldGameplayState {
@@ -94,6 +99,7 @@ impl Default for WorldGameplayState {
             previous_game_type_name: None,
             show_death_screen: true,
             do_limited_crafting: false,
+            hardcore: false,
         }
     }
 }
@@ -192,6 +198,7 @@ impl WorldStore {
         self.local_player_id = Some(login.player_id);
         self.gameplay.show_death_screen = login.show_death_screen;
         self.gameplay.do_limited_crafting = login.do_limited_crafting;
+        self.gameplay.hardcore = login.hardcore;
         self.apply_spawn_info(&login.common_spawn_info);
     }
 
@@ -499,6 +506,13 @@ impl WorldStore {
 
     pub fn gameplay(&self) -> &WorldGameplayState {
         &self.gameplay
+    }
+
+    /// Vanilla `player.level().getLevelData().isHardcore()` — the login
+    /// `hardcore` flag `Gui.extractHearts` reads to pick the hardcore heart
+    /// sprites (Gui.java:834).
+    pub fn is_hardcore(&self) -> bool {
+        self.gameplay.hardcore
     }
 
     pub fn local_player_is_spectator(&self) -> bool {
@@ -865,6 +879,7 @@ mod tests {
                 previous_game_type_name: None,
                 show_death_screen: true,
                 do_limited_crafting: false,
+                hardcore: false,
             }
         );
     }
@@ -1349,6 +1364,7 @@ mod tests {
                 previous_game_type_name: Some("survival".to_string()),
                 show_death_screen: false,
                 do_limited_crafting: true,
+                hardcore: false,
             }
         );
         assert_eq!(store.counters().game_event_packets, 3);
@@ -1529,6 +1545,22 @@ mod tests {
             omitted_field.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Default
         );
+    }
+
+    #[test]
+    fn apply_login_records_the_hardcore_flag() {
+        let mut world = WorldStore::new();
+        assert!(!world.is_hardcore());
+
+        let mut login = login_packet(0, "minecraft:overworld");
+        login.hardcore = true;
+        world.apply_login(&login);
+        assert!(world.is_hardcore());
+        assert!(world.gameplay().hardcore);
+
+        // A later non-hardcore login clears it.
+        world.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(!world.is_hardcore());
     }
 
     fn login_packet(dimension_type_id: i32, dimension: &str) -> ProtocolPlayLogin {

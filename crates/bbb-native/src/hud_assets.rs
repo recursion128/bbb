@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
-use bbb_renderer::{HudBossBarColor, HudBossBarOverlay, HudNineSliceScaling};
+use bbb_renderer::{HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling};
 
 use bbb_item_model::font::{
     hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
@@ -705,16 +705,30 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         experience_progress.height,
         &experience_progress.rgba,
     )?;
-    let heart_container = hud_sprite(&sprites, "hud/heart/container")?;
-    renderer.upload_hud_heart_container(
-        heart_container.width,
-        heart_container.height,
-        &heart_container.rgba,
-    )?;
+    // Player heart sprites: every `HudHeartKind` × hardcore × half combination
+    // (vanilla `hud/heart/*`, Gui.java:1334-1393). Blink variants are skipped
+    // (blink is deferred). `Container` has no distinct half sprite, so its half
+    // slot is not loaded (the renderer normalizes container half -> full).
     let heart_full = hud_sprite(&sprites, "hud/heart/full")?;
-    renderer.upload_hud_heart_full(heart_full.width, heart_full.height, &heart_full.rgba)?;
-    let heart_half = hud_sprite(&sprites, "hud/heart/half")?;
-    renderer.upload_hud_heart_half(heart_half.width, heart_half.height, &heart_half.rgba)?;
+    for kind in HudHeartKind::ALL {
+        for hardcore in [false, true] {
+            for half in [false, true] {
+                if matches!(kind, HudHeartKind::Container) && half {
+                    continue;
+                }
+                let name = kind.sprite_name(hardcore, half, false);
+                let sprite = hud_sprite(&sprites, &format!("hud/heart/{name}"))?;
+                renderer.upload_hud_heart_sprite(
+                    kind,
+                    hardcore,
+                    half,
+                    sprite.width,
+                    sprite.height,
+                    &sprite.rgba,
+                )?;
+            }
+        }
+    }
     let food_empty = hud_sprite(&sprites, "hud/food_empty")?;
     renderer.upload_hud_food_empty(food_empty.width, food_empty.height, &food_empty.rgba)?;
     let food_full = hud_sprite(&sprites, "hud/food_full")?;

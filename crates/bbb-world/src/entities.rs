@@ -3084,6 +3084,30 @@ impl WorldStore {
         Some(LocalPlayerVehicleHealth { health, max_health })
     }
 
+    /// Vanilla `player.getAttributeValue(Attributes.MAX_HEALTH)`, the max the
+    /// heart row scales its container count / row count against
+    /// (`Gui.extractPlayerHealth`, Gui.java:768). Reads the synced MAX_HEALTH
+    /// attribute (registry index 19) folded through
+    /// `AttributeInstance.calculateValue`, falling back to the
+    /// `Attributes.MAX_HEALTH` `RangedAttribute` default 20.0 while unsynced.
+    pub fn local_player_max_health(&self) -> f32 {
+        self.local_player_id
+            .and_then(|id| {
+                self.entities
+                    .attribute_value(id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
+            })
+            .unwrap_or(VANILLA_DEFAULT_MAX_HEALTH) as f32
+    }
+
+    /// Vanilla `player.isFullyFrozen()` (`getTicksFrozen() >= 140`), the
+    /// `Gui.HeartType.forPlayer` frozen-heart gate (Gui.java:1444). Reads the
+    /// local player's synced `DATA_TICKS_FROZEN_ID`.
+    pub fn local_player_is_fully_frozen(&self) -> bool {
+        self.local_player_id
+            .map(|id| self.entities.is_fully_frozen(id))
+            .unwrap_or(false)
+    }
+
     pub fn entity_count(&self) -> usize {
         self.entities.len()
     }

@@ -20,15 +20,15 @@ use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
     FogEnvironment, GuiItemLightingEntry, HudAirSupply, HudBlockItemModel, HudEntityPreview,
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudIconLayer, HudInventoryBackgroundLayer,
+    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
     HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudPlayerHealth, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -222,6 +222,13 @@ const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
 /// `BuiltInRegistries.MOB_EFFECT` id for `hunger` (0-indexed registration order,
 /// MobEffects.java:70; the `holderRegistry` stream codec writes the raw id).
 const VANILLA_MOB_EFFECT_HUNGER_ID: i32 = 16;
+/// `BuiltInRegistries.MOB_EFFECT` 0-indexed registration ids driving the heart
+/// sprite variants (MobEffects.java: `regeneration`=9 :54, `poison`=18 :76,
+/// `wither`=19 :77; consistent with the sibling hand-derived ids
+/// night_vision=15 / hunger=16 and the movement module's jump_boost=7 etc.).
+const VANILLA_MOB_EFFECT_REGENERATION_ID: i32 = 9;
+const VANILLA_MOB_EFFECT_POISON_ID: i32 = 18;
+const VANILLA_MOB_EFFECT_WITHER_ID: i32 = 19;
 const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 const VANILLA_MOB_EFFECT_DARKNESS_ID: i32 = 32;
 const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
@@ -1151,6 +1158,20 @@ fn local_player_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectSt
         .and_then(|player_id| world.entity_effect(player_id, effect_id))
 }
 
+/// Vanilla `Gui.HeartType.forPlayer` (Gui.java:1438-1450): the base heart
+/// sprite family, in precedence order poison > wither > fully-frozen > normal.
+fn local_player_heart_type(world: &WorldStore) -> HudHeartKind {
+    if local_player_effect(world, VANILLA_MOB_EFFECT_POISON_ID).is_some() {
+        HudHeartKind::Poisoned
+    } else if local_player_effect(world, VANILLA_MOB_EFFECT_WITHER_ID).is_some() {
+        HudHeartKind::Withered
+    } else if world.local_player_is_fully_frozen() {
+        HudHeartKind::Frozen
+    } else {
+        HudHeartKind::Normal
+    }
+}
+
 fn vanilla_night_vision_scale(effect: MobEffectState, partial_tick: f32) -> f32 {
     if !mob_effect_ends_within(effect, VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS) {
         1.0
@@ -1523,7 +1544,19 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
-    let hud_health = local_player.health.map(|health| health.health);
+    // Vanilla `Gui.extractPlayerHealth` / `extractHearts` inputs (Gui.java:743-873):
+    // the synced health pairs with the MAX_HEALTH attribute, absorption, the
+    // hardcore flag, the `HeartType.forPlayer` base type (poison > wither >
+    // fully-frozen > normal), the Regeneration wave gate, and the client tick.
+    let hud_player_health = local_player.health.map(|health| HudPlayerHealth {
+        health: health.health,
+        max_health: world.local_player_max_health(),
+        absorption: world.local_player_absorption(),
+        heart_type: local_player_heart_type(world),
+        hardcore: world.is_hardcore(),
+        regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
+        tick_count: lightmap_ticks.client_tick_count,
+    });
     let hud_food = local_player.health.map(|health| health.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
@@ -1779,7 +1812,7 @@ pub(crate) fn pump_network_and_terrain(
             fog_environment,
             sky_environment,
             cloud_environment,
-            hud_health,
+            hud_player_health,
             hud_food,
             hud_food_effect,
             hud_armor,

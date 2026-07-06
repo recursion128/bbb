@@ -528,9 +528,11 @@ pub struct Renderer {
     pub(super) hud_entity_preview_pip_targets: Vec<HudEntityPreviewPipTarget>,
     pub(super) hud_experience_background: Option<HudSpriteGpu>,
     pub(super) hud_experience_progress: Option<HudSpriteGpu>,
-    pub(super) hud_heart_container: Option<HudSpriteGpu>,
-    pub(super) hud_heart_full: Option<HudSpriteGpu>,
-    pub(super) hud_heart_half: Option<HudSpriteGpu>,
+    /// Player heart sprites keyed by `[HudHeartKind as usize][variant]`, where
+    /// `variant = (hardcore as usize) * 2 + (half as usize)` (non-blinking
+    /// variants only; blink is deferred). `Container`'s half slots mirror its
+    /// full slot (vanilla routes both to the container sprite).
+    pub(super) hud_heart_sprites: [[Option<HudSpriteGpu>; 4]; crate::hud::HudHeartKind::ALL.len()],
     pub(super) hud_food_empty: Option<HudSpriteGpu>,
     pub(super) hud_food_full: Option<HudSpriteGpu>,
     pub(super) hud_food_half: Option<HudSpriteGpu>,
@@ -547,7 +549,7 @@ pub struct Renderer {
     pub(super) hud_heart_vehicle_full: Option<HudSpriteGpu>,
     pub(super) hud_heart_vehicle_half: Option<HudSpriteGpu>,
     pub(super) hud_code_of_conduct_overlay: Option<HudSpriteGpu>,
-    pub(super) hud_health: Option<f32>,
+    pub(super) hud_player_health: Option<crate::hud::HudPlayerHealth>,
     pub(super) hud_food: Option<i32>,
     pub(super) hud_food_effect: crate::hud::HudFoodEffect,
     pub(super) hud_armor: Option<i32>,
@@ -1455,9 +1457,7 @@ impl Renderer {
             hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,
             hud_experience_progress: None,
-            hud_heart_container: None,
-            hud_heart_full: None,
-            hud_heart_half: None,
+            hud_heart_sprites: Default::default(),
             hud_food_empty: None,
             hud_food_full: None,
             hud_food_half: None,
@@ -1474,7 +1474,7 @@ impl Renderer {
             hud_heart_vehicle_full: None,
             hud_heart_vehicle_half: None,
             hud_code_of_conduct_overlay: None,
-            hud_health: None,
+            hud_player_health: None,
             hud_food: None,
             hud_food_effect: crate::hud::HudFoodEffect::default(),
             hud_armor: None,
