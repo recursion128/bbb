@@ -1050,6 +1050,21 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     // no hands to bake).
     assert!(chest_lid_tick < chest_instances);
     assert!(held_models < chest_instances);
+    // The bell shake ticker (`BellBlockEntity.clientTick`) likewise runs before
+    // render extraction reads `ticks + partialTicks`; bed and bell instances
+    // join the same stream after held-item baking.
+    let bell_shake_tick = source
+        .find("world.advance_bell_shake_ticks(running_ticks);")
+        .expect("pump should advance bell shake ticks");
+    let bed_instances = source
+        .find("entity_instances.extend(bed_model_instances_from_world(world));")
+        .expect("pump should extract bed block-entity model instances");
+    let bell_instances = source
+        .find("entity_instances.extend(bell_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract bell block-entity model instances");
+    assert!(bell_shake_tick < bell_instances);
+    assert!(held_models < bed_instances);
+    assert!(held_models < bell_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

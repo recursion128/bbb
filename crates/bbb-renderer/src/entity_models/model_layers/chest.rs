@@ -29,8 +29,9 @@ pub(in crate::entity_models) const CHEST_SINGLE_LOCK_CUBE: ModelCube =
 
 // Vanilla `ChestModel.createDoubleBodyRightLayer`: the 15-wide right half spans x = 1..16 toward the
 // seam. (The vanilla mesh culls the seam-facing EAST faces via `Util.allOfEnumExcept(Direction.EAST)`;
-// bbb's cube emitter has no per-face visibility, so the seam quads are emitted — they sit enclosed
-// inside the joined double-chest volume and are never visible.)
+// bbb keeps emitting the seam quads — they sit enclosed inside the joined double-chest volume and
+// are never visible, so the chest mesh predates and does not use the `with_visible_faces` mask the
+// bed introduced.)
 pub(in crate::entity_models) const CHEST_RIGHT_BOTTOM_CUBE: ModelCube =
     chest_cube([1.0, 0.0, 1.0], [15.0, 10.0, 14.0], [0.0, 19.0]);
 pub(in crate::entity_models) const CHEST_RIGHT_LID_CUBE: ModelCube =

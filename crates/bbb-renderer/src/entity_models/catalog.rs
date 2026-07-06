@@ -243,6 +243,23 @@ pub enum EntityModelKind {
         wood: SignModelWood,
         attachment: SignModelAttachment,
     },
+    /// Vanilla 26.1 bed meshes submitted by the `BedRenderer` block-entity renderer — like the
+    /// chest, bed instances are projected from bed block states, not the entity list (`entity_id`
+    /// is a sentinel). `part` selects the `createHeadLayer` / `createFootLayer` mesh (each bed
+    /// block renders only its own half), `color` the `Sheets.getBedSprite` `entity/bed/<color>`
+    /// sprite (derived from the `minecraft:<color>_bed` block id). `body_rot` carries the
+    /// `Axis.ZP.rotationDegrees(180 + facing.toYRot())` angle of
+    /// `BedRenderer.createModelTransform`; the model itself has no animation.
+    Bed {
+        color: EntityDyeColor,
+        part: BedModelPart,
+    },
+    /// Vanilla 26.1 `BellModel` submitted by the `BellRenderer` block-entity renderer — the bell
+    /// body + base only (the bar/post support frame is part of the `bell_floor/wall/ceiling/
+    /// between_walls` block models the terrain path already draws). Instances are projected from
+    /// bell block states (`entity_id` is a sentinel); the shake rotation reads
+    /// `EntityRenderState.bell_ticks` / `bell_shake_direction`.
+    Bell,
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
@@ -1444,6 +1461,29 @@ impl SignModelAttachment {
             Self::HangingCeiling | Self::HangingCeilingMiddle | Self::HangingWall
         )
     }
+}
+
+/// Vanilla `BedPart` (`BedBlock.PART`): which of the two `BedRenderer` meshes a bed block renders
+/// (`createHeadLayer` / `createFootLayer` — each half is its own block and renders only its own
+/// piece, `BedRenderer.submit` → `getPieceModel(part)`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BedModelPart {
+    Head,
+    Foot,
+}
+
+/// Vanilla `BellBlockEntity.clickDirection` (`Direction.from3DDataValue(b1)` of the
+/// `BlockEvent(1, direction)` payload): the face the bell was rung from, deciding the
+/// `BellModel.setupAnim` swing axis. `DOWN`/`UP` are representable on the wire but produce no
+/// rotation (the vanilla switch only handles the four horizontal directions).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BellShakeDirection {
+    Down,
+    Up,
+    North,
+    South,
+    East,
+    West,
 }
 
 /// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,

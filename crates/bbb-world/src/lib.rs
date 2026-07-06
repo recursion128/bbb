@@ -1,4 +1,6 @@
 mod advancements;
+mod bed_blocks;
+mod bell_blocks;
 mod block_events;
 mod chest_lids;
 mod chunks;

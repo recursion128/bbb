@@ -128,6 +128,15 @@ impl EntityModelKind {
                 attachment: SignModelAttachment::HangingWall,
                 ..
             } => "hanging_sign_wall",
+            Self::Bed {
+                part: BedModelPart::Head,
+                ..
+            } => "bed_head",
+            Self::Bed {
+                part: BedModelPart::Foot,
+                ..
+            } => "bed_foot",
+            Self::Bell => "bell",
             Self::Arrow { .. } => "arrow",
             Self::Trident => "trident",
             Self::WitherSkull { .. } => "wither_skull",
@@ -424,6 +433,8 @@ impl EntityModelKind {
             Self::LeashKnot => Some(LEASH_KNOT_TEXTURE_REF),
             Self::Chest { texture, half } => Some(chest_texture_ref(texture, half)),
             Self::Sign { wood, attachment } => Some(sign_texture_ref(wood, attachment)),
+            Self::Bed { color, .. } => Some(bed_texture_ref(color)),
+            Self::Bell => Some(BELL_BODY_TEXTURE_REF),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),

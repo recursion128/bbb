@@ -47,6 +47,8 @@ use tokio::sync::mpsc;
 
 use crate::{
     audio_runtime::AudioEventSink,
+    bed_scene::bed_model_instances_from_world,
+    bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
     camera_pose::camera_pose_from_world,
     chest_scene::chest_model_instances_from_world_at_partial_tick,
@@ -1492,6 +1494,9 @@ pub(crate) fn pump_network_and_terrain(
     // (`ClientLevel.tickBlockEntities`), gated by the tick-rate manager like the
     // rest of the level tick, so the lids advance on running ticks.
     world.advance_chest_lid_ticks(running_ticks);
+    // Vanilla `BellBlockEntity.clientTick` is the same kind of client
+    // block-entity ticker, so the bell shakes advance on running ticks too.
+    world.advance_bell_shake_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1707,6 +1712,14 @@ pub(crate) fn pump_network_and_terrain(
     let sign_scene = sign_scene_from_world(world, item_runtime);
     entity_instances.extend(sign_scene.instances);
     let sign_text_surfaces = sign_scene.text_surfaces;
+    // Bed and bell block-entity models ride the same stream: beds are static
+    // per-half meshes, bells carry the shake ticks for the renderer-side
+    // `BellModel.setupAnim` swing.
+    entity_instances.extend(bed_model_instances_from_world(world));
+    entity_instances.extend(bell_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
     let camera_pose = camera_pose_from_world(world);
     let first_person_item_models = first_person_item_models(
         world,

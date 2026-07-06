@@ -233,6 +233,16 @@ entity_render_state! {
     /// `-o * π/2` lid rotation. `0.0` for every non-chest instance and a
     /// resting chest.
     (with_chest_openness) chest_openness: f32 = 0.0;
+    /// Vanilla `BellRenderState.ticks` (`blockEntity.ticks + partialTicks`): the
+    /// shake counter `BellModel.setupAnim` feeds into
+    /// `sin(ticks / π) / (4 + ticks / 3)`. `0.0` (plus the frame's partial tick)
+    /// for a resting bell and every non-bell instance — with a `None` shake
+    /// direction the angle is zero regardless.
+    (with_bell_ticks) bell_ticks: f32 = 0.0;
+    /// Vanilla `BellRenderState.shakeDirection` (`blockEntity.shaking ?
+    /// blockEntity.clickDirection : null`): the ring direction selecting the
+    /// `BellModel.setupAnim` swing axis, `None` while the bell is not shaking.
+    (with_bell_shake_direction) bell_shake_direction: Option<BellShakeDirection> = None;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1528,6 +1538,35 @@ impl EntityModelInstance {
         )
     }
 
+    /// A bed block-entity model instance at the bed block's min corner.
+    /// `y_rot` carries the vanilla `180 + facing.toYRot()` degrees of
+    /// `BedRenderer.createModelTransform`'s
+    /// `rotateAround(Axis.ZP.rotationDegrees(180 + toYRot), 0.5, 0.5, 0.5)` —
+    /// a Z rotation in the already X-rotated bed model frame, not an entity
+    /// yaw.
+    pub fn bed(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        color: EntityDyeColor,
+        part: BedModelPart,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Bed { color, part },
+            position,
+            y_rot,
+        )
+    }
+
+    /// A bell block-entity model instance at the bell block's min corner.
+    /// `BellRenderer.submit` applies no facing/attachment transform — the bell
+    /// body renders identically for all four attachments — so the yaw is `0`;
+    /// the shake angle rides `bell_ticks` / `bell_shake_direction`.
+    pub fn bell(entity_id: i32, position: [f32; 3]) -> Self {
+        Self::new(entity_id, EntityModelKind::Bell, position, 0.0)
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
@@ -2636,6 +2675,8 @@ mod tests {
                 head_pitch: 0.0,
                 arrow_shake: 0.0,
                 chest_openness: 0.0,
+                bell_ticks: 0.0,
+                bell_shake_direction: None,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

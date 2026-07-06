@@ -1,8 +1,9 @@
 use glam::Mat4;
 
 use super::geometry::{
-    emit_model_cube, emit_textured_model_cube, part_pose_transform, EntityModelMesh,
-    EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
+    emit_model_cube_with_faces, emit_textured_model_cube_with_faces, part_pose_transform,
+    EntityModelMesh, EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
+    MODEL_CUBE_FACES_ALL,
 };
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
@@ -23,6 +24,10 @@ pub(in crate::entity_models) struct ModelCube {
     pub(in crate::entity_models) tex: [f32; 2],
     /// Vanilla `mirror`.
     pub(in crate::entity_models) mirror: bool,
+    /// Vanilla `Set<Direction> visibleFaces` as `MODEL_CUBE_FACE_*` bits: `ModelPart.Cube`
+    /// builds no polygon for a hidden face. [`MODEL_CUBE_FACES_ALL`] (the `addBox` default)
+    /// for every cube authored without an explicit face set.
+    pub(in crate::entity_models) visible_faces: u8,
 }
 
 impl ModelCube {
@@ -42,7 +47,15 @@ impl ModelCube {
             uv_size,
             tex,
             mirror,
+            visible_faces: MODEL_CUBE_FACES_ALL,
         }
+    }
+
+    /// Restricts the cube to a vanilla `visibleFaces` subset
+    /// (`CubeListBuilder.addBox(..., Set<Direction>)`).
+    pub(in crate::entity_models) const fn with_visible_faces(mut self, visible_faces: u8) -> Self {
+        self.visible_faces = visible_faces;
+        self
     }
 
     fn colored_desc(&self) -> ModelCubeDesc {
@@ -252,7 +265,7 @@ impl ModelPart {
         }
         let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
-            emit_model_cube(mesh, transform, cube.colored_desc());
+            emit_model_cube_with_faces(mesh, transform, cube.colored_desc(), cube.visible_faces);
         }
         for (_, child) in &self.children {
             child.render_colored(mesh, transform);
@@ -276,7 +289,7 @@ impl ModelPart {
         for cube in &self.cubes {
             let mut desc = cube.colored_desc();
             desc.color = color;
-            emit_model_cube(mesh, transform, desc);
+            emit_model_cube_with_faces(mesh, transform, desc, cube.visible_faces);
         }
         for (_, child) in &self.children {
             child.render_colored_with_color(mesh, transform, color);
@@ -299,13 +312,14 @@ impl ModelPart {
         }
         let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
-            emit_textured_model_cube(
+            emit_textured_model_cube_with_faces(
                 mesh,
                 transform,
                 cube.textured_desc(),
                 texture,
                 uv_rect,
                 tint,
+                cube.visible_faces,
             );
         }
         for (_, child) in &self.children {
@@ -338,13 +352,14 @@ impl ModelPart {
         let transform = parent_transform * self.local_transform();
         if retained.contains(&name) {
             for cube in &self.cubes {
-                emit_textured_model_cube(
+                emit_textured_model_cube_with_faces(
                     mesh,
                     transform,
                     cube.textured_desc(),
                     texture,
                     uv_rect,
                     tint,
+                    cube.visible_faces,
                 );
             }
             return;
@@ -376,13 +391,14 @@ impl ModelPart {
         }
         let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
-            emit_textured_model_cube(
+            emit_textured_model_cube_with_faces(
                 mesh,
                 transform,
                 cube.textured_desc(),
                 texture,
                 uv_rect,
                 tint,
+                cube.visible_faces,
             );
         }
         for (child_name, child) in &self.children {

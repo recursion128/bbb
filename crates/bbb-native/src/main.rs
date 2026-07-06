@@ -15,6 +15,8 @@ use winit::{
 };
 
 mod audio_runtime;
+mod bed_scene;
+mod bell_scene;
 mod biome_tint;
 mod block_outline;
 mod camera_pose;

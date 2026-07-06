@@ -8,16 +8,16 @@ use super::super::{
         villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
         wolf_texture_ref, zombie_villager_level_texture_ref,
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
-        ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
-        ChestModelHalf, ChestModelTexture, ChickenModelVariant, CopperGolemWeathering,
-        CowModelVariant, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
-        HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
-        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-        SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat, WolfModelVariant,
+        ArrowModelTexture, AxolotlModelVariant, BedModelPart, BoatModelFamily, CamelModelFamily,
+        CatModelVariant, ChestModelHalf, ChestModelTexture, ChickenModelVariant,
+        CopperGolemWeathering, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
+        EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin,
+        FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+        IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant,
+        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+        VillagerModelData, VillagerModelHat, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -38,6 +38,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BreezeEyes,
     CamelBase,
     CamelSaddle,
+    BedBase,
+    BellBase,
     ChestBase,
     ChickenBase,
     SignBase,
@@ -1665,6 +1667,46 @@ pub(in crate::entity_models) fn sign_textured_layer_passes(
         render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture: sign_texture_ref(wood, attachment),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// Vanilla `BedRenderer.submitPiece`: one `submitModel` per bed block entity with the
+/// `Sheets.getBedSprite(color)` sprite on the bed sheet and the piece model's
+/// `RenderTypes::entitySolid` render type (`BedRenderer`'s `Model.Simple(bakeLayer(BED_HEAD /
+/// BED_FOOT), RenderTypes::entitySolid)`).
+pub(in crate::entity_models) fn bed_textured_layer_passes(
+    color: EntityDyeColor,
+    part: BedModelPart,
+) -> Vec<EntityModelLayerPass> {
+    let model_layer = match part {
+        BedModelPart::Head => MODEL_LAYER_BED_HEAD,
+        BedModelPart::Foot => MODEL_LAYER_BED_FOOT,
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::BedBase,
+        render_type: EntityModelLayerRenderType::EntitySolid,
+        model_layer,
+        texture: bed_texture_ref(color),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// Vanilla `BellRenderer.submit`: one `submitModel` per bell block entity with the
+/// `bell/bell_body` block-entity sprite and the model's `RenderTypes::entitySolid` render type
+/// (`BellModel`'s constructor `super(root, RenderTypes::entitySolid)`).
+pub(in crate::entity_models) fn bell_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::BellBase,
+        render_type: EntityModelLayerRenderType::EntitySolid,
+        model_layer: MODEL_LAYER_BELL,
+        texture: BELL_BODY_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

@@ -1,3 +1,9 @@
+pub use crate::bed_blocks::{
+    bed_color_for_block_name, BedColorKind, BedModelFacing, BedModelSourceState, BedPartKind,
+};
+pub use crate::bell_blocks::{
+    is_bell_block_name, BellModelSourceState, BellShakeDirectionKind, BellShakeState,
+};
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,

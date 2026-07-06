@@ -1585,7 +1585,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 594] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 611] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1816,6 +1816,23 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     HANGING_SIGN_WARPED_TEXTURE_REF,
     HANGING_SIGN_MANGROVE_TEXTURE_REF,
     HANGING_SIGN_BAMBOO_TEXTURE_REF,
+    BED_WHITE_TEXTURE_REF,
+    BED_ORANGE_TEXTURE_REF,
+    BED_MAGENTA_TEXTURE_REF,
+    BED_LIGHT_BLUE_TEXTURE_REF,
+    BED_YELLOW_TEXTURE_REF,
+    BED_LIME_TEXTURE_REF,
+    BED_PINK_TEXTURE_REF,
+    BED_GRAY_TEXTURE_REF,
+    BED_LIGHT_GRAY_TEXTURE_REF,
+    BED_CYAN_TEXTURE_REF,
+    BED_PURPLE_TEXTURE_REF,
+    BED_BLUE_TEXTURE_REF,
+    BED_BROWN_TEXTURE_REF,
+    BED_GREEN_TEXTURE_REF,
+    BED_RED_TEXTURE_REF,
+    BED_BLACK_TEXTURE_REF,
+    BELL_BODY_TEXTURE_REF,
     TRIDENT_RIPTIDE_TEXTURE_REF,
     ENCHANTED_GLINT_ITEM_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
@@ -3380,6 +3397,111 @@ pub(in crate::entity_models) fn sign_texture_ref(
             SignModelWood::Bamboo => SIGN_BAMBOO_TEXTURE_REF,
         }
     }
+}
+
+const fn bed_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 64],
+    }
+}
+
+// Vanilla `Sheets.BED_MAPPER` sprites (`entity/bed/<color>` on the 64×64 bed sheet), named per
+// `Sheets.colorToResourceSprite(color)` = `DyeColor.getName()`, one per vanilla dye color in
+// `DyeColor` id order.
+pub(in crate::entity_models) const BED_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/white.png");
+pub(in crate::entity_models) const BED_ORANGE_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/orange.png");
+pub(in crate::entity_models) const BED_MAGENTA_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/magenta.png");
+pub(in crate::entity_models) const BED_LIGHT_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/light_blue.png");
+pub(in crate::entity_models) const BED_YELLOW_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/yellow.png");
+pub(in crate::entity_models) const BED_LIME_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/lime.png");
+pub(in crate::entity_models) const BED_PINK_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/pink.png");
+pub(in crate::entity_models) const BED_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/gray.png");
+pub(in crate::entity_models) const BED_LIGHT_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/light_gray.png");
+pub(in crate::entity_models) const BED_CYAN_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/cyan.png");
+pub(in crate::entity_models) const BED_PURPLE_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/purple.png");
+pub(in crate::entity_models) const BED_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/blue.png");
+pub(in crate::entity_models) const BED_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/brown.png");
+pub(in crate::entity_models) const BED_GREEN_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/green.png");
+pub(in crate::entity_models) const BED_RED_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/red.png");
+pub(in crate::entity_models) const BED_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    bed_sheet_texture_ref("textures/entity/bed/black.png");
+
+pub(in crate::entity_models) const BED_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 16] = [
+    BED_WHITE_TEXTURE_REF,
+    BED_ORANGE_TEXTURE_REF,
+    BED_MAGENTA_TEXTURE_REF,
+    BED_LIGHT_BLUE_TEXTURE_REF,
+    BED_YELLOW_TEXTURE_REF,
+    BED_LIME_TEXTURE_REF,
+    BED_PINK_TEXTURE_REF,
+    BED_GRAY_TEXTURE_REF,
+    BED_LIGHT_GRAY_TEXTURE_REF,
+    BED_CYAN_TEXTURE_REF,
+    BED_PURPLE_TEXTURE_REF,
+    BED_BLUE_TEXTURE_REF,
+    BED_BROWN_TEXTURE_REF,
+    BED_GREEN_TEXTURE_REF,
+    BED_RED_TEXTURE_REF,
+    BED_BLACK_TEXTURE_REF,
+];
+
+pub fn bed_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &BED_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `Sheets.getBedSprite(color)`: `BED_MAPPER.apply(colorToResourceSprite(color))` —
+/// `entity/bed/<DyeColor.getName()>`, both bed halves sharing the one 64×64 sprite.
+pub(in crate::entity_models) fn bed_texture_ref(color: EntityDyeColor) -> EntityModelTextureRef {
+    match color {
+        EntityDyeColor::White => BED_WHITE_TEXTURE_REF,
+        EntityDyeColor::Orange => BED_ORANGE_TEXTURE_REF,
+        EntityDyeColor::Magenta => BED_MAGENTA_TEXTURE_REF,
+        EntityDyeColor::LightBlue => BED_LIGHT_BLUE_TEXTURE_REF,
+        EntityDyeColor::Yellow => BED_YELLOW_TEXTURE_REF,
+        EntityDyeColor::Lime => BED_LIME_TEXTURE_REF,
+        EntityDyeColor::Pink => BED_PINK_TEXTURE_REF,
+        EntityDyeColor::Gray => BED_GRAY_TEXTURE_REF,
+        EntityDyeColor::LightGray => BED_LIGHT_GRAY_TEXTURE_REF,
+        EntityDyeColor::Cyan => BED_CYAN_TEXTURE_REF,
+        EntityDyeColor::Purple => BED_PURPLE_TEXTURE_REF,
+        EntityDyeColor::Blue => BED_BLUE_TEXTURE_REF,
+        EntityDyeColor::Brown => BED_BROWN_TEXTURE_REF,
+        EntityDyeColor::Green => BED_GREEN_TEXTURE_REF,
+        EntityDyeColor::Red => BED_RED_TEXTURE_REF,
+        EntityDyeColor::Black => BED_BLACK_TEXTURE_REF,
+    }
+}
+
+/// Vanilla `BellRenderer.BELL_TEXTURE`
+/// (`Sheets.BLOCK_ENTITIES_MAPPER.defaultNamespaceApply("bell/bell_body")`), sized like the
+/// `BellModel.createBodyLayer` 32×32 atlas.
+pub(in crate::entity_models) const BELL_BODY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bell/bell_body.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const BELL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [BELL_BODY_TEXTURE_REF];
+
+pub fn bell_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &BELL_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const LEASH_KNOT_TEXTURE_REF: EntityModelTextureRef =

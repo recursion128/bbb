@@ -435,17 +435,85 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (banner, bell, shulker box, bed,
-    conduit, decorated pot, …): the chest family (2026-07-06) and the sign
-    family incl. hanging signs + face text (2026-07-06, see Evidence) are
-    DONE as the first two BER sub-slices; every other BE-driven block
-    still bakes a particle-only model into near-empty terrain geometry.
-    Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
-    smallest sub-slice (bed / bell are the staked next candidates); audit
-    the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
+  - Block-entity special renderers (banner, shulker box, conduit,
+    decorated pot, …): the chest family (2026-07-06), the sign family incl.
+    hanging signs + face text (2026-07-06), and bed + bell (2026-07-06, see
+    Evidence) are DONE as the first three BER sub-slices; every other
+    BE-driven block still bakes a particle-only model into near-empty
+    terrain geometry (remaining: banner, shulker box, conduit, decorated
+    pot, skull/head, enchanting-table book, lectern book, end portal/
+    gateway, the spawner's spinning display entity). Vanilla:
+    `BlockEntityRenderDispatcher` + per-BE renderers. Continue by smallest
+    sub-slice (shulker box / decorated pot are the staked next candidates);
+    audit the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
     → `textures.rs`) alongside, since unclassifiable elements are mostly
     BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Bed + bell block-entity renderers (third BER
+    sub-slice). Bed (all 16 `minecraft:<color>_bed` blocks × HEAD/FOOT ×
+    facing): positions/color/part/facing derive per frame from block states
+    (`bbb-world/src/bed_blocks.rs`, palette pre-check per section; the color
+    is a block-id fact — `BedBlockEntity.getColor` never reads NBT on the
+    render path), with the `DoubleBlockCombiner` partner
+    (`BedBlock.getNeighbourDirection`: FOOT → facing, HEAD → opposite;
+    pairing needs same block + other `part` + same `facing`,
+    `DoubleBlockCombiner.java:42-46`) feeding the `BrightnessCombiner`
+    per-component light max. Dispatch: `EntityModelKind::Bed { color, part }`
+    rides the single entity-model submission stream (`-1` sentinel,
+    `block << 4 | sky << 20` light); the root transform transcribes
+    `BedRenderer.createModelTransform` (`BedRenderer.java:157-164`):
+    `translation(0, 0.5625, 0) · Rx(90°) · rotateAround(Rz(180 +
+    facing.toYRot()), 0.5, 0.5, 0.5)`, no entity flip. Renderer
+    (`model_layers/bed.rs`) transcribes `createHeadLayer`/`createFootLayer`
+    (atlas 64×64): `main` 16×16×6 texOffs(0,0)/(0,22), legs 3×3×3
+    texOffs(50,6)/(50,18)/(50,0)/(50,12) at `PartPose.rotation(π/2, 0,
+    {π/2, π, 0, 3π/2})`; the vanilla `visibleFaces` sets (head main hides
+    UP, foot main hides DOWN — the two seam faces — legs hide DOWN, which
+    is coplanar with the visible mattress underside and would z-fight) are
+    now honoured exactly: the shared cube emitter gained a vanilla-shaped
+    per-face visibility mask (`ModelCube::with_visible_faces`,
+    `MODEL_CUBE_FACE_*` bits in `Direction.get3DDataValue` order; existing
+    models are untouched — `addBox` default stays all-visible). 16
+    `entity/bed/<DyeColor.getName()>.png` 64×64 sprites feed the shared
+    entity atlas; passes use vanilla `entitySolid` (cull bucket). Bell
+    (`minecraft:bell`, all 4 attachments): `BellRenderer.submit` applies no
+    transform — the body renders identically for every attachment; the
+    bar/post support frame is block-model geometry
+    (`bell_floor/wall/ceiling/between_walls.json` carry the `#bar`/`#post`
+    elements) the terrain path already draws, so the BER contributes only
+    the body. Shake chain transcribed in `bbb-world/src/bell_blocks.rs`:
+    `BlockEvent(1, direction)` → `BellBlockEntity.triggerEvent`
+    (`clickDirection = Direction.from3DDataValue(b1)` — DOWN/UP
+    wire-representable but swing nothing — `ticks = 0`, `shaking = true`,
+    re-ring resets), `clientTick` `if (shaking) ticks++; if (ticks >= 50)
+    { shaking = false; ticks = 0; }` (DURATION 50) advanced on running
+    ticks in the runtime pump; destroyed bells and finished shakes prune.
+    Renderer (`model_layers/bell.rs`) transcribes `BellModel.createBodyLayer`
+    (atlas 32×32): `bell_body` 6×7×6 texOffs(0,0) box (-3,-6,-3) pivot
+    offset(8,12,8) with child `bell_base` 8×2×8 texOffs(0,13) box (4,4,4)
+    offset(-8,-12,-8); `setupAnim` swing `Mth.sin(ticks/π) / (4 + ticks/3)`
+    with `ticks = blockEntity.ticks + partialTicks`, axis by click
+    direction (NORTH `xRot=-r` / SOUTH `+r` / EAST `zRot=-r` / WEST `+r`);
+    `entity/bell/bell_body.png` 32×32; passes use vanilla `entitySolid`
+    (`BellModel`'s constructor). Deferred (honest): BER `breakProgress`
+    crumbling; per-block-entity distance/frustum culling (both submit like
+    entities, unculled — same boundary as chest/sign); the bell resonation
+    particle/glow chain (`resonationTicks`, raider search) is
+    gameplay-side, not render, and stays with the raid features. Tests:
+    `bbb-world/src/bed_blocks.rs` (16-color block-id table, enumeration +
+    pairing incl. wrong-color/same-part/facing-mismatch breaks, removal),
+    `bbb-world/src/bell_blocks.rs` (event gate + trigger/re-ring + 50-tick
+    end sequence + destroyed prune + login clear + `from3DDataValue`
+    table + partial-tick projection), `entity_models/tests/bed.rs` (all 6
+    cubes + visibleFaces masks + 4 leg poses vs `BedRenderer.java`,
+    S/N/W/E facing transform point-mapped, 16-sprite table in DyeColor id
+    order, `entitySolid` pass, 15-face cutout-cull bake proving the hidden
+    faces), `entity_models/tests/bell.rs` (cubes/pivots vs
+    `BellModel.java`, swing angle hand-computed at ticks 0/10/25 on all 4
+    axes + DOWN/UP/None still, identity root transform, 12-face bake),
+    `bbb-native/src/bed_scene.rs` / `bell_scene.rs` (kind/angle/light
+    packing, double-half light max path, shake-direction projection) + the
+    runtime pump ordering assertions.
   - Done 2026-07-06 — Sign + hanging sign block-entity renderer with face
     text (second BER sub-slice; all 12 woods incl. pale_oak × standing /
     wall / hanging-ceiling (± the `attached=true` vChains CEILING_MIDDLE

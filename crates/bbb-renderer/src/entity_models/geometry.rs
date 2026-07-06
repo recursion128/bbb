@@ -267,6 +267,23 @@ pub(super) const PART_POSE_ZERO: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
+// Per-cube face visibility bits, mirroring the vanilla `Set<Direction> visibleFaces` that
+// `CubeListBuilder.addBox(..., visibleFaces)` threads into `ModelPart.Cube` (a hidden face's
+// polygon is simply not built). Bit order follows `Direction.get3DDataValue()`.
+pub(super) const MODEL_CUBE_FACE_DOWN: u8 = 1 << 0;
+pub(super) const MODEL_CUBE_FACE_UP: u8 = 1 << 1;
+pub(super) const MODEL_CUBE_FACE_NORTH: u8 = 1 << 2;
+pub(super) const MODEL_CUBE_FACE_SOUTH: u8 = 1 << 3;
+pub(super) const MODEL_CUBE_FACE_WEST: u8 = 1 << 4;
+pub(super) const MODEL_CUBE_FACE_EAST: u8 = 1 << 5;
+/// Vanilla `CubeListBuilder.addBox` default: all six faces visible (`Cube.ALL_VISIBLE`).
+pub(super) const MODEL_CUBE_FACES_ALL: u8 = MODEL_CUBE_FACE_DOWN
+    | MODEL_CUBE_FACE_UP
+    | MODEL_CUBE_FACE_NORTH
+    | MODEL_CUBE_FACE_SOUTH
+    | MODEL_CUBE_FACE_WEST
+    | MODEL_CUBE_FACE_EAST;
+
 /// Overwrites the lightmap input on every colored vertex appended since
 /// `start`, applying one entity's sampled `[block, sky]` light to all of its
 /// emitted geometry. Mirrors vanilla sampling a single light-probe position per
@@ -440,9 +457,20 @@ pub(super) fn part_pose_transform(pose: PartPose) -> Mat4 {
 }
 
 pub(super) fn emit_model_cube(mesh: &mut EntityModelMesh, transform: Mat4, cube: ModelCubeDesc) {
+    emit_model_cube_with_faces(mesh, transform, cube, MODEL_CUBE_FACES_ALL);
+}
+
+/// [`emit_model_cube`] with a vanilla `visibleFaces` mask: only the faces whose
+/// `MODEL_CUBE_FACE_*` bit is set are emitted.
+pub(super) fn emit_model_cube_with_faces(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    cube: ModelCubeDesc,
+    visible_faces: u8,
+) {
     let min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
     let max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
-    emit_model_cube_from_min_max(mesh, transform, min, max, cube.color);
+    emit_model_cube_from_min_max(mesh, transform, min, max, cube.color, visible_faces);
 }
 
 pub(super) fn emit_textured_model_cube(
@@ -453,12 +481,46 @@ pub(super) fn emit_textured_model_cube(
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
 ) {
+    emit_textured_model_cube_with_faces(
+        mesh,
+        transform,
+        cube,
+        texture,
+        uv_rect,
+        tint,
+        MODEL_CUBE_FACES_ALL,
+    );
+}
+
+/// [`emit_textured_model_cube`] with a vanilla `visibleFaces` mask: only the faces whose
+/// `MODEL_CUBE_FACE_*` bit is set are emitted (`ModelPart.Cube` builds no polygon for a
+/// hidden face).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn emit_textured_model_cube_with_faces(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    cube: TexturedModelCubeDesc,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+    visible_faces: u8,
+) {
     let mut min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
     let mut max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
     if cube.mirror {
         std::mem::swap(&mut min.x, &mut max.x);
     }
-    emit_textured_model_cube_from_min_max(mesh, transform, min, max, cube, texture, uv_rect, tint);
+    emit_textured_model_cube_from_min_max(
+        mesh,
+        transform,
+        min,
+        max,
+        cube,
+        texture,
+        uv_rect,
+        tint,
+        visible_faces,
+    );
 }
 
 pub(super) fn emit_model_cube_world_units(
@@ -470,7 +532,7 @@ pub(super) fn emit_model_cube_world_units(
 ) {
     let min = Vec3::from_array(min);
     let max = min + Vec3::from_array(size);
-    emit_model_cube_from_min_max(mesh, transform, min, max, color);
+    emit_model_cube_from_min_max(mesh, transform, min, max, color, MODEL_CUBE_FACES_ALL);
 }
 
 fn emit_model_cube_from_min_max(
@@ -479,6 +541,7 @@ fn emit_model_cube_from_min_max(
     min: Vec3,
     max: Vec3,
     color: [f32; 4],
+    visible_faces: u8,
 ) {
     let corners = [
         Vec3::new(min.x, min.y, min.z),
@@ -491,15 +554,18 @@ fn emit_model_cube_from_min_max(
         Vec3::new(min.x, max.y, max.z),
     ];
     let faces = [
-        ([4, 0, 1, 5], [0.0, -1.0, 0.0]),
-        ([2, 3, 7, 6], [0.0, 1.0, 0.0]),
-        ([0, 3, 2, 1], [0.0, 0.0, -1.0]),
-        ([5, 6, 7, 4], [0.0, 0.0, 1.0]),
-        ([0, 4, 7, 3], [-1.0, 0.0, 0.0]),
-        ([1, 2, 6, 5], [1.0, 0.0, 0.0]),
+        ([4, 0, 1, 5], [0.0, -1.0, 0.0], MODEL_CUBE_FACE_DOWN),
+        ([2, 3, 7, 6], [0.0, 1.0, 0.0], MODEL_CUBE_FACE_UP),
+        ([0, 3, 2, 1], [0.0, 0.0, -1.0], MODEL_CUBE_FACE_NORTH),
+        ([5, 6, 7, 4], [0.0, 0.0, 1.0], MODEL_CUBE_FACE_SOUTH),
+        ([0, 4, 7, 3], [-1.0, 0.0, 0.0], MODEL_CUBE_FACE_WEST),
+        ([1, 2, 6, 5], [1.0, 0.0, 0.0], MODEL_CUBE_FACE_EAST),
     ];
 
-    for (face, normal) in faces {
+    for (face, normal, face_bit) in faces {
+        if visible_faces & face_bit == 0 {
+            continue;
+        }
         emit_model_face(
             mesh,
             face.map(|index| transform.transform_point3(corners[index])),
@@ -509,6 +575,7 @@ fn emit_model_cube_from_min_max(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_textured_model_cube_from_min_max(
     mesh: &mut EntityModelTexturedMesh,
     transform: Mat4,
@@ -518,6 +585,7 @@ fn emit_textured_model_cube_from_min_max(
     texture: EntityModelTextureRef,
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
+    visible_faces: u8,
 ) {
     let t0 = Vec3::new(min.x, min.y, min.z);
     let t1 = Vec3::new(max.x, min.y, min.z);
@@ -543,66 +611,78 @@ fn emit_textured_model_cube_from_min_max(
     let v1 = y_tex + depth;
     let v2 = y_tex + depth + height;
 
-    emit_textured_model_polygon(
-        mesh,
-        [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
-        [u1, v0, u2, v1],
-        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
-        [u2, v1, u22, v0],
-        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
-        [u0, v1, u1, v2],
-        transform_entity_normal(transform, cube.mirror, [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
-        [u1, v1, u2, v2],
-        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
-        [u2, v1, u3, v2],
-        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
-        [u3, v1, u4, v2],
-        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
+    if visible_faces & MODEL_CUBE_FACE_DOWN != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
+            [u1, v0, u2, v1],
+            transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
+    if visible_faces & MODEL_CUBE_FACE_UP != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
+            [u2, v1, u22, v0],
+            transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
+    if visible_faces & MODEL_CUBE_FACE_WEST != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
+            [u0, v1, u1, v2],
+            transform_entity_normal(transform, cube.mirror, [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
+    if visible_faces & MODEL_CUBE_FACE_NORTH != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
+            [u1, v1, u2, v2],
+            transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
+    if visible_faces & MODEL_CUBE_FACE_EAST != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
+            [u2, v1, u3, v2],
+            transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
+    if visible_faces & MODEL_CUBE_FACE_SOUTH != 0 {
+        emit_textured_model_polygon(
+            mesh,
+            [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
+            [u3, v1, u4, v2],
+            transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
+            texture,
+            uv_rect,
+            tint,
+            cube.mirror,
+        );
+    }
 }
 
 fn emit_textured_model_polygon(

@@ -3918,6 +3918,48 @@
   含背面、暗色公式、90/60 截断+断词+bold 7px、居中与行 y 手算、run 色覆盖
   +bold 双绘、空面 None）、`bbb-native/src/sign_scene.rs`（kind/rotation/
   光照打包、双面 gating、glowing full-bright）。
+- [x] bed + bell block-entity renderer（2026-07-06，BER 第三片）：bed（16 色
+  `minecraft:<color>_bed` × HEAD/FOOT × facing）：颜色/part/facing 每帧从
+  block state 派生（`bbb-world/src/bed_blocks.rs`，palette 预检跳段；颜色是
+  block id 事实，`BedBlockEntity.getColor` 渲染路径不读 NBT），
+  `DoubleBlockCombiner` 配对（`getNeighbourDirection`：FOOT→facing、HEAD→
+  反向；同 block + 另一 part + 同 facing）喂 `BrightnessCombiner` 分量 max
+  光照。dispatch：`EntityModelKind::Bed { color, part }` 进唯一 entity-model
+  提交流（-1 哨兵、`block<<4|sky<<20`）；root transform 逐字转写
+  `BedRenderer.createModelTransform`：`translation(0,0.5625,0)·Rx(90°)·
+  rotateAround(Rz(180+facing.toYRot()),0.5,0.5,0.5)`，无 entity 翻转。
+  renderer（`model_layers/bed.rs`）：`createHeadLayer`/`createFootLayer`
+  （atlas 64×64）逐字转写——main 16×16×6 texOffs(0,0)/(0,22)、四腿 3×3×3
+  texOffs(50,{6,18,0,12}) 于 `PartPose.rotation(π/2,0,{π/2,π,0,3π/2})`；
+  vanilla `visibleFaces`（head main 藏 UP、foot main 藏 DOWN——即两半接缝
+  面；四腿藏 DOWN——与可见床垫底面共面否则 z-fight）如实生效：共享 cube
+  emitter 新增 vanilla 形状的逐面可见性掩码（`ModelCube::with_visible_
+  faces`，`MODEL_CUBE_FACE_*` 按 `Direction.get3DDataValue` 位序；既有模型
+  不受影响，`addBox` 默认全可见）。16 张 `entity/bed/<DyeColor.getName()>.
+  png` 进共享 entity atlas；render type 用 vanilla `entitySolid`（cull
+  桶）。bell（`minecraft:bell` 全 4 attachment）：`BellRenderer.submit` 无
+  任何 transform——bell body 四种 attachment 同位渲染；bar/post 支架属
+  block model（`bell_floor/wall/ceiling/between_walls.json` 的
+  `#bar`/`#post` 元素）由 terrain 路径绘制，BER 只补 body。摇摆链转写
+  （`bbb-world/src/bell_blocks.rs`）：`BlockEvent(1,dir)` →
+  `triggerEvent`（`clickDirection=from3DDataValue(b1)`（DOWN/UP 可上线但
+  不摆）、`ticks=0`、`shaking=true`、重敲重置），`clientTick`
+  `if(shaking)ticks++; if(ticks>=50){shaking=false;ticks=0;}`（DURATION
+  50）在 runtime pump 按 running ticks 推进；拆除/结束修剪。renderer
+  （`model_layers/bell.rs`）：`BellModel.createBodyLayer`（atlas 32×32）
+  ——`bell_body` 6×7×6 texOffs(0,0) box(-3,-6,-3) pivot offset(8,12,8)、
+  子 `bell_base` 8×2×8 texOffs(0,13) box(4,4,4) offset(-8,-12,-8)；
+  `setupAnim` 摆角 `Mth.sin(ticks/π)/(4+ticks/3)`（`ticks=BE.ticks+
+  partialTicks`），按 click 方向选轴（N `xRot=-r`/S `+r`/E `zRot=-r`/W
+  `+r`）；`entity/bell/bell_body.png` 32×32；render type `entitySolid`。
+  defer 如实记账：BER breakProgress crumbling、逐 BE 距离/视锥剔除（同
+  chest/sign 边界）、bell resonation 粒子/发光链（gameplay 侧随 raid 特性
+  走）。测试：world 侧 16 色表/配对破坏三态/事件门/50 tick 序列/重敲/拆除
+  修剪/login 清空/`from3DDataValue` 表；renderer 侧 cube+visibleFaces+腿
+  pose 对照 vanilla、S/N/W/E 变换点映射、16 纹理表（DyeColor id 序）、
+  `entitySolid` pass、15 面（bed）/12 面（bell）cutout-cull 烘焙证隐藏面、
+  摆角 ticks 0/10/25 手算 × 四轴 + DOWN/UP/None 静止；native 侧投影
+  kind/角度/光照打包/双半 max + pump 顺序断言。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

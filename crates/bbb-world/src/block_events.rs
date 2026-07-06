@@ -128,6 +128,7 @@ impl WorldStore {
         });
         self.counters.block_events_tracked = self.block_events.len();
         self.update_chest_lid_from_block_event(pos, event.b0, event.b1);
+        self.update_bell_shake_from_block_event(pos, event.b0, event.b1);
     }
 
     pub fn apply_level_event(

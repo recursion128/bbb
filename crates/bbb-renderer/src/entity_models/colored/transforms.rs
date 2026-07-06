@@ -658,6 +658,30 @@ pub(in crate::entity_models) fn chest_model_root_transform(instance: EntityModel
         * Mat4::from_translation(-pivot)
 }
 
+/// Vanilla `BedRenderer.createModelTransform` (`BedRenderer.java:157-164`):
+/// `new Matrix4f().translation(0, 0.5625, 0).rotate(Axis.XP.rotationDegrees(90))
+/// .rotateAround(Axis.ZP.rotationDegrees(180 + direction.toYRot()), 0.5, 0.5, 0.5)` — lay the
+/// flat-authored bed mesh down (`Rx(90°)`), then spin it about the block centre in that rotated
+/// frame. Like the chest there is **no** entity `scale(-1, -1, 1)` flip. `instance.position` is
+/// the bed block's min corner and `body_rot` carries `180 + facing.toYRot()` degrees.
+pub(in crate::entity_models) fn bed_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    let pivot = Vec3::new(0.5, 0.5, 0.5);
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.5625, 0.0))
+        * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2)
+        * Mat4::from_translation(pivot)
+        * Mat4::from_rotation_z(instance.render_state.body_rot.to_radians())
+        * Mat4::from_translation(-pivot)
+}
+
+/// Vanilla `BellRenderer.submit`: no pose-stack transform at all — the bell body is submitted in
+/// block-local space at the block min corner for every attachment (the facing-dependent support
+/// frame is part of the `bell_*` block models the terrain path draws), and the shake rotation
+/// lives on the `bell_body` part pivot inside `BellModel.setupAnim`.
+pub(in crate::entity_models) fn bell_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+}
+
 /// Vanilla `StandingSignRenderer.RENDER_SCALE` (`0.6666667F`), the plain
 /// sign's body scale; hanging signs use `MODEL_RENDER_SCALE = 1.0F`.
 pub(in crate::entity_models) const SIGN_RENDER_SCALE: f32 = 0.666_666_7;
