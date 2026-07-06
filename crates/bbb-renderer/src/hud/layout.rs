@@ -24,6 +24,17 @@ const HUD_ARMOR_SPACING: f32 = 8.0;
 /// `(numHealthRows - 1) * healthRowHeight` term to `0` and leaves a fixed 10px
 /// gap above the `yLineBase` heart baseline (`surface_height - 39`).
 const HUD_ARMOR_ROW_Y_OFFSET: f32 = 10.0;
+/// Vanilla `Gui.NUM_AIR_BUBBLES` (Gui.java:126): one row of 10 bubbles.
+pub(super) const HUD_AIR_BUBBLES_PER_ROW: u32 = 10;
+/// Vanilla `Gui.AIR_BUBBLE_SEPERATION` (Gui.java:128): the 8px bubble stride
+/// (`airBubbleXPos = xRight - (airBubble - 1) * 8 - 9`, Gui.java:903).
+const HUD_AIR_BUBBLE_SPACING: f32 = 8.0;
+/// Vanilla vehicle-heart stride (`xo = xRight - i * 8 - 9`, Gui.java:990) and
+/// row count cap (`getVehicleMaxHearts` caps at 30 hearts → 3 rows,
+/// Gui.java:729-731).
+const HUD_VEHICLE_HEART_SPACING: f32 = 8.0;
+pub(super) const HUD_VEHICLE_HEARTS_PER_ROW: u32 = 10;
+const HUD_VEHICLE_MAX_HEARTS: i32 = 30;
 const HUD_INVENTORY_ITEM_SIZE: u32 = 16;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE: u32 = 24;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET: f32 = -4.0;
@@ -262,6 +273,64 @@ pub(super) fn food_hud_rect(
     HudRect {
         x: surface_width * 0.5 + 91.0 - index as f32 * HUD_FOOD_SPACING - width as f32,
         y: surface_height - 39.0 + y_offset as f32,
+        width,
+        height,
+    }
+}
+
+/// One air bubble's rect. Vanilla `Gui.extractAirBubbles` walks
+/// `airBubbleXPos = xRight - (airBubble - 1) * 8 - 9` (Gui.java:903, `airBubble`
+/// is 1-based; `index` here is 0-based) from the same `xRight = guiWidth/2 + 91`
+/// right edge as the food row. The y line replays `Gui.extractPlayerHealth` +
+/// `getAirBubbleYLine` exactly (Gui.java:772,784-792,917-920):
+/// `yLineAir = (guiHeight - 39) - 10`, minus another 10 when no vehicle hearts
+/// replace the food row (`vehicleHearts == 0`), then minus
+/// `(getVisibleVehicleHeartRows(vehicleHearts) - 1) * 10` — which for 0 hearts
+/// is `-1` rows and *adds* 10 back, seating the row at `guiHeight - 49` both
+/// on foot and on a 1-row-heart vehicle. `y_offset` is the all-empty drowning
+/// wobble ([`hud_air_bubble_wobble_offsets`]).
+pub(super) fn air_bubble_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    index: u32,
+    vehicle_hearts: u32,
+    width: u32,
+    height: u32,
+    y_offset: i32,
+) -> HudRect {
+    let surface_width = surface_size.width.max(1) as f32;
+    let surface_height = surface_size.height.max(1) as f32;
+    let mut y_line_air = (surface_height - 39.0) - 10.0;
+    if vehicle_hearts == 0 {
+        y_line_air -= 10.0;
+    }
+    // Vanilla `getVisibleVehicleHeartRows` = ceil(hearts / 10.0); 0 hearts → 0
+    // rows → a -1 row offset (Gui.java:917-920).
+    let vehicle_heart_rows = vehicle_hearts.div_ceil(HUD_VEHICLE_HEARTS_PER_ROW) as i32;
+    y_line_air -= (vehicle_heart_rows - 1) as f32 * 10.0;
+    HudRect {
+        x: surface_width * 0.5 + 91.0 - index as f32 * HUD_AIR_BUBBLE_SPACING - width as f32,
+        y: y_line_air + y_offset as f32,
+        width,
+        height,
+    }
+}
+
+/// One vehicle heart's rect. Vanilla `Gui.extractVehicleHealth` walks
+/// `xo = xRight - i * 8 - 9` from `xRight = guiWidth / 2 + 91` (the food row's
+/// edge) and stacks rows upward from `yLine1 = guiHeight - 39` in 10px steps
+/// (Gui.java:981-1001).
+pub(super) fn vehicle_heart_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    row: u32,
+    index: u32,
+    width: u32,
+    height: u32,
+) -> HudRect {
+    let surface_width = surface_size.width.max(1) as f32;
+    let surface_height = surface_size.height.max(1) as f32;
+    HudRect {
+        x: surface_width * 0.5 + 91.0 - index as f32 * HUD_VEHICLE_HEART_SPACING - width as f32,
+        y: surface_height - 39.0 - row as f32 * 10.0,
         width,
         height,
     }
@@ -585,6 +654,125 @@ pub(super) fn hud_armor_fill(armor: i32, index: u32) -> HudIconFill {
     if center_half < armor {
         HudIconFill::Full
     } else if center_half == armor {
+        HudIconFill::Half
+    } else {
+        HudIconFill::Empty
+    }
+}
+
+/// What one air-bubble slot draws, mirroring the vanilla per-bubble branches
+/// (`Gui.extractAirBubbles`, Gui.java:902-913): a full bubble (`hud/air`), the
+/// one-tick popping frame (`hud/air_bursting`), the empty shell
+/// (`hud/air_empty`), or nothing at all — the burst-delay gap between the
+/// popping position and the delayed empty count draws no sprite for a tick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum HudAirBubbleIcon {
+    Full,
+    Popping,
+    Empty,
+}
+
+/// Vanilla `Gui.extractAirBubbles`'s visibility gate (Gui.java:888-891):
+/// the row draws only while the eye is in water or the clamped air supply is
+/// below the max (`isUnderWater || currentAirSupplyTicks < maxAirSupplyTicks`).
+pub(super) fn hud_air_bubbles_visible(air: i32, max_air: i32, eye_in_water: bool) -> bool {
+    eye_in_water || air.clamp(0, max_air) < max_air
+}
+
+/// Vanilla `Gui.getCurrentAirSupplyBubble` (Gui.java:922-924):
+/// `Mth.ceil((cur + offset) * 10 / (float) max)` — float division, then the
+/// float-ceil `Mth.ceil` (negative intermediates round up to 0).
+fn current_air_supply_bubble(current_air: i32, max_air: i32, tick_offset: i32) -> i32 {
+    (((current_air + tick_offset) * 10) as f32 / max_air as f32).ceil() as i32
+}
+
+/// The 10 air-bubble slots for one frame, mirroring `Gui.extractAirBubbles`
+/// (Gui.java:887-913). Index 0 is the rightmost bubble (vanilla's 1-based
+/// `airBubble` counter walks right-to-left):
+/// - `fullAirBubbles = getCurrentAirSupplyBubble(cur, max, -2)`,
+/// - `poppingAirBubblePosition = getCurrentAirSupplyBubble(cur, max, 0)`; a
+///   bubble pops only while it differs from the full count *and* the eye is
+///   under water (the popping frame is suppressed on land, Gui.java:906),
+/// - `emptyAirBubbles = 10 - getCurrentAirSupplyBubble(cur, max, delay)` with
+///   the one-tick refill delay `delay = (cur != 0 && underwater) ? 1 : 0`
+///   (`getEmptyBubbleDelayDuration`, Gui.java:926-928); slots between the full
+///   count and the delayed empty tail draw nothing (`None`).
+pub(super) fn hud_air_bubble_icons(
+    air: i32,
+    max_air: i32,
+    eye_in_water: bool,
+) -> [Option<HudAirBubbleIcon>; HUD_AIR_BUBBLES_PER_ROW as usize] {
+    let current_air = air.clamp(0, max_air);
+    let full_bubbles = current_air_supply_bubble(current_air, max_air, -2);
+    let popping_position = current_air_supply_bubble(current_air, max_air, 0);
+    let empty_delay = if current_air != 0 && eye_in_water {
+        1
+    } else {
+        0
+    };
+    let empty_bubbles = HUD_AIR_BUBBLES_PER_ROW as i32
+        - current_air_supply_bubble(current_air, max_air, empty_delay);
+    let is_popping = full_bubbles != popping_position;
+
+    let mut icons = [None; HUD_AIR_BUBBLES_PER_ROW as usize];
+    for (index, icon) in icons.iter_mut().enumerate() {
+        let bubble = index as i32 + 1;
+        *icon = if bubble <= full_bubbles {
+            Some(HudAirBubbleIcon::Full)
+        } else if is_popping && bubble == popping_position && eye_in_water {
+            Some(HudAirBubbleIcon::Popping)
+        } else if bubble > HUD_AIR_BUBBLES_PER_ROW as i32 - empty_bubbles {
+            Some(HudAirBubbleIcon::Empty)
+        } else {
+            None
+        };
+    }
+    icons
+}
+
+/// Per-bubble y wobble for the empty shells, mirroring vanilla
+/// `Gui.extractAirBubbles` (Gui.java:910): while *all* 10 bubbles are empty
+/// (out of air) and on even ticks, each empty shell shifts down by
+/// `random.nextInt(2)` (∈ {0, 1}). Like the food starvation shake, vanilla's
+/// wall-clock-seeded `this.random` sequence is unreproducible, so bbb reseeds
+/// the identical `nextInt` LCG ([`HudObfuscatedRandom`]) per frame from `seed`
+/// (the render frame counter) while gating on the real client `tick_count`.
+pub(super) fn hud_air_bubble_wobble_offsets(
+    all_bubbles_empty: bool,
+    tick_count: u64,
+    seed: u64,
+) -> [i32; HUD_AIR_BUBBLES_PER_ROW as usize] {
+    let mut offsets = [0i32; HUD_AIR_BUBBLES_PER_ROW as usize];
+    if all_bubbles_empty && tick_count % 2 == 0 {
+        let mut random = HudObfuscatedRandom::with_seed(seed);
+        for offset in &mut offsets {
+            *offset = random.next_int_bound(2) as i32;
+        }
+    }
+    offsets
+}
+
+/// Vanilla `Gui.getVehicleMaxHearts` (Gui.java:725-737): a living vehicle's
+/// heart count is `(int) (maxHealth + 0.5F) / 2` (Java float add, then int
+/// truncation, then int division), capped at 30 hearts; the whole vehicle row
+/// (and the food-row replacement) is skipped at 0 hearts.
+pub(super) fn hud_vehicle_max_hearts(max_health: f32) -> u32 {
+    let hearts = ((max_health + 0.5) as i32 / 2).min(HUD_VEHICLE_MAX_HEARTS);
+    hearts.max(0) as u32
+}
+
+/// Which overlay one vehicle heart draws, mirroring `Gui.extractVehicleHealth`'s
+/// per-heart branches (Gui.java:985-999): with `currentHealth =
+/// ceil(vehicle.getHealth())` and each row spanning 20 half-hearts
+/// (`baseHealth += 20`), heart `i` of a row draws the full overlay while
+/// `i * 2 + 1 + baseHealth < currentHealth`, the half overlay at equality, and
+/// only the container otherwise (`Empty`).
+pub(super) fn hud_vehicle_heart_fill(health: f32, row: u32, index: u32) -> HudIconFill {
+    let current_health = health.ceil() as i32;
+    let center_half = index as i32 * 2 + 1 + row as i32 * 20;
+    if center_half < current_health {
+        HudIconFill::Full
+    } else if center_half == current_health {
         HudIconFill::Half
     } else {
         HudIconFill::Empty
@@ -1151,6 +1339,51 @@ mod tests {
     }
 
     #[test]
+    fn hud_layout_places_air_bubbles_one_row_above_the_food_row() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        // On foot (0 vehicle hearts): same right edge and stride as the food
+        // row, one 10px row above it. Vanilla's chain is
+        // yLineAir = (720-39) - 10, food shown -> -10 more, then
+        // `getAirBubbleYLine(0, ..)` has a -1 row offset and adds 10 back:
+        // 720 - 49 = 671.
+        let first = air_bubble_hud_rect(surface_size, 0, 0, 9, 9, 0);
+        let last = air_bubble_hud_rect(surface_size, 9, 0, 9, 9, 0);
+        assert_eq!(first.x, 722.0);
+        assert_eq!(last.x, 650.0);
+        assert_eq!(first.y, 671.0);
+        assert_eq!(last.y, 671.0);
+        assert_eq!(food_hud_rect(surface_size, 0, 9, 9, 0).y - first.y, 10.0);
+
+        // Riding a 1-row-heart vehicle (1..=10 hearts): the food -10 is
+        // skipped and the row offset is 0, landing on the same 671 line.
+        assert_eq!(air_bubble_hud_rect(surface_size, 0, 10, 9, 9, 0).y, 671.0);
+        // 2 and 3 vehicle heart rows push the bubbles up 10px per extra row.
+        assert_eq!(air_bubble_hud_rect(surface_size, 0, 13, 9, 9, 0).y, 661.0);
+        assert_eq!(air_bubble_hud_rect(surface_size, 0, 25, 9, 9, 0).y, 651.0);
+
+        // The all-empty drowning wobble shifts only y.
+        let wobbled = air_bubble_hud_rect(surface_size, 0, 0, 9, 9, 1);
+        assert_eq!(wobbled.y, first.y + 1.0);
+        assert_eq!(wobbled.x, first.x);
+    }
+
+    #[test]
+    fn hud_layout_places_vehicle_hearts_on_the_food_row() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        // Row 0 shares the food row baseline (720 - 39 = 681) and the
+        // right-anchored 8px stride (xRight = 640 + 91).
+        let first = vehicle_heart_hud_rect(surface_size, 0, 0, 9, 9);
+        let last = vehicle_heart_hud_rect(surface_size, 0, 9, 9, 9);
+        assert_eq!(first.x, 722.0);
+        assert_eq!(first.y, 681.0);
+        assert_eq!(last.x, 650.0);
+        assert_eq!(first.y, food_hud_rect(surface_size, 0, 9, 9, 0).y);
+        // Additional rows stack upward in 10px steps (yo -= 10, Gui.java:1001).
+        assert_eq!(vehicle_heart_hud_rect(surface_size, 1, 0, 9, 9).y, 671.0);
+        assert_eq!(vehicle_heart_hud_rect(surface_size, 2, 0, 9, 9).y, 661.0);
+    }
+
+    #[test]
     fn hud_layout_centers_vanilla_inventory_background() {
         let surface_size = PhysicalSize::new(1280, 720);
         let background = inventory_background_hud_rect(surface_size, 176, 166, 0, 0, 176, 166);
@@ -1610,6 +1843,120 @@ mod tests {
         // An odd armor of 1 is a single half icon in slot 0.
         assert_eq!(hud_armor_fill(1, 0), HudIconFill::Half);
         assert_eq!(hud_armor_fill(1, 1), HudIconFill::Empty);
+    }
+
+    #[test]
+    fn hud_air_bubbles_visible_only_underwater_or_below_max() {
+        // Full supply on land: hidden (vanilla Gui.java:891).
+        assert!(!hud_air_bubbles_visible(300, 300, false));
+        // Underwater always shows, even at the full supply.
+        assert!(hud_air_bubbles_visible(300, 300, true));
+        // Back on land while refilling: still shown until the max.
+        assert!(hud_air_bubbles_visible(299, 300, false));
+        // Over-max values clamp down to max (hidden on land).
+        assert!(!hud_air_bubbles_visible(400, 300, false));
+    }
+
+    #[test]
+    fn hud_air_bubble_icons_mirror_the_vanilla_bubble_formulas() {
+        use HudAirBubbleIcon::{Empty, Full, Popping};
+
+        // Full supply underwater: full = ceil((300-2)*10/300) = ceil(9.93) =
+        // 10, popping position = ceil(3000/300) = 10 -> equal, no popping;
+        // all 10 bubbles full.
+        assert_eq!(hud_air_bubble_icons(300, 300, true), [Some(Full); 10]);
+
+        // air = 150 underwater: full = ceil(148*10/300) = ceil(4.93) = 5;
+        // popping = ceil(1500/300) = 5 -> no popping frame; the one-tick
+        // refill delay makes empty = 10 - ceil(151*10/300) = 10 - 6 = 4, so
+        // bubble 6 (index 5) draws nothing this tick and bubbles 7..10 are
+        // empty shells.
+        assert_eq!(
+            hud_air_bubble_icons(150, 300, true),
+            [
+                Some(Full),
+                Some(Full),
+                Some(Full),
+                Some(Full),
+                Some(Full),
+                None,
+                Some(Empty),
+                Some(Empty),
+                Some(Empty),
+                Some(Empty),
+            ]
+        );
+
+        // air = 61 underwater: full = ceil(59*10/300) = 2 but popping position
+        // = ceil(610/300) = 3 -> bubble 3 (index 2) shows the bursting frame;
+        // empty = 10 - ceil(62*10/300) = 7 -> bubbles 4..10 empty.
+        let icons = hud_air_bubble_icons(61, 300, true);
+        assert_eq!(icons[0], Some(Full));
+        assert_eq!(icons[1], Some(Full));
+        assert_eq!(icons[2], Some(Popping));
+        assert!(icons[3..].iter().all(|icon| *icon == Some(Empty)));
+
+        // The same air on land suppresses the popping frame (vanilla requires
+        // `isUnderWater`, Gui.java:906) and drops the refill delay (delay = 0
+        // -> empty = 10 - 3 = 7): bubble 3 draws nothing.
+        let icons = hud_air_bubble_icons(61, 300, false);
+        assert_eq!(icons[2], None);
+        assert!(icons[3..].iter().all(|icon| *icon == Some(Empty)));
+
+        // Out of air underwater: full = ceil(-20/300) = 0, popping = 0 (no
+        // popping), delay = 0 because cur == 0, so all 10 are empty shells.
+        assert_eq!(hud_air_bubble_icons(0, 300, true), [Some(Empty); 10]);
+        // Negative (drowning-damage) supplies clamp to 0 first.
+        assert_eq!(hud_air_bubble_icons(-10, 300, true), [Some(Empty); 10]);
+    }
+
+    #[test]
+    fn hud_air_bubble_wobble_needs_all_empty_and_an_even_tick() {
+        // Not all empty: never wobbles.
+        assert_eq!(hud_air_bubble_wobble_offsets(false, 4, 7), [0; 10]);
+        // All empty on an odd tick: no wobble (vanilla `tickCount % 2 == 0`).
+        assert_eq!(hud_air_bubble_wobble_offsets(true, 3, 7), [0; 10]);
+        // All empty on an even tick: each shell shifts by a deterministic
+        // `nextInt(2)` from the frame seed's LCG.
+        let offsets = hud_air_bubble_wobble_offsets(true, 4, 7);
+        let mut random = HudObfuscatedRandom::with_seed(7);
+        let expected: [i32; 10] = std::array::from_fn(|_| random.next_int_bound(2) as i32);
+        assert_eq!(offsets, expected);
+        assert!(offsets.iter().all(|&offset| (0..=1).contains(&offset)));
+        // Same seed -> same offsets: a redraw of the same frame is stable.
+        assert_eq!(
+            hud_air_bubble_wobble_offsets(true, 4, 42),
+            hud_air_bubble_wobble_offsets(true, 4, 42)
+        );
+    }
+
+    #[test]
+    fn hud_vehicle_max_hearts_rounds_and_caps_like_the_gui() {
+        // Vanilla `(int)(maxHealth + 0.5F) / 2`, capped at 30 (Gui.java:725-737).
+        assert_eq!(hud_vehicle_max_hearts(20.0), 10); // pigs/horses at 20 max
+        assert_eq!(hud_vehicle_max_hearts(15.0), 7); // (15.5 -> 15) / 2
+        assert_eq!(hud_vehicle_max_hearts(15.5), 8); // (16.0 -> 16) / 2
+        assert_eq!(hud_vehicle_max_hearts(100.0), 30); // 50 hearts capped
+        assert_eq!(hud_vehicle_max_hearts(1.0), 0); // (1.5 -> 1) / 2 = 0
+        assert_eq!(hud_vehicle_max_hearts(0.0), 0);
+    }
+
+    #[test]
+    fn hud_vehicle_heart_fill_splits_rows_on_the_20_half_heart_base() {
+        // ceil(health) = 7 in row 0: hearts 0..2 full (1,3,5 < 7), heart 3
+        // half (7 == 7), hearts 4.. container-only.
+        assert_eq!(hud_vehicle_heart_fill(6.2, 0, 2), HudIconFill::Full);
+        assert_eq!(hud_vehicle_heart_fill(6.2, 0, 3), HudIconFill::Half);
+        assert_eq!(hud_vehicle_heart_fill(6.2, 0, 4), HudIconFill::Empty);
+
+        // Row 1 offsets by baseHealth = 20: health 22 fills row-1 heart 0
+        // (21 < 22) and leaves heart 1 empty (23 > 22); health 21 puts the
+        // half on row-1 heart 0 (21 == 21).
+        assert!((0..HUD_VEHICLE_HEARTS_PER_ROW)
+            .all(|index| hud_vehicle_heart_fill(22.0, 0, index) == HudIconFill::Full));
+        assert_eq!(hud_vehicle_heart_fill(22.0, 1, 0), HudIconFill::Full);
+        assert_eq!(hud_vehicle_heart_fill(22.0, 1, 1), HudIconFill::Empty);
+        assert_eq!(hud_vehicle_heart_fill(21.0, 1, 0), HudIconFill::Half);
     }
 
     #[test]

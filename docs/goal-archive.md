@@ -3803,6 +3803,70 @@
 
 ## P2：屏幕、HUD、字体与截图
 
+### 2026-07-06 迁入：氧气泡条 + 坐骑血量条（含 world metadata 补链）
+
+- world metadata 补链（索引全部按 vanilla 26.1 继承链逐类推导并写入常量注释，
+  不从既有测试反推）：`Entity.DATA_AIR_SUPPLY_ID` = 1（Entity.java:255-271
+  字段序：SHARED_FLAGS 0 → AIR_SUPPLY 1 → … → TICKS_FROZEN 7）；
+  `LivingEntity.DATA_HEALTH_ID` = 9（LivingEntity.java:178-186：FLAGS 8 →
+  HEALTH 9 → … → SLEEPING_POS 14）；`Player.DATA_PLAYER_ABSORPTION_ID` = 17
+  （Avatar.java:38-39 先占 MAIN_HAND 15 / MODE_CUSTOMISATION 16，
+  Player.java:134-139 再 ABSORPTION 17 / SCORE 18 / 肩鹦鹉 19-20，与既有
+  肩鹦鹉常量 19/20 互证）。`EntityStore` 新增 `metadata_float` 与
+  `air_supply`（默认 300 = define 期 `getMaxAirSupply()`，Entity.java:312）/
+  `living_entity_health`（默认 1.0F，LivingEntity.java:314）/
+  `player_absorption`（默认 0.0F，Player.java:224）查询；absorption 本片只存
+  不画（供 heart 变体片直接用，`WorldStore::local_player_absorption`）。
+- 氧气泡条（vanilla `Gui.extractAirBubbles`，Gui.java:887-928 逐行转写）：
+  可见门 `isUnderWater || clamp(air,0,max) < max`（:891）；
+  `getCurrentAirSupplyBubble` = `Mth.ceil((cur+offset)*10/(float)max)`
+  （:922-924），full 用 offset -2、popping 位置用 0、empty = 10 - （offset =
+  水下且 cur≠0 时 1 的一拍回填延迟，:926-928），popping 帧仅水下画（:906，
+  `hud/air_bursting`），full/empty 间的延迟格当拍不画任何 sprite；全空 +
+  偶数 tick 时 empty 壳按 `nextInt(2)` 下坠 wobble（:910，照 food shake 的
+  帧计数种子 LCG 方案）。y 线完整重放 `extractPlayerHealth` +
+  `getAirBubbleYLine`（:772,784-792,917-920）：`(guiHeight-39)-10`，无坐骑
+  hearts 再 -10，随后 `-(ceil(vehicleHearts/10)-1)*10`（0 hearts 时 -1 行=
+  +10），步行与 1 行坐骑 hearts 都落在 `guiHeight-49`；x 与 food 同右缘
+  `xRight = guiWidth/2+91`、`-(i)*8-9`（:903）。max air 固定 300
+  （`Entity.getMaxAirSupply`，Entity.java:2725-2727，Player 不覆写）。
+- 坐骑血量条（vanilla `Gui.extractVehicleHealth`/`getVehicleMaxHearts`，
+  Gui.java:709-741,974-1005）：坐骑 = local player 直接 vehicle 且为
+  LivingEntity（`showVehicleHealth()` 基类即 `instanceof LivingEntity`，
+  Entity.java:2349-2351，26.1 无覆写）；hearts = `(int)(maxHealth+0.5F)/2`
+  上限 30；`currentHealth = ceil(getHealth())`，每行 20 半心
+  （`baseHealth += 20`），container 恒画、`i*2+1+base` 与之比较取
+  full/half；行自 `guiHeight-39` 向上 10px 堆叠；hearts>0 时 food 行被替换
+  （:784-788）。max health 数据链：vanilla 读 MAX_HEALTH attribute
+  （registry index 19，Attributes.java 字段序，与既有 armor 0/gravity 14/
+  movement_speed 22 同源推导），bbb 既有 `apply_update_attributes` 对所有
+  living entity 存 UpdateAttributes 且 vanilla `ServerEntity.sendPairingData`
+  （ServerEntity.java:282-284）在开始追踪时必发 syncable attributes，故链路
+  已通；未同步窗口回退 `Attributes.MAX_HEALTH` 默认 20.0（Attributes.java:
+  58-60），如实记账。
+- 投影链守 RendererFrame 单次提交：`WorldStore::local_player_air_supply/
+  local_player_max_air_supply/local_player_vehicle_health`（+ 既有
+  `local_player_eye_in_water`）→ `RendererFrame.hud_air`（`HudAirSupply`）/
+  `hud_vehicle_health`（`HudVehicleHealth`）→ `set_hud_air`/
+  `set_hud_vehicle_health` → `collect_hud_draws`（food 块加 vehicleHearts==0
+  门，air 块在 food 后、vehicle hearts 块再后，照 vanilla :790-791/:523-526
+  顺序）；6 个新 sprite `hud/air{,_bursting,_empty}`、
+  `hud/heart/vehicle_{container,full,half}`（Gui.java:103-108）照 armor 的
+  gui atlas 上传模式。
+- 边界：bubble 爆裂音 `playAirBubblePoppedSound`（Gui.java:930-937）延后
+  （HUD 侧尚无 sound 出口）；heart 变体（absorption/poison/wither/hardcore/
+  regen 闪烁/多行生命堆叠）为下一片。
+- 测试：bbb-world 三条 metadata 链（air 默认 300/同步 150、absorption 默认
+  0/同步 8.0、vehicle health 活体 horse 7.0+15.0 / 无 attribute 回退 20 +
+  metadata 默认 1.0 / boat None，索引推导链注释在测试内重述）；bbb-renderer
+  布局（气泡行 671 与 food 上一行、坐骑 hearts 2/3 行抬升 661/651、vehicle
+  行 681 与 food 同线）、公式手算（300 水下全 full、150 水下 5 full+1 空拍
+  +4 empty、61 水下 idx2 popping / 岸上同值 popping 被抑制、0 与负值全
+  empty、visible 门四态、wobble 全空+偶 tick 门、max hearts 20→10/15→7/
+  15.5→8/100→30 cap/1→0、vehicle fill 跨行 22/21 半心）；离屏 sentinel 两条
+  （水下满泡点亮 vs 岸上满氧背景；坐骑 hearts 替换 food 行 + 0-heart 坐骑保
+  留 food 行）。既有 hearts/food/armor 测试无回归。
+
 ### 2026-07-06 迁入：护甲条渲染
 
 - HUD status-bar 第三片完成：护甲条从既有 attributes 派生。

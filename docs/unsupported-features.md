@@ -483,16 +483,65 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Air bubbles / vehicle health / heart variants (absorption, poison,
-    wither, hardcore, regen flash) — these need world metadata first:
-    `air_supply`, `LivingEntity` health, and absorption are not yet parsed in
-    `bbb-world/src/entities/metadata.rs`. (Armor bar landed 2026-07-06, see
-    Evidence.)
+  - Heart variants (absorption, poison, wither, hardcore, regen flash,
+    frozen) plus multi-row health stacking (`numHealthRows` from
+    maxHealth+absorption shifting the armor/air rows and compressing
+    `healthRowHeight`) — the world metadata chain is now complete (air
+    supply / LivingEntity health / absorption landed 2026-07-06 with the air
+    bubbles + vehicle hearts, see Evidence; `local_player_absorption` is
+    stored and queryable, just not drawn).
   - Sign edit screen (needs a sign block-entity text store; input flow
     exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-06 — Air bubbles + vehicle hearts + the world metadata
+    chain. Synched-data ids derived per inheritance chain (never from bbb
+    tests): `Entity.DATA_AIR_SUPPLY_ID` = 1 (Entity.java:255-271 field
+    order), `LivingEntity.DATA_HEALTH_ID` = 9 (LivingEntity.java:178-186),
+    `Player.DATA_PLAYER_ABSORPTION_ID` = 17 (after Avatar's main-hand 15 /
+    mode-customisation 16, Avatar.java:38-39; Player.java:134-139 —
+    cross-checked against the existing shoulder-parrot ids 19/20).
+    `EntityStore` gained `metadata_float` plus `air_supply` (default 300 =
+    the define-time `getMaxAirSupply()`, Entity.java:312,2725-2727),
+    `living_entity_health` (default 1.0F, LivingEntity.java:314) and
+    `player_absorption` (default 0.0F, Player.java:224; stored + queryable
+    via `local_player_absorption`, not yet drawn). Air bubbles
+    (`Gui.extractAirBubbles`, Gui.java:887-928): visibility
+    `isUnderWater || clamp(air) < max` (:891); `Mth.ceil((cur+off)*10/max)`
+    bubble counts with off = -2 (full) / 0 (popping position) / the one-tick
+    underwater refill delay (empty, :922-928); the popping `hud/air_bursting`
+    frame draws only underwater (:906) and the delay gap draws nothing for a
+    tick; the all-empty even-tick `nextInt(2)` wobble (:910) reuses the
+    food-shake frame-seeded LCG. The y line replays
+    `extractPlayerHealth`+`getAirBubbleYLine` (:772,784-792,917-920) —
+    `guiHeight-49` on foot and on 1-row-heart vehicles, -10 per extra
+    vehicle heart row. Vehicle hearts (`extractVehicleHealth` /
+    `getVehicleMaxHearts`, Gui.java:709-741,974-1005): living direct vehicle
+    only (base `showVehicleHealth()` = `instanceof LivingEntity`,
+    Entity.java:2349-2351, no 26.1 overrides), hearts =
+    `(int)(maxHealth+0.5F)/2` capped 30, `ceil(health)` against
+    `i*2+1+baseHealth` per 20-half-heart row stacking up from
+    `guiHeight-39`, replacing the food row while hearts > 0 (:784-788).
+    Vehicle max health reads the MAX_HEALTH attribute (registry index 19,
+    Attributes.java field order) from the already-stored per-entity
+    `UpdateAttributes` (vanilla always pairs syncable attributes on tracking
+    start, ServerEntity.java:282-284), falling back to the RangedAttribute
+    default 20.0 (Attributes.java:58-60) in the unsynced window. Projected as
+    `RendererFrame.hud_air`/`hud_vehicle_health` (one-submission invariant
+    kept); sprites `hud/air{,_bursting,_empty}` +
+    `hud/heart/vehicle_{container,full,half}` (Gui.java:103-108) via the gui
+    atlas. Boundary: the bubble-pop sound (`playAirBubblePoppedSound`,
+    Gui.java:930-937) is deferred (no HUD-side sound sink yet); heart
+    variants + multi-row stacking are the next slice above. Tests: bbb-world
+    metadata-chain derivations (air/absorption/vehicle health incl. boat
+    `None`, attribute fallback 20, metadata default 1.0); bbb-renderer
+    layout rows (671/661/651 air, 681 vehicle baseline) and hand-computed
+    formula cases (150 → 5 full + delay gap + 4 empty, 61 → popping index 2
+    suppressed on land, 0/negative all-empty, max-hearts 15→7 / 15.5→8 /
+    100→30); two offscreen sentinels (underwater full bubbles vs hidden at
+    full air on land; vehicle hearts replacing the food row and a 0-heart
+    vehicle keeping it) (bbb-renderer `hud.rs`).
   - Done 2026-07-06 — Armor bar. `WorldStore::local_player_armor_value`
     (bbb-world `client/local_player.rs`) derives vanilla
     `LivingEntity.getArmorValue()` = `Mth.floor(getAttributeValue(Attributes.ARMOR))`

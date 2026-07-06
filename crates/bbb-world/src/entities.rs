@@ -52,9 +52,20 @@ const VANILLA_OPAQUE_ALPHA: u32 = 0xff00_0000;
 /// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom/profile names that
 /// flip a living entity upside down (the Dinnerbone/Grumm easter egg).
 pub(crate) const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
+/// Vanilla `Entity.DATA_AIR_SUPPLY_ID` (INT): the `Entity` base class defines its
+/// synched data in field-declaration order (Entity.java:255-271):
+/// `DATA_SHARED_FLAGS_ID`=0, `DATA_AIR_SUPPLY_ID`=1, `DATA_CUSTOM_NAME`=2,
+/// `DATA_CUSTOM_NAME_VISIBLE`=3, `DATA_SILENT`=4, `DATA_NO_GRAVITY`=5,
+/// `DATA_POSE`=6, `DATA_TICKS_FROZEN`=7 (matching the sibling constants below).
+pub(crate) const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+/// Vanilla `Entity.getMaxAirSupply()` = 300 ticks (Entity.java:2725-2727); the
+/// accessor is also the `DATA_AIR_SUPPLY_ID` define-time default (Entity.java:312).
+/// `Player` does not override it (only Dolphin/Axolotl/Nautilus do), so the
+/// local-player HUD max is always 300.
+pub(crate) const VANILLA_MAX_AIR_SUPPLY_TICKS: i32 = 300;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 // Vanilla `Arrow.ID_EFFECT_COLOR` (INT): Entity data ids 0-7 are from `Entity`, ids 8-10
 // are from `AbstractArrow`, then `Arrow` adds its potion/effect color at id 11.
@@ -66,6 +77,29 @@ pub(crate) const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
 pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
 /// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
 pub(crate) const VANILLA_ITEM_SNOWBALL_ID: i32 = 1017;
+
+/// `BuiltInRegistries.ATTRIBUTE` registration index for `minecraft:max_health`:
+/// `Attributes.java` registers in field-declaration order, so counting from
+/// `armor`=0 → ... → `luck`=17, `max_absorption`=18, `max_health`=19
+/// (Attributes.java:58-60). Consistent with the sibling hand-derived ids
+/// (armor `0` in `local_player.rs`, gravity `14` / movement_speed `22` in
+/// `local_player_movement.rs`).
+const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
+/// Vanilla `Attributes.MAX_HEALTH` `RangedAttribute` default value
+/// (`20.0`, Attributes.java:59).
+const VANILLA_DEFAULT_MAX_HEALTH: f64 = 20.0;
+
+/// The local player's living vehicle health pair for the HUD vehicle hearts
+/// (vanilla `Gui.extractVehicleHealth` inputs): the synced `DATA_HEALTH_ID`
+/// float and the resolved MAX_HEALTH attribute value.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalPlayerVehicleHealth {
+    /// Vanilla `LivingEntity.getHealth()` (ceil is applied at draw time,
+    /// Gui.java:979).
+    pub health: f32,
+    /// Vanilla `LivingEntity.getMaxHealth()` = the MAX_HEALTH attribute value.
+    pub max_health: f64,
+}
 
 /// Local-player melee swing state sampled for first-person item rendering.
 ///
@@ -3019,6 +3053,35 @@ impl WorldStore {
 
     pub fn local_player_vehicle_id(&self) -> Option<i32> {
         self.local_player_vehicle_id
+    }
+
+    /// Vanilla `Gui.getPlayerVehicleWithHealth` + the `extractVehicleHealth` /
+    /// `getVehicleMaxHearts` inputs (Gui.java:709-737,974-979): the local
+    /// player's direct vehicle when it is a `LivingEntity` (which is exactly
+    /// vanilla's `showVehicleHealth()` — the `Entity` base returns
+    /// `this instanceof LivingEntity` (Entity.java:2349-2351) and 26.1 has no
+    /// overrides). `health` is the synced `DATA_HEALTH_ID` float
+    /// (`LivingEntity.getHealth`); `max_health` is the synced MAX_HEALTH
+    /// attribute folded through `AttributeInstance.calculateValue`
+    /// (`vehicle.getMaxHealth()`, Gui.java:727). Boats/minecarts (non-living
+    /// vehicles) yield `None`, matching vanilla's hidden vehicle bar.
+    pub fn local_player_vehicle_health(&self) -> Option<LocalPlayerVehicleHealth> {
+        let vehicle_id = self.local_player_vehicle_id?;
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if !vanilla_living_entity_type(entity_type_id) {
+            return None;
+        }
+        let health = self.entities.living_entity_health(vehicle_id)?;
+        // Vanilla reads the attribute map; every living entity's syncable
+        // MAX_HEALTH instance is sent on tracking start
+        // (`ServerEntity.sendPairingData`, ServerEntity.java:282-284). The
+        // 20.0 fallback is the `Attributes.MAX_HEALTH` `RangedAttribute`
+        // default (Attributes.java:58-60) for the not-yet-synced window.
+        let max_health = self
+            .entities
+            .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
+            .unwrap_or(VANILLA_DEFAULT_MAX_HEALTH);
+        Some(LocalPlayerVehicleHealth { health, max_health })
     }
 
     pub fn entity_count(&self) -> usize {

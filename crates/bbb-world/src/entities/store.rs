@@ -24,23 +24,24 @@ use super::{
     ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
     VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -330,9 +331,25 @@ const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
 const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 
+/// Vanilla `LivingEntity.DATA_HEALTH_ID` data id (9, FLOAT): `LivingEntity`
+/// declares its accessors after the 8 `Entity` base ids (0..=7) in field order
+/// (LivingEntity.java:178-186): `DATA_LIVING_ENTITY_FLAGS`=8, `DATA_HEALTH_ID`=9,
+/// `DATA_EFFECT_PARTICLES`=10, `DATA_EFFECT_AMBIENCE_ID`=11,
+/// `DATA_ARROW_COUNT_ID`=12, `DATA_STINGER_COUNT_ID`=13, `SLEEPING_POS_ID`=14.
+/// The define-time default is `1.0F` (LivingEntity.java:314).
+const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
+
 /// Vanilla `LivingEntity.SLEEPING_POS_ID` data id (14): the optional bed position
 /// the entity is sleeping in (`getSleepingPos`).
 const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
+
+/// Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` data id (17, FLOAT): after `Entity`
+/// (0..=7) and `LivingEntity` (8..=14), `Avatar` declares `DATA_PLAYER_MAIN_HAND`=15
+/// and `DATA_PLAYER_MODE_CUSTOMISATION`=16 (Avatar.java:38-39), then `Player`
+/// declares `DATA_PLAYER_ABSORPTION_ID`=17, `DATA_SCORE_ID`=18, and the two
+/// shoulder-parrot ids 19/20 below (Player.java:134-139). The define-time
+/// default is `0.0F` (Player.java:224).
+const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
 
 /// Vanilla `EndCrystal.DATA_BEAM_TARGET` data id (8): optional block target for the dragon-healing
 /// beam. `DATA_SHOW_BOTTOM` follows at id 9.
@@ -565,6 +582,31 @@ impl EntityStore {
         self.metadata_int(id, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 0)
     }
 
+    /// Vanilla `Entity.getAirSupply()`: the synced `DATA_AIR_SUPPLY_ID` int,
+    /// defaulting to the define-time `getMaxAirSupply()` (300, Entity.java:312)
+    /// while the server has not synced a non-default value.
+    pub(crate) fn air_supply(&self, id: i32) -> Option<i32> {
+        self.metadata_int(
+            id,
+            VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
+            VANILLA_MAX_AIR_SUPPLY_TICKS,
+        )
+    }
+
+    /// Vanilla `LivingEntity.getHealth()`: the synced `DATA_HEALTH_ID` float,
+    /// defaulting to the define-time `1.0F` (LivingEntity.java:314) while the
+    /// server has not synced the spawn-time health.
+    pub(crate) fn living_entity_health(&self, id: i32) -> Option<f32> {
+        self.metadata_float(id, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, 1.0)
+    }
+
+    /// Vanilla `Player.getAbsorptionAmount()`: the synced
+    /// `DATA_PLAYER_ABSORPTION_ID` float, defaulting to the define-time `0.0F`
+    /// (Player.java:224).
+    pub(crate) fn player_absorption(&self, id: i32) -> Option<f32> {
+        self.metadata_float(id, VANILLA_PLAYER_ABSORPTION_DATA_ID, 0.0)
+    }
+
     pub(crate) fn metadata_int_for_entity(
         &self,
         id: i32,
@@ -717,6 +759,22 @@ impl EntityStore {
                 .find(|value| value.data_id == data_id)
                 .and_then(|value| match &value.value {
                     EntityDataValueKind::Int(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(default),
+        )
+    }
+
+    fn metadata_float(&self, id: i32, data_id: u8, default: f32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::Float(value) => Some(*value),
                     _ => None,
                 })
                 .unwrap_or(default),

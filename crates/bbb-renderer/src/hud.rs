@@ -16,19 +16,23 @@ pub(super) use self::gpu::{
     create_hud_sprite_gpu, HudSpriteGpu,
 };
 use self::layout::{
-    armor_hud_rect, boss_bar_hud_rect, centered_hud_rect, experience_bar_hud_rect, food_hud_rect,
-    gui_item_slot_placement, heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect,
-    hotbar_selection_hud_rect, hud_armor_fill, hud_boss_bar_fill_uv, hud_boss_bar_name_origin,
-    hud_boss_bar_progress_width, hud_boss_bar_rows, hud_experience_level_text_origin,
-    hud_experience_progress_width, hud_food_fill, hud_food_jitter_offsets, hud_heart_fill,
-    hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
-    hud_inventory_tooltip_line_origin, hud_inventory_tooltip_sprite_segments,
-    hud_inventory_tooltip_text_height, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
-    hud_item_durability_bar_rect, hud_overlay_message_text_origin, hud_quad_vertices,
-    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
-    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
+    air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
+    experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, heart_hud_rect,
+    hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
+    hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
+    hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
+    hud_experience_level_text_origin, hud_experience_progress_width, hud_food_fill,
+    hud_food_jitter_offsets, hud_heart_fill, hud_inventory_text_label_origin,
+    hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
+    hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
+    hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
+    hud_overlay_message_text_origin, hud_quad_vertices, hud_styled_quad_vertices,
+    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
+    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
+    inventory_slot_item_hud_rect, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
+    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
     HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
+    HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -105,6 +109,35 @@ pub struct HudFoodEffect {
     pub hunger_effect: bool,
     /// Client tick counter (vanilla `Gui.tickCount`) gating the shake modulo.
     pub tick_count: u64,
+}
+
+/// One frame's air-bubble row inputs (vanilla `Gui.extractAirBubbles`,
+/// Gui.java:887-915): the synced air supply, the fixed max, the
+/// `isEyeInFluid(FluidTags.WATER)` gate, and the client tick for the all-empty
+/// wobble cadence. The renderer derives visibility and the per-bubble
+/// full/popping/empty split per frame.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HudAirSupply {
+    /// Vanilla `player.getAirSupply()` (the synced `DATA_AIR_SUPPLY_ID` int).
+    pub air: i32,
+    /// Vanilla `player.getMaxAirSupply()` (300 for players).
+    pub max_air: i32,
+    /// Vanilla `player.isEyeInFluid(FluidTags.WATER)` (Gui.java:890).
+    pub eye_in_water: bool,
+    /// Client tick counter (vanilla `Gui.tickCount`) gating the empty-row wobble.
+    pub tick_count: u64,
+}
+
+/// One frame's vehicle-health inputs (vanilla `Gui.extractVehicleHealth` /
+/// `getVehicleMaxHearts`, Gui.java:725-737,974-1005): the living vehicle's
+/// synced health and resolved MAX_HEALTH attribute value. `None` (no living
+/// vehicle) keeps the food row; a non-zero heart count replaces it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudVehicleHealth {
+    /// Vanilla `vehicle.getHealth()`; the draw ceils it (Gui.java:979).
+    pub health: f32,
+    /// Vanilla `vehicle.getMaxHealth()` (the MAX_HEALTH attribute value).
+    pub max_health: f32,
 }
 
 /// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
@@ -1843,6 +1876,72 @@ impl Renderer {
         Ok(())
     }
 
+    /// Vanilla `hud/air` — a full air bubble (`AIR_SPRITE`, Gui.java:103/905).
+    pub fn upload_hud_air_bubble(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_air_bubble = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/air_bursting` — the one-tick popping bubble frame
+    /// (`AIR_POPPING_SPRITE`, Gui.java:104/907).
+    pub fn upload_hud_air_bubble_bursting(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_air_bubble_bursting = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/air_empty` — the popped empty bubble shell
+    /// (`AIR_EMPTY_SPRITE`, Gui.java:105/911).
+    pub fn upload_hud_air_bubble_empty(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_air_bubble_empty = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/heart/vehicle_container` — a vehicle heart's background
+    /// (`HEART_VEHICLE_CONTAINER_SPRITE`, Gui.java:106/991).
+    pub fn upload_hud_heart_vehicle_container(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_heart_vehicle_container = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/heart/vehicle_full` — a full vehicle heart overlay
+    /// (`HEART_VEHICLE_FULL_SPRITE`, Gui.java:107/993).
+    pub fn upload_hud_heart_vehicle_full(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_heart_vehicle_full = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/heart/vehicle_half` — a half vehicle heart overlay
+    /// (`HEART_VEHICLE_HALF_SPRITE`, Gui.java:108/997).
+    pub fn upload_hud_heart_vehicle_half(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_heart_vehicle_half = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_boss_bar_background(
         &mut self,
         color: HudBossBarColor,
@@ -1924,6 +2023,24 @@ impl Renderer {
     /// visibility test (Gui.java:800).
     pub fn set_hud_armor(&mut self, armor: Option<i32>) {
         self.hud_armor = armor;
+    }
+
+    /// Projects `Gui.extractAirBubbles`'s inputs (air supply, max, eye-in-water,
+    /// tick); the visibility gate (`isUnderWater || air < max`, Gui.java:891)
+    /// is applied in `collect_hud_draws`. A non-positive max (malformed
+    /// projection) clears the row rather than dividing by zero.
+    pub fn set_hud_air(&mut self, air: Option<HudAirSupply>) {
+        self.hud_air = air.filter(|air| air.max_air > 0);
+    }
+
+    /// Projects the local player's living vehicle health pair
+    /// (`Gui.extractVehicleHealth` inputs); `collect_hud_draws` derives the
+    /// heart count via `hud_vehicle_max_hearts` and suppresses the food row
+    /// while it is non-zero (Gui.java:784-788). Non-finite values (malformed
+    /// projection) clear the bar.
+    pub fn set_hud_vehicle_health(&mut self, vehicle: Option<HudVehicleHealth>) {
+        self.hud_vehicle_health =
+            vehicle.filter(|vehicle| vehicle.health.is_finite() && vehicle.max_health.is_finite());
     }
 
     /// Projects this frame's food-bar effect state (starvation-shake gate and
@@ -2236,7 +2353,15 @@ impl Renderer {
             }
         }
 
-        if let Some(food) = self.hud_food {
+        // Vanilla `Gui.extractPlayerHealth` resolves the living vehicle's heart
+        // count once (Gui.java:782-783): a non-zero count replaces the food row
+        // (Gui.java:784-788) and shifts the air row (`getAirBubbleYLine`).
+        let vehicle_hearts = self
+            .hud_vehicle_health
+            .map(|vehicle| hud_vehicle_max_hearts(vehicle.max_health))
+            .unwrap_or(0);
+
+        if let (0, Some(food)) = (vehicle_hearts, self.hud_food) {
             let effect = self.hud_food_effect;
             // Vanilla `Gui.extractFood` reseeds/advances `this.random` every
             // frame; bbb reseeds the identical LCG from the render frame counter
@@ -2291,6 +2416,102 @@ impl Renderer {
                         );
                     }
                 }
+            }
+        }
+
+        // Vanilla `Gui.extractAirBubbles` draws after the food row
+        // (Gui.java:790-791), only while under water or below the max supply
+        // (Gui.java:891): full bubbles, the one-tick popping frame, and the
+        // delayed empty shells (with the all-empty drowning wobble).
+        if let Some(air) = self
+            .hud_air
+            .filter(|air| hud_air_bubbles_visible(air.air, air.max_air, air.eye_in_water))
+        {
+            let icons = hud_air_bubble_icons(air.air, air.max_air, air.eye_in_water);
+            let all_bubbles_empty = icons
+                .iter()
+                .all(|icon| *icon == Some(HudAirBubbleIcon::Empty));
+            let wobble = hud_air_bubble_wobble_offsets(
+                all_bubbles_empty,
+                air.tick_count,
+                self.counters.frame_index,
+            );
+            for index in 0..HUD_AIR_BUBBLES_PER_ROW {
+                let (sprite, y_offset) = match icons[index as usize] {
+                    Some(HudAirBubbleIcon::Full) => (self.hud_air_bubble.as_ref(), 0),
+                    Some(HudAirBubbleIcon::Popping) => (self.hud_air_bubble_bursting.as_ref(), 0),
+                    Some(HudAirBubbleIcon::Empty) => {
+                        (self.hud_air_bubble_empty.as_ref(), wobble[index as usize])
+                    }
+                    None => (None, 0),
+                };
+                if let Some(sprite) = sprite {
+                    push_hud_draw(
+                        &mut vertices,
+                        &mut commands,
+                        sprite,
+                        surface_size,
+                        air_bubble_hud_rect(
+                            surface_size,
+                            index,
+                            vehicle_hearts,
+                            sprite.width,
+                            sprite.height,
+                            y_offset,
+                        ),
+                    );
+                }
+            }
+        }
+
+        // Vanilla `Gui.extractVehicleHealth` runs after `extractPlayerHealth`
+        // (Gui.java:523-526): rows of up to 10 hearts stack upward from the
+        // food baseline, each heart drawing its container and then the
+        // full/half overlay against `ceil(health)` (Gui.java:981-1002).
+        if let Some(vehicle) = self.hud_vehicle_health.filter(|_| vehicle_hearts > 0) {
+            let mut remaining_hearts = vehicle_hearts;
+            let mut row = 0u32;
+            while remaining_hearts > 0 {
+                let row_hearts = remaining_hearts.min(HUD_VEHICLE_HEARTS_PER_ROW);
+                for index in 0..row_hearts {
+                    if let Some(container) = &self.hud_heart_vehicle_container {
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            container,
+                            surface_size,
+                            vehicle_heart_hud_rect(
+                                surface_size,
+                                row,
+                                index,
+                                container.width,
+                                container.height,
+                            ),
+                        );
+                    }
+                    let overlay = match hud_vehicle_heart_fill(vehicle.health, row, index) {
+                        HudIconFill::Empty => None,
+                        HudIconFill::Half => self.hud_heart_vehicle_half.as_ref(),
+                        HudIconFill::Full => self.hud_heart_vehicle_full.as_ref(),
+                    };
+                    if let Some(overlay) = overlay {
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            overlay,
+                            surface_size,
+                            vehicle_heart_hud_rect(
+                                surface_size,
+                                row,
+                                index,
+                                overlay.width,
+                                overlay.height,
+                            ),
+                        );
+                    }
+                }
+                remaining_hearts -= row_hearts;
+                row += 1;
             }
         }
 
@@ -4473,6 +4694,155 @@ mod tests {
         assert!(
             armor_pixel[2] > 128 && armor_pixel[1] < 128,
             "armor row should stay background when armor is 0, got {armor_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn air_bubbles_offscreen_frame_draw_only_underwater_or_below_max() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        // 9x9 solid-green bubbles against the blue clear color.
+        let green: Vec<u8> = (0..81).flat_map(|_| [0u8, 255, 0, 255]).collect();
+        renderer.upload_hud_air_bubble(9, 9, &green).expect("air");
+        renderer
+            .upload_hud_air_bubble_bursting(9, 9, &green)
+            .expect("air_bursting");
+        renderer
+            .upload_hud_air_bubble_empty(9, 9, &green)
+            .expect("air_empty");
+
+        // Bubble index 0 (the rightmost) sits at (guiWidth/2 + 91 - 9,
+        // guiHeight - 49) on foot; sample its center.
+        let bubble_px = WIDTH / 2 + 91 - 9 + 4;
+        let bubble_py = HEIGHT - 49 + 4;
+
+        // Underwater at the full 300-tick supply the row is visible (vanilla
+        // draws it whenever the eye is in water, Gui.java:891) and all full.
+        renderer.set_hud_air(Some(HudAirSupply {
+            air: 300,
+            max_air: 300,
+            eye_in_water: true,
+            tick_count: 0,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("underwater frame");
+        let bubble_pixel = pixels.pixel(bubble_px, bubble_py);
+        assert!(
+            bubble_pixel[1] > 128 && bubble_pixel[0] < 128 && bubble_pixel[2] < 128,
+            "air row should show the green bubble underwater, got {bubble_pixel:?}"
+        );
+
+        // On land at the full supply the `isUnderWater || air < max` gate
+        // hides the row: the pixel reverts to the blue background.
+        renderer.set_hud_air(Some(HudAirSupply {
+            air: 300,
+            max_air: 300,
+            eye_in_water: false,
+            tick_count: 0,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("surfaced frame");
+        let bubble_pixel = pixels.pixel(bubble_px, bubble_py);
+        assert!(
+            bubble_pixel[2] > 128 && bubble_pixel[1] < 128,
+            "air row should stay background at full air on land, got {bubble_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn vehicle_hearts_offscreen_frame_replace_the_food_row() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        // Red food icons vs green vehicle hearts, both 9x9, on the shared
+        // right-anchored baseline slot (guiWidth/2 + 91 - 9, guiHeight - 39).
+        let red: Vec<u8> = (0..81).flat_map(|_| [255u8, 0, 0, 255]).collect();
+        let green: Vec<u8> = (0..81).flat_map(|_| [0u8, 255, 0, 255]).collect();
+        renderer
+            .upload_hud_food_empty(9, 9, &red)
+            .expect("food_empty");
+        renderer
+            .upload_hud_food_full(9, 9, &red)
+            .expect("food_full");
+        renderer
+            .upload_hud_food_half(9, 9, &red)
+            .expect("food_half");
+        renderer
+            .upload_hud_heart_vehicle_container(9, 9, &green)
+            .expect("vehicle_container");
+        renderer
+            .upload_hud_heart_vehicle_full(9, 9, &green)
+            .expect("vehicle_full");
+        renderer
+            .upload_hud_heart_vehicle_half(9, 9, &green)
+            .expect("vehicle_half");
+        renderer.set_hud_food(Some(20));
+
+        let slot_px = WIDTH / 2 + 91 - 9 + 4;
+        let slot_py = HEIGHT - 39 + 4;
+
+        // On foot the slot shows the red food icon.
+        let pixels = renderer.render_offscreen_frame().expect("food frame");
+        let slot_pixel = pixels.pixel(slot_px, slot_py);
+        assert!(
+            slot_pixel[0] > 128 && slot_pixel[1] < 128,
+            "the baseline slot should show the red food icon on foot, got {slot_pixel:?}"
+        );
+
+        // Riding a living vehicle with hearts: the food row is suppressed
+        // (vanilla `vehicleHearts == 0` gate, Gui.java:784-788) and the same
+        // slot draws the green vehicle heart instead.
+        renderer.set_hud_vehicle_health(Some(HudVehicleHealth {
+            health: 10.0,
+            max_health: 20.0,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("vehicle frame");
+        let slot_pixel = pixels.pixel(slot_px, slot_py);
+        assert!(
+            slot_pixel[1] > 128 && slot_pixel[0] < 128 && slot_pixel[2] < 128,
+            "the baseline slot should show the green vehicle heart while riding, got {slot_pixel:?}"
+        );
+
+        // A 0-heart vehicle (1.0 max health) keeps the food row (vanilla
+        // `getVehicleMaxHearts` -> 0 -> food drawn).
+        renderer.set_hud_vehicle_health(Some(HudVehicleHealth {
+            health: 1.0,
+            max_health: 1.0,
+        }));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("zero-heart vehicle frame");
+        let slot_pixel = pixels.pixel(slot_px, slot_py);
+        assert!(
+            slot_pixel[0] > 128 && slot_pixel[1] < 128,
+            "a 0-heart vehicle should keep the red food row, got {slot_pixel:?}"
         );
     }
 

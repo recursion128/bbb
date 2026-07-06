@@ -18,13 +18,13 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
-    FogEnvironment, GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview,
+    FogEnvironment, GuiItemLightingEntry, HudAirSupply, HudBlockItemModel, HudEntityPreview,
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
     HudEntityPreviewRect, HudFoodEffect, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
     HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudUvRect, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment, SkyMoonPhase,
@@ -1528,6 +1528,26 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
     let hud_armor = Some(world.local_player_armor_value());
+    // Vanilla `Gui.extractAirBubbles` inputs (Gui.java:887-890): the synced
+    // `DATA_AIR_SUPPLY_ID` int, the fixed 300-tick `getMaxAirSupply()`, the
+    // `isEyeInFluid(WATER)` gate, and the client tick for the all-empty
+    // wobble; the renderer applies the `isUnderWater || air < max` visibility.
+    let hud_air = Some(HudAirSupply {
+        air: world.local_player_air_supply(),
+        max_air: world.local_player_max_air_supply(),
+        eye_in_water: world.local_player_eye_in_water(),
+        tick_count: lightmap_ticks.client_tick_count,
+    });
+    // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the local
+    // player's living vehicle health + MAX_HEALTH attribute; the renderer
+    // derives the heart count (`getVehicleMaxHearts`) and replaces the food
+    // row while it is non-zero.
+    let hud_vehicle_health = world
+        .local_player_vehicle_health()
+        .map(|vehicle| HudVehicleHealth {
+            health: vehicle.health,
+            max_health: vehicle.max_health as f32,
+        });
     // Vanilla `Gui.extractFood` starvation-shake / hunger-swap inputs
     // (Gui.java:948,958): saturation-empty gate, the Hunger potion flag, and
     // the client `tickCount` (bbb's `LightmapTickState.client_tick_count`, the
@@ -1763,6 +1783,8 @@ pub(crate) fn pump_network_and_terrain(
             hud_food,
             hud_food_effect,
             hud_armor,
+            hud_air,
+            hud_vehicle_health,
             hud_experience_progress,
             hud_experience_level,
             hud_selected_slot,

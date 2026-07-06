@@ -728,6 +728,41 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_armor_half(armor_half.width, armor_half.height, &armor_half.rgba)?;
     let armor_full = hud_sprite(&sprites, "hud/armor_full")?;
     renderer.upload_hud_armor_full(armor_full.width, armor_full.height, &armor_full.rgba)?;
+    // Air bubble icons (vanilla `AIR_SPRITE` / `AIR_POPPING_SPRITE` /
+    // `AIR_EMPTY_SPRITE`, Gui.java:103-105).
+    let air_bubble = hud_sprite(&sprites, "hud/air")?;
+    renderer.upload_hud_air_bubble(air_bubble.width, air_bubble.height, &air_bubble.rgba)?;
+    let air_bubble_bursting = hud_sprite(&sprites, "hud/air_bursting")?;
+    renderer.upload_hud_air_bubble_bursting(
+        air_bubble_bursting.width,
+        air_bubble_bursting.height,
+        &air_bubble_bursting.rgba,
+    )?;
+    let air_bubble_empty = hud_sprite(&sprites, "hud/air_empty")?;
+    renderer.upload_hud_air_bubble_empty(
+        air_bubble_empty.width,
+        air_bubble_empty.height,
+        &air_bubble_empty.rgba,
+    )?;
+    // Vehicle heart icons (vanilla `HEART_VEHICLE_*_SPRITE`, Gui.java:106-108).
+    let heart_vehicle_container = hud_sprite(&sprites, "hud/heart/vehicle_container")?;
+    renderer.upload_hud_heart_vehicle_container(
+        heart_vehicle_container.width,
+        heart_vehicle_container.height,
+        &heart_vehicle_container.rgba,
+    )?;
+    let heart_vehicle_full = hud_sprite(&sprites, "hud/heart/vehicle_full")?;
+    renderer.upload_hud_heart_vehicle_full(
+        heart_vehicle_full.width,
+        heart_vehicle_full.height,
+        &heart_vehicle_full.rgba,
+    )?;
+    let heart_vehicle_half = hud_sprite(&sprites, "hud/heart/vehicle_half")?;
+    renderer.upload_hud_heart_vehicle_half(
+        heart_vehicle_half.width,
+        heart_vehicle_half.height,
+        &heart_vehicle_half.rgba,
+    )?;
     // Hunger-effect food variants (vanilla `FOOD_*_HUNGER_SPRITE`, Gui.java:97-99).
     let food_empty_hunger = hud_sprite(&sprites, "hud/food_empty_hunger")?;
     renderer.upload_hud_food_empty_hunger(

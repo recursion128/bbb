@@ -458,6 +458,35 @@ impl WorldStore {
             .unwrap_or(0)
     }
 
+    /// Vanilla `player.getAirSupply()` read by `Gui.extractAirBubbles`
+    /// (Gui.java:889): the synced `Entity.DATA_AIR_SUPPLY_ID` int (data id 1,
+    /// see `entities::VANILLA_ENTITY_AIR_SUPPLY_DATA_ID` for the derivation).
+    /// Falls back to the full 300-tick supply while there is no local player
+    /// entity or no synced value — the state in which vanilla hides the row.
+    pub fn local_player_air_supply(&self) -> i32 {
+        self.local_player_id
+            .and_then(|id| self.entities.air_supply(id))
+            .unwrap_or(crate::entities::VANILLA_MAX_AIR_SUPPLY_TICKS)
+    }
+
+    /// Vanilla `player.getMaxAirSupply()` read by `Gui.extractAirBubbles`
+    /// (Gui.java:888): the fixed 300-tick `Entity.getMaxAirSupply()`
+    /// (Entity.java:2725-2727) — `Player` does not override it.
+    pub fn local_player_max_air_supply(&self) -> i32 {
+        crate::entities::VANILLA_MAX_AIR_SUPPLY_TICKS
+    }
+
+    /// Vanilla `player.getAbsorptionAmount()` (`Gui.extractPlayerHealth`,
+    /// Gui.java:769): the synced `Player.DATA_PLAYER_ABSORPTION_ID` float
+    /// (data id 17, see `entities::store`'s derivation comment), `0.0` while
+    /// unsynced. Stored for the heart-variant rows; the current HUD does not
+    /// draw absorption hearts yet.
+    pub fn local_player_absorption(&self) -> f32 {
+        self.local_player_id
+            .and_then(|id| self.entities.player_absorption(id))
+            .unwrap_or(0.0)
+    }
+
     pub fn advance_local_player_look_input(
         &mut self,
         input: LocalPlayerInputState,
@@ -1445,5 +1474,196 @@ mod tests {
             4.0,
         );
         assert_eq!(world.local_player_armor_value(), 9);
+    }
+
+    fn spawned_player_world() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.local_player_id = Some(7);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 7,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world
+    }
+
+    fn set_entity_data(
+        world: &mut WorldStore,
+        entity_id: i32,
+        data_id: u8,
+        serializer_id: i32,
+        value: bbb_protocol::packets::EntityDataValueKind,
+    ) -> bool {
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: entity_id,
+            values: vec![bbb_protocol::packets::EntityDataValue {
+                data_id,
+                serializer_id,
+                value,
+            }],
+        })
+    }
+
+    #[test]
+    fn local_player_air_supply_reads_the_synced_air_metadata() {
+        // Vanilla `Entity.DATA_AIR_SUPPLY_ID` is the second `Entity` base-class
+        // accessor (Entity.java:255/263): DATA_SHARED_FLAGS_ID=0 → id 1 (INT,
+        // wire serializer 1). The define-time default is `getMaxAirSupply()` =
+        // 300 (Entity.java:312,2725-2727).
+        const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+        const INT_SERIALIZER_ID: i32 = 1;
+
+        // No local player at all: the full (hidden-row) supply.
+        let world = WorldStore::new();
+        assert_eq!(world.local_player_air_supply(), 300);
+        assert_eq!(world.local_player_max_air_supply(), 300);
+
+        // A spawned player without a synced value still reads the 300 default.
+        let mut world = spawned_player_world();
+        assert_eq!(world.local_player_air_supply(), 300);
+
+        assert!(set_entity_data(
+            &mut world,
+            7,
+            VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
+            INT_SERIALIZER_ID,
+            bbb_protocol::packets::EntityDataValueKind::Int(150),
+        ));
+        assert_eq!(world.local_player_air_supply(), 150);
+        assert_eq!(world.local_player_max_air_supply(), 300);
+    }
+
+    #[test]
+    fn local_player_absorption_reads_the_synced_player_metadata() {
+        // Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` derivation: Entity ids
+        // 0..=7 (Entity.java:255-271), LivingEntity 8..=14
+        // (LivingEntity.java:178-186), Avatar DATA_PLAYER_MAIN_HAND=15 /
+        // DATA_PLAYER_MODE_CUSTOMISATION=16 (Avatar.java:38-39), then Player's
+        // first own accessor DATA_PLAYER_ABSORPTION_ID=17 (Player.java:134;
+        // FLOAT, wire serializer 3). Define-time default 0.0F (Player.java:224).
+        const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
+        const FLOAT_SERIALIZER_ID: i32 = 3;
+
+        let world = WorldStore::new();
+        assert_eq!(world.local_player_absorption(), 0.0);
+
+        let mut world = spawned_player_world();
+        assert_eq!(world.local_player_absorption(), 0.0);
+
+        assert!(set_entity_data(
+            &mut world,
+            7,
+            VANILLA_PLAYER_ABSORPTION_DATA_ID,
+            FLOAT_SERIALIZER_ID,
+            bbb_protocol::packets::EntityDataValueKind::Float(8.0),
+        ));
+        assert_eq!(world.local_player_absorption(), 8.0);
+    }
+
+    #[test]
+    fn local_player_vehicle_health_projects_living_vehicles_only() {
+        // Vanilla `LivingEntity.DATA_HEALTH_ID` derivation: Entity ids 0..=7,
+        // then LivingEntity's second own accessor after
+        // DATA_LIVING_ENTITY_FLAGS=8 → id 9 (LivingEntity.java:178-179; FLOAT,
+        // wire serializer 3), define-time default 1.0F (LivingEntity.java:314).
+        const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
+        const FLOAT_SERIALIZER_ID: i32 = 3;
+        // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
+        // index 19 (Attributes.java field order, MAX_HEALTH at :58-60).
+        const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
+
+        let add_vehicle = |world: &mut WorldStore, id: i32, entity_type_id: i32| {
+            world.apply_add_entity(ProtocolAddEntity {
+                id,
+                uuid: Uuid::from_u128(0x2222_0000 + id as u128),
+                entity_type_id,
+                position: vec3(0.5, 1.0, 0.5),
+                delta_movement: ProtocolVec3d::default(),
+                x_rot: 0.0,
+                y_rot: 0.0,
+                y_head_rot: 0.0,
+                data: 0,
+            });
+        };
+        let mount = |world: &mut WorldStore, vehicle_id: i32| {
+            assert!(
+                world.apply_set_passengers(bbb_protocol::packets::SetPassengers {
+                    vehicle_id,
+                    passenger_ids: vec![7],
+                })
+            );
+        };
+
+        // No vehicle at all.
+        let mut world = spawned_player_world();
+        assert_eq!(world.local_player_vehicle_health(), None);
+
+        // A living vehicle (horse) with synced health and MAX_HEALTH: both
+        // project (vanilla `getPlayerVehicleWithHealth` + `getMaxHealth`).
+        add_vehicle(
+            &mut world,
+            30,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HORSE_ID,
+        );
+        mount(&mut world, 30);
+        assert!(set_entity_data(
+            &mut world,
+            30,
+            VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
+            FLOAT_SERIALIZER_ID,
+            bbb_protocol::packets::EntityDataValueKind::Float(7.0),
+        ));
+        assert!(
+            world.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 30,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                    base: 15.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+        assert_eq!(
+            world.local_player_vehicle_health(),
+            Some(crate::LocalPlayerVehicleHealth {
+                health: 7.0,
+                max_health: 15.0,
+            })
+        );
+
+        // Without a synced MAX_HEALTH attribute the max falls back to the
+        // `Attributes.MAX_HEALTH` RangedAttribute default 20.0, and without a
+        // synced health the metadata default 1.0F applies.
+        let mut world = spawned_player_world();
+        add_vehicle(
+            &mut world,
+            31,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PIG_ID,
+        );
+        mount(&mut world, 31);
+        assert_eq!(
+            world.local_player_vehicle_health(),
+            Some(crate::LocalPlayerVehicleHealth {
+                health: 1.0,
+                max_health: 20.0,
+            })
+        );
+
+        // A non-living vehicle (boat) is vanilla `showVehicleHealth() == false`
+        // (`Entity` base: `this instanceof LivingEntity`, Entity.java:2349-2351).
+        let mut world = spawned_player_world();
+        add_vehicle(
+            &mut world,
+            32,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        );
+        mount(&mut world, 32);
+        assert_eq!(world.local_player_vehicle_health(), None);
     }
 }
