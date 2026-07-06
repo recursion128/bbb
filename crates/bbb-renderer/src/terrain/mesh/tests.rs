@@ -707,8 +707,231 @@ fn box_model_culls_only_faces_marked_by_cullface() {
         .next()
         .unwrap();
 
-    assert_eq!(mesh.culled_faces, 4);
-    assert_eq!(mesh.opaque_faces, 14);
+    // The slab's north/south faces are marked for culling and their neighbours are
+    // full cubes, so both cull (vanilla `shouldRenderFace` short-circuits on a full
+    // occluder). The two full cubes, however, keep their faces toward the slab: the
+    // slab's side faces are only half-height, so its occlusion shape does not cover
+    // the cube's full face (`Shapes.joinIsNotEmpty(cubeFace, slabHalfFace,
+    // ONLY_FIRST)` is non-empty). Only the slab's two faces cull.
+    assert_eq!(mesh.culled_faces, 2);
+    assert_eq!(mesh.opaque_faces, 16);
+}
+
+#[test]
+fn face_occludes_reports_full_faces_from_render_cuboids() {
+    // A full cube presents a full occlusion face on every side.
+    for direction in TerrainFace::ALL {
+        assert!(face_occludes(&TerrainRenderShape::Cube, direction));
+    }
+
+    // A bottom slab only fills its down face.
+    let bottom_slab = box_shape([0, 0, 0], [16, 8, 16]);
+    assert!(face_occludes(&bottom_slab, TerrainFace::Down));
+    for direction in [
+        TerrainFace::Up,
+        TerrainFace::North,
+        TerrainFace::South,
+        TerrainFace::West,
+        TerrainFace::East,
+    ] {
+        assert!(!face_occludes(&bottom_slab, direction));
+    }
+
+    // A top slab mirrors it, filling only the up face.
+    let top_slab = top_slab_box_shape();
+    assert!(face_occludes(&top_slab, TerrainFace::Up));
+    assert!(!face_occludes(&top_slab, TerrainFace::Down));
+
+    // A straight stair fills its down face (bottom slab) and its north back face
+    // (only via the union of the bottom slab + upper step — no single box is full
+    // there); every other side stays partial.
+    let stair = stair_boxes_shape();
+    assert!(face_occludes(&stair, TerrainFace::Down));
+    assert!(face_occludes(&stair, TerrainFace::North));
+    for direction in [
+        TerrainFace::Up,
+        TerrainFace::South,
+        TerrainFace::West,
+        TerrainFace::East,
+    ] {
+        assert!(!face_occludes(&stair, direction));
+    }
+
+    // Foliage and custom / quad shapes never occlude.
+    let cross = TerrainRenderShape::Cross {
+        shade: false,
+        light_emission: 0,
+    };
+    let quad_shape = TerrainRenderShape::Quads(vec![TerrainQuad {
+        corners: [
+            [0.0, 0.0, 0.0],
+            [16.0, 0.0, 0.0],
+            [16.0, 16.0, 0.0],
+            [0.0, 16.0, 0.0],
+        ],
+        normal: [0.0, 0.0, -1.0],
+        uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        cull: Some(TerrainFace::North),
+        texture_index: 0,
+        tint: TerrainTint::WHITE,
+        transparency: TerrainTransparency::OPAQUE,
+        shade: true,
+        light_emission: 0,
+    }]);
+    let empty_boxes = TerrainRenderShape::Boxes(Vec::new());
+    for direction in TerrainFace::ALL {
+        assert!(!face_occludes(&cross, direction));
+        assert!(!face_occludes(&quad_shape, direction));
+        assert!(!face_occludes(&empty_boxes, direction));
+    }
+}
+
+#[test]
+fn stacked_slabs_cull_the_filled_middle_boundary() {
+    // A top slab below and a bottom slab above meet at a shared boundary that is
+    // fully covered by both slabs' full faces, so both middle faces cull.
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, top_slab_box_shape());
+    cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.culled_faces, 2);
+    assert_eq!(mesh.opaque_faces, 10);
+    // No up/down face survives at the shared boundary plane y = 1.0.
+    assert!(!mesh.vertices.iter().any(|vertex| {
+        vertex.position[1] == 1.0
+            && (vertex.normal == [0.0, 1.0, 0.0] || vertex.normal == [0.0, -1.0, 0.0])
+    }));
+}
+
+#[test]
+fn same_orientation_slabs_keep_touching_side_faces() {
+    // Two bottom slabs side by side: each side face is only half-height, so
+    // neither occludes the other (conservative, vanilla keeps the visible faces
+    // regardless — this is the safe over-render for matching partial faces).
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+    cells[cell_index(2, 0, 2, 1)] =
+        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.culled_faces, 0);
+    assert_eq!(mesh.opaque_faces, 12);
+}
+
+#[test]
+fn stairs_full_back_face_occludes_neighbor_cube_via_box_union() {
+    // The stair's north back is full only via the union of its two boxes, so the
+    // neighbouring cube's south face (toward the stair) is culled — proving the
+    // union rasterisation, not just single-cuboid full faces.
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, stair_boxes_shape());
+    cells[cell_index(1, 0, 1, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    // The cube keeps five faces; its south face (toward the stair) is culled.
+    let cube_vertices = mesh
+        .vertices
+        .iter()
+        .filter(|vertex| vertex.block_state_id == 1)
+        .count();
+    assert_eq!(cube_vertices, 20);
+    assert!(!mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.block_state_id == 1 && vertex.normal == [0.0, 0.0, 1.0]));
+    // The full cube also occludes both of the stair's north faces (bottom + step).
+    assert!(!mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.block_state_id == 3 && vertex.normal == [0.0, 0.0, -1.0]));
+}
+
+#[test]
+fn cutout_slab_neighbor_does_not_occlude_opaque_face() {
+    // A non-opaque (glass-like) slab never occludes, regardless of its full down
+    // face: the opaque cube above keeps its down face.
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Cutout, 0, top_slab_box_shape());
+    cells[cell_index(1, 1, 2, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.opaque[0].opaque_faces, 6);
+    assert_eq!(layers.opaque[0].culled_faces, 0);
+}
+
+#[test]
+fn cross_neighbor_does_not_occlude_opaque_face() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_shape(
+        2,
+        TerrainMaterialClass::Cutout,
+        0,
+        TerrainRenderShape::Cross {
+            shade: false,
+            light_emission: 0,
+        },
+    );
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.opaque_faces, 6);
+    assert_eq!(mesh.culled_faces, 0);
+}
+
+#[test]
+fn cross_chunk_slab_neighbor_keeps_partial_face() {
+    // A bottom slab at the west edge of chunk (1,0) faces a full cube at the east
+    // edge of chunk (0,0). The slab's west side face is half-height, so the cube's
+    // east face survives across the chunk boundary (shape + direction are threaded
+    // through the cross-chunk lookup).
+    let mut left_cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    left_cells[cell_index(15, 0, 2, 1)] =
+        TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let left = TerrainChunkSnapshot::new(0, 0, 0, 1, left_cells);
+
+    let mut right_cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    right_cells[cell_index(0, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+    let right = TerrainChunkSnapshot::new(1, 0, 0, 1, right_cells);
+
+    let meshes = build_opaque_terrain_meshes(&[left, right]);
+    let left_mesh = &meshes[0];
+    // The cube keeps all six faces; nothing culls across the boundary against the
+    // slab's partial west face.
+    assert_eq!(left_mesh.opaque_faces, 6);
+    assert_eq!(left_mesh.culled_faces, 0);
+    assert!(left_mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.normal == [1.0, 0.0, 0.0]));
 }
 
 #[test]
@@ -1347,6 +1570,47 @@ fn slab_box_shape() -> TerrainRenderShape {
         face_cull,
         face_transparency: [TerrainTransparency::OPAQUE; 6],
     }
+}
+
+fn box_shape(from: [u8; 3], to: [u8; 3]) -> TerrainRenderShape {
+    TerrainRenderShape::Box {
+        from,
+        to,
+        face_present: [true; 6],
+        face_uvs: [[0, 0, 16, 16]; 6],
+        face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
+        face_light_emission: [0; 6],
+        face_cull: all_face_cull(),
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
+    }
+}
+
+fn top_slab_box_shape() -> TerrainRenderShape {
+    box_shape([0, 8, 0], [16, 16, 16])
+}
+
+/// A straight, bottom-half stair: a full bottom slab plus an upper step that
+/// only reaches half-way in `+z`. Its `north` (`z=0`) back face is full only via
+/// the union of the two boxes.
+fn stair_boxes_shape() -> TerrainRenderShape {
+    let make = |from: [u8; 3], to: [u8; 3]| TerrainBox {
+        from,
+        to,
+        face_present: [true; 6],
+        face_uvs: [[0, 0, 16, 16]; 6],
+        face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
+        face_light_emission: [0; 6],
+        face_cull: all_face_cull(),
+        texture_indices: [0; 6],
+        tint: [TerrainTint::WHITE; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
+    };
+    TerrainRenderShape::Boxes(vec![
+        make([0, 0, 0], [16, 8, 16]),
+        make([0, 8, 0], [16, 16, 8]),
+    ])
 }
 
 fn fluid_box_shape(height: u8) -> TerrainRenderShape {

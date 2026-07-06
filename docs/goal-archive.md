@@ -3806,8 +3806,36 @@
   sprite 切片 / 多 box stairs 面数 / cross 两平面 / 手算 decal UV→mesh 顶点 /
   Cube 不回归 / `Quads`→cube 退化 / 与 terrain 一致绕序）+ 原生
   `block_destroy_overlays_merge_local_stage...` 断言 shape 字段。
-
-### 2026-07-05 迁入：terrain presentation 已完成项
+- [x] per-face 遮挡形状 culling 精度（slab/stairs 满面先行，2026-07-06）：
+  相邻面剔除从 cell 级布尔（任一 opaque 且有几何的邻居剔全部相邻面）升级为
+  vanilla `Block.shouldRenderFace`（`Block.java:304`）的按方向遮挡形状判定。
+  复核 vanilla 精确语义：`shouldRenderFace` 取
+  `neighbor.getFaceOcclusionShape(dir.opposite())` 为 occluder——full block
+  短路剔（`Block.java:306`）、`skipRendering` 剔（310）、occluder 空则渲染
+  （314）、自身面 `state.getFaceOcclusionShape(dir)` 空则渲染（319），否则
+  `Shapes.joinIsNotEmpty(自身面, occluder, ONLY_FIRST)`（渲染 = 自身面有未被
+  occluder 覆盖的部分）。`getFaceOcclusionShape` = `occlusionShape.getFaceShape`
+  （`BlockBehaviour.java:512-522`，per-state per-face 缓存），默认 occlusionShape
+  = `getShape`。在 bbb「满面 only」遮挡模型下这套语义坍缩为单向邻居判定：
+  occluder 满面 → 覆盖任意自身面 → 剔；occluder 非满面 → 保守渲染（自身面空/
+  partial-join 的 vanilla 渲染分支只会「更少剔」，忽略它安全）。新增纯函数
+  `face_occludes(shape, direction)`（`terrain/mesh.rs`）从 render cuboid 推导——
+  `Cube` 六向满；`Cross`/`Crosses`/`Quads` 无遮挡（vanilla foliage/custom 模型
+  occlusion shape 空）；`Box` 单 cuboid 贴边且横截面覆盖 16×16 即满面；`Boxes`
+  先走单 cuboid 快路径，否则把每个贴边 cuboid 的横截面栅格化到 16×16 边界网格
+  取并集判满（楼梯满背面靠两个 box 并集才满，单 box 都不满——与 vanilla
+  `Block.isFaceFull(getFaceShape)` 对 box 并集精确一致，且恒为 vanilla 遮挡的子
+  集，绝不多剔）。`culls_face_between_cells` 新增 `direction` 参数，四个调用点
+  （Cube 面循环、`emit_box`、`box_face_will_render`、`emit_quads`）传各自的 cull
+  方向，检查 `face_occludes(neighbor.render_shape, direction.opposite())`；材质门
+  仍是既有 `Opaque`（≈ vanilla `canOcclude`），流体分支不变；AO/光照采样仍用
+  `is_occluded_by_cell`（与面剔除正交，不动）。修正既有 buggy 断言
+  `box_model_culls_only_faces_marked_by_cullface`（slab 半高侧面不再遮邻立方，
+  culled 4→2 / opaque 14→16）。新增测试：`face_occludes` 直测（cube/上下 slab/
+  stairs 并集背面/cross/quads/空 boxes）、上下 slab 叠满格中间面剔、同向双 slab
+  不剔侧面（保守过渲染）、stairs 并集满背面剔邻立方、cutout(玻璃类) slab 不遮、
+  cross 邻居不遮、跨 chunk slab 半面不遮。skipRendering（同类玻璃/铁栏杆相邻
+  剔除）另记账为独立子项（需跨 crate 方块分类 + TerrainCell 新字段，超本片体量）。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

@@ -425,12 +425,16 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; the umbrella claims in goal.md P2 were
   re-verified and most surfaces are already aligned — see Evidence):
-  - Per-face occlusion-shape culling: only fully-opaque cube neighbors cull
-    faces (`terrain.rs` `occludes_terrain` = `Opaque`); vanilla
-    `Block.shouldRenderFace` matches per-face occlusion shapes
-    (`Shapes.blockOccludes`), so adjacent non-full blocks (slabs, stairs)
-    keep hidden faces. First step: full-face occlusion for slab/stairs
-    top/bottom faces.
+  - `skipRendering` same-block adjacency culling (glass / iron bars): vanilla
+    `HalfTransparentBlock.skipRendering` culls the shared face between two
+    identical glass-family blocks (`neighborState.is(this)`), and
+    `IronBarsBlock.skipRendering` culls between `BARS`-tag blocks per
+    connection property (`Block.java:310`). bbb has no equivalent — non-opaque
+    (`Cutout`) neighbors never occlude, so adjacent glass renders both internal
+    faces. Deferred as a separate slice: it needs a cross-crate data-model
+    change (block-family / connection tagging on `TerrainCell`, classified on
+    the `bbb-world` side) that the geometry-only per-face occlusion work does
+    not touch.
   - Block-entity special renderers (chest, sign text, banner, bell, shulker
     box, bed, conduit, …): no BER surface exists at all; these blocks bake
     particle-only models into near-empty terrain geometry. Vanilla:
@@ -440,6 +444,41 @@ When an agent does any of the following, update this file in the same slice:
     fallback (`block_models/shape.rs` → `textures.rs`) alongside, since
     unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Per-face occlusion-shape culling (slab/stairs full
+    faces): neighbour face culling was a cell-level boolean (any opaque
+    neighbour with geometry culled every adjacent face), so slabs/stairs hid
+    the full faces of adjacent blocks. It now follows vanilla
+    `Block.shouldRenderFace` (`Block.java:304`) per-direction occlusion shapes.
+    New pure fn `face_occludes(shape, direction)` (`terrain/mesh.rs`) derives a
+    full-1×1 occlusion face from the render cuboids: `Cube` fills all six sides;
+    `Cross`/`Crosses`/`Quads` never occlude (empty vanilla occlusion shape); a
+    `Box` face is full when a single cuboid touches the boundary and spans the
+    16×16 cross-section; `Boxes` rasterises every boundary-touching cuboid's
+    cross-section onto a 16×16 grid and requires full cover (a straight stair's
+    back face is full only via the union of its two boxes). This is exactly
+    vanilla `Block.isFaceFull(getFaceShape)` for box unions and a strict subset
+    of vanilla occlusion, so it never culls a face vanilla keeps. In bbb's
+    full-face-only model, `shouldRenderFace`'s two-part join collapses to a
+    one-way "neighbour presents a full opaque occlusion face" test (the own-face
+    and partial-join branches only ever render *more*). `culls_face_between_cells`
+    gained a `direction` arg; the four call sites (cube face loop, `emit_box`,
+    `box_face_will_render`, `emit_quads`) pass their cull direction and test the
+    neighbour's opposite-face occlusion. The material gate is unchanged
+    (`Opaque` ≈ vanilla `canOcclude`), the fluid branch is unchanged, and
+    AO/light sampling still uses the cell-level `is_occluded_by_cell` (a
+    separate concern from face culling). Two identical adjacent partial faces
+    (e.g. same-orientation slab sides) conservatively over-render rather than
+    cull the matching halves — safe (back-to-back faces, no visual hole).
+    Tests (`terrain/mesh/tests.rs`): `face_occludes` direct predicate (cube /
+    top+bottom slab / stair union back / cross / quads / empty boxes), stacked
+    top+bottom slab filled-boundary cull, same-orientation double slab keeps
+    touching sides, stairs union back culls a neighbour cube, cutout (glass-like)
+    slab does not occlude, cross neighbour does not occlude, cross-chunk partial
+    slab keeps the cube's face; the pre-existing
+    `box_model_culls_only_faces_marked_by_cullface` assertion was corrected
+    (slab half-side no longer hides the neighbour cubes: culled 4→2, opaque
+    14→16). `skipRendering` same-block glass/bars culling is recorded above as a
+    separate deferred slice.
   - Done 2026-07-06 — Breaking crack decal follows render shape: the crumbling
     overlay now cracks over the block's real geometry instead of a constant unit
     cube. `BlockDestroyOverlay` carries the position's `TerrainRenderShape`,

@@ -452,6 +452,17 @@ impl TerrainFace {
             Self::East => 5,
         }
     }
+
+    pub(crate) fn opposite(self) -> Self {
+        match self {
+            Self::Down => Self::Up,
+            Self::Up => Self::Down,
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::West => Self::East,
+            Self::East => Self::West,
+        }
+    }
 }
 
 #[repr(C)]

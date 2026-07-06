@@ -198,7 +198,9 @@ pub(super) fn emit_box(
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
-                .map(|neighbor| culls_face_between_cells(mode, face_material, fluid, neighbor))
+                .map(|neighbor| {
+                    culls_face_between_cells(mode, face_material, fluid, cull_face, neighbor)
+                })
                 .unwrap_or(false)
             {
                 mesh.culled_faces += 1;
@@ -381,10 +383,9 @@ fn box_face_will_render(
     }
     if let Some(cull_face) = face_cull[face_index] {
         let (dx, dy, dz) = cull_offset(cull_face);
-        if lookup
-            .cell(x + dx, y + dy, z + dz)
-            .is_some_and(|neighbor| culls_face_between_cells(mode, face_material, fluid, neighbor))
-        {
+        if lookup.cell(x + dx, y + dy, z + dz).is_some_and(|neighbor| {
+            culls_face_between_cells(mode, face_material, fluid, cull_face, neighbor)
+        }) {
             return false;
         }
     }
@@ -415,7 +416,9 @@ pub(super) fn emit_quads(
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
-                .map(|neighbor| culls_face_between_cells(mode, face_material, None, neighbor))
+                .map(|neighbor| {
+                    culls_face_between_cells(mode, face_material, None, cull_face, neighbor)
+                })
                 .unwrap_or(false)
             {
                 mesh.culled_faces += 1;
