@@ -3785,6 +3785,27 @@
   边界精确算术平均 / swamp modifier per-sample 先于平均 / 未加载列截断按可
   得数平均）+ bbb-world `chunk_biome_sampler_reads_neighbourhood_and_
   truncates_unloaded_columns`。
+- [x] 破坏 crack decal 跟随方块 render shape（2026-07-06）：crumbling overlay
+  从恒定单位立方改为跟随方块真实 render shape。`BlockDestroyOverlay` 新增
+  `shape: TerrainRenderShape`，由 `runtime.rs::block_destroy_render_shape` 经
+  `TerrainTextureState::block_render_shape`（薄封装 chunk mesher 的
+  `block_render_data`，position 喂 model-variant seed 与所绘 chunk 一致）投影；
+  chunk 未加载则退化整立方。`block_destroy.rs` 复用 mesher 自身
+  `box_face_corners`/`FACES`/`CROSS_FACES`（提升 `pub(crate)`）+ `[0,1,2,0,2,3]`
+  绕序生成面——与 terrain 方块面同一 inward-RHR 绕序（`terrain/mesh/emitter.rs`
+  fluid 背面注释为外侧可见绕序的 ground truth），故 decal 仅出现在方块面可见
+  的那一侧；顺带纠正旧 overlay 用了相反（outward-RHR）绕序。覆盖 Cube / Box /
+  Boxes（slab/stairs/fence/wall）/ Cross·Crosses（两斜面）。UV 按 vanilla
+  `SheetedDecalTextureGenerator`（`BlockFeatureRenderer` 把方块模型自身 quad 以
+  `textureScale=1.0` 喂 crumbling buffer）：block-local 顶点位置投影到面最近
+  `Direction` 的两个垂直轴（down `[px,1-pz]` / up `[px,pz]` / south `[px,1-py]`
+  …），故半高 box 只采样 sprite 的覆盖切片（底 slab 侧面显下半）。退化如实：
+  `Quads` 退化整立方（无 crumbling 友好 box 分解）；cross 用全平面 decal（mesher
+  固定 `[0,1]` cross 平面恒占满 sprite）。z-fight 机制不变（逐顶点法向外推 +
+  crumbling pipeline depth bias）。测试：`block_destroy.rs`（slab 半高侧面 + 部分
+  sprite 切片 / 多 box stairs 面数 / cross 两平面 / 手算 decal UV→mesh 顶点 /
+  Cube 不回归 / `Quads`→cube 退化 / 与 terrain 一致绕序）+ 原生
+  `block_destroy_overlays_merge_local_stage...` 断言 shape 字段。
 
 ### 2026-07-05 迁入：terrain presentation 已完成项
 

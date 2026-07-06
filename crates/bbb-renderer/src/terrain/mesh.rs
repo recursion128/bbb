@@ -1,6 +1,6 @@
 mod emitter;
 mod fluid;
-mod geometry;
+pub(crate) mod geometry;
 mod item_bake;
 
 pub(in crate::terrain) use item_bake::bake_block_item_quads;

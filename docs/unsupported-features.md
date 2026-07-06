@@ -425,11 +425,6 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; the umbrella claims in goal.md P2 were
   re-verified and most surfaces are already aligned — see Evidence):
-  - Breaking crack decal shape: `block_destroy.rs` always emits a unit cube
-    (`DESTROY_OVERLAY_FACES`) regardless of the block's render shape; vanilla
-    `BlockRenderDispatcher.renderBreakingTexture` re-renders the model's own
-    faces with the crumbling texture. First step: consume the cell's
-    `TerrainRenderShape` faces (Box/Boxes first).
   - Per-face occlusion-shape culling: only fully-opaque cube neighbors cull
     faces (`terrain.rs` `occludes_terrain` = `Opaque`); vanilla
     `Block.shouldRenderFace` matches per-face occlusion shapes
@@ -445,6 +440,35 @@ When an agent does any of the following, update this file in the same slice:
     fallback (`block_models/shape.rs` → `textures.rs`) alongside, since
     unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Breaking crack decal follows render shape: the crumbling
+    overlay now cracks over the block's real geometry instead of a constant unit
+    cube. `BlockDestroyOverlay` carries the position's `TerrainRenderShape`,
+    projected in `runtime.rs::block_destroy_render_shape` from the same
+    `TerrainTextureState::block_render_shape` (a thin wrapper over the chunk
+    mesher's `block_render_data`, so the model-variant seed matches the drawn
+    chunk); no chunk loaded → full-cube fallback. `block_destroy.rs` emits faces
+    by reusing the mesher's own `box_face_corners` / `FACES` / `CROSS_FACES`
+    (promoted to `pub(crate)`) with the `[0,1,2,0,2,3]` winding — the same
+    inward-RHR winding the terrain block faces use (fluid back-face note in
+    `terrain/mesh/emitter.rs` is the ground truth for outside-visible winding),
+    so the decal shows on exactly the sides the block faces do. This also
+    corrects the prior overlay, which used the opposite (outward-RHR) winding.
+    Covered: Cube, Box, Boxes (slabs/stairs/fences/walls), Cross/Crosses (two
+    diagonal planes). UV follows vanilla `SheetedDecalTextureGenerator`
+    (`BlockFeatureRenderer` feeds the block model's own quads through the
+    crumbling buffer at `textureScale = 1.0`): the block-local vertex position is
+    projected onto the axes perpendicular to the face's nearest `Direction`
+    (`[px,1-pz]` down, `[px,pz]` up, `[px,1-py]` south, …), so partial boxes
+    sample only the covered slice of the sprite (a bottom slab's sides show the
+    lower half). Degradation (honest): `Quads` shapes degrade to the unit-cube
+    crack (no crumbling-friendly box decomposition); cross uses a full-plane
+    decal (the mesher's fixed `[0,1]` cross planes always span the whole sprite).
+    z-fight defense is unchanged (per-vertex outward nudge + crumbling pipeline
+    depth bias). Tests: `block_destroy.rs` (slab half-height side faces + partial
+    sprite slice, multi-box stairs face count, cross two-plane emission,
+    hand-computed decal UV → mesh vertex, cube non-regression, `Quads`→cube
+    degradation, terrain-matching winding) + native
+    `block_destroy_overlays_merge_local_stage...` asserts the shape field.
   - Done 2026-07-05 — Biome color blend radius: terrain grass/foliage/
     dry-foliage/water tints now average the biome `ColorResolver` over the
     `biomeBlendRadius` window (hard-coded to vanilla `Options.java` default 2 →

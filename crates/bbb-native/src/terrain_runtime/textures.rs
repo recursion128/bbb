@@ -434,6 +434,22 @@ impl TerrainTextureState {
         state
     }
 
+    /// The terrain render shape for a single block state at `position`, projected from the same
+    /// `block_render_data` source the chunk mesher uses (position feeds the model-variant seed, so
+    /// the crumbling decal follows the exact rotated model the chunk drew). Biome tint inputs are
+    /// omitted because they never affect geometry.
+    pub(crate) fn block_render_shape(
+        &self,
+        block_name: Option<&str>,
+        properties: &BTreeMap<String, String>,
+        material: bbb_world::TerrainMaterialClass,
+        position: BlockRenderPosition,
+    ) -> TerrainRenderShape {
+        let (_, _, _, render_shape, _) =
+            self.block_render_data(block_name, properties, material, None, Some(position), None);
+        render_shape
+    }
+
     pub(super) fn block_render_data(
         &self,
         block_name: Option<&str>,

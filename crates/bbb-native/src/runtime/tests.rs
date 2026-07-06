@@ -8672,6 +8672,12 @@ fn block_destroy_overlays_merge_local_stage_with_server_progress_per_position() 
     assert_eq!(overlays.len(), 1);
     assert_eq!(overlays[0].pos, [0, 1, 3]);
     assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(5).unwrap());
+    // The overlay now carries the block's render shape (grass_block has no model in the test
+    // textures, so it projects to the full-cube crack).
+    assert_eq!(
+        overlays[0].shape,
+        bbb_renderer::terrain::TerrainRenderShape::Cube
+    );
 }
 
 #[test]

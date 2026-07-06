@@ -75,8 +75,8 @@ use crate::{
         SMOKE_PARTICLE_TYPE_ID,
     },
     terrain_runtime::{
-        maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
-        TerrainUploadState,
+        maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
+        TerrainTextureState, TerrainUploadState,
     },
 };
 use bbb_protocol::entity_types::*;
@@ -2147,12 +2147,37 @@ fn block_destroy_overlays_from_world(
     stages
         .into_iter()
         .filter_map(|(pos, stage)| {
+            let uv = textures.destroy_stage_uv_rect(stage)?;
             Some(BlockDestroyOverlay {
                 pos: [pos.x, pos.y, pos.z],
-                uv: textures.destroy_stage_uv_rect(stage)?,
+                uv,
+                shape: block_destroy_render_shape(world, textures, pos),
             })
         })
         .collect()
+}
+
+/// The render shape of the block being broken at `pos`, reused from the chunk mesher's
+/// `TerrainTextureState::block_render_shape` so the crumbling decal follows the block's real
+/// geometry (stairs/slab/fence/cross). Falls back to a full cube when the chunk is not loaded.
+fn block_destroy_render_shape(
+    world: &WorldStore,
+    textures: &TerrainTextureState,
+    pos: bbb_world::BlockPos,
+) -> bbb_renderer::terrain::TerrainRenderShape {
+    let Some(probe) = world.probe_block(pos) else {
+        return bbb_renderer::terrain::TerrainRenderShape::Cube;
+    };
+    textures.block_render_shape(
+        probe.block_name.as_deref(),
+        &probe.block_properties,
+        probe.material,
+        BlockRenderPosition {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+    )
 }
 
 fn merge_block_destroy_stage(

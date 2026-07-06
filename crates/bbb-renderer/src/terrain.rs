@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-mod mesh;
+pub(crate) mod mesh;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainMaterialClass {
@@ -442,7 +442,7 @@ impl TerrainFace {
         Self::East,
     ];
 
-    fn index(self) -> usize {
+    pub(crate) fn index(self) -> usize {
         match self {
             Self::Down => 0,
             Self::Up => 1,

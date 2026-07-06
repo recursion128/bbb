@@ -1,16 +1,16 @@
 use super::super::TerrainFace;
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct FaceDef {
-    pub(super) face: TerrainFace,
-    pub(super) normal: [f32; 3],
+pub(crate) struct FaceDef {
+    pub(crate) face: TerrainFace,
+    pub(crate) normal: [f32; 3],
     pub(super) dx: i32,
     pub(super) dy: i32,
     pub(super) dz: i32,
-    pub(super) corners: [[f32; 3]; 4],
+    pub(crate) corners: [[f32; 3]; 4],
 }
 
-pub(super) const FACES: [FaceDef; 6] = [
+pub(crate) const FACES: [FaceDef; 6] = [
     FaceDef {
         face: TerrainFace::Down,
         normal: [0.0, -1.0, 0.0],
@@ -91,7 +91,7 @@ pub(super) const FACES: [FaceDef; 6] = [
     },
 ];
 
-pub(super) const CROSS_FACES: [(TerrainFace, [f32; 3], [[f32; 3]; 4]); 4] = [
+pub(crate) const CROSS_FACES: [(TerrainFace, [f32; 3], [[f32; 3]; 4]); 4] = [
     (
         TerrainFace::North,
         [-0.70710677, 0.0, 0.70710677],
@@ -134,7 +134,7 @@ pub(super) const CROSS_FACES: [(TerrainFace, [f32; 3], [[f32; 3]; 4]); 4] = [
     ),
 ];
 
-pub(super) fn box_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> [[f32; 3]; 4] {
+pub(crate) fn box_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> [[f32; 3]; 4] {
     match face {
         TerrainFace::Down => [
             [min[0], min[1], max[2]],
