@@ -3898,6 +3898,44 @@
   经验门控 `> 0`、四黑一绿描边 pass 偏移与颜色顺序、hunger sprite 变体选择、
   绘制次序源序锁（食物后、boss 前）；既有 food/layout 测试无回归。
 
+### 2026-07-06 迁入：离屏整帧 readback harness
+
+- HUD 队列基建片完成。原 goal.md P2 缺口行「离屏整帧 readback harness：
+  render() 脱离 surface 依赖…」删除。
+- 注入点：帧获取从 `render()` 内联 `surface.get_current_texture()` 收进
+  `RenderSurface::acquire_frame`（renderer.rs 新枚举：`Window(Surface)` +
+  `#[cfg(test)] Offscreen(Arc<Texture>)`），返回 `FrameTarget`
+  （`texture()`/`present()`；Offscreen 的 present 为 no-op）。四个吃 frame 的
+  step（transparency_blit / first_person_item / hud_passes / finish_frame）
+  签名改收 `FrameTarget`；surface 路径语义逐字节不变（Lost/Outdated
+  reconfigure+跳帧、Timeout 跳帧、present/screenshot 链原样）。42 条
+  render.rs 源序断言与 FRAME_STEPS 双向 meta 测试全部原样通过——render()
+  体内只改了获取行与一条注释（`self.surface.acquire_frame(` 因中间有 `.`
+  不计入 step 计数，无需动 FRAME_STEPS）。
+- 构造拆分：`Renderer::new`（窗口/adapter 协商）→ `with_gpu`（全部
+  pipeline/target 构造，单一来源）；`Renderer::new_offscreen(w,h)`
+  （cfg(test)，无 adapter 则 None→测试跳过）在 `Bgra8UnormSrgb` 离屏
+  target 上建出完整生产 pipeline 集。readback 单源：`finish_screenshot`
+  拆出 `read_screenshot_pixels`（256 字节 padded-row + BGRA→RGBA 的唯一
+  实现），PNG 保存变薄包装；`render_offscreen_frame()` = 整帧 render() +
+  共享 screenshot copy 路径读回 `ScreenshotPixels`。
+- 证明测试 `offscreen_frame_renders_hud_sentinel_over_clear_color`
+  （offscreen.rs）：320x240、蓝 clear + 居中 4x4 红 crosshair——中心像素红、
+  角落蓝，counters 证整帧执行（frame_index=1、hud_draw_calls≥1、
+  draw_calls≥4）；llvmpipe 实跑通过。
+- 迁移范例：`hud_block_item_renders_visible_pixels_in_its_slot` 由 ~230 行
+  手搓 device/pipeline/pass/readback 改为 harness + 公开状态 API
+  （update_terrain_texture_atlas / set_hud_hotbar_block_item_models /
+  update_camera），断言不变。余量（后续机械迁移，见账本 boundary）：hud.rs
+  PIP 测试、item_models.rs 第一人称持物、entity_models player/ender_dragon
+  像素测试。
+- 顺带修复 harness 首跑揪出的两个潜伏 shader bug（此前无测试构造过完整
+  pipeline 集，二者会让生产启动在 create_shader_module 直接 panic）：
+  translucent-emissive 实体 shader 的 WGSL 非法 swizzle 赋值
+  （`texel.rgb = mix(...)`，2026-06-30 引入）改为重组 vec4；outline 后处理
+  四个 shader 的 `let` 数组动态下标（naga 要求 `var`，2026-06-29 引入）改
+  `var`。
+
 ## 历史 audit 快照
 
 ### 2026-07-03（dolphin event slice 后复核，原 goal.md 当前边界）

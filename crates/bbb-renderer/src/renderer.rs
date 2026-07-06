@@ -110,8 +110,76 @@ use crate::{
     },
 };
 
+/// Where `render()` sends the frame's color output. Production always draws
+/// into the window swapchain; whole-frame readback tests swap in a plain
+/// offscreen texture so the full frame-step sequence runs without a window.
+pub(super) enum RenderSurface {
+    Window(wgpu::Surface<'static>),
+    #[cfg(test)]
+    Offscreen(std::sync::Arc<wgpu::Texture>),
+}
+
+impl RenderSurface {
+    /// Acquires this frame's color target. `Ok(None)` means "skip this frame"
+    /// — the swapchain was lost/outdated (reconfigured here, vanilla-style) or
+    /// timed out — preserving the pre-harness `render()` surface semantics.
+    pub(super) fn acquire_frame(
+        &mut self,
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> Result<Option<FrameTarget>> {
+        match self {
+            Self::Window(surface) => match surface.get_current_texture() {
+                Ok(frame) => Ok(Some(FrameTarget::Surface(frame))),
+                Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                    surface.configure(device, config);
+                    Ok(None)
+                }
+                Err(wgpu::SurfaceError::Timeout) => Ok(None),
+                Err(err) => Err(err.into()),
+            },
+            #[cfg(test)]
+            Self::Offscreen(texture) => Ok(Some(FrameTarget::Offscreen(texture.clone()))),
+        }
+    }
+
+    pub(super) fn configure(&self, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) {
+        match self {
+            Self::Window(surface) => surface.configure(device, config),
+            #[cfg(test)]
+            Self::Offscreen(_) => {}
+        }
+    }
+}
+
+/// One frame's acquired color target: a swapchain frame to present, or the
+/// offscreen texture (readback harness) where present is a no-op.
+pub(super) enum FrameTarget {
+    Surface(wgpu::SurfaceTexture),
+    #[cfg(test)]
+    Offscreen(std::sync::Arc<wgpu::Texture>),
+}
+
+impl FrameTarget {
+    pub(super) fn texture(&self) -> &wgpu::Texture {
+        match self {
+            Self::Surface(frame) => &frame.texture,
+            #[cfg(test)]
+            Self::Offscreen(texture) => texture.as_ref(),
+        }
+    }
+
+    pub(super) fn present(self) {
+        match self {
+            Self::Surface(frame) => frame.present(),
+            #[cfg(test)]
+            Self::Offscreen(_) => {}
+        }
+    }
+}
+
 pub struct Renderer {
-    pub(super) surface: wgpu::Surface<'static>,
+    pub(super) surface: RenderSurface,
     pub(super) device: wgpu::Device,
     pub(super) queue: wgpu::Queue,
     pub(super) config: wgpu::SurfaceConfiguration,
@@ -675,6 +743,21 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
+        Self::with_gpu(RenderSurface::Window(surface), device, queue, config, size)
+    }
+
+    /// Builds the renderer around an already-acquired GPU and frame surface.
+    /// `new` calls this with the window swapchain; the offscreen readback
+    /// harness calls it with an offscreen texture target, so both paths share
+    /// one construction body.
+    pub(super) fn with_gpu(
+        surface: RenderSurface,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        config: wgpu::SurfaceConfiguration,
+        size: PhysicalSize<u32>,
+    ) -> Result<Self> {
+        let format = config.format;
         let main_target = create_main_target(&device, config.format, config.width, config.height);
         let depth = create_depth_target(&device, config.width, config.height);
         let translucent_target =

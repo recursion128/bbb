@@ -4,6 +4,7 @@ use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use crate::frame_buffers::FrameDataBuffer;
+use crate::renderer::FrameTarget;
 use crate::{
     clouds::CloudShape,
     entity_models::{
@@ -94,14 +95,8 @@ struct FrameDrawStats {
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
-        let frame = match self.surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                self.surface.configure(&self.device, &self.config);
-                return Ok(());
-            }
-            Err(wgpu::SurfaceError::Timeout) => return Ok(()),
-            Err(err) => return Err(err.into()),
+        let Some(frame) = self.surface.acquire_frame(&self.device, &self.config)? else {
+            return Ok(());
         };
         let mut encoder = self
             .device
@@ -1691,12 +1686,12 @@ impl Renderer {
 
     fn transparency_blit_pass(
         &self,
-        frame: &wgpu::SurfaceTexture,
+        frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
         let surface_view = frame
-            .texture
+            .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1723,7 +1718,7 @@ impl Renderer {
 
     fn first_person_item_pass(
         &self,
-        frame: &wgpu::SurfaceTexture,
+        frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
@@ -1780,7 +1775,7 @@ impl Renderer {
         }
 
         let surface_view = frame
-            .texture
+            .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(FIRST_PERSON_ITEM_PASS_LABEL),
@@ -1973,12 +1968,12 @@ impl Renderer {
 
     fn hud_passes(
         &mut self,
-        frame: &wgpu::SurfaceTexture,
+        frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
         let surface_view = frame
-            .texture
+            .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
         // `collect_hud_draws` borrows self for the lifetime of its commands, so
         // temporarily move the persistent buffer out to upload alongside them.
@@ -2137,21 +2132,23 @@ impl Renderer {
     fn finish_frame(
         &mut self,
         mut encoder: wgpu::CommandEncoder,
-        frame: wgpu::SurfaceTexture,
+        frame: FrameTarget,
         screenshot: Option<&Path>,
         stats: FrameDrawStats,
     ) -> Result<()> {
-        let readback = if let Some(path) = screenshot {
-            Some(self.prepare_screenshot_copy(&mut encoder, &frame.texture, path)?)
-        } else {
-            None
+        let readback = match screenshot {
+            Some(path) => Some((
+                self.prepare_screenshot_copy(&mut encoder, frame.texture())?,
+                path,
+            )),
+            None => None,
         };
 
         self.queue.submit(Some(encoder.finish()));
         frame.present();
 
-        if let Some(readback) = readback {
-            self.finish_screenshot(readback)?;
+        if let Some((readback, path)) = readback {
+            self.finish_screenshot(readback, path)?;
             self.counters.screenshots_written += 1;
         }
 
@@ -3061,7 +3058,7 @@ mod tests {
 
         // Count `self.<method>(` call sites in render()'s body. Every frame
         // step is invoked this way; other `self.` uses in render() (e.g.
-        // `self.surface.get_current_texture()`, or `self\n    .device\n    \
+        // `self.surface.acquire_frame(...)`, or `self\n    .device\n    \
         // .create_command_encoder(...)`) never match because a `.` or a
         // line break sits between the identifier and the `(`, so this stays
         // an exact count of step calls without needing a regex crate.

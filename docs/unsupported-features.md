@@ -483,10 +483,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Offscreen full-frame readback harness: `render()` hard-requires
-    `surface.get_current_texture()`; existing readback tests each hand-roll
-    sub-passes. A shared offscreen color-target harness unlocks pixel proofs
-    for all upcoming HUD/screen slices.
   - Armor bar (derive the armor value from already-stored attributes per
     `Gui.extractArmor`), then air bubbles / vehicle health / heart variants
     (absorption, poison, wither, hardcore, regen flash) — these need world
@@ -497,6 +493,50 @@ When an agent does any of the following, update this file in the same slice:
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-06 — Offscreen whole-frame readback harness. `render()` no
+    longer hard-requires a swapchain: frame acquisition moved into
+    `RenderSurface::acquire_frame` (renderer.rs), an enum over the window
+    surface and a `cfg(test)` injected offscreen texture, returning a
+    `FrameTarget` whose `texture()`/`present()` the frame steps consume
+    (`transparency_blit_pass` / `first_person_item_pass` / `hud_passes` /
+    `finish_frame` now take `FrameTarget`; surface-path semantics are
+    byte-identical — Lost/Outdated reconfigure+skip, Timeout skip, same
+    present and screenshot flow). Renderer construction split:
+    `Renderer::new` keeps window/adapter negotiation and delegates to
+    `with_gpu` (all pipelines/targets), so `Renderer::new_offscreen(w, h)`
+    (`cfg(test)`, adapter-or-skip → `None`) builds the full production
+    pipeline set headless over a `Bgra8UnormSrgb` offscreen target, and
+    `render_offscreen_frame()` runs the complete FRAME_STEPS frame and reads
+    pixels back through the shared screenshot path — `prepare_screenshot_copy`
+    plus the new `read_screenshot_pixels` split out of `finish_screenshot`
+    (single home of the 256-byte padded-row and BGRA→RGBA handling; the PNG
+    save is now a thin wrapper over it). All 42 render.rs source-order
+    assertions and both FRAME_STEPS meta tests hold with only the
+    acquisition line and one comment changed inside `render()`. Proof test
+    `offscreen_frame_renders_hud_sentinel_over_clear_color` (offscreen.rs):
+    a 4x4 red crosshair over a blue clear color at 320x240 — center pixel
+    red, corner blue, counters prove the whole frame ran (`frame_index == 1`,
+    `hud_draw_calls >= 1`, `draw_calls >= 4`); passes on llvmpipe. Migration
+    example: `hud_block_item_renders_visible_pixels_in_its_slot` rewritten
+    from ~230 lines of hand-rolled device/pipeline/pass/readback onto the
+    harness via public state APIs (`update_terrain_texture_atlas`,
+    `set_hud_hotbar_block_item_models`, `update_camera`), keeping the same
+    slot-center/corner pixel assertions. Constructing the full pipeline set
+    headless immediately caught two latent shader bugs no test had ever
+    compiled (both would panic production startup on
+    `create_shader_module`): the translucent-emissive entity shader used
+    WGSL-invalid swizzle assignment (`texel.rgb = mix(...)`, shipped
+    2026-06-30) and all four outline post-chain shaders (since 2026-06-29)
+    indexed a `let` array with the dynamic vertex index (naga requires
+    `var`); both fixed in place. Boundary: the remaining hand-rolled
+    readback tests stay as-is and migrate mechanically when next touched —
+    hud.rs `hud_entity_preview_pip_renders_and_blits_isolated_entity_pixels`,
+    item_models.rs
+    `first_person_held_item_renders_visible_pixels_and_swing_moves_them`,
+    entity_models/tests/player.rs and ender_dragon.rs pixel tests (they
+    exercise isolated sub-passes whose state lacks public upload paths).
+    `resize()` is a no-op on the offscreen surface (tests pick the size at
+    construction).
   - Done 2026-07-05 — Experience level number + hunger food-bar jitter. The
     level is projected (`experience.level`) into `RendererFrame.hud_experience_level`
     and gated `> 0` by `set_hud_experience_level` (vanilla

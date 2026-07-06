@@ -1021,11 +1021,12 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
         discard;
     }
     var texel = sample * input.tint;
+    // WGSL forbids swizzle assignment, so rebuild the vec4 around the mixed rgb.
     if (input.overlay.y < 8.0) {
-        texel.rgb = mix(vec3<f32>(1.0, 0.0, 0.0), texel.rgb, 179.0 / 255.0);
+        texel = vec4<f32>(mix(vec3<f32>(1.0, 0.0, 0.0), texel.rgb, 179.0 / 255.0), texel.a);
     } else {
         let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
-        texel.rgb = mix(vec3<f32>(1.0, 1.0, 1.0), texel.rgb, overlay_alpha);
+        texel = vec4<f32>(mix(vec3<f32>(1.0, 1.0, 1.0), texel.rgb, overlay_alpha), texel.a);
     }
     return apply_fog(vec4<f32>(texel.rgb * per_face_diffuse_light(input.normal, front_facing), texel.a), input.spherical_distance, input.cylindrical_distance);
 }

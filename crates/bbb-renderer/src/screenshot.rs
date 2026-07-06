@@ -11,7 +11,34 @@ pub(super) struct PendingScreenshot {
     padded_bytes_per_row: u32,
     unpadded_bytes_per_row: u32,
     pixel_format: ScreenshotPixelFormat,
-    path: std::path::PathBuf,
+}
+
+/// A frame read back from the GPU as tightly-packed RGBA8 rows (row padding
+/// stripped, BGRA surface formats converted).
+pub(super) struct ScreenshotPixels {
+    pub(super) rgba: Vec<u8>,
+    pub(super) width: u32,
+    pub(super) height: u32,
+}
+
+#[cfg(test)]
+impl ScreenshotPixels {
+    /// The `[r, g, b, a]` bytes at framebuffer `(x, y)` (col, row from top-left).
+    pub(super) fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
+        assert!(
+            x < self.width && y < self.height,
+            "pixel ({x}, {y}) out of bounds for {}x{} frame",
+            self.width,
+            self.height
+        );
+        let offset = ((y * self.width + x) * 4) as usize;
+        [
+            self.rgba[offset],
+            self.rgba[offset + 1],
+            self.rgba[offset + 2],
+            self.rgba[offset + 3],
+        ]
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,7 +77,6 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         texture: &wgpu::Texture,
-        path: &Path,
     ) -> Result<PendingScreenshot> {
         let width = self.config.width;
         let height = self.config.height;
@@ -96,11 +122,17 @@ impl Renderer {
             padded_bytes_per_row,
             unpadded_bytes_per_row,
             pixel_format,
-            path: path.to_path_buf(),
         })
     }
 
-    pub(super) fn finish_screenshot(&self, pending: PendingScreenshot) -> Result<()> {
+    /// Maps the copied buffer and converts it to tightly-packed RGBA8 rows.
+    /// The single home of the 256-byte padded-row and BGRA-order handling —
+    /// both the screenshot file path and the offscreen readback harness
+    /// consume frames through here.
+    pub(super) fn read_screenshot_pixels(
+        &self,
+        pending: PendingScreenshot,
+    ) -> Result<ScreenshotPixels> {
         let slice = pending.buffer.slice(..);
         let (tx, rx) = mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
@@ -123,14 +155,23 @@ impl Renderer {
         drop(mapped);
         pending.buffer.unmap();
 
-        if let Some(parent) = pending.path.parent() {
+        Ok(ScreenshotPixels {
+            rgba,
+            width: pending.width,
+            height: pending.height,
+        })
+    }
+
+    pub(super) fn finish_screenshot(&self, pending: PendingScreenshot, path: &Path) -> Result<()> {
+        let pixels = self.read_screenshot_pixels(pending)?;
+        if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
         image::save_buffer(
-            &pending.path,
-            &rgba,
-            pending.width,
-            pending.height,
+            path,
+            &pixels.rgba,
+            pixels.width,
+            pixels.height,
             image::ColorType::Rgba8,
         )?;
         Ok(())

@@ -4277,91 +4277,43 @@ mod tests {
             .all(|vertex| vertex.light == ITEM_MODEL_FULL_BRIGHT_LIGHT));
     }
 
-    /// End-to-end GPU proof of the HUD 3D block-item consumer: bakes a block item's quad at hotbar slot
-    /// 4's pixel rect (via the real [`gui_item_slot_placement`]), renders it through the actual item-model
-    /// pipeline under the GUI ortho camera, reads the framebuffer back, and asserts the slot center shows
-    /// the block (non-background) while a far corner stays background. Skips (no assertion) when no GPU
-    /// adapter is available, so it never fails the suite on adapter-less machines.
+    /// End-to-end GPU proof of the HUD 3D block-item consumer, now through the shared offscreen
+    /// whole-frame harness: a block item's quad seated at hotbar slot 4 (via the real
+    /// [`gui_item_slot_placement`]) renders in `render()`'s GUI item pass under the GUI ortho
+    /// camera, and the frame readback shows the slot center as the block's atlas color while a far
+    /// corner stays the clear color. Skips (no assertion) when no GPU adapter is available, so it
+    /// never fails the suite on adapter-less machines.
     #[test]
     fn hud_block_item_renders_visible_pixels_in_its_slot() {
-        use wgpu::util::DeviceExt;
-
-        use crate::camera::{CameraUniform, LightmapEnvironment};
-        use crate::gpu::{
-            create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
-            create_terrain_bind_group, create_terrain_bind_group_layout,
-        };
-        use crate::item_models::{bake_item_model_mesh, create_item_model_pipeline, ItemModelQuad};
-        use crate::lightmap::{
-            create_lightmap_bind_group_layout, create_lightmap_gpu,
-            create_lightmap_sample_bind_group_layout,
-        };
+        use crate::camera::ClearColor;
+        use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel, ItemModelQuad};
         use glam::{Mat4, Vec3, Vec4};
 
         const WIDTH: u32 = 320;
         const HEIGHT: u32 = 240;
-        // Non-sRGB target so the readback bytes are the shader's linear output verbatim (no color
-        // conversion to reason about). `320 * 4 = 1280 = 5 * 256` so the copy needs no row padding.
-        const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
-        });
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::LowPower,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            }))
-        else {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
             // No GPU / software adapter on this machine — skip rather than fail the suite.
             return;
         };
-        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("bbb-hud-item-test-device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )) else {
-            return;
-        };
+        // A 1x1 opaque-red blocks atlas: every UV samples red, so the block icon is unambiguously
+        // visible against the blue clear color.
+        renderer
+            .update_terrain_texture_atlas(&[255, 0, 0, 255])
+            .expect("1x1 atlas");
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        // Seat the GUI ortho camera for the item pass (production writes it whenever the camera
+        // updates; a fresh renderer has not had one yet).
+        renderer.update_camera();
 
-        // A 1x1 opaque-red atlas: every UV samples red, so the baked quad is unambiguously visible.
-        let atlas =
-            create_terrain_atlas_gpu(&device, &queue, 1, 1, &[255, 0, 0, 255]).expect("1x1 atlas");
-        let bind_group_layout = create_terrain_bind_group_layout(&device);
-        let camera_buffer = create_camera_buffer(&device);
-        queue.write_buffer(
-            &camera_buffer,
-            0,
-            bytemuck::bytes_of(&CameraUniform::gui_ortho(WIDTH as f32, HEIGHT as f32)),
-        );
-        let bind_group =
-            create_terrain_bind_group(&device, &bind_group_layout, &camera_buffer, &atlas);
-        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
-        let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
-        let lightmap = create_lightmap_gpu(
-            &device,
-            &queue,
-            &lightmap_bind_group_layout,
-            &lightmap_sample_bind_group_layout,
-            LightmapEnvironment::default(),
-        );
-        let pipeline = create_item_model_pipeline(
-            &device,
-            COLOR_FORMAT,
-            &bind_group_layout,
-            &lightmap_sample_bind_group_layout,
-        );
-
-        // Bake one full-slot front-facing quad at hotbar slot 4, centered in the slot exactly as vanilla's
-        // display transform centers the model (`gui_display = T(-0.5)`), so its pixels fill the slot rect.
-        let surface_size = PhysicalSize::new(WIDTH, HEIGHT);
+        // One full-slot front-facing quad at hotbar slot 4, centered in the slot exactly as
+        // vanilla's display transform centers the model (`gui_display = T(-0.5)`).
         let slot = 4;
-        let placement = gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
         let gui_display = Mat4::from_translation(Vec3::splat(-0.5));
         let quad = ItemModelQuad {
             corners: [
@@ -4376,20 +4328,20 @@ mod tests {
             shade: 1.0,
             translucent: false,
         };
-        let mesh = bake_item_model_mesh(&[quad], placement * gui_display);
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("test-vertices"),
-            contents: bytemuck::cast_slice(&mesh.vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+        let mut models: Vec<Option<HudBlockItemModel>> = vec![None; HUD_HOTBAR_SLOTS];
+        models[slot] = Some(HudBlockItemModel {
+            quads: vec![quad],
+            gui_display,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
         });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("test-indices"),
-            contents: bytemuck::cast_slice(&mesh.indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        renderer.set_hud_hotbar_block_item_models(models);
 
-        // The slot-center pixel (framebuffer col,row from top-left) is where `placement` seats the model
-        // origin; pixel (0,0) is far from the bottom-centered hotbar, so it stays background.
+        // The slot-center pixel (framebuffer col,row from top-left) is where the placement seats
+        // the model origin; pixel (0,0) is far from the bottom-centered hotbar, so it stays
+        // background.
+        let placement =
+            gui_item_slot_placement(hotbar_item_hud_rect(PhysicalSize::new(WIDTH, HEIGHT), slot));
         let center = placement * gui_display * Vec4::new(0.5, 0.5, 0.5, 1.0);
         let center_px = center.x.round() as u32;
         let center_py = center.y.round() as u32;
@@ -4398,104 +4350,12 @@ mod tests {
             "slot center in bounds"
         );
 
-        let color_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("test-color"),
-            size: wgpu::Extent3d {
-                width: WIDTH,
-                height: HEIGHT,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: COLOR_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
-        let color_view = color_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let depth = create_depth_target(&device, WIDTH, HEIGHT);
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let center_pixel = pixels.pixel(center_px, center_py);
+        let corner_pixel = pixels.pixel(0, 0);
 
-        let bytes_per_row = WIDTH * 4;
-        let readback = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("test-readback"),
-            size: (bytes_per_row * HEIGHT) as u64,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("test-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &color_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        // Blue background — distinct from the red block icon.
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 1.0,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.set_bind_group(1, &lightmap.sample_bind_group, &[]);
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
-        }
-        encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
-                texture: &color_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::ImageCopyBuffer {
-                buffer: &readback,
-                layout: wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(bytes_per_row),
-                    rows_per_image: Some(HEIGHT),
-                },
-            },
-            wgpu::Extent3d {
-                width: WIDTH,
-                height: HEIGHT,
-                depth_or_array_layers: 1,
-            },
-        );
-        queue.submit(std::iter::once(encoder.finish()));
-
-        let slice = readback.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
-        let data = slice.get_mapped_range();
-
-        let pixel = |x: u32, y: u32| -> [u8; 4] {
-            let o = (y * bytes_per_row + x * 4) as usize;
-            [data[o], data[o + 1], data[o + 2], data[o + 3]]
-        };
-        let center_pixel = pixel(center_px, center_py);
-        let corner_pixel = pixel(0, 0);
-
-        // The slot center shows the red block icon (R high, B low); the far corner stays blue background.
+        // The slot center shows the red block icon (R high, B low); the far corner stays blue
+        // background.
         assert!(
             center_pixel[0] > 128 && center_pixel[2] < 128,
             "slot center should show the block item, got {center_pixel:?}"
@@ -4504,9 +4364,6 @@ mod tests {
             corner_pixel[2] > 128 && corner_pixel[0] < 128,
             "corner should stay background, got {corner_pixel:?}"
         );
-
-        drop(data);
-        readback.unmap();
     }
 
     #[test]

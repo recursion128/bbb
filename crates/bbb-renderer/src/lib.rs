@@ -11,6 +11,8 @@ mod hud;
 mod item_entities;
 mod item_models;
 mod lightmap;
+#[cfg(test)]
+mod offscreen;
 mod outline;
 mod particles;
 mod pipeline_builder;
