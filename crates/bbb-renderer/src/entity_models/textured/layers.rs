@@ -8,8 +8,8 @@ use super::super::{
         villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
         wolf_texture_ref, zombie_villager_level_texture_ref,
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
-        ArrowModelTexture, AxolotlModelVariant, BedModelPart, BoatModelFamily, CamelModelFamily,
-        CatModelVariant, ChestModelHalf, ChestModelTexture, ChickenModelVariant,
+        ArrowModelTexture, AxolotlModelVariant, BannerPatternLayer, BedModelPart, BoatModelFamily,
+        CamelModelFamily, CatModelVariant, ChestModelHalf, ChestModelTexture, ChickenModelVariant,
         CopperGolemWeathering, CowModelVariant, DecoratedPotPattern, DonkeyModelFamily,
         EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
         EntityPlayerSkin, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant,
@@ -40,6 +40,9 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CamelBase,
     CamelSaddle,
     BedBase,
+    BannerBase,
+    BannerFlag,
+    BannerPattern,
     BellBase,
     ChestBase,
     ChickenBase,
@@ -1781,6 +1784,84 @@ pub(in crate::entity_models) fn decorated_pot_textured_layer_passes(
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,
             submit_sequence,
+        });
+    }
+    passes
+}
+
+/// Vanilla `BannerRenderer.submitBanner` (`BannerRenderer.java:171-208`): the `BannerModel`
+/// frame and the `BannerFlagModel` flag submit untinted `entitySolid` over `Sheets.BANNER_BASE`,
+/// then `submitPatterns` re-submits the flag geometry per layer through
+/// `sprite.renderType(RenderTypes::bannerPattern)` — `Sheets.BANNER_PATTERN_BASE` tinted by the
+/// base color first, then each `BannerPatternLayers.Layer`'s sheet tinted by
+/// `layer.color().getTextureDiffuseColor()`, clamped at `MAX_PATTERNS = 16`. bbb keeps one
+/// banner model per instance, so the frame/flag/pattern split rides retained-parts passes over
+/// the same posed tree; the pattern passes ride the translucent bucket (vanilla
+/// `RenderPipelines.BANNER_PATTERN` is `TRANSLUCENT` blend over the already-drawn flag depth —
+/// bbb's translucent pipeline keeps depth writes on, equal-depth `LessEqual` layering is
+/// unaffected).
+pub(in crate::entity_models) fn banner_textured_layer_passes(
+    wall: bool,
+    base_color: EntityDyeColor,
+    layers: &[Option<BannerPatternLayer>; 16],
+) -> Vec<EntityModelLayerPass> {
+    let (frame_layer, flag_layer, frame_parts) = if wall {
+        (
+            MODEL_LAYER_WALL_BANNER,
+            MODEL_LAYER_WALL_BANNER_FLAG,
+            WALL_BANNER_FRAME_PARTS,
+        )
+    } else {
+        (
+            MODEL_LAYER_STANDING_BANNER,
+            MODEL_LAYER_STANDING_BANNER_FLAG,
+            STANDING_BANNER_FRAME_PARTS,
+        )
+    };
+    let mut passes = vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BannerBase,
+            render_type: EntityModelLayerRenderType::EntitySolid,
+            model_layer: frame_layer,
+            texture: BANNER_BASE_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(frame_parts),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BannerFlag,
+            render_type: EntityModelLayerRenderType::EntitySolid,
+            model_layer: flag_layer,
+            texture: BANNER_BASE_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 1,
+        },
+        // `submitPatterns`' first layer: the full-flag `base` mask tinted by the banner's base
+        // color.
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BannerPattern,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            model_layer: flag_layer,
+            texture: BANNER_PATTERN_BASE_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
+            tint: base_color.texture_diffuse_color(),
+            order: 0,
+            submit_sequence: 2,
+        },
+    ];
+    for (index, layer) in layers.iter().flatten().enumerate() {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::BannerPattern,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            model_layer: flag_layer,
+            texture: banner_pattern_texture_ref(layer.pattern),
+            visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
+            tint: layer.color.texture_diffuse_color(),
+            order: 0,
+            submit_sequence: 3 + index as u32,
         });
     }
     passes

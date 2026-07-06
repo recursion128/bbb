@@ -1,3 +1,4 @@
+mod banner_patterns;
 mod decode;
 mod light;
 mod nbt;
@@ -8,6 +9,7 @@ mod state;
 mod store;
 mod vault;
 
+pub(crate) use banner_patterns::decode_banner_patterns;
 pub use decode::decode_level_chunk_with_light;
 pub(crate) use decode::{decode_biome_sections, decode_nbt_payload_summary};
 pub use light::LightData;
@@ -15,10 +17,11 @@ pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
 pub use state::{
-    BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary,
-    SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
-    VaultConnectionParticleTargetState, VaultSharedDataState,
+    BannerPatternLayerState, BannerPatternsState, BlockEntityRecord, ChunkColumn,
+    ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,
+    HeightmapData, NbtPayloadSummary, SignBlockEntityTextState, SignTextDyeColor,
+    SignTextSideState, VaultConnectionParticleState, VaultConnectionParticleTargetState,
+    VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
 pub(crate) use vault::decode_vault_shared_data;

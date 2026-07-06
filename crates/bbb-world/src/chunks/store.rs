@@ -13,9 +13,9 @@ use std::collections::BTreeMap;
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
-    BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
-    ChunkViewState, DecoratedPotSherdsState, HeightmapData, RegistrySet, Result,
-    SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
+    BannerPatternsState, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos,
+    ChunkProbeSummaryState, ChunkViewState, DecoratedPotSherdsState, HeightmapData, RegistrySet,
+    Result, SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
     TerrainMaterialClass, VaultConnectionParticleState, VaultConnectionParticleTargetState,
     VaultSharedDataState, WorldDecodeError, WorldDimension, WorldStore,
 };
@@ -147,6 +147,13 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let banner_patterns = match crate::chunks::decode_banner_patterns(&packet.raw_nbt) {
+            Ok(patterns) => patterns,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -161,6 +168,7 @@ impl WorldStore {
             sign_text,
             vault_shared_data,
             decorated_pot_sherds,
+            banner_patterns,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
@@ -323,6 +331,12 @@ impl WorldStore {
         self.block_entity_record_at(pos)?
             .decorated_pot_sherds
             .as_ref()
+    }
+
+    /// The stored banner pattern layers at a block position, if a banner
+    /// block entity record with a `patterns` list exists there.
+    pub fn banner_patterns_at(&self, pos: BlockPos) -> Option<&BannerPatternsState> {
+        self.block_entity_record_at(pos)?.banner_patterns.as_ref()
     }
 
     pub fn vault_connection_particle_state(
@@ -702,6 +716,7 @@ impl WorldStore {
                 }) {
                     record.sign_text = None;
                     record.decorated_pot_sherds = None;
+                    record.banner_patterns = None;
                 }
             }
         }

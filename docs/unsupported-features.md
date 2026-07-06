@@ -435,19 +435,88 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (banner, conduit, skull, …): the chest
+  - Block-entity special renderers (conduit, skull, …): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
-    (2026-07-06), bed + bell (2026-07-06), and shulker box + decorated pot
-    (2026-07-06, see Evidence) are DONE as the first four BER sub-slices;
-    every other BE-driven block still bakes a particle-only model into
-    near-empty terrain geometry (remaining: banner, conduit, skull/head,
-    enchanting-table book, lectern book, end portal/gateway, the spawner's
-    spinning display entity). Vanilla: `BlockEntityRenderDispatcher` +
-    per-BE renderers. Continue by smallest sub-slice; audit the
-    `Custom`→`Cube` shape fallback (`block_models/shape.rs`
-    → `textures.rs`) alongside, since unclassifiable elements are mostly
-    BE-driven models.
+    (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
+    (2026-07-06), and banner (2026-07-06, see Evidence) are DONE as the
+    first five BER sub-slices; every other BE-driven block still bakes a
+    particle-only model into near-empty terrain geometry (remaining:
+    conduit, skull/head, enchanting-table book, lectern book, end
+    portal/gateway, the spawner's spinning display entity). Vanilla:
+    `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
+    smallest sub-slice; audit the `Custom`→`Cube` shape fallback
+    (`block_models/shape.rs` → `textures.rs`) alongside, since
+    unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Banner block-entity renderer (fifth BER sub-slice;
+    all 32 blocks: 16 `minecraft:<color>_banner` (ground, `ROTATION_16`)
+    + 16 `<color>_wall_banner` (`FACING`)). World: the BE NBT `patterns`
+    list (`BannerPatternLayers.CODEC` — `{pattern: registry id, color:
+    dye name}` compounds) decodes into
+    `BlockEntityRecord.banner_patterns` (chunk-batch + single
+    `BlockEntityData`, pruned on block change); one malformed entry
+    folds the whole list away, matching
+    `BannerBlockEntity.loadAdditional`'s `.orElse(EMPTY)` codec fold;
+    the base color is a block-id fact (`AbstractBannerBlock.getColor`).
+    The flag swing phase transcribes
+    `BannerRenderer.extractRenderState`: `(floorMod(x*7 + y*9 + z*13 +
+    gameTime, 100L) + partialTicks) / 100` with the deterministic
+    `WorldTimeState.game_time` standing in for `Level.getGameTime()`
+    (wrapping i32 position hash, `rem_euclid` floor-mod). Dispatch:
+    `EntityModelKind::Banner { wall, base_color, layers:
+    [Option<BannerPatternLayer>; 16] }` rides the single entity-model
+    submission stream (`-1` sentinel, `block << 4 | sky << 20` light);
+    the root transform transcribes `BannerRenderer.modelTransformation`:
+    `T(0.5, 0, 0.5) · Ry(−angle) · S(⅔, −⅔, −⅔)` — ground angle
+    `RotationSegment.convertToDegrees(ROTATION)` (22.5° segments folded
+    into (−180, 180]), wall `FACING.toYRot()`. Renderer
+    (`model_layers/banner.rs`) transcribes `BannerModel.createBodyLayer`
+    (atlas 64×64: standing-only `pole` 2×42×2 texOffs(44,0) at
+    (−1,−42,−1); `bar` 20×2×2 texOffs(0,42) at (−10,−44,−1) standing /
+    (−10,−20.5,9.5) wall) and `BannerFlagModel.createFlagLayer` (`flag`
+    20×40×1 texOffs(0,0) at (−10,0,−2), pivot offset(0,−44,0) standing /
+    (0,−20.5,10.5) wall); `setupAnim`: `flag.xRot = (−0.0125 +
+    0.01·cos(2π·phase))·π`. Pattern composition transcribes
+    `submitBanner`/`submitPatterns` (`BannerRenderer.java:171-208`): the
+    frame + flag submit untinted `entitySolid` over
+    `entity/banner/banner_base`, then the same flag geometry re-submits
+    per layer — `entity/banner/base` tinted by the base color first,
+    then each layer's `entity/banner/<pattern>` tinted by
+    `DyeColor.getTextureDiffuseColor()` (the tint rides the existing
+    per-pass vertex tint, the tropical-fish mechanism), clamped at the
+    `MAX_PATTERNS = 16` render cap; the pattern passes ride the
+    translucent bucket standing in for `RenderPipelines.BANNER_PATTERN`
+    (`RenderPipelines.java:282`: ENTITY_SNIPPET + NO_OVERLAY +
+    TRANSLUCENT blend + LESS_THAN_OR_EQUAL, depth write off). The
+    pattern registry is the transcribed 43-arm table
+    (`BannerPatterns.bootstrap`, `BannerPatterns.java:60-105`; every
+    vanilla `asset_id` equals its registry id; an unknown pattern id or
+    dye name folds the stack empty like the registry-holder codec
+    failure — a datapack-registered pattern bbb has no texture for lands
+    in that fold). 44 new 64×64 `entity/banner/*` sprites (banner_base +
+    base + 42 patterns — asset tree count verified: 44 files) join the
+    shared entity atlas and `entity_assets.rs`. Deferred (honest): BER
+    `breakProgress` crumbling and per-BE distance/frustum culling (same
+    boundary as the previous four slices); vanilla's `bannerPattern`
+    pipeline disables depth writes — bbb's shared translucent pipeline
+    keeps them on (equal-depth `LessEqual` layering is unaffected;
+    revisit only if a dedicated no-depth-write pass ever matters); the
+    banner *item* / shield pattern path (`Sheets.SHIELD_PATTERN_BASE`,
+    `BannerRenderer.submitSpecial`) is item-model scope, not this slice.
+    Tests: `bbb-world/src/banner_blocks.rs` (32-block color/form table,
+    patterns NBT layer order, malformed-entry fold, phase hand-calcs
+    incl. negative floor-mod + gameTime step, rotation-segment/facing
+    angles, prune on block change), `entity_models/tests/banner.rs`
+    (cubes/pivots vs `BannerModel`/`BannerFlagModel` incl. the pole-less
+    wall tree, swing xRot hand-calcs at phase 0/¼/½/1 + `prepare()`
+    wiring, transform point-mapping incl. the pole-top → y 28 landing
+    and the −90° yaw, the 5-pass layer stack (kinds/render types/layer
+    ids/retained parts/tints/sequences) + the wall 3-pass variant,
+    44-sprite selection + shared-atlas membership, mesh bake: 18-face
+    cutout-cull frame+flag + 12-face translucent pattern re-bake with
+    per-pass tints), `bbb-native/src/banner_scene.rs` (kind/base-color/
+    yaw/phase/light projection, 43-pattern id table round-trip, unknown
+    pattern/dye fold, the 16-layer render cap).
   - Done 2026-07-06 — Shulker box + decorated pot block-entity renderers
     (fourth BER sub-slice). Shulker box (all 17 blocks: `minecraft:
     shulker_box` + 16 `<color>_shulker_box` × 6-way `facing`): lid state

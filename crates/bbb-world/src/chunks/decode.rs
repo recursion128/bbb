@@ -154,6 +154,7 @@ fn decode_block_entities(
         let sign_text = decode_sign_block_entity_text(&entity.raw_nbt)?;
         let vault_shared_data = crate::chunks::decode_vault_shared_data(&entity.raw_nbt)?;
         let decorated_pot_sherds = crate::chunks::decode_decorated_pot_sherds(&entity.raw_nbt)?;
+        let banner_patterns = crate::chunks::decode_banner_patterns(&entity.raw_nbt)?;
         out.push(BlockEntityRecord {
             local_x: entity.packed_xz >> 4,
             y: entity.y,
@@ -163,6 +164,7 @@ fn decode_block_entities(
             sign_text,
             vault_shared_data,
             decorated_pot_sherds,
+            banner_patterns,
         });
     }
     Ok(out)

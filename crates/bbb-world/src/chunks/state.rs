@@ -89,6 +89,30 @@ pub struct BlockEntityRecord {
     pub vault_shared_data: Option<VaultSharedDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub banner_patterns: Option<BannerPatternsState>,
+}
+
+/// The banner block entity's stored pattern layers — vanilla
+/// `BannerPatternLayers` (the BE NBT `patterns` list,
+/// `BannerBlockEntity.loadAdditional` reading `BannerPatternLayers.CODEC`).
+/// The base color is not stored here: vanilla derives it from the block id
+/// (`AbstractBannerBlock.getColor`). Decoded from the chunk block-entity
+/// section and `BlockEntityData` updates.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BannerPatternsState {
+    pub layers: Vec<BannerPatternLayerState>,
+}
+
+/// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the
+/// `pattern` registry id string (`BannerPattern.CODEC`, e.g.
+/// `minecraft:stripe_top`) and the `color` dye name (`DyeColor.CODEC`, e.g.
+/// `lime`), both kept raw; the projection maps them onto the renderer's
+/// pattern/color tables.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BannerPatternLayerState {
+    pub pattern: String,
+    pub color: String,
 }
 
 /// The decorated pot block entity's stored sherd faces — vanilla

@@ -924,6 +924,7 @@ fn applies_block_entity_data_update() {
             sign_text: None,
             vault_shared_data: None,
             decorated_pot_sherds: None,
+            banner_patterns: None,
         }
     );
     assert_eq!(

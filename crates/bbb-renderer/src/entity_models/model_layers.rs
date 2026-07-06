@@ -129,6 +129,7 @@ pub(super) const ILLAGER_HAT_COLOR: [f32; 4] = [0.30, 0.31, 0.34, 1.0];
 pub(super) const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const CHEST_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const SIGN_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
+pub(super) const BANNER_CLOTH: [f32; 4] = [0.92, 0.92, 0.90, 1.0];
 pub(super) const BED_WOOL: [f32; 4] = [0.75, 0.22, 0.20, 1.0];
 pub(super) const BELL_GOLD: [f32; 4] = [0.94, 0.78, 0.31, 1.0];
 pub(super) const POT_TERRACOTTA: [f32; 4] = [0.62, 0.39, 0.30, 1.0];
@@ -140,6 +141,7 @@ mod armor;
 mod armor_stand;
 mod arrow;
 mod axolotl;
+mod banner;
 mod bat;
 mod bed;
 mod bee;
@@ -226,6 +228,7 @@ pub(super) use armor::*;
 pub(super) use armor_stand::*;
 pub(super) use arrow::*;
 pub(super) use axolotl::*;
+pub(super) use banner::*;
 pub(super) use bat::*;
 pub(super) use bed::*;
 pub(super) use bee::*;
@@ -296,14 +299,14 @@ pub(super) use tadpole::*;
 pub(super) use textures::*;
 pub use textures::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,
-    arrow_entity_texture_refs, axolotl_entity_texture_refs, bat_entity_texture_refs,
-    bed_entity_texture_refs, bee_entity_texture_refs, bell_entity_texture_refs,
-    blaze_entity_texture_refs, boat_entity_texture_refs, breeze_entity_texture_refs,
-    camel_entity_texture_refs, chest_entity_texture_refs, chicken_entity_texture_refs,
-    cod_entity_texture_refs, copper_golem_entity_texture_refs, cow_entity_texture_refs,
-    creaking_entity_texture_refs, creeper_entity_texture_refs, decorated_pot_entity_texture_refs,
-    dolphin_entity_texture_refs, donkey_entity_texture_refs, drowned_entity_texture_refs,
-    end_crystal_entity_texture_refs, ender_dragon_entity_texture_refs,
+    arrow_entity_texture_refs, axolotl_entity_texture_refs, banner_entity_texture_refs,
+    bat_entity_texture_refs, bed_entity_texture_refs, bee_entity_texture_refs,
+    bell_entity_texture_refs, blaze_entity_texture_refs, boat_entity_texture_refs,
+    breeze_entity_texture_refs, camel_entity_texture_refs, chest_entity_texture_refs,
+    chicken_entity_texture_refs, cod_entity_texture_refs, copper_golem_entity_texture_refs,
+    cow_entity_texture_refs, creaking_entity_texture_refs, creeper_entity_texture_refs,
+    decorated_pot_entity_texture_refs, dolphin_entity_texture_refs, donkey_entity_texture_refs,
+    drowned_entity_texture_refs, end_crystal_entity_texture_refs, ender_dragon_entity_texture_refs,
     enderman_entity_texture_refs, endermite_entity_texture_refs, entity_model_texture_refs,
     evoker_fangs_entity_texture_refs, experience_orb_entity_texture_refs,
     feline_entity_texture_refs, fox_entity_texture_refs, frog_entity_texture_refs,

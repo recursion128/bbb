@@ -254,6 +254,13 @@ entity_render_state! {
     /// running pot wobble folded into the pot root transform. `None` for
     /// every non-pot instance and a pot at rest.
     (with_decorated_pot_wobble) decorated_pot_wobble: Option<DecoratedPotWobble> = None;
+    /// Vanilla `BannerRenderState.phase` (`(floorMod(x*7 + y*9 + z*13 +
+    /// gameTime, 100L) + partialTicks) / 100`,
+    /// `BannerRenderer.extractRenderState`): the per-position flag swing
+    /// phase `BannerFlagModel.setupAnim` turns into the flag
+    /// `xRot = (-0.0125 + 0.01·cos(2π·phase))·π`. `0.0` for every non-banner
+    /// instance.
+    (with_banner_flag_phase) banner_flag_phase: f32 = 0.0;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1626,6 +1633,32 @@ impl EntityModelInstance {
         )
     }
 
+    /// A banner block-entity model instance at the banner block's min corner.
+    /// `y_rot` carries the vanilla `-angle` degrees of
+    /// `BannerRenderer.modelTransformation` (`Axis.YP.rotationDegrees(-angle)`
+    /// — ground `RotationSegment.convertToDegrees(ROTATION)`, wall
+    /// `FACING.toYRot()`); the pattern layers carry their dyes for the
+    /// per-pass tints; the flag swing phase rides `banner_flag_phase`.
+    pub fn banner(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        wall: bool,
+        base_color: EntityDyeColor,
+        layers: [Option<BannerPatternLayer>; 16],
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Banner {
+                wall,
+                base_color,
+                layers,
+            },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
@@ -2738,6 +2771,7 @@ mod tests {
                 bell_shake_direction: None,
                 shulker_box_progress: 0.0,
                 decorated_pot_wobble: None,
+                banner_flag_phase: 0.0,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

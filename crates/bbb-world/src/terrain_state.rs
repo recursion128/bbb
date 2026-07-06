@@ -1,3 +1,7 @@
+pub use crate::banner_blocks::{
+    banner_color_and_form_for_block_name, banner_flag_phase, BannerBlockForm, BannerDyeColorKind,
+    BannerModelSourceState,
+};
 pub use crate::bed_blocks::{
     bed_color_for_block_name, BedColorKind, BedModelFacing, BedModelSourceState, BedPartKind,
 };
@@ -13,11 +17,12 @@ pub use crate::chest_lids::{
     ChestModelKind, ChestModelSourceState,
 };
 pub use crate::chunks::{
-    decode_level_chunk_with_light, BlockEntityRecord, ChunkBiomeSampler, ChunkColumn,
-    ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,
-    HeightmapData, LightData, NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue,
-    PalettedContainerData, SignBlockEntityTextState, SignTextDyeColor, SignTextSideState,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    decode_level_chunk_with_light, BannerPatternLayerState, BannerPatternsState, BlockEntityRecord,
+    ChunkBiomeSampler, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
+    ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
+    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
+    SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use crate::decorated_pot_blocks::{
     is_decorated_pot_block_name, DecoratedPotFacing, DecoratedPotModelSourceState,

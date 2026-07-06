@@ -4024,6 +4024,57 @@
   cutout-cull 烘焙；native 侧 kind/色/facing/y-rot/光照打包、sherd→
   pattern 表回环（brick/未知兜底）、wobble style+progress 投影 + pump
   顺序断言。
+- [x] banner block-entity renderer（2026-07-06，BER 第五片）：32 方块
+  （16 色 `minecraft:<color>_banner` ROTATION 16 段 + 16 色
+  `<color>_wall_banner` FACING）。world：BE NBT `patterns` 列表
+  （`BannerPatternLayers.CODEC`，`{pattern: 注册 id, color: 染料名}`
+  compound）解进 `BlockEntityRecord.banner_patterns`
+  （`chunks/banner_patterns.rs`，chunk 批量 + 单条 `BlockEntityData`
+  双入口、方块变更修剪）；任一条目畸形 → 整列表折叠 None（对应
+  `BannerBlockEntity.loadAdditional` 的 `.orElse(EMPTY)` codec 失败
+  语义）；base 色是 block-id 事实（`AbstractBannerBlock.getColor`）。
+  flag 摆动相位逐字转写 `BannerRenderer.extractRenderState`：
+  `(floorMod(x·7+y·9+z·13+gameTime,100L)+partial)/100`，gameTime 用确定性
+  `WorldTimeState.game_time`（i32 wrapping 位置哈希 + `rem_euclid`
+  floor-mod，`bbb-world/src/banner_blocks.rs`）。dispatch：
+  `EntityModelKind::Banner{wall,base_color,layers:[Option<
+  BannerPatternLayer>;16]}` 进唯一 entity-model 提交流（-1 哨兵、
+  `block<<4|sky<<20`）；root transform 逐字转写 `modelTransformation`：
+  `T(0.5,0,0.5)·Ry(−angle)·S(⅔,−⅔,−⅔)`（ground
+  `RotationSegment.convertToDegrees`（22.5° 段折入 (−180,180]）、wall
+  `FACING.toYRot()`）。renderer（`model_layers/banner.rs`）转写
+  `BannerModel.createBodyLayer`（64×64：standing 专属 pole 2×42×2
+  texOffs(44,0) 于 (−1,−42,−1)、bar 20×2×2 texOffs(0,42) 于
+  (−10,−44,−1)/(−10,−20.5,9.5)）与 `BannerFlagModel.createFlagLayer`
+  （flag 20×40×1 texOffs(0,0) 于 (−10,0,−2)、pivot
+  (0,−44,0)/(0,−20.5,10.5)）；`setupAnim`：
+  `flag.xRot=(−0.0125+0.01·cos(2π·phase))·π`。pattern 合成转写
+  `submitBanner`/`submitPatterns`（`BannerRenderer.java:171-208`）：
+  frame+flag 无 tint `entitySolid` 提交 `entity/banner/banner_base`，
+  随后同一 flag 几何逐层重提交——`base` 面罩先按 base 色 tint、再每层
+  `entity/banner/<pattern>` 按 `DyeColor.getTextureDiffuseColor()`
+  tint（走既有逐 pass 顶点 tint，即热带鱼 base/pattern 机制），clamp
+  `MAX_PATTERNS=16`；pattern pass 走 translucent bucket 代
+  `RenderPipelines.BANNER_PATTERN`（`java:282`：TRANSLUCENT 混合 +
+  LEQUAL 不写深度）。43 项 pattern 注册表转写
+  （`BannerPatterns.java:60-105`，asset_id=注册 id；未知 pattern id/
+  染料名整栈折空，对应 registry holder codec 失败——datapack pattern
+  bbb 无纹理，同折）。44 张 64×64 `entity/banner/*`（banner_base +
+  base + 42 pattern，资产树清点 44 文件）进共享 entity atlas 与
+  `entity_assets.rs`。defer 如实记账：BER breakProgress crumbling、
+  逐 BE 距离/视锥剔除（同前四片边界）；vanilla bannerPattern 管线不写
+  深度、bbb 共享 translucent 管线写深度（等深 LEQUAL 叠层不受影响，
+  仅在将来需要专用不写深度 pass 时再议）；banner 物品/盾牌 pattern
+  （`SHIELD_PATTERN_BASE`/`submitSpecial` 路径）属 item-model 范畴。
+  测试：world 侧 32 方块色/形态表、patterns NBT 层序、畸形条目折叠、
+  相位手算（负数 floor-mod + gameTime 步进）、rotation 段/facing 角度、
+  方块变更修剪；renderer 侧 cube/pivot 对照（wall 无 pole 树）、摆角
+  phase 0/¼/½/1 手算 + prepare 接线、变换点映射（pole 顶→y28、−90°
+  yaw）、5 pass 栈（kind/render type/layer id/retained/tint/序列）+
+  wall 3 pass 变体、44 纹理表 + atlas 隶属、烘焙 18 面 cutout-cull
+  （frame+flag）+ 12 面 translucent 逐 pass tint 重烘；native 侧
+  kind/底色/yaw/相位/光照投影、43 pattern 表回环、未知 pattern/染料
+  折空、16 层渲染上限。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

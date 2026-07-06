@@ -1,4 +1,5 @@
 mod advancements;
+mod banner_blocks;
 mod bed_blocks;
 mod bell_blocks;
 mod block_events;

@@ -773,6 +773,28 @@ pub(in crate::entity_models) fn decorated_pot_model_root_transform(
 /// sign's body scale; hanging signs use `MODEL_RENDER_SCALE = 1.0F`.
 pub(in crate::entity_models) const SIGN_RENDER_SCALE: f32 = 0.666_666_7;
 
+/// Vanilla `BannerRenderer.SIZE` (`0.6666667F`) — the `MODEL_SCALE` magnitude
+/// of `(SIZE, -SIZE, -SIZE)`.
+pub(in crate::entity_models) const BANNER_RENDER_SCALE: f32 = 0.666_666_7;
+
+/// Vanilla `BannerRenderer.modelTransformation(angle)`: `new
+/// Transformation(MODEL_TRANSLATION, Axis.YP.rotationDegrees(-angle),
+/// MODEL_SCALE, null)` with `MODEL_TRANSLATION = (0.5, 0, 0.5)` and
+/// `MODEL_SCALE = (⅔, -⅔, -⅔)` — the same shape for the ground (`ROTATION`
+/// segments) and wall (`FACING`) forms; only the mesh differs.
+/// `instance.position` is the banner block's min corner and `body_rot`
+/// carries the pre-negated `-angle` degrees, like the signs.
+pub(in crate::entity_models) fn banner_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5))
+        * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+        * Mat4::from_scale(Vec3::new(
+            BANNER_RENDER_SCALE,
+            -BANNER_RENDER_SCALE,
+            -BANNER_RENDER_SCALE,
+        ))
+}
+
 /// Vanilla `StandingSignRenderer.baseTransformation` /
 /// `HangingSignRenderer.baseTransformation`, with `instance.position` at the
 /// sign block's min corner and `body_rot` carrying `-angle` degrees

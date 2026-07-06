@@ -15,6 +15,7 @@ use winit::{
 };
 
 mod audio_runtime;
+mod banner_scene;
 mod bed_scene;
 mod bell_scene;
 mod biome_tint;

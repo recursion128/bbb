@@ -288,6 +288,23 @@ pub enum EntityModelKind {
         right: Option<DecoratedPotPattern>,
         front: Option<DecoratedPotPattern>,
     },
+    /// Vanilla 26.1 `BannerRenderer` — the `STANDING_BANNER`/`WALL_BANNER` frame layer (pole +
+    /// bar; the wall form has no pole) plus the `STANDING_BANNER_FLAG`/`WALL_BANNER_FLAG` flag
+    /// layer, all on the 64×64 `entity/banner/banner_base` sheet, followed by the tinted pattern
+    /// layers over the same flag geometry (`BannerRenderer.submitPatterns`: the `entity/banner/
+    /// base` sheet tinted by `base_color`, then each `BannerPatternLayers.Layer`'s
+    /// `entity/banner/<pattern>` sheet tinted by its dye — `DyeColor.getTextureDiffuseColor`).
+    /// Instances are projected from banner block states (`entity_id` is a sentinel). `body_rot`
+    /// carries the `-angle` degrees of `BannerRenderer.modelTransformation`
+    /// (`Axis.YP.rotationDegrees(-angle)`; ground `RotationSegment.convertToDegrees(ROTATION)`,
+    /// wall `FACING.toYRot()`); the flag swing phase rides
+    /// `EntityRenderState.banner_flag_phase`. The layer array clamps at the vanilla
+    /// `BannerRenderer.MAX_PATTERNS = 16` render cap, `None` past the stored stack.
+    Banner {
+        wall: bool,
+        base_color: EntityDyeColor,
+        layers: [Option<BannerPatternLayer>; 16],
+    },
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
@@ -1543,6 +1560,67 @@ pub enum DecoratedPotPattern {
     Shelter,
     Skull,
     Snort,
+}
+
+/// Vanilla `BannerPatterns` registry entries: the forty-three pattern registrations, each an
+/// `entity/banner/<pattern>` sprite (`BannerPatterns.bootstrap`, `BannerPatterns.java:60-105`;
+/// every vanilla entry's `asset_id` equals its registry id, `BannerPatterns.register`). `Base`
+/// is the same full-flag `entity/banner/base` sheet the base-color pass binds — a legal explicit
+/// layer too (e.g. `/give` pattern stacks).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BannerPatternKind {
+    Base,
+    SquareBottomLeft,
+    SquareBottomRight,
+    SquareTopLeft,
+    SquareTopRight,
+    StripeBottom,
+    StripeTop,
+    StripeLeft,
+    StripeRight,
+    StripeCenter,
+    StripeMiddle,
+    StripeDownright,
+    StripeDownleft,
+    SmallStripes,
+    Cross,
+    StraightCross,
+    TriangleBottom,
+    TriangleTop,
+    TrianglesBottom,
+    TrianglesTop,
+    DiagonalLeft,
+    DiagonalUpRight,
+    DiagonalUpLeft,
+    DiagonalRight,
+    Circle,
+    Rhombus,
+    HalfVertical,
+    HalfHorizontal,
+    HalfVerticalRight,
+    HalfHorizontalBottom,
+    Border,
+    CurlyBorder,
+    Gradient,
+    GradientUp,
+    Bricks,
+    Globe,
+    Creeper,
+    Skull,
+    Flower,
+    Mojang,
+    Piglin,
+    Flow,
+    Guster,
+}
+
+/// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the pattern sprite plus the
+/// dye whose `getTextureDiffuseColor` tints the layer's flag-geometry submit
+/// (`BannerRenderer.submitPatternLayer`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BannerPatternLayer {
+    pub pattern: BannerPatternKind,
+    pub color: EntityDyeColor,
 }
 
 /// Vanilla `DecoratedPotRenderState.wobbleStyle` + `wobbleProgress`: the running pot wobble the

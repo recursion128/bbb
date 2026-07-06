@@ -139,6 +139,7 @@ impl EntityModelKind {
             Self::Bell => "bell",
             Self::ShulkerBox { .. } => "shulker_box",
             Self::DecoratedPot { .. } => "decorated_pot",
+            Self::Banner { .. } => "banner",
             Self::Arrow { .. } => "arrow",
             Self::Trident => "trident",
             Self::WitherSkull { .. } => "wither_skull",
@@ -442,6 +443,8 @@ impl EntityModelKind {
             Self::ShulkerBox { color, .. } => Some(shulker_texture_ref(color)),
             // The pot's base sheet; the four per-sherd side sprites ride their own layer passes.
             Self::DecoratedPot { .. } => Some(DECORATED_POT_BASE_TEXTURE_REF),
+            // The banner's frame/flag sheet; the tinted pattern sprites ride their own passes.
+            Self::Banner { .. } => Some(BANNER_BASE_TEXTURE_REF),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),

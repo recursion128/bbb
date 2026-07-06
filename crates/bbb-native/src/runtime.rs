@@ -47,6 +47,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     audio_runtime::AudioEventSink,
+    banner_scene::banner_model_instances_from_world_at_partial_tick,
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
@@ -1736,6 +1737,12 @@ pub(crate) fn pump_network_and_terrain(
         entity_partial_tick,
     ));
     entity_instances.extend(decorated_pot_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
+    // Banners carry their base color, tinted pattern stack, and flag swing
+    // phase.
+    entity_instances.extend(banner_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
     ));

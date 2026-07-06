@@ -7,6 +7,7 @@ mod armor_stand;
 mod arrow;
 mod auto_spin;
 mod axolotl;
+mod banner;
 mod bat;
 mod bed;
 mod bee;
