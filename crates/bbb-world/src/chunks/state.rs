@@ -87,6 +87,21 @@ pub struct BlockEntityRecord {
     pub sign_text: Option<SignBlockEntityTextState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vault_shared_data: Option<VaultSharedDataState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
+}
+
+/// The decorated pot block entity's stored sherd faces — vanilla
+/// `PotDecorations` (`back`/`left`/`right`/`front` item order, the BE NBT
+/// `sherds` list). `Some(item_id)` carries the raw sherd item id; `None` is
+/// an undecorated face (vanilla `Items.BRICK` or a missing list entry).
+/// Decoded from the chunk block-entity section and `BlockEntityData` updates.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DecoratedPotSherdsState {
+    pub back: Option<String>,
+    pub left: Option<String>,
+    pub right: Option<String>,
+    pub front: Option<String>,
 }
 
 /// The sign block entity's stored text — vanilla `SignBlockEntity`'s

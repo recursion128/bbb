@@ -48,6 +48,10 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) bell_shakes: Vec<crate::BellShakeState>,
     #[serde(default)]
+    pub(crate) shulker_box_lids: Vec<crate::ShulkerBoxLidState>,
+    #[serde(default)]
+    pub(crate) decorated_pot_wobbles: Vec<crate::DecoratedPotWobbleState>,
+    #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
     #[serde(default)]
     pub(crate) last_block_changed_ack: Option<BlockChangedAckState>,

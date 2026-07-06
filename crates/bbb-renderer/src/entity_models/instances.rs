@@ -243,6 +243,17 @@ entity_render_state! {
     /// blockEntity.clickDirection : null`): the ring direction selecting the
     /// `BellModel.setupAnim` swing axis, `None` while the bell is not shaking.
     (with_bell_shake_direction) bell_shake_direction: Option<BellShakeDirection> = None;
+    /// Vanilla `ShulkerBoxRenderState.progress`
+    /// (`blockEntity.getProgress(partialTicks)` — the lerped
+    /// `ShulkerBoxBlockEntity` open progress): the raw `0..=1` value
+    /// `ShulkerBoxModel.setupAnim` turns into the lid lift
+    /// (`24 - progress·8`) and the `270°·progress` lid twist. `0.0` for every
+    /// non-shulker-box instance and a resting closed box.
+    (with_shulker_box_progress) shulker_box_progress: f32 = 0.0;
+    /// Vanilla `DecoratedPotRenderState.wobbleStyle`/`wobbleProgress`: the
+    /// running pot wobble folded into the pot root transform. `None` for
+    /// every non-pot instance and a pot at rest.
+    (with_decorated_pot_wobble) decorated_pot_wobble: Option<DecoratedPotWobble> = None;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1567,6 +1578,54 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Bell, position, 0.0)
     }
 
+    /// A shulker box block-entity model instance at the box block's min
+    /// corner. The six-way `facing` rides the kind (the
+    /// `ShulkerBoxRenderer.createModelTransform` rotation is a full
+    /// `Direction.getRotation()` quaternion, not a yaw), so the yaw is `0`;
+    /// the lid animation rides `shulker_box_progress`.
+    pub fn shulker_box(
+        entity_id: i32,
+        position: [f32; 3],
+        color: Option<EntityDyeColor>,
+        facing: EntityAttachmentFace,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::ShulkerBox { color, facing },
+            position,
+            0.0,
+        )
+    }
+
+    /// A decorated pot block-entity model instance at the pot block's min
+    /// corner. `y_rot` carries the vanilla `180 - facing.toYRot()` degrees of
+    /// `DecoratedPotRenderer.createModelTransformation`'s
+    /// `rotateAround(Axis.YP.rotationDegrees(180 - toYRot), 0.5, 0.5, 0.5)`;
+    /// the four sides carry their sherd patterns (`None` = the plain
+    /// `decorated_pot_side`); the wobble rides `decorated_pot_wobble`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn decorated_pot(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        back: Option<DecoratedPotPattern>,
+        left: Option<DecoratedPotPattern>,
+        right: Option<DecoratedPotPattern>,
+        front: Option<DecoratedPotPattern>,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::DecoratedPot {
+                back,
+                left,
+                right,
+                front,
+            },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
@@ -2677,6 +2736,8 @@ mod tests {
                 chest_openness: 0.0,
                 bell_ticks: 0.0,
                 bell_shake_direction: None,
+                shulker_box_progress: 0.0,
+                decorated_pot_wobble: None,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

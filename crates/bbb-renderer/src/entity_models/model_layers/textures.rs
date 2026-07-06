@@ -1,9 +1,9 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, CatModelVariant, ChestModelHalf, ChestModelTexture,
-    CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
-    FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
-    SignModelAttachment, SignModelWood, WolfArmorCrackiness,
+    CopperGolemWeathering, DecoratedPotPattern, EntityArmorMaterial, EntityDefaultPlayerSkin,
+    EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant,
+    RabbitModelVariant, SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 
 mod equine;
@@ -1585,7 +1585,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 611] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 636] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1833,6 +1833,31 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BED_RED_TEXTURE_REF,
     BED_BLACK_TEXTURE_REF,
     BELL_BODY_TEXTURE_REF,
+    DECORATED_POT_BASE_TEXTURE_REF,
+    DECORATED_POT_SIDE_TEXTURE_REF,
+    DECORATED_POT_ANGLER_TEXTURE_REF,
+    DECORATED_POT_ARCHER_TEXTURE_REF,
+    DECORATED_POT_ARMS_UP_TEXTURE_REF,
+    DECORATED_POT_BLADE_TEXTURE_REF,
+    DECORATED_POT_BREWER_TEXTURE_REF,
+    DECORATED_POT_BURN_TEXTURE_REF,
+    DECORATED_POT_DANGER_TEXTURE_REF,
+    DECORATED_POT_EXPLORER_TEXTURE_REF,
+    DECORATED_POT_FLOW_TEXTURE_REF,
+    DECORATED_POT_FRIEND_TEXTURE_REF,
+    DECORATED_POT_GUSTER_TEXTURE_REF,
+    DECORATED_POT_HEART_TEXTURE_REF,
+    DECORATED_POT_HEARTBREAK_TEXTURE_REF,
+    DECORATED_POT_HOWL_TEXTURE_REF,
+    DECORATED_POT_MINER_TEXTURE_REF,
+    DECORATED_POT_MOURNER_TEXTURE_REF,
+    DECORATED_POT_PLENTY_TEXTURE_REF,
+    DECORATED_POT_PRIZE_TEXTURE_REF,
+    DECORATED_POT_SCRAPE_TEXTURE_REF,
+    DECORATED_POT_SHEAF_TEXTURE_REF,
+    DECORATED_POT_SHELTER_TEXTURE_REF,
+    DECORATED_POT_SKULL_TEXTURE_REF,
+    DECORATED_POT_SNORT_TEXTURE_REF,
     TRIDENT_RIPTIDE_TEXTURE_REF,
     ENCHANTED_GLINT_ITEM_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
@@ -3502,6 +3527,172 @@ pub(in crate::entity_models) const BELL_ENTITY_TEXTURE_REFS: [EntityModelTexture
 
 pub fn bell_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BELL_ENTITY_TEXTURE_REFS
+}
+
+/// A 16×16 `entity/decorated_pot/<name>` sprite (`Sheets.DECORATED_POT_MAPPER`): the plain side
+/// and the twenty-three sherd pattern sheets, sized like the
+/// `DecoratedPotRenderer.createSidesLayer` 16×16 atlas.
+const fn decorated_pot_side_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [16, 16],
+    }
+}
+
+/// Vanilla `Sheets.DECORATED_POT_BASE`
+/// (`DECORATED_POT_MAPPER.defaultNamespaceApply("decorated_pot_base")`), sized like the
+/// `DecoratedPotRenderer.createBaseLayer` 32×32 atlas.
+pub(in crate::entity_models) const DECORATED_POT_BASE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/decorated_pot/decorated_pot_base.png",
+        size: [32, 32],
+    };
+/// Vanilla `Sheets.DECORATED_POT_SIDE` — the undecorated side (also the `BLANK` pattern's asset,
+/// `DecoratedPotPatterns.bootstrap`'s `register(BLANK, "decorated_pot_side")`).
+pub(in crate::entity_models) const DECORATED_POT_SIDE_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/decorated_pot_side.png");
+
+// Vanilla `Sheets.DECORATED_POT_SPRITES` — one sprite per registered `DecoratedPotPattern`
+// (`DecoratedPotPatterns.bootstrap`, `DecoratedPotPatterns.java:72-97`: every sherd pattern's
+// asset id is `<name>_pottery_pattern`).
+pub(in crate::entity_models) const DECORATED_POT_ANGLER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/angler_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_ARCHER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/archer_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_ARMS_UP_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/arms_up_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_BLADE_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/blade_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_BREWER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/brewer_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_BURN_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/burn_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_DANGER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/danger_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_EXPLORER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/explorer_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_FLOW_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/flow_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_FRIEND_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/friend_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_GUSTER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/guster_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_HEART_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/heart_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_HEARTBREAK_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/heartbreak_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_HOWL_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/howl_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_MINER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/miner_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_MOURNER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/mourner_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_PLENTY_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/plenty_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_PRIZE_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/prize_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_SCRAPE_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/scrape_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_SHEAF_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/sheaf_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_SHELTER_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref(
+        "textures/entity/decorated_pot/shelter_pottery_pattern.png",
+    );
+pub(in crate::entity_models) const DECORATED_POT_SKULL_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/skull_pottery_pattern.png");
+pub(in crate::entity_models) const DECORATED_POT_SNORT_TEXTURE_REF: EntityModelTextureRef =
+    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/snort_pottery_pattern.png");
+
+pub(in crate::entity_models) const DECORATED_POT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 25] = [
+    DECORATED_POT_BASE_TEXTURE_REF,
+    DECORATED_POT_SIDE_TEXTURE_REF,
+    DECORATED_POT_ANGLER_TEXTURE_REF,
+    DECORATED_POT_ARCHER_TEXTURE_REF,
+    DECORATED_POT_ARMS_UP_TEXTURE_REF,
+    DECORATED_POT_BLADE_TEXTURE_REF,
+    DECORATED_POT_BREWER_TEXTURE_REF,
+    DECORATED_POT_BURN_TEXTURE_REF,
+    DECORATED_POT_DANGER_TEXTURE_REF,
+    DECORATED_POT_EXPLORER_TEXTURE_REF,
+    DECORATED_POT_FLOW_TEXTURE_REF,
+    DECORATED_POT_FRIEND_TEXTURE_REF,
+    DECORATED_POT_GUSTER_TEXTURE_REF,
+    DECORATED_POT_HEART_TEXTURE_REF,
+    DECORATED_POT_HEARTBREAK_TEXTURE_REF,
+    DECORATED_POT_HOWL_TEXTURE_REF,
+    DECORATED_POT_MINER_TEXTURE_REF,
+    DECORATED_POT_MOURNER_TEXTURE_REF,
+    DECORATED_POT_PLENTY_TEXTURE_REF,
+    DECORATED_POT_PRIZE_TEXTURE_REF,
+    DECORATED_POT_SCRAPE_TEXTURE_REF,
+    DECORATED_POT_SHEAF_TEXTURE_REF,
+    DECORATED_POT_SHELTER_TEXTURE_REF,
+    DECORATED_POT_SKULL_TEXTURE_REF,
+    DECORATED_POT_SNORT_TEXTURE_REF,
+];
+
+pub fn decorated_pot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &DECORATED_POT_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `DecoratedPotRenderer.getSideSprite`: a decorated side binds
+/// `Sheets.getDecoratedPotSprite(pattern)` (the pattern's
+/// `entity/decorated_pot/<name>_pottery_pattern` sheet), an undecorated side — no sherd, a brick,
+/// or an item with no registered pattern — falls back to `Sheets.DECORATED_POT_SIDE`.
+pub(in crate::entity_models) fn decorated_pot_side_texture_ref(
+    pattern: Option<DecoratedPotPattern>,
+) -> EntityModelTextureRef {
+    match pattern {
+        None => DECORATED_POT_SIDE_TEXTURE_REF,
+        Some(DecoratedPotPattern::Angler) => DECORATED_POT_ANGLER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Archer) => DECORATED_POT_ARCHER_TEXTURE_REF,
+        Some(DecoratedPotPattern::ArmsUp) => DECORATED_POT_ARMS_UP_TEXTURE_REF,
+        Some(DecoratedPotPattern::Blade) => DECORATED_POT_BLADE_TEXTURE_REF,
+        Some(DecoratedPotPattern::Brewer) => DECORATED_POT_BREWER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Burn) => DECORATED_POT_BURN_TEXTURE_REF,
+        Some(DecoratedPotPattern::Danger) => DECORATED_POT_DANGER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Explorer) => DECORATED_POT_EXPLORER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Flow) => DECORATED_POT_FLOW_TEXTURE_REF,
+        Some(DecoratedPotPattern::Friend) => DECORATED_POT_FRIEND_TEXTURE_REF,
+        Some(DecoratedPotPattern::Guster) => DECORATED_POT_GUSTER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Heart) => DECORATED_POT_HEART_TEXTURE_REF,
+        Some(DecoratedPotPattern::Heartbreak) => DECORATED_POT_HEARTBREAK_TEXTURE_REF,
+        Some(DecoratedPotPattern::Howl) => DECORATED_POT_HOWL_TEXTURE_REF,
+        Some(DecoratedPotPattern::Miner) => DECORATED_POT_MINER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Mourner) => DECORATED_POT_MOURNER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Plenty) => DECORATED_POT_PLENTY_TEXTURE_REF,
+        Some(DecoratedPotPattern::Prize) => DECORATED_POT_PRIZE_TEXTURE_REF,
+        Some(DecoratedPotPattern::Scrape) => DECORATED_POT_SCRAPE_TEXTURE_REF,
+        Some(DecoratedPotPattern::Sheaf) => DECORATED_POT_SHEAF_TEXTURE_REF,
+        Some(DecoratedPotPattern::Shelter) => DECORATED_POT_SHELTER_TEXTURE_REF,
+        Some(DecoratedPotPattern::Skull) => DECORATED_POT_SKULL_TEXTURE_REF,
+        Some(DecoratedPotPattern::Snort) => DECORATED_POT_SNORT_TEXTURE_REF,
+    }
 }
 
 pub(in crate::entity_models) const LEASH_KNOT_TEXTURE_REF: EntityModelTextureRef =

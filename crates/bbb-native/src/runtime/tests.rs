@@ -1065,6 +1065,25 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(bell_shake_tick < bell_instances);
     assert!(held_models < bed_instances);
     assert!(held_models < bell_instances);
+    // The shulker box lid ticker (`ShulkerBoxBlockEntity.tick`) and the pot
+    // wobble clock likewise run before render extraction reads their lerped
+    // progress; both instance streams join after held-item baking.
+    let shulker_box_lid_tick = source
+        .find("world.advance_shulker_box_lid_ticks(running_ticks);")
+        .expect("pump should advance shulker box lid ticks");
+    let pot_wobble_tick = source
+        .find("world.advance_decorated_pot_wobble_ticks(running_ticks);")
+        .expect("pump should advance decorated pot wobble ticks");
+    let shulker_box_instances = source
+        .find("entity_instances.extend(shulker_box_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract shulker box block-entity model instances");
+    let decorated_pot_instances = source
+        .find("entity_instances.extend(decorated_pot_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract decorated pot block-entity model instances");
+    assert!(shulker_box_lid_tick < shulker_box_instances);
+    assert!(pot_wobble_tick < decorated_pot_instances);
+    assert!(held_models < shulker_box_instances);
+    assert!(held_models < decorated_pot_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

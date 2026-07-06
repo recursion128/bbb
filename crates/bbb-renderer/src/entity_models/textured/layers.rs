@@ -10,14 +10,15 @@ use super::super::{
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BedModelPart, BoatModelFamily, CamelModelFamily,
         CatModelVariant, ChestModelHalf, ChestModelTexture, ChickenModelVariant,
-        CopperGolemWeathering, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
-        EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin,
-        FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings,
-        IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant,
-        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-        VillagerModelData, VillagerModelHat, WolfModelVariant,
+        CopperGolemWeathering, CowModelVariant, DecoratedPotPattern, DonkeyModelFamily,
+        EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
+        EntityPlayerSkin, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant,
+        HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
+        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SignModelAttachment, SignModelWood, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        WolfModelVariant,
     },
     model_layers::*,
 };
@@ -55,6 +56,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CustomHeadSkull,
     CreakingBase,
     CreakingEyes,
+    DecoratedPotBase,
+    DecoratedPotSide,
     EnderDragonBase,
     EnderDragonEyes,
     EnderDragonBeam,
@@ -105,6 +108,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SkeletonBase,
     SkeletonClothing,
     ShulkerBase,
+    ShulkerBoxBase,
     ShulkerBulletBase,
     ShulkerBulletShell,
     SlimeBase,
@@ -1712,6 +1716,74 @@ pub(in crate::entity_models) fn bell_textured_layer_passes() -> Vec<EntityModelL
         order: 0,
         submit_sequence: 0,
     }]
+}
+
+/// Vanilla `ShulkerBoxRenderer.submit`: one `submitModel` per shulker box block entity with the
+/// `Sheets.getShulkerBoxSprite(color)` sprite (the undyed box binding
+/// `DEFAULT_SHULKER_TEXTURE_LOCATION` — the same `entity/shulker/*` sheet family the mob uses)
+/// and the model's `RenderTypes::entityCutout` render type
+/// (`ShulkerBoxModel`'s constructor, `ShulkerBoxRenderer.java:137`).
+pub(in crate::entity_models) fn shulker_box_textured_layer_passes(
+    color: Option<EntityDyeColor>,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ShulkerBoxBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_SHULKER_BOX,
+        texture: shulker_texture_ref(color),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+const DECORATED_POT_BASE_PARTS: &[&str] = &["neck", "top", "bottom"];
+const DECORATED_POT_BACK_PART: &[&str] = &["back"];
+const DECORATED_POT_LEFT_PART: &[&str] = &["left"];
+const DECORATED_POT_RIGHT_PART: &[&str] = &["right"];
+const DECORATED_POT_FRONT_PART: &[&str] = &["front"];
+
+/// Vanilla `DecoratedPotRenderer.submit` (`DecoratedPotRenderer.java:179-248`): five
+/// `submitModelPart` calls, all on `RenderTypes::entitySolid` — `neck`/`top`/`bottom` with the
+/// `Sheets.DECORATED_POT_BASE` sprite, then each side with its own
+/// `getSideSprite(decorations.<side>())` (the sherd's pattern sheet, or the plain
+/// `DECORATED_POT_SIDE` for an empty/unknown face). bbb keeps one pot model per instance, so the
+/// per-part texture split rides retained-parts passes over the same posed tree.
+pub(in crate::entity_models) fn decorated_pot_textured_layer_passes(
+    back: Option<DecoratedPotPattern>,
+    left: Option<DecoratedPotPattern>,
+    right: Option<DecoratedPotPattern>,
+    front: Option<DecoratedPotPattern>,
+) -> Vec<EntityModelLayerPass> {
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::DecoratedPotBase,
+        render_type: EntityModelLayerRenderType::EntitySolid,
+        model_layer: MODEL_LAYER_DECORATED_POT_BASE,
+        texture: DECORATED_POT_BASE_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::RetainedParts(DECORATED_POT_BASE_PARTS),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }];
+    for (pattern, retained, submit_sequence) in [
+        (back, DECORATED_POT_BACK_PART, 1),
+        (left, DECORATED_POT_LEFT_PART, 2),
+        (right, DECORATED_POT_RIGHT_PART, 3),
+        (front, DECORATED_POT_FRONT_PART, 4),
+    ] {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::DecoratedPotSide,
+            render_type: EntityModelLayerRenderType::EntitySolid,
+            model_layer: MODEL_LAYER_DECORATED_POT_SIDES,
+            texture: decorated_pot_side_texture_ref(pattern),
+            visibility: EntityModelLayerVisibility::RetainedParts(retained),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence,
+        });
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn arrow_textured_layer_passes(

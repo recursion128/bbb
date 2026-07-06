@@ -682,6 +682,93 @@ pub(in crate::entity_models) fn bell_model_root_transform(instance: EntityModelI
     Mat4::from_translation(Vec3::from_array(instance.position))
 }
 
+/// Vanilla `Direction.getRotation()` (`Direction.java:144-153`) for the shulker box `FACING`:
+/// `UP` identity, `DOWN` `Rx(π)`, and the four horizontals `rotationXYZ(π/2, 0, zAngle)` — JOML's
+/// `rotationXYZ(x, 0, z)` composes `Rx · Rz` — with `NORTH z = π`, `SOUTH z = 0`,
+/// `WEST z = π/2`, `EAST z = -π/2`.
+fn shulker_box_facing_rotation(facing: EntityAttachmentFace) -> Mat4 {
+    use std::f32::consts::{FRAC_PI_2, PI};
+
+    match facing {
+        EntityAttachmentFace::Up => Mat4::IDENTITY,
+        EntityAttachmentFace::Down => Mat4::from_rotation_x(PI),
+        EntityAttachmentFace::North => Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(PI),
+        EntityAttachmentFace::South => Mat4::from_rotation_x(FRAC_PI_2),
+        EntityAttachmentFace::West => {
+            Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(FRAC_PI_2)
+        }
+        EntityAttachmentFace::East => {
+            Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(-FRAC_PI_2)
+        }
+    }
+}
+
+/// Vanilla `ShulkerBoxRenderer.createModelTransform(direction)`
+/// (`ShulkerBoxRenderer.java:111-121`): `translation(0.5, 0.5, 0.5) · scale(0.9995) ·
+/// rotate(FACING.getRotation()) · scale(1, -1, -1) · translate(0, -1, 0)` — center the box, shrink
+/// it a hair against z-fighting with neighbouring full blocks, orient it onto its attached face,
+/// then apply the Y-down entity-mesh flip (the box shares the shulker mob's Y-down-authored shell
+/// mesh). `instance.position` is the box block's min corner; the facing rides the kind (a full
+/// quaternion, not a yaw).
+pub(in crate::entity_models) fn shulker_box_model_root_transform(
+    instance: EntityModelInstance,
+    facing: EntityAttachmentFace,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.5, 0.5, 0.5))
+        * Mat4::from_scale(Vec3::splat(0.9995))
+        * shulker_box_facing_rotation(facing)
+        * Mat4::from_scale(Vec3::new(1.0, -1.0, -1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.0, 0.0))
+}
+
+/// A vanilla `PoseStack.rotateAround(rotation, x, y, z)`:
+/// `translate(pivot) · rotation · translate(-pivot)`.
+fn rotate_around(rotation: Mat4, pivot: Vec3) -> Mat4 {
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
+}
+
+/// Vanilla `DecoratedPotRenderer.submit` (`DecoratedPotRenderer.java:147-169`):
+/// `mulPose(createModelTransformation(direction))` — a
+/// `rotateAround(Axis.YP.rotationDegrees(180 - facing.toYRot()), 0.5, 0.5, 0.5)` yaw carried in
+/// `body_rot` — then, while `0 <= wobbleProgress <= 1`, the wobble `rotateAround`s about the pot's
+/// bottom centre `(0.5, 0, 0.5)`:
+/// - `POSITIVE`: with `dt = progress · 2π`, `Rx(-1.5 · (cos(dt) + 0.5) · sin(dt/2) · 0.015625)`
+///   then `Rz(sin(dt) · 0.015625)`;
+/// - `NEGATIVE`: `Ry(sin(-progress · 3π) · 0.125 · (1 - progress))` (the `WOBBLE_AMPLITUDE`
+///   0.125 twist with a linear decay).
+///
+/// The pot mesh is authored Y-up in block-local space (the parts' own π poses do the flipping),
+/// so there is no entity `scale(-1, -1, 1)`. `instance.position` is the pot block's min corner.
+pub(in crate::entity_models) fn decorated_pot_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    use std::f32::consts::PI;
+
+    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * rotate_around(
+            Mat4::from_rotation_y(instance.render_state.body_rot.to_radians()),
+            Vec3::new(0.5, 0.5, 0.5),
+        );
+    if let Some(wobble) = instance.render_state.decorated_pot_wobble {
+        if (0.0..=1.0).contains(&wobble.progress) {
+            let pivot = Vec3::new(0.5, 0.0, 0.5);
+            if wobble.positive {
+                let delta_time = wobble.progress * (PI * 2.0);
+                let tilt_x = -1.5 * (delta_time.cos() + 0.5) * (delta_time / 2.0).sin();
+                transform *= rotate_around(Mat4::from_rotation_x(tilt_x * 0.015625), pivot);
+                let tilt_z = delta_time.sin();
+                transform *= rotate_around(Mat4::from_rotation_z(tilt_z * 0.015625), pivot);
+            } else {
+                let turn_angle = (-wobble.progress * 3.0 * PI).sin() * 0.125;
+                let linear_decay = 1.0 - wobble.progress;
+                transform *= rotate_around(Mat4::from_rotation_y(turn_angle * linear_decay), pivot);
+            }
+        }
+    }
+    transform
+}
+
 /// Vanilla `StandingSignRenderer.RENDER_SCALE` (`0.6666667F`), the plain
 /// sign's body scale; hanging signs use `MODEL_RENDER_SCALE = 1.0F`.
 pub(in crate::entity_models) const SIGN_RENDER_SCALE: f32 = 0.666_666_7;

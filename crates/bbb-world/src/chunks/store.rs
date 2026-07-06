@@ -14,10 +14,10 @@ use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
     BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
-    ChunkViewState, HeightmapData, RegistrySet, Result, SignBlockEntityTextState, TerrainBlockCell,
-    TerrainChunkSnapshot, TerrainLight, TerrainMaterialClass, VaultConnectionParticleState,
-    VaultConnectionParticleTargetState, VaultSharedDataState, WorldDecodeError, WorldDimension,
-    WorldStore,
+    ChunkViewState, DecoratedPotSherdsState, HeightmapData, RegistrySet, Result,
+    SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
+    TerrainMaterialClass, VaultConnectionParticleState, VaultConnectionParticleTargetState,
+    VaultSharedDataState, WorldDecodeError, WorldDimension, WorldStore,
 };
 
 use super::{
@@ -139,6 +139,14 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let decorated_pot_sherds = match crate::chunks::decode_decorated_pot_sherds(&packet.raw_nbt)
+        {
+            Ok(sherds) => sherds,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -152,6 +160,7 @@ impl WorldStore {
             nbt,
             sign_text,
             vault_shared_data,
+            decorated_pot_sherds,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
@@ -306,6 +315,14 @@ impl WorldStore {
 
     pub fn vault_shared_data_at(&self, pos: BlockPos) -> Option<&VaultSharedDataState> {
         self.block_entity_record_at(pos)?.vault_shared_data.as_ref()
+    }
+
+    /// The stored decorated pot sherd faces at a block position, if a pot
+    /// block entity record with a `sherds` list exists there.
+    pub fn decorated_pot_sherds_at(&self, pos: BlockPos) -> Option<&DecoratedPotSherdsState> {
+        self.block_entity_record_at(pos)?
+            .decorated_pot_sherds
+            .as_ref()
     }
 
     pub fn vault_connection_particle_state(
@@ -684,6 +701,7 @@ impl WorldStore {
                     entity.local_x == local_x && entity.y == y && entity.local_z == local_z
                 }) {
                     record.sign_text = None;
+                    record.decorated_pot_sherds = None;
                 }
             }
         }

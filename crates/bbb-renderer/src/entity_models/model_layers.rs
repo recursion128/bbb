@@ -2,7 +2,7 @@ use super::{
     degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
     BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, ModelPartDesc, PartPose,
     TexturedModelCubeDesc, TexturedModelPartDesc, MODEL_CUBE_FACES_ALL, MODEL_CUBE_FACE_DOWN,
-    MODEL_CUBE_FACE_UP, PART_POSE_ZERO,
+    MODEL_CUBE_FACE_NORTH, MODEL_CUBE_FACE_UP, PART_POSE_ZERO,
 };
 
 pub(super) const CHICKEN_WHITE: [f32; 4] = [0.94, 0.94, 0.86, 1.0];
@@ -131,6 +131,7 @@ pub(super) const CHEST_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const SIGN_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const BED_WOOL: [f32; 4] = [0.75, 0.22, 0.20, 1.0];
 pub(super) const BELL_GOLD: [f32; 4] = [0.94, 0.78, 0.31, 1.0];
+pub(super) const POT_TERRACOTTA: [f32; 4] = [0.62, 0.39, 0.30, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod allay;
@@ -154,6 +155,7 @@ mod copper_golem;
 mod cow;
 mod creaking;
 mod creeper;
+mod decorated_pot;
 mod dolphin;
 mod elytra;
 mod end_crystal;
@@ -191,6 +193,7 @@ mod ravager;
 mod salmon;
 mod sheep;
 mod shulker;
+mod shulker_box;
 mod shulker_bullet;
 mod sign;
 mod silverfish;
@@ -238,6 +241,7 @@ pub(super) use copper_golem::*;
 pub(super) use cow::*;
 pub(super) use creaking::*;
 pub(super) use creeper::*;
+pub(super) use decorated_pot::*;
 pub(super) use dolphin::*;
 pub(super) use elytra::*;
 pub(super) use end_crystal::*;
@@ -276,6 +280,7 @@ pub(super) use salmon::*;
 pub use sheep::SheepHeadEatPose;
 pub(super) use sheep::*;
 pub(super) use shulker::*;
+pub(super) use shulker_box::*;
 pub(super) use shulker_bullet::*;
 pub(super) use sign::*;
 pub(super) use silverfish::*;
@@ -296,29 +301,29 @@ pub use textures::{
     blaze_entity_texture_refs, boat_entity_texture_refs, breeze_entity_texture_refs,
     camel_entity_texture_refs, chest_entity_texture_refs, chicken_entity_texture_refs,
     cod_entity_texture_refs, copper_golem_entity_texture_refs, cow_entity_texture_refs,
-    creaking_entity_texture_refs, creeper_entity_texture_refs, dolphin_entity_texture_refs,
-    donkey_entity_texture_refs, drowned_entity_texture_refs, end_crystal_entity_texture_refs,
-    ender_dragon_entity_texture_refs, enderman_entity_texture_refs, endermite_entity_texture_refs,
-    entity_model_texture_refs, evoker_fangs_entity_texture_refs,
-    experience_orb_entity_texture_refs, feline_entity_texture_refs, fox_entity_texture_refs,
-    frog_entity_texture_refs, ghast_entity_texture_refs, goat_entity_texture_refs,
-    guardian_entity_texture_refs, happy_ghast_entity_texture_refs, hoglin_entity_texture_refs,
-    horse_entity_texture_refs, husk_entity_texture_refs, illager_entity_texture_refs,
-    leash_knot_entity_texture_refs, llama_entity_texture_refs, llama_spit_entity_texture_refs,
-    minecart_entity_texture_refs, mooshroom_entity_texture_refs, nautilus_entity_texture_refs,
-    panda_entity_texture_refs, parrot_entity_texture_refs, phantom_entity_texture_refs,
-    pig_entity_texture_refs, piglin_entity_texture_refs, player_entity_texture_refs,
-    polar_bear_entity_texture_refs, pufferfish_entity_texture_refs, rabbit_entity_texture_refs,
-    ravager_entity_texture_refs, salmon_entity_texture_refs, sheep_entity_texture_refs,
-    shulker_bullet_entity_texture_refs, shulker_entity_texture_refs, sign_entity_texture_refs,
-    silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    sniffer_entity_texture_refs, spider_entity_texture_refs, squid_entity_texture_refs,
-    strider_entity_texture_refs, tadpole_entity_texture_refs, trident_entity_texture_refs,
-    tropical_fish_entity_texture_refs, turtle_entity_texture_refs,
-    undead_horse_entity_texture_refs, vex_entity_texture_refs, villager_entity_texture_refs,
-    warden_entity_texture_refs, wind_charge_entity_texture_refs, witch_entity_texture_refs,
-    wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
-    zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
+    creaking_entity_texture_refs, creeper_entity_texture_refs, decorated_pot_entity_texture_refs,
+    dolphin_entity_texture_refs, donkey_entity_texture_refs, drowned_entity_texture_refs,
+    end_crystal_entity_texture_refs, ender_dragon_entity_texture_refs,
+    enderman_entity_texture_refs, endermite_entity_texture_refs, entity_model_texture_refs,
+    evoker_fangs_entity_texture_refs, experience_orb_entity_texture_refs,
+    feline_entity_texture_refs, fox_entity_texture_refs, frog_entity_texture_refs,
+    ghast_entity_texture_refs, goat_entity_texture_refs, guardian_entity_texture_refs,
+    happy_ghast_entity_texture_refs, hoglin_entity_texture_refs, horse_entity_texture_refs,
+    husk_entity_texture_refs, illager_entity_texture_refs, leash_knot_entity_texture_refs,
+    llama_entity_texture_refs, llama_spit_entity_texture_refs, minecart_entity_texture_refs,
+    mooshroom_entity_texture_refs, nautilus_entity_texture_refs, panda_entity_texture_refs,
+    parrot_entity_texture_refs, phantom_entity_texture_refs, pig_entity_texture_refs,
+    piglin_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
+    pufferfish_entity_texture_refs, rabbit_entity_texture_refs, ravager_entity_texture_refs,
+    salmon_entity_texture_refs, sheep_entity_texture_refs, shulker_bullet_entity_texture_refs,
+    shulker_entity_texture_refs, sign_entity_texture_refs, silverfish_entity_texture_refs,
+    skeleton_entity_texture_refs, slime_entity_texture_refs, sniffer_entity_texture_refs,
+    spider_entity_texture_refs, squid_entity_texture_refs, strider_entity_texture_refs,
+    tadpole_entity_texture_refs, trident_entity_texture_refs, tropical_fish_entity_texture_refs,
+    turtle_entity_texture_refs, undead_horse_entity_texture_refs, vex_entity_texture_refs,
+    villager_entity_texture_refs, warden_entity_texture_refs, wind_charge_entity_texture_refs,
+    witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
+    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
 };
 pub(super) use trident::*;
 pub(super) use tropical_fish::*;

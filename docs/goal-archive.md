@@ -3960,6 +3960,70 @@
   `entitySolid` pass、15 面（bed）/12 面（bell）cutout-cull 烘焙证隐藏面、
   摆角 ticks 0/10/25 手算 × 四轴 + DOWN/UP/None 静止；native 侧投影
   kind/角度/光照打包/双半 max + pump 顺序断言。
+- [x] shulker box + decorated pot block-entity renderer（2026-07-06，BER
+  第四片）：shulker box（`minecraft:shulker_box` + 16 色 ×六向 facing）：
+  开合状态机转写（`bbb-world/src/shulker_box_blocks.rs`）——
+  `BlockEvent(1,count)` → `ShulkerBoxBlockEntity.triggerEvent`
+  （`java:140-155`：count 1→OPENING、0→CLOSING、其余仅记数）、
+  `updateAnimation`（`java:66-101`：`progressOld=progress` 后 ±0.1/tick、
+  0/1 处闩锁、CLOSED 修剪）在 runtime pump 按 running ticks 推进，
+  `getProgress=lerp(partial, progressOld, progress)`。dispatch：
+  `EntityModelKind::ShulkerBox{color,facing}` 进唯一 entity-model 提交流
+  （-1 哨兵、`block<<4|sky<<20`）；root transform 逐字转写
+  `ShulkerBoxRenderer.createModelTransform`（`java:111-121`）：
+  `T(0.5,0.5,0.5)·S(0.9995)·R(FACING.getRotation())·S(1,-1,-1)·T(0,-1,0)`
+  （`Direction.getRotation()` 表 `Direction.java:144-153`）。renderer
+  （`model_layers/shulker_box.rs`）：`ShulkerModel.createBoxLayer` 即 mob
+  壳去头（lid 16×12×16 texOffs(0,0)、base 16×8×16 texOffs(0,28)、pivot
+  offset(0,24,0)、atlas 64×64）——cube 常量与 shulker mob 共用，17 张
+  `entity/shulker/shulker[_<color>].png` 已注册，box 零新增纹理；
+  `setupAnim`（`ShulkerBoxRenderer.java:141-145`）`lid.setPos(0,24−
+  progress·0.5·16,0)`、`lid.yRot=270°·progress`；render type
+  `entityCutout`（`java:137`，mob 用 entityCutoutZOffset）。decorated pot
+  （`minecraft:decorated_pot` × HORIZONTAL_FACING）：BE NBT `sherds`
+  item-id 列表（`PotDecorations.java:23-52`：≤4 项按 back/left/right/
+  front 序，`minecraft:brick`/缺项=素面）解进
+  `BlockEntityRecord.decorated_pot_sherds`（chunk 批量 + 单条
+  BlockEntityData，方块变更修剪）；sherd→pattern 用转写 23 项常量表
+  （`bbb-native/src/decorated_pot_scene.rs`，引
+  `DecoratedPotPatterns.java:37-62/72-97`：`<name>_pottery_sherd` →
+  `<name>_pottery_pattern`；未知 item → 素面 `decorated_pot_side`，同
+  vanilla null-pattern 兜底）。root transform 转写
+  `DecoratedPotRenderer`（`java:175-177`）`rotateAround(Ry(180−toYRot),
+  0.5,0.5,0.5)`；wobble 按 bell 模式落地（`bbb-world/src/
+  decorated_pot_blocks.rs`）：`BlockEvent(1,style.ordinal())`
+  （`DecoratedPotBlockEntity.java:167-175`，data<2 门）起 tick 计数器代
+  vanilla `gameTime−wobbleStartedAtTick` 时钟（POSITIVE 7 tick/NEGATIVE
+  10），重触发重置、到期/拆除修剪；渲染侧转写 `java:150-169`：门
+  `0≤progress≤1`，POSITIVE `Rx(−1.5·(cos dt+0.5)·sin(dt/2)·0.015625)` 再
+  `Rz(sin dt·0.015625)`（`dt=progress·2π`，pivot (0.5,0,0.5)），NEGATIVE
+  `Ry(sin(−progress·3π)·0.125·(1−progress))`。renderer
+  （`model_layers/decorated_pot.rs`）：`createBaseLayer`（32×32，
+  `java:83-101`）neck texOffs(0,0) box(4,17,4)+(8,3,8) deflate(−0.1) +
+  texOffs(0,5) box(5,20,5)+(6,1,6) inflate(0.2) 于
+  offsetAndRotation(0,37,16,π,0,0)（CubeDeformation：min−g、size+2g、UV
+  取未变形尺寸），top/bottom texOffs(−14,13) 14×0×14 平面于 (1,16,1)/
+  (1,0,1)；`createSidesLayer`（16×16，`java:103-112`）14×16×0 平面
+  texOffs(1,0) 仅烘 NORTH 面（`ModelCube::with_visible_faces`），pose
+  back(15,16,1,0,0,π)/left(1,16,1,0,−π/2,π)/right(15,16,15,0,π/2,π)/
+  front(1,16,15,π,0,0)；单棵 7 部件树经 `RetainedParts` 可见性拆 5 个
+  `entitySolid` pass（base 贴图管 neck/top/bottom + 每面一个 pattern
+  pass）；25 张 `entity/decorated_pot/*`（base 32×32 + side + 23 pattern
+  16×16，资产树清点核对）进共享 entity atlas 与 `entity_assets.rs`。
+  defer 如实记账：BER breakProgress crumbling、逐 BE 距离/视锥剔除（同
+  chest/sign/bed/bell 边界）；box 开合音效/碰撞属 gameplay；26.1 反编译
+  `DecoratedPotRenderer.extractRenderState` 未赋 `state.wobbleStyle`
+  （反编译伪影），bbb 特意携带 style。测试：world 侧 17 色表/事件门/
+  开合闩锁/0.1 步进 + lerp 手算/记数不改状态/拆除修剪/投影、wobble 事件
+  门/style 表/重触发/到期修剪/进度投影/facing 表、sherds NBT 顺序/brick
+  与缺项素面/方块变更修剪；renderer 侧 shulker cube 对照 + lid pose
+  progress 0/0.5/1 手算（(24,0°)/(20,135°)/(16,270°)）+ 六向变换点映射
+  （含 0.9995 收缩）+ 17 纹理选择 + `entityCutout` pass + 12 面 cutout
+  烘焙、pot 变形 cube/pose 对照 + NORTH 单面 + facing 点映射 + wobble
+  正负手算与 >1 门 + 25 纹理表 + 5 pass 逐面 pattern/兜底选择 + 28 面
+  cutout-cull 烘焙；native 侧 kind/色/facing/y-rot/光照打包、sherd→
+  pattern 表回环（brick/未知兜底）、wobble style+progress 投影 + pump
+  顺序断言。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

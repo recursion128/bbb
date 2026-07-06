@@ -486,6 +486,8 @@ impl WorldStore {
         self.block_events.clear();
         self.chest_lids.clear();
         self.bell_shakes.clear();
+        self.shulker_box_lids.clear();
+        self.decorated_pot_wobbles.clear();
         self.level_events.clear();
         self.client_audio.playing_jukebox_songs.clear();
         self.local_block_predictions.clear();

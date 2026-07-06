@@ -435,20 +435,107 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (banner, shulker box, conduit,
-    decorated pot, …): the chest family (2026-07-06), the sign family incl.
-    hanging signs + face text (2026-07-06), and bed + bell (2026-07-06, see
-    Evidence) are DONE as the first three BER sub-slices; every other
-    BE-driven block still bakes a particle-only model into near-empty
-    terrain geometry (remaining: banner, shulker box, conduit, decorated
-    pot, skull/head, enchanting-table book, lectern book, end portal/
-    gateway, the spawner's spinning display entity). Vanilla:
-    `BlockEntityRenderDispatcher` + per-BE renderers. Continue by smallest
-    sub-slice (shulker box / decorated pot are the staked next candidates);
-    audit the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
+  - Block-entity special renderers (banner, conduit, skull, …): the chest
+    family (2026-07-06), the sign family incl. hanging signs + face text
+    (2026-07-06), bed + bell (2026-07-06), and shulker box + decorated pot
+    (2026-07-06, see Evidence) are DONE as the first four BER sub-slices;
+    every other BE-driven block still bakes a particle-only model into
+    near-empty terrain geometry (remaining: banner, conduit, skull/head,
+    enchanting-table book, lectern book, end portal/gateway, the spawner's
+    spinning display entity). Vanilla: `BlockEntityRenderDispatcher` +
+    per-BE renderers. Continue by smallest sub-slice; audit the
+    `Custom`→`Cube` shape fallback (`block_models/shape.rs`
     → `textures.rs`) alongside, since unclassifiable elements are mostly
     BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Shulker box + decorated pot block-entity renderers
+    (fourth BER sub-slice). Shulker box (all 17 blocks: `minecraft:
+    shulker_box` + 16 `<color>_shulker_box` × 6-way `facing`): lid state
+    machine transcribed in `bbb-world/src/shulker_box_blocks.rs` —
+    `BlockEvent(1, count)` → `ShulkerBoxBlockEntity.triggerEvent`
+    (`java:140-155`: count 1 → OPENING, count 0 → CLOSING, other counts
+    only update the stored count) and `updateAnimation` (`java:66-101`:
+    `progressOld = progress` then ±0.1/tick, latch at the 0/1 clamps,
+    CLOSED prunes) advanced on running ticks in the runtime pump;
+    `getProgress = lerp(partialTicks, progressOld, progress)`. Dispatch:
+    `EntityModelKind::ShulkerBox { color, facing }` rides the single
+    entity-model submission stream (`-1` sentinel, `block << 4 | sky <<
+    20` light); the root transform transcribes
+    `ShulkerBoxRenderer.createModelTransform` (`java:111-121`):
+    `T(0.5,0.5,0.5) · S(0.9995) · R(FACING.getRotation()) · S(1,-1,-1) ·
+    T(0,-1,0)` with the `Direction.getRotation()` table
+    (`Direction.java:144-153`). Renderer (`model_layers/shulker_box.rs`):
+    the box model is vanilla `ShulkerModel.createBoxLayer` = the mob's
+    shell mesh minus the head (`lid` 16×12×16 texOffs(0,0), `base`
+    16×8×16 texOffs(0,28), pivot offset(0,24,0), atlas 64×64 — the cube
+    consts are shared with the shulker mob, and the 17
+    `entity/shulker/shulker[_<color>].png` sprites were already
+    registered, so the box adds zero texture refs); `setupAnim`
+    (`ShulkerBoxRenderer.java:141-145`): `lid.setPos(0, 24 −
+    progress·0.5·16, 0)`, `lid.yRot = 270°·progress`; render type
+    `entityCutout` (`java:137`; the mob uses `entityCutoutZOffset`).
+    Decorated pot (`minecraft:decorated_pot` × HORIZONTAL_FACING): the BE
+    NBT `sherds` item-id list (`PotDecorations.java:23-52`; ≤4 entries in
+    [back, left, right, front] order, `minecraft:brick`/missing = empty
+    face) decodes into `BlockEntityRecord.decorated_pot_sherds`
+    (chunk-batch + single `BlockEntityData`, pruned on block change);
+    the sherd item → pattern mapping is the transcribed 23-arm table in
+    `bbb-native/src/decorated_pot_scene.rs` citing
+    `DecoratedPotPatterns.java:37-62/72-97` (every
+    `minecraft:<name>_pottery_sherd` → `<name>_pottery_pattern`; unknown
+    items → the plain `decorated_pot_side`, matching the vanilla
+    null-pattern fallback). Dispatch: `EntityModelKind::DecoratedPot {
+    back, left, right, front }`; root transform transcribes
+    `DecoratedPotRenderer` (`java:175-177`): `rotateAround(Ry(180 −
+    facing.toYRot()), 0.5, 0.5, 0.5)`. Wobble done bell-style
+    (`bbb-world/src/decorated_pot_blocks.rs`): `BlockEvent(1,
+    style.ordinal())` (`DecoratedPotBlockEntity.java:167-175`, `data < 2`
+    gate) starts a tick counter standing in for vanilla's `gameTime −
+    wobbleStartedAtTick` clock (POSITIVE 7 ticks / NEGATIVE 10,
+    `WobbleStyle`), re-trigger restarts, expiry/destroy prunes; the
+    render-side transform transcribes `java:150-169`: gate `0 ≤ progress
+    ≤ 1`, POSITIVE `Rx(−1.5·(cos dt + 0.5)·sin(dt/2)·0.015625)` then
+    `Rz(sin dt·0.015625)` with `dt = progress·2π` about (0.5, 0, 0.5),
+    NEGATIVE `Ry(sin(−progress·3π)·0.125·(1 − progress))`. Renderer
+    (`model_layers/decorated_pot.rs`) transcribes `createBaseLayer`
+    (atlas 32×32, `java:83-101`): `neck` texOffs(0,0) box (4,17,4)+(8,3,8)
+    deflate(−0.1) + texOffs(0,5) box (5,20,5)+(6,1,6) inflate(0.2) at
+    offsetAndRotation(0,37,16,π,0,0) (CubeDeformation g: min−g, size+2g,
+    UV keeps undeformed dims), `top`/`bottom` texOffs(−14,13) 14×0×14
+    planes at (1,16,1)/(1,0,1); and `createSidesLayer` (atlas 16×16,
+    `java:103-112`): one 14×16×0 plane texOffs(1,0) baked NORTH-face-only
+    (`ModelCube::with_visible_faces`), posed back(15,16,1, 0,0,π)/
+    left(1,16,1, 0,−π/2,π)/right(15,16,15, 0,π/2,π)/front(1,16,15,
+    π,0,0). One 7-part model tree renders in 5 `entitySolid` passes via
+    `RetainedParts` visibility (base sheet for neck/top/bottom + one pass
+    per side with its pattern sprite); 25 new 16×16/32×32
+    `entity/decorated_pot/*` sprites (base, side, 23 patterns — asset
+    tree count verified) join the shared entity atlas and
+    `entity_assets.rs`. Deferred (honest): BER `breakProgress` crumbling
+    and per-BE distance/frustum culling (same boundary as chest/sign/
+    bed/bell); the shulker box's `AABB`-based open/close *sound* +
+    interaction blocking are gameplay-side; vanilla 26.1's decompiled
+    `DecoratedPotRenderer.extractRenderState` never assigns
+    `state.wobbleStyle` (decompiler artifact) — bbb carries the style
+    through deliberately. Tests: `bbb-world/src/shulker_box_blocks.rs`
+    (17-color block-id table, event gate/open-close/latch/saturation
+    count, 0.1-step + lerp hand-calcs, destroyed prune, projection),
+    `bbb-world/src/decorated_pot_blocks.rs` (wobble event gate + style
+    table + restart + expiry prune + progress projection, facing table),
+    `bbb-world/src/chunks/pot_decorations.rs` (sherds NBT order,
+    brick/missing → empty face, prune on block change),
+    `entity_models/tests/shulker_box.rs` (cubes vs `ShulkerModel`, lid
+    pose hand-computed at progress 0/0.5/1 → (24,0°)/(20,135°)/(16,270°),
+    six-way facing transform point-mapped incl. the 0.9995 shrink,
+    17-sprite selection, `entityCutout` pass, 12-face cutout bake),
+    `entity_models/tests/decorated_pot.rs` (deformed cubes + poses vs
+    `DecoratedPotRenderer`, NORTH-only side faces, facing point-mapping,
+    wobble POSITIVE/NEGATIVE hand-calcs + >1 gate, 25-sprite table,
+    5-pass layers with per-side pattern/fallback selection, 28-face
+    cutout-cull bake), `bbb-native/src/shulker_box_scene.rs` /
+    `decorated_pot_scene.rs` (kind/color/facing/y-rot/light packing,
+    sherd→pattern table round-trip incl. brick/unknown fallback, wobble
+    style+progress projection) + the runtime pump ordering assertions.
   - Done 2026-07-06 — Bed + bell block-entity renderers (third BER
     sub-slice). Bed (all 16 `minecraft:<color>_bed` blocks × HEAD/FOOT ×
     facing): positions/color/part/facing derive per frame from block states

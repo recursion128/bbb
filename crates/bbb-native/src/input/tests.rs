@@ -161,6 +161,7 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
                 is_waxed: false,
             }),
             vault_shared_data: None,
+            decorated_pot_sherds: None,
         }],
         light: LightData::default(),
     });

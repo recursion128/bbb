@@ -54,6 +54,7 @@ use crate::{
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
+    decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
@@ -77,6 +78,7 @@ use crate::{
         ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
         SMOKE_PARTICLE_TYPE_ID,
     },
+    shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::sign_scene_from_world,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
@@ -1497,6 +1499,12 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `BellBlockEntity.clientTick` is the same kind of client
     // block-entity ticker, so the bell shakes advance on running ticks too.
     world.advance_bell_shake_ticks(running_ticks);
+    // Vanilla `ShulkerBoxBlockEntity.tick` (updateAnimation) is the same kind
+    // of client block-entity ticker, so the box lids advance on running ticks.
+    world.advance_shulker_box_lid_ticks(running_ticks);
+    // The decorated pot wobble clock is vanilla `gameTime -
+    // wobbleStartedAtTick`, re-expressed as running ticks since the block event.
+    world.advance_decorated_pot_wobble_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1717,6 +1725,17 @@ pub(crate) fn pump_network_and_terrain(
     // `BellModel.setupAnim` swing.
     entity_instances.extend(bed_model_instances_from_world(world));
     entity_instances.extend(bell_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
+    // Shulker box and decorated pot block-entity models ride the same stream:
+    // boxes carry the lerped lid progress, pots their sherd patterns and the
+    // wobble style/progress.
+    entity_instances.extend(shulker_box_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
+    entity_instances.extend(decorated_pot_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
     ));

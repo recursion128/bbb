@@ -260,6 +260,34 @@ pub enum EntityModelKind {
     /// bell block states (`entity_id` is a sentinel); the shake rotation reads
     /// `EntityRenderState.bell_ticks` / `bell_shake_direction`.
     Bell,
+    /// Vanilla 26.1 `ShulkerBoxRenderer.ShulkerBoxModel` — the shulker mob's shell mesh
+    /// (`ShulkerModel.createBoxLayer`: `lid` + `base`, no head) submitted per shulker box block
+    /// entity. Instances are projected from shulker box block states (`entity_id` is a sentinel).
+    /// `color` selects the `Sheets.getShulkerBoxSprite` texture (`None` -> the undyed
+    /// `entity/shulker/shulker`); `facing` is the block's six-way `ShulkerBoxBlock.FACING`, folded
+    /// into the root transform via `Direction.getRotation()`
+    /// (`ShulkerBoxRenderer.createModelTransform`). The lid lift/twist reads
+    /// `EntityRenderState.shulker_box_progress`.
+    ShulkerBox {
+        color: Option<EntityDyeColor>,
+        /// The block's `FACING` value reusing the six-way [`EntityAttachmentFace`] direction enum
+        /// (`Down`/`Up`/`North`/`South`/`West`/`East`); the vanilla default is `Up`.
+        facing: EntityAttachmentFace,
+    },
+    /// Vanilla 26.1 `DecoratedPotRenderer` — the `DECORATED_POT_BASE` layer (`neck`/`top`/`bottom`
+    /// on the 32×32 `decorated_pot_base` sheet) plus the `DECORATED_POT_SIDES` layer (four 14×16
+    /// north-face-only planes on 16×16 side sheets). Instances are projected from decorated pot
+    /// block states (`entity_id` is a sentinel). Each side carries its sherd's
+    /// `DecoratedPotPattern` (`Sheets.getDecoratedPotSprite`), `None` rendering the plain
+    /// `decorated_pot_side`. `body_rot` carries the `180 - HORIZONTAL_FACING.toYRot()` yaw of
+    /// `DecoratedPotRenderer.createModelTransformation`; the wobble reads
+    /// `EntityRenderState.decorated_pot_wobble`.
+    DecoratedPot {
+        back: Option<DecoratedPotPattern>,
+        left: Option<DecoratedPotPattern>,
+        right: Option<DecoratedPotPattern>,
+        front: Option<DecoratedPotPattern>,
+    },
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
@@ -1484,6 +1512,49 @@ pub enum BellShakeDirection {
     South,
     East,
     West,
+}
+
+/// Vanilla `DecoratedPotPatterns` registry entries minus `BLANK` (whose sprite is the plain
+/// `decorated_pot_side` this enum's `None` case already renders): the twenty-three sherd patterns,
+/// each an `entity/decorated_pot/<pattern>_pottery_pattern` sprite
+/// (`DecoratedPotPatterns.bootstrap`, `DecoratedPotPatterns.java:72-97`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecoratedPotPattern {
+    Angler,
+    Archer,
+    ArmsUp,
+    Blade,
+    Brewer,
+    Burn,
+    Danger,
+    Explorer,
+    Flow,
+    Friend,
+    Guster,
+    Heart,
+    Heartbreak,
+    Howl,
+    Miner,
+    Mourner,
+    Plenty,
+    Prize,
+    Scrape,
+    Sheaf,
+    Shelter,
+    Skull,
+    Snort,
+}
+
+/// Vanilla `DecoratedPotRenderState.wobbleStyle` + `wobbleProgress`: the running pot wobble the
+/// renderer folds into the root transform (`DecoratedPotRenderer.submit`,
+/// `DecoratedPotRenderer.java:150-169`). `positive` selects the `WobbleStyle.POSITIVE` X/Z tilt
+/// (an item was stored/taken) over the `NEGATIVE` Y twist (a failed interaction); `progress` is
+/// `(gameTime - wobbleStartedAtTick + partialTicks) / style.duration`, applied only inside
+/// `0.0..=1.0`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DecoratedPotWobble {
+    pub positive: bool,
+    pub progress: f32,
 }
 
 /// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,

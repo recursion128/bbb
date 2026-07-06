@@ -923,6 +923,7 @@ fn applies_block_entity_data_update() {
             }),
             sign_text: None,
             vault_shared_data: None,
+            decorated_pot_sherds: None,
         }
     );
     assert_eq!(
