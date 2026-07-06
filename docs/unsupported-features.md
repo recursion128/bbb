@@ -483,16 +483,42 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Armor bar (derive the armor value from already-stored attributes per
-    `Gui.extractArmor`), then air bubbles / vehicle health / heart variants
-    (absorption, poison, wither, hardcore, regen flash) — these need world
-    metadata first: `air_supply`, `LivingEntity` health, and absorption are
-    not yet parsed in `bbb-world/src/entities/metadata.rs`.
+  - Air bubbles / vehicle health / heart variants (absorption, poison,
+    wither, hardcore, regen flash) — these need world metadata first:
+    `air_supply`, `LivingEntity` health, and absorption are not yet parsed in
+    `bbb-world/src/entities/metadata.rs`. (Armor bar landed 2026-07-06, see
+    Evidence.)
   - Sign edit screen (needs a sign block-entity text store; input flow
     exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
     ready), advancement screen (`ClientAdvancementsState` ready), horse jump
     meter (client-side charge), debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-06 — Armor bar. `WorldStore::local_player_armor_value`
+    (bbb-world `client/local_player.rs`) derives vanilla
+    `LivingEntity.getArmorValue()` = `Mth.floor(getAttributeValue(Attributes.ARMOR))`
+    (LivingEntity.java:1845-1846): the already-stored synced ARMOR attribute
+    (`BuiltInRegistries.ATTRIBUTE` registration index `0`, Attributes.java:10)
+    folded through the shared `AttributeInstance.calculateValue` implementation
+    (`entities::store::vanilla_attribute_value`: add, then multiply_base, then
+    multiply_total), floored to an int, `0` without the attribute. Projected as
+    `RendererFrame.hud_armor` (native `runtime.rs` → `render_extract.rs` →
+    `Renderer::set_hud_armor`), drawn in `collect_hud_draws` before the hearts
+    (vanilla `Gui.extractPlayerHealth` order, Gui.java:779/781) only when
+    `armor > 0` (`Gui.extractArmor`, Gui.java:800): 10 icons choosing
+    full/half/empty per `hud_armor_fill` (`i*2+1` vs armor, Gui.java:805-814)
+    from the `hud/armor_{full,half,empty}` sprites (Gui.java:94-96), placed by
+    `armor_hud_rect` one row (10px) above the heart baseline
+    (`yLineArmor = yLineBase - (numHealthRows-1)*rowHeight - 10`, Gui.java:801;
+    bbb draws a single health row so `numHealthRows == 1` collapses the stacked
+    term to 0). Boundary: multi-row health stacking (absorption/`maxHealth`
+    rows shifting the armor row further up) still deferred with the rest of the
+    heart-variant work above; the armor row uses the single-row offset. Tests:
+    world attribute→armor derivation incl. floor + full modifier formula +
+    zero-default (bbb-world `local_player.rs`); `hud_armor_fill` combos
+    (armor 7 → 3 full/1 half/6 empty) and `armor_hud_rect` layout constants
+    (bbb-renderer `hud/layout.rs`); offscreen whole-frame sentinel proving the
+    armor row paints when `armor > 0` and stays background when `armor == 0`
+    (bbb-renderer `hud.rs`).
   - Done 2026-07-06 — Offscreen whole-frame readback harness. `render()` no
     longer hard-requires a swapchain: frame acquisition moved into
     `RenderSurface::acquire_frame` (renderer.rs), an enum over the window

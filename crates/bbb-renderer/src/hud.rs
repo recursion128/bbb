@@ -16,9 +16,9 @@ pub(super) use self::gpu::{
     create_hud_sprite_gpu, HudSpriteGpu,
 };
 use self::layout::{
-    boss_bar_hud_rect, centered_hud_rect, experience_bar_hud_rect, food_hud_rect,
+    armor_hud_rect, boss_bar_hud_rect, centered_hud_rect, experience_bar_hud_rect, food_hud_rect,
     gui_item_slot_placement, heart_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect,
-    hotbar_selection_hud_rect, hud_boss_bar_fill_uv, hud_boss_bar_name_origin,
+    hotbar_selection_hud_rect, hud_armor_fill, hud_boss_bar_fill_uv, hud_boss_bar_name_origin,
     hud_boss_bar_progress_width, hud_boss_bar_rows, hud_experience_level_text_origin,
     hud_experience_progress_width, hud_food_fill, hud_food_jitter_offsets, hud_heart_fill,
     hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
@@ -27,8 +27,8 @@ use self::layout::{
     hud_item_durability_bar_rect, hud_overlay_message_text_origin, hud_quad_vertices,
     hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
     inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
-    HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
+    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
+    HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
 };
 
 pub use bbb_render_types::{
@@ -1824,6 +1824,25 @@ impl Renderer {
         Ok(())
     }
 
+    /// Vanilla `hud/armor_empty` — the background slot the armor bar draws for
+    /// each icon beyond the armor value (`Gui.extractArmor`, Gui.java:94/814).
+    pub fn upload_hud_armor_empty(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_armor_empty = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/armor_half` — the half-filled armor icon (Gui.java:95/810).
+    pub fn upload_hud_armor_half(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_armor_half = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    /// Vanilla `hud/armor_full` — the full armor icon (Gui.java:96/806).
+    pub fn upload_hud_armor_full(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_armor_full = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_boss_bar_background(
         &mut self,
         color: HudBossBarColor,
@@ -1898,6 +1917,13 @@ impl Renderer {
 
     pub fn set_hud_food(&mut self, food: Option<i32>) {
         self.hud_food = food;
+    }
+
+    /// Projects `Gui.extractArmor`'s `player.getArmorValue()` (Gui.java:799); the
+    /// draw is gated on `armor > 0` in `collect_hud_draws`, matching vanilla's
+    /// visibility test (Gui.java:800).
+    pub fn set_hud_armor(&mut self, armor: Option<i32>) {
+        self.hud_armor = armor;
     }
 
     /// Projects this frame's food-bar effect state (starvation-shake gate and
@@ -2153,6 +2179,29 @@ impl Renderer {
                                 1.0,
                             ],
                         },
+                    );
+                }
+            }
+        }
+
+        // Vanilla `Gui.extractPlayerHealth` extracts the armor row before the
+        // hearts (Gui.java:779 then :781); it only draws when `armor > 0`
+        // (`Gui.extractArmor`, Gui.java:800), each of the 10 icons picking
+        // full/half/empty per `hud_armor_fill`.
+        if let Some(armor) = self.hud_armor.filter(|&armor| armor > 0) {
+            for index in 0..HUD_ARMOR_ICONS_PER_ROW {
+                let sprite = match hud_armor_fill(armor, index) {
+                    HudIconFill::Empty => self.hud_armor_empty.as_ref(),
+                    HudIconFill::Half => self.hud_armor_half.as_ref(),
+                    HudIconFill::Full => self.hud_armor_full.as_ref(),
+                };
+                if let Some(sprite) = sprite {
+                    push_hud_draw(
+                        &mut vertices,
+                        &mut commands,
+                        sprite,
+                        surface_size,
+                        armor_hud_rect(surface_size, index, sprite.width, sprite.height),
                     );
                 }
             }
@@ -4363,6 +4412,67 @@ mod tests {
         assert!(
             corner_pixel[2] > 128 && corner_pixel[0] < 128,
             "corner should stay background, got {corner_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn armor_bar_offscreen_frame_draws_only_when_armor_is_positive() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        // 9x9 solid-green armor icons (the vanilla armor sprite size), unambiguously
+        // visible against the blue clear color.
+        let green: Vec<u8> = (0..81).flat_map(|_| [0u8, 255, 0, 255]).collect();
+        renderer
+            .upload_hud_armor_empty(9, 9, &green)
+            .expect("armor_empty");
+        renderer
+            .upload_hud_armor_half(9, 9, &green)
+            .expect("armor_half");
+        renderer
+            .upload_hud_armor_full(9, 9, &green)
+            .expect("armor_full");
+
+        // Armor icon 0's top-left is (guiWidth/2 - 91, guiHeight - 49); sample its center.
+        let armor_px = WIDTH / 2 - 91 + 4;
+        let armor_py = HEIGHT - 49 + 4;
+
+        // A full 20-point armor bar paints the armor row green.
+        renderer.set_hud_armor(Some(20));
+        let pixels = renderer.render_offscreen_frame().expect("armor frame");
+        let armor_pixel = pixels.pixel(armor_px, armor_py);
+        let corner_pixel = pixels.pixel(0, 0);
+        assert!(
+            armor_pixel[1] > 128 && armor_pixel[0] < 128 && armor_pixel[2] < 128,
+            "armor row should show the green icon, got {armor_pixel:?}"
+        );
+        assert!(
+            corner_pixel[2] > 128 && corner_pixel[1] < 128,
+            "corner should stay background, got {corner_pixel:?}"
+        );
+
+        // Armor value 0 is under vanilla's `armor > 0` gate (Gui.java:800): nothing
+        // is drawn, so the armor pixel reverts to the blue background.
+        renderer.set_hud_armor(Some(0));
+        let pixels = renderer.render_offscreen_frame().expect("no-armor frame");
+        let armor_pixel = pixels.pixel(armor_px, armor_py);
+        assert!(
+            armor_pixel[2] > 128 && armor_pixel[1] < 128,
+            "armor row should stay background when armor is 0, got {armor_pixel:?}"
         );
     }
 

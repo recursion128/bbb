@@ -24,6 +24,13 @@ const STANDING_BODY_HEIGHT: f64 = 1.8;
 const CROUCHING_BODY_HEIGHT: f64 = 1.5;
 const SWIMMING_BODY_HEIGHT: f64 = 0.6;
 
+/// `BuiltInRegistries.ATTRIBUTE` registration index for `minecraft:armor`: it is
+/// the first attribute registered (`Attributes.ARMOR`, Attributes.java:10), so
+/// index `0`. Sibling ids (gravity `14`, jump_strength `15`, movement_speed `22`)
+/// are already hand-derived from this same registration order in
+/// `local_player_movement.rs`.
+const VANILLA_ATTRIBUTE_ARMOR_ID: i32 = 0;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
     #[serde(default)]
@@ -431,6 +438,24 @@ impl WorldStore {
 
     pub fn local_player_eye_in_water(&self) -> bool {
         local_player_eye_in_water(self)
+    }
+
+    /// Vanilla `LivingEntity.getArmorValue()` =
+    /// `Mth.floor(getAttributeValue(Attributes.ARMOR))` (LivingEntity.java:1845-1846),
+    /// the value `Gui.extractArmor` reads to draw the armor bar (Gui.java:799). The
+    /// synced ARMOR attribute's modifiers fold through the shared
+    /// `AttributeInstance.calculateValue` implementation (`entities::store`'s
+    /// `vanilla_attribute_value`: base add, then multiply_base, then multiply_total).
+    /// Returns `0` when the player has no synced ARMOR attribute, matching vanilla's
+    /// `RangedAttribute` default of `0.0` (and `Mth.floor` toward negative infinity).
+    pub fn local_player_armor_value(&self) -> i32 {
+        self.local_player_id
+            .and_then(|id| {
+                self.entities
+                    .attribute_value(id, VANILLA_ATTRIBUTE_ARMOR_ID)
+            })
+            .map(|value| value.floor() as i32)
+            .unwrap_or(0)
     }
 
     pub fn advance_local_player_look_input(
@@ -1323,5 +1348,102 @@ mod tests {
             (actual - expected).abs() <= epsilon,
             "expected {actual} to be within {epsilon} of {expected}"
         );
+    }
+
+    fn player_world_with_armor(
+        modifiers: Vec<bbb_protocol::packets::AttributeModifier>,
+        base: f64,
+    ) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.local_player_id = Some(7);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 7,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(
+            world.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    // ARMOR is registration index 0 in BuiltInRegistries.ATTRIBUTE.
+                    attribute_id: VANILLA_ATTRIBUTE_ARMOR_ID,
+                    base,
+                    modifiers,
+                }],
+            })
+        );
+        world
+    }
+
+    #[test]
+    fn local_player_armor_value_defaults_to_zero_without_attribute() {
+        // No local player at all.
+        let world = WorldStore::new();
+        assert_eq!(world.local_player_armor_value(), 0);
+
+        // A local player entity with no synced ARMOR attribute still reads 0
+        // (vanilla `RangedAttribute` default), not a panic.
+        let mut world = WorldStore::new();
+        world.local_player_id = Some(7);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 7,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert_eq!(world.local_player_armor_value(), 0);
+    }
+
+    #[test]
+    fn local_player_armor_value_floors_the_armor_attribute() {
+        // Vanilla `getArmorValue()` = `Mth.floor(...)`, so 7.5 -> 7.
+        let world = player_world_with_armor(Vec::new(), 7.5);
+        assert_eq!(world.local_player_armor_value(), 7);
+
+        // Exact integers pass through unchanged.
+        let world = player_world_with_armor(Vec::new(), 20.0);
+        assert_eq!(world.local_player_armor_value(), 20);
+    }
+
+    #[test]
+    fn local_player_armor_value_folds_modifiers_through_calculate_value() {
+        // `AttributeInstance.calculateValue`: base add (op 0), then multiply_base
+        // (op 1), then multiply_total (op 2).
+        //   base    = 4.0 + 2.0            = 6.0
+        //   result  = 6.0 + 6.0 * 0.5      = 9.0
+        //   result  = 9.0 * (1.0 + 0.1)    = 9.9
+        //   floor(9.9)                     = 9
+        let world = player_world_with_armor(
+            vec![
+                bbb_protocol::packets::AttributeModifier {
+                    id: "test:add".to_string(),
+                    amount: 2.0,
+                    operation_id: 0,
+                },
+                bbb_protocol::packets::AttributeModifier {
+                    id: "test:multiply_base".to_string(),
+                    amount: 0.5,
+                    operation_id: 1,
+                },
+                bbb_protocol::packets::AttributeModifier {
+                    id: "test:multiply_total".to_string(),
+                    amount: 0.1,
+                    operation_id: 2,
+                },
+            ],
+            4.0,
+        );
+        assert_eq!(world.local_player_armor_value(), 9);
     }
 }

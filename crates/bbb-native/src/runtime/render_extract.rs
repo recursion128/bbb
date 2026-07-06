@@ -778,6 +778,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_health: Option<f32>,
     pub(crate) hud_food: Option<i32>,
     pub(crate) hud_food_effect: HudFoodEffect,
+    pub(crate) hud_armor: Option<i32>,
     pub(crate) hud_experience_progress: Option<f32>,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
@@ -841,6 +842,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_health(frame.hud_health);
     renderer.set_hud_food(frame.hud_food);
     renderer.set_hud_food_effect(frame.hud_food_effect);
+    renderer.set_hud_armor(frame.hud_armor);
     renderer.set_hud_experience_progress(frame.hud_experience_progress);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);

@@ -262,9 +262,8 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- 护甲条（先从既有 attributes 派生 armor 值）；氧气泡/坐骑血量/生命扩展
-  （absorption/poison/wither，先补 world 侧 metadata：air_supply、
-  LivingEntity health、absorption）。
+- 氧气泡/坐骑血量/生命扩展（absorption/poison/wither，先补 world 侧
+  metadata：air_supply、LivingEntity health、absorption）。
 - sign edit / recipe-book overlay / advancement screen（大件；recipe/
   advancement state 已 ready，sign 缺 block-entity 文本 store）；马跳跃条；
   debug overlay（F3，低优先）。

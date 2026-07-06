@@ -15,6 +15,15 @@ pub(super) const HUD_HEARTS_PER_ROW: u32 = 10;
 const HUD_HEART_SPACING: f32 = 8.0;
 pub(super) const HUD_FOOD_ICONS_PER_ROW: u32 = 10;
 const HUD_FOOD_SPACING: f32 = 8.0;
+pub(super) const HUD_ARMOR_ICONS_PER_ROW: u32 = 10;
+const HUD_ARMOR_SPACING: f32 = 8.0;
+/// Vanilla `Gui.extractArmor` seats the armor row at
+/// `yLineArmor = yLineBase - (numHealthRows - 1) * healthRowHeight - 10`
+/// (Gui.java:801). bbb draws a single health row (it does not yet project
+/// `maxHealth` / absorption, so `numHealthRows == 1`), which collapses the
+/// `(numHealthRows - 1) * healthRowHeight` term to `0` and leaves a fixed 10px
+/// gap above the `yLineBase` heart baseline (`surface_height - 39`).
+const HUD_ARMOR_ROW_Y_OFFSET: f32 = 10.0;
 const HUD_INVENTORY_ITEM_SIZE: u32 = 16;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE: u32 = 24;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET: f32 = -4.0;
@@ -253,6 +262,25 @@ pub(super) fn food_hud_rect(
     HudRect {
         x: surface_width * 0.5 + 91.0 - index as f32 * HUD_FOOD_SPACING - width as f32,
         y: surface_height - 39.0 + y_offset as f32,
+        width,
+        height,
+    }
+}
+
+/// One armor icon's rect. Vanilla `Gui.extractArmor` walks `xo = xLeft + i * 8`
+/// (Gui.java:804) along the same `xLeft = guiWidth / 2 - 91` left edge as the
+/// hearts, one row (`HUD_ARMOR_ROW_Y_OFFSET`) above the heart baseline.
+pub(super) fn armor_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    index: u32,
+    width: u32,
+    height: u32,
+) -> HudRect {
+    let surface_width = surface_size.width.max(1) as f32;
+    let surface_height = surface_size.height.max(1) as f32;
+    HudRect {
+        x: surface_width * 0.5 - 91.0 + index as f32 * HUD_ARMOR_SPACING,
+        y: surface_height - 39.0 - HUD_ARMOR_ROW_Y_OFFSET,
         width,
         height,
     }
@@ -542,6 +570,21 @@ pub(super) fn hud_food_fill(food: i32, index: u32) -> HudIconFill {
     if center_half < current_halves {
         HudIconFill::Full
     } else if center_half == current_halves {
+        HudIconFill::Half
+    } else {
+        HudIconFill::Empty
+    }
+}
+
+/// Which armor icon to draw at `index`, mirroring vanilla `Gui.extractArmor`'s
+/// per-slot branches on `i * 2 + 1` versus the armor value (Gui.java:805-814):
+/// `i*2+1 < armor` → full, `== armor` → half, `> armor` → empty. The overall
+/// `armor > 0` visibility gate is applied by the caller (vanilla Gui.java:800).
+pub(super) fn hud_armor_fill(armor: i32, index: u32) -> HudIconFill {
+    let center_half = index as i32 * 2 + 1;
+    if center_half < armor {
+        HudIconFill::Full
+    } else if center_half == armor {
         HudIconFill::Half
     } else {
         HudIconFill::Empty
@@ -1093,6 +1136,21 @@ mod tests {
     }
 
     #[test]
+    fn hud_layout_places_armor_row_one_row_above_the_hearts() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let first = armor_hud_rect(surface_size, 0, 9, 9);
+        let last = armor_hud_rect(surface_size, 9, 9, 9);
+        // Same left edge and 8px stride as the hearts (xLeft = guiWidth/2 - 91).
+        assert_eq!(first.x, 549.0);
+        assert_eq!(last.x, 621.0);
+        // 10px above the heart baseline (720 - 39 - 10).
+        assert_eq!(first.y, 671.0);
+        assert_eq!(last.y, 671.0);
+        // Exactly one 10px row above the hearts (yLineBase - 10).
+        assert_eq!(heart_hud_rect(surface_size, 0, 9, 9).y - first.y, 10.0);
+    }
+
+    #[test]
     fn hud_layout_centers_vanilla_inventory_background() {
         let surface_size = PhysicalSize::new(1280, 720);
         let background = inventory_background_hud_rect(surface_size, 176, 166, 0, 0, 176, 166);
@@ -1513,6 +1571,45 @@ mod tests {
         assert_eq!(hud_food_fill(6, 2), HudIconFill::Full);
         assert_eq!(hud_food_fill(20, 9), HudIconFill::Full);
         assert_eq!(hud_food_fill(25, 9), HudIconFill::Full);
+    }
+
+    #[test]
+    fn hud_armor_fill_splits_full_half_empty_on_the_armor_value() {
+        // Vanilla `Gui.extractArmor` compares `i * 2 + 1` to the armor value.
+        // armor = 7 -> icons 0..3 full (thresholds 1,3,5 < 7), icon 3 half
+        // (threshold 7 == 7), icons 4..9 empty (thresholds 9.. > 7): 3 full + 1
+        // half + 6 empty.
+        let fills: Vec<HudIconFill> = (0..HUD_ARMOR_ICONS_PER_ROW)
+            .map(|index| hud_armor_fill(7, index))
+            .collect();
+        assert_eq!(
+            fills,
+            vec![
+                HudIconFill::Full,
+                HudIconFill::Full,
+                HudIconFill::Full,
+                HudIconFill::Half,
+                HudIconFill::Empty,
+                HudIconFill::Empty,
+                HudIconFill::Empty,
+                HudIconFill::Empty,
+                HudIconFill::Empty,
+                HudIconFill::Empty,
+            ]
+        );
+        assert_eq!(fills.iter().filter(|&&f| f == HudIconFill::Full).count(), 3);
+        assert_eq!(fills.iter().filter(|&&f| f == HudIconFill::Half).count(), 1);
+        assert_eq!(
+            fills.iter().filter(|&&f| f == HudIconFill::Empty).count(),
+            6
+        );
+
+        // A full 20-point armor bar is 10 full icons, no half.
+        assert!((0..HUD_ARMOR_ICONS_PER_ROW)
+            .all(|index| hud_armor_fill(20, index) == HudIconFill::Full));
+        // An odd armor of 1 is a single half icon in slot 0.
+        assert_eq!(hud_armor_fill(1, 0), HudIconFill::Half);
+        assert_eq!(hud_armor_fill(1, 1), HudIconFill::Empty);
     }
 
     #[test]

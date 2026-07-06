@@ -1525,6 +1525,9 @@ pub(crate) fn pump_network_and_terrain(
     let local_player = world.local_player();
     let hud_health = local_player.health.map(|health| health.health);
     let hud_food = local_player.health.map(|health| health.food);
+    // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
+    // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
+    let hud_armor = Some(world.local_player_armor_value());
     // Vanilla `Gui.extractFood` starvation-shake / hunger-swap inputs
     // (Gui.java:948,958): saturation-empty gate, the Hunger potion flag, and
     // the client `tickCount` (bbb's `LightmapTickState.client_tick_count`, the
@@ -1759,6 +1762,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_health,
             hud_food,
             hud_food_effect,
+            hud_armor,
             hud_experience_progress,
             hud_experience_level,
             hud_selected_slot,

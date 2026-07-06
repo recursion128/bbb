@@ -721,6 +721,13 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_food_full(food_full.width, food_full.height, &food_full.rgba)?;
     let food_half = hud_sprite(&sprites, "hud/food_half")?;
     renderer.upload_hud_food_half(food_half.width, food_half.height, &food_half.rgba)?;
+    // Armor bar icons (vanilla `ARMOR_*_SPRITE`, Gui.java:94-96).
+    let armor_empty = hud_sprite(&sprites, "hud/armor_empty")?;
+    renderer.upload_hud_armor_empty(armor_empty.width, armor_empty.height, &armor_empty.rgba)?;
+    let armor_half = hud_sprite(&sprites, "hud/armor_half")?;
+    renderer.upload_hud_armor_half(armor_half.width, armor_half.height, &armor_half.rgba)?;
+    let armor_full = hud_sprite(&sprites, "hud/armor_full")?;
+    renderer.upload_hud_armor_full(armor_full.width, armor_full.height, &armor_full.rgba)?;
     // Hunger-effect food variants (vanilla `FOOD_*_HUNGER_SPRITE`, Gui.java:97-99).
     let food_empty_hunger = hud_sprite(&sprites, "hud/food_empty_hunger")?;
     renderer.upload_hud_food_empty_hunger(

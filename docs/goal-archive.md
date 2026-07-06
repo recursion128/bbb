@@ -3803,6 +3803,42 @@
 
 ## P2：屏幕、HUD、字体与截图
 
+### 2026-07-06 迁入：护甲条渲染
+
+- HUD status-bar 第三片完成：护甲条从既有 attributes 派生。
+  `WorldStore::local_player_armor_value`（bbb-world `client/local_player.rs`）
+  转写 vanilla `LivingEntity.getArmorValue()` =
+  `Mth.floor(getAttributeValue(Attributes.ARMOR))`（LivingEntity.java:1845-1846）：
+  已存的 synced ARMOR attribute（`BuiltInRegistries.ATTRIBUTE` 注册序 index
+  `0`，Attributes.java:10 首个注册，与 movement 侧既有 gravity 14 /
+  jump_strength 15 / movement_speed 22 同源手写常量）经既有
+  `AttributeInstance.calculateValue`（`entities::store::vanilla_attribute_value`：
+  先 add，再 multiply_base，再 multiply_total）折算后取 floor；无 attribute
+  时按 `RangedAttribute` 默认返回 0。
+- 投影链：`RendererFrame.hud_armor`（native `runtime.rs` 单次采样
+  `world.local_player_armor_value()` → `render_extract.rs` →
+  `Renderer::set_hud_armor`），不新增散置 `renderer.set_*`（守 RendererFrame
+  单次提交不变量）。绘制在 `collect_hud_draws` 位于 hearts 之前（vanilla
+  `Gui.extractPlayerHealth` 先 armor 后 hearts，Gui.java:779/781），仅
+  `armor > 0` 才画（`Gui.extractArmor`，Gui.java:800）；10 格逐格按
+  `hud_armor_fill`（`i*2+1` 与 armor 比较：`<` full / `==` half / `>` empty，
+  Gui.java:805-814）取 `hud/armor_{full,half,empty}` sprite（Gui.java:94-96，
+  照 hearts/food 的 pack 上传模式），`armor_hud_rect` 与 hearts 同左边
+  （`xLeft = guiWidth/2 - 91` + `i*8`）、上移一行 10px。
+- vanilla 常数（26.1 逐条核实）：`yLineArmor = yLineBase - (numHealthRows-1)
+  *healthRowHeight - 10`（Gui.java:801），bbb 目前只投影单行生命（未接
+  `maxHealth`/absorption 多行），`numHealthRows == 1` 使堆叠项归零，护甲行落
+  在 `yLineBase - 10` = `surface_height - 49`；9x9 sprite。
+- 边界：多行生命堆叠（absorption/`maxHealth` 行数抬高护甲行）随其余 heart
+  variant 一并延后，护甲行用单行偏移；氧气泡/坐骑血量仍缓（需先补 world
+  metadata）。
+- 测试：bbb-world attribute→armor 派生（floor + 三段 modifier 公式手算
+  9.9→9 + 无 attribute/无玩家默认 0）；bbb-renderer `hud_armor_fill` 组合
+  （armor 7 → 3 full/1 half/6 empty、满 20 全 full、奇数 1 → slot0 half）与
+  `armor_hud_rect` 布局常数（同左边、上移恰一行）；离屏整帧 sentinel 证明
+  armor>0 时护甲行像素点亮、armor==0 时保持背景（>0 门控）。既有 hearts/food
+  测试无回归。
+
 ### 2026-07-05 迁入：actionbar + titles + subtitles 渲染
 
 - HUD overlay 首片完成：actionbar（overlay message）与 title/subtitle 从
