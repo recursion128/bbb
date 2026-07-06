@@ -23,6 +23,7 @@ use crate::{
 };
 
 mod map;
+mod sign_text;
 pub use map::{
     bake_first_person_map_background_surface, bake_first_person_map_decoration_surface,
     bake_first_person_map_text_surface, bake_item_frame_map_decoration_surface,
@@ -38,6 +39,13 @@ pub use map::{
 pub(crate) use map::{
     FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
     ItemFrameMapTextFontAtlasGpu,
+};
+pub use sign_text::{
+    bake_sign_text_surface, sign_line_runs_width, sign_max_text_line_width, sign_text_base_color,
+    sign_text_dark_color, sign_text_line_height, sign_text_scaled_rgb, sign_text_transformation,
+    truncate_sign_line_runs_to_width, SignTextSubmission, SignTextSurface,
+    HANGING_SIGN_MAX_TEXT_LINE_WIDTH, HANGING_SIGN_TEXT_LINE_HEIGHT, SIGN_MAX_TEXT_LINE_WIDTH,
+    SIGN_TEXT_LINE_HEIGHT,
 };
 
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.

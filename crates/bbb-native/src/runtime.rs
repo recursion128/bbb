@@ -75,6 +75,7 @@ use crate::{
         ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
         SMOKE_PARTICLE_TYPE_ID,
     },
+    sign_scene::sign_scene_from_world,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
         TerrainTextureState, TerrainUploadState,
@@ -1701,6 +1702,11 @@ pub(crate) fn pump_network_and_terrain(
         world,
         entity_partial_tick,
     ));
+    // Sign block-entity models ride the same stream; their face text bakes
+    // into world-space glyph quads drawn with the map-label font atlas.
+    let sign_scene = sign_scene_from_world(world, item_runtime);
+    entity_instances.extend(sign_scene.instances);
+    let sign_text_surfaces = sign_scene.text_surfaces;
     let camera_pose = camera_pose_from_world(world);
     let first_person_item_models = first_person_item_models(
         world,
@@ -1891,6 +1897,7 @@ pub(crate) fn pump_network_and_terrain(
             item_frame_map_decoration_textures,
             item_frame_map_decoration_surfaces,
             item_frame_map_text_surfaces,
+            sign_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
             cloud_frame,

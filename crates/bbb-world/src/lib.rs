@@ -19,6 +19,7 @@ mod position;
 mod recipe_book;
 mod recipes;
 mod registries;
+mod sign_blocks;
 mod store;
 mod terrain;
 mod terrain_state;

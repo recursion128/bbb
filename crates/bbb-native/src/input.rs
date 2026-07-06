@@ -1423,7 +1423,6 @@ fn sign_editor_initial_lines(world: &WorldStore) -> [String; 4] {
     world
         .last_open_sign_editor()
         .and_then(|editor| world.sign_text_lines(editor.pos, editor.is_front_text))
-        .cloned()
         .unwrap_or_else(|| std::array::from_fn(|_| String::new()))
 }
 

@@ -760,6 +760,25 @@ impl Renderer {
                 stats.item_model_draw_calls += 1;
             }
         }
+
+        // Vanilla AbstractSignRenderer.submitSignText also goes through
+        // submitText (drawn by TextFeatureRenderer in the same translucent
+        // feature phase), so sign face text draws here with the same
+        // font/default atlas as the map labels.
+        let (sign_text_vertices, sign_text_indices) = self.collect_sign_text_geometry();
+        if !sign_text_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+                self.draw_item_model_geometry(
+                    &mut *encoder,
+                    main_view,
+                    &sign_text_vertices,
+                    &sign_text_indices,
+                    &atlas.bind_group,
+                );
+                stats.pipeline_switches += 1;
+                stats.item_model_draw_calls += 1;
+            }
+        }
     }
 
     fn item_entity_target_pass(

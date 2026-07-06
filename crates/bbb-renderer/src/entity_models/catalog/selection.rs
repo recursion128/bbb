@@ -108,6 +108,26 @@ impl EntityModelKind {
                 half: ChestModelHalf::Right,
                 ..
             } => "chest_right",
+            Self::Sign {
+                attachment: SignModelAttachment::Standing,
+                ..
+            } => "sign_standing",
+            Self::Sign {
+                attachment: SignModelAttachment::Wall,
+                ..
+            } => "sign_wall",
+            Self::Sign {
+                attachment: SignModelAttachment::HangingCeiling,
+                ..
+            } => "hanging_sign_ceiling",
+            Self::Sign {
+                attachment: SignModelAttachment::HangingCeilingMiddle,
+                ..
+            } => "hanging_sign_ceiling_middle",
+            Self::Sign {
+                attachment: SignModelAttachment::HangingWall,
+                ..
+            } => "hanging_sign_wall",
             Self::Arrow { .. } => "arrow",
             Self::Trident => "trident",
             Self::WitherSkull { .. } => "wither_skull",
@@ -403,6 +423,7 @@ impl EntityModelKind {
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
             Self::LeashKnot => Some(LEASH_KNOT_TEXTURE_REF),
             Self::Chest { texture, half } => Some(chest_texture_ref(texture, half)),
+            Self::Sign { wood, attachment } => Some(sign_texture_ref(wood, attachment)),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),

@@ -12,7 +12,7 @@ use bbb_renderer::{
     HudInventoryScreen, HudPlayerHealth, HudStyledTextRun, HudTitleText, HudVehicleHealth,
     ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline, WorldBorderRenderState,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use super::*;
@@ -824,6 +824,7 @@ pub(crate) struct RendererFrame {
     pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     pub(crate) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
     pub(crate) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
+    pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) cloud_frame: CloudFrame,
@@ -914,6 +915,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
         frame.item_frame_map_text_surfaces,
         frame.first_person_map_text_surfaces,
     );
+    renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
     renderer.set_entity_model_instances(frame.entity_model_instances);
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_cloud_frame(frame.cloud_frame);

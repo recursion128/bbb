@@ -126,6 +126,93 @@ pub fn decode_styled_component_summary(payload: &[u8]) -> Result<Vec<StyledTextR
     Ok(runs)
 }
 
+/// One sign face decoded from the sign block entity's NBT — vanilla
+/// `SignText.DIRECT_CODEC` (`SignText.java`): `messages` is a list of exactly
+/// four chat components (`LINES_CODEC` enforces `Util.fixedSize(_, 4)`), each
+/// flattened here into styled runs by the shared component traversal;
+/// `color` is the raw `DyeColor.CODEC` name string (`"black"` when absent —
+/// `fieldOf("color").orElse(DyeColor.BLACK)`); `has_glowing_text` is the
+/// `Codec.BOOL` byte (`orElse(false)`). The `filtered_messages` list only
+/// matters when text filtering is enabled and is not decoded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignTextNbt {
+    pub messages: [Vec<StyledTextRun>; 4],
+    pub color: Option<String>,
+    pub has_glowing_text: bool,
+}
+
+/// The sign block entity's render-relevant NBT — vanilla
+/// `SignBlockEntity.loadAdditional`: the `front_text` / `back_text`
+/// `SignText.DIRECT_CODEC` compounds plus the root `is_waxed` boolean.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignBlockEntityNbt {
+    pub front_text: Option<SignTextNbt>,
+    pub back_text: Option<SignTextNbt>,
+    pub is_waxed: bool,
+}
+
+/// Decodes a sign block entity's NBT (`SignBlockEntity.loadAdditional`
+/// fields). Returns `Ok(None)` when the payload carries neither `front_text`
+/// nor `back_text` — every non-sign block entity's NBT flows through here, so
+/// absence of the sign keys is the (cheap) sign gate, mirroring how the codec
+/// only ever sees sign-shaped data in vanilla. Message components reuse the
+/// single styled-component traversal ([`decode_styled_component_summary`]'s
+/// `append_component_runs`), so sign lines carry the same inherited-style
+/// runs as every other decoded component in the workspace.
+pub fn decode_sign_block_entity_nbt(raw_nbt: &[u8]) -> Result<Option<SignBlockEntityNbt>> {
+    let mut decoder = Decoder::new(raw_nbt);
+    let root = read_nbt_any(&mut decoder)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block entity nbt".to_string(),
+        ));
+    }
+    let NbtValue::Compound(entries) = root else {
+        return Ok(None);
+    };
+    let front_text = decode_sign_text_nbt(&entries, "front_text");
+    let back_text = decode_sign_text_nbt(&entries, "back_text");
+    if front_text.is_none() && back_text.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(SignBlockEntityNbt {
+        front_text,
+        back_text,
+        is_waxed: matches!(find_entry(&entries, "is_waxed"), Some(NbtValue::Byte(value)) if *value != 0),
+    }))
+}
+
+fn decode_sign_text_nbt(entries: &[(String, NbtValue)], key: &str) -> Option<SignTextNbt> {
+    let NbtValue::Compound(text_entries) = find_entry(entries, key)? else {
+        return None;
+    };
+    let NbtValue::List(messages) = find_entry(text_entries, "messages")? else {
+        return None;
+    };
+    // Vanilla `SignText.LINES_CODEC` rejects any list that is not exactly four
+    // components (`Util.fixedSize(_, 4)`), falling back to an empty SignText.
+    if messages.len() != 4 {
+        return None;
+    }
+    let messages = std::array::from_fn(|index| {
+        let mut runs = RunCollector::default();
+        append_component_runs(&messages[index], &ComponentStyle::default(), &mut runs);
+        runs.runs
+    });
+    let color = match find_entry(text_entries, "color") {
+        Some(NbtValue::String(color)) => Some(color.clone()),
+        _ => None,
+    };
+    Some(SignTextNbt {
+        messages,
+        color,
+        has_glowing_text: matches!(
+            find_entry(text_entries, "has_glowing_text"),
+            Some(NbtValue::Byte(value)) if *value != 0
+        ),
+    })
+}
+
 fn read_nbt_any(decoder: &mut Decoder<'_>) -> Result<NbtValue> {
     let tag_id = decoder.read_u8()?;
     if tag_id == 0 {
@@ -612,6 +699,116 @@ mod tests {
             }]),
             "ab"
         );
+    }
+
+    fn sign_side_nbt(
+        out: &mut Vec<u8>,
+        key: &str,
+        lines: &[&str],
+        color: Option<&str>,
+        glowing: bool,
+    ) {
+        out.push(10);
+        write_mutf8(out, key);
+        out.push(9);
+        write_mutf8(out, "messages");
+        out.push(8);
+        out.extend_from_slice(&(lines.len() as i32).to_be_bytes());
+        for line in lines {
+            write_mutf8(out, line);
+        }
+        if let Some(color) = color {
+            write_named_string(out, "color", color);
+        }
+        if glowing {
+            write_named_byte(out, "has_glowing_text", 1);
+        }
+        out.push(0);
+    }
+
+    #[test]
+    fn decodes_sign_block_entity_nbt_with_color_glowing_and_waxed() {
+        let mut payload = vec![10];
+        sign_side_nbt(
+            &mut payload,
+            "front_text",
+            &["a", "b", "c", "d"],
+            Some("red"),
+            true,
+        );
+        sign_side_nbt(&mut payload, "back_text", &["", "", "", ""], None, false);
+        write_named_byte(&mut payload, "is_waxed", 1);
+        payload.push(0);
+
+        let sign = decode_sign_block_entity_nbt(&payload).unwrap().unwrap();
+        assert!(sign.is_waxed);
+        let front = sign.front_text.unwrap();
+        assert_eq!(front.color.as_deref(), Some("red"));
+        assert!(front.has_glowing_text);
+        assert_eq!(front.messages[0][0].text, "a");
+        assert_eq!(front.messages[3][0].text, "d");
+        let back = sign.back_text.unwrap();
+        assert_eq!(back.color, None);
+        assert!(!back.has_glowing_text);
+        assert!(back.messages.iter().all(Vec::is_empty));
+    }
+
+    #[test]
+    fn sign_message_components_keep_styled_runs() {
+        // messages[0] = {text:"Hi", bold:1b, color:"#123456"} as a compound list element.
+        let mut payload = vec![10];
+        payload.push(10);
+        write_mutf8(&mut payload, "front_text");
+        payload.push(9);
+        write_mutf8(&mut payload, "messages");
+        payload.push(10);
+        payload.extend_from_slice(&4i32.to_be_bytes());
+        for index in 0..4 {
+            if index == 0 {
+                write_named_string(&mut payload, "text", "Hi");
+                write_named_byte(&mut payload, "bold", 1);
+                write_named_string(&mut payload, "color", "#123456");
+            } else {
+                write_named_string(&mut payload, "text", "");
+            }
+            payload.push(0);
+        }
+        payload.push(0);
+        payload.push(0);
+
+        let sign = decode_sign_block_entity_nbt(&payload).unwrap().unwrap();
+        let front = sign.front_text.unwrap();
+        assert_eq!(
+            front.messages[0],
+            vec![StyledTextRun {
+                text: "Hi".to_string(),
+                style: ComponentStyle {
+                    bold: Some(true),
+                    color: Some(0x12_34_56),
+                    ..ComponentStyle::default()
+                },
+            }]
+        );
+        assert!(sign.back_text.is_none());
+    }
+
+    #[test]
+    fn non_sign_block_entity_nbt_decodes_to_none() {
+        // A vault-ish compound without front_text/back_text.
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "id", "minecraft:vault");
+        payload.push(0);
+        assert_eq!(decode_sign_block_entity_nbt(&payload).unwrap(), None);
+        // An empty (end-tag-only) network NBT.
+        assert_eq!(decode_sign_block_entity_nbt(&[0]).unwrap(), None);
+    }
+
+    #[test]
+    fn sign_messages_list_must_be_exactly_four_lines() {
+        let mut payload = vec![10];
+        sign_side_nbt(&mut payload, "front_text", &["a", "b", "c"], None, false);
+        payload.push(0);
+        assert_eq!(decode_sign_block_entity_nbt(&payload).unwrap(), None);
     }
 
     fn nbt_string_root(value: &str) -> Vec<u8> {

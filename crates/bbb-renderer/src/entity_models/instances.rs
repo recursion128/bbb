@@ -1509,6 +1509,25 @@ impl EntityModelInstance {
         )
     }
 
+    /// A sign block-entity model instance at the sign block's min corner.
+    /// `y_rot` carries vanilla `-angle` degrees (the `-RotationSegment`
+    /// / `-FACING.toYRot()` yaw of `StandingSignRenderer.baseTransformation`
+    /// / `HangingSignRenderer.baseTransformation`).
+    pub fn sign(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        wood: SignModelWood,
+        attachment: SignModelAttachment,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Sign { wood, attachment },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }

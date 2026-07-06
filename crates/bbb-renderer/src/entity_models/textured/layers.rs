@@ -15,9 +15,9 @@ use super::super::{
         HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
         IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
         PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        WolfModelVariant,
+        SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -40,6 +40,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CamelSaddle,
     ChestBase,
     ChickenBase,
+    SignBase,
     SalmonBase,
     TropicalFishBase,
     TropicalFishPattern,
@@ -1636,6 +1637,34 @@ pub(in crate::entity_models) fn chest_textured_layer_passes(
         render_type: EntityModelLayerRenderType::EntityCutoutCull,
         model_layer,
         texture: chest_texture_ref(texture, half),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// Vanilla `AbstractSignRenderer.submitSign`: one `submitModel` per sign
+/// block entity with the wood's sign-sheet sprite and the model's
+/// `RenderTypes::entityCutout` render type (`StandingSignRenderer.createSignModel`
+/// / `HangingSignRenderer.createSignModel` both build
+/// `Model.Simple(_, RenderTypes::entityCutout)`).
+pub(in crate::entity_models) fn sign_textured_layer_passes(
+    wood: SignModelWood,
+    attachment: SignModelAttachment,
+) -> Vec<EntityModelLayerPass> {
+    let model_layer = match attachment {
+        SignModelAttachment::Standing => MODEL_LAYER_SIGN_STANDING,
+        SignModelAttachment::Wall => MODEL_LAYER_SIGN_WALL,
+        SignModelAttachment::HangingCeiling => MODEL_LAYER_HANGING_SIGN_CEILING,
+        SignModelAttachment::HangingCeilingMiddle => MODEL_LAYER_HANGING_SIGN_CEILING_MIDDLE,
+        SignModelAttachment::HangingWall => MODEL_LAYER_HANGING_SIGN_WALL,
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SignBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer,
+        texture: sign_texture_ref(wood, attachment),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

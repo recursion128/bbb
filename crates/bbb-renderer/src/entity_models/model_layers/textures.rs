@@ -3,7 +3,7 @@ use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, CatModelVariant, ChestModelHalf, ChestModelTexture,
     CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
     FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
-    WolfArmorCrackiness,
+    SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 
 mod equine;
@@ -1585,7 +1585,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 570] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 594] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1792,6 +1792,30 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CHEST_COPPER_OXIDIZED_TEXTURE_REF,
     CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF,
     CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF,
+    SIGN_OAK_TEXTURE_REF,
+    SIGN_SPRUCE_TEXTURE_REF,
+    SIGN_BIRCH_TEXTURE_REF,
+    SIGN_ACACIA_TEXTURE_REF,
+    SIGN_CHERRY_TEXTURE_REF,
+    SIGN_JUNGLE_TEXTURE_REF,
+    SIGN_DARK_OAK_TEXTURE_REF,
+    SIGN_PALE_OAK_TEXTURE_REF,
+    SIGN_CRIMSON_TEXTURE_REF,
+    SIGN_WARPED_TEXTURE_REF,
+    SIGN_MANGROVE_TEXTURE_REF,
+    SIGN_BAMBOO_TEXTURE_REF,
+    HANGING_SIGN_OAK_TEXTURE_REF,
+    HANGING_SIGN_SPRUCE_TEXTURE_REF,
+    HANGING_SIGN_BIRCH_TEXTURE_REF,
+    HANGING_SIGN_ACACIA_TEXTURE_REF,
+    HANGING_SIGN_CHERRY_TEXTURE_REF,
+    HANGING_SIGN_JUNGLE_TEXTURE_REF,
+    HANGING_SIGN_DARK_OAK_TEXTURE_REF,
+    HANGING_SIGN_PALE_OAK_TEXTURE_REF,
+    HANGING_SIGN_CRIMSON_TEXTURE_REF,
+    HANGING_SIGN_WARPED_TEXTURE_REF,
+    HANGING_SIGN_MANGROVE_TEXTURE_REF,
+    HANGING_SIGN_BAMBOO_TEXTURE_REF,
     TRIDENT_RIPTIDE_TEXTURE_REF,
     ENCHANTED_GLINT_ITEM_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
@@ -3224,6 +3248,137 @@ pub(in crate::entity_models) fn chest_texture_ref(
         ChestModelHalf::Single => single,
         ChestModelHalf::Left => left,
         ChestModelHalf::Right => right,
+    }
+}
+
+const fn sign_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 32],
+    }
+}
+
+// Vanilla `Sheets.SIGN_MAPPER` / `HANGING_SIGN_MAPPER` sprites
+// (`entity/signs/<wood>` and `entity/signs/hanging/<wood>` on the signs
+// sheet, both 64×32 like the `createSignLayer` / `createHangingSignLayer`
+// atlas), one per 26.1 `WoodType` with sign blocks.
+pub(in crate::entity_models) const SIGN_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/oak.png");
+pub(in crate::entity_models) const SIGN_SPRUCE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/spruce.png");
+pub(in crate::entity_models) const SIGN_BIRCH_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/birch.png");
+pub(in crate::entity_models) const SIGN_ACACIA_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/acacia.png");
+pub(in crate::entity_models) const SIGN_CHERRY_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/cherry.png");
+pub(in crate::entity_models) const SIGN_JUNGLE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/jungle.png");
+pub(in crate::entity_models) const SIGN_DARK_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/dark_oak.png");
+pub(in crate::entity_models) const SIGN_PALE_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/pale_oak.png");
+pub(in crate::entity_models) const SIGN_CRIMSON_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/crimson.png");
+pub(in crate::entity_models) const SIGN_WARPED_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/warped.png");
+pub(in crate::entity_models) const SIGN_MANGROVE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/mangrove.png");
+pub(in crate::entity_models) const SIGN_BAMBOO_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/bamboo.png");
+pub(in crate::entity_models) const HANGING_SIGN_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/oak.png");
+pub(in crate::entity_models) const HANGING_SIGN_SPRUCE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/spruce.png");
+pub(in crate::entity_models) const HANGING_SIGN_BIRCH_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/birch.png");
+pub(in crate::entity_models) const HANGING_SIGN_ACACIA_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/acacia.png");
+pub(in crate::entity_models) const HANGING_SIGN_CHERRY_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/cherry.png");
+pub(in crate::entity_models) const HANGING_SIGN_JUNGLE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/jungle.png");
+pub(in crate::entity_models) const HANGING_SIGN_DARK_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/dark_oak.png");
+pub(in crate::entity_models) const HANGING_SIGN_PALE_OAK_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/pale_oak.png");
+pub(in crate::entity_models) const HANGING_SIGN_CRIMSON_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/crimson.png");
+pub(in crate::entity_models) const HANGING_SIGN_WARPED_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/warped.png");
+pub(in crate::entity_models) const HANGING_SIGN_MANGROVE_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/mangrove.png");
+pub(in crate::entity_models) const HANGING_SIGN_BAMBOO_TEXTURE_REF: EntityModelTextureRef =
+    sign_sheet_texture_ref("textures/entity/signs/hanging/bamboo.png");
+
+pub(in crate::entity_models) const SIGN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 24] = [
+    SIGN_OAK_TEXTURE_REF,
+    SIGN_SPRUCE_TEXTURE_REF,
+    SIGN_BIRCH_TEXTURE_REF,
+    SIGN_ACACIA_TEXTURE_REF,
+    SIGN_CHERRY_TEXTURE_REF,
+    SIGN_JUNGLE_TEXTURE_REF,
+    SIGN_DARK_OAK_TEXTURE_REF,
+    SIGN_PALE_OAK_TEXTURE_REF,
+    SIGN_CRIMSON_TEXTURE_REF,
+    SIGN_WARPED_TEXTURE_REF,
+    SIGN_MANGROVE_TEXTURE_REF,
+    SIGN_BAMBOO_TEXTURE_REF,
+    HANGING_SIGN_OAK_TEXTURE_REF,
+    HANGING_SIGN_SPRUCE_TEXTURE_REF,
+    HANGING_SIGN_BIRCH_TEXTURE_REF,
+    HANGING_SIGN_ACACIA_TEXTURE_REF,
+    HANGING_SIGN_CHERRY_TEXTURE_REF,
+    HANGING_SIGN_JUNGLE_TEXTURE_REF,
+    HANGING_SIGN_DARK_OAK_TEXTURE_REF,
+    HANGING_SIGN_PALE_OAK_TEXTURE_REF,
+    HANGING_SIGN_CRIMSON_TEXTURE_REF,
+    HANGING_SIGN_WARPED_TEXTURE_REF,
+    HANGING_SIGN_MANGROVE_TEXTURE_REF,
+    HANGING_SIGN_BAMBOO_TEXTURE_REF,
+];
+
+pub fn sign_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SIGN_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `Sheets.getSignSprite(type)` / `getHangingSignSprite(type)`:
+/// `entity/signs/<wood>` for the plain sign forms,
+/// `entity/signs/hanging/<wood>` for the hanging forms.
+pub(in crate::entity_models) fn sign_texture_ref(
+    wood: SignModelWood,
+    attachment: SignModelAttachment,
+) -> EntityModelTextureRef {
+    if attachment.is_hanging() {
+        match wood {
+            SignModelWood::Oak => HANGING_SIGN_OAK_TEXTURE_REF,
+            SignModelWood::Spruce => HANGING_SIGN_SPRUCE_TEXTURE_REF,
+            SignModelWood::Birch => HANGING_SIGN_BIRCH_TEXTURE_REF,
+            SignModelWood::Acacia => HANGING_SIGN_ACACIA_TEXTURE_REF,
+            SignModelWood::Cherry => HANGING_SIGN_CHERRY_TEXTURE_REF,
+            SignModelWood::Jungle => HANGING_SIGN_JUNGLE_TEXTURE_REF,
+            SignModelWood::DarkOak => HANGING_SIGN_DARK_OAK_TEXTURE_REF,
+            SignModelWood::PaleOak => HANGING_SIGN_PALE_OAK_TEXTURE_REF,
+            SignModelWood::Crimson => HANGING_SIGN_CRIMSON_TEXTURE_REF,
+            SignModelWood::Warped => HANGING_SIGN_WARPED_TEXTURE_REF,
+            SignModelWood::Mangrove => HANGING_SIGN_MANGROVE_TEXTURE_REF,
+            SignModelWood::Bamboo => HANGING_SIGN_BAMBOO_TEXTURE_REF,
+        }
+    } else {
+        match wood {
+            SignModelWood::Oak => SIGN_OAK_TEXTURE_REF,
+            SignModelWood::Spruce => SIGN_SPRUCE_TEXTURE_REF,
+            SignModelWood::Birch => SIGN_BIRCH_TEXTURE_REF,
+            SignModelWood::Acacia => SIGN_ACACIA_TEXTURE_REF,
+            SignModelWood::Cherry => SIGN_CHERRY_TEXTURE_REF,
+            SignModelWood::Jungle => SIGN_JUNGLE_TEXTURE_REF,
+            SignModelWood::DarkOak => SIGN_DARK_OAK_TEXTURE_REF,
+            SignModelWood::PaleOak => SIGN_PALE_OAK_TEXTURE_REF,
+            SignModelWood::Crimson => SIGN_CRIMSON_TEXTURE_REF,
+            SignModelWood::Warped => SIGN_WARPED_TEXTURE_REF,
+            SignModelWood::Mangrove => SIGN_MANGROVE_TEXTURE_REF,
+            SignModelWood::Bamboo => SIGN_BAMBOO_TEXTURE_REF,
+        }
     }
 }
 

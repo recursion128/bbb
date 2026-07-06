@@ -122,6 +122,23 @@ fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32
     world
 }
 
+fn sign_text_side(lines: [&str; 4]) -> bbb_world::SignTextSideState {
+    bbb_world::SignTextSideState {
+        lines: lines.map(|line| {
+            if line.is_empty() {
+                Vec::new()
+            } else {
+                vec![bbb_protocol::StyledTextRun {
+                    text: line.to_string(),
+                    style: bbb_protocol::ComponentStyle::default(),
+                }]
+            }
+        }),
+        color: bbb_world::SignTextDyeColor::Black,
+        has_glowing_text: false,
+    }
+}
+
 fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> WorldStore {
     let mut world = WorldStore::new();
     world.insert_decoded_chunk(ChunkColumn {
@@ -139,8 +156,9 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
             type_id: 7,
             nbt: None,
             sign_text: Some(SignBlockEntityTextState {
-                front: front.map(str::to_string),
-                back: back.map(str::to_string),
+                front: sign_text_side(front),
+                back: sign_text_side(back),
+                is_waxed: false,
             }),
             vault_shared_data: None,
         }],

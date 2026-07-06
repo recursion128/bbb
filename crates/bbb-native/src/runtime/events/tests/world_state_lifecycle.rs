@@ -221,7 +221,7 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
     };
     assert_eq!(
         world.sign_text_lines(pos, true),
-        Some(&[
+        Some([
             "Front A".to_string(),
             "Front B".to_string(),
             "Front C".to_string(),
@@ -230,7 +230,7 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
     );
     assert_eq!(
         world.sign_text_lines(pos, false),
-        Some(&[
+        Some([
             "Back A".to_string(),
             "Back B".to_string(),
             "Back C".to_string(),

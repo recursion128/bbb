@@ -14,8 +14,8 @@ use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
     BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
-    ChunkViewState, HeightmapData, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot,
-    TerrainLight, TerrainMaterialClass, VaultConnectionParticleState,
+    ChunkViewState, HeightmapData, RegistrySet, Result, SignBlockEntityTextState, TerrainBlockCell,
+    TerrainChunkSnapshot, TerrainLight, TerrainMaterialClass, VaultConnectionParticleState,
     VaultConnectionParticleTargetState, VaultSharedDataState, WorldDecodeError, WorldDimension,
     WorldStore,
 };
@@ -282,26 +282,21 @@ impl WorldStore {
             .map(ChunkProbeSummaryState::from_chunk)
     }
 
-    pub fn sign_text_lines(&self, pos: BlockPos, is_front_text: bool) -> Option<&[String; 4]> {
-        let chunk_pos = ChunkPos {
-            x: pos.x.div_euclid(16),
-            z: pos.z.div_euclid(16),
-        };
-        let local_x = pos.x.rem_euclid(16) as u8;
-        let y = i16::try_from(pos.y).ok()?;
-        let local_z = pos.z.rem_euclid(16) as u8;
-        let sign_text = self
-            .probe_chunk(chunk_pos)?
-            .block_entities
-            .iter()
-            .find(|entity| entity.local_x == local_x && entity.y == y && entity.local_z == local_z)?
-            .sign_text
-            .as_ref()?;
-        if is_front_text {
-            Some(&sign_text.front)
-        } else {
-            Some(&sign_text.back)
-        }
+    /// The plain (style-dropped) sign lines of one face, for the sign edit
+    /// screen preload (vanilla `AbstractSignEditScreen` edits raw strings).
+    /// Render paths read the styled state via [`Self::sign_text_state_at`].
+    pub fn sign_text_lines(&self, pos: BlockPos, is_front_text: bool) -> Option<[String; 4]> {
+        Some(
+            self.sign_text_state_at(pos)?
+                .side(is_front_text)
+                .plain_lines(),
+        )
+    }
+
+    /// The stored sign text state at a block position (both faces + waxed),
+    /// if a sign block entity record exists there.
+    pub fn sign_text_state_at(&self, pos: BlockPos) -> Option<&SignBlockEntityTextState> {
+        self.block_entity_record_at(pos)?.sign_text.as_ref()
     }
 
     pub fn block_entity_type_id_at(&self, pos: BlockPos) -> Option<i32> {
@@ -643,6 +638,17 @@ impl WorldStore {
         let new_fluid = is_fluid_block_state_id(&self.registries, block_state_id);
 
         let registries = &self.registries;
+        // Vanilla `Level.setBlock`: when the block itself changes (not just a
+        // state property), the old block entity is removed
+        // (`Level.removeBlockEntity`), so a destroyed/replaced sign drops its
+        // text. Restricted to the sign_text payload; general block-entity
+        // record removal on block change is a separate ledger follow-up.
+        let block_kind_changed = registries
+            .block_state(old_block_state_id)
+            .map(|state| state.name.as_str())
+            != registries
+                .block_state(block_state_id)
+                .map(|state| state.name.as_str());
         let dimension = self.dimension;
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             return false;
@@ -672,6 +678,15 @@ impl WorldStore {
             local_z,
             block_state_id,
         );
+        if block_kind_changed {
+            if let Ok(y) = i16::try_from(pos.y) {
+                if let Some(record) = chunk.block_entities.iter_mut().find(|entity| {
+                    entity.local_x == local_x && entity.y == y && entity.local_z == local_z
+                }) {
+                    record.sign_text = None;
+                }
+            }
+        }
         true
     }
 

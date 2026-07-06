@@ -435,16 +435,83 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (sign text, banner, bell, shulker box,
-    bed, conduit, decorated pot, …): the chest family is DONE (2026-07-06,
-    see Evidence) as the first BER sub-slice; every other BE-driven block
+  - Block-entity special renderers (banner, bell, shulker box, bed,
+    conduit, decorated pot, …): the chest family (2026-07-06) and the sign
+    family incl. hanging signs + face text (2026-07-06, see Evidence) are
+    DONE as the first two BER sub-slices; every other BE-driven block
     still bakes a particle-only model into near-empty terrain geometry.
     Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
-    smallest sub-slice (sign text via the HUD font map is the staked next
-    entry); audit the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
+    smallest sub-slice (bed / bell are the staked next candidates); audit
+    the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
     → `textures.rs`) alongside, since unclassifiable elements are mostly
     BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Sign + hanging sign block-entity renderer with face
+    text (second BER sub-slice; all 12 woods incl. pale_oak × standing /
+    wall / hanging-ceiling (± the `attached=true` vChains CEILING_MIDDLE
+    variant) / hanging-wall). Data chain: sign BE NBT decodes in
+    bbb-protocol (`decode_sign_block_entity_nbt`) so the
+    `front_text`/`back_text` message components reuse the single
+    `append_component_runs` styled-run traversal (`SignText.DIRECT_CODEC`
+    shape: 4 messages, dye-name `color` defaulting black,
+    `has_glowing_text`, root `is_waxed`);
+    `bbb-world/src/chunks/sign_text.rs` maps it to
+    `SignBlockEntityTextState` (missing side → vanilla
+    `orElseGet(SignText::new)` default); ChunkData BE sections and
+    `BlockEntityData` packets share the ingest, and `set_block_state_id`
+    prunes the stored text when the block name changes. Positions derive
+    per frame from block states (`bbb-world/src/sign_blocks.rs`: palette
+    pre-check per section, `rotation16 = segment * 22.5°`, wall-family
+    `facing.toYRot`, text sides gated on non-empty lines). Dispatch:
+    `EntityModelKind::Sign { wood, attachment }` rides the single
+    entity-model submission stream (`-1` sentinel, block-position light
+    `block << 4 | sky << 20`); the root transform transcribes
+    `StandingSignRenderer.bodyTransformation`
+    (`translate(0.5,0.5,0.5)·Ry(-angle)·scale(2/3,-2/3,-2/3)`,
+    RENDER_SCALE 0.6666667, wall extra `translate(0,-0.3125,-0.4375)`)
+    and `HangingSignRenderer.bodyTransformation`
+    (`translation(0.5,0.9375,0.5)·Ry(-angle)·translate(0,-0.3125,0)·
+    scale(1,-1,-1)`). Renderer: `model_layers/sign.rs` transcribes
+    `createSignLayer` / `createHangingSignLayer` (board 24×12×2
+    texOffs(0,0) + stick 2×14×2 texOffs(0,14); hanging board 14×10×2
+    texOffs(0,12), plank 16×2×4, chain planes texOffs(0,6)/(6,6) at
+    offset(±5,-6,0) yRot ∓π/4, vChains 12×6 texOffs(14,6)); 24
+    `entity/signs[/hanging]/<wood>.png` 64×32 sprites feed the shared
+    entity atlas; passes use vanilla `entityCutout` (no cull). Face text
+    bakes to world-space glyph quads
+    (`item_models/sign_text.rs::bake_sign_text_surface`) drawn with the
+    map-label `minecraft:font/default` atlas in the entity-translucent
+    feature pass; the text transform is body · [back: Ry(π)] ·
+    `TEXT_OFFSET (0, 0.33333334, 0.046666667)` (hanging
+    `(0, -0.32, 0.073)`) · scale 0.010416667 / 0.0140625 with negated y;
+    layout matches `SignRenderer` semantics: line height 10/9, max line
+    width 90/60 (word-wrap at the last space, else hard break before the
+    overflowing glyph), centering `x = -width/2` (Java int division),
+    `y = i*lh - 4*lh/2`; colors via `getDarkColor`
+    (`ARGB.scaleRGB(color, 0.4F)` truncating per channel; black + glowing
+    → the -988212 / 0xF0EBCC cream), glowing faces render the raw dye
+    `getTextColor` full-bright (15728880), and per-run component colors
+    override the face base color. Deferred (honest): the glowing 8-way
+    outline glyph pass (glowing text renders full-bright without
+    outlines); underline/strikethrough effect bars (need a white pixel
+    outside the single font-atlas draw); obfuscated glyph cycling (draws
+    the literal glyphs); `is_waxed` stored without render effect (vanilla
+    has none either — it gates editing); `filtered_messages` not decoded;
+    general BE-record removal on block change (only `sign_text` prunes);
+    per-BE distance culling; vanilla's POLYGON_OFFSET font display mode
+    (approximated by the fixed TEXT_OFFSET z gap). Tests: protocol NBT
+    decode (4 lines / color / glowing / waxed / missing side), world
+    BE-section + packet updates + block-change prune, `sign_blocks`
+    enumeration / rotation / facing / attached,
+    `entity_models/tests/sign.rs` (all 7 cubes + chain poses vs vanilla,
+    root-transform point mapping for standing/wall/hanging, model keys,
+    the 24-sprite table, pass render type, cutout mesh bake),
+    `item_models/sign_text.rs` (text-transform offsets/scale incl. the
+    back face, dark-color formula, 90/60 truncation + word wrap + bold
+    7px advances, hand-computed centering and line ys, run-color override
+    + bold double draw, empty-face None),
+    `bbb-native/src/sign_scene.rs` (kind/rotation/light packing, per-face
+    gating, glowing full-bright).
   - Done 2026-07-06 — Chest block-entity renderer (first BER sub-slice, whole
     chest family: chest / trapped / ender / the 8 copper-chest blocks with
     waxed variants sharing their weathering stage's texture). Data chain:

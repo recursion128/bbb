@@ -1018,7 +1018,7 @@ fn applies_sign_block_entity_text_update() {
             },
             true
         ),
-        Some(&[
+        Some([
             "Front 1".to_string(),
             "Front 2".to_string(),
             "Front 3".to_string(),
@@ -1034,7 +1034,7 @@ fn applies_sign_block_entity_text_update() {
             },
             false
         ),
-        Some(&[
+        Some([
             "Back 1".to_string(),
             "Back 2".to_string(),
             "Back 3".to_string(),

@@ -67,6 +67,7 @@ mod scale;
 mod sheep;
 mod shulker;
 mod shulker_bullet;
+mod sign;
 mod silverfish;
 mod skeleton;
 mod sleeping;

@@ -1,6 +1,8 @@
 use glam::{Mat4, Vec3};
 
-use super::super::catalog::{EntityAttachmentFace, EntityModelKind, SalmonModelSize};
+use super::super::catalog::{
+    EntityAttachmentFace, EntityModelKind, SalmonModelSize, SignModelAttachment,
+};
 use super::super::geometry::{part_pose_transform, PartPose};
 use super::super::instances::EntityModelInstance;
 
@@ -654,6 +656,58 @@ pub(in crate::entity_models) fn chest_model_root_transform(instance: EntityModel
         * Mat4::from_translation(pivot)
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
         * Mat4::from_translation(-pivot)
+}
+
+/// Vanilla `StandingSignRenderer.RENDER_SCALE` (`0.6666667F`), the plain
+/// sign's body scale; hanging signs use `MODEL_RENDER_SCALE = 1.0F`.
+pub(in crate::entity_models) const SIGN_RENDER_SCALE: f32 = 0.666_666_7;
+
+/// Vanilla `StandingSignRenderer.baseTransformation` /
+/// `HangingSignRenderer.baseTransformation`, with `instance.position` at the
+/// sign block's min corner and `body_rot` carrying `-angle` degrees
+/// (`Axis.YP.rotationDegrees(-angle)`):
+/// - plain forms: `translate(0.5, 0.5, 0.5) · Ry(-angle)`, the WALL
+///   attachment appending `translate(0, -0.3125, -0.4375)`;
+/// - hanging forms: `translation(0.5, 0.9375, 0.5) · Ry(-angle) ·
+///   translate(0, -0.3125, 0)`.
+pub(crate) fn sign_base_transformation(
+    position: [f32; 3],
+    attachment: SignModelAttachment,
+    body_rot_degrees: f32,
+) -> Mat4 {
+    let rotation = Mat4::from_rotation_y(body_rot_degrees.to_radians());
+    let base = Mat4::from_translation(Vec3::from_array(position));
+    if attachment.is_hanging() {
+        base * Mat4::from_translation(Vec3::new(0.5, 0.9375, 0.5))
+            * rotation
+            * Mat4::from_translation(Vec3::new(0.0, -0.3125, 0.0))
+    } else {
+        let mut transform = base * Mat4::from_translation(Vec3::new(0.5, 0.5, 0.5)) * rotation;
+        if matches!(attachment, SignModelAttachment::Wall) {
+            transform *= Mat4::from_translation(Vec3::new(0.0, -0.3125, -0.4375));
+        }
+        transform
+    }
+}
+
+/// Vanilla `StandingSignRenderer.bodyTransformation` /
+/// `HangingSignRenderer.bodyTransformation`: the base transformation followed
+/// by the `scale(s, -s, -s)` model flip (`s = RENDER_SCALE` for plain signs,
+/// `1.0` for hanging signs) that maps the Y-down sign mesh into the block.
+pub(in crate::entity_models) fn sign_model_root_transform(
+    instance: EntityModelInstance,
+    attachment: SignModelAttachment,
+) -> Mat4 {
+    let scale = if attachment.is_hanging() {
+        1.0
+    } else {
+        SIGN_RENDER_SCALE
+    };
+    sign_base_transformation(
+        instance.position,
+        attachment,
+        instance.render_state.body_rot,
+    ) * Mat4::from_scale(Vec3::new(scale, -scale, -scale))
 }
 
 /// Vanilla `LlamaSpitRenderer.submit`: a plain `EntityRenderer` that lifts the spit slightly and

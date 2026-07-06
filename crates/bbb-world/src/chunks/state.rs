@@ -1,3 +1,4 @@
+use bbb_protocol::StyledTextRun;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -88,10 +89,127 @@ pub struct BlockEntityRecord {
     pub vault_shared_data: Option<VaultSharedDataState>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// The sign block entity's stored text — vanilla `SignBlockEntity`'s
+/// `frontText` / `backText` `SignText` pair plus the `is_waxed` flag. Decoded
+/// from the chunk block-entity section and `BlockEntityData` updates.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignBlockEntityTextState {
-    pub front: [String; 4],
-    pub back: [String; 4],
+    pub front: SignTextSideState,
+    pub back: SignTextSideState,
+    pub is_waxed: bool,
+}
+
+impl SignBlockEntityTextState {
+    pub fn side(&self, is_front_text: bool) -> &SignTextSideState {
+        if is_front_text {
+            &self.front
+        } else {
+            &self.back
+        }
+    }
+}
+
+/// One sign face's text — vanilla `SignText`: four lines of styled component
+/// runs (the shared `StyledTextRun` flattening), the face's `DyeColor`, and
+/// the `has_glowing_text` flag.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignTextSideState {
+    pub lines: [Vec<StyledTextRun>; 4],
+    pub color: SignTextDyeColor,
+    pub has_glowing_text: bool,
+}
+
+impl SignTextSideState {
+    /// The plain concatenated text per line (styles dropped) — what the sign
+    /// edit screen preloads (vanilla `AbstractSignEditScreen` edits raw
+    /// strings).
+    pub fn plain_lines(&self) -> [String; 4] {
+        std::array::from_fn(|index| {
+            self.lines[index]
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect()
+        })
+    }
+
+    /// Vanilla `SignText.hasMessage`-ish emptiness probe: whether any line
+    /// has non-empty text (an all-empty face submits no text render).
+    pub fn has_any_text(&self) -> bool {
+        self.lines
+            .iter()
+            .any(|line| line.iter().any(|run| !run.text.is_empty()))
+    }
+}
+
+/// Vanilla `DyeColor` for sign text (`SignText.color`, serialized by name via
+/// `DyeColor.CODEC`). `text_color()` is `DyeColor.getTextColor()` — the
+/// `textColor` constructor argument of each enum constant (`DyeColor.java`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SignTextDyeColor {
+    White,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    #[default]
+    Black,
+}
+
+impl SignTextDyeColor {
+    /// The `DyeColor.CODEC` name mapping; unknown or missing names fall back
+    /// to black (vanilla `fieldOf("color").orElse(DyeColor.BLACK)`).
+    pub fn from_name(name: &str) -> Self {
+        match name {
+            "white" => Self::White,
+            "orange" => Self::Orange,
+            "magenta" => Self::Magenta,
+            "light_blue" => Self::LightBlue,
+            "yellow" => Self::Yellow,
+            "lime" => Self::Lime,
+            "pink" => Self::Pink,
+            "gray" => Self::Gray,
+            "light_gray" => Self::LightGray,
+            "cyan" => Self::Cyan,
+            "purple" => Self::Purple,
+            "blue" => Self::Blue,
+            "brown" => Self::Brown,
+            "green" => Self::Green,
+            "red" => Self::Red,
+            _ => Self::Black,
+        }
+    }
+
+    /// Vanilla `DyeColor.getTextColor()` as `0xRRGGBB`.
+    pub fn text_color(self) -> u32 {
+        match self {
+            Self::White => 0xFF_FF_FF,
+            Self::Orange => 0xFF_68_1F,
+            Self::Magenta => 0xFF_00_FF,
+            Self::LightBlue => 0x9A_C0_CD,
+            Self::Yellow => 0xFF_FF_00,
+            Self::Lime => 0xBF_FF_00,
+            Self::Pink => 0xFF_69_B4,
+            Self::Gray => 0x80_80_80,
+            Self::LightGray => 0xD3_D3_D3,
+            Self::Cyan => 0x00_FF_FF,
+            Self::Purple => 0xA0_20_F0,
+            Self::Blue => 0x00_00_FF,
+            Self::Brown => 0x8B_45_13,
+            Self::Green => 0x00_FF_00,
+            Self::Red => 0xFF_00_00,
+            Self::Black => 0x00_00_00,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

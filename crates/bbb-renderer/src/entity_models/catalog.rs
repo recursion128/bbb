@@ -228,6 +228,21 @@ pub enum EntityModelKind {
         texture: ChestModelTexture,
         half: ChestModelHalf,
     },
+    /// Vanilla 26.1 sign meshes submitted by the `StandingSignRenderer` /
+    /// `HangingSignRenderer` block-entity renderers — like the chest, sign
+    /// instances are projected from sign block states, not the entity list
+    /// (`entity_id` is a sentinel). `attachment` selects the mesh
+    /// (`createSignLayer(standing)` board±stick,
+    /// `createHangingSignLayer(attachment)` board+chains/plank), `wood` the
+    /// `entity/signs[/hanging]/<wood>` sprite. The body yaw rides
+    /// `body_rot` (`-angle` degrees, `Axis.YP.rotationDegrees(-angle)`); the
+    /// vanilla `scale(s, -s, -s)` body flip and the wall/hanging offsets live
+    /// in the sign root transform. The sign face text is rendered by the
+    /// separate sign-text quad path, not this model.
+    Sign {
+        wood: SignModelWood,
+        attachment: SignModelAttachment,
+    },
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
@@ -1385,6 +1400,50 @@ pub enum ChestModelTexture {
     CopperExposed,
     CopperWeathered,
     CopperOxidized,
+}
+
+/// Vanilla `WoodType.values()` families with sign blocks (26.1): the twelve
+/// `entity/signs/<wood>.png` + `entity/signs/hanging/<wood>.png` sprite pairs
+/// (`Sheets.SIGN_MAPPER` / `HANGING_SIGN_MAPPER`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SignModelWood {
+    Oak,
+    Spruce,
+    Birch,
+    Acacia,
+    Cherry,
+    Jungle,
+    DarkOak,
+    PaleOak,
+    Crimson,
+    Warped,
+    Mangrove,
+    Bamboo,
+}
+
+/// The five sign meshes: vanilla `PlainSignBlock.Attachment` (GROUND / WALL —
+/// `StandingSignRenderer.createSignLayer(standing)`) and
+/// `HangingSignBlock.Attachment` (CEILING / CEILING_MIDDLE / WALL —
+/// `HangingSignRenderer.createHangingSignLayer(attachment)`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SignModelAttachment {
+    Standing,
+    Wall,
+    HangingCeiling,
+    HangingCeilingMiddle,
+    HangingWall,
+}
+
+impl SignModelAttachment {
+    /// Whether this mesh is a hanging-sign form (`HangingSignRenderer`
+    /// transforms, 60px text lines) rather than a plain sign
+    /// (`StandingSignRenderer` transforms, 90px text lines).
+    pub fn is_hanging(self) -> bool {
+        matches!(
+            self,
+            Self::HangingCeiling | Self::HangingCeilingMiddle | Self::HangingWall
+        )
+    }
 }
 
 /// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,

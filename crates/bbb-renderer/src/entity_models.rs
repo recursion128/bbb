@@ -19,6 +19,7 @@ pub use block_attachment::{
     primed_tnt_block_transform, snow_golem_head_block_transform,
 };
 pub use catalog::*;
+pub(crate) use colored::sign_base_transformation;
 #[cfg(test)]
 use colored::{
     boat_bubble_transform, boat_damage_roll_degrees, creeper_model_root_transform,
@@ -104,14 +105,15 @@ pub use model_layers::{
     piglin_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
     pufferfish_entity_texture_refs, rabbit_entity_texture_refs, ravager_entity_texture_refs,
     salmon_entity_texture_refs, sheep_entity_texture_refs, shulker_bullet_entity_texture_refs,
-    shulker_entity_texture_refs, silverfish_entity_texture_refs, skeleton_entity_texture_refs,
-    slime_entity_texture_refs, sniffer_entity_texture_refs, spider_entity_texture_refs,
-    squid_entity_texture_refs, strider_entity_texture_refs, tadpole_entity_texture_refs,
-    trident_entity_texture_refs, tropical_fish_entity_texture_refs, turtle_entity_texture_refs,
-    undead_horse_entity_texture_refs, vex_entity_texture_refs, villager_entity_texture_refs,
-    warden_entity_texture_refs, wind_charge_entity_texture_refs, witch_entity_texture_refs,
-    wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
-    zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
+    shulker_entity_texture_refs, sign_entity_texture_refs, silverfish_entity_texture_refs,
+    skeleton_entity_texture_refs, slime_entity_texture_refs, sniffer_entity_texture_refs,
+    spider_entity_texture_refs, squid_entity_texture_refs, strider_entity_texture_refs,
+    tadpole_entity_texture_refs, trident_entity_texture_refs, tropical_fish_entity_texture_refs,
+    turtle_entity_texture_refs, undead_horse_entity_texture_refs, vex_entity_texture_refs,
+    villager_entity_texture_refs, warden_entity_texture_refs, wind_charge_entity_texture_refs,
+    witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
+    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
+    SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::{

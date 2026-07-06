@@ -14,8 +14,9 @@ pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub use state::{
     BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    ChunkViewState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState, SignTextDyeColor,
+    SignTextSideState, VaultConnectionParticleState, VaultConnectionParticleTargetState,
+    VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
 pub(crate) use vault::decode_vault_shared_data;

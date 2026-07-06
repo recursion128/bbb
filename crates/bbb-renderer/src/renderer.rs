@@ -61,6 +61,7 @@ use crate::{
         FirstPersonMapBackgroundAtlasGpu, FirstPersonMapBackgroundSurface, ItemFrameMapAtlasGpu,
         ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface, ItemFrameMapSurface,
         ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface, ItemGlintTextureGpu, ItemModelMesh,
+        SignTextSurface,
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
@@ -404,6 +405,7 @@ pub struct Renderer {
     pub(super) item_frame_map_decoration_atlas: Option<ItemFrameMapDecorationAtlasGpu>,
     pub(super) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
     pub(super) first_person_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
+    pub(super) sign_text_surfaces: Vec<SignTextSurface>,
     pub(super) item_frame_map_text_font_atlas: Option<ItemFrameMapTextFontAtlasGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
@@ -1337,6 +1339,7 @@ impl Renderer {
             item_frame_map_decoration_atlas: None,
             item_frame_map_text_surfaces: Vec::new(),
             first_person_map_text_surfaces: Vec::new(),
+            sign_text_surfaces: Vec::new(),
             item_frame_map_text_font_atlas: None,
             selection_outline: None,
             entity_scene_outline: None,

@@ -33,6 +33,7 @@ mod map_textures;
 mod particle_registry;
 mod particle_runtime;
 mod runtime;
+mod sign_scene;
 mod sky_assets;
 mod startup;
 mod terrain_runtime;

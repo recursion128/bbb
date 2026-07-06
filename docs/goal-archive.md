@@ -3868,6 +3868,56 @@
   cube+pivot 对照 `ChestModel.java`、easing/角度手算、facing 旋转矩阵点映射、
   ender/copper 纹理选择、cutout-cull mesh 烘焙；native 侧投影 facing/openness/
   光照打包/双箱 max + runtime pump 顺序断言。
+- [x] sign + hanging sign block-entity renderer + 牌面文本（2026-07-06，BER
+  第二片，12 木种含 pale_oak × standing/wall/hanging ceiling（±`attached`
+  vChains middle 变体）/hanging wall）：world 数据链：sign BE NBT 解码收敛进
+  bbb-protocol `decode_sign_block_entity_nbt`（`component.rs`），front_text/
+  back_text 的 messages[4] 组件复用唯一 `append_component_runs` styled 遍历
+  （单一 styled 解码实现；`SignText.DIRECT_CODEC` 形状：dye 名 `color` 缺省
+  black、`has_glowing_text`、根 `is_waxed`）；`chunks/sign_text.rs` 薄映射为
+  `SignBlockEntityTextState`（缺侧按 vanilla `orElseGet(SignText::new)` 取默
+  认）；ChunkData BE section 与 `BlockEntityData` 包共用该 ingest（记录整
+  替换）；`set_block_state_id` 在 block 名变更时修剪该位 `sign_text`（渲染
+  枚举本就 state 派生，修剪防换牌复活旧文本；BE 记录通用移除仍记账）。
+  sign 位置每帧从 block state 派生（`sign_blocks.rs::sign_model_source_
+  states`，palette 预检跳段；`rotation16 = seg*22.5°`、wall 族
+  `facing.toYRot`、hanging `attached=true → CEILING_MIDDLE(vChains)`，文本
+  侧按非空行 gating）。dispatch：实例以 `EntityModelKind::Sign { wood,
+  attachment }` 进唯一 entity-model 提交流（-1 哨兵、方块位光照
+  `block<<4|sky<<20`）；root transform 转写 `StandingSignRenderer.
+  bodyTransformation`：`translate(0.5,0.5,0.5)·Ry(-angle)·scale(2/3,-2/3,
+  -2/3)`（RENDER_SCALE=0.6666667），wall 追加 `translate(0,-0.3125,
+  -0.4375)`；hanging `translation(0.5,0.9375,0.5)·Ry(-angle)·translate(0,
+  -0.3125,0)·scale(1,-1,-1)`。renderer（`model_layers/sign.rs`）：
+  `createSignLayer`/`createHangingSignLayer` 逐字转写（board 24×12×2
+  texOffs(0,0) + stick 2×14×2 texOffs(0,14)；hanging board 14×10×2
+  texOffs(0,12)、plank 16×2×4、chain 平面 texOffs(0,6)/(6,6)
+  offset(±5,-6,0) yRot∓π/4、vChains 12×6 texOffs(14,6)）；24 张
+  `entity/signs[/hanging]/<wood>.png`（64×32）进共享 entity atlas；render
+  type 用 vanilla `entityCutout`（无 cull）。牌面文本：世界空间 glyph quad
+  烘焙（`item_models/sign_text.rs::bake_sign_text_surface`），走 item-frame
+  map label 的 `minecraft:font/default` atlas、在 entity-translucent
+  feature pass 绘制；文本变换 = body · [back: Ry(π)] · `TEXT_OFFSET(0,
+  0.33333334,0.046666667)`（hanging `(0,-0.32,0.073)`）· scale
+  0.010416667/0.0140625（y 取负）；布局逐字对照 `SignRenderer` 语义：行高
+  10/9、单行截断宽 90/60（先按最后空格断词、无空格在溢出字形前硬断）、居中
+  `x=-width/2`（Java int 除法）、`y=i*lh-4*lh/2`；颜色 `getDarkColor`：
+  `ARGB.scaleRGB(color,0.4F)` 逐通道截断、black+glowing → -988212/0xF0EBCC
+  米色；glowing 面用原 dye `getTextColor` + full-bright（15728880）；逐 run
+  组件色覆盖底色；bold 双绘/italic 斜切沿用 HUD `styled_quads`。defer 如实
+  记账：glowing 8 向 outline glyph pass、underline/strikethrough effect
+  bar（需 font-atlas 外白像素）、obfuscated 乱码轮换（按原字形绘制）、
+  `is_waxed` 仅存储（vanilla 亦无渲染效果，仅编辑门控）、`filtered_
+  messages` 未解码、BE 记录通用移除、逐 BE 距离剔除、vanilla 文本
+  POLYGON_OFFSET display mode（以 TEXT_OFFSET z 间隙近似）。测试：protocol
+  NBT 解码（4 行/color/glowing/waxed/缺侧）、world BE section+包更新与
+  block 变更修剪、`sign_blocks` 枚举/rotation/facing/attached、
+  `entity_models/tests/sign.rs`（7 cube+chain pose 对照 vanilla、root 变换
+  standing/wall/hanging 点映射、model key、24 纹理表驱动、pass render
+  type、cutout mesh 烘焙）、`item_models/sign_text.rs`（文本变换偏移/缩放
+  含背面、暗色公式、90/60 截断+断词+bold 7px、居中与行 y 手算、run 色覆盖
+  +bold 双绘、空面 None）、`bbb-native/src/sign_scene.rs`（kind/rotation/
+  光照打包、双面 gating、glowing full-bright）。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色
