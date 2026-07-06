@@ -9,14 +9,15 @@ use super::super::{
         wolf_texture_ref, zombie_villager_level_texture_ref,
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
-        ChickenModelVariant, CopperGolemWeathering, CowModelVariant, DonkeyModelFamily,
-        EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
-        EntityPlayerSkin, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant,
-        HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
-        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-        VillagerModelData, VillagerModelHat, WolfModelVariant,
+        ChestModelHalf, ChestModelTexture, ChickenModelVariant, CopperGolemWeathering,
+        CowModelVariant, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
+        EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
+        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        WolfModelVariant,
     },
     model_layers::*,
 };
@@ -37,6 +38,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BreezeEyes,
     CamelBase,
     CamelSaddle,
+    ChestBase,
     ChickenBase,
     SalmonBase,
     TropicalFishBase,
@@ -1610,6 +1612,30 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
         render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: mooshroom_model_layer(baby),
         texture: mooshroom_texture_ref(baby, variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// Vanilla `ChestRenderer.submit`: one `submitModel` per chest block entity with the
+/// `Sheets.chooseSprite(material, type)` sprite on the chest sheet and the model's
+/// `RenderTypes::entityCutoutCull` render type (`ChestModel`'s constructor).
+pub(in crate::entity_models) fn chest_textured_layer_passes(
+    texture: ChestModelTexture,
+    half: ChestModelHalf,
+) -> Vec<EntityModelLayerPass> {
+    let model_layer = match half {
+        ChestModelHalf::Single => MODEL_LAYER_CHEST,
+        ChestModelHalf::Left => MODEL_LAYER_CHEST_LEFT,
+        ChestModelHalf::Right => MODEL_LAYER_CHEST_RIGHT,
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ChestBase,
+        render_type: EntityModelLayerRenderType::EntityCutoutCull,
+        model_layer,
+        texture: chest_texture_ref(texture, half),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

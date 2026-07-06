@@ -3836,6 +3836,38 @@
   不剔侧面（保守过渲染）、stairs 并集满背面剔邻立方、cutout(玻璃类) slab 不遮、
   cross 邻居不遮、跨 chunk slab 半面不遮。skipRendering（同类玻璃/铁栏杆相邻
   剔除）另记账为独立子项（需跨 crate 方块分类 + TerrainCell 新字段，超本片体量）。
+- [x] chest block-entity renderer（2026-07-06，BER 伞形首片，chest 全家族：
+  chest/trapped/ender + 8 种 copper chest，waxed 共享风化档纹理）：bbb 首个
+  BER 面。world 数据链（`bbb-world/src/chest_lids.rs`）：`ChestLidState` 平铺
+  tracker 转写 vanilla `ChestLidController`——`BlockEvent(1, count)` 按 26.1
+  客户端派发链 `Level.blockEvent`（对**当前** block state 派发，Level.java:901）
+  → `BaseEntityBlock.triggerEvent` → `ChestBlockEntity.triggerEvent` 设
+  `shouldBeOpen(count>0)`；`tickLid` 每 tick 0.1 步进、`oOpenness` 拖尾、
+  `[0,1]` clamp，runtime pump 里按 running ticks 推进（vanilla client BE
+  ticker 受 tick-rate manager 门控）；方块被破坏/卸载或静止全关的条目修剪。
+  chest 位置每帧从 chunk block state 派生（`chest_model_source_states`，
+  palette 无 chest state 的 section 整段跳过，扫描成本随含 chest section
+  数）；双箱按 `ChestBlock.getConnectedDirection`（LEFT→`facing.getClockWise()`，
+  同方块反 `type` 校验）配对，openness 取双方 lerped openness 的
+  `opennessCombiner` max。dispatch 接法（避免双路径）：chest 实例以
+  `EntityModelKind::Chest { texture, half }` 进入既有唯一 entity-model 提交流
+  （`RendererFrame.entity_model_instances`，`entity_id` 用 -1 哨兵），不开
+  平行 textured 提交路径；root transform 转写 BER 位姿
+  `rotationAround(Axis.YP.rotationDegrees(-facing.toYRot()), 0.5, 0, 0.5)`
+  且无实体 `scale(-1,-1,1)` 翻转（chest mesh 按 block 空间 Y-up 作模）；光照
+  取方块位采样 `block<<4|sky<<20`，双箱按 `BrightnessCombiner` 分量 max。
+  renderer（`model_layers/chest.rs`）：`ChestModel.java` 三套 mesh 逐字转写
+  （single 14 宽 / left·right 15 宽 bottom/lid/lock，lid+lock 共 pivot
+  `offset(0,9,1)`），`setup_anim` 施 `1-(1-o)^3` easing 与 `xRot=-(o·π/2)`；
+  19 张 `entity/chest/*.png`（64×64）进共享 entity atlas；render type 用
+  vanilla `entityCutoutCull`（cull 开的 cutout 桶）。defer 如实记账：xmas
+  Dec 24-26 纹理切换（无 wall-clock 输入）、双箱接缝面 `allOfEnumExcept`
+  可见性（bbb 发出接缝 quad，但被拼合箱体完全包裹不可见）、BER
+  `breakProgress` crumbling、逐 BE 距离/视锥剔除。测试：world 侧事件门控/
+  tick 序列/clamp/修剪/login 清空/枚举配对与 openness 合成；renderer 侧 9 个
+  cube+pivot 对照 `ChestModel.java`、easing/角度手算、facing 旋转矩阵点映射、
+  ender/copper 纹理选择、cutout-cull mesh 烘焙；native 侧投影 facing/openness/
+  光照打包/双箱 max + runtime pump 顺序断言。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

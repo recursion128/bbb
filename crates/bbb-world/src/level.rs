@@ -484,6 +484,7 @@ impl WorldStore {
         self.first_chunk = None;
         self.block_destructions.clear();
         self.block_events.clear();
+        self.chest_lids.clear();
         self.level_events.clear();
         self.client_audio.playing_jukebox_songs.clear();
         self.local_block_predictions.clear();

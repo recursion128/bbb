@@ -49,6 +49,7 @@ use crate::{
     audio_runtime::AudioEventSink,
     biome_tint::biome_height_adjusted_temperature,
     camera_pose::camera_pose_from_world,
+    chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     entity_scene::{
@@ -1486,6 +1487,10 @@ pub(crate) fn pump_network_and_terrain(
     );
     let cloud_environment = cloud_environment_for_world(world);
     advance_block_destruction_render_ticks(world, running_ticks);
+    // Vanilla `ChestBlockEntity.lidAnimateTick` is a client block-entity ticker
+    // (`ClientLevel.tickBlockEntities`), gated by the tick-rate manager like the
+    // rest of the level tick, so the lids advance on running ticks.
+    world.advance_chest_lid_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1686,10 +1691,16 @@ pub(crate) fn pump_network_and_terrain(
     );
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws).
-    let entity_instances =
+    let mut entity_instances =
         entity_model_instances_from_world_at_partial_tick(world, item_runtime, entity_partial_tick);
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    // Chest block-entity models join the same single entity-model submission
+    // stream after held-item baking (they have no hands to bake).
+    entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
     let camera_pose = camera_pose_from_world(world);
     let first_person_item_models = first_person_item_models(
         world,

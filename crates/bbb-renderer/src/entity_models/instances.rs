@@ -226,6 +226,13 @@ entity_render_state! {
     /// the impact wobble amount that `ArrowModel.setupAnim` converts into a root
     /// z-rotation. `0.0` for arrows that are not shaking and every non-arrow entity.
     (with_arrow_shake) arrow_shake: f32 = 0.0;
+    /// Vanilla `ChestRenderState.open` before easing: the combined raw lid
+    /// openness (`ChestBlock.opennessCombiner` over the lerped
+    /// `ChestLidController.getOpenness(partialTick)` of both joined halves).
+    /// `ChestModel::setup_anim` applies the `1 - (1 - o)^3` easing and the
+    /// `-o * π/2` lid rotation. `0.0` for every non-chest instance and a
+    /// resting chest.
+    (with_chest_openness) chest_openness: f32 = 0.0;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1484,6 +1491,24 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Cod, position, y_rot)
     }
 
+    /// A chest block-entity model instance at the chest block's min corner.
+    /// `y_rot` carries vanilla `-facing.toYRot()` degrees (the
+    /// `ChestRenderer.createModelTransformation` yaw about the block centre).
+    pub fn chest(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        texture: ChestModelTexture,
+        half: ChestModelHalf,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Chest { texture, half },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
@@ -2591,6 +2616,7 @@ mod tests {
                 head_yaw: 0.0,
                 head_pitch: 0.0,
                 arrow_shake: 0.0,
+                chest_openness: 0.0,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

@@ -2,6 +2,10 @@ pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,
 };
+pub use crate::chest_lids::{
+    chest_model_kind_for_block_name, ChestLidState, ChestModelFacing, ChestModelHalf,
+    ChestModelKind, ChestModelSourceState,
+};
 pub use crate::chunks::{
     decode_level_chunk_with_light, BlockEntityRecord, ChunkBiomeSampler, ChunkColumn,
     ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, HeightmapData, LightData,

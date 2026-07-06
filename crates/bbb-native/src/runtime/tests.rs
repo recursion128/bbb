@@ -1033,11 +1033,23 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let item_entity_billboards = item_entity_billboards_from_world(")
         .expect("pump should extract item entity billboards");
     let entity_instances = source
-        .find("let entity_instances =\n        entity_model_instances_from_world_at_partial_tick(")
+        .find("let mut entity_instances =\n        entity_model_instances_from_world_at_partial_tick(")
         .expect("pump should extract entity model instances");
     let held_models = source
         .find("let held_item_models =")
         .expect("pump should extract held item models");
+    let chest_instances = source
+        .find("entity_instances.extend(chest_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract chest block-entity model instances");
+    let chest_lid_tick = source
+        .find("world.advance_chest_lid_ticks(running_ticks);")
+        .expect("pump should advance chest lid ticks");
+    // Vanilla `ClientLevel.tickBlockEntities` runs the chest lid ticker before
+    // render extraction reads the lerped openness; the chest instances join the
+    // single entity-model submission stream after held-item baking (chests have
+    // no hands to bake).
+    assert!(chest_lid_tick < chest_instances);
+    assert!(held_models < chest_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

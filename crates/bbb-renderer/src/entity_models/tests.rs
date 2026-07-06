@@ -13,6 +13,7 @@ mod blaze;
 mod boat;
 mod breeze;
 mod camel;
+mod chest;
 mod chicken;
 mod cod;
 mod copper_golem;

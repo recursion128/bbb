@@ -119,13 +119,15 @@ impl WorldStore {
 
     pub fn apply_block_event(&mut self, event: ProtocolBlockEvent) {
         self.counters.block_events_received += 1;
+        let pos = protocol_block_pos(event.pos);
         self.block_events.push(BlockEventRecord {
-            pos: protocol_block_pos(event.pos),
+            pos,
             b0: event.b0,
             b1: event.b1,
             block_id: event.block_id,
         });
         self.counters.block_events_tracked = self.block_events.len();
+        self.update_chest_lid_from_block_event(pos, event.b0, event.b1);
     }
 
     pub fn apply_level_event(

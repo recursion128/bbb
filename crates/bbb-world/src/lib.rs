@@ -1,5 +1,6 @@
 mod advancements;
 mod block_events;
+mod chest_lids;
 mod chunks;
 mod client;
 mod commands;

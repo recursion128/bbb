@@ -96,6 +96,18 @@ impl EntityModelKind {
             Self::EndCrystal => "end_crystal",
             Self::EvokerFangs => "evoker_fangs",
             Self::LeashKnot => "leash_knot",
+            Self::Chest {
+                half: ChestModelHalf::Single,
+                ..
+            } => "chest",
+            Self::Chest {
+                half: ChestModelHalf::Left,
+                ..
+            } => "chest_left",
+            Self::Chest {
+                half: ChestModelHalf::Right,
+                ..
+            } => "chest_right",
             Self::Arrow { .. } => "arrow",
             Self::Trident => "trident",
             Self::WitherSkull { .. } => "wither_skull",
@@ -390,6 +402,7 @@ impl EntityModelKind {
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
             Self::LeashKnot => Some(LEASH_KNOT_TEXTURE_REF),
+            Self::Chest { texture, half } => Some(chest_texture_ref(texture, half)),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),

@@ -218,6 +218,16 @@ pub enum EntityModelKind {
     /// `LeashKnotModel` — the single 6×8×6 knot box. The model has no `setupAnim`, so the geometry
     /// is complete; only the texture-backed path is deferred.
     LeashKnot,
+    /// Vanilla 26.1 `ChestModel` submitted by the `ChestRenderer` block-entity renderer — the first
+    /// (and so far only) block-entity model in the scene. `half` selects the single or the
+    /// double-chest left/right mesh (`MultiblockChestResources.select`), `texture` the
+    /// `Sheets.chooseSprite` material family; the lid/lock openness rotation reads
+    /// `EntityRenderState.chest_openness`. Instances are projected from chest block states, not the
+    /// entity list, so `entity_id` is a sentinel.
+    Chest {
+        texture: ChestModelTexture,
+        half: ChestModelHalf,
+    },
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
@@ -1351,6 +1361,30 @@ pub enum ArrowModelTexture {
     Normal,
     Tipped,
     Spectral,
+}
+
+/// Vanilla `ChestType`: which of the three `ChestModel` meshes a chest block renders
+/// (`MultiblockChestResources.select` — `single`, the double chest's `left`, or its `right` half).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChestModelHalf {
+    Single,
+    Left,
+    Right,
+}
+
+/// Vanilla `ChestRenderState.ChestMaterialType` (minus the date-gated `CHRISTMAS`, which bbb defers
+/// — no wall-clock input): the `Sheets.chooseSprite` texture family a chest renders with. Each
+/// non-ender family carries `entity/chest/<prefix>{,_left,_right}.png`; the ender chest is always
+/// single (`entity/chest/ender.png`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChestModelTexture {
+    Normal,
+    Trapped,
+    Ender,
+    Copper,
+    CopperExposed,
+    CopperWeathered,
+    CopperOxidized,
 }
 
 /// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,

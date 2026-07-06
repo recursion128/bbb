@@ -1,8 +1,8 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, CopperGolemWeathering,
-    EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant,
-    FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, ChestModelHalf, ChestModelTexture,
+    CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
+    FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
     WolfArmorCrackiness,
 };
 
@@ -1585,7 +1585,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 551] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 570] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1773,6 +1773,25 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SILVERFISH_TEXTURE_REF,
     LEASH_KNOT_TEXTURE_REF,
     TRIDENT_TEXTURE_REF,
+    CHEST_NORMAL_TEXTURE_REF,
+    CHEST_NORMAL_LEFT_TEXTURE_REF,
+    CHEST_NORMAL_RIGHT_TEXTURE_REF,
+    CHEST_TRAPPED_TEXTURE_REF,
+    CHEST_TRAPPED_LEFT_TEXTURE_REF,
+    CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+    CHEST_ENDER_TEXTURE_REF,
+    CHEST_COPPER_TEXTURE_REF,
+    CHEST_COPPER_LEFT_TEXTURE_REF,
+    CHEST_COPPER_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF,
     TRIDENT_RIPTIDE_TEXTURE_REF,
     ENCHANTED_GLINT_ITEM_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
@@ -3079,6 +3098,133 @@ pub(in crate::entity_models) const SILVERFISH_ENTITY_TEXTURE_REFS: [EntityModelT
 
 pub fn silverfish_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SILVERFISH_ENTITY_TEXTURE_REFS
+}
+
+const fn chest_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 64],
+    }
+}
+
+// Vanilla `Sheets.CHEST_MAPPER` sprites (`entity/chest/<name>` on the 64×64 chest sheet), named per
+// `ChestSpecialRenderer.createDefaultTextures(prefix)`: `<prefix>` / `<prefix>_left` /
+// `<prefix>_right` for single/left/right, plus the always-single `ender`. The `christmas*` set is
+// deferred with the date gate.
+pub(in crate::entity_models) const CHEST_NORMAL_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/normal.png");
+pub(in crate::entity_models) const CHEST_NORMAL_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/normal_left.png");
+pub(in crate::entity_models) const CHEST_NORMAL_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/normal_right.png");
+pub(in crate::entity_models) const CHEST_TRAPPED_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/trapped.png");
+pub(in crate::entity_models) const CHEST_TRAPPED_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/trapped_left.png");
+pub(in crate::entity_models) const CHEST_TRAPPED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/trapped_right.png");
+pub(in crate::entity_models) const CHEST_ENDER_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/ender.png");
+pub(in crate::entity_models) const CHEST_COPPER_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper.png");
+pub(in crate::entity_models) const CHEST_COPPER_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_left.png");
+pub(in crate::entity_models) const CHEST_COPPER_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_right.png");
+pub(in crate::entity_models) const CHEST_COPPER_EXPOSED_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_exposed.png");
+pub(in crate::entity_models) const CHEST_COPPER_EXPOSED_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_exposed_left.png");
+pub(in crate::entity_models) const CHEST_COPPER_EXPOSED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_exposed_right.png");
+pub(in crate::entity_models) const CHEST_COPPER_WEATHERED_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_weathered.png");
+pub(in crate::entity_models) const CHEST_COPPER_WEATHERED_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_weathered_left.png");
+pub(in crate::entity_models) const CHEST_COPPER_WEATHERED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_weathered_right.png");
+pub(in crate::entity_models) const CHEST_COPPER_OXIDIZED_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_oxidized.png");
+pub(in crate::entity_models) const CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_oxidized_left.png");
+pub(in crate::entity_models) const CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/copper_oxidized_right.png");
+
+pub(in crate::entity_models) const CHEST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
+    CHEST_NORMAL_TEXTURE_REF,
+    CHEST_NORMAL_LEFT_TEXTURE_REF,
+    CHEST_NORMAL_RIGHT_TEXTURE_REF,
+    CHEST_TRAPPED_TEXTURE_REF,
+    CHEST_TRAPPED_LEFT_TEXTURE_REF,
+    CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+    CHEST_ENDER_TEXTURE_REF,
+    CHEST_COPPER_TEXTURE_REF,
+    CHEST_COPPER_LEFT_TEXTURE_REF,
+    CHEST_COPPER_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_EXPOSED_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_WEATHERED_RIGHT_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF,
+    CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF,
+];
+
+pub fn chest_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &CHEST_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `Sheets.chooseSprite(material, type)`: the ender chest is always the single `ender`
+/// sprite; every other family selects `<prefix>` / `<prefix>_left` / `<prefix>_right` by
+/// `ChestType` (`MultiblockChestResources.select`).
+pub(in crate::entity_models) fn chest_texture_ref(
+    texture: ChestModelTexture,
+    half: ChestModelHalf,
+) -> EntityModelTextureRef {
+    let (single, left, right) = match texture {
+        ChestModelTexture::Normal => (
+            CHEST_NORMAL_TEXTURE_REF,
+            CHEST_NORMAL_LEFT_TEXTURE_REF,
+            CHEST_NORMAL_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::Trapped => (
+            CHEST_TRAPPED_TEXTURE_REF,
+            CHEST_TRAPPED_LEFT_TEXTURE_REF,
+            CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::Ender => (
+            CHEST_ENDER_TEXTURE_REF,
+            CHEST_ENDER_TEXTURE_REF,
+            CHEST_ENDER_TEXTURE_REF,
+        ),
+        ChestModelTexture::Copper => (
+            CHEST_COPPER_TEXTURE_REF,
+            CHEST_COPPER_LEFT_TEXTURE_REF,
+            CHEST_COPPER_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::CopperExposed => (
+            CHEST_COPPER_EXPOSED_TEXTURE_REF,
+            CHEST_COPPER_EXPOSED_LEFT_TEXTURE_REF,
+            CHEST_COPPER_EXPOSED_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::CopperWeathered => (
+            CHEST_COPPER_WEATHERED_TEXTURE_REF,
+            CHEST_COPPER_WEATHERED_LEFT_TEXTURE_REF,
+            CHEST_COPPER_WEATHERED_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::CopperOxidized => (
+            CHEST_COPPER_OXIDIZED_TEXTURE_REF,
+            CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF,
+            CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF,
+        ),
+    };
+    match half {
+        ChestModelHalf::Single => single,
+        ChestModelHalf::Left => left,
+        ChestModelHalf::Right => right,
+    }
 }
 
 pub(in crate::entity_models) const LEASH_KNOT_TEXTURE_REF: EntityModelTextureRef =

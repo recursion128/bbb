@@ -435,15 +435,56 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (chest, sign text, banner, bell, shulker
-    box, bed, conduit, …): no BER surface exists at all; these blocks bake
-    particle-only models into near-empty terrain geometry. Vanilla:
-    `BlockEntityRenderDispatcher` + per-BE renderers. Large umbrella — enter
-    by smallest sub-slice (chest via the existing entity-model pipeline, or
-    sign text via the HUD font map); audit the `Custom`→`Cube` shape
-    fallback (`block_models/shape.rs` → `textures.rs`) alongside, since
-    unclassifiable elements are mostly BE-driven models.
+  - Block-entity special renderers (sign text, banner, bell, shulker box,
+    bed, conduit, decorated pot, …): the chest family is DONE (2026-07-06,
+    see Evidence) as the first BER sub-slice; every other BE-driven block
+    still bakes a particle-only model into near-empty terrain geometry.
+    Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
+    smallest sub-slice (sign text via the HUD font map is the staked next
+    entry); audit the `Custom`→`Cube` shape fallback (`block_models/shape.rs`
+    → `textures.rs`) alongside, since unclassifiable elements are mostly
+    BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-06 — Chest block-entity renderer (first BER sub-slice, whole
+    chest family: chest / trapped / ender / the 8 copper-chest blocks with
+    waxed variants sharing their weathering stage's texture). Data chain:
+    `bbb-world/src/chest_lids.rs` holds a flat `ChestLidState` tracker
+    (vanilla `ChestLidController` transcribed — `BlockEvent(1, count)` →
+    `shouldBeOpen(count > 0)` via the `Level.blockEvent` → `BaseEntityBlock` →
+    `ChestBlockEntity.triggerEvent` dispatch on the *current* block state;
+    `tickLid` 0.1/tick with `oOpenness` trailing, advanced on running ticks in
+    the runtime pump; destroyed/unloaded chests and resting-closed lids
+    prune). Chest positions are derived from chunk block states per frame
+    (`chest_model_source_states`): sections whose block palette holds no
+    chest state are skipped, so the scan cost tracks chest-bearing sections.
+    Double chests pair per `ChestBlock.getConnectedDirection` (LEFT →
+    `facing.getClockWise()`, same-block opposite-`type` check) and share
+    `opennessCombiner` max of the two lerped opennesses. Dispatch: chest
+    instances ride the existing single entity-model submission stream
+    (`EntityModelKind::Chest { texture, half }` in
+    `RendererFrame.entity_model_instances` — no parallel textured path;
+    `entity_id` is a `-1` sentinel), with a BER-style root transform
+    (`rotationAround(-facing.toYRot(), 0.5, 0, 0.5)`, no entity
+    `scale(-1,-1,1)` flip) and block-position light packed
+    `block << 4 | sky << 20` with the double-chest `BrightnessCombiner`
+    per-component max. Renderer: `model_layers/chest.rs` transcribes
+    `ChestModel` (single + double left/right `bottom`/`lid`/`lock`, lid+lock
+    pivot `offset(0,9,1)`), `setup_anim` applies `1-(1-o)^3` easing and
+    `xRot = -(o·π/2)`; 19 `entity/chest/*.png` 64×64 sprites feed the shared
+    entity atlas; passes use vanilla `entityCutoutCull` (cull-enabled cutout
+    bucket). Deferred (honest): the christmas Dec 24-26 texture swap (no
+    wall-clock input); vanilla's seam-face `Util.allOfEnumExcept` visibility
+    (bbb emits the seam quads — they sit enclosed inside the joined
+    double-chest volume, with only an invisible internal coplanar pair);
+    BER `breakProgress` crumbling on the chest model; per-block-entity
+    distance/frustum culling (chests submit like entities, unculled).
+    Tests: `bbb-world/src/chest_lids.rs` (event gate + tick sequence +
+    clamp/prune + login clear + enumeration/pairing/openness-combine),
+    `bbb-renderer/src/entity_models/tests/chest.rs` (all 9 cubes + pivots vs
+    `ChestModel.java`, easing/rotation hand-computed, facing rotation matrix
+    point-mapped, sprite selection incl. ender/copper, cutout-cull mesh
+    bake), `bbb-native/src/chest_scene.rs` (projection facing/openness/light,
+    double-half max, light packing) + the runtime pump ordering test.
   - Done 2026-07-06 — Per-face occlusion-shape culling (slab/stairs full
     faces): neighbour face culling was a cell-level boolean (any opaque
     neighbour with geometry culled every adjacent face), so slabs/stairs hid

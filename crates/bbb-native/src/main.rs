@@ -18,6 +18,7 @@ mod audio_runtime;
 mod biome_tint;
 mod block_outline;
 mod camera_pose;
+mod chest_scene;
 mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod crosshair;

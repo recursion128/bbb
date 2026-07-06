@@ -642,6 +642,20 @@ pub(in crate::entity_models) fn leash_knot_model_root_transform(
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
 }
 
+/// Vanilla `ChestRenderer.submit`: `poseStack.mulPose(modelTransformation(state.facing))`, where
+/// `createModelTransformation` is `new Matrix4f().rotationAround(Axis.YP.rotationDegrees(
+/// -facing.toYRot()), 0.5F, 0.0F, 0.5F)` (`ChestRenderer.java:115-121`) — a yaw about the vertical
+/// axis through the block centre, with **no** entity `scale(-1, -1, 1)` flip (the chest mesh is
+/// authored Y-up in block-local space). `instance.position` is the chest block's min corner and
+/// `body_rot` carries `-facing.toYRot()` degrees.
+pub(in crate::entity_models) fn chest_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    let pivot = Vec3::new(0.5, 0.0, 0.5);
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(pivot)
+        * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+        * Mat4::from_translation(-pivot)
+}
+
 /// Vanilla `LlamaSpitRenderer.submit`: a plain `EntityRenderer` that lifts the spit slightly and
 /// orients it along its flight with `translate(0, 0.15, 0)` then `Axis.YP.rotationDegrees(yRot - 90)`
 /// then `Axis.ZP.rotationDegrees(xRot)` (no flip / scale / y-offset). `LlamaSpitModel` has no
