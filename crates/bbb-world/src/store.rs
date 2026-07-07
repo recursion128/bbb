@@ -52,6 +52,10 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) decorated_pot_wobbles: Vec<crate::DecoratedPotWobbleState>,
     #[serde(default)]
+    pub(crate) enchanting_table_books: Vec<crate::EnchantingTableBookState>,
+    #[serde(default)]
+    pub(crate) enchanting_book_random: crate::EnchantingBookRandom,
+    #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
     #[serde(default)]
     pub(crate) last_block_changed_ack: Option<BlockChangedAckState>,

@@ -1084,6 +1084,22 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(pot_wobble_tick < decorated_pot_instances);
     assert!(held_models < shulker_box_instances);
     assert!(held_models < decorated_pot_instances);
+    // The enchanting-table book ticker
+    // (`EnchantingTableBlockEntity.bookAnimationTick`) runs before render
+    // extraction reads the lerped flip/open/rot; both book streams join after
+    // held-item baking.
+    let enchanting_book_tick = source
+        .find("world.advance_enchanting_table_book_ticks(running_ticks);")
+        .expect("pump should advance enchanting table book ticks");
+    let enchanting_book_instances = source
+        .find("enchanting_table_book_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract enchanting table book block-entity model instances");
+    let lectern_book_instances = source
+        .find("entity_instances.extend(lectern_book_model_instances_from_world(world));")
+        .expect("pump should extract lectern book block-entity model instances");
+    assert!(enchanting_book_tick < enchanting_book_instances);
+    assert!(held_models < enchanting_book_instances);
+    assert!(held_models < lectern_book_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

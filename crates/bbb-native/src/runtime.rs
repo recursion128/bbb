@@ -56,6 +56,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
+    enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
@@ -75,6 +76,7 @@ use crate::{
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
         ominous_item_spawner_models,
     },
+    lectern_book_scene::lectern_book_model_instances_from_world,
     particle_runtime::{
         ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
         SMOKE_PARTICLE_TYPE_ID,
@@ -1506,6 +1508,10 @@ pub(crate) fn pump_network_and_terrain(
     // The decorated pot wobble clock is vanilla `gameTime -
     // wobbleStartedAtTick`, re-expressed as running ticks since the block event.
     world.advance_decorated_pot_wobble_ticks(running_ticks);
+    // Vanilla `EnchantingTableBlockEntity.bookAnimationTick` is another client
+    // block-entity ticker, so the hovering books advance on running ticks too
+    // (reconciled every call so freshly loaded tables gain state).
+    world.advance_enchanting_table_book_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1746,6 +1752,15 @@ pub(crate) fn pump_network_and_terrain(
         world,
         entity_partial_tick,
     ));
+    // The enchanting-table hovering book (animated, nearest-player-facing) and
+    // the lectern's static open book share the same `BookModel` in the stream.
+    entity_instances.extend(
+        enchanting_table_book_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+        ),
+    );
+    entity_instances.extend(lectern_book_model_instances_from_world(world));
     let camera_pose = camera_pose_from_world(world);
     let first_person_item_models = first_person_item_models(
         world,

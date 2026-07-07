@@ -140,6 +140,8 @@ impl EntityModelKind {
             Self::ShulkerBox { .. } => "shulker_box",
             Self::DecoratedPot { .. } => "decorated_pot",
             Self::Banner { .. } => "banner",
+            Self::EnchantingBook => "enchanting_table_book",
+            Self::LecternBook => "lectern_book",
             Self::Arrow { .. } => "arrow",
             Self::Trident => "trident",
             Self::WitherSkull { .. } => "wither_skull",
@@ -445,6 +447,9 @@ impl EntityModelKind {
             Self::DecoratedPot { .. } => Some(DECORATED_POT_BASE_TEXTURE_REF),
             // The banner's frame/flag sheet; the tinted pattern sprites ride their own passes.
             Self::Banner { .. } => Some(BANNER_BASE_TEXTURE_REF),
+            // Both books share the single `enchanting_table_book` sheet (`EnchantTableRenderer` /
+            // `LecternRenderer` bind `EnchantTableRenderer.BOOK_TEXTURE`).
+            Self::EnchantingBook | Self::LecternBook => Some(BOOK_TEXTURE_REF),
             Self::Trident => Some(TRIDENT_TEXTURE_REF),
             Self::EvokerFangs => Some(EVOKER_FANGS_TEXTURE_REF),
             Self::Tadpole => Some(TADPOLE_TEXTURE_REF),

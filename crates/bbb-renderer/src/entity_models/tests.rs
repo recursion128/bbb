@@ -14,6 +14,7 @@ mod bee;
 mod bell;
 mod blaze;
 mod boat;
+mod book;
 mod breeze;
 mod camel;
 mod chest;

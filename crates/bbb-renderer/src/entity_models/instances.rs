@@ -261,6 +261,32 @@ entity_render_state! {
     /// `xRot = (-0.0125 + 0.01·cos(2π·phase))·π`. `0.0` for every non-banner
     /// instance.
     (with_banner_flag_phase) banner_flag_phase: f32 = 0.0;
+    /// Vanilla `BookModel.State.forAnimation`'s `progress` argument (the block
+    /// entity's `time + partialTicks`; the fixed `0.0` for the lectern):
+    /// `BookModel.setup_anim` folds it into the derived openness
+    /// `(sin(progress·0.02)·0.1 + 1.25)·book_open`. `0.0` for every non-book
+    /// instance (a closed book). Shared by the enchanting-table and lectern
+    /// books.
+    (with_book_progress) book_progress: f32 = 0.0;
+    /// Vanilla `BookModel.State.forAnimation`'s `openness` argument (the lerped
+    /// enchanting-table `open` in `[0, 1]`; the fixed `1.2` for the lectern):
+    /// the base book openness before the `progress` bob. `0.0` for every
+    /// non-book instance (a closed book).
+    (with_book_open) book_open: f32 = 0.0;
+    /// Vanilla `BookModel.State.pageFlip1` (`clamp(frac(flip + 0.25)·1.6 − 0.3,
+    /// 0, 1)` in `EnchantTableRenderer.submit`; the fixed `0.1` for the
+    /// lectern): the first flip page's turn fraction. `0.0` for non-book
+    /// instances.
+    (with_book_page_flip_1) book_page_flip_1: f32 = 0.0;
+    /// Vanilla `BookModel.State.pageFlip2` (`clamp(frac(flip + 0.75)·1.6 − 0.3,
+    /// 0, 1)`; the fixed `0.9` for the lectern): the second flip page's turn
+    /// fraction. `0.0` for non-book instances.
+    (with_book_page_flip_2) book_page_flip_2: f32 = 0.0;
+    /// Vanilla `EnchantTableRenderer.submit`'s hover offset `0.1 +
+    /// sin(time·0.1)·0.01` folded into the enchanting-table book root
+    /// transform's vertical translate. `0.0` for the lectern book (a static
+    /// transform) and every non-book instance.
+    (with_book_float_y) book_float_y: f32 = 0.0;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1659,6 +1685,25 @@ impl EntityModelInstance {
         )
     }
 
+    /// An enchanting-table hovering book instance at the table block's min
+    /// corner. `y_rot` carries the lerped `EnchantTableRenderer` book yaw in
+    /// degrees (`state.yRot`, converted from the radian `oRot + or·partialTick`
+    /// the projection interpolates); the book animation rides `book_openness` /
+    /// `book_page_flip_1` / `book_page_flip_2`, and the hover offset rides
+    /// `book_float_y`.
+    pub fn enchanting_book(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::EnchantingBook, position, y_rot)
+    }
+
+    /// A lectern open-book instance at the lectern block's min corner. `y_rot`
+    /// carries the vanilla `FACING.getClockWise().toYRot()` degrees the book
+    /// renders at (`LecternRenderer.extractRenderState`); the fixed
+    /// `BookModel.State.forAnimation(0, 0.1, 0.9, 1.2)` openness / page flips
+    /// ride the shared book render state.
+    pub fn lectern_book(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::LecternBook, position, y_rot)
+    }
+
     pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
@@ -2772,6 +2817,11 @@ mod tests {
                 shulker_box_progress: 0.0,
                 decorated_pot_wobble: None,
                 banner_flag_phase: 0.0,
+                book_progress: 0.0,
+                book_open: 0.0,
+                book_page_flip_1: 0.0,
+                book_page_flip_2: 0.0,
+                book_float_y: 0.0,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

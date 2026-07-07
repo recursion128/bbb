@@ -785,6 +785,7 @@ mod tests {
                 "textures/entity/equipment/humanoid_baby/turtle_scute.png",
                 "textures/entity/equipment/humanoid_baby/netherite.png",
                 "textures/entity/equipment/wings/elytra.png",
+                "textures/entity/enchantment/enchanting_table_book.png",
             ]
         );
         for image in images {

@@ -795,6 +795,41 @@ pub(in crate::entity_models) fn banner_model_root_transform(instance: EntityMode
         ))
 }
 
+/// Vanilla `EnchantTableRenderer.submit` (`EnchantTableRenderer.java:61-73`):
+/// `translate(0.5, 0.75, 0.5) · translate(0, 0.1 + sin(time·0.1)·0.01, 0) ·
+/// Axis.YP.rotation(-yRot) · Axis.ZP.rotationDegrees(80)` — center the book
+/// over the table, bob it, turn it to face the nearest player, then tip it
+/// open. The book mesh is authored in the vanilla 1/16 pixel space (baked into
+/// the cube emission), so there is no extra model scale. `instance.position` is
+/// the table block's min corner, `book_float_y` carries the full
+/// `0.1 + sin(time·0.1)·0.01` hover offset, and `body_rot` carries the lerped
+/// book yaw in degrees (vanilla `yRot` is radians; the projection converts it).
+pub(in crate::entity_models) fn enchanting_table_book_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.5, 0.75, 0.5))
+        * Mat4::from_translation(Vec3::new(0.0, instance.render_state.book_float_y, 0.0))
+        * Mat4::from_rotation_y(-instance.render_state.body_rot.to_radians())
+        * Mat4::from_rotation_z(80.0_f32.to_radians())
+}
+
+/// Vanilla `LecternRenderer.submit` (`LecternRenderer.java:46-50`):
+/// `translate(0.5, 1.0625, 0.5) · Axis.YP.rotationDegrees(-yRot) ·
+/// Axis.ZP.rotationDegrees(67.5) · translate(0, -0.125, 0)` — the lectern's
+/// static open book on its slanted rest. Like the enchanting book there is no
+/// extra model scale. `instance.position` is the lectern block's min corner and
+/// `body_rot` carries the `FACING.getClockWise().toYRot()` yaw in degrees.
+pub(in crate::entity_models) fn lectern_book_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.5, 1.0625, 0.5))
+        * Mat4::from_rotation_y(-instance.render_state.body_rot.to_radians())
+        * Mat4::from_rotation_z(67.5_f32.to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, -0.125, 0.0))
+}
+
 /// Vanilla `StandingSignRenderer.baseTransformation` /
 /// `HangingSignRenderer.baseTransformation`, with `instance.position` at the
 /// sign block's min corner and `body_rot` carrying `-angle` degrees

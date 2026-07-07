@@ -4075,6 +4075,54 @@
   （frame+flag）+ 12 面 translucent 逐 pass tint 重烘；native 侧
   kind/底色/yaw/相位/光照投影、43 pattern 表回环、未知 pattern/染料
   折空、16 层渲染上限。
+- [x] 附魔台悬浮书 + lectern 摆放书 block-entity renderer（2026-07-07，BER
+  第六片）：两者共享 vanilla `ModelLayers.BOOK` / `BookModel` + 单一
+  `entity/enchantment/enchanting_table_book` 64×32 纹理。world：附魔台悬浮书
+  是 per-BE 动画（`EnchantingTableBlockEntity`：`time`、`flip`/`oFlip`/`flipT`/
+  `flipA`、`open`/`oOpen`、`rot`/`oRot`/`tRot`），每 client tick 由
+  `bookAnimationTick`（`EnchantingTableBlockEntity.java:50-106`）推进，转写在
+  `bbb-world/src/enchanting_table_books.rs` 为平铺 `Vec<EnchantingTableBookState>`
+  于 runtime pump running tick 上对账 + 步进。书朝向 3 格内最近玩家
+  （`getNearestPlayer(x+0.5,y+0.5,z+0.5,3.0,false)` → `NO_SPECTATORS`，转写为
+  本地玩家 + 远程玩家实体去 spectator，同粒子 nearest-player 先例）、0.1/tick
+  开合、随机 `flipT` 目标翻页。vanilla 静态 wall-clock seed `RANDOM` 换成单一
+  定 seed 可序列化 `LegacyRandomSource`（`EnchantingBookRandom`），按位置排序
+  确定性抽取——vanilla 此处本身非确定（wall-clock seed + BE ticker 序），此为
+  忠实确定性替身。lectern 书纯 block-state 派生（`bbb-world/src/lectern_books.rs`，
+  无 BE 数据）：仅 `LecternBlock.HAS_BOOK` 为真时渲染，yaw =
+  `FACING.getClockWise().toYRot()`。dispatch：`EntityModelKind::EnchantingBook`/
+  `LecternBook` 进唯一 entity-model 提交流（-1 哨兵、`block<<4|sky<<20`）。
+  `EnchantTableRenderer.extractRenderState` partial-tick lerp（`flip`/`open`/
+  `time` + `(-π,π]` 折叠的 `oRot+or·partial` yaw）在
+  `enchanting_table_book_scene.rs`；附魔根变换转写 `submit`（`java:61-73`）：
+  `T(0.5,0.75,0.5)·T(0,0.1+sin(time·0.1)·0.01,0)·Ry(-yRot)·Rz(80°)`，lectern
+  根变换 `LecternRenderer.submit`（`java:46-50`）：`T(0.5,1.0625,0.5)·Ry(-yRot)·
+  Rz(67.5°)·T(0,-0.125,0)`（无额外 model scale——mesh 1/16 单位烘进 cube）。
+  renderer（`model_layers/book.rs`）转写 `BookModel.createBodyLayer`
+  （`BookModel.java:35-53`，64×32：`left_lid` 6×10×0.005 texOffs(0,0)
+  offset(0,0,-1)、`right_lid` texOffs(16,0) offset(0,0,1)、`seam` 2×10×0.005
+  texOffs(12,0) rotation(0,π/2,0)、`left_pages` 5×8×1 texOffs(0,10) 于 -0.99z、
+  `right_pages` texOffs(12,10) 于 -0.01z、`flip_page1/2` 5×8×0.005 texOffs(24,10)）
+  与 `BookModel.setupAnim`（`java:55-68`）：`leftLid.yRot=π+openness`、
+  `rightLid.yRot=-openness`、pages `±openness`、`flipPageN.yRot=openness−
+  openness·2·pageFlipN`、所有 page `x=sin(openness)`，openness 由
+  `State.forAnimation` 派生 `(sin(progress·0.02)·0.1+1.25)·open`（renderer 侧
+  setup_anim）。翻页分数 `clamp(frac(flip+{0.25,0.75})·1.6−0.3,0,1)` 属 submit
+  逻辑（native 侧）；lectern 绑定固定 `State.forAnimation(0,0.1,0.9,1.2)`
+  （openness 1.5）。1 张 64×32 `enchanting_table_book` 纹理进共享 entity atlas
+  （`ENTITY_MODEL_TEXTURE_REFS` 681）与 `entity_assets.rs`。defer 如实记账：
+  BER breakProgress crumbling、逐 BE 距离/视锥剔除（同前五片边界）；附魔翻页
+  样式与任意 vanilla 会话不同（双方随机均无确定性契约，bbb 至少可复现）；
+  批 >1 running tick 复用当前玩家位置（0/1 tick/帧不可分辨）。测试：world 侧
+  最近玩家 3 格 `<range²` 边界、open/rot 追随后松弛、翻页重掷 + flip 缓动、
+  新增/修剪表跟踪、source 枚举、随机确定性；lectern 侧 has-book 门控、
+  facing→顺时针 yaw 表、撤书修剪；renderer 侧 cube/pivot 对照（含静态 seam）、
+  `State.forAnimation` openness 手算（sin 峰值 + lectern 1.5）、`setupAnim`
+  cover/page/flip 手算 + prepare 接线、附魔 hover+tip 与 lectern 变换点映射、
+  model-key/纹理选择、单 `entitySolid` pass、7 盒 42 面 cutout-cull 烘焙；
+  native 侧闭书默认、partial-tick lerp/yaw 抽取、闭书固定翻页分数、
+  lerp/frac/wrap 手算、光照打包、lectern has-book 门控 + 固定 state + facing
+  yaw；runtime pump tick-before-extract 序断言。
 
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色

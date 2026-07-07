@@ -28,6 +28,11 @@ pub use crate::decorated_pot_blocks::{
     is_decorated_pot_block_name, DecoratedPotFacing, DecoratedPotModelSourceState,
     DecoratedPotWobbleSource, DecoratedPotWobbleState, DecoratedPotWobbleStyleKind,
 };
+pub use crate::enchanting_table_books::{
+    is_enchanting_table_block_name, EnchantingBookRandom, EnchantingTableBookSourceState,
+    EnchantingTableBookState,
+};
+pub use crate::lectern_books::{is_lectern_block_name, LecternBookModelSourceState};
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
     BlockStateInfo, BlockStateRegistry, RegistryContentState, RegistryPacket, RegistryPacketEntry,

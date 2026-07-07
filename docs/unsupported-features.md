@@ -438,16 +438,89 @@ When an agent does any of the following, update this file in the same slice:
   - Block-entity special renderers (conduit, skull, …): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
     (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
-    (2026-07-06), and banner (2026-07-06, see Evidence) are DONE as the
-    first five BER sub-slices; every other BE-driven block still bakes a
+    (2026-07-06), banner (2026-07-06), and the enchanting-table book +
+    lectern book (2026-07-07, see Evidence) are DONE as the first six
+    BER sub-slices; every other BE-driven block still bakes a
     particle-only model into near-empty terrain geometry (remaining:
-    conduit, skull/head, enchanting-table book, lectern book, end
-    portal/gateway, the spawner's spinning display entity). Vanilla:
-    `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
-    smallest sub-slice; audit the `Custom`→`Cube` shape fallback
-    (`block_models/shape.rs` → `textures.rs`) alongside, since
-    unclassifiable elements are mostly BE-driven models.
+    conduit, skull/head, end portal/gateway, the spawner's spinning
+    display entity). Vanilla: `BlockEntityRenderDispatcher` + per-BE
+    renderers. Continue by smallest sub-slice; audit the `Custom`→`Cube`
+    shape fallback (`block_models/shape.rs` → `textures.rs`) alongside,
+    since unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-07 — Enchanting-table book + lectern book block-entity
+    renderers (sixth BER sub-slice; both share vanilla `ModelLayers.BOOK`
+    / `BookModel` + the single `entity/enchantment/enchanting_table_book`
+    64×32 sprite). World: the enchanting table's hovering book is a per-
+    block-entity animation (`EnchantingTableBlockEntity`: `time`, `flip`/
+    `oFlip`/`flipT`/`flipA`, `open`/`oOpen`, `rot`/`oRot`/`tRot`) ticked
+    every client tick by `bookAnimationTick` (`EnchantingTableBlockEntity
+    .java:50-106`), transcribed in `bbb-world/src/enchanting_table_books
+    .rs` as a flat `Vec<EnchantingTableBookState>` reconciled + advanced
+    on running ticks in the runtime pump. The book turns to face the
+    nearest player within 3 blocks
+    (`level.getNearestPlayer(x+0.5,y+0.5,z+0.5,3.0,false)` →
+    `EntitySelector.NO_SPECTATORS`, transcribed as the local player +
+    remote player entities minus spectators, matching the particle
+    nearest-player context), opens/closes 0.1/tick, and flips its pages
+    toward a random `flipT` target. Vanilla's static wall-clock-seeded
+    `RANDOM` becomes a single fixed-seed serializable `LegacyRandomSource`
+    (`EnchantingBookRandom`) drawn in a deterministic per-position tick
+    order — a faithful deterministic stand-in for the shared-static random
+    (vanilla is itself non-deterministic here: wall-clock seed + block-
+    entity-ticker order). The lectern book is pure block-state derivation
+    (`bbb-world/src/lectern_books.rs`, no BE data): rendered only while
+    `LecternBlock.HAS_BOOK` is set, yaw = `FACING.getClockWise().toYRot()`.
+    Dispatch: `EntityModelKind::EnchantingBook` / `LecternBook` ride the
+    single entity-model submission stream (`-1` sentinel, `block<<4 |
+    sky<<20` light). `EnchantTableRenderer.extractRenderState`'s partial-
+    tick lerp (`flip`/`open`/`time`, and the `(-π,π]`-folded
+    `oRot + or·partialTick` yaw) runs in `enchanting_table_book_scene.rs`;
+    the enchanting root transform transcribes `EnchantTableRenderer.submit`
+    (`java:61-73`): `T(0.5,0.75,0.5) · T(0, 0.1 + sin(time·0.1)·0.01, 0) ·
+    Ry(-yRot) · Rz(80°)`, the lectern transform `LecternRenderer.submit`
+    (`java:46-50`): `T(0.5,1.0625,0.5) · Ry(-yRot) · Rz(67.5°) ·
+    T(0,-0.125,0)` (no extra model scale — the mesh is 1/16-authored, baked
+    into cube emission). Renderer (`model_layers/book.rs`) transcribes
+    `BookModel.createBodyLayer` (`BookModel.java:35-53`, atlas 64×32: `left
+    _lid` 6×10×0.005 texOffs(0,0) offset(0,0,-1); `right_lid` texOffs(16,0)
+    offset(0,0,1); `seam` 2×10×0.005 texOffs(12,0) rotation(0,π/2,0); `left
+    _pages` 5×8×1 texOffs(0,10) at -0.99z; `right_pages` texOffs(12,10) at
+    -0.01z; `flip_page1`/`flip_page2` 5×8×0.005 texOffs(24,10)) and
+    `BookModel.setupAnim` (`java:55-68`): `leftLid.yRot = π + openness`,
+    `rightLid.yRot = -openness`, pages `±openness`, `flipPageN.yRot =
+    openness − openness·2·pageFlipN`, all pages `x = sin(openness)`, over
+    the derived `BookModel.State.forAnimation` openness `(sin(progress·
+    0.02)·0.1 + 1.25)·open` (renderer-side, in `setup_anim`). The two page-
+    flip fractions `clamp(frac(flip + {0.25,0.75})·1.6 − 0.3, 0, 1)` are
+    `EnchantTableRenderer.submit` submit logic (native side); the lectern
+    binds the fixed `BookModel.State.forAnimation(0, 0.1, 0.9, 1.2)`
+    (openness 1.5). One new 64×32 `entity/enchantment/enchanting_table_book`
+    sprite joins the shared entity atlas (`ENTITY_MODEL_TEXTURE_REFS`
+    681-count) and `entity_assets.rs`. Deferred (honest): BER
+    `breakProgress` crumbling and per-BE distance/frustum culling (same
+    boundary as the previous five slices); the enchanting-table book's
+    exact page-flip pattern differs from any given vanilla session (both
+    use a random with no deterministic contract — bbb's is at least
+    reproducible), and batching >1 running tick reuses the current player
+    positions for all steps (indistinguishable at 0/1 ticks per frame).
+    Tests: `bbb-world/src/enchanting_table_books.rs` (nearest-player 3-block
+    range incl. the `< range²` boundary, open/rot chase-then-relax, page-
+    flip re-roll + flip easing, new/pruned table tracking, source-state
+    enumeration, random determinism), `bbb-world/src/lectern_books.rs`
+    (has-book gate, facing→clockwise-yaw table, book-removal prune),
+    `entity_models/tests/book.rs` (cubes/pivots vs `BookModel` incl. the
+    static seam, `State.forAnimation` openness hand-calcs incl. the sin
+    peak + lectern 1.5, `setupAnim` cover/page/flip hand-calcs +
+    `prepare()` wiring, enchanting hover+tip and lectern transform point-
+    mapping, model-key/texture-ref selection, single `entitySolid` layer
+    pass, 7-box 42-face cutout-cull mesh bake),
+    `bbb-native/src/enchanting_table_book_scene.rs` (closed-book default,
+    partial-tick lerp/yaw extraction, fixed closed-book flip fractions,
+    lerp/frac/wrap math, light packing),
+    `bbb-native/src/lectern_book_scene.rs` (has-book gate + fixed state +
+    facing yaw, light packing), plus the runtime pump tick-before-extract
+    ordering assertions.
   - Done 2026-07-06 — Banner block-entity renderer (fifth BER sub-slice;
     all 32 blocks: 16 `minecraft:<color>_banner` (ground, `ROTATION_16`)
     + 16 `<color>_wall_banner` (`FACING`)). World: the BE NBT `patterns`

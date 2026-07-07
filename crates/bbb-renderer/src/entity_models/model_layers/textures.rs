@@ -1586,7 +1586,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 680] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 681] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -2267,6 +2267,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
     ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF,
     ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+    BOOK_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -3572,6 +3573,23 @@ pub(in crate::entity_models) const BELL_ENTITY_TEXTURE_REFS: [EntityModelTexture
 
 pub fn bell_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BELL_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `EnchantTableRenderer.BOOK_TEXTURE`
+/// (`Sheets.BLOCK_ENTITIES_MAPPER.defaultNamespaceApply("enchantment/enchanting_table_book")`),
+/// sized like the `BookModel.createBodyLayer` 64×32 atlas. Shared by the enchanting-table
+/// hovering book and the lectern's static open book (`LecternRenderer` binds the same sprite).
+pub(in crate::entity_models) const BOOK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/enchantment/enchanting_table_book.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const BOOK_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [BOOK_TEXTURE_REF];
+
+pub fn book_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &BOOK_ENTITY_TEXTURE_REFS
 }
 
 /// A 16×16 `entity/decorated_pot/<name>` sprite (`Sheets.DECORATED_POT_MAPPER`): the plain side

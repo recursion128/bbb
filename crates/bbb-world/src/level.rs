@@ -488,6 +488,8 @@ impl WorldStore {
         self.bell_shakes.clear();
         self.shulker_box_lids.clear();
         self.decorated_pot_wobbles.clear();
+        self.enchanting_table_books.clear();
+        self.enchanting_book_random = crate::EnchantingBookRandom::default();
         self.level_events.clear();
         self.client_audio.playing_jukebox_songs.clear();
         self.local_block_predictions.clear();

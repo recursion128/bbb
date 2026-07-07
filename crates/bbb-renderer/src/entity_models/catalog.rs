@@ -305,6 +305,26 @@ pub enum EntityModelKind {
         base_color: EntityDyeColor,
         layers: [Option<BannerPatternLayer>; 16],
     },
+    /// Vanilla 26.1 `BookModel` (`ModelLayers.BOOK`) submitted by the
+    /// `EnchantTableRenderer` block-entity renderer — the enchanting table's
+    /// hovering, page-flipping book on the `entity/enchantment/
+    /// enchanting_table_book` sheet. Instances are projected from enchanting
+    /// table block states, not the entity list (`entity_id` is a sentinel). The
+    /// book turns to face the nearest player, bobs, opens/closes, and flips its
+    /// pages: `body_rot` carries the lerped book yaw (degrees), the hover offset
+    /// rides `EntityRenderState.book_float_y`, and the `BookModel.setupAnim`
+    /// animation reads `book_progress` / `book_open` / `book_page_flip_1` /
+    /// `book_page_flip_2`.
+    EnchantingBook,
+    /// Vanilla 26.1 `BookModel` submitted by the `LecternRenderer` block-entity
+    /// renderer — the lectern's static open book on the same
+    /// `enchanting_table_book` sheet, rendered only while the block's `HAS_BOOK`
+    /// state is set. Instances are projected from lectern block states
+    /// (`entity_id` is a sentinel). `body_rot` carries the
+    /// `FACING.getClockWise().toYRot()` yaw; the fixed
+    /// `BookModel.State.forAnimation(0, 0.1, 0.9, 1.2)` openness / page flips
+    /// ride the shared book render state.
+    LecternBook,
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
     /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
     /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;

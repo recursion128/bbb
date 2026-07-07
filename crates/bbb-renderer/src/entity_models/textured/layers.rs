@@ -44,6 +44,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BannerFlag,
     BannerPattern,
     BellBase,
+    BookBase,
     ChestBase,
     ChickenBase,
     SignBase,
@@ -1714,6 +1715,24 @@ pub(in crate::entity_models) fn bell_textured_layer_passes() -> Vec<EntityModelL
         render_type: EntityModelLayerRenderType::EntitySolid,
         model_layer: MODEL_LAYER_BELL,
         texture: BELL_BODY_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// Vanilla `EnchantTableRenderer.submit` / `LecternRenderer.submit`: one `submitModel` per book
+/// with the `enchantment/enchanting_table_book` sprite and the `BookModel`'s
+/// `RenderTypes::entitySolid` render type (`BookModel`'s constructor, `BookModel.java:26`). The
+/// enchanting-table and lectern books share the model, sprite, and render type; only the
+/// render-state animation and the root transform differ.
+pub(in crate::entity_models) fn book_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::BookBase,
+        render_type: EntityModelLayerRenderType::EntitySolid,
+        model_layer: MODEL_LAYER_BOOK,
+        texture: BOOK_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
