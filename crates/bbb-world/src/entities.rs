@@ -2099,6 +2099,15 @@ impl WorldStore {
         self.entities.entity_type_id(id)
     }
 
+    pub fn entity_debug_passenger_vehicle_target(
+        &self,
+        passenger_id: i32,
+    ) -> Option<EntityPickTargetState> {
+        let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
+        self.entities
+            .debug_passenger_vehicle_target(passenger_id, game_time)
+    }
+
     pub fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {
         self.entities.ender_dragon_part_parent_id(part_id)
     }

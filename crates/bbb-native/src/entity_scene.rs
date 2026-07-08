@@ -57,6 +57,7 @@ pub(crate) const THROWN_ITEM_PROJECTILE_BILLBOARDS: &[(i32, f32)] = &[
 const ENTITY_HITBOX_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 const ENTITY_DRAGON_PART_HITBOX_COLOR: [f32; 4] = [0.25, 1.0, 0.0, 1.0];
+const ENTITY_PASSENGER_VEHICLE_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 const ENTITY_VIEW_VECTOR_COLOR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
@@ -478,6 +479,9 @@ fn push_entity_debug_gizmos(
         target.position.y,
         target.position.z,
     ]));
+    if let Some(vehicle_target) = world.entity_debug_passenger_vehicle_target(target.entity_id) {
+        boxes.push(entity_debug_passenger_vehicle_box(vehicle_target));
+    }
     let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
         return;
     };
@@ -504,6 +508,10 @@ fn entity_debug_target_type_is_living(entity_type_id: i32) -> bool {
 
 fn entity_debug_hitbox_box(target: EntityPickTargetState) -> SelectionColoredBox {
     entity_debug_hitbox_box_with_color(target, ENTITY_HITBOX_COLOR)
+}
+
+fn entity_debug_passenger_vehicle_box(target: EntityPickTargetState) -> SelectionColoredBox {
+    entity_debug_hitbox_box_with_color(target, ENTITY_PASSENGER_VEHICLE_COLOR)
 }
 
 fn entity_debug_hitbox_box_with_color(

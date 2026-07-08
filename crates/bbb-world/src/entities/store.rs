@@ -62,9 +62,10 @@ use crate::entities::dimensions::{
     vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
     vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
-    vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
-    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
-    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
+    vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
+    ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS, VANILLA_POSE_CROUCHING_ID,
+    VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -2620,6 +2621,59 @@ impl EntityStore {
             .get::<&EntityMount>(entity)
             .ok()
             .map(|mount| (*mount).clone())
+    }
+
+    pub(crate) fn debug_passenger_vehicle_target(
+        &self,
+        passenger_id: i32,
+        game_time: i64,
+    ) -> Option<super::EntityPickTargetState> {
+        let passenger_identity = self.identity(passenger_id)?;
+        let passenger_bounds = self.pick_bounds(passenger_id)?;
+        let passenger_mount = self.mount(passenger_id)?;
+        let vehicle_id = passenger_mount.vehicle_id?;
+        let vehicle_bounds = self.pick_bounds(vehicle_id)?;
+        let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
+        let Ok(mut query) = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMount,
+            &EntityMetadata,
+            &EntityAttributes,
+            Option<&EntityClientAnimations>,
+        )>(vehicle_entity) else {
+            return None;
+        };
+        let Some((
+            vehicle_identity,
+            vehicle_transform,
+            vehicle_mount,
+            vehicle_metadata,
+            vehicle_attributes,
+            vehicle_client_animations,
+        )) = query.get()
+        else {
+            return None;
+        };
+        let (position, bounds) = vanilla_passenger_vehicle_debug_target_for_entity_data(
+            vehicle_identity.entity_type_id,
+            vehicle_transform.position,
+            vehicle_transform.y_rot,
+            vehicle_bounds,
+            &vehicle_metadata.data_values,
+            &vehicle_attributes.attributes,
+            vehicle_client_animations.map(|animations| animations.animations),
+            &vehicle_mount.passengers,
+            passenger_id,
+            passenger_identity.entity_type_id,
+            passenger_bounds,
+            game_time,
+        )?;
+        Some(super::EntityPickTargetState {
+            entity_id: passenger_id,
+            position,
+            bounds,
+        })
     }
 
     pub(crate) fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {

@@ -61,6 +61,60 @@ fn tracks_entity_passenger_updates() {
 }
 
 #[test]
+fn debug_passenger_vehicle_targets_follow_vanilla_boat_attachment_slab() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 90.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        21,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20, 21],
+    }));
+
+    let front = store
+        .entity_debug_passenger_vehicle_target(20)
+        .expect("front passenger target");
+    assert_entity_vec3_close(
+        front.position,
+        EntityVec3 {
+            x: 0.6,
+            y: 64.1875,
+            z: -2.0,
+        },
+    );
+    assert_pick_bounds_close(
+        Some(front.bounds),
+        EntityPickBoundsState::from_base_size(0.4, 0.0625, 0.0),
+    );
+
+    let rear = store
+        .entity_debug_passenger_vehicle_target(21)
+        .expect("rear passenger target");
+    assert_entity_vec3_close(
+        rear.position,
+        EntityVec3 {
+            x: 1.4,
+            y: 64.1875,
+            z: -2.0,
+        },
+    );
+    assert_pick_bounds_close(
+        Some(rear.bounds),
+        EntityPickBoundsState::from_base_size(0.9, 0.0625, 0.0),
+    );
+    assert_eq!(store.entity_debug_passenger_vehicle_target(10), None);
+}
+
+#[test]
 fn tracks_local_player_passenger_without_entity() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

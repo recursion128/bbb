@@ -3,7 +3,9 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{EntityClientAnimationState, EntityVec3};
+use super::{
+    is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
+};
 use bbb_protocol::entity_types::*;
 
 mod block_attached;
@@ -75,6 +77,7 @@ const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
 const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
 const WIND_CHARGE_PICK_RADIUS: f32 = 1.0;
 const DEFAULT_ENTITY_EYE_HEIGHT_RATIO: f32 = 0.85;
+pub(crate) const ENTITY_PASSENGER_VEHICLE_BOX_HEIGHT: f32 = 0.0625;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -321,8 +324,289 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     ))
 }
 
+pub(crate) fn vanilla_passenger_vehicle_debug_target_for_entity_data(
+    vehicle_entity_type_id: i32,
+    vehicle_position: EntityVec3,
+    vehicle_y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_client_animations: Option<EntityClientAnimationState>,
+    vehicle_passengers: &[i32],
+    passenger_id: i32,
+    passenger_entity_type_id: i32,
+    passenger_bounds: EntityPickBoundsState,
+    game_time: i64,
+) -> Option<(EntityVec3, EntityPickBoundsState)> {
+    let passenger_index = vehicle_passengers
+        .iter()
+        .position(|id| *id == passenger_id)?;
+    let half_width = 0.5 * bounds_width(vehicle_bounds).min(bounds_width(passenger_bounds));
+    let attachment = vanilla_passenger_attachment_point(
+        vehicle_entity_type_id,
+        vehicle_y_rot,
+        vehicle_bounds,
+        vehicle_data_values,
+        vehicle_attributes,
+        vehicle_client_animations,
+        vehicle_passengers,
+        passenger_index,
+        passenger_entity_type_id,
+        game_time,
+    );
+    Some((
+        EntityVec3 {
+            x: vehicle_position.x + attachment[0],
+            y: vehicle_position.y + attachment[1],
+            z: vehicle_position.z + attachment[2],
+        },
+        EntityPickBoundsState::from_base_size(
+            half_width * 2.0,
+            ENTITY_PASSENGER_VEHICLE_BOX_HEIGHT,
+            0.0,
+        ),
+    ))
+}
+
 fn bounds_height(bounds: EntityPickBoundsState) -> f32 {
     bounds.max[1] - bounds.min[1]
+}
+
+fn bounds_width(bounds: EntityPickBoundsState) -> f32 {
+    bounds.max[0] - bounds.min[0]
+}
+
+fn vanilla_passenger_attachment_point(
+    vehicle_entity_type_id: i32,
+    vehicle_y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_client_animations: Option<EntityClientAnimationState>,
+    vehicle_passengers: &[i32],
+    passenger_index: usize,
+    passenger_entity_type_id: i32,
+    game_time: i64,
+) -> [f64; 3] {
+    if is_vanilla_boat_type(vehicle_entity_type_id) {
+        return rotated_y(
+            boat_passenger_attachment_point(
+                vehicle_entity_type_id,
+                vehicle_bounds,
+                vehicle_passengers,
+                passenger_index,
+                passenger_entity_type_id,
+            ),
+            vehicle_y_rot,
+        );
+    }
+
+    if vehicle_entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
+        || vehicle_entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+    {
+        return rotated_y(
+            camel_passenger_attachment_point(
+                vehicle_entity_type_id,
+                vehicle_bounds,
+                vehicle_data_values,
+                vehicle_attributes,
+                vehicle_passengers,
+                passenger_index,
+                passenger_entity_type_id,
+                game_time,
+            ),
+            vehicle_y_rot,
+        );
+    }
+
+    if is_vanilla_minecart_type(vehicle_entity_type_id)
+        && (passenger_entity_type_id == VANILLA_ENTITY_TYPE_VILLAGER_ID
+            || passenger_entity_type_id == VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID)
+    {
+        return [0.0, 0.0, 0.0];
+    }
+
+    let mut point = vanilla_default_passenger_attachment_point(
+        vehicle_entity_type_id,
+        vehicle_bounds,
+        passenger_index,
+    );
+
+    if vehicle_entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
+        || vehicle_entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+    {
+        point = [
+            0.0,
+            bounds_height(vehicle_bounds)
+                - 0.015625
+                    * entity_data_int(vehicle_data_values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE)
+                        as f32
+                    * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32,
+            0.0,
+        ];
+    } else if is_vanilla_rearing_horse_passenger_attachment_type(vehicle_entity_type_id) {
+        let stand_animation = vehicle_client_animations
+            .map(|animations| animations.equine_stand_animation(0.0))
+            .unwrap_or(0.0);
+        let render_scale = vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32;
+        let offset = rotated_y(
+            [
+                0.0,
+                0.15 * stand_animation * render_scale,
+                -0.7 * stand_animation * render_scale,
+            ],
+            vehicle_y_rot,
+        );
+        let base = rotated_y(point, vehicle_y_rot);
+        return [
+            base[0] + offset[0],
+            base[1] + offset[1],
+            base[2] + offset[2],
+        ];
+    }
+
+    rotated_y(point, vehicle_y_rot)
+}
+
+fn boat_passenger_attachment_point(
+    vehicle_entity_type_id: i32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_passengers: &[i32],
+    passenger_index: usize,
+    passenger_entity_type_id: i32,
+) -> [f32; 3] {
+    let mut offset = if is_vanilla_chest_boat_or_raft_type(vehicle_entity_type_id) {
+        0.15
+    } else {
+        0.0
+    };
+    if vehicle_passengers.len() > 1 {
+        offset = if passenger_index == 0 { 0.2 } else { -0.6 };
+        if vanilla_animal_entity_type(passenger_entity_type_id) {
+            offset += 0.2;
+        }
+    }
+
+    let ride_height = if is_vanilla_raft_type(vehicle_entity_type_id) {
+        bounds_height(vehicle_bounds) * 0.888_888_9
+    } else {
+        bounds_height(vehicle_bounds) / 3.0
+    };
+    [0.0, ride_height, offset]
+}
+
+fn camel_passenger_attachment_point(
+    vehicle_entity_type_id: i32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_passengers: &[i32],
+    passenger_index: usize,
+    passenger_entity_type_id: i32,
+    game_time: i64,
+) -> [f32; 3] {
+    let is_front = passenger_index == 0;
+    let mut offset = 0.5;
+    if vehicle_passengers.len() > 1 {
+        if !is_front {
+            offset = -0.7;
+        }
+        if vanilla_animal_entity_type(passenger_entity_type_id) {
+            offset += 0.2;
+        }
+    }
+
+    let scale = camel_age_scale(vehicle_entity_type_id, vehicle_data_values)
+        * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32;
+    let last_pose_change_tick =
+        entity_data_long(vehicle_data_values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    [
+        0.0,
+        camel_body_anchor_animation_y_offset(
+            vehicle_bounds,
+            scale,
+            last_pose_change_tick,
+            game_time,
+            is_front,
+            0.0,
+        ),
+        offset * scale,
+    ]
+}
+
+fn vanilla_default_passenger_attachment_point(
+    entity_type_id: i32,
+    bounds: EntityPickBoundsState,
+    passenger_index: usize,
+) -> [f32; 3] {
+    let Some(points) = vanilla_passenger_attachment_overrides(entity_type_id) else {
+        return [0.0, bounds_height(bounds), 0.0];
+    };
+    let base_bounds = vanilla_pick_bounds_for_type(entity_type_id).unwrap_or(bounds);
+    let xz_scale = scale_axis(bounds_width(bounds), bounds_width(base_bounds));
+    let y_scale = scale_axis(bounds_height(bounds), bounds_height(base_bounds));
+    let point = points[passenger_index.min(points.len() - 1)];
+    [point[0] * xz_scale, point[1] * y_scale, point[2] * xz_scale]
+}
+
+fn vanilla_passenger_attachment_overrides(entity_type_id: i32) -> Option<&'static [[f32; 3]]> {
+    VANILLA_PASSENGER_ATTACHMENT_OVERRIDES
+        .binary_search_by_key(&entity_type_id, |(id, _)| *id)
+        .ok()
+        .map(|index| VANILLA_PASSENGER_ATTACHMENT_OVERRIDES[index].1)
+}
+
+fn scale_axis(current: f32, base: f32) -> f32 {
+    if base.abs() > f32::EPSILON {
+        current / base
+    } else {
+        1.0
+    }
+}
+
+fn rotated_y(point: [f32; 3], y_rot: f32) -> [f64; 3] {
+    let radians = -y_rot.to_radians();
+    let cos = radians.cos();
+    let sin = radians.sin();
+    [
+        f64::from(point[0] * cos + point[2] * sin),
+        f64::from(point[1]),
+        f64::from(point[2] * cos - point[0] * sin),
+    ]
+}
+
+fn is_vanilla_chest_boat_or_raft_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
+            | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
+    )
+}
+
+fn is_vanilla_raft_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
+    )
+}
+
+fn is_vanilla_rearing_horse_passenger_attachment_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_DONKEY_ID
+            | VANILLA_ENTITY_TYPE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_MULE_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
+    )
 }
 
 fn lerp(delta: f32, start: f32, end: f32) -> f32 {
@@ -1151,6 +1435,96 @@ fn vanilla_direction_from_3d_data(data: i32) -> VanillaDirection {
 const fn pick(width: f32, height: f32, pick_radius: f32) -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(width, height, pick_radius)
 }
+
+// IDs and points follow vanilla 26.1 `EntityType.Builder.passengerAttachments(...)`.
+const VANILLA_PASSENGER_ATTACHMENT_OVERRIDES: &[(i32, &[[f32; 3]])] = &[
+    (VANILLA_ENTITY_TYPE_CAT_ID, &[[0.0, 0.5125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_CHICKEN_ID, &[[0.0, 0.7, -0.1]]),
+    (
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+        &[[0.0, 0.1875, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_COW_ID, &[[0.0, 1.36875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_DONKEY_ID, &[[0.0, 1.1125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_DROWNED_ID, &[[0.0, 2.0125, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        &[[0.0, 2.350625, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_ENDERMAN_ID, &[[0.0, 2.80625, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ENDERMITE_ID, &[[0.0, 0.2375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[[0.0, 3.0, 0.0]]),
+    (VANILLA_ENTITY_TYPE_EVOKER_ID, &[[0.0, 2.0, 0.0]]),
+    (VANILLA_ENTITY_TYPE_FOX_ID, &[[0.0, 0.6375, -0.25]]),
+    (VANILLA_ENTITY_TYPE_FROG_ID, &[[0.0, 0.375, -0.25]]),
+    (
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        &[[0.0, 0.1875, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_GHAST_ID, &[[0.0, 4.0625, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        &[
+            [0.0, 4.0, 1.7],
+            [-1.7, 4.0, 0.0],
+            [0.0, 4.0, -1.7],
+            [1.7, 4.0, 0.0],
+        ],
+    ),
+    (VANILLA_ENTITY_TYPE_GOAT_ID, &[[0.0, 1.1125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_GUARDIAN_ID, &[[0.0, 0.975, 0.0]]),
+    (VANILLA_ENTITY_TYPE_HOGLIN_ID, &[[0.0, 1.49375, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+        &[[0.0, 0.1875, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_HORSE_ID, &[[0.0, 1.44375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_HUSK_ID, &[[0.0, 2.075, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ILLUSIONER_ID, &[[0.0, 2.0, 0.0]]),
+    (VANILLA_ENTITY_TYPE_LLAMA_ID, &[[0.0, 1.37, -0.3]]),
+    (VANILLA_ENTITY_TYPE_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[[0.0, 1.36875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_MULE_ID, &[[0.0, 1.2125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[[0.0, 1.1375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_OCELOT_ID, &[[0.0, 0.6375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PARROT_ID, &[[0.0, 0.4625, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PHANTOM_ID, &[[0.0, 0.3375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PIG_ID, &[[0.0, 0.86875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PIGLIN_ID, &[[0.0, 2.0125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, &[[0.0, 2.0125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_PILLAGER_ID, &[[0.0, 2.0, 0.0]]),
+    (VANILLA_ENTITY_TYPE_RAVAGER_ID, &[[0.0, 2.2625, -0.0625]]),
+    (VANILLA_ENTITY_TYPE_SHEEP_ID, &[[0.0, 1.2375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_SILVERFISH_ID, &[[0.0, 0.2375, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        &[[0.0, 1.31875, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_SNIFFER_ID, &[[0.0, 2.09375, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+        &[[0.0, 0.1875, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_SPIDER_ID, &[[0.0, 0.765, 0.0]]),
+    (VANILLA_ENTITY_TYPE_TNT_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
+    (VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, &[[0.0, 1.37, -0.3]]),
+    (VANILLA_ENTITY_TYPE_TURTLE_ID, &[[0.0, 0.55625, -0.25]]),
+    (VANILLA_ENTITY_TYPE_VEX_ID, &[[0.0, 0.7375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_VINDICATOR_ID, &[[0.0, 2.0, 0.0]]),
+    (VANILLA_ENTITY_TYPE_WARDEN_ID, &[[0.0, 3.15, 0.0]]),
+    (VANILLA_ENTITY_TYPE_WITCH_ID, &[[0.0, 2.2625, 0.0]]),
+    (VANILLA_ENTITY_TYPE_WOLF_ID, &[[0.0, 0.81875, -0.0625]]),
+    (VANILLA_ENTITY_TYPE_ZOGLIN_ID, &[[0.0, 1.49375, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ZOMBIE_ID, &[[0.0, 2.0125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, &[[0.0, 1.31875, 0.0]]),
+    (
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        &[[0.0, 1.1375, 0.0]],
+    ),
+    (VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, &[[0.0, 2.125, 0.0]]),
+    (VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID, &[[0.0, 2.0, 0.0]]),
+];
 
 // IDs and explicit eye-height values follow the vanilla 26.1 EntityType.java registration.
 const VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES: &[(i32, f32)] = &[

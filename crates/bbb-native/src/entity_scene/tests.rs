@@ -59,6 +59,35 @@ fn entity_scene_outline_projects_pick_bounds_for_all_visible_targets() {
 }
 
 #[test]
+fn entity_scene_outline_projects_passenger_vehicle_slab() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        90,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    world.apply_add_entity(protocol_add_entity(
+        91,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 90,
+        passenger_ids: vec![91],
+    }));
+
+    let outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.0)
+        .expect("expected passenger vehicle debug outline");
+
+    assert_eq!(
+        outline.colored_boxes[2].color,
+        ENTITY_PASSENGER_VEHICLE_COLOR
+    );
+    assert_selection_box_close(outline.colored_boxes[2].min, [0.8, 64.1875, -2.2]);
+    assert_selection_box_close(outline.colored_boxes[2].max, [1.2, 64.25, -1.8]);
+}
+
+#[test]
 fn entity_scene_outline_uses_bounds_without_pick_radius_inflation() {
     let outline_box = entity_pick_target_box(EntityPickTargetState {
         entity_id: 7,

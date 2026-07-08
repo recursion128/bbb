@@ -5348,8 +5348,8 @@
   main bounding-box cuboid 的行为。native 现在把现有 entity-scene
   `SelectionOutline` 抽取接到 F3+B 状态上，只有 hitbox toggle visible 时才向
   renderer 提交实体 AABB 线框，关闭时不提交。边界：vanilla hitbox colors、
-  passenger box、view/delta arrowheads、frustum/invisibility filtering、以及专用
-  debug gizmo styling 仍未实现。
+  view/delta arrowheads、frustum/invisibility filtering、以及专用 debug gizmo
+  styling 仍未实现。
 - [x] debug overlay F3+G chunk section-stack outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos`
   用 `SectionPos.of(cameraEntity.blockPosition())`、`level.getMinY()` 和
@@ -5481,8 +5481,8 @@
   和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
   entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
   并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
-  arrowheads、passenger vehicle slabs、local-server green boxes/delta arrows、
-  missing-server labels、以及专用 debug gizmo styling 仍未实现。
+  arrowheads、local-server green boxes/delta arrows、missing-server labels、
+  以及专用 debug gizmo styling 仍未实现。
 - [x] debug overlay F3+B entity position point markers（P2 renderer/native
   slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 紧跟
   hitbox 后调用 `Gizmos.point(currentPosition, mainColor, 2.0F)`，以及
@@ -5499,9 +5499,9 @@
   parent id + 1..8 的 dragon part pick targets；本轮新增 world-owned
   dragon-part parent query，native F3+B 通过它识别 synthetic part targets，
   将这些 cuboid 改为 vanilla sub-part 颜色，并跳过 point/view-vector gizmos。
-  后续 parent hitbox 和 parent eye/vector slices 已补齐 Ender Dragon parent
-  main AABB 与 eye/vector；剩余 passenger slabs、local-server debug boxes/arrows、
-  labels、以及专用 debug gizmo styling 仍待后续。
+  后续 parent hitbox、parent eye/vector、passenger vehicle slab slices 已补齐
+  Ender Dragon parent main AABB、eye/vector 与乘骑黄盒；剩余 local-server
+  debug boxes/arrows、labels、以及专用 debug gizmo styling 仍待后续。
 - [x] debug overlay F3+G chunk-border full grid rendering（P2 renderer/runtime
   slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 的 3x3 chunk
   boundary lattice、当前 chunk 2-block vertical grid、每 2 格 horizontal rings、
@@ -5517,9 +5517,9 @@
   pick target 对 dragon 只暴露 8 个 sub-parts 的语义，同时新增 debug hitbox
   target query，按 vanilla 顺序输出 parent 16x8 hitbox 后接 sub-parts；native
   F3+B 改用该 query，渲染 parent 白色 AABB 和 parent position point。后续
-  parent eye/vector slice 已补齐 dragon-parent eye-height slab/view vector；剩余
-  passenger slabs、local-server debug boxes/arrows、labels、以及专用 debug gizmo
-  styling 仍待后续。
+  parent eye/vector 和 passenger vehicle slab slices 已补齐 dragon-parent
+  eye-height slab/view vector 与乘骑黄盒；剩余 local-server debug boxes/arrows、
+  labels、以及专用 debug gizmo styling 仍待后续。
 - [x] debug overlay F3+B Ender Dragon parent eye/vector（P2 world/native
   slice，2026-07-08）：依据 `EntityDimensions.defaultEyeHeight(height) =
   height * 0.85F`，`EntityType.ENDER_DRAGON.sized(16.0F, 8.0F)` 的 parent
@@ -5528,6 +5528,17 @@
   蓝色 view-vector arrow。world 现在让 dragon parent camera pose 暴露该
   vanilla eye height，但不改变交互 pick target surface；native F3+B 在 debug
   target 没有 model source 时回退到 world-owned entity type 判断 living，
-  因此 parent white AABB 后会提交红色 eye slab 和蓝色 view vector。边界：
-  vanilla arrowheads、passenger slabs、local-server debug boxes/arrows、labels、
-  以及专用 debug gizmo styling 仍待后续。
+  因此 parent white AABB 后会提交红色 eye slab 和蓝色 view vector。后续
+  passenger vehicle slab slice 已补齐乘骑黄盒；剩余 vanilla arrowheads、
+  local-server debug boxes/arrows、labels、以及专用 debug gizmo styling 仍待后续。
+- [x] debug overlay F3+B passenger vehicle slabs（P2 world/native slice，
+  2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 对有
+  `getVehicle()` 的 entity 绘制黄色（`-256`）1/16 高 passenger box，半宽为
+  `min(vehicle.getBbWidth(), entity.getBbWidth()) / 2`，中心来自
+  `vehicle.getPassengerRidingPosition(entity)`；同时依据 `EntityAttachments`
+  对 passenger index clamp 后按 `-vehicle.yRot` 旋转，以及 boat/camel/minecart/
+  slime/horse class override。world 现在从 canonical mount state、vanilla
+  dimensions、`EntityType.passengerAttachments` 表和这些 override 计算 debug
+  passenger slab target；native F3+B 在实体 hitbox 后提交黄色 slab。边界：
+  vanilla arrowheads、local-server debug boxes/arrows、labels、以及专用 debug
+  gizmo styling 仍待后续。
