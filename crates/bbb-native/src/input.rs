@@ -194,6 +194,7 @@ pub(crate) struct ClientInputState {
     debug_entity_hitboxes_visible: bool,
     debug_chunk_borders_visible: bool,
     debug_advanced_item_tooltips: bool,
+    debug_pause_on_lost_focus: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -290,6 +291,7 @@ impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
             focused,
+            debug_pause_on_lost_focus: true,
             ..Self::default()
         }
     }
@@ -555,6 +557,10 @@ impl ClientInputState {
         self.debug_advanced_item_tooltips
     }
 
+    pub(crate) fn debug_pause_on_lost_focus(&self) -> bool {
+        self.debug_pause_on_lost_focus
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -650,6 +656,10 @@ impl ClientInputState {
             }
             KeyCode::KeyH => {
                 self.debug_advanced_item_tooltips = !self.debug_advanced_item_tooltips;
+                true
+            }
+            KeyCode::KeyP => {
+                self.debug_pause_on_lost_focus = !self.debug_pause_on_lost_focus;
                 true
             }
             _ => false,

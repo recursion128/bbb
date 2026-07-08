@@ -2777,10 +2777,14 @@ fn hud_debug_overlay(
         hud_debug_visibility_label(input.debug_lightmap_texture_visible())
     ));
     left_lines.push(format!(
-        "Debug toggles: [F3+B] Hitboxes {}; [F3+G] Chunks {}; [F3+H] Tooltips {}",
+        "Debug toggles: [F3+B] Hitboxes {}; [F3+G] Chunks {}",
         hud_debug_visibility_label(input.debug_entity_hitboxes_visible()),
-        hud_debug_visibility_label(input.debug_chunk_borders_visible()),
-        hud_debug_enabled_label(input.debug_advanced_item_tooltips())
+        hud_debug_visibility_label(input.debug_chunk_borders_visible())
+    ));
+    left_lines.push(format!(
+        "Debug options: [F3+H] Tooltips {}; [F3+P] Focus pause {}",
+        hud_debug_enabled_label(input.debug_advanced_item_tooltips()),
+        hud_debug_enabled_label(input.debug_pause_on_lost_focus())
     ));
     left_lines.push("Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat".to_string());
     left_lines.push("To edit: press [F3+F5]".to_string());

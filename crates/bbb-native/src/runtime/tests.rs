@@ -1025,6 +1025,34 @@ fn f3_a_requests_terrain_reload_without_toggling_overlay_on_release() {
 }
 
 #[test]
+fn f3_p_toggles_pause_on_lost_focus_without_world() {
+    let mut input = ClientInputState::new(true);
+    assert!(input.debug_pause_on_lost_focus());
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyP),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+
+    assert!(!input.debug_pause_on_lost_focus());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let mut input = ClientInputState::new(true);
@@ -1034,7 +1062,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         Some(&mut world),
         None
     ));
-    for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH] {
+    for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH, KeyCode::KeyP] {
         assert!(input.handle_debug_overlay_key(
             PhysicalKey::Code(code),
             ElementState::Pressed,
@@ -1064,9 +1092,11 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     )
     .expect("plain F3 should make the debug overlay visible");
 
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug toggles: [F3+B] Hitboxes visible; [F3+G] Chunks visible".to_string()));
     assert!(overlay.left_lines.contains(
-        &"Debug toggles: [F3+B] Hitboxes visible; [F3+G] Chunks visible; [F3+H] Tooltips enabled"
-            .to_string()
+        &"Debug options: [F3+H] Tooltips enabled; [F3+P] Focus pause disabled".to_string()
     ));
     assert!(overlay
         .left_lines

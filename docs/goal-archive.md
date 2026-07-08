@@ -5123,6 +5123,14 @@
   请求；使用组合键后同样抑制 F3 release 触发普通 overlay toggle，runtime help
   line 显示 `[F3+A] Reload chunks`。剩余：debug chat feedback、其它 F3
   modifier combos。
+- [x] debug overlay F3+P focus-pause option toggle（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `Options.pauseOnLostFocus = true` 默认值，以及
+  `KeyboardHandler.handleDebugKeys` 对 `keyDebugFocusPause` 的调度。native
+  现在把 focus-pause runtime option 默认设为 enabled，在 F3 按住期间消费 P
+  并切换该状态，使用组合键后抑制 F3 release 触发普通 overlay toggle；
+  runtime help line 显示 `[F3+P] Focus pause enabled/disabled`。剩余：debug
+  chat feedback、option persistence、单机 pause-loop 行为、其它 F3 modifier
+  combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

@@ -295,7 +295,8 @@ Screen Render Surfaces" 条目）：
 - debug overlay（F3 基础 toggle、左列 version/position/help shell、右列
   memory/system/performance basics、F3+1..4 chart/lightmap toggle state、
   F3+B/G/H hitboxes/chunk-borders/advanced-tooltips toggle state、F3+A
-  terrain reload request、F3+D clear-chat display action 已完成；
+  terrain reload request、F3+D clear-chat display action、F3+P focus-pause
+  option toggle 已完成；
   剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、lightmap
   preview 实际绘制、entity hitbox/chunk-border 实际绘制、advanced tooltip
   实际生效/持久化、3D crosshair 与其它 F3 组合键，低优先）。
