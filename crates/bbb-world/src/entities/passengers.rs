@@ -224,10 +224,33 @@ impl WorldStore {
         if mount.passengers.first().copied() != Some(local_player_id) {
             return None;
         }
+        let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
+        if !is_vanilla_player_rideable_jumping_type(entity_type_id) {
+            return None;
+        }
+        if !self
+            .entities
+            .saddle_slot_contains_saddle_item(vehicle_id, &self.items.default_item_equipment_slots)
+        {
+            return None;
+        }
+        Some(vehicle_id)
+    }
+
+    /// Vanilla `PlayerRideableJumping.getJumpCooldown()` for the local
+    /// player's controlled jumpable mount. `local_player_rideable_jumping_vehicle_id`
+    /// applies the shared `canJump()` saddle gate. Non-cooldown mount classes
+    /// use the interface default of zero; currently tracked cooldown classes
+    /// are camel and camel husk. Nautilus dash cooldown is not yet
+    /// reconstructed.
+    pub fn local_player_rideable_jumping_vehicle_cooldown(
+        &self,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let vehicle_id = self.local_player_rideable_jumping_vehicle_id()?;
         self.entities
-            .entity_type_id(vehicle_id)
-            .filter(|entity_type_id| is_vanilla_player_rideable_jumping_type(*entity_type_id))
-            .map(|_| vehicle_id)
+            .player_rideable_jumping_cooldown(vehicle_id, partial_ticks)
+            .map(|cooldown| cooldown.max(0.0))
     }
 
     pub fn local_player_sprintable_vehicle_id(&self) -> Option<i32> {

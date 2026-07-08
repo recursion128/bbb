@@ -705,6 +705,24 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         experience_progress.height,
         &experience_progress.rgba,
     )?;
+    let jump_bar_background = hud_sprite(&sprites, "hud/jump_bar_background")?;
+    renderer.upload_hud_jump_bar_background(
+        jump_bar_background.width,
+        jump_bar_background.height,
+        &jump_bar_background.rgba,
+    )?;
+    let jump_bar_progress = hud_sprite(&sprites, "hud/jump_bar_progress")?;
+    renderer.upload_hud_jump_bar_progress(
+        jump_bar_progress.width,
+        jump_bar_progress.height,
+        &jump_bar_progress.rgba,
+    )?;
+    let jump_bar_cooldown = hud_sprite(&sprites, "hud/jump_bar_cooldown")?;
+    renderer.upload_hud_jump_bar_cooldown(
+        jump_bar_cooldown.width,
+        jump_bar_cooldown.height,
+        &jump_bar_cooldown.rgba,
+    )?;
     // Player heart sprites: every `HudHeartKind` × hardcore × half combination
     // (vanilla `hud/heart/*`, Gui.java:1334-1393). Blink variants are skipped
     // (blink is deferred). `Container` has no distinct half sprite, so its half

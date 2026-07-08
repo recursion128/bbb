@@ -24,7 +24,7 @@ use bbb_renderer::{
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
     HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudPlayerHealth, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    HudJumpBar, HudPlayerHealth, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
     ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
@@ -1624,6 +1624,19 @@ pub(crate) fn pump_network_and_terrain(
             health: vehicle.health,
             max_health: vehicle.max_health as f32,
         });
+    // Vanilla `Gui.nextContextualInfoState` selects the jumpable-vehicle bar
+    // over the experience bar when the local controlled mount implements
+    // `PlayerRideableJumping.canJump()`. The cooldown gate is the integer
+    // `getJumpCooldown() > 0` (not partial-tick interpolated).
+    let hud_jump_bar = world.local_player_rideable_jumping_vehicle_id().map(|_| {
+        let cooldown = world
+            .local_player_rideable_jumping_vehicle_cooldown(0.0)
+            .is_some_and(|cooldown| cooldown > 0.0);
+        HudJumpBar {
+            progress: input.riding_jump_scale().unwrap_or(0.0),
+            cooldown,
+        }
+    });
     // Vanilla `Gui.extractFood` starvation-shake / hunger-swap inputs
     // (Gui.java:948,958): saturation-empty gate, the Hunger potion flag, and
     // the client `tickCount` (bbb's `LightmapTickState.client_tick_count`, the
@@ -1923,6 +1936,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_armor,
             hud_air,
             hud_vehicle_health,
+            hud_jump_bar,
             hud_experience_progress,
             hud_experience_level,
             hud_selected_slot,

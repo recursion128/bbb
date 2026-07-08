@@ -37,6 +37,10 @@ impl ClientInputState {
             mouse_delta_y: self.mouse_delta_y,
         }
     }
+
+    pub(crate) fn riding_jump_scale(&self) -> Option<f32> {
+        self.riding_jump_charge_seconds.map(riding_jump_scale)
+    }
 }
 
 pub(crate) fn advance_player_input(
@@ -246,16 +250,19 @@ fn paddle_boat_state_from_input(input: &ClientInputState) -> (bool, bool) {
 }
 
 fn riding_jump_command_data(charge_seconds: f64) -> i32 {
+    (riding_jump_scale(charge_seconds) * 100.0).floor() as i32
+}
+
+fn riding_jump_scale(charge_seconds: f64) -> f32 {
     let ticks = (charge_seconds.max(0.0) / RIDING_JUMP_TICK_SECONDS).floor() as i32;
     if ticks <= 0 {
-        return 0;
+        return 0.0;
     }
-    let scale = if ticks < 10 {
+    if ticks < 10 {
         ticks as f32 * 0.1
     } else {
         0.8 + 2.0 / (ticks - 9) as f32 * 0.1
-    };
-    (scale * 100.0).floor() as i32
+    }
 }
 
 fn maybe_queue_player_move_command(
@@ -351,16 +358,21 @@ fn position_delta_squared(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, GameEvent as ProtocolGameEvent, PaddleBoat, PlayLogin,
-        PlayerAbilities, PlayerAbilitiesCommand, SetPassengers, Vec3d as ProtocolVec3d,
+        AddEntity, CommonPlayerSpawnInfo, EquipmentSlot, EquipmentSlotUpdate,
+        GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayerAbilities,
+        PlayerAbilitiesCommand, SetEquipment, SetPassengers, Vec3d as ProtocolVec3d,
     };
+    use bbb_world::ItemEquipmentSlot;
     use uuid::Uuid;
 
     const VANILLA_26_1_MINECART_ENTITY_TYPE_ID: i32 = 85;
     const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
     const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
+    const SADDLE_ITEM_ID: i32 = 8_902;
 
     #[test]
     fn local_input_projection_includes_focus_keys_and_mouse_delta() {
@@ -961,6 +973,24 @@ mod tests {
     }
 
     #[test]
+    fn riding_jump_scale_matches_vanilla_local_player_curve() {
+        let assert_scale = |actual: f32, expected: f32| {
+            assert!(
+                (actual - expected).abs() < 1.0e-6,
+                "expected scale {expected}, got {actual}"
+            );
+        };
+        assert_eq!(riding_jump_scale(-1.0), 0.0);
+        assert_eq!(riding_jump_scale(0.0), 0.0);
+        assert_scale(riding_jump_scale(0.25), 0.5);
+        assert_scale(riding_jump_scale(0.45), 0.9);
+        assert_scale(riding_jump_scale(0.50), 1.0);
+        assert_scale(riding_jump_scale(0.55), 0.9);
+        assert_eq!(riding_jump_command_data(0.25), 50);
+        assert_eq!(riding_jump_command_data(0.55), 90);
+    }
+
+    #[test]
     fn mounted_jumpable_vehicle_release_queues_riding_jump_command() {
         let (tx, mut rx) = mpsc::channel(4);
         let commands = Some(tx);
@@ -1064,6 +1094,23 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_login(&protocol_play_login(99));
         world.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
+        if entity_type_id == VANILLA_26_1_HORSE_ENTITY_TYPE_ID {
+            world.set_default_item_equipment_slots(BTreeMap::from([(
+                SADDLE_ITEM_ID,
+                ItemEquipmentSlot::Saddle,
+            )]));
+            assert!(world.apply_set_equipment(SetEquipment {
+                entity_id: 10,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Saddle,
+                    item: ItemStackSummary {
+                        item_id: Some(SADDLE_ITEM_ID),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                }],
+            }));
+        }
         assert!(world.apply_set_passengers(SetPassengers {
             vehicle_id: 10,
             passenger_ids: vec![99],

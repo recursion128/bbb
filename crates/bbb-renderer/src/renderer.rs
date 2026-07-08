@@ -532,6 +532,9 @@ pub struct Renderer {
     pub(super) hud_entity_preview_pip_targets: Vec<HudEntityPreviewPipTarget>,
     pub(super) hud_experience_background: Option<HudSpriteGpu>,
     pub(super) hud_experience_progress: Option<HudSpriteGpu>,
+    pub(super) hud_jump_bar_background: Option<HudSpriteGpu>,
+    pub(super) hud_jump_bar_progress: Option<HudSpriteGpu>,
+    pub(super) hud_jump_bar_cooldown: Option<HudSpriteGpu>,
     /// Player heart sprites keyed by `[HudHeartKind as usize][variant]`, where
     /// `variant = (hardcore as usize) * 2 + (half as usize)` (non-blinking
     /// variants only; blink is deferred). `Container`'s half slots mirror its
@@ -559,6 +562,7 @@ pub struct Renderer {
     pub(super) hud_armor: Option<i32>,
     pub(super) hud_air: Option<crate::hud::HudAirSupply>,
     pub(super) hud_vehicle_health: Option<crate::hud::HudVehicleHealth>,
+    pub(super) hud_jump_bar: Option<crate::hud::HudJumpBar>,
     pub(super) hud_experience_progress_value: Option<f32>,
     pub(super) hud_experience_level: Option<i32>,
     pub(super) hud_selected_slot: u8,
@@ -1464,6 +1468,9 @@ impl Renderer {
             hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,
             hud_experience_progress: None,
+            hud_jump_bar_background: None,
+            hud_jump_bar_progress: None,
+            hud_jump_bar_cooldown: None,
             hud_heart_sprites: Default::default(),
             hud_food_empty: None,
             hud_food_full: None,
@@ -1487,6 +1494,7 @@ impl Renderer {
             hud_armor: None,
             hud_air: None,
             hud_vehicle_health: None,
+            hud_jump_bar: None,
             hud_experience_progress_value: None,
             hud_experience_level: None,
             hud_selected_slot: 0,

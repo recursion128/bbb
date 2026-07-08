@@ -1061,9 +1061,42 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Sign edit screen (needs a sign block-entity text store; input flow
     exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
-    ready), advancement screen (`ClientAdvancementsState` ready), horse jump
-    meter (client-side charge), debug overlay (F3; large, low priority).
+    ready), advancement screen (`ClientAdvancementsState` ready), debug
+    overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
+    `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
+    `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
+    jumpable mount has `getJumpCooldown() > 0`, and in the no-locator case
+    `canShowVehicleJumpInfo()` takes the contextual slot before experience;
+    `JumpableVehicleBarRenderer.extractBackground` draws
+    `hud/jump_bar_background` at the 182x5 `ContextualBarRenderer` rect, then
+    either full-width `hud/jump_bar_cooldown` while
+    `PlayerRideableJumping.getJumpCooldown() > 0`, or the cropped
+    `hud/jump_bar_progress` width from `Mth.lerpDiscrete(player.getJumpRidingScale(),0,182)`.
+    bbb now exposes the existing native riding-jump charge curve as
+    `ClientInputState::riding_jump_scale`; `WorldStore::local_player_rideable_jumping_vehicle_id()`
+    now applies the first-passenger gate plus the shared saddle-item
+    `canJump()` gate; `RendererFrame.hud_jump_bar`
+    (`HudJumpBar { progress, cooldown }`) is projected when that query is
+    present; renderer-side jump bars override the experience bar while
+    preserving the independent experience level number. HUD assets load the
+    three vanilla `hud/jump_bar_*` sprites. Cooldown overlay is wired for
+    camel/camel husk from the existing client-side `Camel.DASH` cooldown
+    reconstruction; horse, donkey, mule, llama and skeleton/zombie horse use
+    the interface default cooldown `0`.
+  - Boundary: nautilus / zombie-nautilus dash cooldown is not yet reconstructed
+    in world state, so their jump bar currently shows charge progress but not
+    the cooldown overlay after a dash. Camel `canJump()` also suppresses while
+    `refuseToMove()` (sitting or pose transition); bbb applies the saddle gate
+    but has not yet folded that camel-specific pose gate into the
+    local-player jumpable-vehicle query. Locator-bar priority remains absent
+    because waypoints/locator HUD state is not implemented.
+  - Tests: `bbb-native` `riding_jump_scale_matches_vanilla_local_player_curve`;
+    `bbb-world`
+    `local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown`;
+    `bbb-renderer`
+    `jump_bar_offscreen_frame_replaces_experience_bar_and_uses_cooldown_overlay`.
   - Done 2026-07-06 — Heart variants + multi-row health stacking. New heart
     projection `RendererFrame.hud_player_health` (`HudPlayerHealth`) replaces
     the old single-row `hud_health: f32`, carrying health, the MAX_HEALTH
@@ -1241,7 +1274,8 @@ When an agent does any of the following, update this file in the same slice:
     `-8323296` (0x80FF20) green center, all `dropShadow=false`
     (ContextualBarRenderer.java:35-44; lang `gui.experience.level = "%s"`).
     Vanilla draws the level independent of the contextual bar, so jump/locator
-    bars need no suppression (bbb tracks no jump/locator state anyway).
+    bars need no suppression (bbb now implements the jumpable-vehicle bar;
+    locator state remains absent).
     Food-bar shake mirrors `Gui.extractFood` (Gui.java:958-960): per-icon
     `yo += random.nextInt(3)-1` (∈{-1,0,1}) applied to both the empty
     background and the fill of each index, gated on `saturation<=0 &&

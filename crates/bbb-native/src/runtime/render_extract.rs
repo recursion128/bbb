@@ -9,10 +9,11 @@ use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
     HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudFoodEffect,
-    HudInventoryScreen, HudPlayerHealth, HudStyledTextRun, HudTitleText, HudVehicleHealth,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudInventoryScreen, HudJumpBar, HudPlayerHealth, HudStyledTextRun, HudTitleText,
+    HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, SignTextSurface,
+    WorldBorderRenderState,
 };
 
 use super::*;
@@ -782,6 +783,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_armor: Option<i32>,
     pub(crate) hud_air: Option<HudAirSupply>,
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
+    pub(crate) hud_jump_bar: Option<HudJumpBar>,
     pub(crate) hud_experience_progress: Option<f32>,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_selected_slot: u8,
@@ -849,6 +851,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_armor(frame.hud_armor);
     renderer.set_hud_air(frame.hud_air);
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);
+    renderer.set_hud_jump_bar(frame.hud_jump_bar);
     renderer.set_hud_experience_progress(frame.hud_experience_progress);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);

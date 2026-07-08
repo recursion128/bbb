@@ -5716,7 +5716,7 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(in_water && !walk_is_moving, self.age_ticks);
             }
-            VANILLA_ENTITY_TYPE_CAMEL_ID => {
+            VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => {
                 self.camel_idle
                     .get_or_insert_with(|| CamelIdleAnimationState::new(entity_id))
                     .advance_client_tick(self.age_ticks);

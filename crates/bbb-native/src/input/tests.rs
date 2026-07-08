@@ -5,22 +5,23 @@ use bbb_protocol::packets::{
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     ContainerSetContent as ProtocolContainerSetContent, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
-    HashedComponentPatch, HashedItemStack, HashedStack,
+    EntityDataValueKind, EquipmentSlot, EquipmentSlotUpdate, FilterMask, FilterMaskKind,
+    GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin,
     PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
     RenameItem, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
-    SetEntityData as ProtocolSetEntityData, SetPassengers,
+    SetEntityData as ProtocolSetEntityData, SetEquipment, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
     Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
-    BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, LightData,
+    BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, ItemEquipmentSlot, LightData,
     LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
 };
 use std::{
+    collections::BTreeMap,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -33,6 +34,7 @@ const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
 const VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID: i32 = 90;
 const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
+const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
 const VANILLA_POSE_SLEEPING_ID: i32 = 2;
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
@@ -115,6 +117,23 @@ fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32
         y_head_rot: 0.0,
         data: 0,
     });
+    if entity_type_id == VANILLA_26_1_HORSE_ENTITY_TYPE_ID {
+        world.set_default_item_equipment_slots(BTreeMap::from([(
+            TEST_SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: vehicle_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ProtocolItemStackSummary {
+                    item_id: Some(TEST_SADDLE_ITEM_ID),
+                    count: 1,
+                    component_patch: Default::default(),
+                },
+            }],
+        }));
+    }
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id,
         passenger_ids: vec![player_id],

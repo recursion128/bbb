@@ -21,7 +21,7 @@ use self::layout::{
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
     hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
-    hud_experience_level_text_origin, hud_experience_progress_width, hud_food_fill,
+    hud_contextual_bar_progress_width, hud_experience_level_text_origin, hud_food_fill,
     hud_food_jitter_offsets, hud_health_row_geometry, hud_inventory_text_label_origin,
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
@@ -139,6 +139,15 @@ pub struct HudVehicleHealth {
     pub health: f32,
     /// Vanilla `vehicle.getMaxHealth()` (the MAX_HEALTH attribute value).
     pub max_health: f32,
+}
+
+/// One frame's jumpable-vehicle contextual bar state (vanilla
+/// `JumpableVehicleBarRenderer`): the local player's `getJumpRidingScale`
+/// plus whether the controlled mount's `getJumpCooldown()` is still positive.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudJumpBar {
+    pub progress: f32,
+    pub cooldown: bool,
 }
 
 /// Vanilla `Gui.HeartType` (Gui.java:1333-1452): the heart sprite family a
@@ -1871,6 +1880,36 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_jump_bar_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_jump_bar_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_jump_bar_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_jump_bar_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_jump_bar_cooldown(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_jump_bar_cooldown = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     /// Uploads one player-heart sprite (vanilla `hud/heart/*`) into the
     /// per-kind slot keyed by `(kind, hardcore, half)`. The asset loader walks
     /// [`HudHeartKind::ALL`] × hardcore × half and resolves each PNG name with
@@ -2136,6 +2175,19 @@ impl Renderer {
             vehicle.filter(|vehicle| vehicle.health.is_finite() && vehicle.max_health.is_finite());
     }
 
+    /// Projects `JumpableVehicleBarRenderer`'s state. A present value selects
+    /// the jumpable-vehicle contextual bar over the experience bar; the
+    /// experience level text remains independent, matching vanilla
+    /// `Gui.extractRenderState`.
+    pub fn set_hud_jump_bar(&mut self, jump_bar: Option<HudJumpBar>) {
+        self.hud_jump_bar = jump_bar
+            .filter(|jump_bar| jump_bar.progress.is_finite())
+            .map(|jump_bar| HudJumpBar {
+                progress: jump_bar.progress.clamp(0.0, 1.0),
+                cooldown: jump_bar.cooldown,
+            });
+    }
+
     /// Projects this frame's food-bar effect state (starvation-shake gate and
     /// hunger potion sprite swap); the food level is set by `set_hud_food`.
     pub fn set_hud_food_effect(&mut self, effect: HudFoodEffect) {
@@ -2370,7 +2422,53 @@ impl Renderer {
             }
         }
 
-        if let (Some(progress), Some(background)) = (
+        if let Some(jump_bar) = self.hud_jump_bar {
+            if let Some(background) = &self.hud_jump_bar_background {
+                push_hud_draw(
+                    &mut vertices,
+                    &mut commands,
+                    background,
+                    surface_size,
+                    experience_bar_hud_rect(surface_size, background.width, background.height),
+                );
+            }
+            if jump_bar.cooldown {
+                if let Some(cooldown) = &self.hud_jump_bar_cooldown {
+                    push_hud_draw(
+                        &mut vertices,
+                        &mut commands,
+                        cooldown,
+                        surface_size,
+                        experience_bar_hud_rect(surface_size, cooldown.width, cooldown.height),
+                    );
+                }
+            } else {
+                let progress_width = hud_contextual_bar_progress_width(jump_bar.progress);
+                if progress_width > 0 {
+                    if let Some(progress_sprite) = &self.hud_jump_bar_progress {
+                        push_hud_draw_with_uv(
+                            &mut vertices,
+                            &mut commands,
+                            progress_sprite,
+                            surface_size,
+                            experience_bar_hud_rect(
+                                surface_size,
+                                progress_width,
+                                progress_sprite.height,
+                            ),
+                            HudUvRect {
+                                min: [0.0, 0.0],
+                                max: [
+                                    (progress_width as f32 / progress_sprite.width.max(1) as f32)
+                                        .clamp(0.0, 1.0),
+                                    1.0,
+                                ],
+                            },
+                        );
+                    }
+                }
+            }
+        } else if let (Some(progress), Some(background)) = (
             self.hud_experience_progress_value,
             &self.hud_experience_background,
         ) {
@@ -2382,7 +2480,7 @@ impl Renderer {
                 experience_bar_hud_rect(surface_size, background.width, background.height),
             );
 
-            let progress_width = hud_experience_progress_width(progress);
+            let progress_width = hud_contextual_bar_progress_width(progress);
             if progress_width > 0 {
                 if let Some(progress_sprite) = &self.hud_experience_progress {
                     push_hud_draw_with_uv(
@@ -2631,8 +2729,8 @@ impl Renderer {
         // background and its render state (Gui.java:532-535), i.e. after the
         // status bars and before the boss overlay, gated only on
         // `experienceLevel > 0` (independent of which contextual bar — jump /
-        // locator / experience — occupies the slot; bbb tracks no jump/locator
-        // state, so no suppression is needed). It needs the font atlas.
+        // locator / experience — occupies the slot), so no suppression is
+        // needed. It needs the font atlas.
         if let (Some(level), Some(font_atlas)) = (self.hud_experience_level, &self.hud_font_atlas) {
             push_hud_experience_level_text(
                 &mut vertices,
@@ -5055,6 +5153,91 @@ mod tests {
         assert!(
             slot_pixel[0] > 128 && slot_pixel[1] < 128,
             "a 0-heart vehicle should keep the red food row, got {slot_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn jump_bar_offscreen_frame_replaces_experience_bar_and_uses_cooldown_overlay() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail the suite.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        let solid_bar = |rgba: [u8; 4]| -> Vec<u8> { (0..(182 * 5)).flat_map(|_| rgba).collect() };
+        let red = solid_bar([255, 0, 0, 255]);
+        let green = solid_bar([0, 255, 0, 255]);
+        let yellow = solid_bar([255, 255, 0, 255]);
+        let cyan = solid_bar([0, 255, 255, 255]);
+        renderer
+            .upload_hud_experience_background(182, 5, &red)
+            .expect("experience background");
+        renderer
+            .upload_hud_experience_progress(182, 5, &red)
+            .expect("experience progress");
+        renderer
+            .upload_hud_jump_bar_background(182, 5, &green)
+            .expect("jump background");
+        renderer
+            .upload_hud_jump_bar_progress(182, 5, &yellow)
+            .expect("jump progress");
+        renderer
+            .upload_hud_jump_bar_cooldown(182, 5, &cyan)
+            .expect("jump cooldown");
+
+        let left_px = WIDTH / 2 - 91 + 4;
+        let right_px = WIDTH / 2 + 91 - 4;
+        let bar_py = HEIGHT - 24 - 5 + 2;
+
+        renderer.set_hud_experience_progress(Some(1.0));
+        let pixels = renderer.render_offscreen_frame().expect("experience frame");
+        let left = pixels.pixel(left_px, bar_py);
+        assert!(
+            left[0] > 128 && left[1] < 128 && left[2] < 128,
+            "experience bar should draw the red sprite before a jump bar is projected, got {left:?}"
+        );
+
+        renderer.set_hud_jump_bar(Some(HudJumpBar {
+            progress: 0.5,
+            cooldown: false,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("jump frame");
+        let left = pixels.pixel(left_px, bar_py);
+        let right = pixels.pixel(right_px, bar_py);
+        assert!(
+            left[0] > 128 && left[1] > 128 && left[2] < 128,
+            "jump progress should cover the left side with yellow, got {left:?}"
+        );
+        assert!(
+            right[1] > 128 && right[0] < 128 && right[2] < 128,
+            "jump background should remain visible past the clipped progress, got {right:?}"
+        );
+
+        renderer.set_hud_jump_bar(Some(HudJumpBar {
+            progress: 0.5,
+            cooldown: true,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("cooldown frame");
+        let left = pixels.pixel(left_px, bar_py);
+        let right = pixels.pixel(right_px, bar_py);
+        assert!(
+            left[1] > 128 && left[2] > 128 && left[0] < 128,
+            "cooldown overlay should cover the left side with cyan, got {left:?}"
+        );
+        assert!(
+            right[1] > 128 && right[2] > 128 && right[0] < 128,
+            "cooldown overlay should cover the whole bar, got {right:?}"
         );
     }
 

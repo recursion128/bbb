@@ -4225,6 +4225,33 @@
 
 ## P2：屏幕、HUD、字体与截图
 
+### 2026-07-08 迁入：马跳跃条 / jumpable-vehicle contextual bar
+
+- 原 goal.md P2 HUD 缺口行中的「马跳跃条」完成并移出当前待办。
+- vanilla 依据：`Gui.willPrioritizeJumpInfo` / `nextContextualInfoState`
+  将可跳坐骑栏放在 experience contextual bar 之前；`JumpableVehicleBarRenderer`
+  使用 182x5 `ContextualBarRenderer` 位置，背景 `hud/jump_bar_background`，
+  cooldown 时整条 `hud/jump_bar_cooldown`，否则按
+  `Mth.lerpDiscrete(player.getJumpRidingScale(),0,182)` 裁剪
+  `hud/jump_bar_progress`；`LocalPlayer` 蓄力曲线复用已有骑乘跳跃命令路径。
+- 实现链：`ClientInputState::riding_jump_scale` 暴露同源蓄力 scale；
+  `WorldStore::local_player_rideable_jumping_vehicle_id` 现在应用 first-passenger
+  门与共享 saddle-item `canJump()` 门；
+  `WorldStore::local_player_rideable_jumping_vehicle_cooldown` 读取被控可跳坐骑的
+  cooldown（camel/camel husk 来自已重建的 `Camel.DASH` client cooldown，普通马系为
+  `PlayerRideableJumping` 默认 0）；`RendererFrame.hud_jump_bar` 单次提交
+  `HudJumpBar { progress, cooldown }`；renderer 上传三张 vanilla jump-bar sprite，
+  并在该字段存在时用 jump contextual bar 替代 experience bar，经验等级数字保持独立。
+- 边界：nautilus / zombie-nautilus dash cooldown 尚未重建，因此它们目前能显示蓄力
+  progress，但 dash 后 cooldown overlay 仍缺；camel `refuseToMove()`（sitting /
+  pose transition）的 `canJump()` 附加门尚未并入本地 jumpable-vehicle query；locator
+  bar / waypoint priority 仍未实现。
+- 测试：`bbb-native`
+  `riding_jump_scale_matches_vanilla_local_player_curve`；`bbb-world`
+  `local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown`；
+  `bbb-renderer`
+  `jump_bar_offscreen_frame_replaces_experience_bar_and_uses_cooldown_overlay`。
+
 ### 2026-07-06 迁入：生命 heart 变体 + 多行堆叠（P2 HUD 队列该行末片）
 
 - 投影链：`RendererFrame.hud_player_health`（新 `HudPlayerHealth`）取代旧单行

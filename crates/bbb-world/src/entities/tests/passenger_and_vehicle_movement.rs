@@ -1,4 +1,10 @@
+use std::collections::BTreeMap;
+
+use crate::ItemEquipmentSlot;
+
 use super::*;
+
+const TEST_SADDLE_ITEM_ID: i32 = 8_901;
 
 #[test]
 fn tracks_entity_passenger_updates() {
@@ -149,6 +155,10 @@ fn local_player_root_boat_vehicle_id_tracks_vanilla_boat_roots() {
 #[test]
 fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
     store.apply_login(&protocol_play_login(99));
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
@@ -171,14 +181,22 @@ fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
         vehicle_id: 10,
         passenger_ids: vec![99],
     }));
+    assert_eq!(
+        store.local_player_rideable_jumping_vehicle_id(),
+        None,
+        "vanilla PlayerRideableJumping.canJump requires a saddle"
+    );
+    equip_test_saddle(&mut store, 10);
     assert_eq!(store.local_player_rideable_jumping_vehicle_id(), Some(10));
 
+    equip_test_saddle(&mut store, 20);
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 20,
         passenger_ids: vec![99],
     }));
     assert_eq!(store.local_player_rideable_jumping_vehicle_id(), Some(20));
 
+    equip_test_saddle(&mut store, 30);
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 30,
         passenger_ids: vec![99],
@@ -193,8 +211,76 @@ fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
 }
 
 #[test]
+fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
+    const CAMEL_DASH_DATA_ID: u8 = 19;
+
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    equip_test_saddle(&mut store, 10);
+    equip_test_saddle(&mut store, 20);
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(
+        store.local_player_rideable_jumping_vehicle_cooldown(1.0),
+        Some(0.0)
+    );
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(
+        store.local_player_rideable_jumping_vehicle_cooldown(1.0),
+        Some(0.0)
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![ProtocolEntityDataValue {
+            data_id: CAMEL_DASH_DATA_ID,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    store.advance_entity_client_animations(1);
+
+    assert_eq!(
+        store.local_player_rideable_jumping_vehicle_cooldown(1.0),
+        Some(53.0)
+    );
+}
+
+fn equip_test_saddle(store: &mut WorldStore, entity_id: i32) {
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: item_stack(TEST_SADDLE_ITEM_ID, 1),
+        }],
+    }));
+}
+
+#[test]
 fn local_player_rideable_jumping_vehicle_requires_controlling_passenger() {
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
     store.apply_login(&protocol_play_login(99));
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
@@ -204,6 +290,7 @@ fn local_player_rideable_jumping_vehicle_requires_controlling_passenger() {
         123,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
     ));
+    equip_test_saddle(&mut store, 10);
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 10,

@@ -132,7 +132,7 @@ pub(super) fn experience_bar_hud_rect(
     }
 }
 
-pub(super) fn hud_experience_progress_width(progress: f32) -> u32 {
+pub(super) fn hud_contextual_bar_progress_width(progress: f32) -> u32 {
     ((progress.clamp(0.0, 1.0) * 183.0).floor() as u32).min(HUD_EXPERIENCE_BAR_WIDTH)
 }
 
@@ -1368,9 +1368,9 @@ mod tests {
         assert_eq!(bar.width, 182);
         assert_eq!(bar.height, 5);
 
-        assert_eq!(hud_experience_progress_width(0.0), 0);
-        assert_eq!(hud_experience_progress_width(0.5), 91);
-        assert_eq!(hud_experience_progress_width(1.0), 182);
+        assert_eq!(hud_contextual_bar_progress_width(0.0), 0);
+        assert_eq!(hud_contextual_bar_progress_width(0.5), 91);
+        assert_eq!(hud_contextual_bar_progress_width(1.0), 182);
     }
 
     #[test]

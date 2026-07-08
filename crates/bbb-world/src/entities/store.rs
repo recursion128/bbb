@@ -222,6 +222,29 @@ fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
     )
 }
 
+fn equipment_contains_saddle_item(
+    equipment: Option<&EntityEquipment>,
+    equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> bool {
+    let Some(equipment) = equipment else {
+        return false;
+    };
+    let Some(item) = equipment
+        .equipment
+        .iter()
+        .find(|update| update.slot == ProtocolEquipmentSlot::Saddle)
+        .map(|update| &update.item)
+    else {
+        return false;
+    };
+    if item.count <= 0 {
+        return false;
+    }
+    item.item_id
+        .and_then(|item_id| equipment_slots.get(&item_id).copied())
+        == Some(ItemEquipmentSlot::Saddle)
+}
+
 fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
     vanilla_zombie_model_family(entity_type_id)
         || vanilla_piglin_melee_attack_family(entity_type_id)
@@ -536,6 +559,41 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| identity.entity_type_id)
+    }
+
+    pub(crate) fn player_rideable_jumping_cooldown(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if !matches!(
+            identity.entity_type_id,
+            VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+        ) {
+            return Some(0.0);
+        }
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            client_animations
+                .animations
+                .camel_jump_cooldown(partial_ticks),
+        )
+    }
+
+    pub(crate) fn saddle_slot_contains_saddle_item(
+        &self,
+        id: i32,
+        equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(equipment) = self.ecs.get::<&EntityEquipment>(entity) else {
+            return false;
+        };
+        equipment_contains_saddle_item(Some(&*equipment), equipment_slots)
     }
 
     pub(crate) fn first_entity_id_with_type_and_data(
@@ -1392,25 +1450,8 @@ impl EntityStore {
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
         // from the item equipment-slot map.
-        let saddle_slot_contains_saddle_item = || -> bool {
-            let Some(equipment) = equipment.as_ref() else {
-                return false;
-            };
-            let Some(item) = equipment
-                .equipment
-                .iter()
-                .find(|update| update.slot == ProtocolEquipmentSlot::Saddle)
-                .map(|update| &update.item)
-            else {
-                return false;
-            };
-            if item.count <= 0 {
-                return false;
-            }
-            item.item_id
-                .and_then(|item_id| equipment_slots.get(&item_id).copied())
-                == Some(ItemEquipmentSlot::Saddle)
-        };
+        let saddle_slot_contains_saddle_item =
+            || equipment_contains_saddle_item(equipment, equipment_slots);
         let pig_saddle = || -> bool {
             identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
                 && saddle_slot_contains_saddle_item()
