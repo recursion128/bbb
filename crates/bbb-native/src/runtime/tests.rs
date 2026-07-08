@@ -1322,6 +1322,45 @@ fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
 }
 
 #[test]
+fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut input = ClientInputState::new(true);
+    let camera_pose = Some(CameraPose {
+        position: [31.8, 42.0, -0.2],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    });
+
+    assert_eq!(
+        debug_chunk_border_outline(&input, &world, camera_pose),
+        None
+    );
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyG),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+
+    let outline = debug_chunk_border_outline(&input, &world, camera_pose)
+        .expect("F3+G should enable chunk-border debug outlines");
+    assert_eq!(outline.boxes.len(), 24);
+    assert_eq!(outline.boxes[0].min, [16.0, -64.0, -16.0]);
+    assert_eq!(outline.boxes[0].max, [32.0, -48.0, 0.0]);
+    assert_eq!(outline.boxes[23].min, [16.0, 304.0, -16.0]);
+    assert_eq!(outline.boxes[23].max, [32.0, 320.0, 0.0]);
+    assert_eq!(debug_chunk_border_outline(&input, &world, None), None);
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());

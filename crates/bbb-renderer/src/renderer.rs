@@ -419,6 +419,7 @@ pub struct Renderer {
     pub(super) sign_text_surfaces: Vec<SignTextSurface>,
     pub(super) item_frame_map_text_font_atlas: Option<ItemFrameMapTextFontAtlasGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
+    pub(super) chunk_border_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
@@ -1446,6 +1447,7 @@ impl Renderer {
             sign_text_surfaces: Vec::new(),
             item_frame_map_text_font_atlas: None,
             selection_outline: None,
+            chunk_border_outline: None,
             entity_scene_outline: None,
             entity_target_outline: None,
             hud_crosshair: None,
@@ -1765,6 +1767,21 @@ impl Renderer {
             return;
         }
         self.selection_outline =
+            outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
+    }
+
+    pub fn set_chunk_border_outline(&mut self, outline: Option<SelectionOutline>) {
+        let chunk_border_boxes = outline.as_ref().map_or(0, |outline| outline.boxes.len());
+        self.counters.chunk_border_boxes = chunk_border_boxes;
+        if self
+            .chunk_border_outline
+            .as_ref()
+            .map(|selection| &selection.outline)
+            == outline.as_ref()
+        {
+            return;
+        }
+        self.chunk_border_outline =
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
     }
 

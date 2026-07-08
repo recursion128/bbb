@@ -5327,6 +5327,17 @@
   position point、passenger box、living eye-height box、Ender Dragon part
   boxes、view/delta arrows、frustum/invisibility filtering、以及专用 debug
   gizmo styling 仍未实现。
+- [x] debug overlay F3+G chunk section-stack outline rendering（P2
+  renderer/runtime slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos`
+  用 `SectionPos.of(cameraEntity.blockPosition())`、`level.getMinY()` 和
+  `level.getMaxY() + 1` 生成 chunk-border debug gizmo：current/neighbor chunk
+  vertical lines、当前 chunk 2/4/8/16 grid rings、以及 current-section
+  cuboid。native 现在把 F3+G 状态投影成 `RendererFrame.chunk_border_outline`，
+  按 camera X/Z 的 floor chunk origin 与 `WorldDimension` 的 min/max Y 生成当前
+  chunk 的 16x16 section stack 线框，renderer 以独立 outline 字段和 counters
+  在 item/entity line target pass 提交。边界：vanilla colors、line widths、
+  `alwaysOnTop`、3x3 neighbor boundary lattice、thin 2-block grid lines、
+  horizontal 2/8/16-step rings、以及专用 debug gizmo pipeline 仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

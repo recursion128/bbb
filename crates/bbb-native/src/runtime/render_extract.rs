@@ -836,6 +836,7 @@ pub(crate) struct RendererFrame {
     pub(crate) weather_render_state: WeatherRenderState,
     pub(crate) world_border_render_state: WorldBorderRenderState,
     pub(crate) selection_outline: Option<SelectionOutline>,
+    pub(crate) chunk_border_outline: Option<SelectionOutline>,
     pub(crate) entity_scene_outline: Option<SelectionOutline>,
     pub(crate) entity_target_outline: Option<SelectionOutline>,
     pub(crate) block_destroy_overlays: Vec<BlockDestroyOverlay>,
@@ -931,6 +932,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_weather_render_state(frame.weather_render_state);
     renderer.set_world_border_render_state(frame.world_border_render_state);
     renderer.set_selection_outline(frame.selection_outline);
+    renderer.set_chunk_border_outline(frame.chunk_border_outline);
     renderer.set_entity_scene_outline(frame.entity_scene_outline);
     renderer.set_entity_target_outline(frame.entity_target_outline);
     renderer.set_block_destroy_overlays(frame.block_destroy_overlays);

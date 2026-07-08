@@ -35,13 +35,14 @@ use bbb_renderer::{
     HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox, SelectionOutline,
+    SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
+    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
@@ -2094,6 +2095,7 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
     let selection_outline = selection_outline_from_camera(world, camera_pose);
+    let chunk_border_outline = debug_chunk_border_outline(input, world, camera_pose);
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
@@ -2191,6 +2193,7 @@ pub(crate) fn pump_network_and_terrain(
             weather_render_state,
             world_border_render_state,
             selection_outline,
+            chunk_border_outline,
             entity_scene_outline,
             entity_target_outline,
             block_destroy_overlays,
@@ -2858,6 +2861,42 @@ fn debug_entity_scene_outline(
         .debug_entity_hitboxes_visible()
         .then(|| entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick))
         .flatten()
+}
+
+fn debug_chunk_border_outline(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<SelectionOutline> {
+    if !input.debug_chunk_borders_visible() {
+        return None;
+    }
+    world.level_info()?;
+    let camera_pose = camera_pose?;
+    let dimension = world.dimension();
+    let min_y = dimension.min_y;
+    let max_y = min_y + dimension.height;
+    if max_y <= min_y {
+        return None;
+    }
+    let x_start = chunk_min_block(camera_pose.position[0]);
+    let z_start = chunk_min_block(camera_pose.position[2]);
+    let boxes = (min_y..max_y).step_by(16).map(|section_min_y| {
+        let section_max_y = (section_min_y + 16).min(max_y);
+        SelectionBox {
+            min: [x_start as f32, section_min_y as f32, z_start as f32],
+            max: [
+                (x_start + 16) as f32,
+                section_max_y as f32,
+                (z_start + 16) as f32,
+            ],
+        }
+    });
+    Some(SelectionOutline::from_boxes(boxes))
+}
+
+fn chunk_min_block(position: f32) -> i32 {
+    (position.floor() as i32).div_euclid(16) * 16
 }
 
 fn hud_debug_version_line() -> String {
@@ -10178,6 +10217,8 @@ pub(crate) fn control_renderer_counters(
         selection_draw_calls: counters.selection_draw_calls,
         entity_scene_draw_calls: counters.entity_scene_draw_calls,
         entity_target_draw_calls: counters.entity_target_draw_calls,
+        chunk_border_draw_calls: counters.chunk_border_draw_calls,
+        chunk_border_boxes: counters.chunk_border_boxes,
         entity_scene_boxes: counters.entity_scene_boxes,
         item_entity_billboards: counters.item_entity_billboards,
         hud_draw_calls: counters.hud_draw_calls,

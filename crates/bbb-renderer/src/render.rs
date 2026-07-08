@@ -87,6 +87,7 @@ struct FrameDrawStats {
     item_entity_draw_calls: u64,
     item_model_draw_calls: u64,
     selection_draw_calls: u64,
+    chunk_border_draw_calls: u64,
     entity_scene_draw_calls: u64,
     entity_target_draw_calls: u64,
     hud_draw_calls: u64,
@@ -1043,6 +1044,7 @@ impl Renderer {
     ) {
         let item_entity_view = &self.item_entity_target.view;
         if self.selection_outline.is_some()
+            || self.chunk_border_outline.is_some()
             || self.entity_scene_outline.is_some()
             || self.entity_target_outline.is_some()
         {
@@ -1074,6 +1076,11 @@ impl Renderer {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                 pass.draw(0..outline.vertex_count, 0..1);
                 stats.selection_draw_calls += 1;
+            }
+            if let Some(outline) = &self.chunk_border_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                stats.chunk_border_draw_calls += 1;
             }
             if let Some(outline) = &self.entity_scene_outline {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
@@ -2187,6 +2194,7 @@ impl Renderer {
         self.counters.weather_draw_calls = stats.weather_draw_calls;
         self.counters.item_entity_draw_calls = stats.item_entity_draw_calls;
         self.counters.selection_draw_calls = stats.selection_draw_calls;
+        self.counters.chunk_border_draw_calls = stats.chunk_border_draw_calls;
         self.counters.entity_scene_draw_calls =
             stats.entity_scene_draw_calls + stats.entity_model_draw_calls;
         self.counters.entity_target_draw_calls = stats.entity_target_draw_calls;
@@ -2205,6 +2213,7 @@ impl Renderer {
             + stats.item_entity_draw_calls
             + stats.item_model_draw_calls
             + stats.selection_draw_calls
+            + stats.chunk_border_draw_calls
             + stats.entity_scene_draw_calls
             + stats.entity_target_draw_calls
             + stats.hud_draw_calls

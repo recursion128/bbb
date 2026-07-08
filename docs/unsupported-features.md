@@ -1101,14 +1101,27 @@ When an agent does any of the following, update this file in the same slice:
     help keybind, the F3+F6 debug-options request shell, the default
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
-    hitbox outline rendering: the complete
+    hitbox outline rendering, and F3+G chunk section-stack outline rendering:
+    the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    entity hitbox details/chunk-border rendering, advanced tooltip full parity, actual
-    dynamic texture dump execution, F3+I recreate command generation, 3D
-    crosshair, profiling metrics recorder/output, actual DebugOptionsScreen,
-    native pause loop/PauseScreen, and the other F3 modifier combos remain
-    (large, low priority).
+    entity hitbox details/chunk-border full gizmo grid, advanced tooltip full
+    parity, actual dynamic texture dump execution, F3+I recreate command
+    generation, 3D crosshair, profiling metrics recorder/output, actual
+    DebugOptionsScreen, native pause loop/PauseScreen, and the other F3 modifier
+    combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+G chunk section-stack outline rendering.
+    Vanilla anchors: `ChunkBorderRenderer.emitGizmos` derives the camera
+    section with `SectionPos.of(cameraEntity.blockPosition())`, samples
+    `level.getMinY()` / `level.getMaxY() + 1`, and emits current/neighbor chunk
+    vertical lines, 2/4/8/16 grid rings, plus a current-section cuboid. bbb now
+    projects the F3+G toggle into `RendererFrame.chunk_border_outline`, builds a
+    16x16 current-chunk section stack from the native world dimension min/max Y
+    and camera X/Z chunk floor, and submits it through a dedicated renderer
+    outline field/counter only while chunk borders are visible. Boundary:
+    vanilla colors, line widths, `alwaysOnTop`, the 3x3 neighbor boundary
+    lattice, thin 2-block grid lines, horizontal 2/8/16-step rings, and the
+    dedicated debug gizmo pipeline are still not implemented.
   - Done 2026-07-08 — Debug overlay F3+B entity AABB hitbox outline
     rendering. Vanilla anchors: `DebugScreenEntries.ENTITY_HITBOXES` is
     toggled by `KeyboardHandler.handleDebugKeys`, and
