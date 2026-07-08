@@ -177,6 +177,19 @@ pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, ar
     }
 }
 
+pub(super) fn translate_with_two_args(
+    language: &LanguageCatalog,
+    key: &str,
+    first: &str,
+    second: &str,
+) -> String {
+    let mut translated = translate_with_first_arg(language, key, first);
+    if translated.contains("%2$s") {
+        translated = translated.replace("%2$s", second);
+    }
+    translated.replacen("%s", second, 1)
+}
+
 pub(super) fn item_rarity_for_stack(
     component_patch: &DataComponentPatchSummary,
 ) -> ItemRaritySummary {
@@ -211,6 +224,45 @@ fn item_rarity_color(rarity: ItemRaritySummary) -> u32 {
     }
 }
 
+fn effective_damage_state(
+    component_patch: &DataComponentPatchSummary,
+    default_max_damage: Option<i32>,
+) -> Option<(i32, i32)> {
+    let max_damage = component_patch
+        .max_damage
+        .or(default_max_damage)
+        .filter(|max_damage| *max_damage > 0)?;
+    let damage = component_patch.damage.unwrap_or(0).clamp(0, max_damage);
+    Some((damage, max_damage))
+}
+
+fn push_advanced_tooltip_lines(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+    default_max_damage: Option<i32>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some((damage, max_damage)) = effective_damage_state(component_patch, default_max_damage)
+        .filter(|(damage, _)| *damage > 0)
+    {
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_two_args(
+                language,
+                "item.durability",
+                &(max_damage - damage).to_string(),
+                &max_damage.to_string(),
+            ),
+            TOOLTIP_TEXT_WHITE,
+        ));
+    }
+
+    lines.push(NativeItemTooltipLine::plain(
+        resource_id.to_string(),
+        TOOLTIP_TEXT_DARK_GRAY,
+    ));
+}
+
 pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
     let (namespace, path) = resource_id
         .split_once(':')
@@ -223,10 +275,19 @@ impl NativeItemRuntime {
         &self,
         stack: &ItemStackSummary,
     ) -> Option<Vec<NativeItemTooltipLine>> {
+        self.tooltip_lines_for_stack_with_options(stack, false)
+    }
+
+    pub fn tooltip_lines_for_stack_with_options(
+        &self,
+        stack: &ItemStackSummary,
+        advanced: bool,
+    ) -> Option<Vec<NativeItemTooltipLine>> {
         if item_stack_is_empty(stack) {
             return None;
         }
-        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let protocol_id = stack.item_id?;
+        let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
 
         // Vanilla `ItemStack.getStyledHoverName`: the hover name is wrapped in
         // the rarity colour, plus ITALIC when the stack carries a custom name;
@@ -277,6 +338,15 @@ impl NativeItemRuntime {
                 self.language.get_or_key("item.unbreakable").to_string(),
                 TOOLTIP_TEXT_BLUE,
             ));
+        }
+        if advanced {
+            push_advanced_tooltip_lines(
+                &self.language,
+                item_id,
+                &stack.component_patch,
+                self.default_max_damage_for_protocol_id(protocol_id),
+                &mut lines,
+            );
         }
         Some(lines)
     }

@@ -36,6 +36,7 @@ use winit::{
 const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+const TOOLTIP_TEST_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
@@ -79,6 +80,14 @@ fn tooltip_lore_line(text: &str) -> HudInventoryTooltipLine {
             },
             color: Some(0xAA_00_AA),
         }],
+    }
+}
+
+fn tooltip_plain_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
+    HudInventoryTooltipLine {
+        text: text.to_string(),
+        tint,
+        runs: vec![bbb_renderer::HudStyledTextRun::plain(text)],
     }
 }
 
@@ -5848,6 +5857,39 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
                 0xFF_FF_FF,
                 false
             )],
+        })
+    );
+
+    let mut damaged_stack = item_stack(0, 1);
+    damaged_stack.component_patch.max_damage = Some(20);
+    damaged_stack.component_patch.damage = Some(3);
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: damaged_stack,
+    });
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        Some(36),
+        InventoryHudLocalState {
+            advanced_item_tooltips: true,
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(
+        screen.tooltip,
+        Some(HudInventoryTooltip {
+            slot_id: 36,
+            x: 8,
+            y: 142,
+            lines: vec![
+                tooltip_name_line("Test Combo", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
+                tooltip_plain_line("Durability: 17 / 20", TOOLTIP_TEST_WHITE),
+                tooltip_plain_line("minecraft:test_combo", TOOLTIP_TEST_DARK_GRAY),
+            ],
         })
     );
 
@@ -12533,7 +12575,8 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
     write_runtime_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
-            "item.minecraft.test_combo": "Test Combo"
+            "item.minecraft.test_combo": "Test Combo",
+            "item.durability": "Durability: %s / %s"
         }"#,
     );
     write_runtime_png(

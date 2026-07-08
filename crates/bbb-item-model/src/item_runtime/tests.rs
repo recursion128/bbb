@@ -198,6 +198,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         r#"{
                 "item.minecraft.test_combo": "Test Combo",
                 "item.unbreakable": "Unbreakable",
+                "item.durability": "Durability: %s / %s",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -343,6 +344,32 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             0xFF_FF_FF,
             false
         )])
+    );
+    let damaged_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            max_damage: Some(20),
+            damage: Some(3),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&damaged_stack),
+        Some(vec![name_line(
+            "Test Combo",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_options(&damaged_stack, true),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Durability: 17 / 20", TOOLTIP_TEXT_WHITE),
+            tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
+        ])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {

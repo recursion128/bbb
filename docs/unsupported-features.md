@@ -1078,10 +1078,21 @@ When an agent does any of the following, update this file in the same slice:
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle: the complete vanilla debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip
-    consumption/persistence, 3D crosshair, and the other F3 modifier combos
-    remain (large, low priority).
+    entity hitbox/chunk-border rendering, advanced tooltip full
+    parity/persistence, 3D crosshair, and the other F3 modifier combos remain
+    (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+H advanced item tooltip consumption.
+    Vanilla anchors: `Screen.getTooltipFromItem` passes
+    `TooltipFlag.Default.ADVANCED` when `Options.advancedItemTooltips` is set,
+    and `ItemStack.addDetailsToTooltip` appends damaged-item durability before
+    the dark-gray item registry id. bbb now routes the F3+H runtime option into
+    inventory-screen hovered item tooltips, keeps anvil hover-name lookup and
+    recipe-book search indexing on normal tooltip lines, and appends the
+    supported advanced durability/id lines from repo-native item stack state.
+    Boundary: `Options.save()` persistence, effective component-count display,
+    and other component-specific advanced tooltip additions are not modeled
+    yet.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -1122,7 +1133,7 @@ When an agent does any of the following, update this file in the same slice:
     debug modifier was used, keeps these toggles independent from overlay
     visibility, and reflects the current states in the debug overlay help
     lines. Boundary: entity hitbox rendering, chunk-border rendering,
-    advanced tooltip rendering, and option persistence are still not
+    advanced tooltip full parity, and option persistence are still not
     implemented.
   - Done 2026-07-08 — Debug overlay F3+1..4 chart/lightmap toggle state.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps

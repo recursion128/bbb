@@ -564,6 +564,7 @@ struct InventoryHudLocalState {
     quick_craft_slots: Vec<i16>,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
+    advanced_item_tooltips: bool,
 }
 
 pub(crate) use control_requests::pump_control_net_requests;
@@ -1826,6 +1827,7 @@ pub(crate) fn pump_network_and_terrain(
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
                 shift_down: input.shift_down(),
                 keybind_context: item_model_keybind_context,
+                advanced_item_tooltips: input.debug_advanced_item_tooltips(),
             },
             surface_size,
             entity_partial_tick,
@@ -3234,7 +3236,13 @@ fn hud_inventory_screen_with_local_state_for_surface(
         entity_previews,
         text_labels,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
-        tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
+        tooltip: hud_inventory_tooltip(
+            item_runtime,
+            hovered_slot_id,
+            &layout.slots,
+            container,
+            local_state.advanced_item_tooltips,
+        ),
     })
 }
 
@@ -6576,13 +6584,14 @@ fn hud_inventory_tooltip(
     hovered_slot_id: Option<i16>,
     layout_slots: &[crate::input::InventorySlotLayout],
     container: &ContainerState,
+    advanced: bool,
 ) -> Option<HudInventoryTooltip> {
     let slot_id = hovered_slot_id?;
     let layout = layout_slots
         .iter()
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
-    let lines = item_runtime?.tooltip_lines_for_stack(&slot.item)?;
+    let lines = item_runtime?.tooltip_lines_for_stack_with_options(&slot.item, advanced)?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(slot_id).ok()?,
         x: layout.x,

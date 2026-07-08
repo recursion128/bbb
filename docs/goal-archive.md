@@ -5101,8 +5101,19 @@
   entity hitboxes、chunk borders、advanced item tooltips 三个运行时状态，并
   在使用组合键后抑制 F3 release 触发普通 overlay toggle；runtime help
   lines 会显示对应 visible/hidden 或 enabled/disabled。剩余：entity
-  hitbox/chunk-border 实际绘制、advanced tooltip 渲染/持久化、完整 debug
+  hitbox/chunk-border 实际绘制、advanced tooltip full parity/持久化、完整 debug
   entry 列表、3D crosshair、其它 F3 modifier combos。
+- [x] debug overlay F3+H advanced item tooltip consumption（P2
+  item-model/native runtime slice，2026-07-08）：依据
+  `Screen.getTooltipFromItem` 用 `Options.advancedItemTooltips` 选择
+  `TooltipFlag.Default.ADVANCED`，以及 `ItemStack.addDetailsToTooltip` 在
+  advanced 模式下追加损坏物品耐久和 dark-gray item registry id。item runtime
+  现在保留 normal `tooltip_lines_for_stack` 入口，并提供 explicit options
+  入口给 HUD hovered-item tooltip 使用；runtime 把 `ClientInputState` 的
+  F3+H 状态传入 inventory-screen tooltip 投影，anvil rename hover-name 和
+  recipe-book 搜索索引仍使用 normal tooltip。剩余：`Options.save()` 持久化、
+  effective component count 和其它 component-specific advanced tooltip
+  additions。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`
