@@ -5121,12 +5121,14 @@
   `showDebugChat` 追加 client system chat message 的行为。world 现在有本地
   `ClientSystem` chat message kind 与
   `WorldStore::push_client_system_chat_message`；native 在 F3 按住期间消费 V，
-  向 chat display 追加 vanilla debug header 和 repo 已建模的
-  id/name/protocol 行，不污染协议 chat packet counters，并抑制 F3 release
-  触发普通 overlay toggle；control `world.client_chat` 能看到该本地消息，
-  runtime help line 显示 `[F3+V] Version`。剩余：narrator/rich component
-  styling/localization，以及 `WorldVersion` 的 data version、series、
-  build_time、resource/data pack version、stable flag 全字段 dump。
+  向 chat display 追加 vanilla debug header，以及由 `bbb-protocol` 常量
+  （本地 `version.json` 测试锁定）提供的 id/name/data version/series/
+  protocol/build time/resource pack/data pack/stable 行，不污染协议 chat
+  packet counters，并抑制 F3 release 触发普通 overlay toggle；control
+  `world.client_chat` 能看到该本地消息，runtime help line 显示 `[F3+V]
+  Version`。剩余：narrator/rich component styling/localization，以及
+  build_time 的 Java `Date.toString()` 本地时区格式；bbb 当前输出原始
+  `version.json` ISO timestamp。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`

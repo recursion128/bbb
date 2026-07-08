@@ -11,7 +11,8 @@ use bbb_protocol::{
         ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
         SeenAdvancements, SignUpdate,
     },
-    MC_VERSION, PROTOCOL_VERSION,
+    MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
+    MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -724,9 +725,25 @@ fn push_debug_version_chat_messages(world: &mut WorldStore) {
     world.push_client_system_chat_message("[Debug]: Client version info:");
     world.push_client_system_chat_message(format!("id = {MC_VERSION}"));
     world.push_client_system_chat_message(format!("name = {MC_VERSION}"));
+    world.push_client_system_chat_message(format!("data = {MC_DATA_VERSION}"));
+    world.push_client_system_chat_message(format!("series = {MC_DATA_VERSION_SERIES}"));
     world.push_client_system_chat_message(format!(
         "protocol = {PROTOCOL_VERSION} (0x{PROTOCOL_VERSION:x})"
     ));
+    world.push_client_system_chat_message(format!("build_time = {MC_BUILD_TIME}"));
+    world.push_client_system_chat_message(format!(
+        "pack_resource = {}",
+        MC_RESOURCE_PACK_FORMAT.to_vanilla_string()
+    ));
+    world.push_client_system_chat_message(format!(
+        "pack_data = {}",
+        MC_DATA_PACK_FORMAT.to_vanilla_string()
+    ));
+    world.push_client_system_chat_message(if MC_STABLE {
+        "stable = yes"
+    } else {
+        "stable = no"
+    });
 }
 
 impl ClientInputState {

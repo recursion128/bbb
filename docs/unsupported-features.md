@@ -1091,12 +1091,14 @@ When an agent does any of the following, update this file in the same slice:
     client system chat message and queues narrator feedback. bbb now models a
     local `ClientSystem` chat message kind, exposes
     `WorldStore::push_client_system_chat_message`, consumes V while F3 is held,
-    appends the vanilla debug header plus repo-known id/name/protocol lines,
-    keeps protocol chat counters unchanged, suppresses the subsequent
-    F3-release overlay toggle, and reflects the action in the debug overlay
-    help line. Boundary: narrator output, rich component styling/localization,
-    and the remaining `WorldVersion` dump fields (data version, series, build
-    time, resource/data pack versions, stable flag) are not modeled yet.
+    appends the vanilla debug header plus the `VersionCommand` id/name/data
+    version/series/protocol/build time/resource pack/data pack/stable lines
+    from `bbb-protocol` constants locked against local `version.json`, keeps
+    protocol chat counters unchanged, suppresses the subsequent F3-release
+    overlay toggle, and reflects the action in the debug overlay help line.
+    Boundary: narrator output, rich component styling/localization, and Java
+    `Date.toString()` local-timezone formatting for `build_time` are not
+    modeled yet; bbb emits the raw `version.json` ISO timestamp.
   - Done 2026-07-08 — Debug overlay F3+H advanced item tooltip consumption.
     Vanilla anchors: `Screen.getTooltipFromItem` passes
     `TooltipFlag.Default.ADVANCED` when `Options.advancedItemTooltips` is set,

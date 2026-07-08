@@ -19,7 +19,10 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
-use bbb_protocol::{MC_VERSION, PROTOCOL_VERSION};
+use bbb_protocol::{
+    MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
+    MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
+};
 use bbb_world::{
     BlockEntityRecord, BlockPos, ChatMessageKind, ChunkColumn, ChunkPos, ChunkState,
     ItemEquipmentSlot, LightData, LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
@@ -875,18 +878,43 @@ fn f3_v_dumps_version_debug_chat_without_toggling_overlay_on_release() {
     );
 
     let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 4);
+    assert_eq!(messages.len(), 10);
     assert!(messages
         .iter()
         .all(|message| message.kind == ChatMessageKind::ClientSystem));
     assert_eq!(messages[0].content, "[Debug]: Client version info:");
     assert_eq!(messages[1].content, format!("id = {MC_VERSION}"));
     assert_eq!(messages[2].content, format!("name = {MC_VERSION}"));
+    assert_eq!(messages[3].content, format!("data = {MC_DATA_VERSION}"));
     assert_eq!(
-        messages[3].content,
+        messages[4].content,
+        format!("series = {MC_DATA_VERSION_SERIES}")
+    );
+    assert_eq!(
+        messages[5].content,
         format!("protocol = {PROTOCOL_VERSION} (0x{PROTOCOL_VERSION:x})")
     );
-    assert_eq!(world.counters().chat_messages_tracked, 4);
+    assert_eq!(messages[6].content, format!("build_time = {MC_BUILD_TIME}"));
+    assert_eq!(
+        messages[7].content,
+        format!(
+            "pack_resource = {}",
+            MC_RESOURCE_PACK_FORMAT.to_vanilla_string()
+        )
+    );
+    assert_eq!(
+        messages[8].content,
+        format!("pack_data = {}", MC_DATA_PACK_FORMAT.to_vanilla_string())
+    );
+    assert_eq!(
+        messages[9].content,
+        if MC_STABLE {
+            "stable = yes"
+        } else {
+            "stable = no"
+        }
+    );
+    assert_eq!(world.counters().chat_messages_tracked, 10);
     assert_eq!(world.counters().player_chat_packets, 0);
     assert_eq!(world.counters().disguised_chat_packets, 0);
     assert_eq!(world.counters().system_chat_packets, 0);
