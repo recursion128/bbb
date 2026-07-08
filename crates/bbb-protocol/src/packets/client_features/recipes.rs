@@ -60,6 +60,7 @@ pub struct SlotDisplaySummary {
     pub display_type_id: i32,
     pub raw_payload: Vec<u8>,
     pub item_stack: Option<ItemStackSummary>,
+    pub tag: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -434,12 +435,13 @@ fn decode_slot_display_summary(decoder: &mut Decoder<'_>) -> Result<SlotDisplayS
     let display_start = decoder.remaining().to_vec();
     let before_len = decoder.remaining_len();
     let display_type_id = decoder.read_var_i32()?;
-    let item_stack = decode_slot_display_body(decoder, display_type_id)?;
+    let body = decode_slot_display_body(decoder, display_type_id)?;
     let consumed = before_len - decoder.remaining_len();
     Ok(SlotDisplaySummary {
         display_type_id,
         raw_payload: display_start[..consumed].to_vec(),
-        item_stack,
+        item_stack: body.item_stack,
+        tag: body.tag,
     })
 }
 
@@ -467,23 +469,26 @@ fn skip_slot_display(decoder: &mut Decoder<'_>) -> Result<()> {
 fn decode_slot_display_body(
     decoder: &mut Decoder<'_>,
     display_type_id: i32,
-) -> Result<Option<ItemStackSummary>> {
+) -> Result<SlotDisplayBodySummary> {
     match display_type_id {
-        0 | 1 => Ok(None),
+        0 | 1 => Ok(SlotDisplayBodySummary::default()),
         2 => {
             skip_slot_display(decoder)?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
         3 => {
             skip_slot_display(decoder)?;
             decoder.read_var_i32()?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
-        4 => Ok(Some(ItemStackSummary {
-            item_id: Some(decoder.read_var_i32()?),
-            count: 1,
-            component_patch: DataComponentPatchSummary::default(),
-        })),
+        4 => Ok(SlotDisplayBodySummary {
+            item_stack: Some(ItemStackSummary {
+                item_id: Some(decoder.read_var_i32()?),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+            tag: None,
+        }),
         5 => {
             let item_id = decoder.read_var_i32()?;
             let count = decoder.read_var_i32()?;
@@ -494,40 +499,49 @@ fn decode_slot_display_body(
             }
             let component_patch =
                 super::super::inventory::decode_data_component_patch_summary(decoder)?;
-            Ok(Some(ItemStackSummary {
-                item_id: Some(item_id),
-                count,
-                component_patch,
-            }))
+            Ok(SlotDisplayBodySummary {
+                item_stack: Some(ItemStackSummary {
+                    item_id: Some(item_id),
+                    count,
+                    component_patch,
+                }),
+                tag: None,
+            })
         }
-        6 => {
-            read_resource_location(decoder)?;
-            Ok(None)
-        }
+        6 => Ok(SlotDisplayBodySummary {
+            item_stack: None,
+            tag: Some(read_resource_location(decoder)?),
+        }),
         7 => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
         8 => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_trim_pattern_holder(decoder)?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
         9 => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
         10 => {
             skip_slot_display_list(decoder)?;
-            Ok(None)
+            Ok(SlotDisplayBodySummary::default())
         }
         other => Err(ProtocolError::InvalidData(format!(
             "invalid slot display type id {other}"
         ))),
     }
+}
+
+#[derive(Debug, Default)]
+struct SlotDisplayBodySummary {
+    item_stack: Option<ItemStackSummary>,
+    tag: Option<String>,
 }
 
 fn skip_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {

@@ -1065,8 +1065,8 @@ When an agent does any of the following, update this file in the same slice:
     filtering/direct-item craftability/same-result multi-recipe icon overlay:
     tab notification animation, furnace-family recipe-grid parity,
     multi-recipe picker/cycling, full recipe `FullTextSearchTree` token
-    parity, and unresolved tag/composite SlotDisplay cycling for ghost
-    ingredients.
+    parity, and full tag/composite SlotDisplay time-cycling for ghost
+    ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1247,18 +1247,31 @@ When an agent does any of the following, update this file in the same slice:
     insert cursors, and append cursors for HUD inventory text labels with
     input decoration. Boundary: selection is modeled as a solid GUI fill
     rather than vanilla's exact invert-highlight shader path.
+  - Done 2026-07-08 — Crafting recipe-book tag-backed ghost ingredient
+    display. Vanilla anchors: `SlotDisplay.TagSlotDisplay.resolve` reads the
+    item registry tag from `SlotDisplayContext.REGISTRIES`,
+    `GhostSlots.addIngredient` stores the resolved stack list for fake-item
+    drawing, and `RecipeBookComponent` advances selection time with
+    `floor(time / 30.0F)`. bbb now decodes tag `SlotDisplay` ids into
+    `SlotDisplaySummary.tag`, passes canonical `UpdateTags` `minecraft:item`
+    entries into crafting ghost-slot projection, and renders a tag-backed
+    ingredient using the first synced tag item as a count-1 ghost stack.
+    Boundary: vanilla's time-cycling through all resolved tag entries and
+    composite SlotDisplay children remains open.
   - Boundary: furnace-family raw recipe displays, craftability retry guard,
     multi-recipe picker/cycling/right-click overlay, tab notification
     animation, full
     `FullTextSearchTree` token / namespace-path / intersection semantics for
-    recipe search, tag/composite SlotDisplay cycling for ghost ingredients,
+    recipe search, full tag/composite SlotDisplay time-cycling for ghost
+    ingredients,
     and narrow-screen overlap remain open. The filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
     item/item-stack crafting ghost slots, visible crafting search filtering,
     direct-item/tag-backed crafting craftability slot/filtering path, and
-    same-result multi-recipe duplicate icon overlay are live. The first shell
+    same-result multi-recipe duplicate icon overlay, and first-item tag-backed
+    crafting ghost ingredient projection are live. The first shell
     models the non-narrow layout; vanilla's narrow-screen overlap mode
     (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

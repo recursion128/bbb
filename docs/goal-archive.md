@@ -1912,6 +1912,18 @@
   picker/cycling/right-click overlay、tab notification animation、完整
   `FullTextSearchTree` token/namespace-path/intersection 语义、tag/composite
   SlotDisplay ghost ingredient cycling、narrow-screen overlap。
+- [x] crafting recipe-book tag-backed ghost ingredient display（P2 HUD/protocol
+  slice，2026-07-08）：依据 `SlotDisplay.TagSlotDisplay.resolve` 通过
+  `SlotDisplayContext.REGISTRIES` 展开 item registry tag、`GhostSlots.addIngredient`
+  保存 resolved stack list 供 fake item 绘制，以及 `RecipeBookComponent` 用
+  `floor(time / 30.0F)` 驱动 ghost slot 选择，protocol 现在在
+  `SlotDisplaySummary` 里保留 tag id；native 从 canonical `UpdateTags`
+  `minecraft:item` 表传入 ghost slot 投影，并把 tag ingredient 的首个 synced
+  item 作为 count=1 ghost stack 渲染。剩余：furnace-family raw recipe
+  displays、craftability retry guard、multi-recipe picker/cycling/right-click
+  overlay、tab notification animation、完整 `FullTextSearchTree`
+  token/namespace-path/intersection 语义、tag/composite SlotDisplay
+  time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

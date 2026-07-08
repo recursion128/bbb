@@ -1,9 +1,10 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
-    CraftingRecipeDisplaySummary, IngredientSummary, ItemStackSummary, RecipeDisplayEntry,
-    RecipeDisplaySummary, SlotDisplaySummary,
+    CraftingRecipeDisplaySummary, DataComponentPatchSummary, IngredientSummary, ItemStackSummary,
+    RecipeDisplayEntry, RecipeDisplaySummary, SlotDisplaySummary,
 };
 use bbb_world::WorldStore;
 
@@ -52,10 +53,10 @@ pub(crate) struct RecipeBookUiCollection<'a> {
     has_craftable: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct RecipeBookGhostSlot<'a> {
     pub(crate) slot_id: i16,
-    pub(crate) stack: &'a ItemStackSummary,
+    pub(crate) stack: Cow<'a, ItemStackSummary>,
     pub(crate) is_result: bool,
 }
 
@@ -146,10 +147,11 @@ pub(crate) fn clamped_recipe_book_page(page: usize, collection_count: usize) -> 
     page.min(page_count.saturating_sub(1))
 }
 
-pub(crate) fn crafting_recipe_book_ghost_slots(
-    display: &RecipeDisplaySummary,
+pub(crate) fn crafting_recipe_book_ghost_slots<'a>(
+    display: &'a RecipeDisplaySummary,
     grid: RecipeBookCraftingGrid,
-) -> Vec<RecipeBookGhostSlot<'_>> {
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+) -> Vec<RecipeBookGhostSlot<'a>> {
     let Some(crafting) = display.crafting.as_ref() else {
         return Vec::new();
     };
@@ -160,12 +162,17 @@ pub(crate) fn crafting_recipe_book_ghost_slots(
             result,
             ..
         } => {
-            push_recipe_book_ghost_result(result, &mut slots);
+            push_recipe_book_ghost_result(result, item_tag_entries, &mut slots);
             let slot_count = ingredients
                 .len()
                 .min((grid.width * grid.height).max(0) as usize);
             for (index, ingredient) in ingredients.iter().take(slot_count).enumerate() {
-                push_recipe_book_ghost_input(ingredient, 1 + index as i32, &mut slots);
+                push_recipe_book_ghost_input(
+                    ingredient,
+                    1 + index as i32,
+                    item_tag_entries,
+                    &mut slots,
+                );
             }
         }
         CraftingRecipeDisplaySummary::Shaped {
@@ -175,8 +182,15 @@ pub(crate) fn crafting_recipe_book_ghost_slots(
             result,
             ..
         } => {
-            push_recipe_book_ghost_result(result, &mut slots);
-            place_shaped_recipe_ghost_inputs(grid, *width, *height, ingredients, &mut slots);
+            push_recipe_book_ghost_result(result, item_tag_entries, &mut slots);
+            place_shaped_recipe_ghost_inputs(
+                grid,
+                *width,
+                *height,
+                ingredients,
+                item_tag_entries,
+                &mut slots,
+            );
         }
     }
     slots
@@ -193,9 +207,10 @@ pub(crate) fn recipe_book_crafting_result_stack(
 
 fn push_recipe_book_ghost_result<'a>(
     display: &'a SlotDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     slots: &mut Vec<RecipeBookGhostSlot<'a>>,
 ) {
-    let Some(stack) = display.item_stack.as_ref() else {
+    let Some(stack) = slot_display_first_item_stack(display, item_tag_entries) else {
         return;
     };
     slots.push(RecipeBookGhostSlot {
@@ -208,9 +223,13 @@ fn push_recipe_book_ghost_result<'a>(
 fn push_recipe_book_ghost_input<'a>(
     display: &'a SlotDisplaySummary,
     slot_id: i32,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     slots: &mut Vec<RecipeBookGhostSlot<'a>>,
 ) {
-    let (Ok(slot_id), Some(stack)) = (i16::try_from(slot_id), display.item_stack.as_ref()) else {
+    let (Ok(slot_id), Some(stack)) = (
+        i16::try_from(slot_id),
+        slot_display_first_item_stack(display, item_tag_entries),
+    ) else {
         return;
     };
     slots.push(RecipeBookGhostSlot {
@@ -225,6 +244,7 @@ fn place_shaped_recipe_ghost_inputs<'a>(
     recipe_width: i32,
     recipe_height: i32,
     ingredients: &'a [SlotDisplaySummary],
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     slots: &mut Vec<RecipeBookGhostSlot<'a>>,
 ) {
     if grid.width <= 0 || grid.height <= 0 || recipe_width <= 0 || recipe_height <= 0 {
@@ -257,7 +277,7 @@ fn place_shaped_recipe_ghost_inputs<'a>(
 
             if add_ingredient_to_slot {
                 let ingredient = ingredients.next().expect("ingredient presence checked");
-                push_recipe_book_ghost_input(ingredient, 1 + grid_index, slots);
+                push_recipe_book_ghost_input(ingredient, 1 + grid_index, item_tag_entries, slots);
             } else if total_recipe_width_in_grid == grid_x {
                 grid_index += grid.width - grid_x;
                 break;
@@ -268,6 +288,24 @@ fn place_shaped_recipe_ghost_inputs<'a>(
         }
         grid_y += 1;
     }
+}
+
+fn slot_display_first_item_stack<'a>(
+    display: &'a SlotDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+) -> Option<Cow<'a, ItemStackSummary>> {
+    if let Some(stack) = display.item_stack.as_ref() {
+        return Some(Cow::Borrowed(stack));
+    }
+    let item_id = item_tag_entries?
+        .get(display.tag.as_ref()?)?
+        .first()
+        .copied()?;
+    Some(Cow::Owned(ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    }))
 }
 
 fn normalized_recipe_search_text(search_text: &str) -> Option<String> {

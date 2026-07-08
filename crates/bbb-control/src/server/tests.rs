@@ -2261,6 +2261,7 @@ fn client_recipes_reads_canonical_world_state() {
                     display_type_id: 4,
                     raw_payload: vec![4, 77],
                     item_stack: None,
+                    tag: None,
                 },
             }],
         });

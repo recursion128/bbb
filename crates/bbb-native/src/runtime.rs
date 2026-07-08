@@ -3217,7 +3217,10 @@ fn hud_recipe_book_ghost_layers_and_items(
 
     let mut fill_layers = Vec::new();
     let mut ghost_items = Vec::new();
-    for ghost_slot in crafting_recipe_book_ghost_slots(display, grid) {
+    let item_tag_entries = world
+        .registry_tags("minecraft:item")
+        .map(|registry| &registry.tags);
+    for ghost_slot in crafting_recipe_book_ghost_slots(display, grid, item_tag_entries) {
         let Some(layout_slot) = layout_slots
             .iter()
             .find(|layout_slot| layout_slot.slot_id == ghost_slot.slot_id)
@@ -3227,7 +3230,7 @@ fn hud_recipe_book_ghost_layers_and_items(
         let Some(mut icon) = hud_item_icon_for_stack(
             world,
             Some(item_runtime),
-            ghost_slot.stack,
+            &ghost_slot.stack,
             None,
             false,
             false,

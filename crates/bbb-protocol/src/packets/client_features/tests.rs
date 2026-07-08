@@ -201,22 +201,26 @@ fn decodes_recipe_book_add_with_structured_shaped_crafting_display() {
                     display_type_id: 4,
                     raw_payload: vec![4, 42],
                     item_stack: Some(item_stack(42, 1)),
+                    tag: None,
                 },
                 SlotDisplaySummary {
                     display_type_id: 5,
                     raw_payload: vec![5, 43, 1, 0, 0],
                     item_stack: Some(item_stack(43, 1)),
+                    tag: None,
                 },
             ],
             result: SlotDisplaySummary {
                 display_type_id: 5,
                 raw_payload: vec![5, 90, 2, 0, 0],
                 item_stack: Some(item_stack(90, 2)),
+                tag: None,
             },
             crafting_station: SlotDisplaySummary {
                 display_type_id: 0,
                 raw_payload: vec![0],
                 item_stack: None,
+                tag: None,
             },
         })
     );
@@ -258,22 +262,26 @@ fn decodes_recipe_book_add_with_structured_shapeless_crafting_display() {
                     display_type_id: 4,
                     raw_payload: vec![4, 42],
                     item_stack: Some(item_stack(42, 1)),
+                    tag: None,
                 },
                 SlotDisplaySummary {
                     display_type_id: 4,
                     raw_payload: vec![4, 43],
                     item_stack: Some(item_stack(43, 1)),
+                    tag: None,
                 },
             ],
             result: SlotDisplaySummary {
                 display_type_id: 4,
                 raw_payload: vec![4, 91],
                 item_stack: Some(item_stack(91, 1)),
+                tag: None,
             },
             crafting_station: SlotDisplaySummary {
                 display_type_id: 0,
                 raw_payload: vec![0],
                 item_stack: None,
+                tag: None,
             },
         })
     );
@@ -381,6 +389,7 @@ fn decodes_update_recipes_packet_wire_order() {
                     display_type_id: 4,
                     raw_payload: vec![4, 77],
                     item_stack: Some(item_stack(77, 1)),
+                    tag: None,
                 },
             }],
         })
@@ -420,6 +429,7 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
                     display_type_id: 8,
                     raw_payload: option_display,
                     item_stack: None,
+                    tag: None,
                 },
             }],
         })
@@ -454,6 +464,7 @@ fn decodes_update_recipes_with_tag_slot_display() {
                     display_type_id: 6,
                     raw_payload: option_display,
                     item_stack: None,
+                    tag: Some("minecraft:planks".to_string()),
                 },
             }],
         })

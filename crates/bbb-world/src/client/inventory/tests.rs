@@ -8827,6 +8827,7 @@ fn slot_display_empty() -> SlotDisplaySummary {
         display_type_id: 0,
         raw_payload: vec![0],
         item_stack: None,
+        tag: None,
     }
 }
 
@@ -8835,6 +8836,7 @@ fn slot_display_item(item_id: i32) -> SlotDisplaySummary {
         display_type_id: 4,
         raw_payload: vec![4, item_id as u8],
         item_stack: Some(item_stack(item_id, 1)),
+        tag: None,
     }
 }
 
@@ -8843,6 +8845,7 @@ fn slot_display_item_stack(item_id: i32, count: i32) -> SlotDisplaySummary {
         display_type_id: 5,
         raw_payload: vec![5, item_id as u8, count as u8, 0, 0],
         item_stack: Some(item_stack(item_id, count)),
+        tag: None,
     }
 }
 
@@ -8851,6 +8854,7 @@ fn slot_display_tag(tag: &str) -> SlotDisplaySummary {
         display_type_id: 6,
         raw_payload: tag.as_bytes().to_vec(),
         item_stack: None,
+        tag: Some(tag.to_string()),
     }
 }
 
@@ -9112,6 +9116,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
             display_type_id: 0,
             raw_payload: Vec::new(),
             item_stack: None,
+            tag: None,
         },
     }
 }

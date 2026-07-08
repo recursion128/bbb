@@ -7903,6 +7903,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
             display_type_id: 0,
             raw_payload: Vec::new(),
             item_stack: None,
+            tag: None,
         },
     }
 }
@@ -8035,11 +8036,13 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
                             display_type_id: 5,
                             raw_payload: Vec::new(),
                             item_stack: Some(item_stack(result_item_id, 1)),
+                            tag: None,
                         },
                         crafting_station: SlotDisplaySummary {
                             display_type_id: 0,
                             raw_payload: Vec::new(),
                             item_stack: None,
+                            tag: None,
                         },
                     },
                 ),

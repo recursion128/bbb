@@ -3642,6 +3642,7 @@ mod tests {
                     display_type_id: 2,
                     raw_payload: vec![9, 8, 7],
                     item_stack: None,
+                    tag: None,
                 },
             }],
         };

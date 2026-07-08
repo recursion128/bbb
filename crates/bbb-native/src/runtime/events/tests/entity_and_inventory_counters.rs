@@ -457,6 +457,7 @@ fn update_recipes_event_replaces_world_recipe_access_state_and_world_counters() 
                     display_type_id: 4,
                     raw_payload: vec![4, 77],
                     item_stack: None,
+                    tag: None,
                 },
             }],
         },

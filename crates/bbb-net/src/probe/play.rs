@@ -2945,6 +2945,7 @@ mod tests {
                         display_type_id: 4,
                         raw_payload: vec![4, 77],
                         item_stack: None,
+                        tag: None,
                     },
                 }],
             }))

@@ -6086,6 +6086,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                         display_type_id: 0,
                         raw_payload: Vec::new(),
                         item_stack: None,
+                        tag: None,
                     },
                 },
             ),
@@ -6172,6 +6173,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                         display_type_id: 0,
                         raw_payload: Vec::new(),
                         item_stack: None,
+                        tag: None,
                     },
                 },
             ),
@@ -6180,6 +6182,48 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
     let stale = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
     assert!(stale.fill_layers.is_empty());
     assert!(stale.ghost_items.is_empty());
+}
+
+#[test]
+fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![2])]);
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![slot_display_tag("minecraft:planks")],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                        tag: None,
+                    },
+                },
+            ),
+        },
+    });
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+
+    assert_eq!(
+        screen
+            .ghost_items
+            .iter()
+            .map(|item| (
+                item.x,
+                item.y,
+                item.draw_decorations,
+                item.icon.count_label.clone()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(273, 35, true, None), (179, 17, false, None)]
+    );
 }
 
 #[test]
@@ -6200,6 +6244,7 @@ fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_f
                         display_type_id: 0,
                         raw_payload: Vec::new(),
                         item_stack: None,
+                        tag: None,
                     },
                 },
             ),
@@ -6397,11 +6442,13 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                                 display_type_id: 5,
                                 raw_payload: Vec::new(),
                                 item_stack: Some(item_stack(99, 1)),
+                                tag: None,
                             },
                             crafting_station: bbb_protocol::packets::SlotDisplaySummary {
                                 display_type_id: 0,
                                 raw_payload: Vec::new(),
                                 item_stack: None,
+                                tag: None,
                             },
                         },
                     ),
@@ -9681,6 +9728,7 @@ fn stonecutter_slot_display_item_stack_projects_direct_item_displays() {
             display_type_id: 6,
             raw_payload: vec![6, 4, b't', b'e', b's', b't'],
             item_stack: None,
+            tag: Some("minecraft:test".to_string()),
         }),
         None
     );
@@ -10282,6 +10330,7 @@ fn stonecutter_item_display(item_id: i32) -> bbb_protocol::packets::SlotDisplayS
         display_type_id: 4,
         raw_payload,
         item_stack: Some(item_stack(item_id, 1)),
+        tag: None,
     }
 }
 
@@ -10299,6 +10348,19 @@ fn stonecutter_item_stack_display(
         display_type_id: 5,
         raw_payload,
         item_stack: Some(item_stack(item_id, count)),
+        tag: None,
+    }
+}
+
+fn slot_display_tag(tag: &str) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut raw_payload = bbb_protocol::codec::Encoder::new();
+    raw_payload.write_var_i32(6);
+    raw_payload.write_string(tag);
+    bbb_protocol::packets::SlotDisplaySummary {
+        display_type_id: 6,
+        raw_payload: raw_payload.into_inner(),
+        item_stack: None,
+        tag: Some(tag.to_string()),
     }
 }
 
@@ -10490,11 +10552,13 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
                             display_type_id: 5,
                             raw_payload: Vec::new(),
                             item_stack: Some(item_stack(result_item_id, 1)),
+                            tag: None,
                         },
                         crafting_station: bbb_protocol::packets::SlotDisplaySummary {
                             display_type_id: 0,
                             raw_payload: Vec::new(),
                             item_stack: None,
+                            tag: None,
                         },
                     },
                 ),

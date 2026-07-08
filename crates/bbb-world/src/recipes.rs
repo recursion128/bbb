@@ -115,6 +115,7 @@ mod tests {
                 display_type_id,
                 raw_payload,
                 item_stack: None,
+                tag: None,
             },
         }
     }

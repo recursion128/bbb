@@ -5533,11 +5533,13 @@ fn recipe_book_shapeless_entry(
                             display_type_id: 5,
                             raw_payload: Vec::new(),
                             item_stack: Some(test_item_stack(result_item_id, 1)),
+                            tag: None,
                         },
                         crafting_station: bbb_protocol::packets::SlotDisplaySummary {
                             display_type_id: 0,
                             raw_payload: Vec::new(),
                             item_stack: None,
+                            tag: None,
                         },
                     },
                 ),
