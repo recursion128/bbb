@@ -1093,6 +1093,7 @@ When an agent does any of the following, update this file in the same slice:
     option toggle, F3+V version debug chat action, F3+C copy-location
     clipboard action, F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
+    F3+I copy-data modifier consumption shell,
     advanced item tooltips startup config,
     F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the default GAME_VERSION entry shape, the default TPS entry
@@ -1100,9 +1101,17 @@ When an agent does any of the following, update this file in the same slice:
     rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
-    dynamic texture dump execution, 3D crosshair, and the other F3 modifier
-    combos remain (large, low priority).
+    dynamic texture dump execution, F3+I recreate command generation, 3D
+    crosshair, and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+I copy-data modifier consumption shell.
+    Vanilla anchors: `Options.keyDebugCopyRecreateCommand` binds key code 73
+    (I), and `KeyboardHandler.handleDebugKeys` marks it as a debug action even
+    when no player, reduced debug info, or no hit target prevents any copy.
+    bbb now consumes I while F3 is held and suppresses the F3-release overlay
+    toggle. Boundary: block/entity recreate command generation, server/client
+    NBT selection, target inspection, and clipboard writes for this action are
+    still not implemented.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves

@@ -5282,6 +5282,14 @@
   使用组合键后同样抑制 F3 release 触发普通 overlay toggle。边界：实际
   renderer/texture-manager sheet dump 与 clickable/open-file chat styling
   仍未实现。
+- [x] debug overlay F3+I copy-data modifier consumption shell（P2
+  input/runtime slice，2026-07-08）：依据
+  `Options.keyDebugCopyRecreateCommand` 绑定 I，以及
+  `KeyboardHandler.handleDebugKeys` 即使 player 缺失、reduced debug info
+  开启、或无 hit target 也把该键视为 debug action 的行为。`ClientInputState`
+  现在在 F3 按住期间消费 I，并在 F3 release 时不触发普通 overlay toggle。
+  边界：block/entity recreate command 生成、server/client NBT 选择、target
+  inspection、以及该动作的 clipboard 写入仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

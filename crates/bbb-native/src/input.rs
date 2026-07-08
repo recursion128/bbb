@@ -773,6 +773,7 @@ impl ClientInputState {
                 );
                 true
             }
+            KeyCode::KeyI => true,
             KeyCode::KeyC => {
                 let Some(world_ref) = world.as_deref() else {
                     return false;
