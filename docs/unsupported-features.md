@@ -1061,9 +1061,9 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
     window/Done button/initial display-root selection/root tab/root widget
-    shells/contents background tiling/tree connectivity/wheel scroll clamp and
-    widget-frame partial scissor: drag scroll, fake-item/full scissor, and hover
-    rendering remain (`ClientAdvancementsState` ready).
+    shells/contents background tiling/tree connectivity/wheel/drag scroll clamp
+    and widget-frame partial scissor: fake-item/full scissor and hover rendering
+    remain (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1505,13 +1505,21 @@ When an agent does any of the following, update this file in the same slice:
     vanilla center-plus-delta clamp in runtime projection, threads the resulting
     scroll through background tiles, connectivity lines, widget frames, and
     fake-item anchors, and clips partially visible widget frames with adjusted
-    HUD UVs. Boundary: left-button drag scrolling and partial clipping for fake
-    item icons remain open.
+    HUD UVs. Boundary: partial clipping for fake item icons remains open.
+  - Done 2026-07-08 — Advancement selected-tab left-drag scrolling. Vanilla
+    anchors: `AdvancementsScreen.mouseDragged` ignores non-left drags, sets
+    `isScrolling` on the first left-drag event without scrolling, then calls
+    `selectedTab.scroll(dx, dy)` on subsequent left-drag events; `mouseReleased`
+    resets `isScrolling`. bbb now tracks advancement-screen left-button drag
+    state separately from gameplay mouse state, derives drag deltas from
+    successive `CursorMoved` positions while the screen owns the cursor, applies
+    those deltas to the same selected-tab local scroll accumulator as wheel
+    input, and stops accumulating after release.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
     footer Done plus initial display-root selection/root tab/root widget shells
-    plus selected-tab tiled background, tree connectivity, wheel scroll clamp,
-    and widget-frame partial scissor are live. The
+    plus selected-tab tiled background, tree connectivity, wheel/drag scroll
+    clamp, and widget-frame partial scissor are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1527,8 +1535,8 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The remaining
-    open surfaces in this ledger row are advancement drag scroll, fake-item/full
-    contents scissor, advancement hover rendering, and debug overlay.
+    open surfaces in this ledger row are fake-item/full contents scissor,
+    advancement hover rendering, and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

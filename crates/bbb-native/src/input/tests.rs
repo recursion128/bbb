@@ -4951,6 +4951,82 @@ fn gameplay_mouse_wheel_is_consumed_while_advancements_screen_is_open() {
 }
 
 #[test]
+fn advancements_left_drag_scrolls_after_first_drag_event_until_release() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![input_displayed_advancement("minecraft:story/root", None)],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("minecraft:story/root".to_string())
+    );
+
+    assert!(handle_advancements_screen_mouse_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        None,
+        PhysicalSize::new(800, 600),
+    ));
+    assert!(handle_advancements_screen_cursor_moved(
+        &mut input,
+        &world,
+        Some(PhysicalPosition::new(100.0, 100.0)),
+        Some(PhysicalPosition::new(110.0, 120.0)),
+    ));
+    assert_eq!(
+        input.advancement_scroll_delta(Some("minecraft:story/root")),
+        None
+    );
+
+    assert!(handle_advancements_screen_cursor_moved(
+        &mut input,
+        &world,
+        Some(PhysicalPosition::new(110.0, 120.0)),
+        Some(PhysicalPosition::new(115.0, 116.0)),
+    ));
+    assert_eq!(
+        input.advancement_scroll_delta(Some("minecraft:story/root")),
+        Some((5.0, -4.0))
+    );
+
+    assert!(handle_advancements_screen_mouse_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Released,
+        None,
+        PhysicalSize::new(800, 600),
+    ));
+    assert!(handle_advancements_screen_cursor_moved(
+        &mut input,
+        &world,
+        Some(PhysicalPosition::new(115.0, 116.0)),
+        Some(PhysicalPosition::new(120.0, 150.0)),
+    ));
+    assert_eq!(
+        input.advancement_scroll_delta(Some("minecraft:story/root")),
+        Some((5.0, -4.0))
+    );
+    assert_eq!(counters.advancements_seen_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn movement_key_changes_queue_player_input_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

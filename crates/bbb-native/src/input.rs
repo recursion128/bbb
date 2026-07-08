@@ -180,6 +180,8 @@ pub(crate) struct ClientInputState {
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     recipe_book_last_placed_recipe: Option<(i32, i32)>,
     advancement_scroll_deltas: BTreeMap<String, (f64, f64)>,
+    advancement_mouse_left_down: bool,
+    advancement_is_scrolling: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -319,6 +321,8 @@ impl ClientInputState {
         self.recipe_book_search_focused = false;
         self.recipe_book_search_suppress_open_key_commit = false;
         self.recipe_book_overlay = None;
+        self.advancement_mouse_left_down = false;
+        self.advancement_is_scrolling = false;
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
@@ -723,9 +727,18 @@ pub(crate) fn handle_advancements_screen_mouse_input(
     if !world.advancements_screen_is_open() {
         return false;
     }
-    if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+    if matches!(state, ElementState::Released) {
+        input.advancement_is_scrolling = false;
+        if matches!(button, MouseButton::Left) {
+            input.advancement_mouse_left_down = false;
+        }
         return true;
     }
+    if !matches!(button, MouseButton::Left) {
+        return true;
+    }
+    input.advancement_mouse_left_down = true;
+    input.advancement_is_scrolling = false;
     if let Some(tab) = advancements_tab_at_position(world, cursor_position, surface_size) {
         if let Some(tab) = world.select_advancements_root_tab(&tab) {
             queue_seen_advancements_command(
@@ -737,6 +750,37 @@ pub(crate) fn handle_advancements_screen_mouse_input(
     } else if advancements_done_button_contains(cursor_position, surface_size) {
         close_advancements_screen_and_queue(input, counters, world, net_commands);
     }
+    true
+}
+
+pub(crate) fn handle_advancements_screen_cursor_moved(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    previous_position: Option<PhysicalPosition<f64>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+) -> bool {
+    if !world.advancements_screen_is_open() {
+        return false;
+    }
+    if !input.advancement_mouse_left_down {
+        return true;
+    }
+    let (Some(previous), Some(current)) = (previous_position, cursor_position) else {
+        return true;
+    };
+    if !input.advancement_is_scrolling {
+        input.advancement_is_scrolling = true;
+        return true;
+    }
+    let Some(tab) = world.selected_advancements_tab() else {
+        return true;
+    };
+    let entry = input
+        .advancement_scroll_deltas
+        .entry(tab.to_string())
+        .or_default();
+    entry.0 += current.x - previous.x;
+    entry.1 += current.y - previous.y;
     true
 }
 

@@ -5024,3 +5024,11 @@
   半露出的 widget frame 做内容区裁剪和 UV 调整。剩余：left-button drag
   scroll、fake-item/full scissor、hover title/description boxes，以及 debug
   overlay。
+- [x] advancement selected-tab left-drag scrolling（P2 HUD/input slice，
+  2026-07-08）：依据 `AdvancementsScreen.mouseDragged` 对 left button 第一次
+  drag 只设置 `isScrolling`、第二次起调用 `selectedTab.scroll(dx, dy)`，并在
+  `mouseReleased` 清掉 `isScrolling`。native 现在为 advancement screen 单独
+  维护 left-down/is-scrolling 状态，从 `CursorMoved` 前后位置计算 drag delta，
+  经同一 selected-tab 本地 scroll accumulator 驱动 runtime 的 vanilla clamp，
+  release 后停止累积。剩余：fake-item/full scissor、hover title/description
+  boxes，以及 debug overlay。
