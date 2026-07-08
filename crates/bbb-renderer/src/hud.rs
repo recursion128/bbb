@@ -33,7 +33,7 @@ use self::layout::{
     hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, vehicle_heart_hud_rect,
     HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW,
-    HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
     HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
     HUD_VEHICLE_HEARTS_PER_ROW,
 };
@@ -648,7 +648,11 @@ pub struct HudInventoryItem {
     pub x: i32,
     /// Item icon y position relative to the centered inventory screen origin.
     pub y: i32,
+    /// Pose scale applied around the item's top-left GUI rect. `1.0` is the normal 16px item.
+    pub scale: f32,
     pub icon: HudItemIcon,
+    /// Whether count, durability, and cooldown overlays should be drawn for this floating item.
+    pub draw_decorations: bool,
     /// The item's 3D block-item model (vanilla 3D inventory icon), when it is a block. See
     /// [`HudInventorySlot::block_model`].
     pub block_model: Option<HudBlockItemModel>,
@@ -2777,24 +2781,30 @@ impl Renderer {
         // The open inventory screen's block items (container slots + the cursor / floating item) render as
         // 3D icons in the same pass, seated in their slot pixel rects.
         if let Some(screen) = &self.hud_inventory_screen {
-            let mut append = |model: &HudBlockItemModel, x: i32, y: i32| {
-                let placement = gui_item_slot_placement(inventory_slot_item_hud_rect(
-                    surface_size,
-                    screen.width,
-                    screen.height,
-                    x,
-                    y,
-                ));
+            let mut append = |model: &HudBlockItemModel, rect: HudRect| {
+                let placement = gui_item_slot_placement(rect);
                 append_model(model, placement);
             };
             for slot in &screen.slots {
                 if let Some(model) = &slot.block_model {
-                    append(model, slot.x, slot.y);
+                    append(
+                        model,
+                        inventory_slot_item_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            slot.x,
+                            slot.y,
+                        ),
+                    );
                 }
             }
             for item in &screen.floating_items {
                 if let Some(model) = &item.block_model {
-                    append(model, item.x, item.y);
+                    append(
+                        model,
+                        inventory_floating_item_hud_rect(surface_size, screen, item),
+                    );
                 }
             }
         }
@@ -3470,13 +3480,7 @@ impl Renderer {
 
             if let Some(atlas) = item_atlas {
                 for item in &screen.floating_items {
-                    let item_rect = inventory_slot_item_hud_rect(
-                        surface_size,
-                        screen.width,
-                        screen.height,
-                        item.x,
-                        item.y,
-                    );
+                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
                     push_hud_item_icon(
                         &mut vertices,
                         &mut commands,
@@ -3488,7 +3492,7 @@ impl Renderer {
                         item_rect,
                         &item.icon,
                         item.block_model.is_none(),
-                        item.block_model.is_none(),
+                        item.draw_decorations && item.block_model.is_none(),
                     );
                     if item.block_model.is_some() {
                         push_hud_item_icon(
@@ -3502,7 +3506,7 @@ impl Renderer {
                             item_rect,
                             &item.icon,
                             false,
-                            true,
+                            item.draw_decorations,
                         );
                     }
                 }
@@ -3975,6 +3979,25 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     vertices.extend_from_slice(&hud_quad_vertices(surface_size, rect, uv, tint));
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand::Sprite { sprite, start, end });
+}
+
+fn inventory_floating_item_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    item: &HudInventoryItem,
+) -> HudRect {
+    let size = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale)
+        .round()
+        .clamp(1.0, 512.0) as u32;
+    inventory_background_hud_rect(
+        surface_size,
+        screen.width,
+        screen.height,
+        item.x,
+        item.y,
+        size,
+        size,
+    )
 }
 
 fn push_hud_item_glint<'a>(
@@ -5710,10 +5733,15 @@ fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
 }
 
 fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryItem> {
+    if !item.scale.is_finite() || item.scale <= 0.0 {
+        return None;
+    }
     Some(HudInventoryItem {
         x: item.x,
         y: item.y,
+        scale: item.scale.clamp(0.0625, 16.0),
         icon: sanitize_hud_item_icon(item.icon)?,
+        draw_decorations: item.draw_decorations,
         block_model: item.block_model.filter(hud_block_item_model_is_renderable),
     })
 }
@@ -8347,6 +8375,7 @@ mod tests {
                 HudInventoryItem {
                     x: 33,
                     y: 19,
+                    scale: 2.0,
                     icon: HudItemIcon {
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
@@ -8361,11 +8390,13 @@ mod tests {
                         durability_bar: Some(HudItemDurabilityBar::new(99, [0.25, 2.0, -1.0])),
                         cooldown_progress: Some(1.5),
                     },
+                    draw_decorations: true,
                     block_model: None,
                 },
                 HudInventoryItem {
                     x: 51,
                     y: 19,
+                    scale: 1.0,
                     icon: HudItemIcon {
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
@@ -8380,6 +8411,7 @@ mod tests {
                         durability_bar: None,
                         cooldown_progress: None,
                     },
+                    draw_decorations: true,
                     block_model: None,
                 },
             ],
@@ -8393,6 +8425,8 @@ mod tests {
         assert_eq!(screen.floating_items.len(), 1);
         assert_eq!(screen.floating_items[0].x, 33);
         assert_eq!(screen.floating_items[0].y, 19);
+        assert_eq!(screen.floating_items[0].scale, 2.0);
+        assert!(screen.floating_items[0].draw_decorations);
         assert_eq!(
             screen.floating_items[0].icon,
             HudItemIcon {
@@ -9230,10 +9264,12 @@ mod tests {
         let floating = sanitize_hud_inventory_item(HudInventoryItem {
             x: 0,
             y: 0,
+            scale: 1.0,
             icon: HudItemIcon::single(HudUvRect {
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],
             }),
+            draw_decorations: true,
             block_model: Some(model(vec![quad])),
         })
         .unwrap();

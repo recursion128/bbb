@@ -112,6 +112,7 @@ use crate::{
         RecipeBookGhostSlot, RecipeBookOverlayEntry, RecipeBookUiCollection,
         RECIPE_BOOK_ITEMS_PER_PAGE, RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER,
         RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE, RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
+        RECIPE_BOOK_OVERLAY_ITEM_SCALE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -2724,6 +2725,7 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_search,
         local_state.recipe_book_overlay,
         local_state.cursor_position,
+        partial_tick,
     ));
     let mut floating_items = hud_inventory_floating_items(
         world,
@@ -3135,7 +3137,9 @@ fn push_recipe_book_tab_icon_item(
     items.push(HudInventoryItem {
         x,
         y,
+        scale: 1.0,
         icon,
+        draw_decorations: true,
         block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
     });
 }
@@ -3273,13 +3277,17 @@ fn hud_recipe_book_recipe_button_icon_items(
             items.push(HudInventoryItem {
                 x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
                 y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
+                scale: 1.0,
                 icon: icon.clone(),
+                draw_decorations: true,
                 block_model: block_model.clone(),
             });
             items.push(HudInventoryItem {
                 x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
                 y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
+                scale: 1.0,
                 icon,
+                draw_decorations: true,
                 block_model,
             });
             continue;
@@ -3287,7 +3295,9 @@ fn hud_recipe_book_recipe_button_icon_items(
         items.push(HudInventoryItem {
             x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET,
             y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET,
+            scale: 1.0,
             icon,
+            draw_decorations: true,
             block_model,
         });
     }
@@ -3303,6 +3313,7 @@ fn hud_recipe_book_overlay_layers(
     search: &RecipeBookSearchHudState,
     overlay: Option<RecipeBookOverlayHudState>,
     cursor_position: Option<(i32, i32)>,
+    partial_tick: f32,
 ) -> Vec<HudInventoryBackgroundLayer> {
     let Some((overlay, entries)) = hud_recipe_book_overlay_entries(
         world,
@@ -3312,6 +3323,7 @@ fn hud_recipe_book_overlay_layers(
         pages,
         search,
         overlay,
+        partial_tick,
     ) else {
         return Vec::new();
     };
@@ -3381,38 +3393,44 @@ fn hud_recipe_book_overlay_icon_items(
         pages,
         search,
         overlay,
+        partial_tick,
     ) else {
         return Vec::new();
     };
     let mut items = Vec::new();
     for (index, entry) in entries.iter().enumerate() {
-        let Some(stack) = entry.stack else {
-            continue;
-        };
-        let Some(icon) = hud_item_icon_for_stack(
-            world,
-            Some(item_runtime),
-            stack,
-            None,
-            false,
-            false,
-            false,
-            false,
-            false,
-            keybind_context,
-            0,
-            partial_tick,
-        ) else {
-            continue;
-        };
         let (button_x, button_y) =
             recipe_book_overlay_entry_position(overlay.x, overlay.y, index, entries.len());
-        items.push(HudInventoryItem {
-            x: button_x + 4,
-            y: button_y + 4,
-            icon,
-            block_model: block_item_3d_model(stack, Some(item_runtime), terrain_textures),
-        });
+        for overlay_item in &entry.items {
+            let Some(icon) = hud_item_icon_for_stack(
+                world,
+                Some(item_runtime),
+                &overlay_item.stack,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+                partial_tick,
+            ) else {
+                continue;
+            };
+            items.push(HudInventoryItem {
+                x: button_x + overlay_item.x,
+                y: button_y + overlay_item.y,
+                scale: RECIPE_BOOK_OVERLAY_ITEM_SCALE,
+                icon,
+                draw_decorations: false,
+                block_model: block_item_3d_model(
+                    &overlay_item.stack,
+                    Some(item_runtime),
+                    terrain_textures,
+                ),
+            });
+        }
     }
     items
 }
@@ -3425,6 +3443,7 @@ fn hud_recipe_book_overlay_entries<'a>(
     pages: &RecipeBookPageHudState,
     search: &RecipeBookSearchHudState,
     overlay: Option<RecipeBookOverlayHudState>,
+    partial_tick: f32,
 ) -> Option<(RecipeBookOverlayHudState, Vec<RecipeBookOverlayEntry<'a>>)> {
     let overlay = overlay?;
     if recipe_book_type_for_background(background)? != overlay.book_type {
@@ -3439,7 +3458,11 @@ fn hud_recipe_book_overlay_entries<'a>(
     let collections = hud_recipe_book_collections(world, item_runtime, background, tabs, search)?;
     let page = clamped_recipe_book_page(overlay.page_index, collections.len());
     let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + overlay.button_index;
-    let entries = collections.get(collection_index)?.overlay_entries();
+    let item_tag_entries = world.registry_tags("minecraft:item").map(|tags| &tags.tags);
+    let entries = collections.get(collection_index)?.overlay_entries(
+        item_tag_entries,
+        recipe_book_slot_select_index(world, partial_tick),
+    );
     (entries.len() > 1).then_some((overlay, entries))
 }
 
@@ -4723,7 +4746,9 @@ fn push_hud_inventory_cursor_item(
     items.push(HudInventoryItem {
         x: cursor_x - 8,
         y: cursor_y - 8,
+        scale: 1.0,
         icon,
+        draw_decorations: true,
         block_model,
     });
 }
@@ -5383,7 +5408,9 @@ fn push_merchant_trade_item(
         items.push(HudInventoryItem {
             x,
             y,
+            scale: 1.0,
             icon,
+            draw_decorations: true,
             block_model,
         });
     }
@@ -5418,7 +5445,9 @@ fn hud_stonecutter_recipe_items(
             items.push(HudInventoryItem {
                 x: option.x,
                 y: option.y,
+                scale: 1.0,
                 icon,
+                draw_decorations: true,
                 block_model,
             });
         }

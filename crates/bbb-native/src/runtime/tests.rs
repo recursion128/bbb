@@ -6781,8 +6781,20 @@ fn hud_inventory_screen_projects_recipe_book_overlay_picker() {
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
         replace: true,
         entries: vec![
-            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
-            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 2),
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                20,
+                2,
+                Some(7),
+                1,
+                vec![stonecutter_item_display(1)],
+            ),
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                21,
+                2,
+                Some(7),
+                2,
+                vec![stonecutter_item_display(2)],
+            ),
         ],
     });
 
@@ -6847,13 +6859,107 @@ fn hud_inventory_screen_projects_recipe_book_overlay_picker() {
                 [1.0, 1.0],
             )
     }));
+    let all_item_positions: Vec<(i32, i32, f32)> = screen
+        .floating_items
+        .iter()
+        .map(|item| (item.x, item.y, item.scale))
+        .collect();
     let item_positions: Vec<(i32, i32)> = screen
         .floating_items
         .iter()
-        .map(|item| (item.x, item.y))
+        .filter(|item| (item.scale - RECIPE_BOOK_OVERLAY_ITEM_SCALE).abs() < 1e-6)
+        .map(|item| {
+            assert!(!item.draw_decorations);
+            (item.x, item.y)
+        })
         .collect();
-    assert!(item_positions.contains(&(19, 40)));
-    assert!(item_positions.contains(&(44, 40)));
+    assert!(
+        item_positions.contains(&(17, 38)),
+        "overlay item positions: {item_positions:?}; all positions: {all_item_positions:?}"
+    );
+    assert!(
+        item_positions.contains(&(42, 38)),
+        "overlay item positions: {item_positions:?}; all positions: {all_item_positions:?}"
+    );
+}
+
+#[test]
+fn hud_inventory_screen_cycles_recipe_book_overlay_tag_ingredient_icon() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![1, 2])]);
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                20,
+                2,
+                Some(7),
+                1,
+                vec![slot_display_tag("minecraft:planks")],
+            ),
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                21,
+                2,
+                Some(7),
+                2,
+                vec![slot_display_tag("minecraft:planks")],
+            ),
+        ],
+    });
+    let local_state = InventoryHudLocalState {
+        recipe_book_tabs: RecipeBookTabSelectionHudState {
+            crafting: 1,
+            ..RecipeBookTabSelectionHudState::default()
+        },
+        recipe_book_overlay: Some(RecipeBookOverlayHudState {
+            book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+            tab_index: 1,
+            page_index: 0,
+            button_index: 0,
+            x: 11,
+            y: 31,
+        }),
+        ..InventoryHudLocalState::default()
+    };
+
+    let first_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let first_icon = first_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (17, 38))
+        .map(|item| item.icon.clone())
+        .expect("first tag overlay ingredient");
+
+    world.apply_world_time(PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    let second_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state,
+        0.0,
+    )
+    .unwrap();
+    let second_icon = second_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (17, 38))
+        .map(|item| item.icon.clone())
+        .expect("second tag overlay ingredient");
+
+    assert_ne!(first_icon, second_icon);
 }
 
 #[test]
@@ -7110,7 +7216,6 @@ fn hud_inventory_screen_marks_tagged_recipe_book_requirements_craftable() {
             ),
         ],
     });
-
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
@@ -10861,6 +10966,24 @@ fn shapeless_crafting_recipe_book_entry(
         result_item_id,
         Vec::new(),
     )
+}
+
+fn shapeless_crafting_recipe_book_entry_with_display_ingredients(
+    id: i32,
+    category_id: i32,
+    group: Option<i32>,
+    result_item_id: i32,
+    display_ingredients: Vec<bbb_protocol::packets::SlotDisplaySummary>,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
+    let mut entry = shapeless_crafting_recipe_book_entry(id, category_id, group, result_item_id);
+    if let Some(bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+        ingredients,
+        ..
+    }) = entry.contents.display.crafting.as_mut()
+    {
+        *ingredients = display_ingredients;
+    }
+    entry
 }
 
 fn shapeless_crafting_recipe_book_entry_with_requirements(

@@ -838,7 +838,10 @@ fn maybe_open_recipe_book_overlay(
     ) else {
         return false;
     };
-    let entry_count = collection.overlay_entries().len();
+    let item_tag_entries = world.registry_tags("minecraft:item").map(|tags| &tags.tags);
+    let entry_count = collection
+        .overlay_entries(item_tag_entries, recipe_book_slot_select_index(world, 0.0))
+        .len();
     if entry_count <= 1 {
         return false;
     }
@@ -2569,7 +2572,10 @@ fn recipe_book_overlay_recipe_at_position(
     )?;
     let page = clamped_recipe_book_page(overlay.page_index, collections.len());
     let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + overlay.button_index;
-    let entries = collections.get(collection_index)?.overlay_entries();
+    let item_tag_entries = world.registry_tags("minecraft:item").map(|tags| &tags.tags);
+    let entries = collections
+        .get(collection_index)?
+        .overlay_entries(item_tag_entries, recipe_book_slot_select_index(world, 0.0));
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;

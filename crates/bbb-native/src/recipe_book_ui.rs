@@ -14,6 +14,10 @@ pub(crate) const RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE: i32 = 24;
 pub(crate) const RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER: i32 = 8;
 pub(crate) const RECIPE_BOOK_OVERLAY_MAX_ROW: usize = 4;
 pub(crate) const RECIPE_BOOK_OVERLAY_MAX_ROW_LARGE: usize = 5;
+pub(crate) const RECIPE_BOOK_OVERLAY_ITEM_SCALE: f32 = 0.375;
+
+const RECIPE_BOOK_OVERLAY_GRID_ITEM_OFFSET: i32 = 2;
+const RECIPE_BOOK_OVERLAY_GRID_ITEM_STRIDE: i32 = 7;
 
 const CRAFTING_BUILDING_BLOCKS_CATEGORY_ID: i32 = 0;
 const CRAFTING_REDSTONE_CATEGORY_ID: i32 = 1;
@@ -99,11 +103,18 @@ pub(crate) struct RecipeBookUiCollection<'a> {
     has_craftable: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct RecipeBookOverlayEntry<'a> {
     pub(crate) recipe_index: i32,
-    pub(crate) stack: Option<&'a ItemStackSummary>,
+    pub(crate) items: Vec<RecipeBookOverlayItem<'a>>,
     pub(crate) craftable: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct RecipeBookOverlayItem<'a> {
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    pub(crate) stack: Cow<'a, ItemStackSummary>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,10 +164,24 @@ impl<'a> RecipeBookUiCollection<'a> {
             .all(|entry| recipe_book_result_stack(entry) == Some(first))
     }
 
-    pub(crate) fn overlay_entries(&self) -> Vec<RecipeBookOverlayEntry<'a>> {
+    pub(crate) fn overlay_entries(
+        &self,
+        item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+        slot_select_index: usize,
+    ) -> Vec<RecipeBookOverlayEntry<'a>> {
         let mut entries = Vec::with_capacity(self.entries.len());
-        self.push_overlay_entries_with_craftability(true, &mut entries);
-        self.push_overlay_entries_with_craftability(false, &mut entries);
+        self.push_overlay_entries_with_craftability(
+            true,
+            item_tag_entries,
+            slot_select_index,
+            &mut entries,
+        );
+        self.push_overlay_entries_with_craftability(
+            false,
+            item_tag_entries,
+            slot_select_index,
+            &mut entries,
+        );
         entries
     }
 
@@ -173,6 +198,8 @@ impl<'a> RecipeBookUiCollection<'a> {
     fn push_overlay_entries_with_craftability(
         &self,
         craftable: bool,
+        item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+        slot_select_index: usize,
         out: &mut Vec<RecipeBookOverlayEntry<'a>>,
     ) {
         for (entry, entry_craftable) in self.entries.iter().zip(&self.craftable_entries) {
@@ -181,7 +208,11 @@ impl<'a> RecipeBookUiCollection<'a> {
             }
             out.push(RecipeBookOverlayEntry {
                 recipe_index: entry.id.index,
-                stack: recipe_book_result_stack(entry),
+                items: recipe_book_overlay_items_for_entry(
+                    entry,
+                    item_tag_entries,
+                    slot_select_index,
+                ),
                 craftable,
             });
         }
@@ -474,6 +505,86 @@ pub(crate) fn furnace_recipe_book_ghost_slots<'a>(
     slots
 }
 
+fn recipe_book_overlay_items_for_entry<'a>(
+    entry: &'a RecipeDisplayEntry,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    slot_select_index: usize,
+) -> Vec<RecipeBookOverlayItem<'a>> {
+    let mut items = Vec::new();
+    if let Some(crafting) = entry.display.crafting.as_ref() {
+        match crafting {
+            CraftingRecipeDisplaySummary::Shapeless { ingredients, .. } => {
+                for (index, ingredient) in ingredients.iter().enumerate() {
+                    push_recipe_book_overlay_item(
+                        ingredient,
+                        i32::try_from(index % 3).unwrap_or_default(),
+                        i32::try_from(index / 3).unwrap_or_default(),
+                        item_tag_entries,
+                        slot_select_index,
+                        &mut items,
+                    );
+                }
+            }
+            CraftingRecipeDisplaySummary::Shaped {
+                width,
+                height,
+                ingredients,
+                ..
+            } => {
+                for_each_shaped_recipe_grid_slot(
+                    RecipeBookCraftingGrid {
+                        width: 3,
+                        height: 3,
+                    },
+                    *width,
+                    *height,
+                    ingredients,
+                    |ingredient, _grid_index, grid_x, grid_y| {
+                        push_recipe_book_overlay_item(
+                            ingredient,
+                            grid_x,
+                            grid_y,
+                            item_tag_entries,
+                            slot_select_index,
+                            &mut items,
+                        );
+                    },
+                );
+            }
+        }
+    } else if let Some(furnace) = entry.display.furnace.as_ref() {
+        push_recipe_book_overlay_item(
+            &furnace.ingredient,
+            1,
+            1,
+            item_tag_entries,
+            slot_select_index,
+            &mut items,
+        );
+    }
+    items
+}
+
+fn push_recipe_book_overlay_item<'a>(
+    display: &'a SlotDisplaySummary,
+    grid_x: i32,
+    grid_y: i32,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    slot_select_index: usize,
+    items: &mut Vec<RecipeBookOverlayItem<'a>>,
+) {
+    let Some(stack) =
+        slot_display_item_stack_at_index(display, item_tag_entries, slot_select_index)
+    else {
+        return;
+    };
+    items.push(RecipeBookOverlayItem {
+        x: RECIPE_BOOK_OVERLAY_GRID_ITEM_OFFSET + grid_x * RECIPE_BOOK_OVERLAY_GRID_ITEM_STRIDE,
+        y: RECIPE_BOOK_OVERLAY_GRID_ITEM_OFFSET + grid_y * RECIPE_BOOK_OVERLAY_GRID_ITEM_STRIDE,
+        stack,
+    });
+}
+
 pub(crate) fn recipe_book_crafting_result_stack(
     entry: &RecipeDisplayEntry,
 ) -> Option<&ItemStackSummary> {
@@ -534,6 +645,24 @@ fn place_shaped_recipe_ghost_inputs<'a>(
     item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     slots: &mut Vec<RecipeBookGhostSlot<'a>>,
 ) {
+    for_each_shaped_recipe_grid_slot(
+        grid,
+        recipe_width,
+        recipe_height,
+        ingredients,
+        |ingredient, grid_index, _grid_x, _grid_y| {
+            push_recipe_book_ghost_input(ingredient, 1 + grid_index, item_tag_entries, slots);
+        },
+    );
+}
+
+fn for_each_shaped_recipe_grid_slot<'a>(
+    grid: RecipeBookCraftingGrid,
+    recipe_width: i32,
+    recipe_height: i32,
+    ingredients: &'a [SlotDisplaySummary],
+    mut visit: impl FnMut(&'a SlotDisplaySummary, i32, i32, i32),
+) {
     if grid.width <= 0 || grid.height <= 0 || recipe_width <= 0 || recipe_height <= 0 {
         return;
     }
@@ -564,7 +693,7 @@ fn place_shaped_recipe_ghost_inputs<'a>(
 
             if add_ingredient_to_slot {
                 let ingredient = ingredients.next().expect("ingredient presence checked");
-                push_recipe_book_ghost_input(ingredient, 1 + grid_index, item_tag_entries, slots);
+                visit(ingredient, grid_index, grid_x, grid_y);
             } else if total_recipe_width_in_grid == grid_x {
                 grid_index += grid.width - grid_x;
                 break;
@@ -581,13 +710,22 @@ fn slot_display_first_item_stack<'a>(
     display: &'a SlotDisplaySummary,
     item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
 ) -> Option<Cow<'a, ItemStackSummary>> {
+    slot_display_item_stack_at_index(display, item_tag_entries, 0)
+}
+
+fn slot_display_item_stack_at_index<'a>(
+    display: &'a SlotDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    slot_select_index: usize,
+) -> Option<Cow<'a, ItemStackSummary>> {
     if let Some(stack) = display.item_stack.as_ref() {
         return Some(Cow::Borrowed(stack));
     }
-    let item_id = item_tag_entries?
-        .get(display.tag.as_ref()?)?
-        .first()
-        .copied()?;
+    let entries = item_tag_entries?.get(display.tag.as_ref()?)?;
+    if entries.is_empty() {
+        return None;
+    }
+    let item_id = entries[slot_select_index % entries.len()];
     Some(Cow::Owned(ItemStackSummary {
         item_id: Some(item_id),
         count: 1,

@@ -292,7 +292,8 @@ Screen Render Surfaces" 条目）：
   overlay、search cursor/selection rendering、first-item tag-backed ghost ingredient
   display、tab notification baseline pulse、furnace-family recipe-grid baseline、
   furnace-family ghost slots、furnace-family stacked-contents craftability、
-  multi-recipe cycling、right-click multi-recipe picker baseline 已完成）/
+  multi-recipe cycling、right-click multi-recipe picker baseline、overlay
+  scaled ingredient mini-grid 已完成）/
   advancement screen（大件；recipe/advancement state 已 ready）；debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉

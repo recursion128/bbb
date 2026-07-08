@@ -1068,9 +1068,9 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family ghost recipe projection, and furnace-family stacked-contents
     craftability, multi-recipe cycling, and right-click multi-recipe picker
     baseline:
-    overlay scaled ingredient-grid parity, full recipe `FullTextSearchTree`
-    token parity, and full tag/composite SlotDisplay time-cycling for ghost
-    and overlay ingredient variants.
+    full recipe `FullTextSearchTree` token parity, full tag/composite
+    SlotDisplay time-cycling for ghost ingredients, and composite SlotDisplay
+    expansion for overlay ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1322,15 +1322,25 @@ When an agent does any of the following, update this file in the same slice:
     `tryPlaceRecipe`. bbb now stores local overlay state, renders the vanilla
     overlay background and crafting/furnace enabled/disabled/highlighted
     button sprites, closes the overlay on outside clicks, and queues
-    `PlaceRecipeCommand` for the clicked overlay recipe. Boundary: overlay
-    contents currently use result icons; vanilla's 0.375-scaled ingredient
-    mini-grid from `OverlayRecipeButton.Pos` remains open.
-  - Boundary: craftability retry guard, overlay scaled ingredient-grid parity,
-    full `FullTextSearchTree` token /
+    `PlaceRecipeCommand` for the clicked overlay recipe. Its initial result
+    icon content was replaced by the following scaled ingredient-grid slice.
+  - Done 2026-07-08 — Recipe-book overlay scaled ingredient mini-grid.
+    Vanilla anchors: `OverlayRecipeButton.extractWidgetRenderState` draws each
+    ingredient at `gridPos + Pos`, applies a `0.375F` pose scale, translates
+    `-8,-8`, then renders the selected ingredient; `createGridPos` uses
+    `(3 + gridX * 7, 3 + gridY * 7)`, crafting overlay buttons derive
+    positions from shapeless order or `PlaceRecipeHelper.placeRecipe(3, 3, ...)`,
+    and smelting overlay buttons put the ingredient in grid cell `(1,1)`.
+    bbb now projects overlay contents as scaled 6px ingredient mini-items at
+    the equivalent top-left positions, reuses the same GUI item/block-model
+    path via a narrow floating-item scale field, and cycles tag-backed overlay
+    ingredients with the vanilla 30-tick slot-select index. Boundary: composite
+    SlotDisplay expansion and ghost ingredient time-cycling remain open.
+  - Boundary: craftability retry guard, full `FullTextSearchTree` token /
     namespace-path / intersection semantics for recipe search, full
-    tag/composite SlotDisplay time-cycling for ghost and overlay ingredients,
-    exact fake-item y-scaling during animated recipe-book tabs, and
-    narrow-screen overlap remain open. The filter toggle, search text,
+    tag/composite SlotDisplay time-cycling for ghost ingredients and composite
+    overlay variants, exact fake-item y-scaling during animated recipe-book
+    tabs, and narrow-screen overlap remain open. The filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
@@ -1341,9 +1351,10 @@ When an agent does any of the following, update this file in the same slice:
     crafting ghost ingredient projection, highlighted recipe-book tab baseline
     pulse, furnace-family recipe-grid baseline, furnace-family ghost recipe
     projection, furnace-family stacked-contents craftability, and multi-recipe
-    cycling, and right-click multi-recipe picker baseline are live. The first
-    shell models the non-narrow layout; vanilla's narrow-screen overlap mode
-    (`width < 379`) remains for the input/render follow-up.
+    cycling, right-click multi-recipe picker baseline, and overlay scaled
+    ingredient mini-grid are live. The first shell models the non-narrow
+    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
+    the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

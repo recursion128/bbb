@@ -1993,6 +1993,17 @@
   0.375-scaled ingredient mini-grid；craftability retry guard、完整
   `FullTextSearchTree` token/namespace-path/intersection 语义、
   tag/composite SlotDisplay time-cycling、narrow-screen overlap。
+- [x] recipe-book overlay scaled ingredient mini-grid（P2 HUD/runtime/renderer
+  slice，2026-07-08）：依据 `OverlayRecipeButton.extractWidgetRenderState`
+  的 `0.375F` item pose scale、`createGridPos(3 + gridX * 7, 3 + gridY * 7)`、
+  crafting overlay 的 shapeless / `PlaceRecipeHelper.placeRecipe(3,3,...)`
+  ingredient 布局，以及 smelting overlay 的 `(1,1)` ingredient cell，
+  native 现在用缩放感知的 HUD floating item rect 渲染 6px overlay
+  ingredient mini-items，直接 item/tag-backed ingredient 走同一 GUI item /
+  block-model path，tag-backed overlay ingredient 按 30 tick slot-select
+  index 轮换。剩余：craftability retry guard、完整 `FullTextSearchTree`
+  token/namespace-path/intersection 语义、ghost ingredient time-cycling 与
+  composite SlotDisplay 展开、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
