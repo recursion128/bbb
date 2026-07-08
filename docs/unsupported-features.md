@@ -1111,15 +1111,15 @@ When an agent does any of the following, update this file in the same slice:
     3D crosshair rendering, default-profile debug entry coverage, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
-    baseline, and F3+S dynamic texture dump clickable/open-file feedback
-    payload:
+    baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
+    and profiler chart numeric-key routing shell:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler result clickable
-    feedback payload, profiler data sampling/navigation, profiling metrics
-    recorder/output, actual DebugOptionsScreen, native
+    feedback payload, profiler data sampling and ProfileResults tree
+    navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
@@ -1173,8 +1173,19 @@ When an agent does any of the following, update this file in the same slice:
     path, and lifts the panel above F3+2/F3+3 charts using the same 69px
     bottom offset. Runtime intentionally projects no fake chart data until bbb
     owns profiler `ProfileResults`. Boundary: profiler sampling/results,
-    numeric 0-9 profiler tree navigation, and F3+L metrics recorder/output
-    remain future work.
+    ProfileResults tree path mutation, and F3+L metrics recorder/output remain
+    future work; numeric-key routing is covered by this shell slice.
+  - Done 2026-07-08 — Debug overlay profiler chart numeric-key routing shell.
+    Vanilla anchors: `KeyboardHandler.keyPress` calls
+    `getProfilerPieChart().profilerPieChartKeyPress(event.getDigit())` when the
+    profiler chart is visible and the debug modifier is not held, then
+    continues through normal key mapping; `InputWithModifiers.getDigit` only
+    maps top-row keys `0` through `9`. bbb now records drainable profiler chart
+    navigation requests for visible-chart top-row digit presses outside F3
+    modifier handling, does not record F3+digit chart toggles, and lets the same
+    digit continue to hotbar selection. The main loop drains and logs these
+    requests until native `ProfileResults` owns real tree path mutation.
+    Boundary: profiler sampling/results and actual tree navigation remain future work.
   - Done 2026-07-08 — Debug overlay F3+2 FPS chart rendering. Vanilla anchors:
     `DebugScreenOverlay.showFpsCharts` extracts `FpsDebugChart` at the bottom
     left with width `min(LocalSampleLogger.CAPACITY + 2, guiWidth / 2)`, and
@@ -2243,16 +2254,18 @@ When an agent does any of the following, update this file in the same slice:
     `Motion`, `Rotation`, and known `OnGround`. Debug feedback messages now
     carry a yellow/bold `[Debug]:` styled prefix while preserving plain
     `content`, and F3+S dynamic texture dump feedback now underlines the path
-    run with an `open_file` click payload. The remaining open surfaces in
+    run with an `open_file` click payload. Profiler chart digit presses now
+    route to a drainable navigation shell without blocking hotbar keys. The
+    remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler result clickable feedback
-    payload, profiler data sampling/navigation, profiling metrics
-    recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
-    and the other F3 modifier combos.
+    payload, profiler data sampling and ProfileResults tree navigation,
+    profiling metrics recorder/output, actual DebugOptionsScreen, native pause
+    loop/PauseScreen, and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

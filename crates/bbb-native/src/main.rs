@@ -465,6 +465,15 @@ fn main() -> Result<()> {
                                 "profiling toggle requested by debug hotkey; native profiler output is not implemented"
                             );
                         }
+                        let profiler_chart_navigation_requests =
+                            input.take_debug_profiler_chart_navigation_requests();
+                        if let Some(last_digit) = profiler_chart_navigation_requests.last() {
+                            tracing::info!(
+                                navigation_requests = profiler_chart_navigation_requests.len(),
+                                last_digit,
+                                "profiler chart navigation requested; native profiler results are not implemented"
+                            );
+                        }
                         let debug_options_screen_requests =
                             input.take_debug_options_screen_requests();
                         if debug_options_screen_requests > 0 {

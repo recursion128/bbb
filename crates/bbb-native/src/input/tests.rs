@@ -659,6 +659,9 @@ fn f3_digit_chart_keys_toggle_overlay_state_and_do_not_toggle_on_f3_release() {
     );
     assert!(input.debug_overlay_visible());
     assert!(input.debug_profiler_chart_visible());
+    assert!(input
+        .take_debug_profiler_chart_navigation_requests()
+        .is_empty());
 
     handle_key_input_without_world(
         &mut input,
@@ -726,6 +729,62 @@ fn f3_digit_chart_keys_toggle_overlay_state_and_do_not_toggle_on_f3_release() {
     assert!(input.debug_lightmap_texture_visible());
     assert!(!input.debug_fps_charts_visible());
     assert!(!input.debug_network_charts_visible());
+}
+
+#[test]
+fn profiler_chart_digit_navigation_records_without_blocking_hotbar() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit1),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(input.debug_profiler_chart_visible());
+    assert!(input
+        .take_debug_profiler_chart_navigation_requests()
+        .is_empty());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit2),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.take_debug_profiler_chart_navigation_requests(),
+        vec![2]
+    );
+    assert_eq!(world.local_player().selected_hotbar_slot, 1);
+    assert_eq!(counters.held_slot_commands_queued, 1);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(1));
 }
 
 #[test]

@@ -217,6 +217,7 @@ pub(crate) struct ClientInputState {
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
     debug_profiling_toggle_requests: u32,
+    debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
     debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
@@ -645,6 +646,10 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_profiling_toggle_requests)
     }
 
+    pub(crate) fn take_debug_profiler_chart_navigation_requests(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.debug_profiler_chart_navigation_requests)
+    }
+
     pub(crate) fn take_debug_options_screen_requests(&mut self) -> u32 {
         std::mem::take(&mut self.debug_options_screen_requests)
     }
@@ -1052,6 +1057,31 @@ impl ClientInputState {
             self.debug_network_charts_visible = false;
         }
     }
+
+    fn record_debug_profiler_chart_navigation_key(&mut self, code: KeyCode) {
+        if !self.debug_profiler_chart_visible() || self.debug_modifier_down {
+            return;
+        }
+        if let Some(digit) = debug_profiler_chart_digit(code) {
+            self.debug_profiler_chart_navigation_requests.push(digit);
+        }
+    }
+}
+
+fn debug_profiler_chart_digit(code: KeyCode) -> Option<u8> {
+    Some(match code {
+        KeyCode::Digit0 => 0,
+        KeyCode::Digit1 => 1,
+        KeyCode::Digit2 => 2,
+        KeyCode::Digit3 => 3,
+        KeyCode::Digit4 => 4,
+        KeyCode::Digit5 => 5,
+        KeyCode::Digit6 => 6,
+        KeyCode::Digit7 => 7,
+        KeyCode::Digit8 => 8,
+        KeyCode::Digit9 => 9,
+        _ => return None,
+    })
 }
 
 fn push_debug_version_chat_messages(world: &mut WorldStore) {
@@ -2096,6 +2126,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     if pressed {
+        input.record_debug_profiler_chart_navigation_key(code);
         if let Some(slot) = hotbar_slot_for_key(code) {
             if world.local_player_is_spectator() {
                 return;

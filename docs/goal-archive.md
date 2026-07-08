@@ -5666,3 +5666,12 @@
   underlined + `open_file`，control snapshot 随 `styled_content` 暴露该 payload。
   边界：当前 payload 使用 native dump drain 的同一相对路径；profiler result
   clickable payload 随 profiler output 后续推进。
+- [x] debug overlay profiler chart numeric-key routing shell（P2 native
+  slice，2026-07-08）：依据 `KeyboardHandler.keyPress` 在 profiler chart 可见且
+  debug modifier 未按下时调用
+  `ProfilerPieChart.profilerPieChartKeyPress(event.getDigit())`，随后继续普通
+  key mapping；`InputWithModifiers.getDigit` 只把顶排 `0..9` 映射为数字。native
+  现在对可见 profiler chart 的顶排数字键记录 drainable navigation requests，
+  F3+digit chart toggle 不记录 navigation，普通数字键仍继续选择 hotbar；main
+  loop 暂时 drain 并日志记录这些请求。边界：真实 `ProfileResults` tree path
+  mutation、profiler sampling/results、F3+L metrics recorder/output 仍待后续。
