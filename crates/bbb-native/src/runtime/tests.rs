@@ -965,6 +965,95 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_vanilla_default_profile_entries() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    world.apply_custom_payload(bbb_protocol::packets::CustomPayload {
+        id: "minecraft:brand".to_string(),
+        payload: bbb_protocol::packets::CustomPayloadBody::Brand {
+            brand: "vanilla".to_string(),
+        },
+    });
+    let mut input = ClientInputState::new(true);
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(60);
+    let surface_size = winit::dpi::PhysicalSize::new(320, 240);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None
+    ));
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [10.25, 64.0, -5.75],
+            y_rot: 90.0,
+            x_rot: 15.0,
+            eye_height: 1.62,
+        }),
+        surface_size,
+        &fps_sampler,
+    )
+    .expect("default debug profile should project while F3 is visible");
+
+    // Vanilla DebugScreenEntries.PROFILES projects these default entries into the overlay.
+    assert_eq!(
+        overlay.left_lines[0],
+        format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
+    );
+    assert_eq!(overlay.left_lines[1], "60 fps T: inf");
+    assert!(overlay
+        .left_lines
+        .contains(&"\"vanilla\" server, 0 tx, 0 rx".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"XYZ: 10.250 / 64.00000 / -5.750".to_string()));
+    assert!(overlay.left_lines.contains(&"Block: 10 64 -6".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Chunk: 0 4 -1 [0 31 in r.0.-1.mca]".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Section-relative: 10 00 10".to_string()));
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("Mem: ")));
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("Allocation rate: ")));
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("Allocated: ")));
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("Java: ")));
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("CPU: ")));
+    assert!(overlay
+        .right_lines
+        .contains(&"Display: 320x240 (wgpu)".to_string()));
+    assert!(overlay.right_lines.contains(&"B: 2".to_string()));
+    assert!(overlay
+        .right_lines
+        .contains(&"Filtering: Nearest".to_string()));
+    assert_eq!(
+        overlay.debug_crosshair,
+        Some(HudDebugCrosshair {
+            x_rot_degrees: 15.0,
+            y_rot_degrees: 90.0,
+            gui_scale: 1,
+        })
+    );
+}
+
+#[test]
 fn hud_debug_fps_sampler_reports_completed_one_second_windows() {
     let start = Instant::now();
     let mut sampler = HudDebugFpsSampler::default();

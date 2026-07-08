@@ -5406,3 +5406,13 @@
   skip-rendering 判定，再落回现有 opaque face-occlusion。普通 cutout 邻居仍不
   遮挡；同 block 玻璃/冰/蜂蜜/史莱姆内部面、同类玻璃板/铁栏杆竖向面、以及
   双侧连接的 `BARS` 水平共享面会被剔除。
+- [x] debug overlay default-profile entry coverage closeout（P2 HUD/runtime
+  tests/docs slice，2026-07-08）：依据 `DebugScreenEntries.PROFILES` 中
+  default profile 把 `3d_crosshair`、`game_version`、`tps`、`fps`、`memory`、
+  `system_specs`、`player_position`、`player_section_position` 和
+  `simple_performance_impactors` 全部标记为 `IN_OVERLAY`。native runtime
+  现在有单个 F3 overlay 投影测试覆盖这些 default-profile entries：version /
+  FPS / TPS、player position 与 section-relative position、right-column
+  memory/system/performance groups、以及 3D crosshair state。边界：
+  非默认/可编辑 debug entries、具体 advanced entry renderers、以及
+  `DebugOptionsScreen` profile 持久化仍未实现。

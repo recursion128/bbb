@@ -1102,14 +1102,26 @@ When an agent does any of the following, update this file in the same slice:
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
     hitbox outline rendering, F3+G chunk section-stack outline rendering, and
-    F3+2 FPS chart rendering, and 3D crosshair rendering: the complete vanilla
-    debug entry list, actual TPS/network chart rendering, actual entity hitbox
-    details/chunk-border full gizmo grid, advanced tooltip full parity, actual
-    dynamic texture dump execution, F3+I NBT/server-query parity, profiling
-    metrics recorder/output, actual DebugOptionsScreen,
+    F3+2 FPS chart rendering, 3D crosshair rendering, and default-profile
+    debug entry coverage: non-default/editable debug entries, actual
+    TPS/network chart rendering, actual entity hitbox details/chunk-border full
+    gizmo grid, advanced tooltip full parity, actual dynamic texture dump
+    execution, F3+I NBT/server-query parity, profiling metrics
+    recorder/output, actual DebugOptionsScreen,
     native pause loop/PauseScreen,
     and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
+    Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
+    `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,
+    `player_position`, `player_section_position`, and
+    `simple_performance_impactors`, all `IN_OVERLAY`. bbb now has one runtime
+    projection test covering those default-profile entries in a visible F3
+    overlay snapshot: version/FPS/TPS, player position and section-relative
+    position, right-column memory/system/performance groups, and the 3D
+    crosshair state. Boundary: non-default entries selected through
+    `DebugOptionsScreen`, individual advanced entry renderers, and editable
+    profile persistence remain future work.
   - Done 2026-07-08 — Debug overlay 3D crosshair rendering. Vanilla anchors:
     `DebugScreenEntries` enables `THREE_DIMENSIONAL_CROSSHAIR` in the default
     profile, `Gui.extractCrosshair` suppresses the ordinary 2D crosshair while
@@ -1930,9 +1942,12 @@ When an agent does any of the following, update this file in the same slice:
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
-    are the complete debug entry list, actual charts/lightmap rendering,
-    entity hitbox/chunk-border rendering, advanced tooltip full
-    parity/persistence, 3D crosshair, and the other F3 modifier combos.
+    are non-default/editable debug entries, actual TPS/network chart rendering,
+    entity hitbox full details/chunk-border full gizmo grid, advanced tooltip
+    full parity/persistence, actual dynamic texture dump execution, F3+I
+    NBT/server-query recreate parity, profiling metrics recorder/output,
+    actual DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
+    modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
