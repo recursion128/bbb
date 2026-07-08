@@ -954,6 +954,32 @@ fn hud_debug_overlay_formats_memory_lines_like_vanilla_debug_entries() {
 }
 
 #[test]
+fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Pressed));
+    assert!(
+        input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::Digit2), ElementState::Pressed)
+    );
+    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Released));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+    )
+    .expect("chart toggle should force the debug overlay visible");
+
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug charts: [F3+1] Profiler hidden; [F3+2] FPS visible;".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string()));
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());

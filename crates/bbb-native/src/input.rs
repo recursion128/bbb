@@ -184,6 +184,12 @@ pub(crate) struct ClientInputState {
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     debug_overlay_visible: bool,
+    debug_modifier_down: bool,
+    debug_modifier_used: bool,
+    debug_profiler_chart_visible: bool,
+    debug_fps_charts_visible: bool,
+    debug_network_charts_visible: bool,
+    debug_lightmap_texture_visible: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -326,6 +332,8 @@ impl ClientInputState {
         self.advancement_hover_fade = 0.0;
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
+        self.debug_modifier_down = false;
+        self.debug_modifier_used = false;
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
@@ -515,6 +523,22 @@ impl ClientInputState {
         self.debug_overlay_visible
     }
 
+    pub(crate) fn debug_profiler_chart_visible(&self) -> bool {
+        self.debug_overlay_visible && self.debug_profiler_chart_visible
+    }
+
+    pub(crate) fn debug_fps_charts_visible(&self) -> bool {
+        self.debug_overlay_visible && self.debug_fps_charts_visible
+    }
+
+    pub(crate) fn debug_network_charts_visible(&self) -> bool {
+        self.debug_overlay_visible && self.debug_network_charts_visible
+    }
+
+    pub(crate) fn debug_lightmap_texture_visible(&self) -> bool {
+        self.debug_overlay_visible && self.debug_lightmap_texture_visible
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -523,13 +547,96 @@ impl ClientInputState {
         if !self.focused {
             return false;
         }
-        let PhysicalKey::Code(KeyCode::F3) = physical_key else {
+        let PhysicalKey::Code(code) = physical_key else {
             return false;
         };
-        if matches!(state, ElementState::Released) {
-            self.debug_overlay_visible = !self.debug_overlay_visible;
+
+        if code == KeyCode::F3 {
+            match state {
+                ElementState::Pressed => {
+                    self.debug_modifier_down = true;
+                }
+                ElementState::Released => {
+                    self.debug_modifier_down = false;
+                    if self.debug_modifier_used {
+                        self.debug_modifier_used = false;
+                    } else {
+                        self.debug_overlay_visible = !self.debug_overlay_visible;
+                    }
+                }
+            }
+            return true;
         }
-        true
+
+        if matches!(state, ElementState::Pressed)
+            && self.debug_modifier_down
+            && self.handle_debug_overlay_modifier_key(code)
+        {
+            self.debug_modifier_used = true;
+            return true;
+        }
+
+        false
+    }
+
+    fn handle_debug_overlay_modifier_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Digit1 => {
+                self.toggle_debug_profiler_chart();
+                true
+            }
+            KeyCode::Digit2 => {
+                self.toggle_debug_fps_charts();
+                true
+            }
+            KeyCode::Digit3 => {
+                self.toggle_debug_network_charts();
+                true
+            }
+            KeyCode::Digit4 => {
+                self.toggle_debug_lightmap_texture();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn toggle_debug_profiler_chart(&mut self) {
+        self.debug_profiler_chart_visible =
+            !self.debug_overlay_visible || !self.debug_profiler_chart_visible;
+        if self.debug_profiler_chart_visible {
+            self.debug_overlay_visible = true;
+        }
+    }
+
+    fn toggle_debug_fps_charts(&mut self) {
+        self.debug_fps_charts_visible =
+            !self.debug_overlay_visible || !self.debug_fps_charts_visible;
+        if self.debug_fps_charts_visible {
+            self.debug_overlay_visible = true;
+            self.debug_network_charts_visible = false;
+            self.debug_lightmap_texture_visible = false;
+        }
+    }
+
+    fn toggle_debug_network_charts(&mut self) {
+        self.debug_network_charts_visible =
+            !self.debug_overlay_visible || !self.debug_network_charts_visible;
+        if self.debug_network_charts_visible {
+            self.debug_overlay_visible = true;
+            self.debug_fps_charts_visible = false;
+            self.debug_lightmap_texture_visible = false;
+        }
+    }
+
+    fn toggle_debug_lightmap_texture(&mut self) {
+        self.debug_lightmap_texture_visible =
+            !self.debug_overlay_visible || !self.debug_lightmap_texture_visible;
+        if self.debug_lightmap_texture_visible {
+            self.debug_overlay_visible = true;
+            self.debug_fps_charts_visible = false;
+            self.debug_network_charts_visible = false;
+        }
     }
 
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {

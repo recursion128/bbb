@@ -2766,14 +2766,30 @@ fn hud_debug_overlay(
         left_lines.extend(hud_debug_position_lines(world, camera_pose));
     }
     left_lines.push("".to_string());
-    left_lines.push("Debug charts: [F3+1] Profiler hidden; [F3+2] FPS hidden;".to_string());
-    left_lines.push("[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string());
+    left_lines.push(format!(
+        "Debug charts: [F3+1] Profiler {}; [F3+2] FPS {};",
+        hud_debug_visibility_label(input.debug_profiler_chart_visible()),
+        hud_debug_visibility_label(input.debug_fps_charts_visible())
+    ));
+    left_lines.push(format!(
+        "[F3+3] Network {}; [F3+4] Lightmap {}",
+        hud_debug_visibility_label(input.debug_network_charts_visible()),
+        hud_debug_visibility_label(input.debug_lightmap_texture_visible())
+    ));
     left_lines.push("To edit: press [F3+F5]".to_string());
 
     Some(HudDebugOverlay {
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
     })
+}
+
+fn hud_debug_visibility_label(visible: bool) -> &'static str {
+    if visible {
+        "visible"
+    } else {
+        "hidden"
+    }
 }
 
 fn hud_debug_right_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<String> {

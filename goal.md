@@ -292,8 +292,9 @@ Screen Render Surfaces" 条目）：
   scissor、flat/3D fake-item contents scissor、hover title/progress/description
   tooltip rendering 已完成；`ClientAdvancementsState` ready）。
 - debug overlay（F3 基础 toggle、左列 version/position/help shell、右列
-  memory/system/performance basics 已完成；剩余完整 debug entry 列表、
-  FPS/TPS/network charts、lightmap preview、3D crosshair 与 F3 组合键，低优先）。
+  memory/system/performance basics、F3+1..4 chart/lightmap toggle state 已完成；
+  剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、lightmap
+  preview 实际绘制、3D crosshair 与其它 F3 组合键，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
 结果尽量用 deterministic screenshot/readback 验证。

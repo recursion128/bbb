@@ -1066,10 +1066,22 @@ When an agent does any of the following, update this file in the same slice:
     are now complete (`ClientAdvancementsState` ready).
   - Continue the debug overlay after the F3 toggle, left-column
     version/position/help shell, and right-column memory/system/performance
-    basics: the complete vanilla debug entry list, FPS/TPS/network charts,
-    lightmap preview, 3D crosshair, and F3 modifier combos remain (large, low
-    priority).
+    basics, and F3+1..4 chart/lightmap toggle state: the complete vanilla
+    debug entry list, actual FPS/TPS/network chart rendering, actual lightmap
+    preview rendering, 3D crosshair, and the other F3 modifier combos remain
+    (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+1..4 chart/lightmap toggle state.
+    Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
+    `keyDebugPofilingChart`, `keyDebugFpsCharts`, `keyDebugNetworkCharts`, and
+    `keyDebugLightmapTexture` to `DebugScreenOverlay.toggle*`; the overlay
+    togglers force the debug overlay visible when turning a feature on, keep
+    the profiler chart independent, and make FPS/network/lightmap mutually
+    exclusive. bbb now tracks those four native states in `ClientInputState`,
+    consumes the digit keys while F3 is held, suppresses the subsequent F3
+    release overlay toggle when a debug modifier key was used, and reflects
+    `visible`/`hidden` in the overlay help lines. Boundary: chart sample
+    storage/rendering and the lightmap preview image are still not drawn.
   - Done 2026-07-08 — Debug overlay right-column memory/system/performance
     basics. Vanilla anchors: default `DebugScreenEntries` enables
     `memory`, `system_specs`, and `simple_performance_impactors`;
@@ -1589,10 +1601,11 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, animated-tab fake-item y-scaling, advancement hover
-    rendering, the debug overlay F3 left-column shell, and debug overlay
-    right-column memory/system/performance basics are live. The remaining open
-    surfaces in this ledger row are the complete debug entry list,
-    charts/lightmap/3D crosshair, and F3 modifier combos.
+    rendering, the debug overlay F3 left-column shell, debug overlay
+    right-column memory/system/performance basics, and F3+1..4 chart/lightmap
+    toggle state are live. The remaining open surfaces in this ledger row are
+    the complete debug entry list, actual charts/lightmap rendering, 3D
+    crosshair, and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

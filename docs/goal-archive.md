@@ -5082,3 +5082,13 @@
   vanilla debug entry 列表、FPS/TPS/network charts、lightmap preview、3D
   crosshair、F3 modifier combos；精确 Java heap/allocation-rate 与 GPU
   vendor/renderer/version 字符串仍待后续 owner。
+- [x] debug overlay F3+1..4 chart/lightmap toggle state（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
+  `keyDebugPofilingChart` / `keyDebugFpsCharts` / `keyDebugNetworkCharts` /
+  `keyDebugLightmapTexture` 的调度，以及 `DebugScreenOverlay.toggle*` 的
+  visible/hidden 规则。`ClientInputState` 现在在 F3 按住期间消费 Digit1..4，
+  维护 profiler/FPS/network/lightmap 四个状态，按 vanilla 保持 profiler
+  独立、FPS/network/lightmap 互斥，并在使用 F3 组合键后抑制 F3 release
+  触发普通 overlay toggle；runtime help lines 会显示对应 visible/hidden。
+  剩余：实际 FPS/TPS/network chart 绘制、lightmap preview 绘制、完整 debug
+  entry 列表、3D crosshair、其它 F3 modifier combos。

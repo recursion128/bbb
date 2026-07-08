@@ -470,6 +470,98 @@ fn f3_release_toggles_debug_overlay_without_gameplay_command() {
 }
 
 #[test]
+fn f3_digit_chart_keys_toggle_overlay_state_and_do_not_toggle_on_f3_release() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit1),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_overlay_visible());
+    assert!(input.debug_profiler_chart_visible());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit2),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_profiler_chart_visible());
+    assert!(input.debug_fps_charts_visible());
+    assert!(!input.debug_network_charts_visible());
+    assert!(!input.debug_lightmap_texture_visible());
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+    assert!(input.debug_fps_charts_visible());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit3),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_network_charts_visible());
+    assert!(!input.debug_fps_charts_visible());
+    assert!(!input.debug_lightmap_texture_visible());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit4),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_lightmap_texture_visible());
+    assert!(!input.debug_fps_charts_visible());
+    assert!(!input.debug_network_charts_visible());
+}
+
+#[test]
 fn slash_text_opens_command_entry_and_releases_pressed_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
