@@ -108,6 +108,7 @@ pub struct HudDebugOverlay {
     pub left_lines: Vec<String>,
     pub right_lines: Vec<String>,
     pub debug_crosshair: Option<HudDebugCrosshair>,
+    pub profiler_chart: Option<HudDebugProfilerChart>,
     pub fps_chart: Option<HudDebugFrameTimeChart>,
     pub tps_chart: Option<HudDebugTpsChart>,
     pub network_charts: Option<HudDebugNetworkCharts>,
@@ -156,6 +157,24 @@ pub struct HudDebugNetworkCharts {
     pub ping_millis: Vec<u64>,
     pub bandwidth_bytes_per_tick: Vec<u64>,
     pub show_bandwidth: bool,
+}
+
+/// Vanilla `ProfilerPieChart` render state after `ProfileResults.getTimes(path)`:
+/// the current node is the first `ResultField`, and `slices` are the remaining
+/// direct children. Slice colors are derived from the names with vanilla
+/// `ResultField.getColor()`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct HudDebugProfilerChart {
+    pub current_node_name: String,
+    pub current_global_percentage: f64,
+    pub slices: Vec<HudDebugProfilerSlice>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudDebugProfilerSlice {
+    pub name: String,
+    pub percentage: f64,
+    pub global_percentage: f64,
 }
 
 /// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
@@ -409,6 +428,17 @@ const HUD_DEBUG_CHART_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_CHART_HEIGHT: i32 = 60;
 const HUD_DEBUG_CHART_LABEL_HEIGHT: i32 = 9;
 const HUD_DEBUG_FPS_CHART_TOP_VALUE_MS: f64 = 33.333333333333336;
+const HUD_DEBUG_PROFILER_WIDTH: i32 = 260;
+const HUD_DEBUG_PROFILER_HALF_WIDTH: i32 = HUD_DEBUG_PROFILER_WIDTH / 2;
+const HUD_DEBUG_PROFILER_RADIUS: f32 = 105.0;
+const HUD_DEBUG_PROFILER_VERTICAL_RADIUS_SCALE: f32 = 0.5;
+const HUD_DEBUG_PROFILER_THICKNESS: f32 = 10.0;
+const HUD_DEBUG_PROFILER_MARGIN: i32 = 5;
+const HUD_DEBUG_PROFILER_RIGHT_MARGIN: i32 = 10;
+const HUD_DEBUG_PROFILER_BOTTOM_OFFSET: i32 = 10;
+const HUD_DEBUG_PROFILER_HALF_HEIGHT: i32 = 62;
+const HUD_DEBUG_PROFILER_TEXT_INDENT: i32 = 10;
+const HUD_DEBUG_PROFILER_SLICE_CAPACITY: usize = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE: u32 = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN: i32 = 2;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER: i32 = 1;
@@ -6273,6 +6303,20 @@ fn push_hud_debug_overlay<'a>(
             charts,
         );
     }
+    if let Some(chart) = &overlay.profiler_chart {
+        push_hud_debug_profiler_chart(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            chart,
+            hud_debug_profiler_bottom_offset(overlay),
+        );
+    }
 }
 
 fn push_hud_debug_overlay_column_backgrounds<'a>(
@@ -7158,6 +7202,476 @@ fn push_hud_debug_sample_chart<'a>(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudDebugProfilerChartLayout {
+    left: i32,
+    right: i32,
+    chart_center_x: i32,
+    chart_center_y: i32,
+    text_start_y: i32,
+    current_node_top: i32,
+    bottom: i32,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_profiler_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    chart: &HudDebugProfilerChart,
+    bottom_offset: i32,
+) {
+    let global_percentage = hud_debug_profiler_percentage_text(chart.current_global_percentage);
+    let global_percentage_width =
+        i32::try_from(hud_plain_text_width(&global_percentage, glyphs)).unwrap_or(i32::MAX);
+    let zero_prefix_width = i32::try_from(hud_plain_text_width("[0] ", glyphs)).unwrap_or(i32::MAX);
+    let left = i32::try_from(surface_size.width)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(HUD_DEBUG_PROFILER_WIDTH)
+        .saturating_sub(HUD_DEBUG_PROFILER_RIGHT_MARGIN);
+    let right = left.saturating_add(HUD_DEBUG_PROFILER_WIDTH);
+    let top_text_max_width = right
+        .saturating_sub(global_percentage_width)
+        .saturating_sub(HUD_DEBUG_PROFILER_MARGIN)
+        .saturating_sub(left)
+        .saturating_sub(zero_prefix_width)
+        .max(0);
+    let node_name = hud_debug_profiler_demangle_path(&chart.current_node_name);
+    let current_node_lines = hud_debug_profiler_split_node_name(
+        &node_name,
+        u32::try_from(top_text_max_width).unwrap_or(0),
+        u32::try_from(
+            top_text_max_width
+                .saturating_sub(HUD_DEBUG_PROFILER_TEXT_INDENT)
+                .max(0),
+        )
+        .unwrap_or(0),
+        glyphs,
+    );
+    let layout = hud_debug_profiler_chart_layout(
+        surface_size,
+        chart.slices.len(),
+        current_node_lines.len(),
+        bottom_offset,
+    );
+    let background_left = layout.left.saturating_sub(HUD_DEBUG_PROFILER_MARGIN);
+    let background_top = layout
+        .current_node_top
+        .saturating_sub(HUD_DEBUG_PROFILER_MARGIN);
+    let background_right = layout.right.saturating_add(HUD_DEBUG_PROFILER_MARGIN);
+    let background_bottom = layout.bottom.saturating_add(HUD_DEBUG_PROFILER_MARGIN);
+    if background_right > background_left && background_bottom > background_top {
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            background_left,
+            background_top,
+            u32::try_from(background_right - background_left).unwrap_or(u32::MAX),
+            u32::try_from(background_bottom - background_top).unwrap_or(u32::MAX),
+            HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+        );
+    }
+
+    push_hud_debug_profiler_pie(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        layout.chart_center_x as f32,
+        layout.chart_center_y as f32,
+        &chart.slices,
+    );
+
+    let mut first_line = String::new();
+    if node_name != "unspecified" && node_name != "root" {
+        first_line.push_str("[0] ");
+    }
+    first_line.push_str(
+        current_node_lines
+            .first()
+            .map(String::as_str)
+            .unwrap_or_default(),
+    );
+    push_hud_debug_profiler_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &first_line,
+        layout.left,
+        layout.current_node_top,
+        HUD_TINT_WHITE,
+    );
+    for (index, line) in current_node_lines.iter().enumerate().skip(1) {
+        push_hud_debug_profiler_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            line,
+            layout
+                .left
+                .saturating_add(HUD_DEBUG_PROFILER_TEXT_INDENT)
+                .saturating_add(zero_prefix_width),
+            layout.current_node_top.saturating_add(
+                i32::try_from(index).unwrap_or(i32::MAX) * HUD_DEBUG_CHART_LABEL_HEIGHT,
+            ),
+            HUD_TINT_WHITE,
+        );
+    }
+    push_hud_debug_profiler_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &global_percentage,
+        layout.right.saturating_sub(global_percentage_width),
+        layout.current_node_top,
+        HUD_TINT_WHITE,
+    );
+
+    for (index, slice) in chart.slices.iter().enumerate() {
+        let text_y = layout.text_start_y.saturating_add(
+            i32::try_from(index).unwrap_or(i32::MAX) * HUD_DEBUG_CHART_LABEL_HEIGHT,
+        );
+        let color = hud_argb_to_tint(hud_debug_profiler_slice_argb(&slice.name));
+        let label = if slice.name == "unspecified" {
+            format!("[?] {}", slice.name)
+        } else {
+            format!("[{}] {}", index + 1, slice.name)
+        };
+        push_hud_debug_profiler_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &label,
+            layout.left,
+            text_y,
+            color,
+        );
+        let local_percentage = hud_debug_profiler_percentage_text(slice.percentage);
+        let local_width =
+            i32::try_from(hud_plain_text_width(&local_percentage, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_profiler_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &local_percentage,
+            layout.right.saturating_sub(50).saturating_sub(local_width),
+            text_y,
+            color,
+        );
+        let global_percentage = hud_debug_profiler_percentage_text(slice.global_percentage);
+        let global_width =
+            i32::try_from(hud_plain_text_width(&global_percentage, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_profiler_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &global_percentage,
+            layout.right.saturating_sub(global_width),
+            text_y,
+            color,
+        );
+    }
+}
+
+fn hud_debug_profiler_bottom_offset(overlay: &HudDebugOverlay) -> i32 {
+    if overlay.fps_chart.is_some() || overlay.network_charts.is_some() {
+        HUD_DEBUG_CHART_HEIGHT + HUD_DEBUG_CHART_LABEL_HEIGHT
+    } else {
+        HUD_DEBUG_PROFILER_BOTTOM_OFFSET
+    }
+}
+
+fn hud_debug_profiler_chart_layout(
+    surface_size: PhysicalSize<u32>,
+    slice_count: usize,
+    current_node_line_count: usize,
+    bottom_offset: i32,
+) -> HudDebugProfilerChartLayout {
+    let chart_center_x = i32::try_from(surface_size.width)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(HUD_DEBUG_PROFILER_HALF_WIDTH)
+        .saturating_sub(HUD_DEBUG_PROFILER_RIGHT_MARGIN);
+    let left = chart_center_x.saturating_sub(HUD_DEBUG_PROFILER_HALF_WIDTH);
+    let right = chart_center_x.saturating_add(HUD_DEBUG_PROFILER_HALF_WIDTH);
+    let bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(bottom_offset)
+        .saturating_sub(HUD_DEBUG_PROFILER_MARGIN);
+    let text_start_y = bottom.saturating_sub(
+        i32::try_from(slice_count)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(HUD_DEBUG_CHART_LABEL_HEIGHT),
+    );
+    let chart_center_y = text_start_y
+        .saturating_sub(HUD_DEBUG_PROFILER_HALF_HEIGHT)
+        .saturating_sub(HUD_DEBUG_PROFILER_MARGIN);
+    let current_node_top = chart_center_y
+        .saturating_sub(HUD_DEBUG_PROFILER_HALF_HEIGHT)
+        .saturating_sub(
+            i32::try_from(current_node_line_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+    HudDebugProfilerChartLayout {
+        left,
+        right,
+        chart_center_x,
+        chart_center_y,
+        text_start_y,
+        current_node_top,
+        bottom,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_profiler_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    x: i32,
+    y: i32,
+    tint: [f32; 4],
+) {
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        (x as f32, y as f32),
+        tint,
+        1.0,
+        false,
+    );
+}
+
+fn push_hud_debug_profiler_pie<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    center_x: f32,
+    center_y: f32,
+    slices: &[HudDebugProfilerSlice],
+) {
+    let start = vertices.len() as u32;
+    let mut total_percentage = 0.0;
+    for slice in slices {
+        let percentage = slice.percentage.clamp(0.0, 100.0);
+        if percentage <= f64::EPSILON {
+            continue;
+        }
+        let steps = hud_debug_profiler_slice_steps(percentage);
+        let color = hud_debug_profiler_slice_argb(&slice.name);
+        let tint = hud_argb_to_tint(color);
+        let shade_tint = hud_argb_to_tint(hud_argb_multiply(color | 0xFF00_0000, 0xFF80_8080));
+        for step in (1..=steps).rev() {
+            let p0 = hud_debug_profiler_pie_point(
+                center_x,
+                center_y,
+                total_percentage + percentage * step as f64 / steps as f64,
+            );
+            let p1 = hud_debug_profiler_pie_point(
+                center_x,
+                center_y,
+                total_percentage + percentage * (step - 1) as f64 / steps as f64,
+            );
+            push_hud_debug_profiler_triangle(
+                vertices,
+                surface_size,
+                [center_x, center_y],
+                p0,
+                p1,
+                tint,
+            );
+            let mid_y = ((p0[1] - center_y) + (p1[1] - center_y)) * 0.5;
+            if mid_y >= 0.0 {
+                push_hud_debug_profiler_quad(
+                    vertices,
+                    surface_size,
+                    p0,
+                    [p0[0], p0[1] + HUD_DEBUG_PROFILER_THICKNESS],
+                    [p1[0], p1[1] + HUD_DEBUG_PROFILER_THICKNESS],
+                    p1,
+                    shade_tint,
+                );
+            }
+        }
+        total_percentage += percentage;
+    }
+    let end = vertices.len() as u32;
+    if end > start {
+        commands.push(HudDrawCommand::Sprite {
+            sprite: white_pixel,
+            start,
+            end,
+        });
+    }
+}
+
+fn hud_debug_profiler_pie_point(center_x: f32, center_y: f32, percentage: f64) -> [f32; 2] {
+    let dir = (percentage * std::f64::consts::TAU / 100.0) as f32;
+    [
+        center_x + dir.sin() * HUD_DEBUG_PROFILER_RADIUS,
+        center_y + dir.cos() * HUD_DEBUG_PROFILER_RADIUS * HUD_DEBUG_PROFILER_VERTICAL_RADIUS_SCALE,
+    ]
+}
+
+fn push_hud_debug_profiler_triangle(
+    vertices: &mut Vec<HudVertex>,
+    surface_size: PhysicalSize<u32>,
+    a: [f32; 2],
+    b: [f32; 2],
+    c: [f32; 2],
+    tint: [f32; 4],
+) {
+    vertices.push(hud_debug_profiler_vertex(surface_size, a, tint));
+    vertices.push(hud_debug_profiler_vertex(surface_size, b, tint));
+    vertices.push(hud_debug_profiler_vertex(surface_size, c, tint));
+}
+
+fn push_hud_debug_profiler_quad(
+    vertices: &mut Vec<HudVertex>,
+    surface_size: PhysicalSize<u32>,
+    top_left: [f32; 2],
+    bottom_left: [f32; 2],
+    bottom_right: [f32; 2],
+    top_right: [f32; 2],
+    tint: [f32; 4],
+) {
+    let corners = [top_left, bottom_left, bottom_right, top_right];
+    vertices.extend_from_slice(&hud_styled_quad_vertices(
+        surface_size,
+        corners,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        tint,
+    ));
+}
+
+fn hud_debug_profiler_vertex(
+    surface_size: PhysicalSize<u32>,
+    [x, y]: [f32; 2],
+    tint: [f32; 4],
+) -> HudVertex {
+    let width = surface_size.width.max(1) as f32;
+    let height = surface_size.height.max(1) as f32;
+    HudVertex {
+        position: [x / width * 2.0 - 1.0, 1.0 - y / height * 2.0],
+        uv: [0.0, 0.0],
+        tint,
+        local_uv: [0.0, 0.0],
+    }
+}
+
+fn hud_debug_profiler_split_node_name(
+    node_name: &str,
+    first_line_max_width: u32,
+    max_width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    for (name_index, current_name) in node_name.split('.').enumerate() {
+        let current_name_with_period = if name_index == 0 {
+            current_name.to_string()
+        } else {
+            format!(".{current_name}")
+        };
+        let new_line = format!("{current_line}{current_name_with_period}");
+        let limit = if lines.is_empty() {
+            first_line_max_width
+        } else {
+            max_width
+        };
+        if hud_plain_text_width(&new_line, glyphs) > limit {
+            if current_line.is_empty() {
+                lines.push(current_name_with_period);
+            } else {
+                lines.push(std::mem::take(&mut current_line));
+                current_line = current_name_with_period;
+            }
+        } else {
+            current_line = new_line;
+        }
+    }
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+fn hud_debug_profiler_demangle_path(path: &str) -> String {
+    path.replace('\u{001e}', ".")
+}
+
+fn hud_debug_profiler_percentage_text(percentage: f64) -> String {
+    format!("{:.2}%", percentage.clamp(0.0, 100.0))
+}
+
+fn hud_debug_profiler_slice_steps(percentage: f64) -> usize {
+    ((percentage.clamp(0.0, 100.0) / 4.0).floor() as usize).saturating_add(1)
+}
+
+fn hud_debug_profiler_slice_argb(name: &str) -> u32 {
+    let hash = name.encode_utf16().fold(0i32, |hash, code_unit| {
+        hash.wrapping_mul(31).wrapping_add(i32::from(code_unit))
+    });
+    ((hash as u32) & 0x00AA_AAAA).wrapping_add(0xFF44_4444)
+}
+
 fn push_hud_debug_chart_horizontal_line<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -7484,6 +7998,20 @@ fn hud_argb_lerp(alpha: f64, start: u32, end: u32) -> u32 {
 fn hud_lerp_channel(alpha: f64, start: u32, end: u32) -> u32 {
     let value = start as i32 + (alpha * f64::from(end as i32 - start as i32)).floor() as i32;
     value.clamp(0, 255) as u32
+}
+
+fn hud_argb_multiply(lhs: u32, rhs: u32) -> u32 {
+    if lhs == 0xFFFF_FFFF {
+        return rhs;
+    }
+    if rhs == 0xFFFF_FFFF {
+        return lhs;
+    }
+    let a = ((lhs >> 24) & 0xFF) * ((rhs >> 24) & 0xFF) / 255;
+    let r = ((lhs >> 16) & 0xFF) * ((rhs >> 16) & 0xFF) / 255;
+    let g = ((lhs >> 8) & 0xFF) * ((rhs >> 8) & 0xFF) / 255;
+    let b = (lhs & 0xFF) * (rhs & 0xFF) / 255;
+    (a << 24) | (r << 16) | (g << 8) | b
 }
 
 fn hud_argb_to_tint(argb: u32) -> [f32; 4] {
@@ -8319,6 +8847,9 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
     let debug_crosshair = overlay
         .debug_crosshair
         .and_then(sanitize_hud_debug_crosshair);
+    let profiler_chart = overlay
+        .profiler_chart
+        .map(sanitize_hud_debug_profiler_chart);
     let fps_chart = overlay.fps_chart.map(sanitize_hud_debug_fps_chart);
     let tps_chart = overlay.tps_chart.map(sanitize_hud_debug_tps_chart);
     let network_charts = overlay
@@ -8327,6 +8858,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
     (!left_lines.is_empty()
         || !right_lines.is_empty()
         || debug_crosshair.is_some()
+        || profiler_chart.is_some()
         || fps_chart.is_some()
         || tps_chart.is_some()
         || network_charts.is_some()
@@ -8335,6 +8867,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
             left_lines,
             right_lines,
             debug_crosshair,
+            profiler_chart,
             fps_chart,
             tps_chart,
             network_charts,
@@ -8349,6 +8882,33 @@ fn sanitize_hud_debug_crosshair(crosshair: HudDebugCrosshair) -> Option<HudDebug
             ..crosshair
         },
     )
+}
+
+fn sanitize_hud_debug_profiler_chart(mut chart: HudDebugProfilerChart) -> HudDebugProfilerChart {
+    chart.current_node_name = sanitize_hud_text_preserving_empty(chart.current_node_name, 128);
+    if !chart.current_global_percentage.is_finite() {
+        chart.current_global_percentage = 0.0;
+    }
+    chart.current_global_percentage = chart.current_global_percentage.clamp(0.0, 100.0);
+    chart.slices = chart
+        .slices
+        .into_iter()
+        .filter_map(sanitize_hud_debug_profiler_slice)
+        .take(HUD_DEBUG_PROFILER_SLICE_CAPACITY)
+        .collect();
+    chart
+}
+
+fn sanitize_hud_debug_profiler_slice(
+    mut slice: HudDebugProfilerSlice,
+) -> Option<HudDebugProfilerSlice> {
+    if !slice.percentage.is_finite() || !slice.global_percentage.is_finite() {
+        return None;
+    }
+    slice.name = sanitize_hud_text_preserving_empty(slice.name, 128);
+    slice.percentage = slice.percentage.clamp(0.0, 100.0);
+    slice.global_percentage = slice.global_percentage.clamp(0.0, 100.0);
+    Some(slice)
 }
 
 fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFrameTimeChart {
@@ -9233,6 +9793,7 @@ mod tests {
             left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
             right_lines: vec!["Right".to_string()],
             debug_crosshair: None,
+            profiler_chart: None,
             fps_chart: None,
             tps_chart: None,
             network_charts: None,
@@ -9250,6 +9811,92 @@ mod tests {
         })
         .expect("lightmap preview survives without text lines");
         assert!(preview_only.show_lightmap_preview);
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_keeps_and_caps_profiler_chart_slices() {
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            profiler_chart: Some(HudDebugProfilerChart {
+                current_node_name: "root\u{0007}".to_string(),
+                current_global_percentage: f64::NAN,
+                slices: (0..80)
+                    .map(|index| HudDebugProfilerSlice {
+                        name: format!("slice\u{0007}{index}"),
+                        percentage: 120.0,
+                        global_percentage: if index == 0 { f64::INFINITY } else { 25.0 },
+                    })
+                    .collect(),
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("profiler chart survives without text lines");
+
+        let chart = overlay
+            .profiler_chart
+            .expect("profiler chart should remain");
+        assert_eq!(chart.current_node_name, "root");
+        assert_eq!(chart.current_global_percentage, 0.0);
+        assert_eq!(chart.slices.len(), HUD_DEBUG_PROFILER_SLICE_CAPACITY);
+        assert_eq!(chart.slices[0].name, "slice1");
+        assert_eq!(chart.slices[0].percentage, 100.0);
+        assert_eq!(chart.slices[0].global_percentage, 25.0);
+    }
+
+    #[test]
+    fn hud_debug_profiler_chart_layout_matches_vanilla_right_anchor() {
+        assert_eq!(
+            hud_debug_profiler_chart_layout(PhysicalSize::new(640, 360), 2, 1, 10),
+            HudDebugProfilerChartLayout {
+                left: 370,
+                right: 630,
+                chart_center_x: 500,
+                chart_center_y: 260,
+                text_start_y: 327,
+                current_node_top: 198,
+                bottom: 345,
+            }
+        );
+        assert_eq!(
+            hud_debug_profiler_bottom_offset(&HudDebugOverlay {
+                profiler_chart: Some(HudDebugProfilerChart::default()),
+                fps_chart: Some(HudDebugFrameTimeChart::default()),
+                ..HudDebugOverlay::default()
+            }),
+            69
+        );
+    }
+
+    #[test]
+    fn hud_debug_profiler_helpers_match_vanilla_result_field_rules() {
+        assert_eq!(
+            hud_debug_profiler_demangle_path("root\u{001e}tick"),
+            "root.tick"
+        );
+        assert_eq!(hud_debug_profiler_percentage_text(12.345), "12.35%");
+        assert_eq!(hud_debug_profiler_slice_steps(16.0), 5);
+        assert_eq!(hud_debug_profiler_slice_argb("tick"), 0xFF66_44CC);
+        assert_eq!(hud_argb_multiply(0xFF66_44CC, 0xFF80_8080), 0xFF33_2266);
+    }
+
+    #[test]
+    fn hud_debug_profiler_split_node_name_wraps_dot_segments() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in ['?', 'a', 'b', '.'] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance: 6,
+                    width: 5,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        assert_eq!(
+            hud_debug_profiler_split_node_name("a.b", 12, 12, &glyphs),
+            vec!["a".to_string(), ".b".to_string()]
+        );
     }
 
     #[test]

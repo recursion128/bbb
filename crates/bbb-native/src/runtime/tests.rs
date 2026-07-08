@@ -1467,6 +1467,49 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_profiler_toggle_without_fake_chart_data() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit1),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("F3+1 should force the debug overlay visible");
+
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug charts: [F3+1] Profiler visible; [F3+2] FPS hidden;".to_string()));
+    assert_eq!(overlay.profiler_chart, None);
+    assert_eq!(overlay.fps_chart, None);
+    assert_eq!(overlay.network_charts, None);
+}
+
+#[test]
 fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);

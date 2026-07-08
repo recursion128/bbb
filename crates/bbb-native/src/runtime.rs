@@ -3098,6 +3098,7 @@ fn hud_debug_overlay(
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
         debug_crosshair,
+        profiler_chart: None,
         fps_chart: input
             .debug_fps_charts_visible()
             .then(|| HudDebugFrameTimeChart {

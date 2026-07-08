@@ -1104,7 +1104,8 @@ When an agent does any of the following, update this file in the same slice:
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
     hitbox outline rendering, F3+G chunk section-stack outline rendering,
-    F3+B entity hitbox eye/vector detail rendering, F3+2 FPS/TPS chart
+    F3+B entity hitbox eye/vector detail rendering, F3+1 profiler pie chart
+    render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
@@ -1112,8 +1113,8 @@ When an agent does any of the following, update this file in the same slice:
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
     actual dynamic texture dump execution, F3+I gamemaster permission gate /
-    local client-side NBT capture / styled feedback, profiling metrics
-    recorder/output, actual DebugOptionsScreen, native
+    local client-side NBT capture / styled feedback, profiler data
+    sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
@@ -1141,6 +1142,21 @@ When an agent does any of the following, update this file in the same slice:
     the exact vanilla `RenderPipelines.LINES` / `LINES_DEPTH_BIAS` GPU pass,
     depth texture interaction, and non-1 guiScale plumbing remain future
     renderer parity work.
+  - Done 2026-07-08 — Debug overlay F3+1 profiler pie chart render-state and
+    rendering. Vanilla anchors: `DebugScreenOverlay.showProfilerChart` gates
+    the `ProfilerPieChart`, `ProfilerPieChart.extractRenderState` lays out a
+    right-anchored 260px panel with current-node and child percentage labels,
+    and `GuiProfilerChartRenderer.renderToTexture` draws a 105px-radius
+    elliptical pie with `ResultField.getColor()` colors plus 10px lower-half
+    side shading. bbb now defines `HudDebugProfilerChart` /
+    `HudDebugProfilerSlice`, derives vanilla `ResultField` colors from slice
+    names, renders the translucent panel, current-node/global text, numbered
+    child labels, pie slices, and side shading through the HUD white-pixel/text
+    path, and lifts the panel above F3+2/F3+3 charts using the same 69px
+    bottom offset. Runtime intentionally projects no fake chart data until bbb
+    owns profiler `ProfileResults`. Boundary: profiler sampling/results,
+    numeric 0-9 profiler tree navigation, and F3+L metrics recorder/output
+    remain future work.
   - Done 2026-07-08 — Debug overlay F3+2 FPS chart rendering. Vanilla anchors:
     `DebugScreenOverlay.showFpsCharts` extracts `FpsDebugChart` at the bottom
     left with width `min(LocalSampleLogger.CAPACITY + 2, guiWidth / 2)`, and
@@ -1149,7 +1165,7 @@ When an agent does any of the following, update this file in the same slice:
     samples in `HudDebugFpsSampler`, projects them into `HudDebugOverlay` only
     while F3+2 is visible, and renders the FPS chart through the HUD white-pixel
     quad/text path with vanilla sample height and green/yellow/red thresholds.
-    Boundary: profiler pie chart contents and the cyan configured-framerate
+    Boundary: profiler `ProfileResults` data/navigation and the cyan configured-framerate
     guide remain unimplemented until bbb owns the corresponding profiler /
     framerate config samples.
   - Done 2026-07-08 — Debug overlay F3+2 TPS chart rendering. Vanilla anchors:
@@ -1165,8 +1181,8 @@ When an agent does any of the following, update this file in the same slice:
     the world tick-rate, and renders the TPS chart through the HUD chart path
     with vanilla 240-sample capacity, 60px height, full-minus-idle labels,
     stacked component bars, TPS label, and threshold colors. Boundary: bbb only
-    has the dedicated tick-time subscription owner; profiler pie chart contents
-    and configured-framerate guide parity remain future work.
+    has the dedicated tick-time subscription owner; profiler `ProfileResults`
+    data/navigation and configured-framerate guide parity remain future work.
   - Done 2026-07-08 — Debug overlay F3+3 network ping/bandwidth chart
     rendering. Vanilla anchors: `DebugScreenOverlay.showNetworkCharts` renders
     `BandwidthDebugChart` on the left for non-local connections and
@@ -1181,8 +1197,8 @@ When an agent does any of the following, update this file in the same slice:
     reference labels, and green/yellow/red plus cyan/purple/red thresholds.
     Boundary: bbb's bandwidth samples use decoded packet payload lengths rather
     than exact compressed frame bytes, integrated-server local suppression is
-    irrelevant until bbb owns a local server path, and profiler charts remain
-    future work.
+    irrelevant until bbb owns a local server path, and profiler sampling /
+    navigation remains future work.
   - Done 2026-07-08 — Debug overlay F3+G chunk section-stack outline rendering.
     Vanilla anchors: `ChunkBorderRenderer.emitGizmos` derives the camera
     section with `SectionPos.of(cameraEntity.blockPosition())`, samples
@@ -1433,8 +1449,8 @@ When an agent does any of the following, update this file in the same slice:
     `HudDebugOverlay`, draws the same border and preview rect in the HUD pass,
     samples the renderer-owned dynamic lightmap texture through a HUD-layout
     nearest sampler, and keeps the vanilla mutual exclusion with FPS/network
-    charts from the existing input state. Boundary: profiler chart rendering
-    and configured-framerate guide parity remain open.
+    charts from the existing input state. Boundary: profiler `ProfileResults`
+    data/navigation and configured-framerate guide parity remain open.
   - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
     The local advancement screen now has open/close, empty window, Done button,
     initial root-tab selection, root tab rendering/click selection, selected
@@ -1451,7 +1467,7 @@ When an agent does any of the following, update this file in the same slice:
     native per-frame FPS sampler, feeds the sampled value into the debug
     overlay's default priority lines, and formats the line as
     `<fps> fps T: inf` because startup/runtime configuration has no frame-rate
-    cap or vsync option. Boundary: profiler chart rendering and
+    cap or vsync option. Boundary: profiler `ProfileResults` data/navigation and
     configured-framerate guide parity remain open.
   - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
     paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
@@ -2100,14 +2116,15 @@ When an agent does any of the following, update this file in the same slice:
     F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
     version debug chat action, plus F3+A/B/G/H/N/P/F4 local debug feedback are live.
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
-    shape are also aligned, and the default TPS entry now has a server-brand
-    / frozen-status text shell. The remaining open surfaces in this ledger row
+    shape are also aligned, the default TPS entry now has a server-brand /
+    frozen-status text shell, and the F3+1 profiler pie chart renderer can
+    draw `ProfileResults`-shaped data. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I
     gamemaster permission gate / local client-side NBT capture / styled feedback,
-    profiling metrics recorder/output, actual
+    profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

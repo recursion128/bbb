@@ -303,13 +303,14 @@ Screen Render Surfaces" 条目）：
   default TPS entry shell、default FPS entry shell、F3+4 lightmap preview 实际绘制、
   F3+B entity AABB hitbox outline rendering、F3+G chunk section-stack outline
   rendering、F3+B entity hitbox eye/vector detail rendering、
+  F3+1 profiler pie chart render-state/rendering、
   F3+2 FPS/TPS chart rendering、F3+3 network ping/bandwidth chart
   rendering、3D crosshair rendering、default-profile debug entry coverage 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
   advanced tooltip full parity、dynamic texture dump execution、F3+I
   gamemaster permission gate/local client-side NBT capture/styled feedback、
-  profiling metrics recorder/output、actual
+  profiler data sampling/navigation、profiling metrics recorder/output、actual
   DebugOptionsScreen、native pause loop/PauseScreen、其它 F3 组合键，
   低优先）。
 

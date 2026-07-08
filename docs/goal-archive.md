@@ -5558,3 +5558,17 @@
   tag、不匹配 id、以及 query 后方块状态变化仍复制发起时状态。边界：
   gamemaster permission gate、Shift+F3+I 本地 client-side NBT capture、
   styled/clickable feedback 仍待后续。
+- [x] debug overlay F3+1 profiler pie chart render-state/rendering（P2
+  renderer/native slice，2026-07-08）：依据
+  `DebugScreenOverlay.showProfilerChart` 对 overlay-visible + F3+1 状态的
+  gate，`ProfilerPieChart.extractRenderState` 的右侧 260px panel、当前节点/
+  子项百分比文本布局，以及 `GuiProfilerChartRenderer.renderToTexture` 的
+  105px radius 椭圆 pie、`ResultField.getColor()` 名称派生颜色、下半圆 10px
+  side shading。renderer 现在有 `HudDebugProfilerChart` /
+  `HudDebugProfilerSlice` 数据边界，按 vanilla 坐标绘制半透明背景、pie
+  slices、current node/global percentage、child labels 和 local/global
+  percentages，并在 F3+2/F3+3 charts 存在时使用 69px bottom offset 抬高。
+  native overlay 明确保留 `profiler_chart: None`，避免在 profiler
+  `ProfileResults` owner 缺失时伪造数据。边界：profiler sampling/results、
+  0-9 profiler tree navigation、F3+L metrics recorder/output、以及
+  configured-framerate cyan guide 仍待后续。
