@@ -1063,9 +1063,18 @@ When an agent does any of the following, update this file in the same slice:
     window/Done button/initial display-root selection/root tab/root widget
     shells/contents background tiling/tree connectivity/wheel/drag scroll clamp
     and widget-frame partial scissor: fake-item/full scissor and hover rendering
-    remain (`ClientAdvancementsState` ready).
-  - Then implement the debug overlay (F3; large, low priority).
+    are now complete (`ClientAdvancementsState` ready).
+  - Implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Advancement hover tooltip rendering. Vanilla anchors:
+    `AdvancementsScreen.extractTooltips` shifts mouse coordinates into the
+    selected tab contents, `AdvancementTab.extractTooltips` applies the
+    234x113 content hit test and fade `+0.02` / `-0.04` clamp, and
+    `AdvancementWidget.extractHover` draws the title box, split obtained /
+    unobtained progress box, frame sprite, title/progress/description text,
+    frame-kind description tint, and foreground fake item. bbb now projects
+    the same hover surface from native advancement state through renderer
+    foreground layers/items and keeps the fade state in `ClientInputState`.
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
     recipe-capable inventory screens. Vanilla anchors:
     `AbstractRecipeBookScreen.init` uses `width < 379` as the narrow-screen
@@ -1554,9 +1563,9 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family stacked-contents craftability, and multi-recipe cycling,
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
-    retry guard, and animated-tab fake-item y-scaling are live. The remaining
-    open surfaces in this ledger row are advancement hover rendering and debug
-    overlay.
+    retry guard, animated-tab fake-item y-scaling, and advancement hover
+    rendering are live. The remaining open surface in this ledger row is the
+    debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

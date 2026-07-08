@@ -10,7 +10,8 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
-    AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary, AdvancementSummary,
+    AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
+    AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary,
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
@@ -9874,6 +9875,121 @@ fn advancement_widget_icon_items_keep_partial_fake_item_with_content_scissor() {
     assert!(!items[0].draw_decorations);
 }
 
+#[test]
+fn hud_inventory_screen_projects_advancement_hover_tooltip() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = WorldStore::new();
+    let mut root = runtime_displayed_advancement("minecraft:story/root", None);
+    root.requirements = vec![vec!["has_log".to_string()], vec!["has_planks".to_string()]];
+    let display = root.display.as_mut().unwrap();
+    display.title = "Getting Wood".to_string();
+    display.description = "Punch a tree".to_string();
+    display.frame_type = AdvancementFrameType::Challenge;
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![root],
+        removed: Vec::new(),
+        progress: vec![AdvancementProgressSummary {
+            id: "minecraft:story/root".to_string(),
+            criteria: vec![
+                AdvancementCriterionProgressSummary {
+                    name: "has_log".to_string(),
+                    obtained_epoch_millis: Some(1),
+                },
+                AdvancementCriterionProgressSummary {
+                    name: "has_planks".to_string(),
+                    obtained_epoch_millis: None,
+                },
+            ],
+        }],
+        show_advancements: false,
+    });
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("minecraft:story/root".to_string())
+    );
+    let terrain_textures = TerrainTextureState::default();
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let local_state = InventoryHudLocalState {
+        cursor_position: Some((inside_x + 110, inside_y + 50)),
+        advancement_hover_fade: ADVANCEMENTS_HOVER_MAX_FADE,
+        ..Default::default()
+    };
+
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        None,
+        local_state,
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.fill_layers.contains(&HudInventoryFillLayer {
+        x: inside_x,
+        y: inside_y,
+        width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+        height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+        tint: ADVANCEMENTS_HOVER_FADE_TINT,
+        stage: HudInventoryFillStage::Foreground,
+    }));
+    assert!(screen.foreground_layers.iter().any(|layer| {
+        matches!(
+            layer.texture,
+            HudInventoryBackgroundTexture::AdvancementHoverBox(HudAdvancementHoverBoxSprite::Title)
+        )
+    }));
+    assert!(screen.foreground_layers.iter().any(|layer| {
+        matches!(
+            layer.texture,
+            HudInventoryBackgroundTexture::AdvancementHoverBox(
+                HudAdvancementHoverBoxSprite::Obtained
+            )
+        )
+    }));
+    assert!(screen.foreground_layers.iter().any(|layer| {
+        matches!(
+            layer.texture,
+            HudInventoryBackgroundTexture::AdvancementHoverBox(
+                HudAdvancementHoverBoxSprite::Unobtained
+            )
+        )
+    }));
+    assert!(screen.foreground_layers.iter().any(|layer| {
+        matches!(
+            layer.texture,
+            HudInventoryBackgroundTexture::AdvancementWidgetFrame(
+                HudAdvancementWidgetFrameSprite::ChallengeUnobtained
+            )
+        )
+    }));
+    assert!(screen
+        .text_labels
+        .iter()
+        .any(|label| label.text == "Getting Wood"));
+    assert!(screen.text_labels.iter().any(|label| label.text == "1/2"));
+    let description = screen
+        .text_labels
+        .iter()
+        .find(|label| label.text == "Punch a tree")
+        .unwrap();
+    assert_eq!(
+        description.tint,
+        ADVANCEMENTS_HOVER_CHALLENGE_DESCRIPTION_TEXT_COLOR
+    );
+    assert_eq!(screen.foreground_items.len(), 1);
+    assert_eq!(screen.foreground_items[0].x, inside_x + 111);
+    assert_eq!(screen.foreground_items[0].y, inside_y + 48);
+    assert_eq!(screen.foreground_items[0].scissor, None);
+    assert!(!screen.foreground_items[0].draw_decorations);
+}
+
 fn advancements_centered_text_label(
     text: &str,
     center_x: i32,
@@ -9927,6 +10043,8 @@ fn advancement_widget_summary_for_test(
     bbb_world::AdvancementWidgetSummary {
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
+        title: id.to_string(),
+        description: String::new(),
         icon: AdvancementIconSummary {
             item_id: 1,
             count: 1,
@@ -9937,6 +10055,8 @@ fn advancement_widget_summary_for_test(
         y,
         hidden: false,
         done: false,
+        progress_done: 0,
+        progress_total: 0,
     }
 }
 

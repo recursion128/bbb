@@ -37,12 +37,16 @@ pub struct AdvancementRootTabSummary {
 pub struct AdvancementWidgetSummary {
     pub id: String,
     pub parent_id: Option<String>,
+    pub title: String,
+    pub description: String,
     pub icon: ProtocolAdvancementIconSummary,
     pub frame_type: bbb_protocol::packets::AdvancementFrameType,
     pub x: i32,
     pub y: i32,
     pub hidden: bool,
     pub done: bool,
+    pub progress_done: usize,
+    pub progress_total: usize,
 }
 
 impl WorldStore {
@@ -280,20 +284,29 @@ impl WorldStore {
     fn advancement_widget_summary(&self, id: &str) -> Option<AdvancementWidgetSummary> {
         let advancement = self.advancements.advancements.get(id)?;
         let display = advancement.display.as_ref()?;
-        let done = self
-            .advancements
-            .progress
-            .get(id)
-            .is_some_and(|progress| advancement_progress_is_done(advancement, progress));
+        let progress = self.advancements.progress.get(id);
+        let done =
+            progress.is_some_and(|progress| advancement_progress_is_done(advancement, progress));
+        let progress_done = progress
+            .map(|progress| advancement_progress_completed_requirements(advancement, progress))
+            .unwrap_or_default();
+        let progress_total = progress
+            .filter(|_| !advancement.requirements.is_empty())
+            .map(|_| advancement.requirements.len())
+            .unwrap_or_default();
         Some(AdvancementWidgetSummary {
             id: id.to_string(),
             parent_id: self.first_visible_advancement_parent_id(advancement),
+            title: display.title.clone(),
+            description: display.description.clone(),
             icon: display.icon.clone(),
             frame_type: display.frame_type,
             x: (display.x * 28.0).floor() as i32,
             y: (display.y * 27.0).floor() as i32,
             hidden: display.hidden,
             done,
+            progress_done,
+            progress_total,
         })
     }
 
@@ -373,6 +386,23 @@ fn advancement_progress_is_done(
             })
         })
     })
+}
+
+fn advancement_progress_completed_requirements(
+    advancement: &ProtocolAdvancementSummary,
+    progress: &ProtocolAdvancementProgressSummary,
+) -> usize {
+    advancement
+        .requirements
+        .iter()
+        .filter(|group| {
+            group.iter().any(|name| {
+                progress.criteria.iter().any(|criterion| {
+                    criterion.name == *name && criterion.obtained_epoch_millis.is_some()
+                })
+            })
+        })
+        .count()
 }
 
 #[cfg(test)]
@@ -617,10 +647,14 @@ mod tests {
             widgets[2].parent_id.as_deref(),
             Some("minecraft:story/root")
         );
+        assert_eq!(widgets[2].title, "minecraft:story/mine_stone");
+        assert_eq!(widgets[2].description, "Break stone");
         assert_eq!(widgets[2].frame_type, AdvancementFrameType::Goal);
         assert_eq!(widgets[2].x, 56);
         assert_eq!(widgets[2].y, 27);
         assert!(widgets[2].done);
+        assert_eq!(widgets[2].progress_done, 2);
+        assert_eq!(widgets[2].progress_total, 2);
         assert_eq!(widgets[3].id, "minecraft:story/through_no_display");
         assert_eq!(
             widgets[3].parent_id.as_deref(),
@@ -736,7 +770,7 @@ mod tests {
         let mut advancement = advancement(id, parent);
         advancement.display = Some(AdvancementDisplaySummary {
             title: id.to_string(),
-            description: String::new(),
+            description: "Break stone".to_string(),
             icon: AdvancementIconSummary {
                 item_id: 1,
                 count: 1,

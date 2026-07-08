@@ -20,20 +20,21 @@ use bbb_protocol::{
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
-    HudAdvancementBackgroundTexture, HudAdvancementLineTexture, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
+    HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
+    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
+    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
+    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
     DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
     ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -387,6 +388,27 @@ const ADVANCEMENTS_WIDGET_ICON_OFFSET: (i32, i32) = (8, 5);
 const ADVANCEMENTS_WIDGET_ICON_SIZE: i32 = 16;
 const ADVANCEMENTS_WIDGET_BOUNDS_WIDTH: i32 = 28;
 const ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT: i32 = 27;
+const ADVANCEMENTS_HOVER_MAX_FADE: f32 = 0.3;
+const ADVANCEMENTS_HOVER_BOX_SOURCE_WIDTH: u32 = 200;
+const ADVANCEMENTS_HOVER_FRAME_SIZE: u32 = 26;
+const ADVANCEMENTS_HOVER_TITLE_MIN_WIDTH: u32 = 80;
+const ADVANCEMENTS_HOVER_TITLE_MAX_WIDTH: u32 = 163;
+const ADVANCEMENTS_HOVER_TITLE_X: i32 = 32;
+const ADVANCEMENTS_HOVER_TITLE_PADDING_LEFT: u32 = 3;
+const ADVANCEMENTS_HOVER_TITLE_PADDING_RIGHT: u32 = 5;
+const ADVANCEMENTS_HOVER_TITLE_PADDING_TOP: i32 = 9;
+const ADVANCEMENTS_HOVER_TITLE_PADDING_BOTTOM: i32 = 8;
+const ADVANCEMENTS_HOVER_DESCRIPTION_PADDING_TOP: i32 = 6;
+const ADVANCEMENTS_HOVER_LINE_HEIGHT: i32 = 9;
+const ADVANCEMENTS_HOVER_PROGRESS_PADDING: u32 = 8;
+const ADVANCEMENTS_HOVER_PROGRESS_PREFIX_WIDTH: u32 = 29;
+const ADVANCEMENTS_HOVER_RIGHT_MARGIN: i32 = 6;
+const ADVANCEMENTS_HOVER_TITLE_TEXT_COLOR: [f32; 4] = rgba32(-1);
+const ADVANCEMENTS_HOVER_TASK_DESCRIPTION_TEXT_COLOR: [f32; 4] =
+    [85.0 / 255.0, 1.0, 85.0 / 255.0, 1.0];
+const ADVANCEMENTS_HOVER_CHALLENGE_DESCRIPTION_TEXT_COLOR: [f32; 4] =
+    [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+const ADVANCEMENTS_HOVER_FADE_TINT: [f32; 4] = [0.0, 0.0, 0.0, ADVANCEMENTS_HOVER_MAX_FADE];
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
@@ -534,6 +556,7 @@ struct InventoryHudLocalState {
     recipe_book_pages: RecipeBookPageHudState,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     advancement_scroll_delta: Option<(f64, f64)>,
+    advancement_hover_fade: f32,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -1771,6 +1794,10 @@ pub(crate) fn pump_network_and_terrain(
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
+    let advancement_scroll_delta =
+        input.advancement_scroll_delta(world.selected_advancements_tab());
+    let advancement_hover_fade =
+        advancement_hover_fade_for_hud(input, world, advancement_scroll_delta, surface_size);
     let hud_sign_editor_screen = hud_sign_editor_screen(input, world);
     let hud_inventory_screen = if hud_sign_editor_screen.is_some() {
         None
@@ -1790,8 +1817,8 @@ pub(crate) fn pump_network_and_terrain(
                 recipe_book_tabs: input.recipe_book_tab_selection_hud_state(),
                 recipe_book_pages: input.recipe_book_page_hud_state(),
                 recipe_book_overlay: input.recipe_book_overlay_hud_state(),
-                advancement_scroll_delta: input
-                    .advancement_scroll_delta(world.selected_advancements_tab()),
+                advancement_scroll_delta,
+                advancement_hover_fade,
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2685,6 +2712,38 @@ fn hud_inventory_screen_with_local_state(
     )
 }
 
+fn advancement_hover_fade_for_hud(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    scroll_delta: Option<(f64, f64)>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> f32 {
+    if !world.advancements_screen_is_open() {
+        input.reset_advancement_hover_fade();
+        return 0.0;
+    }
+
+    let widgets = world.selected_advancement_widgets();
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(&widgets, scroll_delta) else {
+        input.update_advancement_hover_fade(false);
+        return input.advancement_hover_fade();
+    };
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let hovering = advancement_hovered_widget(
+        &widgets,
+        scroll_x,
+        scroll_y,
+        inside_x,
+        inside_y,
+        input.inventory_cursor_position(),
+    )
+    .is_some();
+    input.update_advancement_hover_fade(hovering);
+    input.advancement_hover_fade()
+}
+
 fn hud_inventory_screen_with_local_state_for_surface(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -2704,6 +2763,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
             item_runtime,
             terrain_textures,
             local_state.advancement_scroll_delta,
+            local_state.advancement_hover_fade,
             surface_size,
             local_state.cursor_position,
             local_state.keybind_context,
@@ -2939,9 +2999,11 @@ fn hud_inventory_screen_with_local_state_for_surface(
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
         background_layers,
+        foreground_layers: Vec::new(),
         fill_layers,
         slots,
         floating_items,
+        foreground_items: Vec::new(),
         ghost_items,
         entity_previews,
         text_labels,
@@ -4499,9 +4561,11 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
         width: 192,
         height: 192,
         background_layers: book_screen_background_layers(book),
+        foreground_layers: Vec::new(),
         fill_layers: Vec::new(),
         slots: Vec::new(),
         floating_items: Vec::new(),
+        foreground_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels: book_screen_text_labels(book),
@@ -4515,6 +4579,7 @@ fn hud_advancements_screen(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     advancement_scroll_delta: Option<(f64, f64)>,
+    advancement_hover_fade: f32,
     surface_size: winit::dpi::PhysicalSize<u32>,
     cursor_position: Option<(i32, i32)>,
     keybind_context: ItemModelKeybindContext,
@@ -4612,7 +4677,21 @@ fn hud_advancements_screen(
         keybind_context,
         partial_tick,
     ));
-    let fill_layers = if selected_tab.is_some() {
+    let hover = advancements_hover_projection(
+        world,
+        item_runtime,
+        terrain_textures,
+        &selected_widgets,
+        advancement_scroll_delta,
+        advancement_hover_fade,
+        window_x,
+        window_y,
+        cursor_position,
+        screen_width,
+        keybind_context,
+        partial_tick,
+    );
+    let mut fill_layers = if selected_tab.is_some() {
         Vec::new()
     } else {
         vec![HudInventoryFillLayer {
@@ -4624,22 +4703,27 @@ fn hud_advancements_screen(
             stage: HudInventoryFillStage::BeforeGhostItem,
         }]
     };
+    fill_layers.extend(hover.fill_layers);
+    let mut text_labels = advancements_screen_text_labels(
+        selected_tab.as_ref().map(|tab| tab.title.as_str()),
+        window_x,
+        window_y,
+        done_button_x,
+        done_button_y,
+    );
+    text_labels.extend(hover.text_labels);
     HudInventoryScreen {
         width: screen_width,
         height: screen_height,
         background_layers,
+        foreground_layers: hover.background_layers,
         fill_layers,
         slots: Vec::new(),
         floating_items,
+        foreground_items: hover.foreground_items,
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
-        text_labels: advancements_screen_text_labels(
-            selected_tab.as_ref().map(|tab| tab.title.as_str()),
-            window_x,
-            window_y,
-            done_button_x,
-            done_button_y,
-        ),
+        text_labels,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -5289,6 +5373,541 @@ fn advancement_widget_icon_intersects_content(
         && x < inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
         && bottom > inside_y
         && y < inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
+}
+
+#[derive(Debug, Default)]
+struct AdvancementHoverProjection {
+    fill_layers: Vec<HudInventoryFillLayer>,
+    background_layers: Vec<HudInventoryBackgroundLayer>,
+    text_labels: Vec<HudInventoryTextLabel>,
+    foreground_items: Vec<HudInventoryItem>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn advancements_hover_projection(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
+    hover_fade: f32,
+    window_x: i32,
+    window_y: i32,
+    cursor_position: Option<(i32, i32)>,
+    screen_width: u32,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> AdvancementHoverProjection {
+    let mut projection = AdvancementHoverProjection::default();
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets, scroll_delta) else {
+        return projection;
+    };
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let hover_fade_tint = advancement_hover_fade_tint(hover_fade);
+    if hover_fade_tint[3] > 0.0 {
+        projection.fill_layers.push(HudInventoryFillLayer {
+            x: inside_x,
+            y: inside_y,
+            width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+            height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+            tint: hover_fade_tint,
+            stage: HudInventoryFillStage::Foreground,
+        });
+    }
+    let Some(widget) = advancement_hovered_widget(
+        widgets,
+        scroll_x,
+        scroll_y,
+        inside_x,
+        inside_y,
+        cursor_position,
+    ) else {
+        return projection;
+    };
+    push_advancement_hover_boxes_and_text(
+        &mut projection.background_layers,
+        &mut projection.text_labels,
+        widget,
+        scroll_x,
+        scroll_y,
+        window_x,
+        inside_x,
+        inside_y,
+        screen_width,
+    );
+    if let Some(item) = advancement_hover_icon_item(
+        world,
+        item_runtime,
+        terrain_textures,
+        widget,
+        scroll_x,
+        scroll_y,
+        inside_x,
+        inside_y,
+        keybind_context,
+        partial_tick,
+    ) {
+        projection.foreground_items.push(item);
+    }
+    projection
+}
+
+fn advancement_hover_fade_tint(hover_fade: f32) -> [f32; 4] {
+    let alpha = if hover_fade.is_finite() {
+        hover_fade.clamp(0.0, ADVANCEMENTS_HOVER_MAX_FADE)
+    } else {
+        0.0
+    };
+    let mut tint = ADVANCEMENTS_HOVER_FADE_TINT;
+    tint[3] = alpha;
+    tint
+}
+
+fn advancement_hovered_widget(
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_x: i32,
+    scroll_y: i32,
+    inside_x: i32,
+    inside_y: i32,
+    cursor_position: Option<(i32, i32)>,
+) -> Option<&bbb_world::AdvancementWidgetSummary> {
+    let (cursor_x, cursor_y) = cursor_position?;
+    let mouse_x = cursor_x - inside_x;
+    let mouse_y = cursor_y - inside_y;
+    if mouse_x <= 0
+        || mouse_x >= ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
+        || mouse_y <= 0
+        || mouse_y >= ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
+    {
+        return None;
+    }
+    widgets.iter().find(|widget| {
+        if !advancement_widget_visible(widget) {
+            return false;
+        }
+        let x0 = scroll_x + widget.x;
+        let y0 = scroll_y + widget.y;
+        mouse_x >= x0
+            && mouse_x <= x0 + ADVANCEMENTS_HOVER_FRAME_SIZE as i32
+            && mouse_y >= y0
+            && mouse_y <= y0 + ADVANCEMENTS_HOVER_FRAME_SIZE as i32
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_advancement_hover_boxes_and_text(
+    background_layers: &mut Vec<HudInventoryBackgroundLayer>,
+    text_labels: &mut Vec<HudInventoryTextLabel>,
+    widget: &bbb_world::AdvancementWidgetSummary,
+    scroll_x: i32,
+    scroll_y: i32,
+    window_x: i32,
+    inside_x: i32,
+    inside_y: i32,
+    screen_width: u32,
+) {
+    let title_lines = advancement_title_lines(&widget.title);
+    let progress_text = advancement_progress_text(widget);
+    let progress_width = progress_text
+        .as_deref()
+        .and_then(hud_ascii_approx_text_width)
+        .unwrap_or_default();
+    let title_width = title_lines
+        .iter()
+        .filter_map(|line| hud_ascii_approx_text_width(line))
+        .max()
+        .unwrap_or_default()
+        .max(ADVANCEMENTS_HOVER_TITLE_MIN_WIDTH);
+    let max_progress_width = advancement_max_progress_width(widget);
+    let preferred_description_width = ADVANCEMENTS_HOVER_PROGRESS_PREFIX_WIDTH
+        .saturating_add(title_width)
+        .saturating_add(max_progress_width);
+    let description_lines =
+        advancement_wrap_text_lines(&widget.description, preferred_description_width);
+    let tooltip_width = description_lines
+        .iter()
+        .filter_map(|line| hud_ascii_approx_text_width(line))
+        .fold(preferred_description_width, u32::max)
+        .saturating_add(
+            ADVANCEMENTS_HOVER_TITLE_PADDING_LEFT + ADVANCEMENTS_HOVER_TITLE_PADDING_RIGHT,
+        );
+    let Ok(tooltip_width_i32) = i32::try_from(tooltip_width) else {
+        return;
+    };
+    let title_bar_height = i32::try_from(title_lines.len())
+        .unwrap_or_default()
+        .saturating_mul(ADVANCEMENTS_HOVER_LINE_HEIGHT)
+        .saturating_add(ADVANCEMENTS_HOVER_TITLE_PADDING_TOP)
+        .saturating_add(ADVANCEMENTS_HOVER_TITLE_PADDING_BOTTOM);
+    let description_text_height = i32::try_from(description_lines.len())
+        .unwrap_or_default()
+        .saturating_mul(ADVANCEMENTS_HOVER_LINE_HEIGHT);
+    let description_height = ADVANCEMENTS_HOVER_DESCRIPTION_PADDING_TOP + description_text_height;
+    let title_top =
+        scroll_y + widget.y + (ADVANCEMENTS_HOVER_FRAME_SIZE as i32 - title_bar_height) / 2;
+    let title_bar_bottom = title_top + title_bar_height;
+    let left_side =
+        window_x + scroll_x + widget.x + tooltip_width_i32 + ADVANCEMENTS_HOVER_FRAME_SIZE as i32
+            >= i32::try_from(screen_width).unwrap_or(i32::MAX);
+    let top_side =
+        title_bar_bottom + description_height >= ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32;
+    let title_left = if left_side {
+        scroll_x + widget.x - tooltip_width_i32
+            + ADVANCEMENTS_HOVER_FRAME_SIZE as i32
+            + ADVANCEMENTS_HOVER_RIGHT_MARGIN
+    } else {
+        scroll_x + widget.x
+    };
+    let title_bar_height_u32 = u32::try_from(title_bar_height.max(1)).unwrap_or_default();
+
+    if !description_lines.is_empty() {
+        let background_height = title_bar_height + description_height;
+        let background_y = if top_side {
+            title_bar_bottom - background_height
+        } else {
+            title_top
+        };
+        background_layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementHoverBox(HudAdvancementHoverBoxSprite::Title),
+            inside_x + title_left,
+            inside_y + background_y,
+            tooltip_width,
+            u32::try_from(background_height.max(1)).unwrap_or_default(),
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    let (first_box, second_box, first_half_width, frame_obtained) =
+        advancement_hover_progress_box_state(widget, tooltip_width);
+    let second_half_width = tooltip_width.saturating_sub(first_half_width);
+    if first_box == second_box {
+        background_layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementHoverBox(first_box),
+            inside_x + title_left,
+            inside_y + title_top,
+            tooltip_width,
+            title_bar_height_u32,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    } else {
+        push_advancement_hover_progress_box_segment(
+            background_layers,
+            first_box,
+            inside_x + title_left,
+            inside_y + title_top,
+            first_half_width,
+            title_bar_height_u32,
+            0,
+            first_half_width,
+        );
+        push_advancement_hover_progress_box_segment(
+            background_layers,
+            second_box,
+            inside_x + title_left + i32::try_from(first_half_width).unwrap_or_default(),
+            inside_y + title_top,
+            second_half_width,
+            title_bar_height_u32,
+            ADVANCEMENTS_HOVER_BOX_SOURCE_WIDTH.saturating_sub(second_half_width),
+            ADVANCEMENTS_HOVER_BOX_SOURCE_WIDTH,
+        );
+    }
+    background_layers.push(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementWidgetFrame(advancement_widget_frame_sprite(
+            widget.frame_type,
+            frame_obtained,
+        )),
+        inside_x + scroll_x + widget.x + ADVANCEMENTS_WIDGET_FRAME_OFFSET_X,
+        inside_y + scroll_y + widget.y,
+        ADVANCEMENTS_WIDGET_FRAME_WIDTH,
+        ADVANCEMENTS_WIDGET_FRAME_HEIGHT,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+
+    let title_y = inside_y + title_top + ADVANCEMENTS_HOVER_TITLE_PADDING_TOP;
+    let title_x = if left_side {
+        inside_x + title_left + ADVANCEMENTS_HOVER_TITLE_PADDING_LEFT as i32 + 2
+    } else {
+        inside_x + scroll_x + widget.x + ADVANCEMENTS_HOVER_TITLE_X
+    };
+    push_advancement_hover_text_lines(
+        text_labels,
+        &title_lines,
+        title_x,
+        title_y,
+        ADVANCEMENTS_HOVER_TITLE_TEXT_COLOR,
+    );
+    if let Some(progress_text) = progress_text {
+        let progress_x = if left_side {
+            inside_x + scroll_x + widget.x - i32::try_from(progress_width).unwrap_or_default()
+        } else {
+            inside_x + scroll_x + widget.x + tooltip_width_i32
+                - i32::try_from(progress_width).unwrap_or_default()
+                - ADVANCEMENTS_HOVER_TITLE_PADDING_RIGHT as i32
+        };
+        push_advancement_hover_text_label(
+            text_labels,
+            progress_text,
+            progress_x,
+            title_y,
+            progress_width,
+            ADVANCEMENTS_HOVER_TITLE_TEXT_COLOR,
+        );
+    }
+
+    let description_y = if top_side {
+        inside_y + title_top - description_text_height + 1
+    } else {
+        inside_y + title_bar_bottom
+    };
+    push_advancement_hover_text_lines(
+        text_labels,
+        &description_lines,
+        inside_x + title_left + ADVANCEMENTS_HOVER_TITLE_PADDING_RIGHT as i32,
+        description_y,
+        advancement_hover_description_text_color(widget.frame_type),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_advancement_hover_progress_box_segment(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    sprite: HudAdvancementHoverBoxSprite,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    source_x0: u32,
+    source_x1: u32,
+) {
+    if width == 0 {
+        return;
+    }
+    let source_width = ADVANCEMENTS_HOVER_BOX_SOURCE_WIDTH.max(1) as f32;
+    layers.push(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementHoverBox(sprite),
+        x,
+        y,
+        width,
+        height,
+        [source_x0 as f32 / source_width, 0.0],
+        [source_x1 as f32 / source_width, 1.0],
+    ));
+}
+
+fn advancement_hover_progress_box_state(
+    widget: &bbb_world::AdvancementWidgetSummary,
+    tooltip_width: u32,
+) -> (
+    HudAdvancementHoverBoxSprite,
+    HudAdvancementHoverBoxSprite,
+    u32,
+    bool,
+) {
+    let amount = advancement_progress_percent(widget);
+    let mut first_half_width = (amount * tooltip_width as f32).floor() as u32;
+    if amount >= 1.0 {
+        first_half_width = tooltip_width / 2;
+        (
+            HudAdvancementHoverBoxSprite::Obtained,
+            HudAdvancementHoverBoxSprite::Obtained,
+            first_half_width,
+            true,
+        )
+    } else if first_half_width < 2 {
+        first_half_width = tooltip_width / 2;
+        (
+            HudAdvancementHoverBoxSprite::Unobtained,
+            HudAdvancementHoverBoxSprite::Unobtained,
+            first_half_width,
+            false,
+        )
+    } else if first_half_width > tooltip_width.saturating_sub(2) {
+        first_half_width = tooltip_width / 2;
+        (
+            HudAdvancementHoverBoxSprite::Obtained,
+            HudAdvancementHoverBoxSprite::Obtained,
+            first_half_width,
+            false,
+        )
+    } else {
+        (
+            HudAdvancementHoverBoxSprite::Obtained,
+            HudAdvancementHoverBoxSprite::Unobtained,
+            first_half_width,
+            false,
+        )
+    }
+}
+
+fn advancement_progress_percent(widget: &bbb_world::AdvancementWidgetSummary) -> f32 {
+    if widget.progress_total == 0 {
+        0.0
+    } else {
+        (widget.progress_done as f32 / widget.progress_total as f32).clamp(0.0, 1.0)
+    }
+}
+
+fn advancement_progress_text(widget: &bbb_world::AdvancementWidgetSummary) -> Option<String> {
+    (widget.progress_total > 1).then(|| {
+        format!(
+            "{}/{}",
+            widget.progress_done.min(widget.progress_total),
+            widget.progress_total
+        )
+    })
+}
+
+fn advancement_max_progress_width(widget: &bbb_world::AdvancementWidgetSummary) -> u32 {
+    if widget.progress_total <= 1 {
+        return 0;
+    }
+    let text = format!("{}/{}", widget.progress_total, widget.progress_total);
+    hud_ascii_approx_text_width(&text)
+        .unwrap_or_default()
+        .saturating_add(ADVANCEMENTS_HOVER_PROGRESS_PADDING)
+}
+
+fn advancement_title_lines(title: &str) -> Vec<String> {
+    let mut lines = advancement_wrap_text_lines(title, ADVANCEMENTS_HOVER_TITLE_MAX_WIDTH);
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+fn advancement_wrap_text_lines(text: &str, max_width: u32) -> Vec<String> {
+    let max_width = max_width.max(1);
+    let mut lines = Vec::new();
+    for paragraph in text.split('\n') {
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_string()
+            } else {
+                format!("{current} {word}")
+            };
+            if !current.is_empty()
+                && hud_ascii_approx_text_width_allow_empty(&candidate).unwrap_or(u32::MAX)
+                    > max_width
+            {
+                lines.push(current);
+                current = word.to_string();
+            } else {
+                current = candidate;
+            }
+        }
+        if !current.is_empty() {
+            lines.push(current);
+        }
+    }
+    lines
+}
+
+fn hud_ascii_approx_text_width_allow_empty(text: &str) -> Option<u32> {
+    let mut width = 0u32;
+    for ch in text.chars() {
+        width = width.checked_add(hud_ascii_approx_char_width(ch))?;
+    }
+    Some(width)
+}
+
+fn push_advancement_hover_text_lines(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    lines: &[String],
+    x: i32,
+    y: i32,
+    tint: [f32; 4],
+) {
+    for (line_index, line) in lines.iter().enumerate() {
+        push_advancement_hover_text_label(
+            labels,
+            line.clone(),
+            x,
+            y + i32::try_from(line_index).unwrap_or_default() * ADVANCEMENTS_HOVER_LINE_HEIGHT,
+            hud_ascii_approx_text_width(line).unwrap_or(1),
+            tint,
+        );
+    }
+}
+
+fn push_advancement_hover_text_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    tint: [f32; 4],
+) {
+    labels.push(HudInventoryTextLabel {
+        x,
+        y,
+        width,
+        text,
+        tint,
+        background: None,
+        input: None,
+        shadow: false,
+        runs: Vec::new(),
+    });
+}
+
+fn advancement_hover_description_text_color(frame_type: AdvancementFrameType) -> [f32; 4] {
+    match frame_type {
+        AdvancementFrameType::Task | AdvancementFrameType::Goal => {
+            ADVANCEMENTS_HOVER_TASK_DESCRIPTION_TEXT_COLOR
+        }
+        AdvancementFrameType::Challenge => ADVANCEMENTS_HOVER_CHALLENGE_DESCRIPTION_TEXT_COLOR,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn advancement_hover_icon_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    widget: &bbb_world::AdvancementWidgetSummary,
+    scroll_x: i32,
+    scroll_y: i32,
+    inside_x: i32,
+    inside_y: i32,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Option<HudInventoryItem> {
+    let item_runtime = item_runtime?;
+    let stack = ItemStackSummary {
+        item_id: Some(widget.icon.item_id),
+        count: widget.icon.count,
+        component_patch: widget.icon.component_patch.clone(),
+    };
+    let icon = hud_item_icon_for_stack(
+        world,
+        Some(item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        keybind_context,
+        0,
+        partial_tick,
+    )?;
+    let (icon_x, icon_y) = ADVANCEMENTS_WIDGET_ICON_OFFSET;
+    Some(HudInventoryItem {
+        x: inside_x + scroll_x + widget.x + icon_x,
+        y: inside_y + scroll_y + widget.y + icon_y,
+        scale: 1.0,
+        scale_y: 1.0,
+        icon,
+        scissor: None,
+        draw_decorations: false,
+        block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+    })
 }
 
 fn advancements_widget_scroll(

@@ -5051,3 +5051,14 @@
   scissor 边界插值 UV/color/light/overlay/normal 属性；runtime 传入的
   advancement contents scissor 因而同时覆盖 flat item 与 3D block fake item。
   剩余：hover title/description boxes，以及 debug overlay。
+- [x] advancement hover title/progress/description tooltip rendering（P2
+  HUD/runtime/renderer/world slice，2026-07-08）：依据
+  `AdvancementsScreen.extractTooltips` 将鼠标坐标平移到 selected tab content
+  space，以及 `AdvancementTab.extractTooltips` 在 234x113 contents 内查找
+  `AdvancementWidget.isMouseOver` 后按 vanilla `fade` 规则 `+0.02` 到 0.3、
+  `-0.04` 衰减；`AdvancementWidget.extractHover` 的 title_box、obtained /
+  unobtained progress box split、frame sprite、title/progress/description 文本、
+  frame-kind description tint 和 foreground fake item 现在都投影到 native HUD。
+  renderer 增加 advancement hover box sprites 与 foreground layers/items，使
+  hover 内容位于 contents fade 遮罩之上且不污染普通 inventory item flow。剩余：
+  debug overlay。

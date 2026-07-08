@@ -594,6 +594,31 @@ impl HudAdvancementWidgetFrameSprite {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudAdvancementHoverBoxSprite {
+    Title,
+    Obtained,
+    Unobtained,
+}
+
+impl HudAdvancementHoverBoxSprite {
+    pub(crate) const COUNT: usize = 3;
+
+    pub const ALL: [Self; Self::COUNT] = [Self::Title, Self::Obtained, Self::Unobtained];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn sprite_path(self) -> &'static str {
+        match self {
+            Self::Title => "advancements/title_box",
+            Self::Obtained => "advancements/box_obtained",
+            Self::Unobtained => "advancements/box_unobtained",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudAdvancementBackgroundTexture {
     Stone,
     Adventure,
@@ -731,6 +756,7 @@ pub enum HudInventoryBackgroundTexture {
     AdvancementBackground(HudAdvancementBackgroundTexture),
     AdvancementLine(HudAdvancementLineTexture),
     AdvancementWidgetFrame(HudAdvancementWidgetFrameSprite),
+    AdvancementHoverBox(HudAdvancementHoverBoxSprite),
     RecipeBook,
     RecipeBookTab,
     RecipeBookTabSelected,
@@ -818,6 +844,7 @@ pub struct HudInventoryBackgroundLayer {
 pub enum HudInventoryFillStage {
     BeforeGhostItem,
     AfterGhostItem,
+    Foreground,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1077,12 +1104,16 @@ pub struct HudInventoryScreen {
     pub width: u32,
     pub height: u32,
     pub background_layers: Vec<HudInventoryBackgroundLayer>,
+    /// Foreground GUI sprite layers drawn after fake item icons and before text labels/tooltips.
+    pub foreground_layers: Vec<HudInventoryBackgroundLayer>,
     /// Solid GUI fills drawn around recipe-book ghost fake items.
     pub fill_layers: Vec<HudInventoryFillLayer>,
     /// Slots for the currently open inventory container.
     pub slots: Vec<HudInventorySlot>,
     /// Item icons drawn by the inventory screen that are not container slots.
     pub floating_items: Vec<HudInventoryItem>,
+    /// Foreground item icons drawn after inventory/screen text, for vanilla fake-item overlays.
+    pub foreground_items: Vec<HudInventoryItem>,
     /// Recipe-book ghost fake items drawn above normal slots and below the foreground slot highlight.
     pub ghost_items: Vec<HudInventoryGhostItem>,
     /// Entity previews drawn through vanilla GUI picture-in-picture renderers.
@@ -1870,6 +1901,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_advancement_widget_frames[sprite.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_advancement_hover_box(
+        &mut self,
+        sprite: HudAdvancementHoverBoxSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_advancement_hover_boxes[sprite.as_index()] =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3086,6 +3129,14 @@ impl Renderer {
                     append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
                 }
             }
+            for item in &screen.foreground_items {
+                if let Some(model) = &item.block_model {
+                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
+                    let scissor_rect =
+                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                    append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
+                }
+            }
         }
         meshes
     }
@@ -3561,26 +3612,14 @@ impl Renderer {
         }
 
         if let Some(screen) = &self.hud_inventory_screen {
-            for layer in &screen.background_layers {
-                if let Some(background) = self.hud_inventory_background_sprite(layer.texture) {
-                    push_hud_draw_with_uv(
-                        &mut vertices,
-                        &mut commands,
-                        background,
-                        surface_size,
-                        inventory_background_hud_rect(
-                            surface_size,
-                            screen.width,
-                            screen.height,
-                            layer.x,
-                            layer.y,
-                            layer.width,
-                            layer.height,
-                        ),
-                        layer.uv,
-                    );
-                }
-            }
+            push_hud_inventory_background_layers(
+                &mut vertices,
+                &mut commands,
+                self,
+                surface_size,
+                screen,
+                &screen.background_layers,
+            );
 
             // Vanilla screens submit the entity preview right after the background blit
             // (`InventoryScreen.renderBg` / `SmithingScreen.renderBg`), and
@@ -3795,6 +3834,24 @@ impl Renderer {
                 }
             }
 
+            push_hud_inventory_fill_layers(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                surface_size,
+                screen,
+                HudInventoryFillStage::Foreground,
+            );
+
+            push_hud_inventory_background_layers(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                self,
+                surface_size,
+                screen,
+                &screen.foreground_layers,
+            );
+
             push_hud_inventory_text_labels(
                 &mut vertices,
                 &mut post_gui_item_commands,
@@ -3806,6 +3863,44 @@ impl Renderer {
                 surface_size,
                 screen,
             );
+
+            if let Some(atlas) = item_atlas {
+                for item in &screen.foreground_items {
+                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
+                    let scissor_rect =
+                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                    push_hud_item_icon_clipped(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        atlas,
+                        &self.hud_white_pixel,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        scissor_rect,
+                        &item.icon,
+                        item.block_model.is_none(),
+                        item.draw_decorations && item.block_model.is_none(),
+                    );
+                    if item.block_model.is_some() {
+                        push_hud_item_icon_clipped(
+                            &mut vertices,
+                            &mut post_gui_item_commands,
+                            atlas,
+                            &self.hud_white_pixel,
+                            self.hud_digit_atlas.as_ref(),
+                            &self.hud_digit_glyphs,
+                            surface_size,
+                            item_rect,
+                            scissor_rect,
+                            &item.icon,
+                            false,
+                            item.draw_decorations,
+                        );
+                    }
+                }
+            }
 
             if let (Some(slot), Some(highlight)) = (hovered_slot, &self.hud_slot_highlight_front) {
                 push_hud_draw(
@@ -4044,6 +4139,9 @@ impl Renderer {
             },
             HudInventoryBackgroundTexture::AdvancementWidgetFrame(sprite) => {
                 self.hud_advancement_widget_frames[sprite.as_index()].as_ref()
+            }
+            HudInventoryBackgroundTexture::AdvancementHoverBox(sprite) => {
+                self.hud_advancement_hover_boxes[sprite.as_index()].as_ref()
             }
             HudInventoryBackgroundTexture::RecipeBook => self.hud_recipe_book_background.as_ref(),
             HudInventoryBackgroundTexture::RecipeBookTab => self.hud_recipe_book_tab.as_ref(),
@@ -4824,6 +4922,37 @@ fn push_hud_inventory_fill_layers<'a>(
             },
             layer.tint,
         );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_background_layers<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    renderer: &'a Renderer,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    layers: &[HudInventoryBackgroundLayer],
+) {
+    for layer in layers {
+        if let Some(background) = renderer.hud_inventory_background_sprite(layer.texture) {
+            push_hud_draw_with_uv(
+                vertices,
+                commands,
+                background,
+                surface_size,
+                inventory_background_hud_rect(
+                    surface_size,
+                    screen.width,
+                    screen.height,
+                    layer.x,
+                    layer.y,
+                    layer.width,
+                    layer.height,
+                ),
+                layer.uv,
+            );
+        }
     }
 }
 
@@ -6180,6 +6309,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_inventory_background_layer)
             .collect(),
+        foreground_layers: screen
+            .foreground_layers
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_background_layer)
+            .collect(),
         fill_layers: screen
             .fill_layers
             .into_iter()
@@ -6192,6 +6326,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .collect(),
         floating_items: screen
             .floating_items
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_item)
+            .collect(),
+        foreground_items: screen
+            .foreground_items
             .into_iter()
             .filter_map(sanitize_hud_inventory_item)
             .collect(),
@@ -8717,6 +8856,7 @@ mod tests {
                     },
                 },
             ],
+            foreground_layers: Vec::new(),
             fill_layers: vec![
                 HudInventoryFillLayer {
                     x: 8,
@@ -8785,6 +8925,7 @@ mod tests {
                 },
             ],
             floating_items: Vec::new(),
+            foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             text_labels: vec![
@@ -8978,6 +9119,7 @@ mod tests {
             width: 176,
             height: 166,
             background_layers: Vec::new(),
+            foreground_layers: Vec::new(),
             fill_layers: Vec::new(),
             slots: Vec::new(),
             floating_items: vec![
@@ -9033,6 +9175,7 @@ mod tests {
                     block_model: None,
                 },
             ],
+            foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             hovered_slot_id: None,
@@ -9077,7 +9220,7 @@ mod tests {
             .expect("collect_hud_draws is defined");
         let collect_source = &source[collect_start..];
         let background = collect_source
-            .find("for layer in &screen.background_layers")
+            .find("&screen.background_layers")
             .expect("background layers draw first");
         let blit = collect_source
             .find("HudDrawCommand::EntityPreviewBlit")
@@ -9613,9 +9756,11 @@ mod tests {
             width: 176,
             height: 166,
             background_layers: Vec::new(),
+            foreground_layers: Vec::new(),
             fill_layers: Vec::new(),
             slots: Vec::new(),
             floating_items: Vec::new(),
+            foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews,
             text_labels: Vec::new(),

@@ -4986,6 +4986,8 @@ fn advancements_left_drag_scrolls_after_first_drag_event_until_release() {
         Some(PhysicalPosition::new(100.0, 100.0)),
         Some(PhysicalPosition::new(110.0, 120.0)),
     ));
+    assert_eq!(input.inventory_cursor_position(), Some((110, 120)));
+    assert_eq!(input.inventory_hovered_slot(), None);
     assert_eq!(
         input.advancement_scroll_delta(Some("minecraft:story/root")),
         None

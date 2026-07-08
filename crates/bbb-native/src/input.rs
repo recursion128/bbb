@@ -180,6 +180,7 @@ pub(crate) struct ClientInputState {
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     recipe_book_last_placed_recipe: Option<(i32, i32)>,
     advancement_scroll_deltas: BTreeMap<String, (f64, f64)>,
+    advancement_hover_fade: f32,
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     sign_editor: Option<SignEditorInputState>,
@@ -321,6 +322,7 @@ impl ClientInputState {
         self.recipe_book_search_focused = false;
         self.recipe_book_search_suppress_open_key_commit = false;
         self.recipe_book_overlay = None;
+        self.advancement_hover_fade = 0.0;
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
         self.chat_entry = None;
@@ -490,6 +492,22 @@ impl ClientInputState {
         selected_tab: Option<&str>,
     ) -> Option<(f64, f64)> {
         selected_tab.and_then(|tab| self.advancement_scroll_deltas.get(tab).copied())
+    }
+
+    pub(crate) fn update_advancement_hover_fade(&mut self, hovering: bool) {
+        if hovering {
+            self.advancement_hover_fade = (self.advancement_hover_fade + 0.02).clamp(0.0, 0.3);
+        } else {
+            self.advancement_hover_fade = (self.advancement_hover_fade - 0.04).clamp(0.0, 1.0);
+        }
+    }
+
+    pub(crate) fn reset_advancement_hover_fade(&mut self) {
+        self.advancement_hover_fade = 0.0;
+    }
+
+    pub(crate) fn advancement_hover_fade(&self) -> f32 {
+        self.advancement_hover_fade
     }
 
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
@@ -727,6 +745,9 @@ pub(crate) fn handle_advancements_screen_mouse_input(
     if !world.advancements_screen_is_open() {
         return false;
     }
+    input.inventory_cursor_position =
+        advancements_screen_cursor_position(cursor_position, surface_size);
+    input.inventory_hovered_slot = None;
     if matches!(state, ElementState::Released) {
         input.advancement_is_scrolling = false;
         if matches!(button, MouseButton::Left) {
@@ -762,6 +783,8 @@ pub(crate) fn handle_advancements_screen_cursor_moved(
     if !world.advancements_screen_is_open() {
         return false;
     }
+    input.inventory_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+    input.inventory_hovered_slot = None;
     if !input.advancement_mouse_left_down {
         return true;
     }
@@ -837,6 +860,18 @@ fn advancement_wheel_steps_from_scroll(
     input.scroll_accumulated_x -= f64::from(wheel_x);
     input.scroll_accumulated_y -= f64::from(wheel_y);
     Some((wheel_x, wheel_y))
+}
+
+fn advancements_screen_cursor_position(
+    cursor_position: Option<PhysicalPosition<f64>>,
+    _surface_size: PhysicalSize<u32>,
+) -> Option<(i32, i32)> {
+    cursor_position.and_then(physical_position_floor_i32)
+}
+
+fn physical_position_floor_i32(position: PhysicalPosition<f64>) -> Option<(i32, i32)> {
+    (position.x.is_finite() && position.y.is_finite())
+        .then(|| (position.x.floor() as i32, position.y.floor() as i32))
 }
 
 fn advancement_scroll_signum(value: f64) -> f64 {
