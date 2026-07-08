@@ -18,8 +18,8 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAirSupply,
-    HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementTabSprite,
+    HudAirSupply, HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
     HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
@@ -361,6 +361,22 @@ const ADVANCEMENTS_TITLE_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
 const ADVANCEMENTS_EMPTY_TEXT_COLOR: [f32; 4] = rgba32(-1);
 const ADVANCEMENTS_DONE_TEXT_COLOR: [f32; 4] = rgba32(-1);
 const ADVANCEMENTS_EMPTY_BACKGROUND_TINT: [f32; 4] = rgba32(-16_777_216);
+const ADVANCEMENTS_TAB_ABOVE_WIDTH: u32 = 28;
+const ADVANCEMENTS_TAB_ABOVE_HEIGHT: u32 = 32;
+const ADVANCEMENTS_TAB_ABOVE_MAX: usize = 8;
+const ADVANCEMENTS_TAB_BELOW_WIDTH: u32 = 28;
+const ADVANCEMENTS_TAB_BELOW_HEIGHT: u32 = 32;
+const ADVANCEMENTS_TAB_BELOW_MAX: usize = 8;
+const ADVANCEMENTS_TAB_LEFT_WIDTH: u32 = 32;
+const ADVANCEMENTS_TAB_LEFT_HEIGHT: u32 = 28;
+const ADVANCEMENTS_TAB_LEFT_MAX: usize = 5;
+const ADVANCEMENTS_TAB_RIGHT_WIDTH: u32 = 32;
+const ADVANCEMENTS_TAB_RIGHT_HEIGHT: u32 = 28;
+const ADVANCEMENTS_TAB_RIGHT_MAX: usize = 5;
+const ADVANCEMENTS_TAB_ABOVE_ICON_OFFSET: (i32, i32) = (6, 9);
+const ADVANCEMENTS_TAB_BELOW_ICON_OFFSET: (i32, i32) = (6, 6);
+const ADVANCEMENTS_TAB_LEFT_ICON_OFFSET: (i32, i32) = (10, 5);
+const ADVANCEMENTS_TAB_RIGHT_ICON_OFFSET: (i32, i32) = (6, 5);
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
@@ -2671,8 +2687,13 @@ fn hud_inventory_screen_with_local_state_for_surface(
 
     if world.advancements_screen_is_open() {
         return Some(hud_advancements_screen(
+            world,
+            item_runtime,
+            terrain_textures,
             surface_size,
             local_state.cursor_position,
+            local_state.keybind_context,
+            partial_tick,
         ));
     }
 
@@ -4471,13 +4492,22 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
 }
 
 fn hud_advancements_screen(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     surface_size: winit::dpi::PhysicalSize<u32>,
     cursor_position: Option<(i32, i32)>,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
 ) -> HudInventoryScreen {
     let screen_width = surface_size.width.max(1);
     let screen_height = surface_size.height.max(1);
     let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
     let (done_button_x, done_button_y) = advancements_done_button_origin_for_surface(surface_size);
+    let root_tabs = world.advancement_root_tabs();
+    let selected_tab = world.selected_advancement_root_tab();
+    let selected_tab_id = selected_tab.as_ref().map(|tab| tab.id.as_str());
+    let show_root_tabs = root_tabs.len() > 1;
     let done_button_highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
         cursor_x >= done_button_x
             && cursor_x < done_button_x + ADVANCEMENTS_DONE_BUTTON_WIDTH as i32
@@ -4489,32 +4519,54 @@ fn hud_advancements_screen(
     } else {
         HudInventoryBackgroundTexture::WidgetButton
     };
+    let mut background_layers = vec![
+        hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementsWindow,
+            window_x,
+            window_y,
+            ADVANCEMENTS_WINDOW_WIDTH,
+            ADVANCEMENTS_WINDOW_HEIGHT,
+            [0.0, 0.0],
+            [
+                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+            ],
+        ),
+        hud_inventory_background_layer(
+            done_button_texture,
+            done_button_x,
+            done_button_y,
+            ADVANCEMENTS_DONE_BUTTON_WIDTH,
+            ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ),
+    ];
+    if show_root_tabs {
+        background_layers.extend(advancements_tab_background_layers(
+            &root_tabs,
+            selected_tab_id,
+            window_x,
+            window_y,
+        ));
+    }
+    let mut floating_items = Vec::new();
+    if show_root_tabs {
+        floating_items.extend(advancements_tab_icon_items(
+            world,
+            item_runtime,
+            terrain_textures,
+            &root_tabs,
+            window_x,
+            window_y,
+            keybind_context,
+            partial_tick,
+        ));
+    }
     HudInventoryScreen {
         width: screen_width,
         height: screen_height,
-        background_layers: vec![
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::AdvancementsWindow,
-                window_x,
-                window_y,
-                ADVANCEMENTS_WINDOW_WIDTH,
-                ADVANCEMENTS_WINDOW_HEIGHT,
-                [0.0, 0.0],
-                [
-                    ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
-                    ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
-                ],
-            ),
-            hud_inventory_background_layer(
-                done_button_texture,
-                done_button_x,
-                done_button_y,
-                ADVANCEMENTS_DONE_BUTTON_WIDTH,
-                ADVANCEMENTS_DONE_BUTTON_HEIGHT,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-        ],
+        background_layers,
         fill_layers: vec![HudInventoryFillLayer {
             x: window_x + ADVANCEMENTS_WINDOW_INSIDE_X,
             y: window_y + ADVANCEMENTS_WINDOW_INSIDE_Y,
@@ -4524,10 +4576,11 @@ fn hud_advancements_screen(
             stage: HudInventoryFillStage::BeforeGhostItem,
         }],
         slots: Vec::new(),
-        floating_items: Vec::new(),
+        floating_items,
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels: advancements_screen_text_labels(
+            selected_tab.as_ref().map(|tab| tab.title.as_str()),
             window_x,
             window_y,
             done_button_x,
@@ -4536,6 +4589,213 @@ fn hud_advancements_screen(
         hovered_slot_id: None,
         tooltip: None,
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AdvancementTabType {
+    Above,
+    Below,
+    Left,
+    Right,
+}
+
+impl AdvancementTabType {
+    fn for_display_index(mut display_index: usize) -> Option<(Self, usize)> {
+        if display_index < ADVANCEMENTS_TAB_ABOVE_MAX {
+            return Some((Self::Above, display_index));
+        }
+        display_index -= ADVANCEMENTS_TAB_ABOVE_MAX;
+        if display_index < ADVANCEMENTS_TAB_BELOW_MAX {
+            return Some((Self::Below, display_index));
+        }
+        display_index -= ADVANCEMENTS_TAB_BELOW_MAX;
+        if display_index < ADVANCEMENTS_TAB_LEFT_MAX {
+            return Some((Self::Left, display_index));
+        }
+        display_index -= ADVANCEMENTS_TAB_LEFT_MAX;
+        (display_index < ADVANCEMENTS_TAB_RIGHT_MAX).then_some((Self::Right, display_index))
+    }
+
+    fn max(self) -> usize {
+        match self {
+            Self::Above => ADVANCEMENTS_TAB_ABOVE_MAX,
+            Self::Below => ADVANCEMENTS_TAB_BELOW_MAX,
+            Self::Left => ADVANCEMENTS_TAB_LEFT_MAX,
+            Self::Right => ADVANCEMENTS_TAB_RIGHT_MAX,
+        }
+    }
+
+    fn width(self) -> u32 {
+        match self {
+            Self::Above => ADVANCEMENTS_TAB_ABOVE_WIDTH,
+            Self::Below => ADVANCEMENTS_TAB_BELOW_WIDTH,
+            Self::Left => ADVANCEMENTS_TAB_LEFT_WIDTH,
+            Self::Right => ADVANCEMENTS_TAB_RIGHT_WIDTH,
+        }
+    }
+
+    fn height(self) -> u32 {
+        match self {
+            Self::Above => ADVANCEMENTS_TAB_ABOVE_HEIGHT,
+            Self::Below => ADVANCEMENTS_TAB_BELOW_HEIGHT,
+            Self::Left => ADVANCEMENTS_TAB_LEFT_HEIGHT,
+            Self::Right => ADVANCEMENTS_TAB_RIGHT_HEIGHT,
+        }
+    }
+
+    fn origin(self, index: usize) -> (i32, i32) {
+        match self {
+            Self::Above => (
+                ((self.width() + 4) * index as u32) as i32,
+                -(self.height() as i32) + 4,
+            ),
+            Self::Below => (((self.width() + 4) * index as u32) as i32, 136),
+            Self::Left => (
+                -(self.width() as i32) + 4,
+                (self.height() * index as u32) as i32,
+            ),
+            Self::Right => (248, (self.height() * index as u32) as i32),
+        }
+    }
+
+    fn icon_offset(self) -> (i32, i32) {
+        match self {
+            Self::Above => ADVANCEMENTS_TAB_ABOVE_ICON_OFFSET,
+            Self::Below => ADVANCEMENTS_TAB_BELOW_ICON_OFFSET,
+            Self::Left => ADVANCEMENTS_TAB_LEFT_ICON_OFFSET,
+            Self::Right => ADVANCEMENTS_TAB_RIGHT_ICON_OFFSET,
+        }
+    }
+
+    fn sprite(self, index: usize, selected: bool) -> HudAdvancementTabSprite {
+        let first = index == 0;
+        let last = index == self.max() - 1;
+        match (self, selected, first, last) {
+            (Self::Above, true, true, _) => HudAdvancementTabSprite::AboveLeftSelected,
+            (Self::Above, true, _, true) => HudAdvancementTabSprite::AboveRightSelected,
+            (Self::Above, true, _, _) => HudAdvancementTabSprite::AboveMiddleSelected,
+            (Self::Above, false, true, _) => HudAdvancementTabSprite::AboveLeft,
+            (Self::Above, false, _, true) => HudAdvancementTabSprite::AboveRight,
+            (Self::Above, false, _, _) => HudAdvancementTabSprite::AboveMiddle,
+            (Self::Below, true, true, _) => HudAdvancementTabSprite::BelowLeftSelected,
+            (Self::Below, true, _, true) => HudAdvancementTabSprite::BelowRightSelected,
+            (Self::Below, true, _, _) => HudAdvancementTabSprite::BelowMiddleSelected,
+            (Self::Below, false, true, _) => HudAdvancementTabSprite::BelowLeft,
+            (Self::Below, false, _, true) => HudAdvancementTabSprite::BelowRight,
+            (Self::Below, false, _, _) => HudAdvancementTabSprite::BelowMiddle,
+            (Self::Left, true, true, _) => HudAdvancementTabSprite::LeftTopSelected,
+            (Self::Left, true, _, true) => HudAdvancementTabSprite::LeftBottomSelected,
+            (Self::Left, true, _, _) => HudAdvancementTabSprite::LeftMiddleSelected,
+            (Self::Left, false, true, _) => HudAdvancementTabSprite::LeftTop,
+            (Self::Left, false, _, true) => HudAdvancementTabSprite::LeftBottom,
+            (Self::Left, false, _, _) => HudAdvancementTabSprite::LeftMiddle,
+            (Self::Right, true, true, _) => HudAdvancementTabSprite::RightTopSelected,
+            (Self::Right, true, _, true) => HudAdvancementTabSprite::RightBottomSelected,
+            (Self::Right, true, _, _) => HudAdvancementTabSprite::RightMiddleSelected,
+            (Self::Right, false, true, _) => HudAdvancementTabSprite::RightTop,
+            (Self::Right, false, _, true) => HudAdvancementTabSprite::RightBottom,
+            (Self::Right, false, _, _) => HudAdvancementTabSprite::RightMiddle,
+        }
+    }
+}
+
+fn advancement_tab_geometry(
+    display_index: usize,
+    window_x: i32,
+    window_y: i32,
+) -> Option<(AdvancementTabType, usize, i32, i32, u32, u32)> {
+    let (tab_type, tab_index) = AdvancementTabType::for_display_index(display_index)?;
+    let (x, y) = tab_type.origin(tab_index);
+    Some((
+        tab_type,
+        tab_index,
+        window_x + x,
+        window_y + y,
+        tab_type.width(),
+        tab_type.height(),
+    ))
+}
+
+fn advancements_tab_background_layers(
+    root_tabs: &[bbb_world::AdvancementRootTabSummary],
+    selected_tab_id: Option<&str>,
+    window_x: i32,
+    window_y: i32,
+) -> Vec<HudInventoryBackgroundLayer> {
+    let mut layers = Vec::new();
+    for tab in root_tabs {
+        let Some((tab_type, tab_index, x, y, width, height)) =
+            advancement_tab_geometry(tab.display_index, window_x, window_y)
+        else {
+            continue;
+        };
+        let selected = selected_tab_id == Some(tab.id.as_str());
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementTab(tab_type.sprite(tab_index, selected)),
+            x,
+            y,
+            width,
+            height,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    layers
+}
+
+fn advancements_tab_icon_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    root_tabs: &[bbb_world::AdvancementRootTabSummary],
+    window_x: i32,
+    window_y: i32,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let mut items = Vec::new();
+    for tab in root_tabs {
+        let Some((tab_type, _, x, y, _, _)) =
+            advancement_tab_geometry(tab.display_index, window_x, window_y)
+        else {
+            continue;
+        };
+        let stack = ItemStackSummary {
+            item_id: Some(tab.icon.item_id),
+            count: tab.icon.count,
+            component_patch: tab.icon.component_patch.clone(),
+        };
+        let Some(icon) = hud_item_icon_for_stack(
+            world,
+            Some(item_runtime),
+            &stack,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+            partial_tick,
+        ) else {
+            continue;
+        };
+        let (icon_x, icon_y) = tab_type.icon_offset();
+        items.push(HudInventoryItem {
+            x: x + icon_x,
+            y: y + icon_y,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon,
+            draw_decorations: false,
+            block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+        });
+    }
+    items
 }
 
 fn advancements_window_origin_for_surface(
@@ -4562,34 +4822,38 @@ fn advancements_done_button_origin_for_surface(
 }
 
 fn advancements_screen_text_labels(
+    selected_title: Option<&str>,
     window_x: i32,
     window_y: i32,
     done_button_x: i32,
     done_button_y: i32,
 ) -> Vec<HudInventoryTextLabel> {
+    let title = selected_title.unwrap_or(ADVANCEMENTS_TITLE_TEXT);
     let mut labels = vec![HudInventoryTextLabel {
         x: window_x + ADVANCEMENTS_WINDOW_TITLE_X,
         y: window_y + ADVANCEMENTS_WINDOW_TITLE_Y,
-        width: hud_ascii_approx_text_width(ADVANCEMENTS_TITLE_TEXT).unwrap_or_default(),
-        text: ADVANCEMENTS_TITLE_TEXT.to_string(),
+        width: hud_ascii_approx_text_width(title).unwrap_or_default(),
+        text: title.to_string(),
         tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
         background: None,
         input: None,
         shadow: false,
         runs: Vec::new(),
     }];
-    push_centered_advancements_label(
-        &mut labels,
-        ADVANCEMENTS_EMPTY_TEXT,
-        window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
-        window_y + ADVANCEMENTS_EMPTY_TEXT_Y,
-    );
-    push_centered_advancements_label(
-        &mut labels,
-        ADVANCEMENTS_SAD_TEXT,
-        window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
-        window_y + ADVANCEMENTS_SAD_TEXT_Y,
-    );
+    if selected_title.is_none() {
+        push_centered_advancements_label(
+            &mut labels,
+            ADVANCEMENTS_EMPTY_TEXT,
+            window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+            window_y + ADVANCEMENTS_EMPTY_TEXT_Y,
+        );
+        push_centered_advancements_label(
+            &mut labels,
+            ADVANCEMENTS_SAD_TEXT,
+            window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+            window_y + ADVANCEMENTS_SAD_TEXT_Y,
+        );
+    }
     push_centered_advancements_label(
         &mut labels,
         ADVANCEMENTS_DONE_TEXT,

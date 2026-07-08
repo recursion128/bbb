@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary as ProtocolAdvancementCriterionProgressSummary,
+    AdvancementIconSummary as ProtocolAdvancementIconSummary,
     AdvancementProgressSummary as ProtocolAdvancementProgressSummary,
     AdvancementSummary as ProtocolAdvancementSummary,
     SelectAdvancementsTab as ProtocolSelectAdvancementsTab,
@@ -11,6 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+pub const MAX_ADVANCEMENT_ROOT_TABS: usize = 26;
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientAdvancementsState {
     pub advancements: BTreeMap<String, ProtocolAdvancementSummary>,
@@ -19,6 +22,14 @@ pub struct ClientAdvancementsState {
     pub selected_tab: Option<String>,
     #[serde(default)]
     pub root_order: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdvancementRootTabSummary {
+    pub id: String,
+    pub title: String,
+    pub icon: ProtocolAdvancementIconSummary,
+    pub display_index: usize,
 }
 
 impl WorldStore {
@@ -83,6 +94,35 @@ impl WorldStore {
         self.advancements.selected_tab.as_deref()
     }
 
+    pub fn advancement_root_tabs(&self) -> Vec<AdvancementRootTabSummary> {
+        let mut tabs = Vec::new();
+        for root in &self.advancements.root_order {
+            if tabs.len() >= MAX_ADVANCEMENT_ROOT_TABS {
+                break;
+            }
+            if let Some(summary) = self.advancement_root_tab_summary(root, tabs.len()) {
+                tabs.push(summary);
+            }
+        }
+        tabs
+    }
+
+    pub fn selected_advancement_root_tab(&self) -> Option<AdvancementRootTabSummary> {
+        let selected = self.advancements.selected_tab.as_deref()?;
+        self.advancement_root_tabs()
+            .into_iter()
+            .find(|tab| tab.id == selected)
+    }
+
+    pub fn select_advancements_root_tab(&mut self, id: &str) -> Option<String> {
+        if !self.advancement_is_root_tab(id) {
+            return None;
+        }
+        let id = id.to_string();
+        self.advancements.selected_tab = Some(id.clone());
+        Some(id)
+    }
+
     pub fn ensure_advancements_screen_selected_tab(&mut self) -> Option<String> {
         if self
             .advancements
@@ -93,7 +133,7 @@ impl WorldStore {
             return None;
         }
 
-        let first_root = self.first_advancement_root_tab_id().map(str::to_string);
+        let first_root = self.first_advancement_root_tab_id();
         self.advancements.selected_tab = first_root.clone();
         first_root
     }
@@ -168,25 +208,32 @@ impl WorldStore {
         }
     }
 
-    fn first_advancement_root_tab_id(&self) -> Option<&str> {
-        self.advancements.root_order.iter().find_map(|root| {
-            self.advancements
-                .advancements
-                .get(root)
-                .is_some_and(|advancement| {
-                    advancement.parent.is_none() && advancement.display.is_some()
-                })
-                .then_some(root.as_str())
-        })
+    fn first_advancement_root_tab_id(&self) -> Option<String> {
+        self.advancement_root_tabs()
+            .first()
+            .map(|tab| tab.id.clone())
     }
 
     fn advancement_is_root_tab(&self, id: &str) -> bool {
-        self.advancements
-            .advancements
-            .get(id)
-            .is_some_and(|advancement| {
-                advancement.parent.is_none() && advancement.display.is_some()
-            })
+        self.advancement_root_tabs().iter().any(|tab| tab.id == id)
+    }
+
+    fn advancement_root_tab_summary(
+        &self,
+        root: &str,
+        display_index: usize,
+    ) -> Option<AdvancementRootTabSummary> {
+        let advancement = self.advancements.advancements.get(root)?;
+        if advancement.parent.is_some() {
+            return None;
+        }
+        let display = advancement.display.as_ref()?;
+        Some(AdvancementRootTabSummary {
+            id: root.to_string(),
+            title: display.title.clone(),
+            icon: display.icon.clone(),
+            display_index,
+        })
     }
 
     fn refresh_advancement_counters(&mut self) {
@@ -322,6 +369,81 @@ mod tests {
         assert_eq!(
             store.ensure_advancements_screen_selected_tab(),
             Some("minecraft:y/root".to_string())
+        );
+    }
+
+    #[test]
+    fn advancement_root_tabs_skip_hidden_roots_and_stop_after_vanilla_capacity() {
+        let mut added = vec![advancement("minecraft:hidden/root", None)];
+        for index in 0..27 {
+            added.push(displayed_advancement(
+                &format!("minecraft:displayed/root_{index:02}"),
+                None,
+            ));
+        }
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added,
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+
+        let tabs = store.advancement_root_tabs();
+        assert_eq!(tabs.len(), MAX_ADVANCEMENT_ROOT_TABS);
+        assert_eq!(tabs[0].id, "minecraft:displayed/root_00");
+        assert_eq!(tabs[0].title, "minecraft:displayed/root_00");
+        assert_eq!(tabs[0].display_index, 0);
+        assert_eq!(tabs[25].id, "minecraft:displayed/root_25");
+        assert_eq!(tabs[25].display_index, 25);
+        assert!(!tabs.iter().any(|tab| tab.id == "minecraft:hidden/root"));
+        assert!(!tabs
+            .iter()
+            .any(|tab| tab.id == "minecraft:displayed/root_26"));
+    }
+
+    #[test]
+    fn select_advancements_root_tab_accepts_only_visible_display_roots() {
+        let mut added = vec![
+            advancement("minecraft:hidden/root", None),
+            displayed_advancement("minecraft:visible/root", None),
+            displayed_advancement("minecraft:visible/child", Some("minecraft:visible/root")),
+        ];
+        for index in 0..26 {
+            added.push(displayed_advancement(
+                &format!("minecraft:extra/root_{index:02}"),
+                None,
+            ));
+        }
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added,
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+
+        assert_eq!(
+            store.select_advancements_root_tab("minecraft:visible/root"),
+            Some("minecraft:visible/root".to_string())
+        );
+        assert_eq!(
+            store.selected_advancement_root_tab().map(|tab| tab.id),
+            Some("minecraft:visible/root".to_string())
+        );
+        assert_eq!(
+            store.select_advancements_root_tab("minecraft:hidden/root"),
+            None
+        );
+        assert_eq!(
+            store.select_advancements_root_tab("minecraft:visible/child"),
+            None
+        );
+        assert_eq!(
+            store.select_advancements_root_tab("minecraft:extra/root_25"),
+            None
         );
     }
 

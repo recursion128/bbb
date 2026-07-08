@@ -10,6 +10,7 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
+    AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary, AdvancementSummary,
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
@@ -17,8 +18,8 @@ use bbb_protocol::packets::{
     InitializeBorder as ProtocolInitializeBorder, InteractionHand, MerchantOffer, MerchantOffers,
     MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
     SetBorderLerpSize as ProtocolSetBorderLerpSize, SetCursorItem as ProtocolSetCursorItem,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
-    WrittenBookContentSummary,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateAdvancements,
+    UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
@@ -9451,6 +9452,112 @@ fn hud_inventory_screen_projects_empty_advancements_screen() {
     );
 }
 
+#[test]
+fn hud_inventory_screen_projects_advancement_root_tabs() {
+    let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![
+            runtime_displayed_advancement("minecraft:y/root", None),
+            runtime_displayed_advancement("minecraft:a/root", None),
+        ],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("minecraft:y/root".to_string())
+    );
+    let terrain_textures = TerrainTextureState::default();
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let local_state = InventoryHudLocalState::default();
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let (done_button_x, done_button_y) = advancements_done_button_origin_for_surface(surface_size);
+
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &terrain_textures,
+        None,
+        local_state,
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(
+        screen.background_layers,
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementsWindow,
+                window_x,
+                window_y,
+                ADVANCEMENTS_WINDOW_WIDTH,
+                ADVANCEMENTS_WINDOW_HEIGHT,
+                [0.0, 0.0],
+                [
+                    ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                    ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+                ],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::WidgetButton,
+                done_button_x,
+                done_button_y,
+                ADVANCEMENTS_DONE_BUTTON_WIDTH,
+                ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementTab(
+                    HudAdvancementTabSprite::AboveLeftSelected,
+                ),
+                window_x,
+                window_y - 28,
+                28,
+                32,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementTab(HudAdvancementTabSprite::AboveMiddle),
+                window_x + 32,
+                window_y - 28,
+                28,
+                32,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
+    );
+    assert!(screen.floating_items.is_empty());
+    assert_eq!(
+        screen.text_labels,
+        vec![
+            HudInventoryTextLabel {
+                x: window_x + ADVANCEMENTS_WINDOW_TITLE_X,
+                y: window_y + ADVANCEMENTS_WINDOW_TITLE_Y,
+                width: hud_ascii_approx_text_width("minecraft:y/root").unwrap(),
+                text: "minecraft:y/root".to_string(),
+                tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
+                background: None,
+                input: None,
+                shadow: false,
+                runs: Vec::new(),
+            },
+            advancements_centered_text_label(
+                ADVANCEMENTS_DONE_TEXT,
+                done_button_x + ADVANCEMENTS_DONE_BUTTON_WIDTH as i32 / 2,
+                done_button_y + ADVANCEMENTS_DONE_BUTTON_TEXT_Y_OFFSET,
+                ADVANCEMENTS_DONE_TEXT_COLOR,
+            ),
+        ]
+    );
+}
+
 fn advancements_centered_text_label(
     text: &str,
     center_x: i32,
@@ -9468,6 +9575,30 @@ fn advancements_centered_text_label(
         input: None,
         shadow: false,
         runs: Vec::new(),
+    }
+}
+
+fn runtime_displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
+    AdvancementSummary {
+        id: id.to_string(),
+        parent: parent.map(str::to_string),
+        display: Some(AdvancementDisplaySummary {
+            title: id.to_string(),
+            description: String::new(),
+            icon: AdvancementIconSummary {
+                item_id: 1,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            frame_type: AdvancementFrameType::Task,
+            show_toast: false,
+            hidden: false,
+            background: None,
+            x: 0.0,
+            y: 0.0,
+        }),
+        requirements: Vec::new(),
+        sends_telemetry_event: false,
     }
 }
 

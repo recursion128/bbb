@@ -86,8 +86,22 @@ const BOOK_MENU_DONE_BUTTON_X: i32 = -4;
 const BOOK_MENU_BUTTON_WIDTH: i32 = 200;
 const BOOK_MENU_BUTTON_HEIGHT: i32 = 20;
 const ADVANCEMENTS_FOOTER_HEIGHT: i32 = 33;
+const ADVANCEMENTS_WINDOW_WIDTH: i32 = 252;
+const ADVANCEMENTS_WINDOW_HEIGHT: i32 = 140;
 const ADVANCEMENTS_DONE_BUTTON_WIDTH: i32 = 200;
 const ADVANCEMENTS_DONE_BUTTON_HEIGHT: i32 = 20;
+const ADVANCEMENTS_TAB_ABOVE_WIDTH: i32 = 28;
+const ADVANCEMENTS_TAB_ABOVE_HEIGHT: i32 = 32;
+const ADVANCEMENTS_TAB_ABOVE_MAX: usize = 8;
+const ADVANCEMENTS_TAB_BELOW_WIDTH: i32 = 28;
+const ADVANCEMENTS_TAB_BELOW_HEIGHT: i32 = 32;
+const ADVANCEMENTS_TAB_BELOW_MAX: usize = 8;
+const ADVANCEMENTS_TAB_LEFT_WIDTH: i32 = 32;
+const ADVANCEMENTS_TAB_LEFT_HEIGHT: i32 = 28;
+const ADVANCEMENTS_TAB_LEFT_MAX: usize = 5;
+const ADVANCEMENTS_TAB_RIGHT_WIDTH: i32 = 32;
+const ADVANCEMENTS_TAB_RIGHT_HEIGHT: i32 = 28;
+const ADVANCEMENTS_TAB_RIGHT_MAX: usize = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BookScreenClickTarget {
@@ -701,10 +715,102 @@ pub(crate) fn handle_advancements_screen_mouse_input(
     if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
         return true;
     }
-    if advancements_done_button_contains(cursor_position, surface_size) {
+    if let Some(tab) = advancements_tab_at_position(world, cursor_position, surface_size) {
+        if let Some(tab) = world.select_advancements_root_tab(&tab) {
+            queue_seen_advancements_command(
+                counters,
+                net_commands,
+                SeenAdvancements::OpenedTab { tab },
+            );
+        }
+    } else if advancements_done_button_contains(cursor_position, surface_size) {
         close_advancements_screen_and_queue(input, counters, world, net_commands);
     }
     true
+}
+
+fn advancements_tab_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<String> {
+    let cursor = cursor_position?;
+    let tabs = world.advancement_root_tabs();
+    if tabs.len() <= 1 {
+        return None;
+    }
+    let window_x =
+        (f64::from(surface_size.width.max(1)) - f64::from(ADVANCEMENTS_WINDOW_WIDTH)) * 0.5;
+    let window_y =
+        (f64::from(surface_size.height.max(1)) - f64::from(ADVANCEMENTS_WINDOW_HEIGHT)) * 0.5;
+    tabs.into_iter().find_map(|tab| {
+        let (x, y, width, height) = advancements_tab_bounds(tab.display_index, window_x, window_y)?;
+        (cursor.x > x && cursor.x < x + width && cursor.y > y && cursor.y < y + height)
+            .then_some(tab.id)
+    })
+}
+
+fn advancements_tab_bounds(
+    display_index: usize,
+    window_x: f64,
+    window_y: f64,
+) -> Option<(f64, f64, f64, f64)> {
+    let (x, y, width, height) = if display_index < ADVANCEMENTS_TAB_ABOVE_MAX {
+        let index = i32::try_from(display_index).ok()?;
+        (
+            (ADVANCEMENTS_TAB_ABOVE_WIDTH + 4) * index,
+            -ADVANCEMENTS_TAB_ABOVE_HEIGHT + 4,
+            ADVANCEMENTS_TAB_ABOVE_WIDTH,
+            ADVANCEMENTS_TAB_ABOVE_HEIGHT,
+        )
+    } else if display_index < ADVANCEMENTS_TAB_ABOVE_MAX + ADVANCEMENTS_TAB_BELOW_MAX {
+        let index = i32::try_from(display_index - ADVANCEMENTS_TAB_ABOVE_MAX).ok()?;
+        (
+            (ADVANCEMENTS_TAB_BELOW_WIDTH + 4) * index,
+            136,
+            ADVANCEMENTS_TAB_BELOW_WIDTH,
+            ADVANCEMENTS_TAB_BELOW_HEIGHT,
+        )
+    } else if display_index
+        < ADVANCEMENTS_TAB_ABOVE_MAX + ADVANCEMENTS_TAB_BELOW_MAX + ADVANCEMENTS_TAB_LEFT_MAX
+    {
+        let index =
+            i32::try_from(display_index - ADVANCEMENTS_TAB_ABOVE_MAX - ADVANCEMENTS_TAB_BELOW_MAX)
+                .ok()?;
+        (
+            -ADVANCEMENTS_TAB_LEFT_WIDTH + 4,
+            ADVANCEMENTS_TAB_LEFT_HEIGHT * index,
+            ADVANCEMENTS_TAB_LEFT_WIDTH,
+            ADVANCEMENTS_TAB_LEFT_HEIGHT,
+        )
+    } else if display_index
+        < ADVANCEMENTS_TAB_ABOVE_MAX
+            + ADVANCEMENTS_TAB_BELOW_MAX
+            + ADVANCEMENTS_TAB_LEFT_MAX
+            + ADVANCEMENTS_TAB_RIGHT_MAX
+    {
+        let index = i32::try_from(
+            display_index
+                - ADVANCEMENTS_TAB_ABOVE_MAX
+                - ADVANCEMENTS_TAB_BELOW_MAX
+                - ADVANCEMENTS_TAB_LEFT_MAX,
+        )
+        .ok()?;
+        (
+            248,
+            ADVANCEMENTS_TAB_RIGHT_HEIGHT * index,
+            ADVANCEMENTS_TAB_RIGHT_WIDTH,
+            ADVANCEMENTS_TAB_RIGHT_HEIGHT,
+        )
+    } else {
+        return None;
+    };
+    Some((
+        window_x + f64::from(x),
+        window_y + f64::from(y),
+        f64::from(width),
+        f64::from(height),
+    ))
 }
 
 fn advancements_done_button_contains(

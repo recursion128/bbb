@@ -464,6 +464,98 @@ impl HudItemCountLabel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudAdvancementTabSprite {
+    AboveLeftSelected,
+    AboveMiddleSelected,
+    AboveRightSelected,
+    AboveLeft,
+    AboveMiddle,
+    AboveRight,
+    BelowLeftSelected,
+    BelowMiddleSelected,
+    BelowRightSelected,
+    BelowLeft,
+    BelowMiddle,
+    BelowRight,
+    LeftTopSelected,
+    LeftMiddleSelected,
+    LeftBottomSelected,
+    LeftTop,
+    LeftMiddle,
+    LeftBottom,
+    RightTopSelected,
+    RightMiddleSelected,
+    RightBottomSelected,
+    RightTop,
+    RightMiddle,
+    RightBottom,
+}
+
+impl HudAdvancementTabSprite {
+    pub(crate) const COUNT: usize = 24;
+
+    pub const ALL: [Self; Self::COUNT] = [
+        Self::AboveLeftSelected,
+        Self::AboveMiddleSelected,
+        Self::AboveRightSelected,
+        Self::AboveLeft,
+        Self::AboveMiddle,
+        Self::AboveRight,
+        Self::BelowLeftSelected,
+        Self::BelowMiddleSelected,
+        Self::BelowRightSelected,
+        Self::BelowLeft,
+        Self::BelowMiddle,
+        Self::BelowRight,
+        Self::LeftTopSelected,
+        Self::LeftMiddleSelected,
+        Self::LeftBottomSelected,
+        Self::LeftTop,
+        Self::LeftMiddle,
+        Self::LeftBottom,
+        Self::RightTopSelected,
+        Self::RightMiddleSelected,
+        Self::RightBottomSelected,
+        Self::RightTop,
+        Self::RightMiddle,
+        Self::RightBottom,
+    ];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn sprite_path(self) -> &'static str {
+        match self {
+            Self::AboveLeftSelected => "advancements/tab_above_left_selected",
+            Self::AboveMiddleSelected => "advancements/tab_above_middle_selected",
+            Self::AboveRightSelected => "advancements/tab_above_right_selected",
+            Self::AboveLeft => "advancements/tab_above_left",
+            Self::AboveMiddle => "advancements/tab_above_middle",
+            Self::AboveRight => "advancements/tab_above_right",
+            Self::BelowLeftSelected => "advancements/tab_below_left_selected",
+            Self::BelowMiddleSelected => "advancements/tab_below_middle_selected",
+            Self::BelowRightSelected => "advancements/tab_below_right_selected",
+            Self::BelowLeft => "advancements/tab_below_left",
+            Self::BelowMiddle => "advancements/tab_below_middle",
+            Self::BelowRight => "advancements/tab_below_right",
+            Self::LeftTopSelected => "advancements/tab_left_top_selected",
+            Self::LeftMiddleSelected => "advancements/tab_left_middle_selected",
+            Self::LeftBottomSelected => "advancements/tab_left_bottom_selected",
+            Self::LeftTop => "advancements/tab_left_top",
+            Self::LeftMiddle => "advancements/tab_left_middle",
+            Self::LeftBottom => "advancements/tab_left_bottom",
+            Self::RightTopSelected => "advancements/tab_right_top_selected",
+            Self::RightMiddleSelected => "advancements/tab_right_middle_selected",
+            Self::RightBottomSelected => "advancements/tab_right_bottom_selected",
+            Self::RightTop => "advancements/tab_right_top",
+            Self::RightMiddle => "advancements/tab_right_middle",
+            Self::RightBottom => "advancements/tab_right_bottom",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
     Inventory,
     GenericContainer,
@@ -529,6 +621,7 @@ pub enum HudInventoryBackgroundTexture {
     FurnaceLitProgress,
     FurnaceBurnProgress,
     AdvancementsWindow,
+    AdvancementTab(HudAdvancementTabSprite),
     RecipeBook,
     RecipeBookTab,
     RecipeBookTabSelected,
@@ -1622,6 +1715,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_advancements_window = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_advancement_tab(
+        &mut self,
+        sprite: HudAdvancementTabSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_advancement_tabs[sprite.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -3778,6 +3883,9 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::AdvancementsWindow => {
                 self.hud_advancements_window.as_ref()
+            }
+            HudInventoryBackgroundTexture::AdvancementTab(sprite) => {
+                self.hud_advancement_tabs[sprite.as_index()].as_ref()
             }
             HudInventoryBackgroundTexture::RecipeBook => self.hud_recipe_book_background.as_ref(),
             HudInventoryBackgroundTexture::RecipeBookTab => self.hud_recipe_book_tab.as_ref(),

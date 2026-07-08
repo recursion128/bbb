@@ -4851,6 +4851,53 @@ fn advancements_done_button_click_closes_screen_and_queues_seen_packet() {
 }
 
 #[test]
+fn advancements_tab_click_selects_tab_and_queues_opened_tab() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![
+            input_displayed_advancement("minecraft:y/root", None),
+            input_displayed_advancement("minecraft:a/root", None),
+        ],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("minecraft:y/root".to_string())
+    );
+
+    let handled = handle_advancements_screen_mouse_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(316.0, 212.0)),
+        PhysicalSize::new(800, 600),
+    );
+
+    assert!(handled);
+    assert!(world.advancements_screen_is_open());
+    assert_eq!(world.selected_advancements_tab(), Some("minecraft:a/root"));
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::OpenedTab {
+            tab: "minecraft:a/root".to_string()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn movement_key_changes_queue_player_input_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

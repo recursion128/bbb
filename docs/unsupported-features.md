@@ -1060,9 +1060,8 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
-    window/Done button/initial display-root selection shells: tab/tree
-    rendering and tab-click `OpenedTab` behavior (`ClientAdvancementsState`
-    ready).
+    window/Done button/initial display-root selection/root tab shells:
+    contents/tree rendering (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1439,9 +1438,21 @@ When an agent does any of the following, update this file in the same slice:
     selection or selects the first display root and queues
     `SeenAdvancements::OpenedTab`. If no display roots are known, it clears
     stale local selection without sending a packet.
+  - Done 2026-07-08 — Advancement screen root tab shell and tab-click
+    selection. Vanilla anchors: `AdvancementTab.create` assigns the first 26
+    display roots across ABOVE(8), BELOW(8), LEFT(5), and RIGHT(5);
+    `AdvancementsScreen.extractWindow` draws tab sprites/icons only when
+    `tabs.size() > 1`; `AdvancementTabType.isMouseOver` uses strict tab
+    bounds; `AdvancementsScreen.mouseClicked` calls
+    `ClientAdvancements.setSelectedTab(tab, true)`, which sends
+    `ServerboundSeenAdvancementsPacket.openedTab` for every non-null tab click.
+    bbb now loads the vanilla `advancements/tab_*` GUI sprites, projects root
+    tab backgrounds and fake item icons, switches the window title to the
+    selected root display title, hides the empty-state labels when a root tab is
+    selected, and queues `SeenAdvancements::OpenedTab` from tab clicks.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
-    footer Done plus initial display-root selection shells are live. The
+    footer Done plus initial display-root selection/root tab shells are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe

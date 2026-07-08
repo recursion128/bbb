@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
-    HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling, SignModelWood,
+    HudAdvancementTabSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling,
+    SignModelWood,
 };
 
 use bbb_item_model::font::{
@@ -90,6 +91,15 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         advancements_window.height,
         &advancements_window.rgba,
     )?;
+    for tab_sprite in HudAdvancementTabSprite::ALL {
+        let sprite = hud_sprite(&sprites, tab_sprite.sprite_path())?;
+        renderer.upload_hud_advancement_tab(
+            tab_sprite,
+            sprite.width,
+            sprite.height,
+            &sprite.rgba,
+        )?;
+    }
     let recipe_book = gui_texture(
         roots,
         "textures/gui/recipe_book.png",

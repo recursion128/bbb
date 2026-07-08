@@ -2116,8 +2116,21 @@
   时维护清理；input 的 `L` 打开 screen 路径在 screen 真正打开后保留已有有效
   display-root selection，否则选第一个 display root 并排队
   `SeenAdvancements::OpenedTab`，无 display root 时只清 stale selection 不发包。
-  剩余：advancement tab/tree 渲染与 tab-click `OpenedTab` 行为，以及 debug
-  overlay。
+  后续 root tab shell 与 tab-click `OpenedTab` 已在下一条完成；剩余：
+  advancement contents/tree rendering，以及 debug overlay。
+- [x] advancement screen root tab shell 与 tab-click selection（P2
+  world/native/renderer slice，2026-07-08）：依据
+  `AdvancementTab.create` 对 display roots 按 ABOVE(8)、BELOW(8)、LEFT(5)、
+  RIGHT(5) 分配最多 26 个 tab；`AdvancementsScreen.extractWindow` 仅在
+  `tabs.size() > 1` 时绘制 tab sprite 与 fake item icon；
+  `AdvancementTabType.isMouseOver` 使用严格边界；`mouseClicked` 命中 tab
+  后调用 `ClientAdvancements.setSelectedTab(tab, true)`，后者每次非空 tab
+  点击都会发送 `ServerboundSeenAdvancementsPacket.openedTab`。world 现在公开
+  visible root tab projection 与 root-tab selection API；renderer/native 加载并
+  投影 vanilla `advancements/tab_*` GUI sprites 和 root display icon；runtime
+  在有选中 root tab 时切换窗口标题并隐藏 empty-state labels；input 左键点击
+  root tab 会更新 selected tab 并排队 `SeenAdvancements::OpenedTab`。剩余：
+  advancement contents/tree/background/widget rendering，以及 debug overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
