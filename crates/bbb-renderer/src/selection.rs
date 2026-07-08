@@ -16,6 +16,8 @@ pub struct SelectionColoredBox {
     pub min: [f32; 3],
     pub max: [f32; 3],
     pub color: [f32; 4],
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub always_on_top: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -93,6 +95,7 @@ const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
 const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
+const CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST: bool = false;
 const SELECTION_POINT_PROXY_WORLD_SCALE: f32 = 0.01;
 
 const SELECTION_SHADER: &str = r#"
@@ -170,6 +173,8 @@ pub(super) struct SelectionOutlineGpu {
     pub(super) outline: SelectionOutline,
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) vertex_count: u32,
+    pub(super) always_on_top_vertex_buffer: Option<wgpu::Buffer>,
+    pub(super) always_on_top_vertex_count: u32,
 }
 
 #[repr(C)]
@@ -184,16 +189,26 @@ pub(super) fn create_selection_outline_gpu(
     outline: SelectionOutline,
 ) -> SelectionOutlineGpu {
     let vertices = selection_outline_vertices(&outline);
+    let always_on_top_vertices = selection_outline_always_on_top_vertices(&outline);
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-selection-outline-vertices"),
         contents: bytemuck::cast_slice(&vertices),
         usage: wgpu::BufferUsages::VERTEX,
+    });
+    let always_on_top_vertex_buffer = (!always_on_top_vertices.is_empty()).then(|| {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-selection-outline-always-on-top-vertices"),
+            contents: bytemuck::cast_slice(&always_on_top_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        })
     });
 
     SelectionOutlineGpu {
         outline,
         vertex_buffer,
         vertex_count: vertices.len() as u32,
+        always_on_top_vertex_buffer,
+        always_on_top_vertex_count: always_on_top_vertices.len() as u32,
     }
 }
 
@@ -219,34 +234,82 @@ pub(super) fn create_selection_pipeline(
         .build()
 }
 
+pub(super) fn create_chunk_border_always_on_top_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-chunk-border-debug-pipeline")
+        .shader("bbb-chunk-border-debug-shader", SELECTION_SHADER)
+        .layout(
+            "bbb-chunk-border-debug-pipeline-layout",
+            &[camera_bind_group_layout],
+        )
+        .vertex_buffers(&[selection_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .topology(wgpu::PrimitiveTopology::LineList)
+        .depth_stencil(if CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST {
+            Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                SELECTION_LINES_DEPTH_WRITE,
+                wgpu::CompareFunction::LessEqual,
+            ))
+        } else {
+            None
+        })
+        .build()
+}
+
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
+    selection_outline_vertices_for(outline, false)
+}
+
+fn selection_outline_always_on_top_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
+    selection_outline_vertices_for(outline, true)
+}
+
+fn selection_outline_vertices_for(
+    outline: &SelectionOutline,
+    always_on_top: bool,
+) -> Vec<SelectionVertex> {
     let mut vertices = Vec::with_capacity(
         outline.boxes.len() * 24
             + outline.colored_boxes.len() * 24
             + outline.lines.len() * 2
             + outline.points.len() * 6,
     );
-    for outline_box in &outline.boxes {
-        vertices.extend(selection_box_vertices(
-            outline_box.min,
-            outline_box.max,
-            DEFAULT_SELECTION_OUTLINE_COLOR,
-        ));
+    if !always_on_top {
+        for outline_box in &outline.boxes {
+            vertices.extend(selection_box_vertices(
+                outline_box.min,
+                outline_box.max,
+                DEFAULT_SELECTION_OUTLINE_COLOR,
+            ));
+        }
     }
     for outline_box in &outline.colored_boxes {
+        if outline_box.always_on_top != always_on_top {
+            continue;
+        }
         vertices.extend(selection_box_vertices(
             outline_box.min,
             outline_box.max,
             outline_box.color,
         ));
     }
-    for line in &outline.lines {
-        vertices.extend(selection_line_vertices(*line));
-    }
-    for point in &outline.points {
-        vertices.extend(selection_point_vertices(*point));
+    if !always_on_top {
+        for line in &outline.lines {
+            vertices.extend(selection_line_vertices(*line));
+        }
+        for point in &outline.points {
+            vertices.extend(selection_point_vertices(*point));
+        }
     }
     vertices
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 fn selection_box_vertices(
@@ -360,6 +423,14 @@ mod tests {
     }
 
     #[test]
+    fn chunk_border_pipeline_models_vanilla_always_on_top() {
+        // Vanilla `ChunkBorderRenderer.emitGizmos` marks the current-section
+        // cuboid with `setAlwaysOnTop()`. The dedicated bbb debug pipeline
+        // mirrors that by omitting depth testing for that split primitive set.
+        assert!(!CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST);
+    }
+
+    #[test]
     fn selection_outline_vertices_emit_expanded_box_edges() {
         let vertices = selection_outline_vertices(&SelectionOutline::from_box(
             [1.0, 2.0, 3.0],
@@ -399,6 +470,7 @@ mod tests {
                 min: [0.0, 0.0, 0.0],
                 max: [1.0, 1.0, 1.0],
                 color: [1.0, 0.0, 0.0, 1.0],
+                always_on_top: false,
             }],
             [SelectionLine {
                 from: [2.0, 0.0, 0.0],
@@ -414,6 +486,39 @@ mod tests {
         assert_eq!(vertices[24].color, [0.0, 0.0, 1.0, 1.0]);
         assert_eq!(vertices[25].position, [3.0, 1.0, 0.0]);
         assert_eq!(vertices[25].color, [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn selection_outline_splits_always_on_top_colored_boxes() {
+        let outline = SelectionOutline::from_colored_boxes_and_lines(
+            [
+                SelectionColoredBox {
+                    min: [0.0, 0.0, 0.0],
+                    max: [1.0, 1.0, 1.0],
+                    color: [1.0, 0.0, 0.0, 1.0],
+                    always_on_top: false,
+                },
+                SelectionColoredBox {
+                    min: [2.0, 0.0, 0.0],
+                    max: [3.0, 1.0, 1.0],
+                    color: [0.0, 1.0, 0.0, 1.0],
+                    always_on_top: true,
+                },
+            ],
+            [SelectionLine {
+                from: [4.0, 0.0, 0.0],
+                to: [5.0, 0.0, 0.0],
+                color: [0.0, 0.0, 1.0, 1.0],
+            }],
+        );
+
+        let vertices = selection_outline_vertices(&outline);
+        let always_on_top_vertices = selection_outline_always_on_top_vertices(&outline);
+        assert_eq!(vertices.len(), 26);
+        assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
+        assert_eq!(vertices[24].position, [4.0, 0.0, 0.0]);
+        assert_eq!(always_on_top_vertices.len(), 24);
+        assert_eq!(always_on_top_vertices[0].position, [1.998, -0.002, -0.002]);
     }
 
     #[test]

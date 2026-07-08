@@ -1069,28 +1069,49 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.selection_pipeline);
-            stats.pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            if let Some(outline) = &self.selection_outline {
-                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                pass.draw(0..outline.vertex_count, 0..1);
-                stats.selection_draw_calls += 1;
+            let chunk_border_has_standard_vertices = self
+                .chunk_border_outline
+                .as_ref()
+                .is_some_and(|outline| outline.vertex_count > 0);
+            if self.selection_outline.is_some()
+                || chunk_border_has_standard_vertices
+                || self.entity_scene_outline.is_some()
+                || self.entity_target_outline.is_some()
+            {
+                pass.set_pipeline(&self.selection_pipeline);
+                stats.pipeline_switches += 1;
+                if let Some(outline) = &self.selection_outline {
+                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                    pass.draw(0..outline.vertex_count, 0..1);
+                    stats.selection_draw_calls += 1;
+                }
+                if let Some(outline) = &self.chunk_border_outline {
+                    if outline.vertex_count > 0 {
+                        pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                        pass.draw(0..outline.vertex_count, 0..1);
+                        stats.chunk_border_draw_calls += 1;
+                    }
+                }
+                if let Some(outline) = &self.entity_scene_outline {
+                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                    pass.draw(0..outline.vertex_count, 0..1);
+                    stats.entity_scene_draw_calls += 1;
+                }
+                if let Some(outline) = &self.entity_target_outline {
+                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                    pass.draw(0..outline.vertex_count, 0..1);
+                    stats.entity_target_draw_calls += 1;
+                }
             }
             if let Some(outline) = &self.chunk_border_outline {
-                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                pass.draw(0..outline.vertex_count, 0..1);
-                stats.chunk_border_draw_calls += 1;
-            }
-            if let Some(outline) = &self.entity_scene_outline {
-                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                pass.draw(0..outline.vertex_count, 0..1);
-                stats.entity_scene_draw_calls += 1;
-            }
-            if let Some(outline) = &self.entity_target_outline {
-                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                pass.draw(0..outline.vertex_count, 0..1);
-                stats.entity_target_draw_calls += 1;
+                if let Some(vertex_buffer) = &outline.always_on_top_vertex_buffer {
+                    pass.set_pipeline(&self.chunk_border_always_on_top_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.draw(0..outline.always_on_top_vertex_count, 0..1);
+                    stats.chunk_border_draw_calls += 1;
+                }
             }
         }
     }

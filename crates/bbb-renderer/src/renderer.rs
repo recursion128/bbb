@@ -82,8 +82,8 @@ use crate::{
     },
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     selection::{
-        create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
-        SelectionOutlineGpu,
+        create_chunk_border_always_on_top_pipeline, create_selection_outline_gpu,
+        create_selection_pipeline, SelectionOutline, SelectionOutlineGpu,
     },
     sky::{
         create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
@@ -257,6 +257,7 @@ pub struct Renderer {
     pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
     pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) chunk_border_always_on_top_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
     pub(super) lightmap_hud_bind_group: wgpu::BindGroup,
@@ -1099,6 +1100,8 @@ impl Renderer {
         );
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
+        let chunk_border_always_on_top_pipeline =
+            create_chunk_border_always_on_top_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
         let entity_outline_sobel_pipeline = create_entity_outline_sobel_pipeline(
             &device,
@@ -1326,6 +1329,7 @@ impl Renderer {
             item_model_glint_pipeline,
             hud_item_glint_pipeline,
             selection_pipeline,
+            chunk_border_always_on_top_pipeline,
             lightmap_pipeline,
             lightmap,
             lightmap_hud_bind_group,

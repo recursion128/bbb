@@ -1117,7 +1117,7 @@ When an agent does any of the following, update this file in the same slice:
     shell, and ordinary F3 keymap audit:
     non-default/editable debug entries, actual entity hitbox
     server details,
-    chunk-border line-width/alwaysOnTop debug-gizmo styling,
+    chunk-border line-width debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler result clickable
     feedback payload, profiler data sampling and ProfileResults tree
@@ -1251,6 +1251,14 @@ When an agent does any of the following, update this file in the same slice:
     vanilla colors and dimension y-range. Boundary: the renderer selection path
     still lacks vanilla line widths, `alwaysOnTop`, and the dedicated debug
     gizmo pipeline.
+  - Done 2026-07-08 — Debug overlay F3+G chunk-border always-on-top pipeline.
+    Vanilla anchors: `ChunkBorderRenderer.emitGizmos` submits the current
+    camera section cuboid as a `GizmoStyle.stroke(MAJOR_LINES, 1.0F)` and then
+    calls `setAlwaysOnTop()`. bbb now marks that camera-section cuboid in the
+    outline data model and draws only its split vertex batch through a
+    dedicated no-depth-test renderer pipeline; ordinary F3+G chunk-border lines
+    still use the depth-aware selection-line pipeline. Boundary: vanilla 4.0F
+    thick major and neighbor line widths remain future debug-gizmo work.
   - Done 2026-07-08 — Debug overlay F3+B entity AABB hitbox outline
     rendering. Vanilla anchors: `DebugScreenEntries.ENTITY_HITBOXES` is
     toggled by `KeyboardHandler.handleDebugKeys`, and
@@ -2302,7 +2310,7 @@ When an agent does any of the following, update this file in the same slice:
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
-    chunk-border line-width/alwaysOnTop debug-gizmo styling,
+    chunk-border line-width debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler result clickable feedback
     payload, profiler data sampling and ProfileResults tree navigation,

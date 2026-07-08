@@ -1895,6 +1895,7 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
     assert_eq!(outline.colored_boxes[0].min, [16.0, 32.0, -16.0]);
     assert_eq!(outline.colored_boxes[0].max, [32.0, 48.0, 0.0]);
     assert_eq!(outline.colored_boxes[0].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert!(outline.colored_boxes[0].always_on_top);
     assert_eq!(outline.lines.len(), 920);
     assert_eq!(outline.lines[0].from, [0.0, -64.0, -32.0]);
     assert_eq!(outline.lines[0].to, [0.0, 320.0, -32.0]);

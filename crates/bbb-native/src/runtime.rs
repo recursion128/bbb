@@ -3264,6 +3264,7 @@ fn debug_chunk_border_outline(
                 (z_start + 16) as f32,
             ],
             color: CHUNK_BORDER_MAJOR_COLOR,
+            always_on_top: true,
         }],
         lines,
         points: Vec::new(),

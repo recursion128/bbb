@@ -523,6 +523,7 @@ fn entity_debug_hitbox_box_with_color(
         min: selection_box.min,
         max: selection_box.max,
         color,
+        always_on_top: false,
     }
 }
 
@@ -544,6 +545,7 @@ fn entity_debug_eye_height_box(
             selection_box.max[2],
         ],
         color: ENTITY_EYE_HEIGHT_COLOR,
+        always_on_top: false,
     }
 }
 

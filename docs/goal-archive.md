@@ -5510,6 +5510,15 @@
   和当前 section colored cuboid，并使用 vanilla translucent red/yellow/cyan/major
   blue 颜色与 world dimension y-range。边界：renderer selection path 仍没有
   vanilla line widths、`alwaysOnTop`、以及专用 debug gizmo pipeline。
+- [x] debug overlay F3+G chunk-border always-on-top pipeline（P2 renderer
+  slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 先用
+  `GizmoStyle.stroke(MAJOR_LINES, 1.0F)` 提交当前 camera section cuboid，
+  随后调用 `setAlwaysOnTop()`。renderer 现在在 outline 数据模型中标记该
+  camera-section cuboid，并只让这批 split vertices 使用
+  `bbb-chunk-border-debug-pipeline` 的 no-depth-test 状态；普通 F3+G
+  chunk-border lines 仍复用带深度测试的 selection line pipeline。边界：
+  vanilla 4.0F thick major/neighbor line widths 仍待后续屏幕空间或几何扩展
+  实现。
 - [x] debug overlay F3+B Ender Dragon parent hitbox（P2 world/native slice，
   2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 先绘制 entity
   main `getBoundingBox().move(offset)`、再绘制 Ender Dragon sub-entities 的顺序，
