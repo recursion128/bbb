@@ -1768,11 +1768,29 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
 
     let outline = debug_chunk_border_outline(&input, &world, camera_pose)
         .expect("F3+G should enable chunk-border debug outlines");
-    assert_eq!(outline.boxes.len(), 24);
-    assert_eq!(outline.boxes[0].min, [16.0, -64.0, -16.0]);
-    assert_eq!(outline.boxes[0].max, [32.0, -48.0, 0.0]);
-    assert_eq!(outline.boxes[23].min, [16.0, 304.0, -16.0]);
-    assert_eq!(outline.boxes[23].max, [32.0, 320.0, 0.0]);
+    assert!(outline.boxes.is_empty());
+    assert_eq!(outline.colored_boxes.len(), 1);
+    assert_eq!(outline.colored_boxes[0].min, [16.0, 32.0, -16.0]);
+    assert_eq!(outline.colored_boxes[0].max, [32.0, 48.0, 0.0]);
+    assert_eq!(outline.colored_boxes[0].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert_eq!(outline.lines.len(), 920);
+    assert_eq!(outline.lines[0].from, [0.0, -64.0, -32.0]);
+    assert_eq!(outline.lines[0].to, [0.0, 320.0, -32.0]);
+    assert_eq!(outline.lines[0].color, CHUNK_BORDER_NEIGHBOR_COLOR);
+    assert_eq!(outline.lines[16].from, [18.0, -64.0, -16.0]);
+    assert_eq!(outline.lines[16].color, CHUNK_BORDER_YELLOW_COLOR);
+    assert_eq!(outline.lines[18].from, [20.0, -64.0, -16.0]);
+    assert_eq!(outline.lines[18].color, CHUNK_BORDER_CELL_COLOR);
+    assert_eq!(outline.lines[44].from, [16.0, -64.0, -16.0]);
+    assert_eq!(outline.lines[44].to, [16.0, -64.0, 0.0]);
+    assert_eq!(outline.lines[44].color, CHUNK_BORDER_CELL_COLOR);
+    assert_eq!(outline.lines[816].from, [16.0, -64.0, -16.0]);
+    assert_eq!(outline.lines[816].to, [16.0, 320.0, -16.0]);
+    assert_eq!(outline.lines[816].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert_eq!(outline.lines[920 - 1].from, [32.0, 320.0, -16.0]);
+    assert_eq!(outline.lines[920 - 1].to, [16.0, 320.0, -16.0]);
+    assert_eq!(outline.lines[920 - 1].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert!(outline.points.is_empty());
     assert_eq!(debug_chunk_border_outline(&input, &world, None), None);
 }
 

@@ -36,14 +36,14 @@ use bbb_renderer::{
     HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox, SelectionOutline,
-    SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
@@ -576,6 +576,10 @@ const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_TPS_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
+const CHUNK_BORDER_NEIGHBOR_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 0.5];
+const CHUNK_BORDER_CELL_COLOR: [f32; 4] = [0.0, 155.0 / 255.0, 155.0 / 255.0, 1.0];
+const CHUNK_BORDER_YELLOW_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
+const CHUNK_BORDER_MAJOR_COLOR: [f32; 4] = [0.25, 0.25, 1.0, 1.0];
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
@@ -3151,22 +3155,154 @@ fn debug_chunk_border_outline(
     }
     let x_start = chunk_min_block(camera_pose.position[0]);
     let z_start = chunk_min_block(camera_pose.position[2]);
-    let boxes = (min_y..max_y).step_by(16).map(|section_min_y| {
-        let section_max_y = (section_min_y + 16).min(max_y);
-        SelectionBox {
-            min: [x_start as f32, section_min_y as f32, z_start as f32],
+    let y_start = chunk_min_block(camera_pose.position[1]);
+    let mut lines = Vec::new();
+
+    for x in (-16..=32).step_by(16) {
+        for z in (-16..=32).step_by(16) {
+            push_chunk_border_line(
+                &mut lines,
+                [x_start + x, min_y, z_start + z],
+                [x_start + x, max_y, z_start + z],
+                CHUNK_BORDER_NEIGHBOR_COLOR,
+            );
+        }
+    }
+
+    for x in (2..16).step_by(2) {
+        let color = if x % 4 == 0 {
+            CHUNK_BORDER_CELL_COLOR
+        } else {
+            CHUNK_BORDER_YELLOW_COLOR
+        };
+        push_chunk_border_line(
+            &mut lines,
+            [x_start + x, min_y, z_start],
+            [x_start + x, max_y, z_start],
+            color,
+        );
+        push_chunk_border_line(
+            &mut lines,
+            [x_start + x, min_y, z_start + 16],
+            [x_start + x, max_y, z_start + 16],
+            color,
+        );
+    }
+
+    for z in (2..16).step_by(2) {
+        let color = if z % 4 == 0 {
+            CHUNK_BORDER_CELL_COLOR
+        } else {
+            CHUNK_BORDER_YELLOW_COLOR
+        };
+        push_chunk_border_line(
+            &mut lines,
+            [x_start, min_y, z_start + z],
+            [x_start, max_y, z_start + z],
+            color,
+        );
+        push_chunk_border_line(
+            &mut lines,
+            [x_start + 16, min_y, z_start + z],
+            [x_start + 16, max_y, z_start + z],
+            color,
+        );
+    }
+
+    for y in (min_y..=max_y).step_by(2) {
+        let color = if y % 8 == 0 {
+            CHUNK_BORDER_CELL_COLOR
+        } else {
+            CHUNK_BORDER_YELLOW_COLOR
+        };
+        push_chunk_border_horizontal_ring(&mut lines, x_start, z_start, y, color);
+    }
+
+    for x in (0..=16).step_by(16) {
+        for z in (0..=16).step_by(16) {
+            push_chunk_border_line(
+                &mut lines,
+                [x_start + x, min_y, z_start + z],
+                [x_start + x, max_y, z_start + z],
+                CHUNK_BORDER_MAJOR_COLOR,
+            );
+        }
+    }
+
+    for y in (min_y..=max_y).step_by(16) {
+        push_chunk_border_horizontal_ring(
+            &mut lines,
+            x_start,
+            z_start,
+            y,
+            CHUNK_BORDER_MAJOR_COLOR,
+        );
+    }
+
+    Some(SelectionOutline {
+        boxes: Vec::new(),
+        colored_boxes: vec![SelectionColoredBox {
+            min: [x_start as f32, y_start as f32, z_start as f32],
             max: [
                 (x_start + 16) as f32,
-                section_max_y as f32,
+                (y_start + 16) as f32,
                 (z_start + 16) as f32,
             ],
-        }
-    });
-    Some(SelectionOutline::from_boxes(boxes))
+            color: CHUNK_BORDER_MAJOR_COLOR,
+        }],
+        lines,
+        points: Vec::new(),
+    })
 }
 
 fn chunk_min_block(position: f32) -> i32 {
     (position.floor() as i32).div_euclid(16) * 16
+}
+
+fn push_chunk_border_horizontal_ring(
+    lines: &mut Vec<SelectionLine>,
+    x_start: i32,
+    z_start: i32,
+    y: i32,
+    color: [f32; 4],
+) {
+    push_chunk_border_line(
+        lines,
+        [x_start, y, z_start],
+        [x_start, y, z_start + 16],
+        color,
+    );
+    push_chunk_border_line(
+        lines,
+        [x_start, y, z_start + 16],
+        [x_start + 16, y, z_start + 16],
+        color,
+    );
+    push_chunk_border_line(
+        lines,
+        [x_start + 16, y, z_start + 16],
+        [x_start + 16, y, z_start],
+        color,
+    );
+    push_chunk_border_line(
+        lines,
+        [x_start + 16, y, z_start],
+        [x_start, y, z_start],
+        color,
+    );
+}
+
+fn push_chunk_border_line(
+    lines: &mut Vec<SelectionLine>,
+    from: [i32; 3],
+    to: [i32; 3],
+    color: [f32; 4],
+) {
+    lines.push(SelectionLine {
+        from: [from[0] as f32, from[1] as f32, from[2] as f32],
+        to: [to[0] as f32, to[1] as f32, to[2] as f32],
+        color,
+    });
 }
 
 fn hud_debug_version_line() -> String {

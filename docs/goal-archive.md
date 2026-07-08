@@ -5359,9 +5359,9 @@
   cuboid。native 现在把 F3+G 状态投影成 `RendererFrame.chunk_border_outline`，
   按 camera X/Z 的 floor chunk origin 与 `WorldDimension` 的 min/max Y 生成当前
   chunk 的 16x16 section stack 线框，renderer 以独立 outline 字段和 counters
-  在 item/entity line target pass 提交。边界：vanilla colors、line widths、
-  `alwaysOnTop`、3x3 neighbor boundary lattice、thin 2-block grid lines、
-  horizontal 2/8/16-step rings、以及专用 debug gizmo pipeline 仍未实现。
+  在 item/entity line target pass 提交。后续 full-grid slice 已补齐 vanilla
+  grid 和 colors；剩余 line widths、`alwaysOnTop`、以及专用 debug gizmo
+  pipeline。
 - [x] debug overlay 3D crosshair rendering（P2 HUD/runtime/renderer slice，
   2026-07-08）：依据 `DebugScreenEntries.THREE_DIMENSIONAL_CROSSHAIR` 默认
   profile、`Gui.extractCrosshair` 对普通 2D crosshair 的 suppress 规则，以及
@@ -5503,3 +5503,11 @@
   边界：Ender Dragon parent entity 自身 main AABB 仍未提交，因为当前 world
   pick-target surface 暴露 sub-parts 而不是 parent target；passenger slabs、
   local-server debug boxes/arrows、labels、以及专用 debug gizmo styling 仍待后续。
+- [x] debug overlay F3+G chunk-border full grid rendering（P2 renderer/runtime
+  slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 的 3x3 chunk
+  boundary lattice、当前 chunk 2-block vertical grid、每 2 格 horizontal rings、
+  当前 chunk corner major lines、camera section cuboid、以及每 16 格 major
+  horizontal rings。native 现在通过 `SelectionOutline` 提交这些 colored lines
+  和当前 section colored cuboid，并使用 vanilla translucent red/yellow/cyan/major
+  blue 颜色与 world dimension y-range。边界：renderer selection path 仍没有
+  vanilla line widths、`alwaysOnTop`、以及专用 debug gizmo pipeline。

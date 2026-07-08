@@ -1108,7 +1108,8 @@ When an agent does any of the following, update this file in the same slice:
     rendering, F3+3 network ping/bandwidth chart
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
-    vehicle/dragon-parent/server details, chunk-border full gizmo grid,
+    vehicle/dragon-parent/server details,
+    chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
     actual dynamic texture dump execution, F3+I NBT response/callback parity,
     profiling metrics recorder/output, actual DebugOptionsScreen, native
@@ -1189,10 +1190,20 @@ When an agent does any of the following, update this file in the same slice:
     projects the F3+G toggle into `RendererFrame.chunk_border_outline`, builds a
     16x16 current-chunk section stack from the native world dimension min/max Y
     and camera X/Z chunk floor, and submits it through a dedicated renderer
-    outline field/counter only while chunk borders are visible. Boundary:
-    vanilla colors, line widths, `alwaysOnTop`, the 3x3 neighbor boundary
-    lattice, thin 2-block grid lines, horizontal 2/8/16-step rings, and the
-    dedicated debug gizmo pipeline are still not implemented.
+    outline field/counter only while chunk borders are visible. Superseded
+    boundary: the full vanilla grid and colors are now covered by the
+    later chunk-border full grid slice; line widths, `alwaysOnTop`, and the
+    dedicated debug gizmo pipeline remain future work.
+  - Done 2026-07-08 — Debug overlay F3+G chunk-border full grid rendering.
+    Vanilla anchors: `ChunkBorderRenderer.emitGizmos` draws the 3x3 chunk
+    boundary lattice in translucent red, current chunk 2-block vertical grid
+    lines in yellow/cyan, horizontal rings every 2 blocks with 8-block cyan
+    cadence, current chunk corner major lines, the current camera section
+    cuboid, and horizontal major rings every 16 blocks. bbb now projects those
+    lines and the current section cuboid through `SelectionOutline` with the
+    vanilla colors and dimension y-range. Boundary: the renderer selection path
+    still lacks vanilla line widths, `alwaysOnTop`, and the dedicated debug
+    gizmo pipeline.
   - Done 2026-07-08 — Debug overlay F3+B entity AABB hitbox outline
     rendering. Vanilla anchors: `DebugScreenEntries.ENTITY_HITBOXES` is
     toggled by `KeyboardHandler.handleDebugKeys`, and
@@ -2042,7 +2053,8 @@ When an agent does any of the following, update this file in the same slice:
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox
-    vehicle/dragon-parent/server details, chunk-border full gizmo grid,
+    vehicle/dragon-parent/server details,
+    chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I NBT
     response/callback recreate parity, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
