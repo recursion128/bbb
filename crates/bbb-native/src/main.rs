@@ -425,6 +425,14 @@ fn main() -> Result<()> {
                                 "dynamic texture dump requested by debug hotkey"
                             );
                         }
+                        let profiling_toggle_requests =
+                            input.take_debug_profiling_toggle_requests();
+                        if profiling_toggle_requests > 0 {
+                            tracing::info!(
+                                profiling_toggle_requests,
+                                "profiling toggle requested by debug hotkey; native profiler output is not implemented"
+                            );
+                        }
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

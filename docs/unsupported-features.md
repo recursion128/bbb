@@ -1094,6 +1094,7 @@ When an agent does any of the following, update this file in the same slice:
     clipboard action, F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
     F3+I copy-data modifier consumption shell,
+    F3+L profiling request shell,
     advanced item tooltips startup config,
     F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the default GAME_VERSION entry shape, the default TPS entry
@@ -1102,8 +1103,19 @@ When an agent does any of the following, update this file in the same slice:
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
     dynamic texture dump execution, F3+I recreate command generation, 3D
-    crosshair, and the other F3 modifier combos remain (large, low priority).
+    crosshair, profiling metrics recorder/output, and the other F3 modifier
+    combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+L profiling request shell. Vanilla
+    anchors: `Options.keyDebugProfiling` binds key code 76 (L), and
+    `KeyboardHandler.handleDebugKeys` calls `Minecraft.debugClientMetricsStart`
+    to start or stop a metrics recording before showing profiling start/stop
+    feedback from the recorder callbacks. bbb now consumes L while F3 is held,
+    records a drainable native profiling toggle request, and logs that request
+    in the main event loop without toggling the debug overlay. Boundary:
+    `ActiveMetricsRecorder`, profiler sampling, automatic/manual stop, zipped
+    `debug/profiling` output, and vanilla profiling chat feedback are still
+    not implemented.
   - Done 2026-07-08 — Debug overlay F3+I copy-data modifier consumption shell.
     Vanilla anchors: `Options.keyDebugCopyRecreateCommand` binds key code 73
     (I), and `KeyboardHandler.handleDebugKeys` marks it as a debug action even

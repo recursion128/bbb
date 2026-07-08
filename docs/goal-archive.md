@@ -5290,6 +5290,15 @@
   现在在 F3 按住期间消费 I，并在 F3 release 时不触发普通 overlay toggle。
   边界：block/entity recreate command 生成、server/client NBT 选择、target
   inspection、以及该动作的 clipboard 写入仍未实现。
+- [x] debug overlay F3+L profiling request shell（P2 input/runtime slice，
+  2026-07-08）：依据 `Options.keyDebugProfiling` 绑定 L，以及
+  `KeyboardHandler.handleDebugKeys` 调用 `Minecraft.debugClientMetricsStart`
+  启停 metrics recording、由 recorder callback 发送 profiling start/stop
+  feedback 的行为。`ClientInputState` 现在在 F3 按住期间消费 L，记录一次可
+  drain 的 native profiling toggle request，并让主循环 drain 后写明 native
+  profiler output 尚未实现；F3 release 不触发普通 overlay toggle。边界：
+  `ActiveMetricsRecorder`、profiler sampling、自动/手动 stop、`debug/profiling`
+  zip 输出、以及 vanilla profiling chat feedback 仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，
