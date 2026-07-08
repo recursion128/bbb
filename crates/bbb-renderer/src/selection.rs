@@ -11,29 +11,63 @@ pub struct SelectionBox {
     pub max: [f32; 3],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SelectionColoredBox {
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+    pub color: [f32; 4],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SelectionLine {
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+    pub color: [f32; 4],
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectionOutline {
     pub boxes: Vec<SelectionBox>,
+    #[serde(default)]
+    pub colored_boxes: Vec<SelectionColoredBox>,
+    #[serde(default)]
+    pub lines: Vec<SelectionLine>,
 }
 
 impl SelectionOutline {
     pub fn from_box(min: [f32; 3], max: [f32; 3]) -> Self {
         Self {
             boxes: vec![SelectionBox { min, max }],
+            colored_boxes: Vec::new(),
+            lines: Vec::new(),
         }
     }
 
     pub fn from_boxes(boxes: impl IntoIterator<Item = SelectionBox>) -> Self {
         Self {
             boxes: boxes.into_iter().collect(),
+            colored_boxes: Vec::new(),
+            lines: Vec::new(),
+        }
+    }
+
+    pub fn from_colored_boxes_and_lines(
+        colored_boxes: impl IntoIterator<Item = SelectionColoredBox>,
+        lines: impl IntoIterator<Item = SelectionLine>,
+    ) -> Self {
+        Self {
+            boxes: Vec::new(),
+            colored_boxes: colored_boxes.into_iter().collect(),
+            lines: lines.into_iter().collect(),
         }
     }
 }
 
-const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 1] =
-    wgpu::vertex_attr_array![0 => Float32x3];
+const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
 #[cfg(test)]
 const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
+const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
 
 const SELECTION_SHADER: &str = r#"
@@ -60,12 +94,14 @@ var<uniform> camera: Camera;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) spherical_distance: f32,
     @location(1) cylindrical_distance: f32,
+    @location(2) color: vec4<f32>,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -93,6 +129,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    out.color = input.color;
     return out;
 }
 
@@ -100,7 +137,7 @@ const OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return apply_fog(vec4<f32>(0.0, 0.0, 0.0, OUTLINE_ALPHA), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(input.color, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -114,6 +151,7 @@ pub(super) struct SelectionOutlineGpu {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SelectionVertex {
     position: [f32; 3],
+    color: [f32; 4],
 }
 
 pub(super) fn create_selection_outline_gpu(
@@ -157,18 +195,36 @@ pub(super) fn create_selection_pipeline(
 }
 
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
-    let mut vertices = Vec::with_capacity(outline.boxes.len() * 24);
+    let mut vertices = Vec::with_capacity(
+        outline.boxes.len() * 24 + outline.colored_boxes.len() * 24 + outline.lines.len() * 2,
+    );
     for outline_box in &outline.boxes {
-        vertices.extend(selection_box_vertices(*outline_box));
+        vertices.extend(selection_box_vertices(
+            outline_box.min,
+            outline_box.max,
+            DEFAULT_SELECTION_OUTLINE_COLOR,
+        ));
+    }
+    for outline_box in &outline.colored_boxes {
+        vertices.extend(selection_box_vertices(
+            outline_box.min,
+            outline_box.max,
+            outline_box.color,
+        ));
+    }
+    for line in &outline.lines {
+        vertices.extend(selection_line_vertices(*line));
     }
     vertices
 }
 
-fn selection_box_vertices(outline_box: SelectionBox) -> [SelectionVertex; 24] {
-    let min = Vec3::from_array(outline_box.min).min(Vec3::from_array(outline_box.max))
-        - Vec3::splat(0.002);
-    let max = Vec3::from_array(outline_box.min).max(Vec3::from_array(outline_box.max))
-        + Vec3::splat(0.002);
+fn selection_box_vertices(
+    box_min: [f32; 3],
+    box_max: [f32; 3],
+    color: [f32; 4],
+) -> [SelectionVertex; 24] {
+    let min = Vec3::from_array(box_min).min(Vec3::from_array(box_max)) - Vec3::splat(0.002);
+    let max = Vec3::from_array(box_min).max(Vec3::from_array(box_max)) + Vec3::splat(0.002);
     let p000 = [min.x, min.y, min.z];
     let p100 = [max.x, min.y, min.z];
     let p010 = [min.x, max.y, min.z];
@@ -179,35 +235,42 @@ fn selection_box_vertices(outline_box: SelectionBox) -> [SelectionVertex; 24] {
     let p111 = [max.x, max.y, max.z];
 
     [
-        selection_vertex(p000),
-        selection_vertex(p100),
-        selection_vertex(p100),
-        selection_vertex(p101),
-        selection_vertex(p101),
-        selection_vertex(p001),
-        selection_vertex(p001),
-        selection_vertex(p000),
-        selection_vertex(p010),
-        selection_vertex(p110),
-        selection_vertex(p110),
-        selection_vertex(p111),
-        selection_vertex(p111),
-        selection_vertex(p011),
-        selection_vertex(p011),
-        selection_vertex(p010),
-        selection_vertex(p000),
-        selection_vertex(p010),
-        selection_vertex(p100),
-        selection_vertex(p110),
-        selection_vertex(p101),
-        selection_vertex(p111),
-        selection_vertex(p001),
-        selection_vertex(p011),
+        selection_vertex(p000, color),
+        selection_vertex(p100, color),
+        selection_vertex(p100, color),
+        selection_vertex(p101, color),
+        selection_vertex(p101, color),
+        selection_vertex(p001, color),
+        selection_vertex(p001, color),
+        selection_vertex(p000, color),
+        selection_vertex(p010, color),
+        selection_vertex(p110, color),
+        selection_vertex(p110, color),
+        selection_vertex(p111, color),
+        selection_vertex(p111, color),
+        selection_vertex(p011, color),
+        selection_vertex(p011, color),
+        selection_vertex(p010, color),
+        selection_vertex(p000, color),
+        selection_vertex(p010, color),
+        selection_vertex(p100, color),
+        selection_vertex(p110, color),
+        selection_vertex(p101, color),
+        selection_vertex(p111, color),
+        selection_vertex(p001, color),
+        selection_vertex(p011, color),
     ]
 }
 
-fn selection_vertex(position: [f32; 3]) -> SelectionVertex {
-    SelectionVertex { position }
+fn selection_line_vertices(line: SelectionLine) -> [SelectionVertex; 2] {
+    [
+        selection_vertex(line.from, line.color),
+        selection_vertex(line.to, line.color),
+    ]
+}
+
+fn selection_vertex(position: [f32; 3], color: [f32; 4]) -> SelectionVertex {
+    SelectionVertex { position, color }
 }
 
 fn selection_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -232,6 +295,10 @@ mod tests {
         assert!(SELECTION_SHADER.contains("const OUTLINE_ALPHA: f32 = 102.0 / 255.0"));
         assert!(!SELECTION_SHADER.contains("0.65"));
         assert!((SELECTION_OUTLINE_ALPHA - (102.0 / 255.0)).abs() < f32::EPSILON);
+        assert_eq!(
+            DEFAULT_SELECTION_OUTLINE_COLOR,
+            [0.0, 0.0, 0.0, SELECTION_OUTLINE_ALPHA]
+        );
     }
 
     #[test]
@@ -249,6 +316,7 @@ mod tests {
         ));
         assert_eq!(vertices.len(), 24);
         assert_eq!(vertices[0].position, [0.998, 1.998, 2.998]);
+        assert_eq!(vertices[0].color, DEFAULT_SELECTION_OUTLINE_COLOR);
         assert_eq!(vertices[1].position, [2.002, 1.998, 2.998]);
         assert_eq!(vertices[22].position, [0.998, 1.998, 4.002]);
         assert_eq!(vertices[23].position, [0.998, 3.002, 4.002]);
@@ -271,5 +339,29 @@ mod tests {
         assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
         assert_eq!(vertices[24].position, [1.998, -0.002, -0.002]);
         assert_eq!(vertices[25].position, [3.002, -0.002, -0.002]);
+    }
+
+    #[test]
+    fn selection_outline_vertices_emit_colored_boxes_and_lines() {
+        let vertices = selection_outline_vertices(&SelectionOutline::from_colored_boxes_and_lines(
+            [SelectionColoredBox {
+                min: [0.0, 0.0, 0.0],
+                max: [1.0, 1.0, 1.0],
+                color: [1.0, 0.0, 0.0, 1.0],
+            }],
+            [SelectionLine {
+                from: [2.0, 0.0, 0.0],
+                to: [3.0, 1.0, 0.0],
+                color: [0.0, 0.0, 1.0, 1.0],
+            }],
+        ));
+
+        assert_eq!(vertices.len(), 26);
+        assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
+        assert_eq!(vertices[0].color, [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(vertices[24].position, [2.0, 0.0, 0.0]);
+        assert_eq!(vertices[24].color, [0.0, 0.0, 1.0, 1.0]);
+        assert_eq!(vertices[25].position, [3.0, 1.0, 0.0]);
+        assert_eq!(vertices[25].color, [0.0, 0.0, 1.0, 1.0]);
     }
 }

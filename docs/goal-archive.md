@@ -5474,3 +5474,14 @@
   request，main loop drain 后排入既有 block/entity tag-query net command。边界：
   gamemaster permission gate、返回 NBT 拼接 `/setblock` / `/summon`、Shift+F3+I
   本地 NBT、以及 styled/clickable feedback 仍未实现。
+- [x] debug overlay F3+B entity hitbox eye/vector detail rendering（P2
+  renderer/native/world slice，2026-07-08）：依据
+  `EntityHitboxDebugRenderer.showHitboxes` 的白色 client AABB、living
+  eye-height 红色薄盒（`eyeHeight +/- 0.01F`）以及从眼位出发、长度 2.0
+  的蓝色 view-vector arrow。renderer `SelectionOutline` 现在支持彩色 boxes
+  和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
+  entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
+  并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
+  point gizmos、arrowheads、passenger vehicle slabs、Ender Dragon sub-part boxes、
+  local-server green boxes/delta arrows、missing-server labels、以及专用 debug
+  gizmo styling 仍未实现。

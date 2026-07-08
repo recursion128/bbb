@@ -1,7 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
-pub use crate::entities::LocalPlayerVehicleHealth;
+pub use crate::entities::{vanilla_entity_type_is_living, LocalPlayerVehicleHealth};
 pub use crate::maps::*;
 pub use crate::play_apply::{
     advance_dragon_fireball_explode_level_event_particle_randoms,

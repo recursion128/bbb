@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bbb_protocol::packets::{
     decode_profile_textures_from_properties, EntityDataEnumSerializer, EntityDataRegistryHolder,
     EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
@@ -14,16 +16,18 @@ use bbb_renderer::{
     GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
-    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox,
+    SelectionColoredBox, SelectionLine, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, SpearKineticWeapon, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
+    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
-    ArmorMaterialKind as WorldArmorMaterialKind, EndCrystalBeamSource as WorldEndCrystalBeamSource,
+    vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
+    EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
@@ -50,6 +54,11 @@ pub(crate) const THROWN_ITEM_PROJECTILE_BILLBOARDS: &[(i32, f32)] = &[
     (VANILLA_ENTITY_TYPE_FIREBALL_ID, 3.0),
     (VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, 0.75),
 ];
+const ENTITY_HITBOX_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+const ENTITY_VIEW_VECTOR_COLOR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
+const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
@@ -298,17 +307,44 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
     entity_partial_tick: f32,
 ) -> Option<SelectionOutline> {
+    let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
-    let boxes: Vec<_> = world
-        .entity_pick_targets_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
+    let sources_by_id: HashMap<_, _> = world
+        .entity_model_sources_at_partial_tick(entity_partial_tick)
+        .into_iter()
+        .map(|source| (source.entity_id, source))
+        .collect();
+    let mut boxes = Vec::new();
+    let mut lines = Vec::new();
+
+    for target in world
+        .entity_pick_targets_at_partial_tick(entity_partial_tick)
         .into_iter()
         .filter(|target| {
             local_player_id != Some(target.entity_id) && camera_entity_id != Some(target.entity_id)
         })
-        .map(entity_pick_target_box)
-        .collect();
-    (!boxes.is_empty()).then(|| SelectionOutline::from_boxes(boxes))
+    {
+        boxes.push(entity_debug_hitbox_box(target));
+        let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
+            continue;
+        };
+        let source = sources_by_id.get(&target.entity_id);
+        if source.is_some_and(|source| vanilla_entity_type_is_living(source.entity_type_id)) {
+            boxes.push(entity_debug_eye_height_box(target, pose.eye_height));
+        }
+        let y_rot = source.map_or(pose.y_rot, |source| source.y_rot);
+        let x_rot = source.map_or(pose.x_rot, |source| source.x_rot);
+        lines.push(entity_debug_view_vector_line(
+            [target.position.x, target.position.y, target.position.z],
+            pose.eye_height,
+            y_rot,
+            x_rot,
+        ));
+    }
+
+    (!boxes.is_empty() || !lines.is_empty())
+        .then(|| SelectionOutline::from_colored_boxes_and_lines(boxes, lines))
 }
 
 pub(crate) fn entity_model_instances_from_world_at_partial_tick(
@@ -420,6 +456,75 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
             (target.position.y + f64::from(target.bounds.max[1])) as f32,
             (target.position.z + f64::from(target.bounds.max[2])) as f32,
         ],
+    }
+}
+
+fn entity_debug_hitbox_box(target: EntityPickTargetState) -> SelectionColoredBox {
+    let selection_box = entity_pick_target_box(target);
+    SelectionColoredBox {
+        min: selection_box.min,
+        max: selection_box.max,
+        color: ENTITY_HITBOX_COLOR,
+    }
+}
+
+fn entity_debug_eye_height_box(
+    target: EntityPickTargetState,
+    eye_height: f32,
+) -> SelectionColoredBox {
+    let selection_box = entity_pick_target_box(target);
+    let eye_y = selection_box.min[1] + eye_height;
+    SelectionColoredBox {
+        min: [
+            selection_box.min[0],
+            eye_y - ENTITY_EYE_HEIGHT_PADDING,
+            selection_box.min[2],
+        ],
+        max: [
+            selection_box.max[0],
+            eye_y + ENTITY_EYE_HEIGHT_PADDING,
+            selection_box.max[2],
+        ],
+        color: ENTITY_EYE_HEIGHT_COLOR,
+    }
+}
+
+fn entity_debug_view_vector_line(
+    position: [f64; 3],
+    eye_height: f32,
+    y_rot: f32,
+    x_rot: f32,
+) -> SelectionLine {
+    let direction = entity_view_vector(y_rot, x_rot);
+    let from = [
+        position[0] as f32,
+        position[1] as f32 + eye_height,
+        position[2] as f32,
+    ];
+    let to = [
+        from[0] + direction[0] * ENTITY_VIEW_VECTOR_LENGTH,
+        from[1] + direction[1] * ENTITY_VIEW_VECTOR_LENGTH,
+        from[2] + direction[2] * ENTITY_VIEW_VECTOR_LENGTH,
+    ];
+    SelectionLine {
+        from,
+        to,
+        color: ENTITY_VIEW_VECTOR_COLOR,
+    }
+}
+
+fn entity_view_vector(y_rot: f32, x_rot: f32) -> [f32; 3] {
+    let yaw = y_rot.to_radians();
+    let pitch = x_rot.to_radians();
+    let cos_pitch = pitch.cos();
+    let x = -yaw.sin() * cos_pitch;
+    let y = -pitch.sin();
+    let z = yaw.cos() * cos_pitch;
+    let len = (x * x + y * y + z * z).sqrt();
+    if len <= f32::EPSILON {
+        [0.0, 0.0, 0.0]
+    } else {
+        [x / len, y / len, z / len]
     }
 }
 

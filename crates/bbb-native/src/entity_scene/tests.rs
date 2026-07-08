@@ -40,11 +40,17 @@ fn entity_scene_outline_projects_pick_bounds_for_all_visible_targets() {
     let outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.5)
         .expect("expected entity scene outline");
 
-    assert_eq!(outline.boxes.len(), 2);
-    assert_selection_box_close(outline.boxes[0].min, [-0.49, 1.0, 2.51]);
-    assert_selection_box_close(outline.boxes[0].max, [0.49, 1.7, 3.49]);
-    assert_selection_box_close(outline.boxes[1].min, [1.51, 1.0, 2.51]);
-    assert_selection_box_close(outline.boxes[1].max, [2.49, 1.7, 3.49]);
+    assert!(outline.boxes.is_empty());
+    assert_eq!(outline.colored_boxes.len(), 2);
+    assert_eq!(outline.lines.len(), 2);
+    assert_selection_box_close(outline.colored_boxes[0].min, [-0.49, 1.0, 2.51]);
+    assert_selection_box_close(outline.colored_boxes[0].max, [0.49, 1.7, 3.49]);
+    assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
+    assert_selection_box_close(outline.colored_boxes[1].min, [1.51, 1.0, 2.51]);
+    assert_selection_box_close(outline.colored_boxes[1].max, [2.49, 1.7, 3.49]);
+    assert_eq!(outline.colored_boxes[1].color, ENTITY_HITBOX_COLOR);
+    assert_eq!(outline.lines[0].color, ENTITY_VIEW_VECTOR_COLOR);
+    assert!((outline.lines[0].to[2] - outline.lines[0].from[2] - 2.0).abs() < 1.0e-5);
 }
 
 #[test]
@@ -87,9 +93,44 @@ fn entity_scene_outline_filters_local_player_and_camera_entity() {
     let outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.0)
         .expect("expected non-camera entity scene outline");
 
-    assert_eq!(outline.boxes.len(), 1);
-    assert_selection_box_close(outline.boxes[0].min, [3.51, 1.0, 2.51]);
-    assert_selection_box_close(outline.boxes[0].max, [4.49, 1.7, 3.49]);
+    assert_eq!(outline.colored_boxes.len(), 1);
+    assert_eq!(outline.lines.len(), 1);
+    assert_selection_box_close(outline.colored_boxes[0].min, [3.51, 1.0, 2.51]);
+    assert_selection_box_close(outline.colored_boxes[0].max, [4.49, 1.7, 3.49]);
+    assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
+}
+
+#[test]
+fn entity_scene_outline_projects_living_eye_height_box_and_view_vector() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_rotation(
+        20,
+        VANILLA_ENTITY_TYPE_CREEPER_ID,
+        [0.0, 1.0, 3.0],
+        90.0,
+        -30.0,
+        90.0,
+    ));
+    let eye_height = world.probe_entity_camera_pose(20).unwrap().eye_height;
+
+    let outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.0)
+        .expect("expected living entity debug outline");
+
+    assert_eq!(outline.colored_boxes.len(), 2);
+    assert_eq!(outline.lines.len(), 1);
+    assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
+    assert_eq!(outline.colored_boxes[1].color, ENTITY_EYE_HEIGHT_COLOR);
+    assert_selection_box_close(
+        outline.colored_boxes[1].min,
+        [-0.3, 1.0 + eye_height - 0.01, 2.7],
+    );
+    assert_selection_box_close(
+        outline.colored_boxes[1].max,
+        [0.3, 1.0 + eye_height + 0.01, 3.3],
+    );
+    assert_eq!(outline.lines[0].color, ENTITY_VIEW_VECTOR_COLOR);
+    assert_selection_box_close(outline.lines[0].from, [0.0, 1.0 + eye_height, 3.0]);
+    assert_selection_box_close(outline.lines[0].to, [-1.7320508, 2.0 + eye_height, 3.0]);
 }
 
 #[test]

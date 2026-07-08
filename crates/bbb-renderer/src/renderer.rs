@@ -1771,7 +1771,9 @@ impl Renderer {
     }
 
     pub fn set_chunk_border_outline(&mut self, outline: Option<SelectionOutline>) {
-        let chunk_border_boxes = outline.as_ref().map_or(0, |outline| outline.boxes.len());
+        let chunk_border_boxes = outline.as_ref().map_or(0, |outline| {
+            outline.boxes.len() + outline.colored_boxes.len()
+        });
         self.counters.chunk_border_boxes = chunk_border_boxes;
         if self
             .chunk_border_outline
@@ -1786,7 +1788,9 @@ impl Renderer {
     }
 
     pub fn set_entity_scene_outline(&mut self, outline: Option<SelectionOutline>) {
-        let entity_scene_boxes = outline.as_ref().map_or(0, |outline| outline.boxes.len());
+        let entity_scene_boxes = outline.as_ref().map_or(0, |outline| {
+            outline.boxes.len() + outline.colored_boxes.len()
+        });
         self.counters.entity_scene_boxes = entity_scene_boxes;
         if self
             .entity_scene_outline

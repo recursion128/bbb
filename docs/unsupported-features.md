@@ -1104,10 +1104,12 @@ When an agent does any of the following, update this file in the same slice:
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
     hitbox outline rendering, F3+G chunk section-stack outline rendering,
-    F3+2 FPS/TPS chart rendering, F3+3 network ping/bandwidth chart
+    F3+B entity hitbox eye/vector detail rendering, F3+2 FPS/TPS chart
+    rendering, F3+3 network ping/bandwidth chart
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
-    details/chunk-border full gizmo grid, advanced tooltip full parity,
+    vehicle/dragon/server/point details, chunk-border full gizmo grid,
+    advanced tooltip full parity,
     actual dynamic texture dump execution, F3+I NBT response/callback parity,
     profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
@@ -1203,6 +1205,21 @@ When an agent does any of the following, update this file in the same slice:
     hitbox colors, position point, passenger box, eye-height box, Ender Dragon
     sub-entity boxes, view/delta arrows, frustum/invisibility filtering, and
     the dedicated debug gizmo styling are still not implemented.
+  - Done 2026-07-08 — Debug overlay F3+B entity hitbox eye/vector detail
+    rendering.
+    Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` draws the
+    client entity AABB in white, adds a red `LivingEntity` eye-height slab
+    (`eyeHeight +/- 0.01F` across the entity bounding box), and draws a blue
+    view-vector arrow from `currentPosition + eyeHeight` to
+    `eyePosition + getViewVector(partialTicks) * 2.0`. bbb now extends
+    `SelectionOutline` with colored boxes and colored free lines while keeping
+    existing black box constructors intact; F3+B entity debug output submits
+    white entity AABBs, red living eye-height slabs, and a blue two-block
+    view-vector line sampled from the same partial-tick entity source. Boundary:
+    vanilla point gizmos, arrowheads, passenger-vehicle yellow slabs, Ender
+    Dragon sub-part boxes, local-server green boxes/delta arrows, missing
+    server-entity labels, and dedicated debug gizmo styling remain future
+    parity work.
   - Done 2026-07-08 — Debug overlay F3+Esc pause-without-menu request shell.
     Vanilla anchors: `KeyboardHandler.keyPress` handles Escape as global input
     when no screen, a no-menu pause screen, or the game-mode switcher is
@@ -2000,9 +2017,9 @@ When an agent does any of the following, update this file in the same slice:
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
-    are non-default/editable debug entries, entity hitbox full
-    details/chunk-border full gizmo grid, advanced tooltip full
-    parity/persistence, actual dynamic texture dump execution, F3+I NBT
+    are non-default/editable debug entries, entity hitbox
+    vehicle/dragon/server/point details, chunk-border full gizmo grid,
+    advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I NBT
     response/callback recreate parity, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

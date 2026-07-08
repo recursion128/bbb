@@ -1731,7 +1731,9 @@ fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
 
     let outline = debug_entity_scene_outline(&input, &world, 1.0)
         .expect("F3+B should enable entity AABB debug outlines");
-    assert_eq!(outline.boxes.len(), 1);
+    assert!(outline.boxes.is_empty());
+    assert_eq!(outline.colored_boxes.len(), 2);
+    assert_eq!(outline.lines.len(), 1);
 }
 
 #[test]

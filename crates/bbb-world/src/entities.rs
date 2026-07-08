@@ -69,6 +69,11 @@ pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 /// local-player HUD max is always 300.
 pub(crate) const VANILLA_MAX_AIR_SUPPLY_TICKS: i32 = 300;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+
+pub fn vanilla_entity_type_is_living(entity_type_id: i32) -> bool {
+    vanilla_living_entity_type(entity_type_id)
+}
+
 // Vanilla `Arrow.ID_EFFECT_COLOR` (INT): Entity data ids 0-7 are from `Entity`, ids 8-10
 // are from `AbstractArrow`, then `Arrow` adds its potion/effect color at id 11.
 pub(crate) const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
