@@ -59,9 +59,10 @@ use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
     handle_book_screen_mouse_input, handle_focus_change, handle_inventory_cursor_moved,
-    handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
-    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
-    handle_text_input_with_item_runtime, release_active_input, ClientInputState,
+    handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
+    handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick, handle_mouse_motion,
+    handle_mouse_wheel, handle_text_input_with_item_runtime, release_active_input,
+    ClientInputState,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -459,11 +460,12 @@ fn main() -> Result<()> {
                     }
                     if world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_inventory_mouse_input(
+                        handle_inventory_mouse_input_with_item_runtime(
                             &mut input,
                             &mut world,
                             &mut net_counters,
                             &net_commands,
+                            item_runtime.as_ref(),
                             button,
                             state,
                             cursor_position,

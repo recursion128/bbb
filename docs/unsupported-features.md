@@ -1062,9 +1062,10 @@ When an agent does any of the following, update this file in the same slice:
   - Continue the recipe-book overlay after the completed shell and toggle
     buttons/search input/tab shell/crafting recipe-button shell/category-page
     shell/placement shell/category tab visibility/crafting ghost slots: tab
-    notification animation, recipe-search filtering, craftability/furnace-
-    family recipe-grid parity, multi-recipe overlay/cycling, and unresolved
-    tag/composite SlotDisplay cycling for ghost ingredients.
+    notification animation, craftability/furnace-family recipe-grid parity,
+    multi-recipe overlay/cycling, full recipe `FullTextSearchTree` token
+    parity, and unresolved tag/composite SlotDisplay cycling for ghost
+    ingredients.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1181,17 +1182,30 @@ When an agent does any of the following, update this file in the same slice:
     crafting-table and local-inventory ghost slot fills/items using vanilla
     shaped centering, and draws the layers after normal slot items but before
     foreground slot highlights.
+  - Done 2026-07-08 — Crafting recipe-book visible search filtering. Vanilla
+    anchors: `RecipeBookComponent.updateCollections` starts from the selected
+    tab collection list, removes collections without selected recipes, and
+    intersects non-empty search text with
+    `connection.searchTrees().recipes().search(search.toLowerCase(Locale.ROOT))`;
+    `SessionSearchTrees.updateRecipes` indexes each `RecipeCollection` by
+    result item tooltip lines and result item identifiers. bbb now filters the
+    shared crafting recipe-book collection list by result item tooltip text,
+    result resource id, and protocol id text, so HUD recipe buttons, page
+    controls/text, and recipe-button click hit-testing all use the same
+    search-filtered collection set.
   - Boundary: furnace-family raw recipe displays, craftability slot sprite
     selection, craftability retry guard, multi-recipe cycling/right-click
-    overlay, tab notification animation, recipe-search filtering of visible
-    recipe buttons, cursor/selection rendering inside the search box,
-    tag/composite SlotDisplay cycling for ghost ingredients, and narrow-screen
-    overlap remain open. The filter toggle, search text,
+    overlay, tab notification animation, full `FullTextSearchTree` token /
+    namespace-path / intersection semantics for recipe search, cursor/selection
+    rendering inside the search box, tag/composite SlotDisplay cycling for
+    ghost ingredients, and narrow-screen overlap remain open. The filter toggle,
+    search text,
     selected-tab, first crafting recipe-button shell, crafting category/page
     states, primary recipe placement command path, and crafting category tab
-    visibility plus direct item/item-stack crafting ghost slots are live. The
-    first shell models the non-narrow layout; vanilla's narrow-screen overlap
-    mode (`width < 379`) remains for the input/render follow-up.
+    visibility plus direct item/item-stack crafting ghost slots and visible
+    crafting search filtering are live. The first shell models the non-narrow
+    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
+    the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

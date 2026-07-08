@@ -6481,6 +6481,57 @@ fn hud_inventory_screen_filters_recipe_book_buttons_by_crafting_tab_category() {
 }
 
 #[test]
+fn hud_inventory_screen_filters_recipe_book_buttons_by_search_text() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, None, 0),
+            shapeless_crafting_recipe_book_entry(21, 2, None, 1),
+            shapeless_crafting_recipe_book_entry(22, 2, None, 2),
+        ],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_search: RecipeBookSearchHudState {
+                text: "stick".to_string(),
+                focused: true,
+            },
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    let recipe_slots = screen
+        .background_layers
+        .iter()
+        .filter(|layer| {
+            matches!(
+                layer.texture,
+                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable
+                    | HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable
+            )
+        })
+        .count();
+    assert_eq!(recipe_slots, 1);
+    assert!(screen
+        .floating_items
+        .iter()
+        .any(|item| (item.x, item.y) == (15, 35)));
+}
+
+#[test]
 fn hud_inventory_screen_projects_recipe_book_page_controls_and_current_page() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {

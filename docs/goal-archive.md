@@ -1842,6 +1842,19 @@
   notification animation、visible recipe-grid search filtering、search
   cursor/selection rendering、tag/composite SlotDisplay ghost ingredient cycling、
   narrow-screen overlap。
+- [x] crafting recipe-book visible search filtering（P2 HUD/input slice，2026-07-08）：
+  依据 `RecipeBookComponent.updateCollections` 先取 selected tab collections，
+  再用 `connection.searchTrees().recipes().search(search.toLowerCase(Locale.ROOT))`
+  求交集；`SessionSearchTrees.updateRecipes` 以 result item tooltip lines 和
+  item identifiers 建 recipe collection 搜索索引。native 现在在 shared
+  crafting recipe-book collection 管线按 result tooltip text、resource id、
+  protocol id text 过滤，HUD recipe buttons、page controls/text 与点击命中
+  共用同一 filtered collection。剩余：furnace-family raw recipe displays、
+  craftability slot sprite selection、craftability retry guard、multi-recipe
+  cycling/right-click overlay、tab notification animation、完整
+  `FullTextSearchTree` token/namespace-path/intersection 语义、search
+  cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
+  cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

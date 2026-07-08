@@ -2676,15 +2676,19 @@ fn hud_inventory_screen_with_local_state(
     }
     background_layers.extend(hud_recipe_book_recipe_button_layers(
         world,
+        item_runtime,
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
     ));
     background_layers.extend(hud_recipe_book_page_button_layers(
         world,
+        item_runtime,
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
         local_state.cursor_position,
     ));
     if let Some(layer) = hud_recipe_book_button_layer(
@@ -2729,6 +2733,7 @@ fn hud_inventory_screen_with_local_state(
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
         local_state.keybind_context,
         partial_tick,
     ));
@@ -2757,9 +2762,11 @@ fn hud_inventory_screen_with_local_state(
     }
     if let Some(label) = hud_recipe_book_page_text_label(
         world,
+        item_runtime,
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
     ) {
         text_labels.push(label);
     }
@@ -3072,30 +3079,39 @@ fn recipe_book_tab_icons(
 
 fn hud_recipe_book_recipe_button_layers(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
 ) -> Vec<HudInventoryBackgroundLayer> {
-    hud_recipe_book_visible_crafting_collections(world, background, tabs, pages)
-        .into_iter()
-        .enumerate()
-        .map(|(index, collection)| {
-            let (x, y) = recipe_book_recipe_button_position(index);
-            hud_inventory_background_layer(
-                if collection.has_multiple_recipes() {
-                    HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable
-                } else {
-                    HudInventoryBackgroundTexture::RecipeBookSlotUncraftable
-                },
-                x,
-                y,
-                u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
-                u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
-                [0.0, 0.0],
-                [1.0, 1.0],
-            )
-        })
-        .collect()
+    hud_recipe_book_visible_crafting_collections(
+        world,
+        item_runtime,
+        background,
+        tabs,
+        pages,
+        search,
+    )
+    .into_iter()
+    .enumerate()
+    .map(|(index, collection)| {
+        let (x, y) = recipe_book_recipe_button_position(index);
+        hud_inventory_background_layer(
+            if collection.has_multiple_recipes() {
+                HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable
+            } else {
+                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable
+            },
+            x,
+            y,
+            u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
+            u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )
+    })
+    .collect()
 }
 
 fn hud_recipe_book_recipe_button_icon_items(
@@ -3105,13 +3121,21 @@ fn hud_recipe_book_recipe_button_icon_items(
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     let Some(item_runtime) = item_runtime else {
         return Vec::new();
     };
-    let collections = hud_recipe_book_visible_crafting_collections(world, background, tabs, pages);
+    let collections = hud_recipe_book_visible_crafting_collections(
+        world,
+        Some(item_runtime),
+        background,
+        tabs,
+        pages,
+        search,
+    );
     let mut items = Vec::new();
     for (index, collection) in collections.into_iter().enumerate() {
         let Some(stack) = collection.result_stack() else {
@@ -3238,11 +3262,15 @@ fn recipe_book_result_slot_fill_is_big(background: InventoryScreenBackground) ->
 
 fn hud_recipe_book_visible_crafting_collections<'a>(
     world: &'a WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
 ) -> Vec<RecipeBookUiCollection<'a>> {
-    let Some(collections) = hud_recipe_book_crafting_collections(world, background, tabs) else {
+    let Some(collections) =
+        hud_recipe_book_crafting_collections(world, item_runtime, background, tabs, search)
+    else {
         return Vec::new();
     };
     let page = recipe_book_selected_page_index(background, pages)
@@ -3257,15 +3285,23 @@ fn hud_recipe_book_visible_crafting_collections<'a>(
 
 fn hud_recipe_book_crafting_collections<'a>(
     world: &'a WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
+    search: &RecipeBookSearchHudState,
 ) -> Option<Vec<RecipeBookUiCollection<'a>>> {
     if recipe_book_main_gui_offset(world, background) == 0 {
         return None;
     }
     let grid = recipe_book_crafting_grid_for_background(background)?;
     let selected_tab = recipe_book_selected_tab_index(background, tabs)?;
-    Some(crafting_recipe_book_collections(world, grid, selected_tab))
+    Some(crafting_recipe_book_collections(
+        world,
+        grid,
+        selected_tab,
+        &search.text,
+        item_runtime,
+    ))
 }
 
 fn recipe_book_crafting_grid_for_background(
@@ -3297,12 +3333,16 @@ fn recipe_book_recipe_button_position(index: usize) -> (i32, i32) {
 
 fn hud_recipe_book_page_button_layers(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
     cursor_position: Option<(i32, i32)>,
 ) -> Vec<HudInventoryBackgroundLayer> {
-    let Some(collections) = hud_recipe_book_crafting_collections(world, background, tabs) else {
+    let Some(collections) =
+        hud_recipe_book_crafting_collections(world, item_runtime, background, tabs, search)
+    else {
         return Vec::new();
     };
     let page_count = recipe_book_page_count(collections.len());
@@ -3501,11 +3541,14 @@ fn hud_recipe_book_search_text_label(
 
 fn hud_recipe_book_page_text_label(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
 ) -> Option<HudInventoryTextLabel> {
-    let collections = hud_recipe_book_crafting_collections(world, background, tabs)?;
+    let collections =
+        hud_recipe_book_crafting_collections(world, item_runtime, background, tabs, search)?;
     let page_count = recipe_book_page_count(collections.len());
     if page_count <= 1 {
         return None;

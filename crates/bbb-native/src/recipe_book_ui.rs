@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
     CraftingRecipeDisplaySummary, ItemStackSummary, RecipeDisplayEntry, RecipeDisplaySummary,
     SlotDisplaySummary,
@@ -58,17 +59,24 @@ impl<'a> RecipeBookUiCollection<'a> {
     }
 }
 
-pub(crate) fn crafting_recipe_book_collections(
-    world: &WorldStore,
+pub(crate) fn crafting_recipe_book_collections<'a>(
+    world: &'a WorldStore,
     grid: RecipeBookCraftingGrid,
     selected_tab_index: usize,
-) -> Vec<RecipeBookUiCollection<'_>> {
+    search_text: &str,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<RecipeBookUiCollection<'a>> {
     let Some(categories) = crafting_tab_categories(selected_tab_index) else {
         return Vec::new();
     };
     let mut collections = Vec::new();
     for category_id in categories {
         push_crafting_category_collections(world, grid, *category_id, &mut collections);
+    }
+    if let Some(search_text) = normalized_recipe_search_text(search_text) {
+        collections.retain(|collection| {
+            recipe_book_collection_matches_search(collection, &search_text, item_runtime)
+        });
     }
     collections
 }
@@ -80,7 +88,8 @@ pub(crate) fn crafting_recipe_book_visible_tab_indices(
 ) -> Vec<usize> {
     (0..tab_count)
         .filter(|index| {
-            *index == 0 || !crafting_recipe_book_collections(world, grid, *index).is_empty()
+            *index == 0
+                || !crafting_recipe_book_collections(world, grid, *index, "", None).is_empty()
         })
         .collect()
 }
@@ -216,6 +225,51 @@ fn place_shaped_recipe_ghost_inputs<'a>(
         }
         grid_y += 1;
     }
+}
+
+fn normalized_recipe_search_text(search_text: &str) -> Option<String> {
+    (!search_text.is_empty()).then(|| search_text.to_lowercase())
+}
+
+fn recipe_book_collection_matches_search(
+    collection: &RecipeBookUiCollection<'_>,
+    search_text: &str,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> bool {
+    collection.entries.iter().any(|entry| {
+        recipe_book_crafting_result_stack(entry).is_some_and(|stack| {
+            recipe_book_result_stack_matches_search(stack, search_text, item_runtime)
+        })
+    })
+}
+
+fn recipe_book_result_stack_matches_search(
+    stack: &ItemStackSummary,
+    search_text: &str,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> bool {
+    if stack
+        .item_id
+        .is_some_and(|item_id| item_id.to_string().contains(search_text))
+    {
+        return true;
+    }
+    let (Some(item_runtime), Some(item_id)) = (item_runtime, stack.item_id) else {
+        return false;
+    };
+    if item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| resource_id.to_lowercase().contains(search_text))
+    {
+        return true;
+    }
+    item_runtime
+        .tooltip_lines_for_stack(stack)
+        .is_some_and(|lines| {
+            lines
+                .iter()
+                .any(|line| line.text.to_lowercase().contains(search_text))
+        })
 }
 
 fn push_crafting_category_collections<'a>(

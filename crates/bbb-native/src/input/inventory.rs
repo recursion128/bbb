@@ -331,11 +331,36 @@ pub(crate) fn handle_inventory_cursor_moved(
     true
 }
 
+#[cfg(test)]
 pub(crate) fn handle_inventory_mouse_input(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button: MouseButton,
+    state: ElementState,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    handle_inventory_mouse_input_with_item_runtime(
+        input,
+        world,
+        counters,
+        net_commands,
+        None,
+        button,
+        state,
+        cursor_position,
+        surface_size,
+    )
+}
+
+pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
     button: MouseButton,
     state: ElementState,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -392,7 +417,9 @@ pub(crate) fn handle_inventory_mouse_input(
         local_inventory_clear_quick_craft(input);
         return true;
     }
-    if button_num == 0 && maybe_turn_recipe_book_page(input, world, cursor_position, surface_size) {
+    if button_num == 0
+        && maybe_turn_recipe_book_page(input, world, item_runtime, cursor_position, surface_size)
+    {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
@@ -405,6 +432,7 @@ pub(crate) fn handle_inventory_mouse_input(
             world,
             counters,
             net_commands,
+            item_runtime,
             cursor_position,
             surface_size,
         )
@@ -693,12 +721,17 @@ fn maybe_select_recipe_book_tab(
 fn maybe_turn_recipe_book_page(
     input: &mut ClientInputState,
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some((book_type, turn, page_count)) =
-        recipe_book_page_button_at_position(input, world, cursor_position, surface_size)
-    else {
+    let Some((book_type, turn, page_count)) = recipe_book_page_button_at_position(
+        input,
+        world,
+        item_runtime,
+        cursor_position,
+        surface_size,
+    ) else {
         return false;
     };
     let current_page =
@@ -718,12 +751,17 @@ fn maybe_queue_recipe_book_recipe_click(
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(recipe_index) =
-        recipe_book_recipe_button_at_position(input, world, cursor_position, surface_size)
-    else {
+    let Some(recipe_index) = recipe_book_recipe_button_at_position(
+        input,
+        world,
+        item_runtime,
+        cursor_position,
+        surface_size,
+    ) else {
         return false;
     };
     let Some(container_id) = world.open_container_id() else {
@@ -2294,6 +2332,7 @@ fn recipe_book_tab_at_position(
 fn recipe_book_page_button_at_position(
     input: &ClientInputState,
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<(RecipeBookType, RecipeBookPageTurn, usize)> {
@@ -2308,7 +2347,14 @@ fn recipe_book_page_button_at_position(
         return None;
     }
     let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
-    let collection_count = crafting_recipe_book_collections(world, grid, selected_tab).len();
+    let collection_count = crafting_recipe_book_collections(
+        world,
+        grid,
+        selected_tab,
+        &input.recipe_book_search_text,
+        item_runtime,
+    )
+    .len();
     let page_count = recipe_book_page_count(collection_count);
     if page_count <= 1 {
         return None;
@@ -2347,6 +2393,7 @@ fn recipe_book_page_button_at_position(
 fn recipe_book_recipe_button_at_position(
     input: &ClientInputState,
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i32> {
@@ -2361,7 +2408,13 @@ fn recipe_book_recipe_button_at_position(
         return None;
     }
     let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
-    let collections = crafting_recipe_book_collections(world, grid, selected_tab);
+    let collections = crafting_recipe_book_collections(
+        world,
+        grid,
+        selected_tab,
+        &input.recipe_book_search_text,
+        item_runtime,
+    );
     let page = clamped_recipe_book_page(
         selected_recipe_book_page_index(input, book_type),
         collections.len(),
