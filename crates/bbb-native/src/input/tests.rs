@@ -59,6 +59,35 @@ fn handle_key_input_without_world(
     );
 }
 
+fn world_with_debug_player(reduced_debug_info: bool) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    world
+}
+
 fn handle_text_input_without_world(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -559,6 +588,197 @@ fn f3_digit_chart_keys_toggle_overlay_state_and_do_not_toggle_on_f3_release() {
     assert!(input.debug_lightmap_texture_visible());
     assert!(!input.debug_fps_charts_visible());
     assert!(!input.debug_network_charts_visible());
+}
+
+#[test]
+fn f3_debug_status_keys_toggle_state_without_forcing_overlay_visible() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_entity_hitboxes_visible());
+    assert!(!input.debug_overlay_visible());
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_entity_hitboxes_visible());
+    assert!(!input.debug_overlay_visible());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyG),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyH),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_chunk_borders_visible());
+    assert!(input.debug_advanced_item_tooltips());
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    assert!(!input.debug_entity_hitboxes_visible());
+    assert!(!input.debug_chunk_borders_visible());
+    assert!(!input.debug_advanced_item_tooltips());
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_debug_status_keys_follow_player_reduced_debug_gate() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+    );
+    assert!(!input.debug_entity_hitboxes_visible());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyH),
+        ElementState::Pressed,
+    );
+    assert!(input.debug_advanced_item_tooltips());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+
+    let mut reduced_world = world_with_debug_player(true);
+    let mut reduced_input = ClientInputState::new(true);
+    handle_key_input(
+        &mut reduced_input,
+        &mut counters,
+        &mut reduced_world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    for code in [KeyCode::KeyB, KeyCode::KeyG] {
+        handle_key_input(
+            &mut reduced_input,
+            &mut counters,
+            &mut reduced_world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    assert!(!reduced_input.debug_entity_hitboxes_visible());
+    assert!(!reduced_input.debug_chunk_borders_visible());
+    handle_key_input(
+        &mut reduced_input,
+        &mut counters,
+        &mut reduced_world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(reduced_input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

@@ -893,7 +893,11 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     let surface_size = winit::dpi::PhysicalSize::new(320, 240);
     assert_eq!(hud_debug_overlay(&input, &world, None, surface_size), None);
 
-    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Released));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None
+    ));
     let overlay = hud_debug_overlay(
         &input,
         &world,
@@ -957,11 +961,21 @@ fn hud_debug_overlay_formats_memory_lines_like_vanilla_debug_entries() {
 fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);
-    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Pressed));
-    assert!(
-        input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::Digit2), ElementState::Pressed)
-    );
-    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Released));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit2),
+        ElementState::Pressed,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None
+    ));
 
     let overlay = hud_debug_overlay(
         &input,
@@ -977,6 +991,48 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     assert!(overlay
         .left_lines
         .contains(&"[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string()));
+}
+
+#[test]
+fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
+    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&world)
+    ));
+    for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH] {
+        assert!(input.handle_debug_overlay_key(
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+            Some(&world)
+        ));
+    }
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&world)
+    ));
+    assert!(!input.debug_overlay_visible());
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&world)
+    ));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+    )
+    .expect("plain F3 should make the debug overlay visible");
+
+    assert!(overlay.left_lines.contains(
+        &"Debug toggles: [F3+B] Hitboxes visible; [F3+G] Chunks visible; [F3+H] Tooltips enabled"
+            .to_string()
+    ));
 }
 
 #[test]

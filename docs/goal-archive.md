@@ -5092,6 +5092,17 @@
   触发普通 overlay toggle；runtime help lines 会显示对应 visible/hidden。
   剩余：实际 FPS/TPS/network chart 绘制、lightmap preview 绘制、完整 debug
   entry 列表、3D crosshair、其它 F3 modifier combos。
+- [x] debug overlay F3+B/G/H status toggle state（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
+  `keyDebugShowHitboxes`、`keyDebugShowChunkBorders`、和
+  `keyDebugShowAdvancedTooltips` 的调度。world 现在保留 login
+  `reduced_debug_info`，`ClientInputState` 在 F3 按住期间只在有本地玩家且
+  reduced debug info 关闭时消费 B/G，H 按 vanilla 不依赖 player，分别维护
+  entity hitboxes、chunk borders、advanced item tooltips 三个运行时状态，并
+  在使用组合键后抑制 F3 release 触发普通 overlay toggle；runtime help
+  lines 会显示对应 visible/hidden 或 enabled/disabled。剩余：entity
+  hitbox/chunk-border 实际绘制、advanced tooltip 渲染/持久化、完整 debug
+  entry 列表、3D crosshair、其它 F3 modifier combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

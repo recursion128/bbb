@@ -190,6 +190,9 @@ pub(crate) struct ClientInputState {
     debug_fps_charts_visible: bool,
     debug_network_charts_visible: bool,
     debug_lightmap_texture_visible: bool,
+    debug_entity_hitboxes_visible: bool,
+    debug_chunk_borders_visible: bool,
+    debug_advanced_item_tooltips: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -539,10 +542,23 @@ impl ClientInputState {
         self.debug_overlay_visible && self.debug_lightmap_texture_visible
     }
 
+    pub(crate) fn debug_entity_hitboxes_visible(&self) -> bool {
+        self.debug_entity_hitboxes_visible
+    }
+
+    pub(crate) fn debug_chunk_borders_visible(&self) -> bool {
+        self.debug_chunk_borders_visible
+    }
+
+    pub(crate) fn debug_advanced_item_tooltips(&self) -> bool {
+        self.debug_advanced_item_tooltips
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
+        world: Option<&WorldStore>,
     ) -> bool {
         if !self.focused {
             return false;
@@ -570,7 +586,7 @@ impl ClientInputState {
 
         if matches!(state, ElementState::Pressed)
             && self.debug_modifier_down
-            && self.handle_debug_overlay_modifier_key(code)
+            && self.handle_debug_overlay_modifier_key(code, world)
         {
             self.debug_modifier_used = true;
             return true;
@@ -579,7 +595,11 @@ impl ClientInputState {
         false
     }
 
-    fn handle_debug_overlay_modifier_key(&mut self, code: KeyCode) -> bool {
+    fn handle_debug_overlay_modifier_key(
+        &mut self,
+        code: KeyCode,
+        world: Option<&WorldStore>,
+    ) -> bool {
         match code {
             KeyCode::Digit1 => {
                 self.toggle_debug_profiler_chart();
@@ -597,8 +617,32 @@ impl ClientInputState {
                 self.toggle_debug_lightmap_texture();
                 true
             }
+            KeyCode::KeyB => {
+                if !Self::debug_world_status_toggles_allowed(world) {
+                    return false;
+                }
+                self.debug_entity_hitboxes_visible = !self.debug_entity_hitboxes_visible;
+                true
+            }
+            KeyCode::KeyG => {
+                if !Self::debug_world_status_toggles_allowed(world) {
+                    return false;
+                }
+                self.debug_chunk_borders_visible = !self.debug_chunk_borders_visible;
+                true
+            }
+            KeyCode::KeyH => {
+                self.debug_advanced_item_tooltips = !self.debug_advanced_item_tooltips;
+                true
+            }
             _ => false,
         }
+    }
+
+    fn debug_world_status_toggles_allowed(world: Option<&WorldStore>) -> bool {
+        world.is_some_and(|world| {
+            world.local_player_id().is_some() && !world.local_player_has_reduced_debug_info()
+        })
     }
 
     fn toggle_debug_profiler_chart(&mut self) {
@@ -1233,7 +1277,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
-    if input.handle_debug_overlay_key(physical_key, state) {
+    if input.handle_debug_overlay_key(physical_key, state, Some(world)) {
         return;
     }
 

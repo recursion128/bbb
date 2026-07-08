@@ -1073,11 +1073,26 @@ When an agent does any of the following, update this file in the same slice:
     are now complete (`ClientAdvancementsState` ready).
   - Continue the debug overlay after the F3 toggle, left-column
     version/position/help shell, and right-column memory/system/performance
-    basics, and F3+1..4 chart/lightmap toggle state: the complete vanilla
-    debug entry list, actual FPS/TPS/network chart rendering, actual lightmap
-    preview rendering, 3D crosshair, and the other F3 modifier combos remain
-    (large, low priority).
+    basics, F3+1..4 chart/lightmap toggle state, and F3+B/G/H
+    hitboxes/chunk-borders/advanced-tooltips toggle state: the complete
+    vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
+    lightmap preview rendering, actual entity hitbox/chunk-border rendering,
+    advanced tooltip consumption/persistence, 3D crosshair, and the other F3
+    modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+B/G/H status toggle state. Vanilla
+    anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugShowHitboxes` to
+    `DebugScreenEntries.ENTITY_HITBOXES`, `keyDebugShowChunkBorders` to
+    `DebugScreenEntries.CHUNK_BORDERS`, and `keyDebugShowAdvancedTooltips` to
+    `Options.advancedItemTooltips` plus `Options.save()`. bbb now tracks the
+    login `reduced_debug_info` flag, consumes B/G while F3 is held only when a
+    local player exists and reduced debug info is off, consumes H independently
+    like vanilla, suppresses the subsequent F3-release overlay toggle after a
+    debug modifier was used, keeps these toggles independent from overlay
+    visibility, and reflects the current states in the debug overlay help
+    lines. Boundary: entity hitbox rendering, chunk-border rendering,
+    advanced tooltip rendering, and option persistence are still not
+    implemented.
   - Done 2026-07-08 — Debug overlay F3+1..4 chart/lightmap toggle state.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
     `keyDebugPofilingChart`, `keyDebugFpsCharts`, `keyDebugNetworkCharts`, and

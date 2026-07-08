@@ -83,6 +83,10 @@ pub struct WorldGameplayState {
     pub previous_game_type_name: Option<String>,
     pub show_death_screen: bool,
     pub do_limited_crafting: bool,
+    /// Vanilla `LocalPlayer.isReducedDebugInfo`, initialized from
+    /// `ClientboundLoginPacket.reducedDebugInfo`.
+    #[serde(default)]
+    pub reduced_debug_info: bool,
     /// Vanilla `ClientLevel.Data.isHardcore` from the `ClientboundLoginPacket`
     /// `hardcore` flag (read by `Gui.extractHearts` for the hardcore heart
     /// sprite variants, Gui.java:834).
@@ -99,6 +103,7 @@ impl Default for WorldGameplayState {
             previous_game_type_name: None,
             show_death_screen: true,
             do_limited_crafting: false,
+            reduced_debug_info: false,
             hardcore: false,
         }
     }
@@ -198,6 +203,7 @@ impl WorldStore {
         self.local_player_id = Some(login.player_id);
         self.gameplay.show_death_screen = login.show_death_screen;
         self.gameplay.do_limited_crafting = login.do_limited_crafting;
+        self.gameplay.reduced_debug_info = login.reduced_debug_info;
         self.gameplay.hardcore = login.hardcore;
         self.apply_spawn_info(&login.common_spawn_info);
     }
@@ -527,6 +533,10 @@ impl WorldStore {
         self.gameplay.game_type == VANILLA_SPECTATOR_GAME_TYPE_ID
     }
 
+    pub fn local_player_has_reduced_debug_info(&self) -> bool {
+        self.local_player_id.is_some() && self.gameplay.reduced_debug_info
+    }
+
     pub fn world_time(&self) -> Option<&WorldTimeState> {
         self.world_time.as_ref()
     }
@@ -832,7 +842,7 @@ mod tests {
             max_players: 20,
             chunk_radius: 8,
             simulation_distance: 6,
-            reduced_debug_info: false,
+            reduced_debug_info: true,
             show_death_screen: true,
             do_limited_crafting: false,
             common_spawn_info: ProtocolSpawnInfo {
@@ -887,9 +897,11 @@ mod tests {
                 previous_game_type_name: None,
                 show_death_screen: true,
                 do_limited_crafting: false,
+                reduced_debug_info: true,
                 hardcore: false,
             }
         );
+        assert!(store.local_player_has_reduced_debug_info());
     }
 
     #[test]
@@ -1372,6 +1384,7 @@ mod tests {
                 previous_game_type_name: Some("survival".to_string()),
                 show_death_screen: false,
                 do_limited_crafting: true,
+                reduced_debug_info: false,
                 hardcore: false,
             }
         );
