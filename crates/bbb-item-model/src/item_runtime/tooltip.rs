@@ -236,11 +236,26 @@ fn effective_damage_state(
     Some((damage, max_damage))
 }
 
+fn advanced_component_count(
+    component_patch: &DataComponentPatchSummary,
+    default_component_type_ids: Option<&BTreeSet<i32>>,
+) -> Option<usize> {
+    let mut type_ids = default_component_type_ids?.clone();
+    for type_id in &component_patch.removed_type_ids {
+        type_ids.remove(type_id);
+    }
+    for type_id in &component_patch.added_type_ids {
+        type_ids.insert(*type_id);
+    }
+    Some(type_ids.len())
+}
+
 fn push_advanced_tooltip_lines(
     language: &LanguageCatalog,
     resource_id: &str,
     component_patch: &DataComponentPatchSummary,
     default_max_damage: Option<i32>,
+    default_component_type_ids: Option<&BTreeSet<i32>>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if let Some((damage, max_damage)) = effective_damage_state(component_patch, default_max_damage)
@@ -261,6 +276,15 @@ fn push_advanced_tooltip_lines(
         resource_id.to_string(),
         TOOLTIP_TEXT_DARK_GRAY,
     ));
+    if let Some(component_count) =
+        advanced_component_count(component_patch, default_component_type_ids)
+            .filter(|component_count| *component_count > 0)
+    {
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_first_arg(language, "item.components", &component_count.to_string()),
+            TOOLTIP_TEXT_DARK_GRAY,
+        ));
+    }
 }
 
 pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
@@ -345,6 +369,7 @@ impl NativeItemRuntime {
                 item_id,
                 &stack.component_patch,
                 self.default_max_damage_for_protocol_id(protocol_id),
+                self.default_component_type_ids_for_resource_id(item_id),
                 &mut lines,
             );
         }

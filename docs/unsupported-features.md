@@ -1109,16 +1109,30 @@ When an agent does any of the following, update this file in the same slice:
     rendering, F3+3 network ping/bandwidth chart
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage, and F3+I
-    local block-entity NBT capture:
+    local block-entity NBT capture, and advanced tooltip component-count
+    display:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity,
+    advanced tooltip component-specific full parity/persistence,
     F3+I local entity NBT capture / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
+    Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
+    registry id and then `item.components` from `this.components.size()` in
+    advanced mode; default item components come from `DataComponents.COMMON_ITEM_COMPONENTS`,
+    `Item.Properties.finalizeInitializer` adds `ITEM_NAME` / `ITEM_MODEL`, and
+    item property helpers add or replace further default components before
+    stack patches apply. bbb now stores parsed default component type-id sets
+    in `ItemRegistryCatalog`, applies stack patch added/removed ids, and renders
+    the localized dark-gray component-count line after the registry id.
+    Boundary: component-provider-specific tooltip lines, hidden component
+    filtering from `TooltipDisplay`, exact bespoke default-component behavior
+    beyond parsed vanilla `Items.java` declarations, and options persistence
+    remain future work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,
@@ -2176,11 +2190,12 @@ When an agent does any of the following, update this file in the same slice:
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
     shape are also aligned, the default TPS entry now has a server-brand /
     frozen-status text shell, and the F3+1 profiler pie chart renderer can
-    draw `ProfileResults`-shaped data. The remaining open surfaces in this ledger row
+    draw `ProfileResults`-shaped data. Advanced tooltip component counts now
+    use parsed default item components plus stack patch ids. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity/persistence, F3+I local entity NBT capture / styled feedback,
+    advanced tooltip component-specific full parity/persistence, F3+I local entity NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

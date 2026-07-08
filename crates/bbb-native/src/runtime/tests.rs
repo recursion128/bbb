@@ -6678,6 +6678,7 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
     let mut damaged_stack = item_stack(0, 1);
     damaged_stack.component_patch.max_damage = Some(20);
     damaged_stack.component_patch.damage = Some(3);
+    damaged_stack.component_patch.added_type_ids = vec![2, 3];
     world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
         slot: 0,
         item: damaged_stack,
@@ -6704,6 +6705,7 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
                 tooltip_name_line("Test Combo", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
                 tooltip_plain_line("Durability: 17 / 20", TOOLTIP_TEST_WHITE),
                 tooltip_plain_line("minecraft:test_combo", TOOLTIP_TEST_DARK_GRAY),
+                tooltip_plain_line("14 component(s)", TOOLTIP_TEST_DARK_GRAY),
             ],
         })
     );
@@ -13391,7 +13393,8 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         &assets.join("lang").join("en_us.json"),
         r#"{
             "item.minecraft.test_combo": "Test Combo",
-            "item.durability": "Durability: %s / %s"
+            "item.durability": "Durability: %s / %s",
+            "item.components": "%s component(s)"
         }"#,
     );
     write_runtime_png(

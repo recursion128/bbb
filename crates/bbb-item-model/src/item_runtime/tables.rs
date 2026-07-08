@@ -725,6 +725,15 @@ impl NativeItemRuntime {
         })
     }
 
+    pub(super) fn default_component_type_ids_for_resource_id(
+        &self,
+        resource_id: &str,
+    ) -> Option<&BTreeSet<i32>> {
+        self.registry
+            .as_ref()
+            .and_then(|registry| registry.default_component_type_ids(resource_id))
+    }
+
     pub(super) fn default_item_name_translation_key_for_resource_id(
         &self,
         resource_id: &str,

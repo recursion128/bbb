@@ -199,6 +199,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.test_combo": "Test Combo",
                 "item.unbreakable": "Unbreakable",
                 "item.durability": "Durability: %s / %s",
+                "item.components": "%s component(s)",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -345,10 +346,26 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             false
         )])
     );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_options(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            true
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
     let damaged_stack = ItemStackSummary {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
+            added_type_ids: vec![2, 3],
             max_damage: Some(20),
             damage: Some(3),
             ..DataComponentPatchSummary::default()
@@ -369,6 +386,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Durability: 17 / 20", TOOLTIP_TEXT_WHITE),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("15 component(s)", TOOLTIP_TEXT_DARK_GRAY),
         ])
     );
     assert_eq!(

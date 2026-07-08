@@ -5624,3 +5624,12 @@
   recreate copy 在本地玩家具备 gamemaster 权限且目标有 BE NBT 时追加 compact
   SNBT。边界：该路径使用 client-owned 网络 BE NBT；local entity
   `saveWithoutId` capture 与 styled/clickable feedback 仍待后续。
+- [x] debug overlay advanced tooltip component-count display（P2
+  pack/item-model slice，2026-07-08）：依据
+  `ItemStack.addDetailsToTooltip` 在 advanced 模式于 registry id 后显示
+  `item.components`，数量来自 `ItemStack.components.size()`；默认组件由
+  `DataComponents.COMMON_ITEM_COMPONENTS`、`Item.Properties.finalizeInitializer`
+  和 item property helper 组合，再叠加 stack patch。pack catalog 现在记录
+  默认 component type-id 集合，item runtime 按 patch added/removed ids 计算并
+  渲染本地化暗灰组件计数。边界：component-specific tooltip provider parity、
+  `TooltipDisplay` hidden-components 过滤和 options persistence 仍待后续。

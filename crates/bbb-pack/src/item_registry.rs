@@ -54,6 +54,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_item_name_translation_keys: BTreeMap<String, String>,
     #[serde(default)]
+    default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
+    #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
     /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
     /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
@@ -176,6 +178,55 @@ impl Default for ItemUseAnimation {
     }
 }
 
+// 26.1 vanilla DataComponents registration ids. These are duplicated here so
+// the pack crate can compute ItemStack component counts without depending on
+// bbb-protocol.
+const MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
+const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
+const DAMAGE_COMPONENT_ID: i32 = 3;
+const USE_EFFECTS_COMPONENT_ID: i32 = 5;
+const MINIMUM_ATTACK_CHARGE_COMPONENT_ID: i32 = 7;
+const DAMAGE_TYPE_COMPONENT_ID: i32 = 8;
+const ITEM_NAME_COMPONENT_ID: i32 = 9;
+const ITEM_MODEL_COMPONENT_ID: i32 = 10;
+const LORE_COMPONENT_ID: i32 = 11;
+const RARITY_COMPONENT_ID: i32 = 12;
+const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
+const ATTRIBUTE_MODIFIERS_COMPONENT_ID: i32 = 16;
+const TOOLTIP_DISPLAY_COMPONENT_ID: i32 = 18;
+const REPAIR_COST_COMPONENT_ID: i32 = 19;
+const FOOD_COMPONENT_ID: i32 = 23;
+const CONSUMABLE_COMPONENT_ID: i32 = 24;
+const USE_REMAINDER_COMPONENT_ID: i32 = 25;
+const USE_COOLDOWN_COMPONENT_ID: i32 = 26;
+const DAMAGE_RESISTANT_COMPONENT_ID: i32 = 27;
+const TOOL_COMPONENT_ID: i32 = 28;
+const WEAPON_COMPONENT_ID: i32 = 29;
+const ATTACK_RANGE_COMPONENT_ID: i32 = 30;
+const ENCHANTABLE_COMPONENT_ID: i32 = 31;
+const EQUIPPABLE_COMPONENT_ID: i32 = 32;
+const REPAIRABLE_COMPONENT_ID: i32 = 33;
+const PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
+const KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
+const SWING_ANIMATION_COMPONENT_ID: i32 = 40;
+const JUKEBOX_PLAYABLE_COMPONENT_ID: i32 = 64;
+const PROVIDES_TRIM_MATERIAL_COMPONENT_ID: i32 = 62;
+const ENTITY_DATA_COMPONENT_ID: i32 = 58;
+const BREAK_SOUND_COMPONENT_ID: i32 = 80;
+
+const COMMON_ITEM_COMPONENT_TYPE_IDS: &[i32] = &[
+    MAX_STACK_SIZE_COMPONENT_ID,
+    LORE_COMPONENT_ID,
+    ENCHANTMENTS_COMPONENT_ID,
+    REPAIR_COST_COMPONENT_ID,
+    USE_EFFECTS_COMPONENT_ID,
+    ATTRIBUTE_MODIFIERS_COMPONENT_ID,
+    RARITY_COMPONENT_ID,
+    BREAK_SOUND_COMPONENT_ID,
+    TOOLTIP_DISPLAY_COMPONENT_ID,
+    SWING_ANIMATION_COMPONENT_ID,
+];
+
 impl ItemRegistryCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
         let items_java = roots
@@ -241,6 +292,7 @@ impl ItemRegistryCatalog {
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
         let mut default_item_name_translation_keys = BTreeMap::new();
+        let mut default_component_type_ids = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
@@ -260,6 +312,7 @@ impl ItemRegistryCatalog {
             let expression = capture.get(3).unwrap().as_str();
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let default_item_name = default_item_name_for_declaration(kind, expression)?;
+            let default_components = default_component_type_ids_for_declaration(expression)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
@@ -289,6 +342,7 @@ impl ItemRegistryCatalog {
                     resource_id.clone(),
                     default_item_name.translation_key(resource_id),
                 );
+                default_component_type_ids.insert(resource_id.clone(), default_components.clone());
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
                 }
@@ -360,6 +414,7 @@ impl ItemRegistryCatalog {
             max_damage,
             max_stack_size,
             default_item_name_translation_keys,
+            default_component_type_ids,
             default_equipment_slots,
             humanoid_armor_assets,
             equippable_assets,
@@ -414,6 +469,11 @@ impl ItemRegistryCatalog {
         self.default_item_name_translation_keys
             .get(&resource_id)
             .map(String::as_str)
+    }
+
+    pub fn default_component_type_ids(&self, resource_id: &str) -> Option<&BTreeSet<i32>> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_component_type_ids.get(&resource_id)
     }
 
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
@@ -698,6 +758,227 @@ fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
     }
 
     Ok(None)
+}
+
+fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeSet<i32>> {
+    let mut type_ids = COMMON_ITEM_COMPONENT_TYPE_IDS
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>();
+    type_ids.insert(ITEM_NAME_COMPONENT_ID);
+    type_ids.insert(ITEM_MODEL_COMPONENT_ID);
+
+    if durability_for_declaration(expression)?.is_some() {
+        type_ids.insert(MAX_DAMAGE_COMPONENT_ID);
+        type_ids.insert(DAMAGE_COMPONENT_ID);
+    }
+    if expression.contains(".food(") {
+        type_ids.insert(FOOD_COMPONENT_ID);
+        type_ids.insert(CONSUMABLE_COMPONENT_ID);
+    }
+    if expression.contains(".usingConvertsTo(") {
+        type_ids.insert(USE_REMAINDER_COMPONENT_ID);
+    }
+    if expression.contains(".useCooldown(") {
+        type_ids.insert(USE_COOLDOWN_COMPONENT_ID);
+    }
+    if expression.contains(".fireResistant()") || expression.contains(".fireResistant(") {
+        type_ids.insert(DAMAGE_RESISTANT_COMPONENT_ID);
+    }
+    if expression.contains(".jukeboxPlayable(") {
+        type_ids.insert(JUKEBOX_PLAYABLE_COMPONENT_ID);
+    }
+    if expression.trim_start().starts_with("registerSpawnEgg") || expression.contains(".spawnEgg(")
+    {
+        type_ids.insert(ENTITY_DATA_COMPONENT_ID);
+    }
+    if applies_tool_material_defaults(expression) {
+        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
+        type_ids.insert(TOOL_COMPONENT_ID);
+        type_ids.insert(WEAPON_COMPONENT_ID);
+    }
+    if expression.contains(".spear(") {
+        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
+        type_ids.insert(DAMAGE_TYPE_COMPONENT_ID);
+        type_ids.insert(KINETIC_WEAPON_COMPONENT_ID);
+        type_ids.insert(PIERCING_WEAPON_COMPONENT_ID);
+        type_ids.insert(ATTACK_RANGE_COMPONENT_ID);
+        type_ids.insert(MINIMUM_ATTACK_CHARGE_COMPONENT_ID);
+        type_ids.insert(SWING_ANIMATION_COMPONENT_ID);
+        type_ids.insert(WEAPON_COMPONENT_ID);
+    }
+    if expression.contains(".humanoidArmor(") {
+        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
+        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+    }
+    if expression.contains(".wolfArmor(") {
+        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+    }
+    if expression.contains(".horseArmor(") || expression.contains(".nautilusArmor(") {
+        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+    }
+    if expression.contains(".equippable(")
+        || expression.contains(".equippableUnswappable(")
+        || expression.contains("Equippable.builder(")
+        || expression.contains("Equippable.saddle()")
+        || expression.contains("Equippable.llamaSwag(")
+        || expression.contains("Equippable.harness(")
+    {
+        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+    }
+    if expression.contains(".repairable(") {
+        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+    }
+    if expression.contains(".enchantable(") {
+        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
+    }
+    if expression.contains(".trimMaterial(") {
+        type_ids.insert(PROVIDES_TRIM_MATERIAL_COMPONENT_ID);
+    }
+
+    let regex = Regex::new(r#"DataComponents\.([A-Z0-9_]+)"#)?;
+    for capture in regex.captures_iter(expression) {
+        let name = capture.get(1).unwrap().as_str();
+        let Some(type_id) = data_component_type_id_from_name(name) else {
+            bail!("unknown item data component DataComponents.{name}");
+        };
+        type_ids.insert(type_id);
+    }
+
+    Ok(type_ids)
+}
+
+fn applies_tool_material_defaults(expression: &str) -> bool {
+    expression.contains(".tool(")
+        || expression.contains(".sword(")
+        || expression.contains(".pickaxe(")
+        || expression.contains(".axe(")
+        || expression.contains(".hoe(")
+        || expression.contains(".shovel(")
+        || expression.contains("PickaxeItem(")
+        || expression.contains("AxeItem(")
+        || expression.contains("HoeItem(")
+        || expression.contains("ShovelItem(")
+}
+
+fn data_component_type_id_from_name(name: &str) -> Option<i32> {
+    Some(match name {
+        "CUSTOM_DATA" => 0,
+        "MAX_STACK_SIZE" => MAX_STACK_SIZE_COMPONENT_ID,
+        "MAX_DAMAGE" => MAX_DAMAGE_COMPONENT_ID,
+        "DAMAGE" => DAMAGE_COMPONENT_ID,
+        "UNBREAKABLE" => 4,
+        "USE_EFFECTS" => USE_EFFECTS_COMPONENT_ID,
+        "CUSTOM_NAME" => 6,
+        "MINIMUM_ATTACK_CHARGE" => MINIMUM_ATTACK_CHARGE_COMPONENT_ID,
+        "DAMAGE_TYPE" => DAMAGE_TYPE_COMPONENT_ID,
+        "ITEM_NAME" => ITEM_NAME_COMPONENT_ID,
+        "ITEM_MODEL" => ITEM_MODEL_COMPONENT_ID,
+        "LORE" => LORE_COMPONENT_ID,
+        "RARITY" => RARITY_COMPONENT_ID,
+        "ENCHANTMENTS" => ENCHANTMENTS_COMPONENT_ID,
+        "CAN_PLACE_ON" => 14,
+        "CAN_BREAK" => 15,
+        "ATTRIBUTE_MODIFIERS" => ATTRIBUTE_MODIFIERS_COMPONENT_ID,
+        "CUSTOM_MODEL_DATA" => 17,
+        "TOOLTIP_DISPLAY" => TOOLTIP_DISPLAY_COMPONENT_ID,
+        "REPAIR_COST" => REPAIR_COST_COMPONENT_ID,
+        "CREATIVE_SLOT_LOCK" => 20,
+        "ENCHANTMENT_GLINT_OVERRIDE" => 21,
+        "INTANGIBLE_PROJECTILE" => 22,
+        "FOOD" => FOOD_COMPONENT_ID,
+        "CONSUMABLE" => CONSUMABLE_COMPONENT_ID,
+        "USE_REMAINDER" => USE_REMAINDER_COMPONENT_ID,
+        "USE_COOLDOWN" => USE_COOLDOWN_COMPONENT_ID,
+        "DAMAGE_RESISTANT" => DAMAGE_RESISTANT_COMPONENT_ID,
+        "TOOL" => TOOL_COMPONENT_ID,
+        "WEAPON" => WEAPON_COMPONENT_ID,
+        "ATTACK_RANGE" => ATTACK_RANGE_COMPONENT_ID,
+        "ENCHANTABLE" => ENCHANTABLE_COMPONENT_ID,
+        "EQUIPPABLE" => EQUIPPABLE_COMPONENT_ID,
+        "REPAIRABLE" => REPAIRABLE_COMPONENT_ID,
+        "GLIDER" => 34,
+        "TOOLTIP_STYLE" => 35,
+        "DEATH_PROTECTION" => 36,
+        "BLOCKS_ATTACKS" => 37,
+        "PIERCING_WEAPON" => PIERCING_WEAPON_COMPONENT_ID,
+        "KINETIC_WEAPON" => KINETIC_WEAPON_COMPONENT_ID,
+        "SWING_ANIMATION" => SWING_ANIMATION_COMPONENT_ID,
+        "ADDITIONAL_TRADE_COST" => 41,
+        "STORED_ENCHANTMENTS" => 42,
+        "DYE" => 43,
+        "DYED_COLOR" => 44,
+        "MAP_COLOR" => 45,
+        "MAP_ID" => 46,
+        "MAP_DECORATIONS" => 47,
+        "MAP_POST_PROCESSING" => 48,
+        "CHARGED_PROJECTILES" => 49,
+        "BUNDLE_CONTENTS" => 50,
+        "POTION_CONTENTS" => 51,
+        "POTION_DURATION_SCALE" => 52,
+        "SUSPICIOUS_STEW_EFFECTS" => 53,
+        "WRITABLE_BOOK_CONTENT" => 54,
+        "WRITTEN_BOOK_CONTENT" => 55,
+        "TRIM" => 56,
+        "DEBUG_STICK_STATE" => 57,
+        "ENTITY_DATA" => ENTITY_DATA_COMPONENT_ID,
+        "BUCKET_ENTITY_DATA" => 59,
+        "BLOCK_ENTITY_DATA" => 60,
+        "INSTRUMENT" => 61,
+        "PROVIDES_TRIM_MATERIAL" => PROVIDES_TRIM_MATERIAL_COMPONENT_ID,
+        "OMINOUS_BOTTLE_AMPLIFIER" => 63,
+        "JUKEBOX_PLAYABLE" => JUKEBOX_PLAYABLE_COMPONENT_ID,
+        "PROVIDES_BANNER_PATTERNS" => 65,
+        "RECIPES" => 66,
+        "LODESTONE_TRACKER" => 67,
+        "FIREWORK_EXPLOSION" => 68,
+        "FIREWORKS" => 69,
+        "PROFILE" => 70,
+        "NOTE_BLOCK_SOUND" => 71,
+        "BANNER_PATTERNS" => 72,
+        "BASE_COLOR" => 73,
+        "POT_DECORATIONS" => 74,
+        "CONTAINER" => 75,
+        "BLOCK_STATE" => 76,
+        "BEES" => 77,
+        "LOCK" => 78,
+        "CONTAINER_LOOT" => 79,
+        "BREAK_SOUND" => BREAK_SOUND_COMPONENT_ID,
+        "VILLAGER_VARIANT" => 81,
+        "WOLF_VARIANT" => 82,
+        "WOLF_SOUND_VARIANT" => 83,
+        "WOLF_COLLAR" => 84,
+        "FOX_VARIANT" => 85,
+        "SALMON_SIZE" => 86,
+        "PARROT_VARIANT" => 87,
+        "TROPICAL_FISH_PATTERN" => 88,
+        "TROPICAL_FISH_BASE_COLOR" => 89,
+        "TROPICAL_FISH_PATTERN_COLOR" => 90,
+        "MOOSHROOM_VARIANT" => 91,
+        "RABBIT_VARIANT" => 92,
+        "PIG_VARIANT" => 93,
+        "PIG_SOUND_VARIANT" => 94,
+        "COW_VARIANT" => 95,
+        "COW_SOUND_VARIANT" => 96,
+        "CHICKEN_VARIANT" => 97,
+        "CHICKEN_SOUND_VARIANT" => 98,
+        "ZOMBIE_NAUTILUS_VARIANT" => 99,
+        "FROG_VARIANT" => 100,
+        "HORSE_VARIANT" => 101,
+        "PAINTING_VARIANT" => 102,
+        "LLAMA_VARIANT" => 103,
+        "AXOLOTL_VARIANT" => 104,
+        "CAT_VARIANT" => 105,
+        "CAT_SOUND_VARIANT" => 106,
+        "CAT_COLLAR" => 107,
+        "SHEEP_COLOR" => 108,
+        "SHULKER_COLOR" => 109,
+        _ => return None,
+    })
 }
 
 fn tool_material_for_durability(expression: &str) -> Result<Option<String>> {
@@ -1569,6 +1850,73 @@ mod tests {
             Some("block.minecraft.waxed_oxidized_copper_bars")
         );
         assert_eq!(catalog.resource_id(-1), None);
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_component_type_ids() {
+        let source = r#"
+            public class Items {
+               public static final Item STICK = registerItem("stick");
+               public static final Item ELYTRA = registerItem("elytra", Item::new, new Item.Properties().durability(432));
+               public static final Item APPLE = registerItem("apple", new Item.Properties().food(Foods.APPLE));
+               public static final Item CHESTPLATE = registerItem("chestplate", new Item.Properties().equippable(EquipmentSlot.CHEST));
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+               public static final Item WOODEN_SPEAR = registerItem("wooden_spear", new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F));
+               public static final Item SHELF = registerBlock(Blocks.OAK_SHELF, p -> p.component(DataComponents.CONTAINER, ItemContainerContents.EMPTY));
+               public static final Item TRIM = registerItem("trim", new Item.Properties().trimMaterial(TrimMaterials.IRON));
+               public static final Item CREEPER_SPAWN_EGG = registerSpawnEgg(EntityType.CREEPER);
+               public static final Item EGG = registerItem("egg", EggItem::new, new Item.Properties().stacksTo(16).delayedHolderComponent(DataComponents.CHICKEN_VARIANT, ChickenVariants.TEMPERATE));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+        let component_ids = |resource_id: &str| {
+            catalog
+                .default_component_type_ids(resource_id)
+                .unwrap()
+                .clone()
+        };
+
+        assert_eq!(component_ids("minecraft:stick").len(), 12);
+        assert_eq!(component_ids("minecraft:elytra").len(), 14);
+        assert!(component_ids("minecraft:elytra").contains(&MAX_DAMAGE_COMPONENT_ID));
+        assert!(component_ids("minecraft:elytra").contains(&DAMAGE_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:apple").len(), 14);
+        assert!(component_ids("minecraft:apple").contains(&FOOD_COMPONENT_ID));
+        assert!(component_ids("minecraft:apple").contains(&CONSUMABLE_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:chestplate").len(), 13);
+        assert!(component_ids("minecraft:chestplate").contains(&EQUIPPABLE_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:iron_sword").len(), 18);
+        assert!(component_ids("minecraft:iron_sword").contains(&TOOL_COMPONENT_ID));
+        assert!(component_ids("minecraft:iron_sword").contains(&WEAPON_COMPONENT_ID));
+        assert!(component_ids("minecraft:iron_sword").contains(&REPAIRABLE_COMPONENT_ID));
+        assert!(component_ids("minecraft:iron_sword").contains(&ENCHANTABLE_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:wooden_spear").len(), 22);
+        assert!(component_ids("minecraft:wooden_spear").contains(&KINETIC_WEAPON_COMPONENT_ID));
+        assert!(component_ids("minecraft:wooden_spear").contains(&PIERCING_WEAPON_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:oak_shelf").len(), 13);
+        assert!(component_ids("minecraft:oak_shelf").contains(&75));
+        assert_eq!(component_ids("minecraft:trim").len(), 13);
+        assert!(component_ids("minecraft:trim").contains(&PROVIDES_TRIM_MATERIAL_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:creeper_spawn_egg").len(), 13);
+        assert!(component_ids("minecraft:creeper_spawn_egg").contains(&ENTITY_DATA_COMPONENT_ID));
+        assert_eq!(component_ids("minecraft:egg").len(), 13);
+        assert!(component_ids("minecraft:egg").contains(&97));
+
+        let encoded = serde_json::to_value(&catalog).unwrap();
+        assert_eq!(
+            encoded["default_component_type_ids"]["minecraft:stick"]
+                .as_array()
+                .unwrap()
+                .len(),
+            12
+        );
+        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
+        assert_eq!(
+            decoded.default_component_type_ids("minecraft:iron_sword"),
+            catalog.default_component_type_ids("minecraft:iron_sword")
+        );
     }
 
     #[test]
