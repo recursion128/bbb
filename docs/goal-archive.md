@@ -1938,6 +1938,20 @@
   multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
   token/namespace-path/intersection 语义、tag/composite SlotDisplay
   time-cycling、narrow-screen overlap。
+- [x] furnace-family recipe-book grid baseline（P2 HUD/protocol/input slice，
+  2026-07-08）：依据 `FurnaceRecipeDisplay.STREAM_CODEC` 的 ingredient /
+  fuel / result / craftingStation / duration / experience wire 顺序、
+  `RecipeBookCategories` 的 furnace(4/5/6)、blast furnace(7/8)、smoker(9)
+  category id 顺序，以及 furnace screen 复用 `RecipeBookPage` 20 格按钮和
+  翻页几何的行为，protocol 现在结构化解码 furnace display；native 共用
+  `RecipeBookUiCollection` 为 furnace、blast furnace、smoker 构建 category /
+  group / search / filter 后的 collection，并投影 recipe button、result fake
+  item、page arrows/page text；input 同一 filtered collection 命中 recipe
+  button 后排队 `PlaceRecipeCommand`。剩余：furnace-family ghost recipe
+  projection、exact smeltable/fuel filter parity、craftability retry guard、
+  multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
+  token/namespace-path/intersection 语义、tag/composite SlotDisplay
+  time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

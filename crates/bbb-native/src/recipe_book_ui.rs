@@ -26,6 +26,30 @@ const CRAFTING_BUILDING_BLOCKS_TAB_CATEGORIES: [i32; 1] = [CRAFTING_BUILDING_BLO
 const CRAFTING_MISC_TAB_CATEGORIES: [i32; 1] = [CRAFTING_MISC_CATEGORY_ID];
 const CRAFTING_REDSTONE_TAB_CATEGORIES: [i32; 1] = [CRAFTING_REDSTONE_CATEGORY_ID];
 
+const FURNACE_FOOD_CATEGORY_ID: i32 = 4;
+const FURNACE_BLOCKS_CATEGORY_ID: i32 = 5;
+const FURNACE_MISC_CATEGORY_ID: i32 = 6;
+const BLAST_FURNACE_BLOCKS_CATEGORY_ID: i32 = 7;
+const BLAST_FURNACE_MISC_CATEGORY_ID: i32 = 8;
+const SMOKER_FOOD_CATEGORY_ID: i32 = 9;
+
+const FURNACE_SEARCH_TAB_CATEGORIES: [i32; 3] = [
+    FURNACE_FOOD_CATEGORY_ID,
+    FURNACE_BLOCKS_CATEGORY_ID,
+    FURNACE_MISC_CATEGORY_ID,
+];
+const FURNACE_FOOD_TAB_CATEGORIES: [i32; 1] = [FURNACE_FOOD_CATEGORY_ID];
+const FURNACE_BLOCKS_TAB_CATEGORIES: [i32; 1] = [FURNACE_BLOCKS_CATEGORY_ID];
+const FURNACE_MISC_TAB_CATEGORIES: [i32; 1] = [FURNACE_MISC_CATEGORY_ID];
+const BLAST_FURNACE_SEARCH_TAB_CATEGORIES: [i32; 2] = [
+    BLAST_FURNACE_BLOCKS_CATEGORY_ID,
+    BLAST_FURNACE_MISC_CATEGORY_ID,
+];
+const BLAST_FURNACE_BLOCKS_TAB_CATEGORIES: [i32; 1] = [BLAST_FURNACE_BLOCKS_CATEGORY_ID];
+const BLAST_FURNACE_MISC_TAB_CATEGORIES: [i32; 1] = [BLAST_FURNACE_MISC_CATEGORY_ID];
+const SMOKER_SEARCH_TAB_CATEGORIES: [i32; 1] = [SMOKER_FOOD_CATEGORY_ID];
+const SMOKER_FOOD_TAB_CATEGORIES: [i32; 1] = [SMOKER_FOOD_CATEGORY_ID];
+
 const PLAYER_INVENTORY_SLOT_START: i32 = 0;
 const PLAYER_INVENTORY_SLOT_END: i32 = 36;
 const LOCAL_INVENTORY_CRAFT_SLOT_START: i16 = 1;
@@ -40,11 +64,23 @@ const CRAFTING_TABLE_PLAYER_MAIN_START: i16 = 10;
 const CRAFTING_TABLE_PLAYER_MAIN_END: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_START: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_END: i16 = 46;
+const FURNACE_INGREDIENT_SLOT: i16 = 0;
+const FURNACE_PLAYER_MAIN_START: i16 = 3;
+const FURNACE_PLAYER_MAIN_END: i16 = 30;
+const FURNACE_HOTBAR_START: i16 = 30;
+const FURNACE_HOTBAR_END: i16 = 39;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RecipeBookCraftingGrid {
     pub(crate) width: i32,
     pub(crate) height: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecipeBookFurnaceFamily {
+    Furnace,
+    BlastFurnace,
+    Smoker,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +100,7 @@ impl<'a> RecipeBookUiCollection<'a> {
     pub(crate) fn result_stack(&self) -> Option<&'a ItemStackSummary> {
         self.entries
             .first()
-            .and_then(|entry| recipe_book_crafting_result_stack(entry))
+            .and_then(|entry| recipe_book_result_stack(entry))
     }
 
     pub(crate) fn first_recipe_index(&self) -> Option<i32> {
@@ -85,7 +121,7 @@ impl<'a> RecipeBookUiCollection<'a> {
         };
         self.entries
             .iter()
-            .all(|entry| recipe_book_crafting_result_stack(entry) == Some(first))
+            .all(|entry| recipe_book_result_stack(entry) == Some(first))
     }
 }
 
@@ -138,6 +174,54 @@ pub(crate) fn crafting_recipe_book_visible_tab_indices(
         .collect()
 }
 
+pub(crate) fn furnace_recipe_book_collections<'a>(
+    world: &'a WorldStore,
+    family: RecipeBookFurnaceFamily,
+    selected_tab_index: usize,
+    only_craftable: bool,
+    search_text: &str,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<RecipeBookUiCollection<'a>> {
+    let Some(categories) = furnace_tab_categories(family, selected_tab_index) else {
+        return Vec::new();
+    };
+    let available_items = furnace_recipe_book_available_item_counts(world);
+    let item_tag_entries = world
+        .registry_tags("minecraft:item")
+        .map(|registry| &registry.tags);
+    let mut collections = Vec::new();
+    for category_id in categories {
+        push_furnace_category_collections(
+            world,
+            *category_id,
+            only_craftable,
+            &available_items,
+            item_tag_entries,
+            &mut collections,
+        );
+    }
+    if let Some(search_text) = normalized_recipe_search_text(search_text) {
+        collections.retain(|collection| {
+            recipe_book_collection_matches_search(collection, &search_text, item_runtime)
+        });
+    }
+    collections
+}
+
+pub(crate) fn furnace_recipe_book_visible_tab_indices(
+    world: &WorldStore,
+    family: RecipeBookFurnaceFamily,
+    tab_count: usize,
+) -> Vec<usize> {
+    (0..tab_count)
+        .filter(|index| {
+            *index == 0
+                || !furnace_recipe_book_collections(world, family, *index, false, "", None)
+                    .is_empty()
+        })
+        .collect()
+}
+
 pub(crate) fn crafting_recipe_book_tab_has_highlighted_recipe(
     world: &WorldStore,
     grid: RecipeBookCraftingGrid,
@@ -148,6 +232,21 @@ pub(crate) fn crafting_recipe_book_tab_has_highlighted_recipe(
         return false;
     }
     crafting_recipe_book_collections(world, grid, tab_index, only_craftable, "", None)
+        .iter()
+        .flat_map(|collection| collection.entries.iter())
+        .any(|entry| world.recipe_book().highlights.contains(&entry.id.index))
+}
+
+pub(crate) fn furnace_recipe_book_tab_has_highlighted_recipe(
+    world: &WorldStore,
+    family: RecipeBookFurnaceFamily,
+    tab_index: usize,
+    only_craftable: bool,
+) -> bool {
+    if tab_index == 0 {
+        return false;
+    }
+    furnace_recipe_book_collections(world, family, tab_index, only_craftable, "", None)
         .iter()
         .flat_map(|collection| collection.entries.iter())
         .any(|entry| world.recipe_book().highlights.contains(&entry.id.index))
@@ -218,6 +317,14 @@ pub(crate) fn recipe_book_crafting_result_stack(
         CraftingRecipeDisplaySummary::Shapeless { result, .. }
         | CraftingRecipeDisplaySummary::Shaped { result, .. } => result.item_stack.as_ref(),
     }
+}
+
+fn recipe_book_result_stack(entry: &RecipeDisplayEntry) -> Option<&ItemStackSummary> {
+    recipe_book_crafting_result_stack(entry).or_else(|| recipe_book_furnace_result_stack(entry))
+}
+
+fn recipe_book_furnace_result_stack(entry: &RecipeDisplayEntry) -> Option<&ItemStackSummary> {
+    entry.display.furnace.as_ref()?.result.item_stack.as_ref()
 }
 
 fn push_recipe_book_ghost_result<'a>(
@@ -333,7 +440,7 @@ fn recipe_book_collection_matches_search(
     item_runtime: Option<&NativeItemRuntime>,
 ) -> bool {
     collection.entries.iter().any(|entry| {
-        recipe_book_crafting_result_stack(entry).is_some_and(|stack| {
+        recipe_book_result_stack(entry).is_some_and(|stack| {
             recipe_book_result_stack_matches_search(stack, search_text, item_runtime)
         })
     })
@@ -407,6 +514,44 @@ fn push_crafting_category_collections<'a>(
     }
 }
 
+fn push_furnace_category_collections<'a>(
+    world: &'a WorldStore,
+    category_id: i32,
+    only_craftable: bool,
+    available_items: &BTreeMap<i32, i32>,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    collections: &mut Vec<RecipeBookUiCollection<'a>>,
+) {
+    let mut group_indexes: BTreeMap<i32, usize> = BTreeMap::new();
+    for entry in world.recipe_book().known.values() {
+        if entry.category_id != category_id || entry.display.furnace.is_none() {
+            continue;
+        }
+        let craftable = recipe_book_entry_is_craftable(entry, available_items, item_tag_entries);
+        if only_craftable && !craftable {
+            continue;
+        }
+        if let Some(group_id) = entry.group {
+            if let Some(index) = group_indexes.get(&group_id).copied() {
+                collections[index].entries.push(entry);
+                collections[index].has_craftable |= craftable;
+            } else {
+                let index = collections.len();
+                group_indexes.insert(group_id, index);
+                collections.push(RecipeBookUiCollection {
+                    entries: vec![entry],
+                    has_craftable: craftable,
+                });
+            }
+        } else {
+            collections.push(RecipeBookUiCollection {
+                entries: vec![entry],
+                has_craftable: craftable,
+            });
+        }
+    }
+}
+
 fn crafting_tab_categories(selected_tab_index: usize) -> Option<&'static [i32]> {
     match selected_tab_index {
         0 => Some(&CRAFTING_SEARCH_TAB_CATEGORIES),
@@ -414,6 +559,24 @@ fn crafting_tab_categories(selected_tab_index: usize) -> Option<&'static [i32]> 
         2 => Some(&CRAFTING_BUILDING_BLOCKS_TAB_CATEGORIES),
         3 => Some(&CRAFTING_MISC_TAB_CATEGORIES),
         4 => Some(&CRAFTING_REDSTONE_TAB_CATEGORIES),
+        _ => None,
+    }
+}
+
+fn furnace_tab_categories(
+    family: RecipeBookFurnaceFamily,
+    selected_tab_index: usize,
+) -> Option<&'static [i32]> {
+    match (family, selected_tab_index) {
+        (RecipeBookFurnaceFamily::Furnace, 0) => Some(&FURNACE_SEARCH_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::Furnace, 1) => Some(&FURNACE_FOOD_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::Furnace, 2) => Some(&FURNACE_BLOCKS_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::Furnace, 3) => Some(&FURNACE_MISC_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::BlastFurnace, 0) => Some(&BLAST_FURNACE_SEARCH_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::BlastFurnace, 1) => Some(&BLAST_FURNACE_BLOCKS_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::BlastFurnace, 2) => Some(&BLAST_FURNACE_MISC_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::Smoker, 0) => Some(&SMOKER_SEARCH_TAB_CATEGORIES),
+        (RecipeBookFurnaceFamily::Smoker, 1) => Some(&SMOKER_FOOD_TAB_CATEGORIES),
         _ => None,
     }
 }
@@ -498,6 +661,44 @@ fn crafting_recipe_book_available_item_counts(
         );
     }
 
+    counts
+}
+
+fn furnace_recipe_book_available_item_counts(world: &WorldStore) -> BTreeMap<i32, i32> {
+    let mut counts = BTreeMap::new();
+    let mut canonical_player_slots = BTreeSet::new();
+    for slot in &world.inventory().player_slots {
+        if (PLAYER_INVENTORY_SLOT_START..PLAYER_INVENTORY_SLOT_END).contains(&slot.slot) {
+            canonical_player_slots.insert(slot.slot);
+            add_item_stack_count(&mut counts, &slot.item);
+        }
+    }
+
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        return counts;
+    };
+    add_container_slot_range_counts(
+        &mut counts,
+        container,
+        FURNACE_INGREDIENT_SLOT,
+        FURNACE_INGREDIENT_SLOT + 1,
+    );
+    add_mapped_container_player_slot_counts(
+        &mut counts,
+        container,
+        FURNACE_PLAYER_MAIN_START,
+        FURNACE_PLAYER_MAIN_END,
+        |slot| i32::from(slot - FURNACE_PLAYER_MAIN_START + 9),
+        &canonical_player_slots,
+    );
+    add_mapped_container_player_slot_counts(
+        &mut counts,
+        container,
+        FURNACE_HOTBAR_START,
+        FURNACE_HOTBAR_END,
+        |slot| i32::from(slot - FURNACE_HOTBAR_START),
+        &canonical_player_slots,
+    );
     counts
 }
 

@@ -73,6 +73,7 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
                 display_type: RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
+                furnace: None,
             },
         })
     );
@@ -134,6 +135,7 @@ fn decodes_recipe_book_add_packet_wire_order() {
                         display_type: RecipeDisplayType::Stonecutter,
                         raw_body: vec![3, 0, 0, 0],
                         crafting: None,
+                        furnace: None,
                     },
                     group: Some(7),
                     category_id: 10,
@@ -283,6 +285,72 @@ fn decodes_recipe_book_add_with_structured_shapeless_crafting_display() {
                 item_stack: None,
                 tag: None,
             },
+        })
+    );
+}
+
+#[test]
+fn decodes_recipe_book_add_with_structured_furnace_display() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_var_i32(202);
+    payload.write_var_i32(2);
+    payload.write_var_i32(4);
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+    payload.write_var_i32(5);
+    payload.write_var_i32(90);
+    payload.write_var_i32(2);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(200);
+    payload.write_f32(0.35);
+    payload.write_var_i32(0);
+    payload.write_var_i32(4);
+    payload.write_bool(false);
+    payload.write_u8(0);
+    payload.write_bool(false);
+
+    let PlayClientbound::RecipeBookAdd(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_RECIPE_BOOK_ADD,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected recipe book add packet");
+    };
+    let entry = &packet.entries[0].contents;
+    assert_eq!(entry.display.display_type, RecipeDisplayType::Furnace);
+    assert_eq!(entry.display.crafting, None);
+    assert_eq!(
+        entry.display.furnace,
+        Some(FurnaceRecipeDisplaySummary {
+            ingredient: SlotDisplaySummary {
+                display_type_id: 4,
+                raw_payload: vec![4, 42],
+                item_stack: Some(item_stack(42, 1)),
+                tag: None,
+            },
+            fuel: SlotDisplaySummary {
+                display_type_id: 1,
+                raw_payload: vec![1],
+                item_stack: None,
+                tag: None,
+            },
+            result: SlotDisplaySummary {
+                display_type_id: 5,
+                raw_payload: vec![5, 90, 2, 0, 0],
+                item_stack: Some(item_stack(90, 2)),
+                tag: None,
+            },
+            crafting_station: SlotDisplaySummary {
+                display_type_id: 0,
+                raw_payload: vec![0],
+                item_stack: None,
+                tag: None,
+            },
+            duration: 200,
+            experience_bits: 0.35_f32.to_bits(),
         })
     );
 }

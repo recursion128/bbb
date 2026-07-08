@@ -2610,6 +2610,7 @@ fn client_ui_reads_canonical_world_state() {
                 display_type: RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
+                furnace: None,
             },
         });
         store.apply_show_dialog(ShowDialog {
@@ -3954,6 +3955,7 @@ fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBook
                 display_type: RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 0, 0, 0],
                 crafting: None,
+                furnace: None,
             },
             group: None,
             category_id: 10,

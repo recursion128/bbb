@@ -1073,6 +1073,7 @@ fn client_feature_events_update_world_and_world_counters() {
                 display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
+                furnace: None,
             },
         },
     )))
@@ -1135,6 +1136,7 @@ fn client_feature_events_update_world_and_world_counters() {
                 display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
+                furnace: None,
             }),
         })
     );

@@ -1920,6 +1920,7 @@ mod tests {
                 display_type: packets::RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
+                furnace: None,
             },
         };
         assert_matching_event!(
@@ -3512,6 +3513,7 @@ mod tests {
                         display_type: packets::RecipeDisplayType::Stonecutter,
                         raw_body: vec![1, 2, 3],
                         crafting: None,
+                        furnace: None,
                     },
                     group: Some(4),
                     category_id: 2,

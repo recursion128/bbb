@@ -2699,6 +2699,7 @@ mod tests {
                     display_type: packets::RecipeDisplayType::Stonecutter,
                     raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                     crafting: None,
+                    furnace: None,
                 },
             }))
             .await
@@ -2751,6 +2752,7 @@ mod tests {
                     display_type: packets::RecipeDisplayType::Stonecutter,
                     raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                     crafting: None,
+                    furnace: None,
                 }),
             })
         );
@@ -4787,6 +4789,7 @@ mod tests {
                     display_type: RecipeDisplayType::Stonecutter,
                     raw_body: vec![3, id as u8],
                     crafting: None,
+                    furnace: None,
                 },
                 group: None,
                 category_id: id + 10,

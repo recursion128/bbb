@@ -82,6 +82,7 @@ pub struct RecipeDisplaySummary {
     pub display_type: RecipeDisplayType,
     pub raw_body: Vec<u8>,
     pub crafting: Option<CraftingRecipeDisplaySummary>,
+    pub furnace: Option<FurnaceRecipeDisplaySummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,6 +105,16 @@ pub enum CraftingRecipeDisplaySummary {
         result: SlotDisplaySummary,
         crafting_station: SlotDisplaySummary,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FurnaceRecipeDisplaySummary {
+    pub ingredient: SlotDisplaySummary,
+    pub fuel: SlotDisplaySummary,
+    pub result: SlotDisplaySummary,
+    pub crafting_station: SlotDisplaySummary,
+    pub duration: i32,
+    pub experience_bits: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -302,16 +313,19 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
     let start_len = display_start.len();
     let display_type = RecipeDisplayType::from_id(decoder.read_var_i32()?)?;
 
-    let crafting = match display_type {
+    let (crafting, furnace) = match display_type {
         RecipeDisplayType::CraftingShapeless => {
             let ingredients = decode_slot_display_list(decoder)?;
             let result = decode_slot_display_summary(decoder)?;
             let crafting_station = decode_slot_display_summary(decoder)?;
-            Some(CraftingRecipeDisplaySummary::Shapeless {
-                ingredients,
-                result,
-                crafting_station,
-            })
+            (
+                Some(CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients,
+                    result,
+                    crafting_station,
+                }),
+                None,
+            )
         }
         RecipeDisplayType::CraftingShaped => {
             let width = decoder.read_var_i32()?;
@@ -319,28 +333,41 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
             let ingredients = decode_slot_display_list(decoder)?;
             let result = decode_slot_display_summary(decoder)?;
             let crafting_station = decode_slot_display_summary(decoder)?;
-            Some(CraftingRecipeDisplaySummary::Shaped {
-                width,
-                height,
-                ingredients,
-                result,
-                crafting_station,
-            })
+            (
+                Some(CraftingRecipeDisplaySummary::Shaped {
+                    width,
+                    height,
+                    ingredients,
+                    result,
+                    crafting_station,
+                }),
+                None,
+            )
         }
         RecipeDisplayType::Furnace => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            decoder.read_var_i32()?;
-            decoder.read_f32()?;
-            None
+            let ingredient = decode_slot_display_summary(decoder)?;
+            let fuel = decode_slot_display_summary(decoder)?;
+            let result = decode_slot_display_summary(decoder)?;
+            let crafting_station = decode_slot_display_summary(decoder)?;
+            let duration = decoder.read_var_i32()?;
+            let experience_bits = decoder.read_f32()?.to_bits();
+            (
+                None,
+                Some(FurnaceRecipeDisplaySummary {
+                    ingredient,
+                    fuel,
+                    result,
+                    crafting_station,
+                    duration,
+                    experience_bits,
+                }),
+            )
         }
         RecipeDisplayType::Stonecutter => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
-            None
+            (None, None)
         }
         RecipeDisplayType::Smithing => {
             skip_slot_display(decoder)?;
@@ -348,7 +375,7 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
-            None
+            (None, None)
         }
     };
 
@@ -363,6 +390,7 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
         display_type,
         raw_body: display_start[..consumed].to_vec(),
         crafting,
+        furnace,
     })
 }
 

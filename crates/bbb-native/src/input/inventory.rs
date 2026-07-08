@@ -33,8 +33,9 @@ use super::{
 };
 use crate::recipe_book_ui::{
     clamped_recipe_book_page, crafting_recipe_book_collections,
-    crafting_recipe_book_visible_tab_indices, recipe_book_page_count, RecipeBookCraftingGrid,
-    RECIPE_BOOK_ITEMS_PER_PAGE,
+    crafting_recipe_book_visible_tab_indices, furnace_recipe_book_collections,
+    furnace_recipe_book_visible_tab_indices, recipe_book_page_count, RecipeBookCraftingGrid,
+    RecipeBookFurnaceFamily, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
 };
 use bbb_item_model::NativeItemRuntime;
 
@@ -67,6 +68,9 @@ pub(crate) fn recipe_book_visible_tab_indices(
     };
     if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
         return crafting_recipe_book_visible_tab_indices(world, grid, tab_count);
+    }
+    if let Some(family) = recipe_book_furnace_family_for_background(background) {
+        return furnace_recipe_book_visible_tab_indices(world, family, tab_count);
     }
     (0..tab_count).collect()
 }
@@ -2341,21 +2345,13 @@ fn recipe_book_page_button_at_position(
     if recipe_book_main_gui_offset(world, layout.background) == 0 {
         return None;
     }
-    let grid = recipe_book_crafting_grid_for_background(layout.background)?;
-    let tab_count = recipe_book_tab_count_for_background(layout.background)?;
-    if tab_count == 0 {
-        return None;
-    }
-    let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
-    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
-    let collection_count = crafting_recipe_book_collections(
+    let collection_count = recipe_book_collections_for_background(
+        input,
         world,
-        grid,
-        selected_tab,
-        only_craftable,
-        &input.recipe_book_search_text,
         item_runtime,
-    )
+        layout.background,
+        book_type,
+    )?
     .len();
     let page_count = recipe_book_page_count(collection_count);
     if page_count <= 1 {
@@ -2404,21 +2400,13 @@ fn recipe_book_recipe_button_at_position(
     if recipe_book_main_gui_offset(world, layout.background) == 0 {
         return None;
     }
-    let grid = recipe_book_crafting_grid_for_background(layout.background)?;
-    let tab_count = recipe_book_tab_count_for_background(layout.background)?;
-    if tab_count == 0 {
-        return None;
-    }
-    let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
-    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
-    let collections = crafting_recipe_book_collections(
+    let collections = recipe_book_collections_for_background(
+        input,
         world,
-        grid,
-        selected_tab,
-        only_craftable,
-        &input.recipe_book_search_text,
         item_runtime,
-    );
+        layout.background,
+        book_type,
+    )?;
     let page = clamped_recipe_book_page(
         selected_recipe_book_page_index(input, book_type),
         collections.len(),
@@ -2429,6 +2417,41 @@ fn recipe_book_recipe_button_at_position(
     collections
         .get(collection_index)
         .and_then(|collection| collection.first_recipe_index())
+}
+
+fn recipe_book_collections_for_background<'a>(
+    input: &ClientInputState,
+    world: &'a WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    book_type: RecipeBookType,
+) -> Option<Vec<RecipeBookUiCollection<'a>>> {
+    let tab_count = recipe_book_tab_count_for_background(background)?;
+    if tab_count == 0 {
+        return None;
+    }
+    let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
+    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
+    if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
+        return Some(crafting_recipe_book_collections(
+            world,
+            grid,
+            selected_tab,
+            only_craftable,
+            &input.recipe_book_search_text,
+            item_runtime,
+        ));
+    }
+    recipe_book_furnace_family_for_background(background).map(|family| {
+        furnace_recipe_book_collections(
+            world,
+            family,
+            selected_tab,
+            only_craftable,
+            &input.recipe_book_search_text,
+            item_runtime,
+        )
+    })
 }
 
 fn recipe_book_recipe_button_index_at_position(
@@ -2483,6 +2506,17 @@ fn recipe_book_crafting_grid_for_background(
             width: 3,
             height: 3,
         }),
+        _ => None,
+    }
+}
+
+fn recipe_book_furnace_family_for_background(
+    background: InventoryScreenBackground,
+) -> Option<RecipeBookFurnaceFamily> {
+    match background {
+        InventoryScreenBackground::Furnace => Some(RecipeBookFurnaceFamily::Furnace),
+        InventoryScreenBackground::BlastFurnace => Some(RecipeBookFurnaceFamily::BlastFurnace),
+        InventoryScreenBackground::Smoker => Some(RecipeBookFurnaceFamily::Smoker),
         _ => None,
     }
 }

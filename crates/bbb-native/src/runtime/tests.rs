@@ -6090,6 +6090,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                     },
                 },
             ),
+            furnace: None,
         },
     });
 
@@ -6177,6 +6178,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                     },
                 },
             ),
+            furnace: None,
         },
     });
     let stale = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
@@ -6206,6 +6208,7 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
                     },
                 },
             ),
+            furnace: None,
         },
     });
 
@@ -6248,6 +6251,7 @@ fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_f
                     },
                 },
             ),
+            furnace: None,
         },
     });
 
@@ -6494,6 +6498,7 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                             },
                         },
                     ),
+                    furnace: None,
                 },
                 group: None,
                 category_id: 3,
@@ -6519,6 +6524,50 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                 [1.0, 1.0],
             )
     }));
+}
+
+#[test]
+fn hud_inventory_screen_projects_furnace_recipe_book_buttons() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_furnace_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![furnace_recipe_book_entry(42, 4, None, 1)],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                furnace: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.width, 320);
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable,
+                11,
+                31,
+                25,
+                25,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    assert!(screen
+        .floating_items
+        .iter()
+        .any(|item| (item.x, item.y) == (15, 35)));
 }
 
 #[test]
@@ -10477,6 +10526,32 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
     world
 }
 
+fn open_recipe_book_furnace_world() -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 14,
+        title: "Furnace".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    world
+}
+
 fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
     let root = unique_runtime_temp_dir("recipe-book-ghost-items");
     let assets = runtime_assets_dir(&root);
@@ -10604,10 +10679,53 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
                         },
                     },
                 ),
+                furnace: None,
             },
             group,
             category_id,
             crafting_requirements: (!requirements.is_empty()).then_some(requirements),
+        },
+        flags: 0,
+        notification: false,
+        highlight: false,
+    }
+}
+
+fn furnace_recipe_book_entry(
+    id: i32,
+    category_id: i32,
+    group: Option<i32>,
+    result_item_id: i32,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
+    bbb_protocol::packets::RecipeBookAddEntry {
+        contents: bbb_protocol::packets::RecipeDisplayEntry {
+            id: bbb_protocol::packets::RecipeDisplayId { index: id },
+            display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
+                raw_body: Vec::new(),
+                crafting: None,
+                furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+                    ingredient: stonecutter_item_display(2),
+                    fuel: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 1,
+                        raw_payload: vec![1],
+                        item_stack: None,
+                        tag: None,
+                    },
+                    result: stonecutter_item_stack_display(result_item_id, 1),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: vec![0],
+                        item_stack: None,
+                        tag: None,
+                    },
+                    duration: 200,
+                    experience_bits: 0.0_f32.to_bits(),
+                }),
+            },
+            group,
+            category_id,
+            crafting_requirements: None,
         },
         flags: 0,
         notification: false,

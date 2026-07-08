@@ -8889,6 +8889,7 @@ fn recipe_book_crafting_entry_with_optional_requirements(
                 display_type,
                 raw_body: Vec::new(),
                 crafting: Some(crafting),
+                furnace: None,
             },
             group: None,
             category_id: 10,

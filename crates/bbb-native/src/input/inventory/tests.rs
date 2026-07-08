@@ -8046,6 +8046,7 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
                         },
                     },
                 ),
+                furnace: None,
             },
             group: None,
             category_id,
