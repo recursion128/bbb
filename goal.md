@@ -293,7 +293,7 @@ Screen Render Surfaces" 条目）：
   terrain reload request、F3+D clear-chat display action、F3+P focus-pause
   option toggle、F3+H advanced tooltip consumption、F3+V version debug chat
   action、F3+C copy-location clipboard action、F3+T resource-pack reload
-  request、F3+S dynamic texture dump request、F3+I block recreate clipboard
+  request、F3+S dynamic texture dump request、F3+I block/entity recreate clipboard
   action、F3+L profiling request shell、F3+Esc pause-without-menu request shell、
   advanced item tooltips startup config、
   F3+A/B/C/G/H/N/P/F4/S/T local debug feedback、F3+F6 debug-options edit help
@@ -303,7 +303,7 @@ Screen Render Surfaces" 条目）：
   rendering、F3+2 FPS chart rendering、3D crosshair rendering 已完成；
   剩余完整 debug entry 列表、TPS/network charts 实际绘制、entity hitbox full
   details/chunk-border full gizmo grid、advanced tooltip full parity、dynamic texture
-  dump execution、F3+I entity/NBT/server-query recreate parity、profiling metrics
+  dump execution、F3+I NBT/server-query recreate parity、profiling metrics
   recorder/output、actual DebugOptionsScreen、native pause loop/PauseScreen、其它 F3 组合键，
   低优先）。
 

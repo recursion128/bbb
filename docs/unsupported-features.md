@@ -1093,7 +1093,7 @@ When an agent does any of the following, update this file in the same slice:
     option toggle, F3+V version debug chat action, F3+C copy-location
     clipboard action, F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
-    F3+I block recreate clipboard action,
+    F3+I block/entity recreate clipboard action,
     F3+L profiling request shell,
     F3+Esc pause-without-menu request shell,
     advanced item tooltips startup config,
@@ -1105,8 +1105,8 @@ When an agent does any of the following, update this file in the same slice:
     F3+2 FPS chart rendering, and 3D crosshair rendering: the complete vanilla
     debug entry list, actual TPS/network chart rendering, actual entity hitbox
     details/chunk-border full gizmo grid, advanced tooltip full parity, actual
-    dynamic texture dump execution, F3+I entity recreate and NBT/server-query
-    parity, profiling metrics recorder/output, actual DebugOptionsScreen,
+    dynamic texture dump execution, F3+I NBT/server-query parity, profiling
+    metrics recorder/output, actual DebugOptionsScreen,
     native pause loop/PauseScreen,
     and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
@@ -1188,20 +1188,24 @@ When an agent does any of the following, update this file in the same slice:
     `ActiveMetricsRecorder`, profiler sampling, automatic/manual stop, zipped
     `debug/profiling` output, and vanilla profiling chat feedback are still
     not implemented.
-  - Done 2026-07-08 — Debug overlay F3+I block recreate clipboard action.
+  - Done 2026-07-08 — Debug overlay F3+I block/entity recreate clipboard
+    action.
     Vanilla anchors: `Options.keyDebugCopyRecreateCommand` binds key code 73
     (I), `KeyboardHandler.handleDebugKeys` consumes it even when no copy can be
     produced, and `copyRecreateCommand` writes `/setblock x y z
-    BlockStateParser.serialize(state)` plus `debug.inspect.client.block` for a
-    non-NBT block hit. bbb now preserves the consume-without-copy behavior for
+    BlockStateParser.serialize(state)` for a non-NBT block hit or `/summon id
+    x y z` for a non-NBT entity hit, with client-side block/entity feedback.
+    bbb now preserves the consume-without-copy behavior for
     missing player, reduced debug info, missing hit target, or unavailable
     clipboard; when a non-reduced local player targets a loaded block, it
     serializes the native block state into a `/setblock` command, writes it to
     the debug clipboard sink, and appends `[Debug]: Copied client-side block
-    data to clipboard`. Boundary: entity `/summon` recreate commands,
-    client/server NBT selection and debug-query round trips, exact
-    `StateDefinition` property iteration order, and styled/clickable feedback
-    remain future parity work.
+    data to clipboard`; when the target is an entity, it derives the
+    `minecraft:*` type id from the protocol entity registry constants and
+    writes `/summon ...` using the entity position with two decimals plus
+    client-side entity feedback. Boundary: client/server NBT selection and
+    debug-query round trips, exact `StateDefinition` property iteration order,
+    and styled/clickable feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves

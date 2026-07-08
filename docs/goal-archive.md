@@ -5303,6 +5303,17 @@
   组合键并抑制 F3 release 普通 overlay toggle。边界：entity `/summon`
   recreate、client/server NBT 与 debug-query 往返、精确 `StateDefinition`
   property iteration order、以及 styled/clickable feedback 仍未实现。
+- [x] debug overlay F3+I entity recreate clipboard action（P2
+  protocol/input/crosshair/platform slice，2026-07-08）：依据
+  `KeyboardHandler.copyRecreateCommand` 对 entity hit 读取
+  `BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType())`，在无 NBT 时写入
+  `/summon <id> %.2f %.2f %.2f` 并反馈 `debug.inspect.client.entity`。protocol
+  现在从既有 `VANILLA_ENTITY_TYPE_*_ID` 常量派生 `minecraft:*` 反向 resource
+  id helper，native 在 F3+I 命中实体时用现有 camera crosshair target 读取
+  `WorldStore::probe_entity` 的 type id 与位置，写入 `/summon ...` 到
+  `DebugClipboard`，并追加 `[Debug]: Copied client-side entity data to
+  clipboard`；block/entity 无可复制目标时仍只消费组合键。边界：client/server
+  NBT 与 debug-query 往返、styled/clickable feedback 仍未实现。
 - [x] debug overlay F3+L profiling request shell（P2 input/runtime slice，
   2026-07-08）：依据 `Options.keyDebugProfiling` 绑定 L，以及
   `KeyboardHandler.handleDebugKeys` 调用 `Minecraft.debugClientMetricsStart`

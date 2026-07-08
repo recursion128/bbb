@@ -6,6 +6,7 @@ use std::{
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
+    entity_types::vanilla_entity_resource_id_for_type_id,
     packets::{
         BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
         ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
@@ -797,11 +798,11 @@ impl ClientInputState {
             }
             KeyCode::KeyI => {
                 let command = world.as_deref().and_then(debug_copy_recreate_command);
-                if let (Some(command), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
-                    if clipboard.set_debug_clipboard_text(&command) {
+                if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
+                    if clipboard.set_debug_clipboard_text(&copy.command) {
                         push_debug_feedback_chat_message(
                             world.as_deref_mut(),
-                            "Copied client-side block data to clipboard",
+                            copy.feedback_message,
                         );
                     }
                 }
@@ -928,22 +929,49 @@ fn debug_copy_location_command(world: &WorldStore) -> Option<String> {
     ))
 }
 
-fn debug_copy_recreate_command(world: &WorldStore) -> Option<String> {
+struct DebugRecreateCopy {
+    command: String,
+    feedback_message: &'static str,
+}
+
+fn debug_copy_recreate_command(world: &WorldStore) -> Option<DebugRecreateCopy> {
     if world.local_player_id().is_none() || world.local_player_has_reduced_debug_info() {
         return None;
     }
-    let CrosshairTarget::Block(hit) =
-        crosshair_target_from_camera_at_partial_tick(world, camera_pose_from_world(world), 1.0)?
-    else {
-        return None;
-    };
-    let block = world.probe_block(hit.pos)?;
+    let target =
+        crosshair_target_from_camera_at_partial_tick(world, camera_pose_from_world(world), 1.0)?;
+    match target {
+        CrosshairTarget::Block(hit) => debug_copy_recreate_block_command(world, hit.pos),
+        CrosshairTarget::Entity(hit) => debug_copy_recreate_entity_command(world, hit.entity_id),
+    }
+}
+
+fn debug_copy_recreate_block_command(
+    world: &WorldStore,
+    pos: BlockPos,
+) -> Option<DebugRecreateCopy> {
+    let block = world.probe_block(pos)?;
     let block_name = block.block_name.as_deref()?;
     let description = debug_block_state_description(block_name, &block.block_properties);
-    Some(format!(
-        "/setblock {} {} {} {}",
-        hit.pos.x, hit.pos.y, hit.pos.z, description
-    ))
+    Some(DebugRecreateCopy {
+        command: format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description),
+        feedback_message: "Copied client-side block data to clipboard",
+    })
+}
+
+fn debug_copy_recreate_entity_command(
+    world: &WorldStore,
+    entity_id: i32,
+) -> Option<DebugRecreateCopy> {
+    let entity = world.probe_entity(entity_id)?;
+    let entity_type = vanilla_entity_resource_id_for_type_id(entity.entity_type_id)?;
+    Some(DebugRecreateCopy {
+        command: format!(
+            "/summon {} {:.2} {:.2} {:.2}",
+            entity_type, entity.position.x, entity.position.y, entity.position.z
+        ),
+        feedback_message: "Copied client-side entity data to clipboard",
+    })
 }
 
 fn debug_block_state_description(

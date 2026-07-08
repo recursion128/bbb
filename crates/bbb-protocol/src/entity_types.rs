@@ -189,6 +189,27 @@ pub fn vanilla_entity_type_id_for_resource_id(resource_id: &str) -> Option<i32> 
     None
 }
 
+/// Resolves a vanilla 26.1 entity type protocol registry id to its resource id.
+/// This is derived from the constant names above to avoid a second checked-in
+/// id table.
+pub fn vanilla_entity_resource_id_for_type_id(entity_type_id: i32) -> Option<String> {
+    for line in include_str!("entity_types.rs").lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("pub const VANILLA_ENTITY_TYPE_") else {
+            continue;
+        };
+        let Some((const_name, value)) = rest.split_once("_ID: i32 = ") else {
+            continue;
+        };
+        let value = value.strip_suffix(';')?;
+        if value.parse::<i32>().ok()? != entity_type_id {
+            continue;
+        }
+        return Some(format!("minecraft:{}", const_name.to_ascii_lowercase()));
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,5 +232,24 @@ mod tests {
             vanilla_entity_type_id_for_resource_id("minecraft:not_a_mob"),
             None
         );
+    }
+
+    #[test]
+    fn resolves_resource_ids_from_existing_entity_type_ids() {
+        assert_eq!(
+            vanilla_entity_resource_id_for_type_id(VANILLA_ENTITY_TYPE_ZOMBIE_ID).as_deref(),
+            Some("minecraft:zombie")
+        );
+        assert_eq!(
+            vanilla_entity_resource_id_for_type_id(VANILLA_ENTITY_TYPE_CREEPER_ID).as_deref(),
+            Some("minecraft:creeper")
+        );
+        assert_eq!(
+            vanilla_entity_resource_id_for_type_id(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
+                .as_deref(),
+            Some("minecraft:fishing_bobber")
+        );
+        assert_eq!(vanilla_entity_resource_id_for_type_id(-1), None);
+        assert_eq!(vanilla_entity_resource_id_for_type_id(10_000), None);
     }
 }

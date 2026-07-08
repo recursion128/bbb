@@ -1,5 +1,6 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CREEPER_ID;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
     AdvancementSummary, BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
@@ -1330,6 +1331,74 @@ fn f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
     assert_eq!(
         messages[0].content,
         "[Debug]: Copied client-side block data to clipboard"
+    );
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 50,
+        uuid: Uuid::from_u128(50),
+        entity_type_id: VANILLA_ENTITY_TYPE_CREEPER_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/summon minecraft:creeper 0.00 0.00 3.00")
+    );
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side entity data to clipboard"
     );
 
     assert!(input.handle_debug_overlay_key_with_clipboard(
