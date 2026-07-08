@@ -5099,10 +5099,11 @@
   `reduced_debug_info`，`ClientInputState` 在 F3 按住期间只在有本地玩家且
   reduced debug info 关闭时消费 B/G，H 按 vanilla 不依赖 player，分别维护
   entity hitboxes、chunk borders、advanced item tooltips 三个运行时状态，并
-  在使用组合键后抑制 F3 release 触发普通 overlay toggle；runtime help
-  lines 会显示对应 visible/hidden 或 enabled/disabled。剩余：entity
-  hitbox/chunk-border 实际绘制、advanced tooltip full parity/持久化、完整 debug
-  entry 列表、3D crosshair、其它 F3 modifier combos。
+  追加 vanilla shown/hidden local debug feedback，在使用组合键后抑制 F3
+  release 触发普通 overlay toggle；runtime help lines 会显示对应
+  visible/hidden 或 enabled/disabled。剩余：entity hitbox/chunk-border 实际
+  绘制、advanced tooltip full parity/持久化、完整 debug entry 列表、3D
+  crosshair、其它 F3 modifier combos。
 - [x] debug overlay F3+H advanced item tooltip consumption（P2
   item-model/native runtime slice，2026-07-08）：依据
   `Screen.getTooltipFromItem` 用 `Options.advancedItemTooltips` 选择
@@ -5147,15 +5148,17 @@
   `maybe_upload_decoded_terrain` 即使 world counters/已上传 chunk 数未变化也会
   绕过去抖和 current no-op 路径整批重建 terrain meshes，并在成功上传后清除
   请求；使用组合键后同样抑制 F3 release 触发普通 overlay toggle，runtime help
-  line 显示 `[F3+A] Reload chunks`。剩余：debug chat feedback、其它 F3
-  modifier combos。
+  line 显示 `[F3+A] Reload chunks`，并在有 world chat display 时追加
+  `[Debug]: Reloading all chunks` local feedback。剩余：其它 F3 modifier
+  combos。
 - [x] debug overlay F3+P focus-pause option toggle（P2 HUD/input/runtime
   slice，2026-07-08）：依据 `Options.pauseOnLostFocus = true` 默认值，以及
   `KeyboardHandler.handleDebugKeys` 对 `keyDebugFocusPause` 的调度。native
   现在把 focus-pause runtime option 默认设为 enabled，在 F3 按住期间消费 P
   并切换该状态，使用组合键后抑制 F3 release 触发普通 overlay toggle；
-  runtime help line 显示 `[F3+P] Focus pause enabled/disabled`。剩余：debug
-  chat feedback、option persistence、单机 pause-loop 行为、其它 F3 modifier
+  runtime help line 显示 `[F3+P] Focus pause enabled/disabled`，并在有 world
+  chat display 时追加 `[Debug]: Pause on lost focus: enabled/disabled` local
+  feedback。剩余：option persistence、单机 pause-loop 行为、其它 F3 modifier
   combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →

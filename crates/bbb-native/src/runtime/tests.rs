@@ -1009,27 +1009,33 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
 #[test]
 fn f3_a_requests_terrain_reload_without_toggling_overlay_on_release() {
     let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
     let mut terrain_upload = TerrainUploadState::default();
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
-        None,
+        Some(&mut world),
         None
     ));
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::KeyA),
         ElementState::Pressed,
-        None,
+        Some(&mut world),
         Some(&mut terrain_upload)
     ));
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        None,
+        Some(&mut world),
         None
     ));
 
     assert!(terrain_upload.reload_all_chunks_requested());
+    assert_eq!(world.client_chat().messages.len(), 1);
+    assert_eq!(
+        world.client_chat().messages[0].content,
+        "[Debug]: Reloading all chunks"
+    );
     assert!(!input.debug_overlay_visible());
 }
 
@@ -1058,6 +1064,53 @@ fn f3_p_toggles_pause_on_lost_focus_without_world() {
     ));
 
     assert!(!input.debug_pause_on_lost_focus());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_p_emits_pause_on_lost_focus_debug_feedback_with_world() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyP),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyP),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None
+    ));
+
+    let feedback: Vec<_> = world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect();
+    assert_eq!(
+        feedback,
+        vec![
+            "[Debug]: Pause on lost focus: disabled",
+            "[Debug]: Pause on lost focus: enabled",
+        ]
+    );
+    assert!(input.debug_pause_on_lost_focus());
     assert!(!input.debug_overlay_visible());
 }
 

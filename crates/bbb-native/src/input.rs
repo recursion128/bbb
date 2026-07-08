@@ -619,6 +619,7 @@ impl ClientInputState {
                     return false;
                 };
                 terrain_upload.request_reload_all_chunks();
+                push_debug_feedback_chat_message(world.as_deref_mut(), "Reloading all chunks");
                 true
             }
             KeyCode::Digit1 => {
@@ -649,6 +650,14 @@ impl ClientInputState {
                     return false;
                 }
                 self.debug_entity_hitboxes_visible = !self.debug_entity_hitboxes_visible;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_entity_hitboxes_visible {
+                        "Hitboxes: shown"
+                    } else {
+                        "Hitboxes: hidden"
+                    },
+                );
                 true
             }
             KeyCode::KeyG => {
@@ -656,14 +665,38 @@ impl ClientInputState {
                     return false;
                 }
                 self.debug_chunk_borders_visible = !self.debug_chunk_borders_visible;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_chunk_borders_visible {
+                        "Chunk borders: shown"
+                    } else {
+                        "Chunk borders: hidden"
+                    },
+                );
                 true
             }
             KeyCode::KeyH => {
                 self.debug_advanced_item_tooltips = !self.debug_advanced_item_tooltips;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_advanced_item_tooltips {
+                        "Advanced tooltips: shown"
+                    } else {
+                        "Advanced tooltips: hidden"
+                    },
+                );
                 true
             }
             KeyCode::KeyP => {
                 self.debug_pause_on_lost_focus = !self.debug_pause_on_lost_focus;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_pause_on_lost_focus {
+                        "Pause on lost focus: enabled"
+                    } else {
+                        "Pause on lost focus: disabled"
+                    },
+                );
                 true
             }
             KeyCode::KeyV => {
@@ -744,6 +777,12 @@ fn push_debug_version_chat_messages(world: &mut WorldStore) {
     } else {
         "stable = no"
     });
+}
+
+fn push_debug_feedback_chat_message(world: Option<&mut WorldStore>, message: &str) {
+    if let Some(world) = world {
+        world.push_client_system_chat_message(format!("[Debug]: {message}"));
+    }
 }
 
 impl ClientInputState {

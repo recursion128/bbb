@@ -689,6 +689,29 @@ fn f3_debug_status_keys_toggle_state_without_forcing_overlay_visible() {
     assert!(!input.debug_entity_hitboxes_visible());
     assert!(!input.debug_chunk_borders_visible());
     assert!(!input.debug_advanced_item_tooltips());
+    let feedback: Vec<_> = world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect();
+    assert_eq!(
+        feedback,
+        vec![
+            "[Debug]: Hitboxes: shown",
+            "[Debug]: Chunk borders: shown",
+            "[Debug]: Advanced tooltips: shown",
+            "[Debug]: Hitboxes: hidden",
+            "[Debug]: Chunk borders: hidden",
+            "[Debug]: Advanced tooltips: hidden",
+        ]
+    );
+    assert!(world
+        .client_chat()
+        .messages
+        .iter()
+        .all(|message| message.kind == ChatMessageKind::ClientSystem));
+    assert_eq!(world.counters().chat_messages_tracked, 6);
     assert_eq!(counters.held_slot_commands_queued, 0);
     assert_eq!(counters.player_input_commands_queued, 0);
     assert_eq!(counters.player_action_commands_queued, 0);

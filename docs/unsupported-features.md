@@ -1076,8 +1076,8 @@ When an agent does any of the following, update this file in the same slice:
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
-    option toggle, and F3+V version debug chat action: the complete vanilla
-    debug entry list, actual
+    option toggle, F3+V version debug chat action, and F3+A/B/G/H/P local
+    debug feedback: the complete vanilla debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
@@ -1115,19 +1115,22 @@ When an agent does any of the following, update this file in the same slice:
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
     that option, saving options, and showing `debug.pause_focus.*` feedback.
     bbb now defaults `ClientInputState` focus-pause to enabled, consumes P
-    while F3 is held, toggles the runtime option state, suppresses the
-    subsequent F3-release overlay toggle, and reflects the current setting in
-    the debug overlay help line. Boundary: local debug chat feedback, option
-    persistence, and singleplayer pause-loop behavior are not modeled yet.
+    while F3 is held, toggles the runtime option state, appends the vanilla
+    `[Debug]: Pause on lost focus: enabled/disabled` local feedback when a
+    world chat display is available, suppresses the subsequent F3-release
+    overlay toggle, and reflects the current setting in the debug overlay help
+    line. Boundary: option persistence and singleplayer pause-loop behavior
+    are not modeled yet.
   - Done 2026-07-08 — Debug overlay F3+A terrain reload request. Vanilla
     anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugReloadChunk` to
     `minecraft.levelRenderer.allChanged()` plus the
     `debug.reload_chunks.message` feedback. bbb now consumes A while F3 is
     held, marks `TerrainUploadState` for a one-shot all-chunks reload that
     bypasses the normal world-counter/debounce no-op path on the next terrain
-    upload pass, suppresses the subsequent F3-release overlay toggle, and
-    reflects the action in the debug overlay help line. Boundary: local debug
-    chat feedback is not modeled yet.
+    upload pass, appends the vanilla `[Debug]: Reloading all chunks` local
+    feedback when a world chat display is available, suppresses the subsequent
+    F3-release overlay toggle, and reflects the action in the debug overlay
+    help line.
   - Done 2026-07-08 — Debug overlay F3+D clear-chat display action. Vanilla
     anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugClearChat` to
     `ChatComponent.clearMessages(false)`, which flushes queued GUI chat,
@@ -1148,10 +1151,11 @@ When an agent does any of the following, update this file in the same slice:
     local player exists and reduced debug info is off, consumes H independently
     like vanilla, suppresses the subsequent F3-release overlay toggle after a
     debug modifier was used, keeps these toggles independent from overlay
-    visibility, and reflects the current states in the debug overlay help
-    lines. Boundary: entity hitbox rendering, chunk-border rendering,
-    advanced tooltip full parity, and option persistence are still not
-    implemented.
+    visibility, appends the vanilla shown/hidden local feedback messages when
+    a world chat display is available, and reflects the current states in the
+    debug overlay help lines. Boundary: entity hitbox rendering, chunk-border
+    rendering, advanced tooltip full parity, and option persistence are still
+    not implemented.
   - Done 2026-07-08 — Debug overlay F3+1..4 chart/lightmap toggle state.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
     `keyDebugPofilingChart`, `keyDebugFpsCharts`, `keyDebugNetworkCharts`, and
@@ -1686,8 +1690,9 @@ When an agent does any of the following, update this file in the same slice:
     right-column memory/system/performance basics, F3+1..4 chart/lightmap
     toggle state, F3+B/G/H status toggle state, F3+A terrain reload request,
     F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
-    version debug chat action are live. The remaining open surfaces in this
-    ledger row are the complete debug entry list, actual
+    version debug chat action, plus F3+A/B/G/H/P local debug feedback are live.
+    The remaining open surfaces in this ledger row are the complete debug
+    entry list, actual
     charts/lightmap rendering, entity hitbox/chunk-border rendering, advanced
     tooltip full parity/persistence, 3D crosshair, and the other F3 modifier
     combos.
