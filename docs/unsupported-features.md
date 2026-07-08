@@ -1095,6 +1095,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+S dynamic texture dump request,
     F3+I copy-data modifier consumption shell,
     F3+L profiling request shell,
+    F3+Esc pause-without-menu request shell,
     advanced item tooltips startup config,
     F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the F3+F6 debug-options request shell, the default
@@ -1104,8 +1105,19 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
     dynamic texture dump execution, F3+I recreate command generation, 3D
     crosshair, profiling metrics recorder/output, actual DebugOptionsScreen,
-    and the other F3 modifier combos remain (large, low priority).
+    native pause loop/PauseScreen, and the other F3 modifier combos remain
+    (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+Esc pause-without-menu request shell.
+    Vanilla anchors: `KeyboardHandler.keyPress` handles Escape as global input
+    when no screen, a no-menu pause screen, or the game-mode switcher is
+    active; with the debug modifier held, it calls `Minecraft.pauseGame(true)`
+    and marks the event as a debug action. bbb now consumes Escape while F3 is
+    held, records a drainable native pause-without-menu request, and logs that
+    request in the main event loop without toggling the debug overlay.
+    Boundary: actual pause-loop state, `PauseScreen(false)`, singleplayer
+    pause eligibility, and cursor/screen transition behavior are still not
+    implemented.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing

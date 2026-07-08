@@ -5308,6 +5308,15 @@
   native `DebugOptionsScreen` 尚未实现；F3 release 不触发普通 overlay
   toggle。边界：实际 `DebugOptionsScreen`、可编辑 debug entries、option-list
   refresh、以及 screen interruption policy 仍未实现。
+- [x] debug overlay F3+Esc pause-without-menu request shell（P2
+  input/runtime slice，2026-07-08）：依据 `KeyboardHandler.keyPress` 在
+  global input 下处理 Escape，按住 debug modifier 时调用
+  `Minecraft.pauseGame(true)` 并把事件视为 debug action 的行为。
+  `ClientInputState` 现在在 F3 按住期间消费 Escape，记录一次可 drain 的
+  native pause-without-menu request，并让主循环 drain 后写明 native pause
+  loop 尚未实现；F3 release 不触发普通 overlay toggle。边界：实际 paused
+  loop、`PauseScreen(false)`、singleplayer pause eligibility、以及 cursor/screen
+  transition behavior 仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

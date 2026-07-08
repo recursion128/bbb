@@ -441,6 +441,14 @@ fn main() -> Result<()> {
                                 "debug options screen requested by debug hotkey; native DebugOptionsScreen is not implemented"
                             );
                         }
+                        let pause_without_menu_requests =
+                            input.take_debug_pause_without_menu_requests();
+                        if pause_without_menu_requests > 0 {
+                            tracing::info!(
+                                pause_without_menu_requests,
+                                "pause without menu requested by debug hotkey; native pause loop is not implemented"
+                            );
+                        }
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

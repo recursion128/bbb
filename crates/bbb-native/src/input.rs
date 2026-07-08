@@ -207,6 +207,7 @@ pub(crate) struct ClientInputState {
     debug_dynamic_texture_dump_requests: u32,
     debug_profiling_toggle_requests: u32,
     debug_options_screen_requests: u32,
+    debug_pause_without_menu_requests: u32,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -593,6 +594,10 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_options_screen_requests)
     }
 
+    pub(crate) fn take_debug_pause_without_menu_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.debug_pause_without_menu_requests)
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -660,6 +665,11 @@ impl ClientInputState {
         mut clipboard: Option<&mut dyn DebugClipboard>,
     ) -> bool {
         match code {
+            KeyCode::Escape => {
+                self.debug_pause_without_menu_requests =
+                    self.debug_pause_without_menu_requests.saturating_add(1);
+                true
+            }
             KeyCode::KeyA => {
                 let Some(terrain_upload) = terrain_upload.as_deref_mut() else {
                     return false;
