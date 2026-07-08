@@ -2,7 +2,7 @@ mod component;
 
 pub use component::{
     decode_sign_block_entity_nbt, decode_styled_component_summary, styled_runs_summary_text,
-    ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
+    ComponentClickEvent, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
 
 pub mod codec;

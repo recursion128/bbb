@@ -12,8 +12,9 @@ use bbb_protocol::{
         EntityTagQuery, InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction,
         PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
     },
-    ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION,
-    MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
+    ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
+    MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
+    PROTOCOL_VERSION,
 };
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
@@ -89,6 +90,7 @@ const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
 const DEBUG_CRASH_TIME: Duration = Duration::from_secs(10);
 const DEBUG_CRASH_REPORT_INTERVAL: Duration = Duration::from_secs(1);
 const CHAT_ENTRY_MAX_LENGTH: usize = 256;
+pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
@@ -886,10 +888,7 @@ impl ClientInputState {
             KeyCode::KeyS => {
                 self.debug_dynamic_texture_dump_requests =
                     self.debug_dynamic_texture_dump_requests.saturating_add(1);
-                push_debug_feedback_chat_message(
-                    world.as_deref_mut(),
-                    "Saved dynamic textures to screenshots/debug",
-                );
+                push_debug_dynamic_texture_dump_feedback(world.as_deref_mut());
                 true
             }
             KeyCode::KeyI => {
@@ -1081,13 +1080,45 @@ fn push_debug_version_chat_messages(world: &mut WorldStore) {
 }
 
 fn push_debug_feedback_chat_message(world: Option<&mut WorldStore>, message: &str) {
+    push_debug_feedback_chat_runs(
+        world,
+        vec![StyledTextRun {
+            text: message.to_string(),
+            style: ComponentStyle::default(),
+        }],
+    );
+}
+
+fn push_debug_dynamic_texture_dump_feedback(world: Option<&mut WorldStore>) {
+    push_debug_feedback_chat_runs(
+        world,
+        vec![
+            StyledTextRun {
+                text: "Saved dynamic textures to ".to_string(),
+                style: ComponentStyle::default(),
+            },
+            StyledTextRun {
+                text: DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH.to_string(),
+                style: ComponentStyle {
+                    underlined: Some(true),
+                    click_event: Some(ComponentClickEvent::OpenFile {
+                        path: DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH.to_string(),
+                    }),
+                    ..ComponentStyle::default()
+                },
+            },
+        ],
+    );
+}
+
+fn push_debug_feedback_chat_runs(world: Option<&mut WorldStore>, body_runs: Vec<StyledTextRun>) {
     if let Some(world) = world {
-        world.push_styled_client_system_chat_message(debug_feedback_styled_runs(message));
+        world.push_styled_client_system_chat_message(debug_feedback_styled_runs(body_runs));
     }
 }
 
-fn debug_feedback_styled_runs(message: &str) -> Vec<StyledTextRun> {
-    vec![
+fn debug_feedback_styled_runs(body_runs: Vec<StyledTextRun>) -> Vec<StyledTextRun> {
+    let mut runs = vec![
         StyledTextRun {
             text: "[Debug]:".to_string(),
             style: ComponentStyle {
@@ -1100,11 +1131,9 @@ fn debug_feedback_styled_runs(message: &str) -> Vec<StyledTextRun> {
             text: " ".to_string(),
             style: ComponentStyle::default(),
         },
-        StyledTextRun {
-            text: message.to_string(),
-            style: ComponentStyle::default(),
-        },
-    ]
+    ];
+    runs.extend(body_runs);
+    runs
 }
 
 pub(crate) fn queue_debug_recreate_server_query_request(

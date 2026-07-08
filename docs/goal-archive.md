@@ -5654,3 +5654,15 @@
   `world.client_chat` 自动暴露该 styled projection。边界：`ComponentStyle`
   还不建模 click events，F3+S open-file / profiler result clickable payload
   仍待后续。
+- [x] debug overlay F3+S dynamic texture dump clickable feedback payload（P2
+  protocol/native/control slice，2026-07-08）：依据
+  `KeyboardHandler.handleDebugKeys` 在 dump dynamic textures 后构造
+  `debug.dump_dynamic_textures` component，显示相对路径并对 path run 加
+  underline 与 `ClickEvent.OpenFile(debugTexturePath)`；26.1
+  `Style.Serializer.MAP_CODEC` 字段为 `click_event`，
+  `ClickEvent.OpenFile.CODEC` 字段为 `path`。protocol `ComponentStyle` 现在保留
+  `ComponentClickEvent` 并在 styled component traversal 中继承解析，native
+  F3+S feedback 在 plain `content` 不变的同时把 `screenshots/debug` run 标为
+  underlined + `open_file`，control snapshot 随 `styled_content` 暴露该 payload。
+  边界：当前 payload 使用 native dump drain 的同一相对路径；profiler result
+  clickable payload 随 profiler output 后续推进。

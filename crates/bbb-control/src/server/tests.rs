@@ -2343,7 +2343,8 @@ fn client_chat_reads_canonical_world_state() {
                 "underlined": null,
                 "strikethrough": null,
                 "obfuscated": null,
-                "color": null
+                "color": null,
+                "click_event": null
             }
         }])
     );

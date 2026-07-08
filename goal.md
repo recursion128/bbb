@@ -309,11 +309,12 @@ Screen Render Surfaces" 条目）：
   3D crosshair rendering、
   default-profile debug entry coverage、F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
-  capture、debug feedback styled prefix baseline 已完成；
+  capture、debug feedback styled prefix baseline、
+  F3+S dynamic texture dump clickable/open-file feedback payload 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
   advanced tooltip component-specific full parity/persistence、F3+I full local
-  entity saveWithoutId parity、clickable/open-file debug feedback payload、
+  entity saveWithoutId parity、profiler result clickable feedback payload、
   profiler data sampling/navigation、
   profiling metrics recorder/output、actual DebugOptionsScreen、native pause
   loop/PauseScreen、其它 F3 组合键，

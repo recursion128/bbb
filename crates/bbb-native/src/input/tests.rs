@@ -1244,6 +1244,37 @@ fn f3_s_records_dynamic_texture_dump_request_and_feedback_without_toggling_overl
         messages[0].content,
         "[Debug]: Saved dynamic textures to screenshots/debug"
     );
+    assert_eq!(messages[0].styled_content.len(), 4);
+    assert_eq!(messages[0].styled_content[0].text, "[Debug]:");
+    assert_eq!(messages[0].styled_content[0].style.bold, Some(true));
+    assert_eq!(
+        messages[0].styled_content[0].style.color,
+        Some(VANILLA_DEBUG_FEEDBACK_COLOR)
+    );
+    assert_eq!(messages[0].styled_content[1].text, " ");
+    assert_eq!(
+        messages[0].styled_content[1].style,
+        ComponentStyle::default()
+    );
+    assert_eq!(
+        messages[0].styled_content[2].text,
+        "Saved dynamic textures to "
+    );
+    assert_eq!(
+        messages[0].styled_content[2].style,
+        ComponentStyle::default()
+    );
+    assert_eq!(
+        messages[0].styled_content[3].text,
+        DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH
+    );
+    assert_eq!(messages[0].styled_content[3].style.underlined, Some(true));
+    assert_eq!(
+        messages[0].styled_content[3].style.click_event,
+        Some(ComponentClickEvent::OpenFile {
+            path: DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH.to_string(),
+        })
+    );
     assert_eq!(world.counters().chat_messages_tracked, 1);
     assert_eq!(world.counters().player_chat_packets, 0);
     assert_eq!(world.counters().disguised_chat_packets, 0);

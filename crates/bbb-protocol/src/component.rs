@@ -14,13 +14,12 @@ enum NbtValue {
     Other,
 }
 
-/// The render-relevant subset of vanilla `net.minecraft.network.chat.Style`
-/// (codec keys `bold` / `italic` / `underlined` / `strikethrough` /
-/// `obfuscated` / `color`, `Style.Serializer.MAP_CODEC`). Each key is `None`
-/// when the component chain never set it, mirroring vanilla's nullable style
-/// fields so downstream default-style merges (`ComponentUtils.mergeStyles`,
-/// e.g. the lore style) can still fill unset keys.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
+/// (`Style.Serializer.MAP_CODEC`). Each key is `None` when the component chain
+/// never set it, mirroring vanilla's nullable style fields so downstream
+/// default-style merges (`ComponentUtils.mergeStyles`, e.g. the lore style)
+/// can still fill unset keys.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct ComponentStyle {
     #[serde(default)]
     pub bold: Option<bool>,
@@ -37,6 +36,28 @@ pub struct ComponentStyle {
     /// literal (`TextColor.parseColor`).
     #[serde(default)]
     pub color: Option<u32>,
+    /// Click event carried by the run (`click_event` in the 26.1 Style codec).
+    /// The renderer-facing HUD run projection ignores this today, but control
+    /// and local debug feedback preserve it for file-open/copy actions.
+    #[serde(default)]
+    pub click_event: Option<ComponentClickEvent>,
+}
+
+/// Supported vanilla `ClickEvent` payloads in the same externally tagged shape
+/// as the 26.1 codec (`action` plus the action-specific value key).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "action")]
+pub enum ComponentClickEvent {
+    #[serde(rename = "open_file")]
+    OpenFile { path: String },
+    #[serde(rename = "open_url")]
+    OpenUrl { url: String },
+    #[serde(rename = "run_command")]
+    RunCommand { command: String },
+    #[serde(rename = "suggest_command")]
+    SuggestCommand { command: String },
+    #[serde(rename = "copy_to_clipboard")]
+    CopyToClipboard { value: String },
 }
 
 impl ComponentStyle {
@@ -50,6 +71,10 @@ impl ComponentStyle {
             strikethrough: self.strikethrough.or(parent.strikethrough),
             obfuscated: self.obfuscated.or(parent.obfuscated),
             color: self.color.or(parent.color),
+            click_event: self
+                .click_event
+                .clone()
+                .or_else(|| parent.click_event.clone()),
         }
     }
 }
@@ -393,7 +418,7 @@ impl RunCollector {
 
 fn append_component_runs(value: &NbtValue, inherited: &ComponentStyle, out: &mut RunCollector) {
     match value {
-        NbtValue::String(text) => out.push(text, *inherited),
+        NbtValue::String(text) => out.push(text, inherited.clone()),
         NbtValue::List(items) => {
             for item in items {
                 append_component_runs(item, inherited, out);
@@ -438,7 +463,7 @@ fn append_primary_component_runs(
 
     if let Some(with) = find_entry(entries, "with") {
         if !out.is_empty() {
-            out.push(" ", *style);
+            out.push(" ", style.clone());
         }
         append_component_runs(with, style, out);
     }
@@ -460,7 +485,39 @@ fn component_style_from_entries(entries: &[(String, NbtValue)]) -> ComponentStyl
             Some(NbtValue::String(color)) => parse_text_color(color),
             _ => None,
         },
+        click_event: style_click_event(entries),
     }
+}
+
+fn style_click_event(entries: &[(String, NbtValue)]) -> Option<ComponentClickEvent> {
+    let NbtValue::Compound(click_entries) = find_entry(entries, "click_event")? else {
+        return None;
+    };
+    let Some(NbtValue::String(action)) = find_entry(click_entries, "action") else {
+        return None;
+    };
+    let string_field = |key: &str| match find_entry(click_entries, key) {
+        Some(NbtValue::String(value)) => Some(value.clone()),
+        _ => None,
+    };
+    Some(match action.as_str() {
+        "open_file" => ComponentClickEvent::OpenFile {
+            path: string_field("path")?,
+        },
+        "open_url" => ComponentClickEvent::OpenUrl {
+            url: string_field("url")?,
+        },
+        "run_command" => ComponentClickEvent::RunCommand {
+            command: string_field("command")?,
+        },
+        "suggest_command" => ComponentClickEvent::SuggestCommand {
+            command: string_field("command")?,
+        },
+        "copy_to_clipboard" => ComponentClickEvent::CopyToClipboard {
+            value: string_field("value")?,
+        },
+        _ => return None,
+    })
 }
 
 fn style_flag(entries: &[(String, NbtValue)], key: &str) -> Option<bool> {
@@ -578,6 +635,35 @@ mod tests {
                     strikethrough: Some(true),
                     obfuscated: Some(true),
                     color: Some(0xAA_00_AA),
+                    click_event: None,
+                },
+            }]
+        );
+    }
+
+    #[test]
+    fn styled_runs_decode_click_event_open_file() {
+        // {text:"debug", underlined:1b,
+        //  click_event:{action:"open_file", path:"screenshots/debug"}}
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "debug");
+        write_named_byte(&mut payload, "underlined", 1);
+        write_named_compound_start(&mut payload, "click_event");
+        write_named_string(&mut payload, "action", "open_file");
+        write_named_string(&mut payload, "path", "screenshots/debug");
+        payload.push(0);
+        payload.push(0);
+
+        assert_eq!(
+            decode_styled_component_summary(&payload).unwrap(),
+            vec![StyledTextRun {
+                text: "debug".to_string(),
+                style: ComponentStyle {
+                    underlined: Some(true),
+                    click_event: Some(ComponentClickEvent::OpenFile {
+                        path: "screenshots/debug".to_string(),
+                    }),
+                    ..ComponentStyle::default()
                 },
             }]
         );
@@ -827,6 +913,11 @@ mod tests {
         out.push(8);
         write_mutf8(out, name);
         write_mutf8(out, value);
+    }
+
+    fn write_named_compound_start(out: &mut Vec<u8>, name: &str) {
+        out.push(10);
+        write_mutf8(out, name);
     }
 
     fn write_mutf8(out: &mut Vec<u8>, value: &str) {

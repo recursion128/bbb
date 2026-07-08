@@ -1110,13 +1110,14 @@ When an agent does any of the following, update this file in the same slice:
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
-    F3+I local entity transform NBT capture, and debug feedback styled prefix
-    baseline:
+    F3+I local entity transform NBT capture, debug feedback styled prefix
+    baseline, and F3+S dynamic texture dump clickable/open-file feedback
+    payload:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
-    F3+I full local entity saveWithoutId parity, clickable/open-file debug
+    F3+I full local entity saveWithoutId parity, profiler result clickable
     feedback payload, profiler data sampling/navigation, profiling metrics
     recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
@@ -1365,8 +1366,8 @@ When an agent does any of the following, update this file in the same slice:
     writes `/summon ...` using the entity position with two decimals plus
     client-side entity feedback. Boundary: Shift+F3+I local block/entity NBT
     capture is now covered below; exact `StateDefinition` property iteration
-    order, full local entity `saveWithoutId` field parity, and
-    styled/clickable feedback remain future parity work.
+    order, full local entity `saveWithoutId` field parity, and profiler result
+    clickable feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
@@ -1380,8 +1381,8 @@ When an agent does any of the following, update this file in the same slice:
     request, and the main event loop drains that request into the existing
     block/entity tag-query net commands. Follow-up response/callback handling
     is now covered below. Boundary: local block/entity NBT capture is now
-    covered below; full local entity `saveWithoutId` field parity and
-    styled/clickable vanilla feedback remain future parity work.
+    covered below; full local entity `saveWithoutId` field parity and profiler
+    result clickable feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side NBT response callback.
     Vanilla anchors: `ClientPacketListener.handleTagQueryPacket` forwards
     `ClientboundTagQueryPacket` to `DebugQueryHandler.handleResponse`, which
@@ -1398,8 +1399,8 @@ When an agent does any of the following, update this file in the same slice:
     transaction ids while preserving the pending callback. Tests cover block,
     entity, null-tag, mismatched-id, and captured-at-query-time block state
     behavior. Boundary: Shift+F3+I local block/entity NBT capture is now
-    covered below; full local entity `saveWithoutId` field parity and
-    styled/clickable vanilla feedback remain future work.
+    covered below; full local entity `saveWithoutId` field parity and profiler
+    result clickable feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I gamemaster permission gate.
     Vanilla anchors: `PlayerList.sendPlayerPermissionLevel` sends
     `ClientboundEntityEventPacket(player, eventId)` with event ids 24..28 for
@@ -1414,8 +1415,8 @@ When an agent does any of the following, update this file in the same slice:
     the client-side no-NBT recreate command. Tests cover local and remote
     permission entity events plus authorized/unprivileged F3+I routing.
     Boundary: Shift+F3+I local block/entity NBT capture is now covered below;
-    full local entity `saveWithoutId` field parity and styled/clickable vanilla
-    feedback remain future work.
+    full local entity `saveWithoutId` field parity and profiler result
+    clickable feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I local block-entity NBT capture.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` uses `BlockEntity.saveWithoutMetadata` when `addNbt` is
@@ -1428,8 +1429,8 @@ When an agent does any of the following, update this file in the same slice:
     compact SNBT payload to Shift+F3+I local block recreate copies when the local
     player has gamemaster permission. Boundary: this uses client-owned network
     block-entity NBT; local entity transform NBT capture is covered below, and
-    full local entity `saveWithoutId` field parity plus styled/clickable vanilla
-    feedback remain future work.
+    full local entity `saveWithoutId` field parity plus profiler result
+    clickable feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I local entity transform NBT capture.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` uses `TagValueOutput` plus `Entity.saveWithoutId` for an
@@ -1445,7 +1446,7 @@ When an agent does any of the following, update this file in the same slice:
     uses client-owned canonical transform state; full local entity
     `saveWithoutId` field parity (base save fields, metadata-derived flags,
     custom data, passengers, and entity-specific save data) plus
-    clickable/open-file debug feedback payloads remain future work.
+    profiler result clickable feedback payloads remain future work.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -1455,9 +1456,23 @@ When an agent does any of the following, update this file in the same slice:
     default-style run, and routes native debug feedback through styled runs
     where `[Debug]:` is yellow/bold while the message body stays default style.
     Control snapshots expose the new styled projection without changing the
-    existing plain `content` consumers. Boundary: click events are not yet
-    represented in `ComponentStyle`, so F3+S open-file and future profiler
-    result clickable payloads remain future work.
+    existing plain `content` consumers. Boundary: `ComponentStyle` click events
+    are covered by the F3+S clickable payload slice; profiler result clickable
+    payloads remain future work with profiler output.
+  - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump
+    clickable/open-file feedback payload.
+    Vanilla anchors: `KeyboardHandler.handleDebugKeys` builds the
+    `debug.dump_dynamic_textures` feedback component after
+    `TextureManager.dumpAllSheets(debugTexturePath)`, underlines the displayed
+    relative path, and attaches `new ClickEvent.OpenFile(debugTexturePath)` to
+    the path run; the 26.1 `Style.Serializer.MAP_CODEC` field is
+    `click_event`, and `ClickEvent.OpenFile.CODEC` stores `path`. bbb now
+    preserves click events in `ComponentStyle`, decodes inherited component
+    click events into styled runs, and emits the F3+S local feedback as
+    `[Debug]: Saved dynamic textures to screenshots/debug` with the final path
+    run underlined and carrying an `open_file` click payload for the same
+    relative dump target used by the native drain. Boundary: profiler result
+    clickable payloads remain with profiler output.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -1468,8 +1483,8 @@ When an agent does any of the following, update this file in the same slice:
     drainable native dump request counter, drains it in the main event loop
     with the same relative path, suppresses the F3-release overlay toggle, and
     exposes the action in debug help. Boundary: the styled debug prefix is now
-    covered by the debug feedback baseline; clickable/open-file chat payload is
-    still not implemented.
+    covered by the debug feedback baseline and the F3+S clickable payload
+    slice.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump execution.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` resolves
     `TextureUtil.getDebugTexturePath(gameDirectory)` and calls
@@ -1481,7 +1496,7 @@ When an agent does any of the following, update this file in the same slice:
     and dynamic player profile texture atlas when those atlases have uploaded
     images. Focused tests cover empty dumps and RGBA/dimension-preserving atlas
     PNG output. Boundary: broader non-profile dynamic texture loading and
-    clickable/open-file chat styling remain future parity work.
+    profiler result clickable payloads remain future parity work.
   - Done 2026-07-08 — Debug overlay advanced item tooltips startup config.
     Vanilla anchors: `Options.advancedItemTooltips` is loaded/saved through the
     options file, and `KeyboardHandler.handleDebugKeys` toggles it on F3+H,
@@ -2227,13 +2242,14 @@ When an agent does any of the following, update this file in the same slice:
     entity recreate copies now include client-owned transform SNBT for
     `Motion`, `Rotation`, and known `OnGround`. Debug feedback messages now
     carry a yellow/bold `[Debug]:` styled prefix while preserving plain
-    `content`. The remaining open surfaces in
+    `content`, and F3+S dynamic texture dump feedback now underlines the path
+    run with an `open_file` click payload. The remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence, F3+I full
-    local entity saveWithoutId parity, clickable/open-file debug feedback
+    local entity saveWithoutId parity, profiler result clickable feedback
     payload, profiler data sampling/navigation, profiling metrics
     recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
     and the other F3 modifier combos.

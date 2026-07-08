@@ -15,6 +15,7 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
     strikethrough: None,
     obfuscated: None,
     color: Some(0xAA_00_AA),
+    click_event: None,
 };
 
 #[derive(Debug, Clone, PartialEq)]

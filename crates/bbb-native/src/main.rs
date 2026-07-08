@@ -431,8 +431,9 @@ fn main() -> Result<()> {
                         let dynamic_texture_dump_requests =
                             input.take_debug_dynamic_texture_dump_requests();
                         if dynamic_texture_dump_requests > 0 {
-                            let debug_texture_path = std::path::Path::new("screenshots")
-                                .join("debug");
+                            let debug_texture_path = std::path::Path::new(
+                                input::DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH,
+                            );
                             match renderer.dump_dynamic_textures(&debug_texture_path) {
                                 Ok(summary) => {
                                     tracing::info!(
