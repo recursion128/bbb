@@ -4116,6 +4116,54 @@ fn recipe_book_recipe_button_click_uses_search_filtered_collection() {
 }
 
 #[test]
+fn recipe_book_recipe_button_click_uses_current_multi_recipe_cycle() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            recipe_book_shapeless_entry_with_group(42, 2, Some(7), 200),
+            recipe_book_shapeless_entry_with_group(43, 2, Some(7), 201),
+        ],
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 43,
+            use_max_items: false,
+        })
+    );
+}
+
+#[test]
 fn furnace_recipe_book_recipe_button_click_queues_place_recipe_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -5589,6 +5637,15 @@ fn recipe_book_shapeless_entry(
     category_id: i32,
     result_item_id: i32,
 ) -> bbb_protocol::packets::RecipeBookAddEntry {
+    recipe_book_shapeless_entry_with_group(id, category_id, None, result_item_id)
+}
+
+fn recipe_book_shapeless_entry_with_group(
+    id: i32,
+    category_id: i32,
+    group: Option<i32>,
+    result_item_id: i32,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
     bbb_protocol::packets::RecipeBookAddEntry {
         contents: bbb_protocol::packets::RecipeDisplayEntry {
             id: bbb_protocol::packets::RecipeDisplayId { index: id },
@@ -5614,7 +5671,7 @@ fn recipe_book_shapeless_entry(
                 ),
                 furnace: None,
             },
-            group: None,
+            group,
             category_id,
             crafting_requirements: None,
         },

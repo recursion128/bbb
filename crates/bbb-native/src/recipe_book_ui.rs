@@ -107,8 +107,20 @@ impl<'a> RecipeBookUiCollection<'a> {
             .and_then(|entry| recipe_book_result_stack(entry))
     }
 
-    pub(crate) fn first_recipe_index(&self) -> Option<i32> {
-        self.entries.first().map(|entry| entry.id.index)
+    pub(crate) fn result_stack_at_slot_select_index(
+        &self,
+        slot_select_index: usize,
+    ) -> Option<&'a ItemStackSummary> {
+        self.entry_at_slot_select_index(slot_select_index)
+            .and_then(recipe_book_result_stack)
+    }
+
+    pub(crate) fn recipe_index_at_slot_select_index(
+        &self,
+        slot_select_index: usize,
+    ) -> Option<i32> {
+        self.entry_at_slot_select_index(slot_select_index)
+            .map(|entry| entry.id.index)
     }
 
     pub(crate) fn has_multiple_recipes(&self) -> bool {
@@ -127,6 +139,22 @@ impl<'a> RecipeBookUiCollection<'a> {
             .iter()
             .all(|entry| recipe_book_result_stack(entry) == Some(first))
     }
+
+    fn entry_at_slot_select_index(
+        &self,
+        slot_select_index: usize,
+    ) -> Option<&'a RecipeDisplayEntry> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        Some(self.entries[slot_select_index % self.entries.len()])
+    }
+}
+
+pub(crate) fn recipe_book_slot_select_index(world: &WorldStore, partial_tick: f32) -> usize {
+    let render_time = world.world_time().map_or(0.0, |time| time.game_time as f64)
+        + f64::from(partial_tick.max(0.0));
+    (render_time / 30.0).floor().max(0.0) as usize
 }
 
 pub(crate) fn crafting_recipe_book_collections<'a>(

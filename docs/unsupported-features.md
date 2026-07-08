@@ -1066,8 +1066,8 @@ When an agent does any of the following, update this file in the same slice:
     search cursor/selection, tag-backed ghost ingredient display, tab
     notification pulse, furnace-family recipe-grid baseline,
     furnace-family ghost recipe projection, and furnace-family stacked-contents
-    craftability:
-    multi-recipe picker/cycling, full recipe `FullTextSearchTree` token
+    craftability, and multi-recipe cycling:
+    right-click multi-recipe picker/overlay, full recipe `FullTextSearchTree` token
     parity, and full tag/composite SlotDisplay time-cycling for ghost
     ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
@@ -1304,8 +1304,16 @@ When an agent does any of the following, update this file in the same slice:
     0..2 in furnace-family recipe-book available item counts, so slot sprites,
     filtering, page controls, and recipe-button hit-testing match the vanilla
     stacked-contents source.
-  - Boundary: craftability retry guard, multi-recipe
-    picker/cycling/right-click overlay, full `FullTextSearchTree` token /
+  - Done 2026-07-08 — Recipe-book multi-recipe cycling. Vanilla anchors:
+    `RecipeBookComponent` wires `SlotSelectTime` to `floor(time / 30.0F)`;
+    `RecipeButton.getCurrentRecipe` selects `selectedEntries[index %
+    selectedEntries.size()]`, and `getDisplayStack` uses the same current
+    index for the visible result. bbb now derives the same 30-tick slot-select
+    index from client world time for recipe-book projection, so multi-recipe
+    buttons cycle their visible result and left-click `PlaceRecipeCommand`
+    target together.
+  - Boundary: craftability retry guard, right-click multi-recipe
+    picker/overlay, full `FullTextSearchTree` token /
     namespace-path / intersection semantics for recipe search, full
     tag/composite SlotDisplay time-cycling for ghost ingredients, exact
     fake-item y-scaling during animated recipe-book tabs, and narrow-screen
@@ -1319,9 +1327,10 @@ When an agent does any of the following, update this file in the same slice:
     same-result multi-recipe duplicate icon overlay, and first-item tag-backed
     crafting ghost ingredient projection, highlighted recipe-book tab baseline
     pulse, furnace-family recipe-grid baseline, furnace-family ghost recipe
-    projection, and furnace-family stacked-contents craftability are live. The
-    first shell models the non-narrow layout; vanilla's narrow-screen overlap mode
-    (`width < 379`) remains for the input/render follow-up.
+    projection, furnace-family stacked-contents craftability, and multi-recipe
+    cycling are live. The first shell models the non-narrow layout; vanilla's
+    narrow-screen overlap mode (`width < 379`) remains for the input/render
+    follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

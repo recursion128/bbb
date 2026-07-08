@@ -34,8 +34,9 @@ use super::{
 use crate::recipe_book_ui::{
     clamped_recipe_book_page, crafting_recipe_book_collections,
     crafting_recipe_book_visible_tab_indices, furnace_recipe_book_collections,
-    furnace_recipe_book_visible_tab_indices, recipe_book_page_count, RecipeBookCraftingGrid,
-    RecipeBookFurnaceFamily, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+    furnace_recipe_book_visible_tab_indices, recipe_book_page_count, recipe_book_slot_select_index,
+    RecipeBookCraftingGrid, RecipeBookFurnaceFamily, RecipeBookUiCollection,
+    RECIPE_BOOK_ITEMS_PER_PAGE,
 };
 use bbb_item_model::NativeItemRuntime;
 
@@ -2414,9 +2415,10 @@ fn recipe_book_recipe_button_at_position(
     let visible_index =
         recipe_book_recipe_button_index_at_position(cursor_position, surface_size, &layout)?;
     let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + visible_index;
+    let slot_select_index = recipe_book_slot_select_index(world, 0.0);
     collections
         .get(collection_index)
-        .and_then(|collection| collection.first_recipe_index())
+        .and_then(|collection| collection.recipe_index_at_slot_select_index(slot_select_index))
 }
 
 fn recipe_book_collections_for_background<'a>(

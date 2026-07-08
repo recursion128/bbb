@@ -107,8 +107,8 @@ use crate::{
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
         furnace_recipe_book_collections, furnace_recipe_book_ghost_slots,
         furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_page_count,
-        RecipeBookCraftingGrid, RecipeBookFurnaceFamily, RecipeBookGhostSlot,
-        RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+        recipe_book_slot_select_index, RecipeBookCraftingGrid, RecipeBookFurnaceFamily,
+        RecipeBookGhostSlot, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -3219,8 +3219,9 @@ fn hud_recipe_book_recipe_button_icon_items(
         search,
     );
     let mut items = Vec::new();
+    let slot_select_index = recipe_book_slot_select_index(world, partial_tick);
     for (index, collection) in collections.into_iter().enumerate() {
-        let Some(stack) = collection.result_stack() else {
+        let Some(stack) = collection.result_stack_at_slot_select_index(slot_select_index) else {
             continue;
         };
         let Some(icon) = hud_item_icon_for_stack(

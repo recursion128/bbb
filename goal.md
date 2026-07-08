@@ -285,13 +285,14 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- recipe-book overlay multi-recipe
+- recipe-book overlay right-click multi-recipe picker
   overlay（基础 shell、crafting category/page shell、placement
   command shell、category tab visibility、crafting ghost slots、visible search filtering
   与 direct-item/tag-backed craftability slot/filtering、same-result multi-recipe icon
   overlay、search cursor/selection rendering、first-item tag-backed ghost ingredient
   display、tab notification baseline pulse、furnace-family recipe-grid baseline、
-  furnace-family ghost slots、furnace-family stacked-contents craftability 已完成）/
+  furnace-family ghost slots、furnace-family stacked-contents craftability、
+  multi-recipe cycling 已完成）/
   advancement screen（大件；recipe/advancement state 已 ready）；debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉

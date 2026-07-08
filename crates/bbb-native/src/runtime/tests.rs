@@ -6717,6 +6717,64 @@ fn hud_inventory_screen_draws_same_result_recipe_book_multi_recipe_offset_icons(
 }
 
 #[test]
+fn hud_inventory_screen_cycles_recipe_book_multi_recipe_icon() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
+            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 2),
+        ],
+    });
+    let local_state = InventoryHudLocalState {
+        recipe_book_tabs: RecipeBookTabSelectionHudState {
+            crafting: 1,
+            ..RecipeBookTabSelectionHudState::default()
+        },
+        ..InventoryHudLocalState::default()
+    };
+
+    let first_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let first_icon = first_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (15, 35))
+        .map(|item| item.icon.clone())
+        .expect("first multi-recipe icon");
+
+    world.apply_world_time(PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    let second_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state,
+        0.0,
+    )
+    .unwrap();
+    let second_icon = second_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (15, 35))
+        .map(|item| item.icon.clone())
+        .expect("second multi-recipe icon");
+
+    assert_ne!(first_icon, second_icon);
+}
+
+#[test]
 fn hud_inventory_screen_filters_recipe_book_buttons_by_crafting_tab_category() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {

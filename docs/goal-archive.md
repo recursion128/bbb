@@ -1973,6 +1973,15 @@
   multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
   token/namespace-path/intersection 语义、tag/composite SlotDisplay
   time-cycling、narrow-screen overlap。
+- [x] recipe-book multi-recipe cycling（P2 HUD/input slice，2026-07-08）：
+  依据 `RecipeBookComponent` 将 `SlotSelectTime` 定义为
+  `floor(time / 30.0F)`，以及 `RecipeButton.getCurrentRecipe` /
+  `getDisplayStack` 用同一 current index 选择 recipe id 和可见 result 的
+  行为，native 现在按 30 tick slot-select index 轮换 multi-recipe button
+  的 result icon，并让左键 `PlaceRecipeCommand` 发送同一个当前 recipe。
+  剩余：craftability retry guard、right-click multi-recipe picker/overlay、
+  完整 `FullTextSearchTree` token/namespace-path/intersection 语义、
+  tag/composite SlotDisplay time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
