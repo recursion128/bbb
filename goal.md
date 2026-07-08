@@ -285,7 +285,7 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- recipe-book overlay tabs/page/buttons/ghost recipe/search-filter 输入（基础
+- recipe-book overlay tabs/page recipe buttons/ghost recipe/search-filter 输入（基础
   shell 已完成）/ advancement screen（大件；recipe/advancement state 已
   ready）；debug overlay（F3，低优先）。
 

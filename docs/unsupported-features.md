@@ -1059,9 +1059,9 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Continue the recipe-book overlay after the completed shell:
-    tabs, page recipe buttons, search/filter input, recipe placement, and ghost
-    recipe slots.
+  - Continue the recipe-book overlay after the completed shell and toggle
+    button: tabs, page recipe buttons, search/filter input, recipe placement,
+    and ghost recipe slots.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1082,11 +1082,22 @@ When an agent does any of the following, update this file in the same slice:
     shifts the main GUI backgrounds, labels, previews, and non-cursor floating
     items by the same offset, and leaves the cursor item in composite screen
     coordinates. HUD assets load the vanilla `textures/gui/recipe_book.png`.
-  - Boundary: recipe-book button/tabs/page buttons, search/filter text input,
-    recipe placement commands from clicks, tab notification animation, and
-    ghost recipe slot rendering remain open. The first shell models the
-    non-narrow layout; vanilla's narrow-screen overlap mode (`width < 379`)
-    remains for the input/render follow-up.
+  - Done 2026-07-08 — Recipe-book toggle button. Vanilla anchors:
+    `RecipeBookComponent.RECIPE_BUTTON_SPRITES` uses `recipe_book/button` and
+    `recipe_book/button_highlighted`; `InventoryScreen` places the button at
+    `(leftPos + 104, topPos + 61)`, `CraftingScreen` at
+    `(leftPos + 5, topPos + 34)`, and `AbstractFurnaceScreen` at
+    `(leftPos + 20, topPos + 34)`. bbb now projects those sprites for local
+    inventory, crafting table, furnace, blast furnace, and smoker screens,
+    highlights them from the composite inventory cursor position, locally
+    toggles the matching `RecipeBookSettings` type while preserving
+    `filtering`, and queues `RecipeBookChangeSettingsCommand` with the same
+    values sent by vanilla `ServerboundRecipeBookChangeSettingsPacket`.
+  - Boundary: recipe-book tabs/page buttons, search/filter text input, recipe
+    placement commands from clicks, tab notification animation, and ghost
+    recipe slot rendering remain open. The first shell models the non-narrow
+    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
+    the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

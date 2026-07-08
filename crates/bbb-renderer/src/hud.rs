@@ -525,6 +525,8 @@ pub enum HudInventoryBackgroundTexture {
     FurnaceLitProgress,
     FurnaceBurnProgress,
     RecipeBook,
+    RecipeBookButton,
+    RecipeBookButtonHighlighted,
     BlastFurnace,
     BlastFurnaceLitProgress,
     BlastFurnaceBurnProgress,
@@ -1493,6 +1495,27 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_button(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_button = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_button_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_button_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -3260,6 +3283,10 @@ impl Renderer {
                 self.hud_furnace_burn_progress.as_ref()
             }
             HudInventoryBackgroundTexture::RecipeBook => self.hud_recipe_book_background.as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookButton => self.hud_recipe_book_button.as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookButtonHighlighted => {
+                self.hud_recipe_book_button_highlighted.as_ref()
+            }
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()
             }

@@ -54,6 +54,8 @@ pub(crate) const RECIPE_BOOK_MAIN_GUI_X_OFFSET: i32 = 149;
 /// Virtual width whose centered origin matches the vanilla non-narrow
 /// recipe-book origin for even GUI widths.
 const RECIPE_BOOK_ORIGIN_WIDTH: i32 = 320;
+pub(crate) const RECIPE_BOOK_BUTTON_WIDTH: i32 = 20;
+pub(crate) const RECIPE_BOOK_BUTTON_HEIGHT: i32 = 18;
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
@@ -295,6 +297,19 @@ pub(crate) fn recipe_book_main_gui_offset(
         RECIPE_BOOK_MAIN_GUI_X_OFFSET
     } else {
         0
+    }
+}
+
+pub(crate) fn recipe_book_button_position(
+    background: InventoryScreenBackground,
+) -> Option<(i32, i32)> {
+    match background {
+        InventoryScreenBackground::LocalInventory => Some((104, 61)),
+        InventoryScreenBackground::CraftingTable => Some((5, 34)),
+        InventoryScreenBackground::Furnace
+        | InventoryScreenBackground::BlastFurnace
+        | InventoryScreenBackground::Smoker => Some((20, 34)),
+        _ => None,
     }
 }
 

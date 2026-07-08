@@ -6,10 +6,11 @@ use bbb_protocol::packets::{
     ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind,
     HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary, ItemCostSummary,
     ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen, PlayerAbilities,
-    PlayerExperience, RecipeBookSettings, RecipeBookTypeSettings, RecipePropertySetSummary,
-    RegistryTags, SelectBundleItem, SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData,
-    SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
-    UpdateRecipes, UpdateTags, Vec3d,
+    PlayerExperience, RecipeBookChangeSettingsCommand, RecipeBookSettings, RecipeBookType,
+    RecipeBookTypeSettings, RecipePropertySetSummary, RegistryTags, SelectBundleItem,
+    SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory,
+    SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes,
+    UpdateTags, Vec3d,
 };
 use uuid::Uuid;
 
@@ -3659,6 +3660,74 @@ fn mount_horse_shift_click_queues_predicted_saddle_quick_move() {
     let slots = &world.inventory().open_container.as_ref().unwrap().slots;
     assert_eq!(slots[0].item, item_stack(90, 1));
     assert_eq!(slots[17].item, ItemStackSummary::empty());
+}
+
+#[test]
+fn recipe_book_button_click_toggles_local_setting_and_queues_packet() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: false,
+            filtering: true,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(558.0, 312.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert!(world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+            book_type: RecipeBookType::Crafting,
+            open: true,
+            filtering: true,
+        })
+    );
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(635.0, 312.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert!(!world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+            book_type: RecipeBookType::Crafting,
+            open: false,
+            filtering: true,
+        })
+    );
 }
 
 #[test]

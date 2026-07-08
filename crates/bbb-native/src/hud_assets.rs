@@ -90,6 +90,18 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         recipe_book.height,
         &recipe_book.rgba,
     )?;
+    let recipe_book_button = hud_sprite(&sprites, "recipe_book/button")?;
+    renderer.upload_hud_recipe_book_button(
+        recipe_book_button.width,
+        recipe_book_button.height,
+        &recipe_book_button.rgba,
+    )?;
+    let recipe_book_button_highlighted = hud_sprite(&sprites, "recipe_book/button_highlighted")?;
+    renderer.upload_hud_recipe_book_button_highlighted(
+        recipe_book_button_highlighted.width,
+        recipe_book_button_highlighted.height,
+        &recipe_book_button_highlighted.rgba,
+    )?;
     let cartography_table = gui_texture(
         roots,
         "textures/gui/container/cartography_table.png",

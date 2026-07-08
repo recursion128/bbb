@@ -1737,8 +1737,19 @@
   furnace、blast furnace、smoker 投影 147x166
   `textures/gui/recipe_book.png` 面板；非窄屏主 GUI 按 vanilla 相对 recipe
   book origin 右移 149px，slot hover/tooltip、主 GUI 背景、文字、实体预览和
-  非 cursor 浮动物品使用同一 offset。剩余：recipe-book button/tabs/page
-  recipe buttons、search/filter input、recipe placement、ghost recipe slots、
+  非 cursor 浮动物品使用同一 offset。剩余：recipe-book tabs/page recipe
+  buttons、search/filter input、recipe placement、ghost recipe slots、
+  narrow-screen overlap。
+- [x] recipe-book toggle button（P2 HUD/input slice，2026-07-08）：依据
+  `RecipeBookComponent.RECIPE_BUTTON_SPRITES`、`InventoryScreen` /
+  `CraftingScreen` / `AbstractFurnaceScreen` 的按钮位置，以及
+  `RecipeBookComponent.setVisible` 的设置更新和
+  `ServerboundRecipeBookChangeSettingsPacket` 发送行为，加载并投影
+  `recipe_book/button` 与 `recipe_book/button_highlighted`，为 local
+  inventory、crafting table、furnace、blast furnace、smoker 处理左键 toggle；
+  本地更新对应 `RecipeBookSettings` type、保留 filtering，并排队
+  `RecipeBookChangeSettingsCommand`。剩余：recipe-book tabs/page recipe
+  buttons、search/filter input、recipe placement、ghost recipe slots、
   narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI

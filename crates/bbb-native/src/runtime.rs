@@ -69,9 +69,10 @@ use crate::{
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout,
-        inventory_screen_selected_hotbar_slot_id, recipe_book_main_gui_offset,
-        release_active_input, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-        sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
+        inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
+        recipe_book_main_gui_offset, release_active_input, sync_beacon_effect_selection_state,
+        sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
+        InventoryScreenBackground, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
@@ -2631,6 +2632,13 @@ fn hud_inventory_screen_with_local_state(
         }
         background_layers.insert(0, hud_recipe_book_background_layer());
     }
+    if let Some(layer) = hud_recipe_book_button_layer(
+        layout.background,
+        main_offset_x,
+        local_state.cursor_position,
+    ) {
+        background_layers.push(layer);
+    }
     let floating_items = hud_inventory_floating_items(
         world,
         item_runtime,
@@ -2679,6 +2687,34 @@ fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {
         [1.0 / 256.0, 1.0 / 256.0],
         [148.0 / 256.0, 167.0 / 256.0],
     )
+}
+
+fn hud_recipe_book_button_layer(
+    background: InventoryScreenBackground,
+    main_offset_x: i32,
+    cursor_position: Option<(i32, i32)>,
+) -> Option<HudInventoryBackgroundLayer> {
+    let (button_x, button_y) = recipe_book_button_position(background)?;
+    let x = main_offset_x + button_x;
+    let highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
+        cursor_x >= x
+            && cursor_x < x + RECIPE_BOOK_BUTTON_WIDTH
+            && cursor_y >= button_y
+            && cursor_y < button_y + RECIPE_BOOK_BUTTON_HEIGHT
+    });
+    Some(hud_inventory_background_layer(
+        if highlighted {
+            HudInventoryBackgroundTexture::RecipeBookButtonHighlighted
+        } else {
+            HudInventoryBackgroundTexture::RecipeBookButton
+        },
+        x,
+        button_y,
+        u32::try_from(RECIPE_BOOK_BUTTON_WIDTH).unwrap_or_default(),
+        u32::try_from(RECIPE_BOOK_BUTTON_HEIGHT).unwrap_or_default(),
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ))
 }
 
 fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) {

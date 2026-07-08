@@ -42,9 +42,11 @@ pub(crate) use commands::{
 pub(crate) use inventory::{
     anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
     handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_inventory_text_input,
-    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_main_gui_offset,
-    sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
+    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
+    recipe_book_main_gui_offset, sync_beacon_effect_selection_state,
+    sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state,
+    InventoryScreenBackground, InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT,
+    RECIPE_BOOK_BUTTON_WIDTH,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,

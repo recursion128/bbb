@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::packets::{
     RecipeBookAdd as ProtocolRecipeBookAdd, RecipeBookRemove as ProtocolRecipeBookRemove,
-    RecipeBookSettings as ProtocolRecipeBookSettings,
+    RecipeBookSettings as ProtocolRecipeBookSettings, RecipeBookType,
+    RecipeBookTypeSettings as ProtocolRecipeBookTypeSettings,
     RecipeDisplayEntry as ProtocolRecipeDisplayEntry,
 };
 use serde::{Deserialize, Serialize};
@@ -55,6 +56,19 @@ impl WorldStore {
     pub fn apply_recipe_book_settings(&mut self, settings: ProtocolRecipeBookSettings) {
         self.counters.recipe_book_settings_packets += 1;
         self.recipe_book.settings = settings;
+    }
+
+    pub fn set_local_recipe_book_type_settings(
+        &mut self,
+        book_type: RecipeBookType,
+        settings: ProtocolRecipeBookTypeSettings,
+    ) {
+        match book_type {
+            RecipeBookType::Crafting => self.recipe_book.settings.crafting = settings,
+            RecipeBookType::Furnace => self.recipe_book.settings.furnace = settings,
+            RecipeBookType::BlastFurnace => self.recipe_book.settings.blast_furnace = settings,
+            RecipeBookType::Smoker => self.recipe_book.settings.smoker = settings,
+        }
     }
 
     pub fn recipe_book(&self) -> &ClientRecipeBookState {
@@ -132,6 +146,23 @@ mod tests {
         assert_eq!(counters.recipe_book_entries_tracked, 2);
         assert_eq!(counters.recipe_book_highlights_tracked, 1);
         assert_eq!(counters.recipe_book_notifications_received, 1);
+    }
+
+    #[test]
+    fn local_recipe_book_type_settings_update_without_packet_counter() {
+        let mut store = WorldStore::new();
+
+        store.set_local_recipe_book_type_settings(
+            RecipeBookType::Crafting,
+            RecipeBookTypeSettings {
+                open: true,
+                filtering: true,
+            },
+        );
+
+        assert!(store.recipe_book().settings.crafting.open);
+        assert!(store.recipe_book().settings.crafting.filtering);
+        assert_eq!(store.counters().recipe_book_settings_packets, 0);
     }
 
     fn recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {

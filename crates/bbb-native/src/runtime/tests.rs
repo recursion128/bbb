@@ -3692,15 +3692,26 @@ fn hud_inventory_screen_projects_open_local_inventory_layout() {
     assert_eq!(screen.height, 166);
     assert_eq!(
         screen.background_layers,
-        vec![hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::Inventory,
-            0,
-            0,
-            176,
-            166,
-            [0.0, 0.0],
-            [176.0 / 256.0, 166.0 / 256.0],
-        )]
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Inventory,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookButton,
+                104,
+                61,
+                20,
+                18,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
     );
     assert_eq!(screen.hovered_slot_id, Some(36));
     assert_eq!(screen.tooltip, None);
@@ -5892,15 +5903,26 @@ fn hud_inventory_screen_projects_crafting_table_layout() {
     assert_eq!(screen.height, 166);
     assert_eq!(
         screen.background_layers,
-        vec![hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::CraftingTable,
-            0,
-            0,
-            176,
-            166,
-            [0.0, 0.0],
-            [176.0 / 256.0, 166.0 / 256.0],
-        )]
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::CraftingTable,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookButton,
+                5,
+                34,
+                20,
+                18,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
     );
     assert_eq!(screen.hovered_slot_id, Some(45));
     assert_eq!(screen.slots.len(), 46);
@@ -5910,6 +5932,41 @@ fn hud_inventory_screen_projects_crafting_table_layout() {
     assert_eq!((first_grid.x, first_grid.y), (30, 17));
     let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
     assert_eq!((hotbar.x, hotbar.y), (152, 142));
+}
+
+#[test]
+fn hud_inventory_screen_highlights_recipe_book_button() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((5, 34)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(
+        screen.background_layers.last().map(|layer| layer.texture),
+        Some(HudInventoryBackgroundTexture::RecipeBookButtonHighlighted)
+    );
 }
 
 #[test]
@@ -5961,6 +6018,15 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookButton,
+                154,
+                34,
+                20,
+                18,
+                [0.0, 0.0],
+                [1.0, 1.0],
             ),
         ]
     );
@@ -6855,15 +6921,26 @@ fn hud_inventory_screen_projects_furnace_like_layouts() {
         assert_eq!(screen.height, 166);
         assert_eq!(
             screen.background_layers,
-            vec![hud_inventory_background_layer(
-                texture,
-                0,
-                0,
-                176,
-                166,
-                [0.0, 0.0],
-                [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            vec![
+                hud_inventory_background_layer(
+                    texture,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::RecipeBookButton,
+                    20,
+                    34,
+                    20,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
         );
         assert_eq!(screen.hovered_slot_id, Some(38));
         assert_eq!(screen.slots.len(), 39);
@@ -6945,6 +7022,15 @@ fn hud_inventory_screen_projects_furnace_progress_layers() {
                 16,
                 [0.0, 0.0],
                 [6.0 / 24.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookButton,
+                20,
+                34,
+                20,
+                18,
+                [0.0, 0.0],
+                [1.0, 1.0],
             ),
         ]
     );
