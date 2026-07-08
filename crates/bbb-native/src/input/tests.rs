@@ -4898,6 +4898,59 @@ fn advancements_tab_click_selects_tab_and_queues_opened_tab() {
 }
 
 #[test]
+fn advancements_mouse_wheel_scrolls_selected_tab_locally() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![input_displayed_advancement("minecraft:story/root", None)],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    assert!(world.open_advancements_screen());
+    assert_eq!(
+        world.ensure_advancements_screen_selected_tab(),
+        Some("minecraft:story/root".to_string())
+    );
+
+    let handled = handle_advancements_screen_mouse_wheel(
+        &mut input,
+        &world,
+        MouseScrollDelta::LineDelta(0.0, -1.0),
+    );
+
+    assert!(handled);
+    assert_eq!(
+        input.advancement_scroll_delta(Some("minecraft:story/root")),
+        Some((0.0, -16.0))
+    );
+}
+
+#[test]
+fn gameplay_mouse_wheel_is_consumed_while_advancements_screen_is_open() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.set_local_selected_hotbar_slot(0));
+    assert!(world.open_advancements_screen());
+
+    handle_mouse_wheel(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseScrollDelta::LineDelta(0.0, 1.0),
+    );
+
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn movement_key_changes_queue_player_input_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

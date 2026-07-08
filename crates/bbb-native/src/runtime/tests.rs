@@ -9644,7 +9644,7 @@ fn advancement_widget_connection_layers_match_vanilla_two_pass_lines() {
         ),
     ];
 
-    let layers = advancements_widget_connection_layers(&widgets, window_x, window_y);
+    let layers = advancements_widget_connection_layers(&widgets, None, window_x, window_y);
 
     assert_eq!(
         layers,
@@ -9771,6 +9771,65 @@ fn advancement_widget_connection_layers_match_vanilla_two_pass_lines() {
                 [1.0, 1.0],
             ),
         ]
+    );
+}
+
+#[test]
+fn advancement_widget_scroll_applies_local_delta_and_vanilla_clamp() {
+    let widgets = vec![
+        advancement_widget_summary_for_test("minecraft:story/root", None, 0, 0),
+        advancement_widget_summary_for_test(
+            "minecraft:story/tall_child",
+            Some("minecraft:story/root"),
+            0,
+            135,
+        ),
+    ];
+
+    assert_eq!(advancements_widget_scroll(&widgets, None), Some((103, -25)));
+    assert_eq!(
+        advancements_widget_scroll(&widgets, Some((64.0, -16.0))),
+        Some((103, -41))
+    );
+    assert_eq!(
+        advancements_widget_scroll(&widgets, Some((0.0, -100.0))),
+        Some((103, -49))
+    );
+    assert_eq!(
+        advancements_widget_scroll(&widgets, Some((0.0, 100.0))),
+        Some((103, 0))
+    );
+}
+
+#[test]
+fn advancement_widget_frame_layer_clips_to_contents_with_uvs() {
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+
+    let layer = clipped_advancement_widget_frame_layer(
+        HudAdvancementWidgetFrameSprite::TaskUnobtained,
+        inside_x - 5,
+        inside_y + 2,
+        inside_x,
+        inside_y,
+    )
+    .unwrap();
+
+    assert_eq!(
+        layer,
+        hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementWidgetFrame(
+                HudAdvancementWidgetFrameSprite::TaskUnobtained,
+            ),
+            inside_x,
+            inside_y + 2,
+            21,
+            26,
+            [5.0 / 26.0, 0.0],
+            [1.0, 1.0],
+        )
     );
 }
 

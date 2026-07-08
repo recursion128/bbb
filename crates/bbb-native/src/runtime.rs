@@ -521,7 +521,7 @@ struct BeaconEffectButton {
     y: i32,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 struct InventoryHudLocalState {
     stonecutter_recipe_scroll_row: Option<i32>,
     beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
@@ -532,6 +532,7 @@ struct InventoryHudLocalState {
     recipe_book_tabs: RecipeBookTabSelectionHudState,
     recipe_book_pages: RecipeBookPageHudState,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
+    advancement_scroll_delta: Option<(f64, f64)>,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -1788,6 +1789,8 @@ pub(crate) fn pump_network_and_terrain(
                 recipe_book_tabs: input.recipe_book_tab_selection_hud_state(),
                 recipe_book_pages: input.recipe_book_page_hud_state(),
                 recipe_book_overlay: input.recipe_book_overlay_hud_state(),
+                advancement_scroll_delta: input
+                    .advancement_scroll_delta(world.selected_advancements_tab()),
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2699,6 +2702,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
             world,
             item_runtime,
             terrain_textures,
+            local_state.advancement_scroll_delta,
             surface_size,
             local_state.cursor_position,
             local_state.keybind_context,
@@ -4504,6 +4508,7 @@ fn hud_advancements_screen(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    advancement_scroll_delta: Option<(f64, f64)>,
     surface_size: winit::dpi::PhysicalSize<u32>,
     cursor_position: Option<(i32, i32)>,
     keybind_context: ItemModelKeybindContext,
@@ -4544,16 +4549,19 @@ fn hud_advancements_screen(
     background_layers.extend(advancements_background_layers(
         selected_tab.as_ref(),
         &selected_widgets,
+        advancement_scroll_delta,
         window_x,
         window_y,
     ));
     background_layers.extend(advancements_widget_connection_layers(
         &selected_widgets,
+        advancement_scroll_delta,
         window_x,
         window_y,
     ));
     background_layers.extend(advancements_widget_frame_layers(
         &selected_widgets,
+        advancement_scroll_delta,
         window_x,
         window_y,
     ));
@@ -4592,6 +4600,7 @@ fn hud_advancements_screen(
         item_runtime,
         terrain_textures,
         &selected_widgets,
+        advancement_scroll_delta,
         window_x,
         window_y,
         keybind_context,
@@ -4785,6 +4794,7 @@ fn advancements_tab_background_layers(
 fn advancements_background_layers(
     selected_tab: Option<&bbb_world::AdvancementRootTabSummary>,
     widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
     window_x: i32,
     window_y: i32,
 ) -> Vec<HudInventoryBackgroundLayer> {
@@ -4796,7 +4806,7 @@ fn advancements_background_layers(
         .as_deref()
         .and_then(HudAdvancementBackgroundTexture::from_resource_id)
         .unwrap_or(HudAdvancementBackgroundTexture::Missing);
-    let (scroll_x, scroll_y) = advancements_widget_scroll(widgets).unwrap_or((0, 0));
+    let (scroll_x, scroll_y) = advancements_widget_scroll(widgets, scroll_delta).unwrap_or((0, 0));
     let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
     let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
     let left = scroll_x % ADVANCEMENTS_BACKGROUND_TILE_SIZE;
@@ -4856,10 +4866,11 @@ fn clipped_advancement_background_tile(
 
 fn advancements_widget_connection_layers(
     widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
     window_x: i32,
     window_y: i32,
 ) -> Vec<HudInventoryBackgroundLayer> {
-    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets, scroll_delta) else {
         return Vec::new();
     };
     let by_id: BTreeMap<&str, &bbb_world::AdvancementWidgetSummary> = widgets
@@ -5119,11 +5130,12 @@ fn advancements_tab_icon_items(
 
 fn advancements_widget_frame_layers(
     widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
     window_x: i32,
     window_y: i32,
 ) -> Vec<HudInventoryBackgroundLayer> {
     let mut layers = Vec::new();
-    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets, scroll_delta) else {
         return layers;
     };
     let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
@@ -5134,23 +5146,54 @@ fn advancements_widget_frame_layers(
     {
         let frame_x = inside_x + scroll_x + widget.x + ADVANCEMENTS_WIDGET_FRAME_OFFSET_X;
         let frame_y = inside_y + scroll_y + widget.y;
-        if !advancement_widget_rect_inside_content(frame_x, frame_y, inside_x, inside_y) {
-            continue;
-        }
-        layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::AdvancementWidgetFrame(advancement_widget_frame_sprite(
-                widget.frame_type,
-                widget.done,
-            )),
+        if let Some(layer) = clipped_advancement_widget_frame_layer(
+            advancement_widget_frame_sprite(widget.frame_type, widget.done),
             frame_x,
             frame_y,
-            ADVANCEMENTS_WIDGET_FRAME_WIDTH,
-            ADVANCEMENTS_WIDGET_FRAME_HEIGHT,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
+            inside_x,
+            inside_y,
+        ) {
+            layers.push(layer);
+        }
     }
     layers
+}
+
+fn clipped_advancement_widget_frame_layer(
+    sprite: HudAdvancementWidgetFrameSprite,
+    frame_x: i32,
+    frame_y: i32,
+    inside_x: i32,
+    inside_y: i32,
+) -> Option<HudInventoryBackgroundLayer> {
+    let inside_right = inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32;
+    let inside_bottom = inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32;
+    let frame_right = frame_x + ADVANCEMENTS_WIDGET_FRAME_WIDTH as i32;
+    let frame_bottom = frame_y + ADVANCEMENTS_WIDGET_FRAME_HEIGHT as i32;
+    let x = frame_x.max(inside_x);
+    let y = frame_y.max(inside_y);
+    let right = frame_right.min(inside_right);
+    let bottom = frame_bottom.min(inside_bottom);
+    if x >= right || y >= bottom {
+        return None;
+    }
+    let uv_min = [
+        (x - frame_x) as f32 / ADVANCEMENTS_WIDGET_FRAME_WIDTH as f32,
+        (y - frame_y) as f32 / ADVANCEMENTS_WIDGET_FRAME_HEIGHT as f32,
+    ];
+    let uv_max = [
+        (right - frame_x) as f32 / ADVANCEMENTS_WIDGET_FRAME_WIDTH as f32,
+        (bottom - frame_y) as f32 / ADVANCEMENTS_WIDGET_FRAME_HEIGHT as f32,
+    ];
+    Some(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementWidgetFrame(sprite),
+        x,
+        y,
+        (right - x) as u32,
+        (bottom - y) as u32,
+        uv_min,
+        uv_max,
+    ))
 }
 
 fn advancements_widget_icon_items(
@@ -5158,6 +5201,7 @@ fn advancements_widget_icon_items(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
     window_x: i32,
     window_y: i32,
     keybind_context: ItemModelKeybindContext,
@@ -5166,7 +5210,7 @@ fn advancements_widget_icon_items(
     let Some(item_runtime) = item_runtime else {
         return Vec::new();
     };
-    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets, scroll_delta) else {
         return Vec::new();
     };
     let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
@@ -5227,6 +5271,7 @@ fn advancement_widget_rect_inside_content(x: i32, y: i32, inside_x: i32, inside_
 
 fn advancements_widget_scroll(
     widgets: &[bbb_world::AdvancementWidgetSummary],
+    scroll_delta: Option<(f64, f64)>,
 ) -> Option<(i32, i32)> {
     let mut iter = widgets.iter();
     let first = iter.next()?;
@@ -5240,10 +5285,26 @@ fn advancements_widget_scroll(
         min_y = min_y.min(widget.y);
         max_y = max_y.max(widget.y + ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT);
     }
-    Some((
-        ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32 / 2 - (max_x + min_x) / 2,
-        ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32 / 2 - (max_y + min_y) / 2,
-    ))
+    let center_x = ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32 / 2 - (max_x + min_x) / 2;
+    let center_y = ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32 / 2 - (max_y + min_y) / 2;
+    let (delta_x, delta_y) = scroll_delta.unwrap_or((0.0, 0.0));
+    let scroll_x = if max_x - min_x > ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32 {
+        (f64::from(center_x) + delta_x).clamp(
+            -f64::from(max_x - ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32),
+            0.0,
+        )
+    } else {
+        f64::from(center_x)
+    };
+    let scroll_y = if max_y - min_y > ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32 {
+        (f64::from(center_y) + delta_y).clamp(
+            -f64::from(max_y - ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32),
+            0.0,
+        )
+    } else {
+        f64::from(center_y)
+    };
+    Some((scroll_x.floor() as i32, scroll_y.floor() as i32))
 }
 
 fn advancement_widget_visible(widget: &bbb_world::AdvancementWidgetSummary) -> bool {

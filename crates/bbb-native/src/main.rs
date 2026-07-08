@@ -58,11 +58,12 @@ use code_of_conduct_overlay::CodeOfConductOverlayState;
 use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
-    handle_advancements_screen_mouse_input, handle_book_screen_mouse_input, handle_focus_change,
-    handle_inventory_cursor_moved, handle_inventory_mouse_input_with_item_runtime,
-    handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
-    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
-    handle_text_input_with_item_runtime, release_active_input, ClientInputState,
+    handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
+    handle_book_screen_mouse_input, handle_focus_change, handle_inventory_cursor_moved,
+    handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
+    handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick, handle_mouse_motion,
+    handle_mouse_wheel, handle_text_input_with_item_runtime, release_active_input,
+    ClientInputState,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -533,6 +534,11 @@ fn main() -> Result<()> {
                     }
                     if world.current_book().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.advancements_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_advancements_screen_mouse_wheel(&mut input, &world, delta);
                         return;
                     }
                     if world.open_container_id().is_some() {

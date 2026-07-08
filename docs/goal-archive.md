@@ -5009,3 +5009,18 @@
   每帧深拷贝清零）、inventory 子 store 化（InventoryCtx 模式）、账本超大
   条目拆 docs/unsupported/。2026-07-02 评估的 #8-11 旧账全部清偿；上方
   2026-07-04 不变量即其产出。
+
+## P2：屏幕、HUD、字体与截图（追加归档）
+
+- [x] advancement selected-tab wheel scroll clamp and widget-frame partial
+  scissor（P2 HUD/input/runtime slice，2026-07-08）：依据
+  `AdvancementsScreen.mouseScrolled` 将 wheel delta 乘 16 后交给
+  `selectedTab.scroll`，`AdvancementTab.scroll` 只在内容尺寸超过 234x113
+  viewport 时按轴应用并 clamp 到 `[-(max - viewport), 0]`，以及
+  `AdvancementTab.extractContents` 在内容 scissor 内以 `floor(scroll)` 绘制
+  背景和 widget。native 现在在 advancement screen 打开时拦截鼠标滚轮，
+  按 selected tab 记录本地滚动 delta，runtime 对 background tile、connectivity、
+  widget frame 和 icon anchor 统一套用 vanilla center-plus-delta clamp，并对
+  半露出的 widget frame 做内容区裁剪和 UV 调整。剩余：left-button drag
+  scroll、fake-item/full scissor、hover title/description boxes，以及 debug
+  overlay。

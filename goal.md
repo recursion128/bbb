@@ -288,7 +288,8 @@ Screen Render Surfaces" 条目）：
 - advancement screen contents/tree rendering（本地 open/close、empty window、
   footer Done button shell、初始 display-root tab 选择、root tab shell、
   tab-click `OpenedTab`、root widget frame/icon shell、contents background
-  tiling、tree connectivity 已完成；剩余 scroll/scissor、hover rendering；
+  tiling、tree connectivity、wheel scroll/clamp、widget-frame partial scissor
+  已完成；剩余 drag scroll、fake-item/full scissor、hover rendering；
   `ClientAdvancementsState` ready）。
 - debug overlay（F3，低优先）。
 

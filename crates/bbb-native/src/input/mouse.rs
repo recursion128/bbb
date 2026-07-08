@@ -65,6 +65,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
         || world.current_book().is_some()
+        || world.advancements_screen_is_open()
     {
         return;
     }
@@ -560,6 +561,7 @@ pub(crate) fn handle_mouse_wheel(
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
         || world.current_book().is_some()
+        || world.advancements_screen_is_open()
     {
         return;
     }

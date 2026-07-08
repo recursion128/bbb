@@ -1,4 +1,7 @@
-use std::{collections::HashSet, time::Instant};
+use std::{
+    collections::{BTreeMap, HashSet},
+    time::Instant,
+};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
@@ -11,7 +14,7 @@ use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStor
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, MouseButton},
+    event::{ElementState, MouseButton, MouseScrollDelta},
     keyboard::{KeyCode, PhysicalKey},
 };
 
@@ -176,6 +179,7 @@ pub(crate) struct ClientInputState {
     recipe_book_smoker_page: usize,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     recipe_book_last_placed_recipe: Option<(i32, i32)>,
+    advancement_scroll_deltas: BTreeMap<String, (f64, f64)>,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -477,6 +481,13 @@ impl ClientInputState {
         self.loom_pattern_scroll_row
     }
 
+    pub(crate) fn advancement_scroll_delta(
+        &self,
+        selected_tab: Option<&str>,
+    ) -> Option<(f64, f64)> {
+        selected_tab.and_then(|tab| self.advancement_scroll_deltas.get(tab).copied())
+    }
+
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
         self.loom_selected_pattern_index
     }
@@ -727,6 +738,71 @@ pub(crate) fn handle_advancements_screen_mouse_input(
         close_advancements_screen_and_queue(input, counters, world, net_commands);
     }
     true
+}
+
+pub(crate) fn handle_advancements_screen_mouse_wheel(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    delta: MouseScrollDelta,
+) -> bool {
+    if !world.advancements_screen_is_open() {
+        return false;
+    }
+    let Some(tab) = world.selected_advancements_tab() else {
+        return true;
+    };
+    let Some((wheel_x, wheel_y)) = advancement_wheel_steps_from_scroll(input, delta) else {
+        return true;
+    };
+    let entry = input
+        .advancement_scroll_deltas
+        .entry(tab.to_string())
+        .or_default();
+    entry.0 += f64::from(wheel_x) * 16.0;
+    entry.1 += f64::from(wheel_y) * 16.0;
+    true
+}
+
+fn advancement_wheel_steps_from_scroll(
+    input: &mut ClientInputState,
+    delta: MouseScrollDelta,
+) -> Option<(i32, i32)> {
+    let (x, y) = match delta {
+        MouseScrollDelta::LineDelta(x, y) => (f64::from(x), f64::from(y)),
+        MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
+    };
+    if input.scroll_accumulated_x != 0.0
+        && advancement_scroll_signum(x) != advancement_scroll_signum(input.scroll_accumulated_x)
+    {
+        input.scroll_accumulated_x = 0.0;
+    }
+    if input.scroll_accumulated_y != 0.0
+        && advancement_scroll_signum(y) != advancement_scroll_signum(input.scroll_accumulated_y)
+    {
+        input.scroll_accumulated_y = 0.0;
+    }
+
+    input.scroll_accumulated_x += x;
+    input.scroll_accumulated_y += y;
+    let wheel_x = input.scroll_accumulated_x as i32;
+    let wheel_y = input.scroll_accumulated_y as i32;
+    if wheel_x == 0 && wheel_y == 0 {
+        return None;
+    }
+
+    input.scroll_accumulated_x -= f64::from(wheel_x);
+    input.scroll_accumulated_y -= f64::from(wheel_y);
+    Some((wheel_x, wheel_y))
+}
+
+fn advancement_scroll_signum(value: f64) -> f64 {
+    if value > 0.0 {
+        1.0
+    } else if value < 0.0 {
+        -1.0
+    } else {
+        0.0
+    }
 }
 
 fn advancements_tab_at_position(
