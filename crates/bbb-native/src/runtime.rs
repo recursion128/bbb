@@ -15,7 +15,7 @@ use bbb_protocol::{
     codec::Decoder,
     packets::{
         AdvancementFrameType, ItemCostSummary, ItemStackSummary, MapPostProcessingSummary,
-        SlotDisplaySummary, Vec3d,
+        RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
     },
     MC_VERSION,
 };
@@ -25,11 +25,11 @@ use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugNetworkCharts, HudDebugOverlay,
-    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
-    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
+    HudInventoryItemScissor, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
@@ -574,9 +574,10 @@ pub(crate) use events::LevelEventSoundRandomState;
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
+const HUD_DEBUG_TPS_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
 
-fn push_capped_hud_debug_sample(samples: &mut Vec<u64>, value: u64, capacity: usize) {
+fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
     if samples.len() > capacity {
         let overflow = samples.len() - capacity;
@@ -749,6 +750,89 @@ impl HudDebugNetworkSampler {
 
     fn bandwidth_bytes_per_tick(&self) -> Vec<u64> {
         self.bandwidth_bytes_per_tick.clone()
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct HudDebugTpsSampler {
+    samples: Vec<HudDebugTpsSample>,
+    tick_time_subscribed: bool,
+}
+
+impl HudDebugTpsSampler {
+    fn record_net_event(&mut self, event: &NetEvent) {
+        match event {
+            NetEvent::Play(bbb_protocol::packets::PlayClientbound::DebugSample(sample))
+                if sample.sample_type == RemoteDebugSampleType::TickTime =>
+            {
+                self.record_debug_sample(&sample.sample);
+            }
+            NetEvent::Disconnected { .. } => {
+                self.reset();
+            }
+            _ => {}
+        }
+    }
+
+    fn record_debug_sample(&mut self, sample: &[i64]) {
+        let value =
+            |index: usize| -> u64 { sample.get(index).copied().unwrap_or_default().max(0) as u64 };
+        push_capped_hud_debug_sample(
+            &mut self.samples,
+            HudDebugTpsSample {
+                full_tick_nanos: value(0),
+                tick_server_method_nanos: value(1),
+                scheduled_tasks_nanos: value(2),
+                idle_nanos: value(3),
+            },
+            HUD_DEBUG_TPS_SAMPLE_CAPACITY,
+        );
+    }
+
+    fn sync_subscription(
+        &mut self,
+        input: &ClientInputState,
+        net_counters: &NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) {
+        if !net_counters.connected {
+            self.reset();
+            return;
+        }
+        if net_counters.state.as_deref() != Some("Play") {
+            self.tick_time_subscribed = false;
+            return;
+        }
+
+        let desired = input.debug_fps_charts_visible();
+        if desired == self.tick_time_subscribed {
+            return;
+        }
+        if let Some(tx) = net_commands {
+            if tx
+                .try_send(NetCommand::DebugSubscriptionRequest { tick_time: desired })
+                .is_ok()
+            {
+                self.tick_time_subscribed = desired;
+            }
+        }
+    }
+
+    fn chart(&self, world: &WorldStore) -> Option<HudDebugTpsChart> {
+        (!self.samples.is_empty()).then(|| HudDebugTpsChart {
+            samples: self.samples.clone(),
+            milliseconds_per_tick: world_ticking_milliseconds_per_tick(world),
+        })
+    }
+
+    #[cfg(test)]
+    fn samples(&self) -> Vec<HudDebugTpsSample> {
+        self.samples.clone()
+    }
+
+    fn reset(&mut self) {
+        self.samples.clear();
+        self.tick_time_subscribed = false;
     }
 }
 
@@ -1691,6 +1775,7 @@ pub(crate) fn pump_network_and_terrain(
     client_animation_ticks: &mut ClientAnimationTickState,
     hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
+    hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -1722,6 +1807,7 @@ pub(crate) fn pump_network_and_terrain(
             Some(renderer),
             item_runtime,
             Some(hud_debug_network_sampler),
+            Some(hud_debug_tps_sampler),
             level_event_sound_random,
         );
     }
@@ -1748,6 +1834,7 @@ pub(crate) fn pump_network_and_terrain(
         now,
         wall_clock_millis_i64(),
     );
+    hud_debug_tps_sampler.sync_subscription(input, net_counters, net_commands);
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
@@ -2035,6 +2122,7 @@ pub(crate) fn pump_network_and_terrain(
         surface_size,
         hud_debug_fps_sampler,
         hud_debug_network_sampler,
+        hud_debug_tps_sampler,
         net_counters,
     );
     let dropped_item_models = dropped_item_models(
@@ -2942,6 +3030,15 @@ fn advancement_hover_fade_for_hud(
     input.advancement_hover_fade()
 }
 
+fn world_ticking_milliseconds_per_tick(world: &WorldStore) -> f32 {
+    let tick_rate = world.ticking().tick_rate;
+    if tick_rate.is_finite() && tick_rate > 0.0 {
+        1000.0 / tick_rate
+    } else {
+        50.0
+    }
+}
+
 fn hud_debug_overlay(
     input: &ClientInputState,
     world: &WorldStore,
@@ -2949,6 +3046,7 @@ fn hud_debug_overlay(
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
     network_sampler: &HudDebugNetworkSampler,
+    tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
     if !input.debug_overlay_visible() {
@@ -3001,6 +3099,10 @@ fn hud_debug_overlay(
             .then(|| HudDebugFrameTimeChart {
                 frame_time_nanos: fps_sampler.frame_time_nanos(),
             }),
+        tps_chart: input
+            .debug_fps_charts_visible()
+            .then(|| tps_sampler.chart(world))
+            .flatten(),
         network_charts: (input.debug_network_charts_visible() && net_counters.connected).then(
             || HudDebugNetworkCharts {
                 ping_millis: network_sampler.ping_millis(),

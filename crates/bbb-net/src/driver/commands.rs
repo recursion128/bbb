@@ -78,6 +78,14 @@ pub(crate) async fn send_custom_payload(
     conn.send_packet(id, &payload).await
 }
 
+pub(crate) async fn send_debug_subscription_request(
+    conn: &mut RawConnection,
+    tick_time: bool,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_debug_subscription_request(tick_time);
+    conn.send_packet(id, &payload).await
+}
+
 pub(crate) async fn send_attack_entity(
     conn: &mut RawConnection,
     packet: AttackEntity,

@@ -1103,14 +1103,14 @@ When an agent does any of the following, update this file in the same slice:
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
     hitbox outline rendering, F3+G chunk section-stack outline rendering,
-    F3+2 FPS chart rendering, F3+3 network ping/bandwidth chart rendering,
-    3D crosshair rendering, and default-profile debug entry coverage:
-    non-default/editable debug entries, actual TPS chart rendering, actual
-    entity hitbox details/chunk-border full gizmo grid, advanced tooltip full
-    parity, actual dynamic texture dump execution, F3+I NBT/server-query
-    parity, profiling metrics recorder/output, actual DebugOptionsScreen,
-    native pause loop/PauseScreen, and the other F3 modifier combos remain
-    (large, low priority).
+    F3+2 FPS/TPS chart rendering, F3+3 network ping/bandwidth chart
+    rendering, 3D crosshair rendering, and default-profile debug entry
+    coverage: non-default/editable debug entries, actual entity hitbox
+    details/chunk-border full gizmo grid, advanced tooltip full parity,
+    actual dynamic texture dump execution, F3+I NBT/server-query parity,
+    profiling metrics recorder/output, actual DebugOptionsScreen, native
+    pause loop/PauseScreen, and the other F3 modifier combos remain (large,
+    low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
@@ -1144,9 +1144,24 @@ When an agent does any of the following, update this file in the same slice:
     samples in `HudDebugFpsSampler`, projects them into `HudDebugOverlay` only
     while F3+2 is visible, and renders the FPS chart through the HUD white-pixel
     quad/text path with vanilla sample height and green/yellow/red thresholds.
-    Boundary: TPS chart extraction, profiler pie chart contents, and the cyan
-    configured-framerate guide remain unimplemented until bbb owns the
-    corresponding tick/framerate config samples.
+    Boundary: profiler pie chart contents and the cyan configured-framerate
+    guide remain unimplemented until bbb owns the corresponding profiler /
+    framerate config samples.
+  - Done 2026-07-08 — Debug overlay F3+2 TPS chart rendering. Vanilla anchors:
+    `ClientDebugSubscriber.requestedSubscriptions` subscribes to
+    `RemoteDebugSampleType.TICK_TIME` while `showFpsCharts` is enabled, using
+    `ServerboundDebugSubscriptionRequestPacket` with the
+    `dedicated_server_tick_time` debug subscription; `DebugScreenOverlay` logs
+    `ClientboundDebugSamplePacket` values into the `TpsDebugDimensions` sample
+    logger and draws `TpsDebugChart` on the right once samples exist. bbb now
+    encodes the play debug-subscription request, queues tick-time subscribe /
+    unsubscribe commands from F3+2 Play-state visibility, records remote
+    tick-time samples as full/tick-method/tasks/idle nanos, derives MSPT from
+    the world tick-rate, and renders the TPS chart through the HUD chart path
+    with vanilla 240-sample capacity, 60px height, full-minus-idle labels,
+    stacked component bars, TPS label, and threshold colors. Boundary: bbb only
+    has the dedicated tick-time subscription owner; profiler pie chart contents
+    and configured-framerate guide parity remain future work.
   - Done 2026-07-08 — Debug overlay F3+3 network ping/bandwidth chart
     rendering. Vanilla anchors: `DebugScreenOverlay.showNetworkCharts` renders
     `BandwidthDebugChart` on the left for non-local connections and
@@ -1161,8 +1176,8 @@ When an agent does any of the following, update this file in the same slice:
     reference labels, and green/yellow/red plus cyan/purple/red thresholds.
     Boundary: bbb's bandwidth samples use decoded packet payload lengths rather
     than exact compressed frame bytes, integrated-server local suppression is
-    irrelevant until bbb owns a local server path, and TPS/profiler charts
-    remain future work.
+    irrelevant until bbb owns a local server path, and profiler charts remain
+    future work.
   - Done 2026-07-08 — Debug overlay F3+G chunk section-stack outline rendering.
     Vanilla anchors: `ChunkBorderRenderer.emitGizmos` derives the camera
     section with `SectionPos.of(cameraEntity.blockPosition())`, samples
@@ -1300,8 +1315,8 @@ When an agent does any of the following, update this file in the same slice:
     `HudDebugOverlay`, draws the same border and preview rect in the HUD pass,
     samples the renderer-owned dynamic lightmap texture through a HUD-layout
     nearest sampler, and keeps the vanilla mutual exclusion with FPS/network
-    charts from the existing input state. Boundary: TPS/profiler chart
-    rendering and configured-framerate guide parity remain open.
+    charts from the existing input state. Boundary: profiler chart rendering
+    and configured-framerate guide parity remain open.
   - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
     The local advancement screen now has open/close, empty window, Done button,
     initial root-tab selection, root tab rendering/click selection, selected
@@ -1318,7 +1333,7 @@ When an agent does any of the following, update this file in the same slice:
     native per-frame FPS sampler, feeds the sampled value into the debug
     overlay's default priority lines, and formats the line as
     `<fps> fps T: inf` because startup/runtime configuration has no frame-rate
-    cap or vsync option. Boundary: TPS/profiler chart rendering and
+    cap or vsync option. Boundary: profiler chart rendering and
     configured-framerate guide parity remain open.
   - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
     paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
@@ -1969,11 +1984,11 @@ When an agent does any of the following, update this file in the same slice:
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
-    are non-default/editable debug entries, actual TPS chart rendering,
-    entity hitbox full details/chunk-border full gizmo grid, advanced tooltip
-    full parity/persistence, actual dynamic texture dump execution, F3+I
-    NBT/server-query recreate parity, profiling metrics recorder/output,
-    actual DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
+    are non-default/editable debug entries, entity hitbox full
+    details/chunk-border full gizmo grid, advanced tooltip full
+    parity/persistence, actual dynamic texture dump execution, F3+I NBT/server-
+    query recreate parity, profiling metrics recorder/output, actual
+    DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select

@@ -126,6 +126,7 @@ pub enum NetCommand {
     ChatCommandSigned(ChatCommandSigned),
     ChatMessage(ChatMessage),
     CustomPayload(ServerboundCustomPayload),
+    DebugSubscriptionRequest { tick_time: bool },
     AttackEntity(AttackEntity),
     InteractEntity(InteractEntity),
     SetHeldSlot(u8),

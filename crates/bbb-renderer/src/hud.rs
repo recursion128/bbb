@@ -109,6 +109,7 @@ pub struct HudDebugOverlay {
     pub right_lines: Vec<String>,
     pub debug_crosshair: Option<HudDebugCrosshair>,
     pub fps_chart: Option<HudDebugFrameTimeChart>,
+    pub tps_chart: Option<HudDebugTpsChart>,
     pub network_charts: Option<HudDebugNetworkCharts>,
     pub show_lightmap_preview: bool,
 }
@@ -127,6 +128,24 @@ pub struct HudDebugCrosshair {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HudDebugFrameTimeChart {
     pub frame_time_nanos: Vec<u64>,
+}
+
+/// Vanilla `TpsDebugChart` sample stream. Each sample stores the
+/// `TpsDebugDimensions` values in nanoseconds: full tick, server tick method,
+/// scheduled tasks, and idle time. The renderer derives the aggregate
+/// full-minus-idle value for labels, matching vanilla.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct HudDebugTpsChart {
+    pub samples: Vec<HudDebugTpsSample>,
+    pub milliseconds_per_tick: f32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HudDebugTpsSample {
+    pub full_tick_nanos: u64,
+    pub tick_server_method_nanos: u64,
+    pub scheduled_tasks_nanos: u64,
+    pub idle_nanos: u64,
 }
 
 /// Vanilla `PingDebugChart` + `BandwidthDebugChart` sample streams. Bandwidth
@@ -6228,6 +6247,19 @@ fn push_hud_debug_overlay<'a>(
             chart,
         );
     }
+    if let Some(chart) = &overlay.tps_chart {
+        push_hud_debug_tps_chart(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            chart,
+        );
+    }
     if let Some(charts) = &overlay.network_charts {
         push_hud_debug_network_charts(
             vertices,
@@ -6520,6 +6552,229 @@ fn push_hud_debug_fps_chart<'a>(
         width,
         bottom.saturating_sub(30),
         HUD_TINT_WHITE,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_tps_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    chart: &HudDebugTpsChart,
+) {
+    let width = hud_debug_chart_width(surface_size);
+    if width == 0 {
+        return;
+    }
+    let surface_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let left = surface_width.saturating_sub(i32::try_from(width).unwrap_or(i32::MAX));
+    let bottom = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let top = bottom.saturating_sub(HUD_DEBUG_CHART_HEIGHT);
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        width,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+    );
+
+    let visible_samples = hud_debug_chart_visible_tps_samples(&chart.samples, width);
+    for (index, sample) in visible_samples.iter().copied().enumerate() {
+        let x = left + i32::try_from(index).unwrap_or(i32::MAX).saturating_add(1);
+        let full_height =
+            hud_debug_tps_chart_sample_height(sample.full_tick_nanos, chart.milliseconds_per_tick);
+        if full_height > 0 {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                x,
+                bottom.saturating_sub(full_height),
+                1,
+                u32::try_from(full_height).unwrap_or(u32::MAX),
+                hud_debug_tps_chart_sample_tint(
+                    sample.full_tick_nanos,
+                    chart.milliseconds_per_tick,
+                ),
+            );
+        }
+
+        let tick_method_height = hud_debug_tps_chart_sample_height(
+            sample.tick_server_method_nanos,
+            chart.milliseconds_per_tick,
+        );
+        if tick_method_height > 0 {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                x,
+                bottom.saturating_sub(tick_method_height),
+                1,
+                u32::try_from(tick_method_height).unwrap_or(u32::MAX),
+                hud_argb_to_tint(0xFF991111),
+            );
+        }
+
+        let tasks_height = hud_debug_tps_chart_sample_height(
+            sample.scheduled_tasks_nanos,
+            chart.milliseconds_per_tick,
+        );
+        if tasks_height > 0 {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                x,
+                bottom
+                    .saturating_sub(tick_method_height)
+                    .saturating_sub(tasks_height),
+                1,
+                u32::try_from(tasks_height).unwrap_or(u32::MAX),
+                hud_argb_to_tint(0xFFBA995F),
+            );
+        }
+
+        let other_height = hud_debug_tps_chart_sample_height(
+            hud_debug_tps_chart_other_nanos(sample),
+            chart.milliseconds_per_tick,
+        );
+        if other_height > 0 {
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                x,
+                bottom
+                    .saturating_sub(tick_method_height)
+                    .saturating_sub(tasks_height)
+                    .saturating_sub(other_height),
+                1,
+                u32::try_from(other_height).unwrap_or(u32::MAX),
+                hud_argb_to_tint(0xFF5F0E8C),
+            );
+        }
+    }
+
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        top,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        bottom.saturating_sub(1),
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left + i32::try_from(width.saturating_sub(1)).unwrap_or(i32::MAX),
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+
+    if !visible_samples.is_empty() {
+        let aggregation_values = visible_samples
+            .iter()
+            .map(|sample| hud_debug_tps_chart_aggregation_nanos(*sample));
+        let min = aggregation_values.clone().min().unwrap_or(0);
+        let max = aggregation_values.clone().max().unwrap_or(0);
+        let avg = aggregation_values.map(|sample| sample as f64).sum::<f64>()
+            / visible_samples.len() as f64;
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &format!("{} min", hud_debug_tps_chart_display_string(min as f64)),
+            left + 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let avg_text = format!("{} avg", hud_debug_tps_chart_display_string(avg));
+        let avg_width = i32::try_from(hud_plain_text_width(&avg_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &avg_text,
+            left + i32::try_from(width / 2).unwrap_or(i32::MAX) - avg_width / 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let max_text = format!("{} max", hud_debug_tps_chart_display_string(max as f64));
+        let max_width = i32::try_from(hud_plain_text_width(&max_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &max_text,
+            left + i32::try_from(width).unwrap_or(i32::MAX) - max_width - 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+    }
+
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &hud_debug_tps_chart_tps_label(chart.milliseconds_per_tick),
+        left + 1,
+        top + 1,
     );
 }
 
@@ -7063,6 +7318,19 @@ fn hud_debug_chart_visible_samples(samples: &[u64], width: u32) -> &[u64] {
     }
 }
 
+fn hud_debug_chart_visible_tps_samples(
+    samples: &[HudDebugTpsSample],
+    width: u32,
+) -> &[HudDebugTpsSample] {
+    let sample_start = HUD_DEBUG_CHART_SAMPLE_CAPACITY
+        .saturating_sub(usize::try_from(width.saturating_sub(2)).unwrap_or(usize::MAX));
+    if sample_start < samples.len() {
+        &samples[sample_start..]
+    } else {
+        &[]
+    }
+}
+
 fn hud_debug_fps_chart_display_string(nanos: f64) -> String {
     format!("{} ms", hud_debug_fps_chart_millis(nanos).round() as i64)
 }
@@ -7083,6 +7351,50 @@ fn hud_debug_fps_chart_sample_tint(nanos: u64) -> [f32; 4] {
 
 fn hud_debug_fps_chart_millis(nanos: f64) -> f64 {
     nanos / 1_000_000.0
+}
+
+fn hud_debug_tps_chart_display_string(nanos: f64) -> String {
+    format!("{} ms", hud_debug_fps_chart_millis(nanos).round() as i64)
+}
+
+fn hud_debug_tps_chart_sample_height(nanos: u64, milliseconds_per_tick: f32) -> i32 {
+    let mspt = f64::from(milliseconds_per_tick.max(f32::EPSILON));
+    (hud_debug_fps_chart_millis(nanos as f64) * HUD_DEBUG_CHART_HEIGHT as f64 / mspt)
+        .round()
+        .clamp(0.0, i32::MAX as f64) as i32
+}
+
+fn hud_debug_tps_chart_sample_tint(nanos: u64, milliseconds_per_tick: f32) -> [f32; 4] {
+    let mspt = f64::from(milliseconds_per_tick.max(f32::EPSILON));
+    let millis = hud_debug_fps_chart_millis(nanos as f64);
+    hud_argb_to_tint(hud_debug_chart_sample_argb(
+        millis,
+        mspt,
+        0xFF00FF00,
+        mspt * 1.125,
+        0xFFFFFF00,
+        mspt * 1.25,
+        0xFFFF0000,
+    ))
+}
+
+fn hud_debug_tps_chart_tps_label(milliseconds_per_tick: f32) -> String {
+    format!(
+        "{:.1} TPS",
+        1000.0 / milliseconds_per_tick.max(f32::EPSILON)
+    )
+}
+
+fn hud_debug_tps_chart_aggregation_nanos(sample: HudDebugTpsSample) -> u64 {
+    sample.full_tick_nanos.saturating_sub(sample.idle_nanos)
+}
+
+fn hud_debug_tps_chart_other_nanos(sample: HudDebugTpsSample) -> u64 {
+    sample
+        .full_tick_nanos
+        .saturating_sub(sample.idle_nanos)
+        .saturating_sub(sample.tick_server_method_nanos)
+        .saturating_sub(sample.scheduled_tasks_nanos)
 }
 
 fn hud_debug_ping_chart_display_string(millis: f64) -> String {
@@ -8008,6 +8320,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
         .debug_crosshair
         .and_then(sanitize_hud_debug_crosshair);
     let fps_chart = overlay.fps_chart.map(sanitize_hud_debug_fps_chart);
+    let tps_chart = overlay.tps_chart.map(sanitize_hud_debug_tps_chart);
     let network_charts = overlay
         .network_charts
         .map(sanitize_hud_debug_network_charts);
@@ -8015,6 +8328,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
         || !right_lines.is_empty()
         || debug_crosshair.is_some()
         || fps_chart.is_some()
+        || tps_chart.is_some()
         || network_charts.is_some()
         || overlay.show_lightmap_preview)
         .then_some(HudDebugOverlay {
@@ -8022,6 +8336,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
             right_lines,
             debug_crosshair,
             fps_chart,
+            tps_chart,
             network_charts,
             show_lightmap_preview: overlay.show_lightmap_preview,
         })
@@ -8040,6 +8355,17 @@ fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFr
     if chart.frame_time_nanos.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
         let keep_from = chart.frame_time_nanos.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
         chart.frame_time_nanos = chart.frame_time_nanos.split_off(keep_from);
+    }
+    chart
+}
+
+fn sanitize_hud_debug_tps_chart(mut chart: HudDebugTpsChart) -> HudDebugTpsChart {
+    if chart.samples.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
+        let keep_from = chart.samples.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
+        chart.samples = chart.samples.split_off(keep_from);
+    }
+    if !chart.milliseconds_per_tick.is_finite() || chart.milliseconds_per_tick <= 0.0 {
+        chart.milliseconds_per_tick = 50.0;
     }
     chart
 }
@@ -8908,6 +9234,7 @@ mod tests {
             right_lines: vec!["Right".to_string()],
             debug_crosshair: None,
             fps_chart: None,
+            tps_chart: None,
             network_charts: None,
             show_lightmap_preview: false,
         })
@@ -9082,6 +9409,34 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_hud_debug_overlay_keeps_and_caps_tps_chart_samples() {
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            tps_chart: Some(HudDebugTpsChart {
+                samples: (0..300)
+                    .map(|full_tick_nanos| HudDebugTpsSample {
+                        full_tick_nanos,
+                        tick_server_method_nanos: 1,
+                        scheduled_tasks_nanos: 2,
+                        idle_nanos: 3,
+                    })
+                    .collect(),
+                milliseconds_per_tick: f32::NAN,
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("tps chart survives without text lines");
+
+        let chart = overlay.tps_chart.expect("tps chart should remain");
+        assert_eq!(chart.samples.len(), HUD_DEBUG_CHART_SAMPLE_CAPACITY);
+        assert_eq!(chart.samples[0].full_tick_nanos, 60);
+        assert_eq!(
+            chart.samples[HUD_DEBUG_CHART_SAMPLE_CAPACITY - 1].full_tick_nanos,
+            299
+        );
+        assert_eq!(chart.milliseconds_per_tick, 50.0);
+    }
+
+    #[test]
     fn hud_debug_fps_chart_width_matches_vanilla_capacity_and_half_screen_cap() {
         assert_eq!(
             hud_debug_chart_width(PhysicalSize::new(800, 240)),
@@ -9108,6 +9463,46 @@ mod tests {
             hud_debug_fps_chart_sample_tint(56_000_000),
             [1.0, 0.0, 0.0, 1.0]
         );
+    }
+
+    #[test]
+    fn hud_debug_tps_chart_sample_rules_match_vanilla_mspt_scale() {
+        assert_eq!(hud_debug_tps_chart_sample_height(25_000_000, 50.0), 30);
+        assert_eq!(hud_debug_tps_chart_sample_height(50_000_000, 50.0), 60);
+        assert_eq!(hud_debug_tps_chart_display_string(16_666_667.0), "17 ms");
+        assert_eq!(hud_debug_tps_chart_tps_label(50.0), "20.0 TPS");
+        assert_eq!(
+            hud_debug_tps_chart_sample_tint(50_000_000, 50.0),
+            [0.0, 1.0, 0.0, 1.0]
+        );
+        assert_eq!(
+            hud_debug_tps_chart_sample_tint(56_250_000, 50.0),
+            [1.0, 1.0, 0.0, 1.0]
+        );
+        assert_eq!(
+            hud_debug_tps_chart_sample_tint(62_500_000, 50.0),
+            [1.0, 0.0, 0.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn hud_debug_tps_chart_aggregation_and_other_time_match_vanilla_dimensions() {
+        let sample = HudDebugTpsSample {
+            full_tick_nanos: 70_000_000,
+            tick_server_method_nanos: 30_000_000,
+            scheduled_tasks_nanos: 10_000_000,
+            idle_nanos: 5_000_000,
+        };
+        assert_eq!(hud_debug_tps_chart_aggregation_nanos(sample), 65_000_000);
+        assert_eq!(hud_debug_tps_chart_other_nanos(sample), 25_000_000);
+
+        let saturated = HudDebugTpsSample {
+            full_tick_nanos: 20_000_000,
+            tick_server_method_nanos: 30_000_000,
+            scheduled_tasks_nanos: 10_000_000,
+            idle_nanos: 5_000_000,
+        };
+        assert_eq!(hud_debug_tps_chart_other_nanos(saturated), 0);
     }
 
     #[test]

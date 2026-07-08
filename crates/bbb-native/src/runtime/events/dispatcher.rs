@@ -30,7 +30,7 @@ use crate::particle_runtime::{
 };
 
 use super::control_state::apply_control_projection_event;
-use crate::runtime::HudDebugNetworkSampler;
+use crate::runtime::{HudDebugNetworkSampler, HudDebugTpsSampler};
 
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
@@ -107,6 +107,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         particle_renderer,
         item_runtime,
         None,
+        None,
         level_event_sound_random,
     )
 }
@@ -121,6 +122,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
     item_runtime: Option<&NativeItemRuntime>,
     mut hud_debug_network_sampler: Option<&mut HudDebugNetworkSampler>,
+    mut hud_debug_tps_sampler: Option<&mut HudDebugTpsSampler>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let mut drained = 0;
@@ -136,6 +138,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         drained += 1;
 
         if let Some(sampler) = hud_debug_network_sampler.as_deref_mut() {
+            sampler.record_net_event(&event);
+        }
+        if let Some(sampler) = hud_debug_tps_sampler.as_deref_mut() {
             sampler.record_net_event(&event);
         }
         apply_control_projection_event(&event, counters);

@@ -1028,6 +1028,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
+    assert_eq!(ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST, 23);
     assert_eq!(ids::play::SERVERBOUND_EDIT_BOOK, 24);
     assert_eq!(ids::play::SERVERBOUND_RENAME_ITEM, 48);
     assert_eq!(ids::play::SERVERBOUND_SEEN_ADVANCEMENTS, 50);
@@ -2120,6 +2121,23 @@ fn encodes_play_brand_custom_payload() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
     assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_play_debug_subscription_request_for_tick_time() {
+    let (id, payload) = encode_play_debug_subscription_request(true);
+    assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_debug_subscription_request(false);
+    assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
     assert!(decoder.is_empty());
 }
 

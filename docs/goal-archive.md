@@ -5448,3 +5448,18 @@
   测试固定阈值。边界：native panic 仅覆盖触发语义，不包含 Java crash-report
   metadata、red warning styling、control-key `Blaze3D.youJustLostTheGame`、
   或 rebindable-key 文案。
+- [x] debug overlay F3+2 TPS chart rendering（P2 HUD/runtime/net/protocol/
+  renderer slice，2026-07-08）：依据 `ClientDebugSubscriber.requestedSubscriptions`
+  在 `DebugScreenOverlay.showFpsCharts()` 时请求
+  `RemoteDebugSampleType.TICK_TIME.subscription()`、`GameProtocols`
+  serverbound play id 23 的 `ServerboundDebugSubscriptionRequestPacket`，以及
+  `TpsDebugChart` 对 `TpsDebugDimensions` full/tick-method/tasks/idle nanos 的
+  右下 chart 绘制。protocol 现在编码 tick-time debug subscription collection
+  （subscribe `[1, 0]`、unsubscribe `[0]`），net driver 发送
+  `NetCommand::DebugSubscriptionRequest`；native `HudDebugTpsSampler` 在 F3+2
+  visible 且 Play 连接时同步订阅状态，记录远端 `ClientboundDebugSamplePacket`
+  tick-time 样本，并以 world tick-rate 推导 MSPT；renderer 新增
+  `HudDebugTpsChart` / `HudDebugTpsSample`，在右下绘制 240 样本、60px 高、
+  full-minus-idle min/avg/max label、stacked tick-method/tasks/other bars、
+  TPS label 与 vanilla 阈值色。边界：profiler pie chart contents、
+  configured-framerate cyan guide、以及完整 debug subscription 家族仍为后续项。

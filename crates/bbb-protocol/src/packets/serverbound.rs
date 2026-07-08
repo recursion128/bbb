@@ -29,6 +29,7 @@ const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
 const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_CHAT_MESSAGE_CHARS: usize = 256;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
+const DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID: i32 = 0;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
 const LP_VEC3_MAX_QUANTIZED_VALUE: f64 = 32766.0;
@@ -593,6 +594,18 @@ pub fn encode_play_custom_payload(packet: &ServerboundCustomPayload) -> Result<(
         }
     }
     Ok((ids::play::SERVERBOUND_CUSTOM_PAYLOAD, out.into_inner()))
+}
+
+pub fn encode_play_debug_subscription_request(tick_time: bool) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(if tick_time { 1 } else { 0 });
+    if tick_time {
+        out.write_var_i32(DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID);
+    }
+    (
+        ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST,
+        out.into_inner(),
+    )
 }
 
 pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {

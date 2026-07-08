@@ -14,15 +14,15 @@ pub(crate) use commands::{
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
     send_chat_command_signed, send_chat_message, send_client_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_custom_payload, send_edit_book,
-    send_entity_tag_query, send_interact_entity, send_lock_difficulty, send_paddle_boat,
-    send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
-    send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
-    send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
-    send_set_beacon, send_set_creative_mode_slot, send_set_held_slot_command, send_sign_update,
-    send_spectate_entity, send_swing_command, send_teleport_to_entity, send_use_item,
-    send_use_item_on,
+    send_container_close, send_container_slot_state_changed, send_custom_payload,
+    send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
+    send_lock_difficulty, send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity,
+    send_ping_request, send_place_recipe, send_player_abilities_command, send_player_action,
+    send_player_command, send_player_input_command, send_recipe_book_change_settings,
+    send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
+    send_select_bundle_item, send_select_trade, send_set_beacon, send_set_creative_mode_slot,
+    send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
+    send_teleport_to_entity, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -112,6 +112,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::CustomPayload(packet)) => {
                         send_custom_payload(conn, packet).await?;
+                    }
+                    Some(NetCommand::DebugSubscriptionRequest { tick_time }) => {
+                        send_debug_subscription_request(conn, tick_time).await?;
                     }
                     Some(NetCommand::AttackEntity(packet)) => {
                         send_attack_entity(conn, packet).await?;
@@ -257,6 +260,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChatCommandSigned(_)) => {}
                     Some(NetCommand::ChatMessage(_)) => {}
                     Some(NetCommand::CustomPayload(_)) => {}
+                    Some(NetCommand::DebugSubscriptionRequest { .. }) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
                     Some(NetCommand::InteractEntity(_)) => {}
                     Some(NetCommand::SetHeldSlot(_)) => {}
