@@ -890,7 +890,8 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
 fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);
-    assert_eq!(hud_debug_overlay(&input, &world, None), None);
+    let surface_size = winit::dpi::PhysicalSize::new(320, 240);
+    assert_eq!(hud_debug_overlay(&input, &world, None, surface_size), None);
 
     assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Released));
     let overlay = hud_debug_overlay(
@@ -902,6 +903,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
             x_rot: 15.0,
             eye_height: 1.62,
         }),
+        surface_size,
     )
     .expect("debug overlay should project when F3 is visible");
 
@@ -922,7 +924,33 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     assert!(overlay
         .left_lines
         .contains(&"Section-relative: 10 00 10".to_string()));
-    assert!(overlay.right_lines.is_empty());
+    assert!(overlay
+        .right_lines
+        .iter()
+        .any(|line| line.starts_with("Mem: ")));
+    assert!(overlay
+        .right_lines
+        .contains(&"Display: 320x240 (wgpu)".to_string()));
+    assert!(overlay
+        .right_lines
+        .contains(&"Filtering: Nearest".to_string()));
+}
+
+#[test]
+fn hud_debug_overlay_formats_memory_lines_like_vanilla_debug_entries() {
+    assert_eq!(
+        hud_debug_memory_lines(HudDebugMemorySnapshot {
+            used_mib: 32,
+            max_mib: 256,
+            allocated_mib: 128,
+            allocation_rate_mib_per_s: 7,
+        }),
+        vec![
+            "Mem: 12% 032/256MiB".to_string(),
+            "Allocation rate: 007MiB/s".to_string(),
+            "Allocated: 50% 128MiB".to_string(),
+        ]
+    );
 }
 
 #[test]

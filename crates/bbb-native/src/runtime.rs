@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    fs,
     path::PathBuf,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -1843,7 +1844,7 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
-    let hud_debug_overlay = hud_debug_overlay(input, world, camera_pose);
+    let hud_debug_overlay = hud_debug_overlay(input, world, camera_pose, surface_size);
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -2751,6 +2752,7 @@ fn hud_debug_overlay(
     input: &ClientInputState,
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudDebugOverlay> {
     if !input.debug_overlay_visible() {
         return None;
@@ -2770,7 +2772,103 @@ fn hud_debug_overlay(
 
     Some(HudDebugOverlay {
         left_lines,
-        right_lines: Vec::new(),
+        right_lines: hud_debug_right_lines(surface_size),
+    })
+}
+
+fn hud_debug_right_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<String> {
+    let mut lines = hud_debug_memory_lines(hud_debug_memory_snapshot());
+    lines.push("".to_string());
+    lines.extend(hud_debug_system_lines(surface_size));
+    lines.push("".to_string());
+    lines.extend(hud_debug_simple_performance_impactor_lines());
+    lines
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudDebugMemorySnapshot {
+    used_mib: u64,
+    max_mib: u64,
+    allocated_mib: u64,
+    allocation_rate_mib_per_s: u64,
+}
+
+fn hud_debug_memory_snapshot() -> HudDebugMemorySnapshot {
+    let used_kib = proc_kib_field("/proc/self/status", "VmRSS:").unwrap_or(0);
+    let allocated_kib = proc_kib_field("/proc/self/status", "VmSize:").unwrap_or(used_kib);
+    let max_kib =
+        proc_kib_field("/proc/meminfo", "MemTotal:").unwrap_or_else(|| allocated_kib.max(used_kib));
+
+    HudDebugMemorySnapshot {
+        used_mib: kib_to_mib(used_kib),
+        max_mib: kib_to_mib(max_kib),
+        allocated_mib: kib_to_mib(allocated_kib),
+        allocation_rate_mib_per_s: 0,
+    }
+}
+
+fn hud_debug_memory_lines(snapshot: HudDebugMemorySnapshot) -> Vec<String> {
+    vec![
+        format!(
+            "Mem: {:2}% {:03}/{:03}MiB",
+            debug_percent(snapshot.used_mib, snapshot.max_mib),
+            snapshot.used_mib,
+            snapshot.max_mib
+        ),
+        format!(
+            "Allocation rate: {:03}MiB/s",
+            snapshot.allocation_rate_mib_per_s
+        ),
+        format!(
+            "Allocated: {:2}% {:03}MiB",
+            debug_percent(snapshot.allocated_mib, snapshot.max_mib),
+            snapshot.allocated_mib
+        ),
+    ]
+}
+
+fn hud_debug_system_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<String> {
+    let cpu_threads = std::thread::available_parallelism()
+        .map(|threads| threads.get())
+        .unwrap_or(1);
+
+    vec![
+        format!("Java: n/a (bbb-native {})", env!("CARGO_PKG_VERSION")),
+        format!(
+            "CPU: {}x {}-{}",
+            cpu_threads,
+            std::env::consts::ARCH,
+            std::env::consts::OS
+        ),
+        format!(
+            "Display: {}x{} (wgpu)",
+            surface_size.width, surface_size.height
+        ),
+        "bbb renderer".to_string(),
+        "wgpu native".to_string(),
+    ]
+}
+
+fn hud_debug_simple_performance_impactor_lines() -> Vec<String> {
+    vec!["B: 2".to_string(), "Filtering: Nearest".to_string()]
+}
+
+fn debug_percent(value: u64, total: u64) -> u64 {
+    if total == 0 {
+        0
+    } else {
+        value.saturating_mul(100) / total
+    }
+}
+
+fn kib_to_mib(kib: u64) -> u64 {
+    kib / 1024
+}
+
+fn proc_kib_field(path: &str, field: &str) -> Option<u64> {
+    fs::read_to_string(path).ok()?.lines().find_map(|line| {
+        let rest = line.strip_prefix(field)?;
+        rest.split_whitespace().next()?.parse().ok()
     })
 }
 

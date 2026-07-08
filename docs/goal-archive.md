@@ -5071,3 +5071,14 @@
   Facing、dimension/FC、section-relative 左列文本，renderer 以 HUD 顶层
   debug overlay 绘制背景和文本。剩余：right-column entries、FPS/TPS/network
   charts、lightmap preview、3D crosshair、F3 modifier combos。
+- [x] debug overlay right-column memory/system/performance basics（P2
+  HUD/runtime slice，2026-07-08）：依据 `DebugScreenEntries` 默认 profile
+  启用 `memory`、`system_specs`、`simple_performance_impactors`，以及
+  `DebugScreenOverlay.extractLines` 对右列的 `guiWidth - 2 - width` 对齐。
+  runtime 现在在 F3 overlay 可见时生成右列 memory group（`Mem`、
+  `Allocation rate`、`Allocated`，进程 `/proc` 近似）、system group（native
+  runtime、CPU、当前 surface display、bbb/wgpu 后端标识）和
+  performance-impact basics（`B: 2`、`Filtering: Nearest`）。剩余：完整
+  vanilla debug entry 列表、FPS/TPS/network charts、lightmap preview、3D
+  crosshair、F3 modifier combos；精确 Java heap/allocation-rate 与 GPU
+  vendor/renderer/version 字符串仍待后续 owner。

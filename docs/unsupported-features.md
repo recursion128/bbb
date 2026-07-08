@@ -1064,11 +1064,25 @@ When an agent does any of the following, update this file in the same slice:
     shells/contents background tiling/tree connectivity/wheel/drag scroll clamp
     and widget-frame partial scissor: fake-item/full scissor and hover rendering
     are now complete (`ClientAdvancementsState` ready).
-  - Continue the debug overlay after the F3 toggle plus left-column
-    version/position/help shell: right-column entries, FPS/TPS/network charts,
+  - Continue the debug overlay after the F3 toggle, left-column
+    version/position/help shell, and right-column memory/system/performance
+    basics: the complete vanilla debug entry list, FPS/TPS/network charts,
     lightmap preview, 3D crosshair, and F3 modifier combos remain (large, low
     priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay right-column memory/system/performance
+    basics. Vanilla anchors: default `DebugScreenEntries` enables
+    `memory`, `system_specs`, and `simple_performance_impactors`;
+    `DebugScreenOverlay` renders right-column lines with the same
+    `extractLines` alignment as the left column; `DebugEntryMemory` formats
+    `Mem`, `Allocation rate`, and `Allocated`; `DebugEntrySystemSpecs` emits
+    runtime/CPU/display/device lines; `DebugEntrySimplePerformanceImpactors`
+    emits biome-blend and filtering lines. bbb now projects a native
+    approximation of those right-column groups from process `/proc` memory,
+    current surface size, native runtime identity, and fixed vanilla-default
+    performance-impact labels. Boundary: exact Java heap/allocation rate, GPU
+    vendor/renderer/version strings, FPS/TPS priority lines, and the remaining
+    debug entries still need dedicated owners.
   - Done 2026-07-08 — Debug overlay F3 toggle and left-column shell. Vanilla
     anchors: `KeyboardHandler.keyPress` toggles the debug overlay from the F3
     debug key path, and `DebugScreenOverlay.extractLines` draws each non-empty
@@ -1575,9 +1589,10 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, animated-tab fake-item y-scaling, advancement hover
-    rendering, and the debug overlay F3 left-column shell are live. The
-    remaining open surfaces in this ledger row are the debug overlay right
-    column, charts/lightmap/3D crosshair, and F3 modifier combos.
+    rendering, the debug overlay F3 left-column shell, and debug overlay
+    right-column memory/system/performance basics are live. The remaining open
+    surfaces in this ledger row are the complete debug entry list,
+    charts/lightmap/3D crosshair, and F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
