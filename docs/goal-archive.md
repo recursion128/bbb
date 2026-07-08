@@ -2013,6 +2013,18 @@
   ghost slots 按已同步 `minecraft:item` tag entry 轮换。剩余：craftability
   retry guard、完整 `FullTextSearchTree` token/namespace-path/intersection
   语义、composite SlotDisplay 展开、narrow-screen overlap。
+- [x] recipe-book FullTextSearchTree search semantics（P2 HUD/input slice，
+  2026-07-08）：依据 `SessionSearchTrees.updateRecipes` 对
+  `RecipeCollection` 建 result tooltip lines 与 item identifiers 索引、
+  `RecipeBookComponent.updateCollections` 对 lowercased search text 求
+  search-tree 交集、`FullTextSearchTree.searchPlainText` 只查 plain-text tree、
+  `searchIdentifier` 对 namespace hits 与 path-id/name hits 合并结果取交集，
+  以及 `IdSearchTree.search` 对冒号两侧 trim 的行为，native 现在把
+  recipe-book collection 搜索改为 vanilla-shaped boolean membership：
+  无冒号搜索只匹配 result tooltip text；`namespace:path` 搜索要求 result
+  resource-id namespace 命中，且 result resource path 或 tooltip text 命中；
+  protocol id 十进制文本不再参与 recipe-book 搜索。剩余：craftability retry
+  guard、composite SlotDisplay 展开、fake-item y-scaling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

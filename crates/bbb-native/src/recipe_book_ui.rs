@@ -765,33 +765,75 @@ fn recipe_book_collection_matches_search(
     search_text: &str,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> bool {
-    collection.entries.iter().any(|entry| {
-        recipe_book_result_stack(entry).is_some_and(|stack| {
-            recipe_book_result_stack_matches_search(stack, search_text, item_runtime)
-        })
-    })
-}
-
-fn recipe_book_result_stack_matches_search(
-    stack: &ItemStackSummary,
-    search_text: &str,
-    item_runtime: Option<&NativeItemRuntime>,
-) -> bool {
-    if stack
-        .item_id
-        .is_some_and(|item_id| item_id.to_string().contains(search_text))
-    {
-        return true;
-    }
-    let (Some(item_runtime), Some(item_id)) = (item_runtime, stack.item_id) else {
+    let Some(item_runtime) = item_runtime else {
         return false;
     };
-    if item_runtime
-        .item_resource_id(item_id)
-        .is_some_and(|resource_id| resource_id.to_lowercase().contains(search_text))
-    {
-        return true;
+    let result_stacks = || {
+        collection
+            .entries
+            .iter()
+            .filter_map(|entry| recipe_book_result_stack(entry))
+    };
+    if let Some((namespace, path)) = search_text.split_once(':') {
+        let namespace = namespace.trim();
+        let path = path.trim();
+        let namespace_matches = result_stacks().any(|stack| {
+            recipe_book_result_stack_resource_namespace_matches(stack, namespace, item_runtime)
+        });
+        let path_or_name_matches = result_stacks().any(|stack| {
+            recipe_book_result_stack_resource_path_matches(stack, path, item_runtime)
+                || recipe_book_result_stack_tooltip_matches(stack, path, item_runtime)
+        });
+        return namespace_matches && path_or_name_matches;
     }
+    result_stacks()
+        .any(|stack| recipe_book_result_stack_tooltip_matches(stack, search_text, item_runtime))
+}
+
+fn recipe_book_result_stack_resource_namespace_matches(
+    stack: &ItemStackSummary,
+    search_text: &str,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
+    recipe_book_result_stack_resource_id_part_matches(stack, search_text, item_runtime, true)
+}
+
+fn recipe_book_result_stack_resource_path_matches(
+    stack: &ItemStackSummary,
+    search_text: &str,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
+    recipe_book_result_stack_resource_id_part_matches(stack, search_text, item_runtime, false)
+}
+
+fn recipe_book_result_stack_resource_id_part_matches(
+    stack: &ItemStackSummary,
+    search_text: &str,
+    item_runtime: &NativeItemRuntime,
+    namespace: bool,
+) -> bool {
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            let (resource_namespace, resource_path) =
+                resource_id.split_once(':').unwrap_or(("", resource_id));
+            let resource_part = if namespace {
+                resource_namespace
+            } else {
+                resource_path
+            };
+            resource_part.to_lowercase().contains(search_text)
+        })
+}
+
+fn recipe_book_result_stack_tooltip_matches(
+    stack: &ItemStackSummary,
+    search_text: &str,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
     item_runtime
         .tooltip_lines_for_stack(stack)
         .is_some_and(|lines| {

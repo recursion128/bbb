@@ -7118,6 +7118,57 @@ fn hud_inventory_screen_filters_recipe_book_buttons_by_search_text() {
 }
 
 #[test]
+fn recipe_book_plain_search_uses_result_tooltip_text_only() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, None, 0),
+            shapeless_crafting_recipe_book_entry(21, 2, None, 1),
+            shapeless_crafting_recipe_book_entry(22, 2, None, 2),
+        ],
+    });
+
+    assert_eq!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "wooden"),
+        vec![22]
+    );
+    assert!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "oak_planks").is_empty()
+    );
+}
+
+#[test]
+fn recipe_book_identifier_search_intersects_namespace_with_path_or_tooltip() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, None, 0),
+            shapeless_crafting_recipe_book_entry(21, 2, None, 1),
+            shapeless_crafting_recipe_book_entry(22, 2, None, 2),
+        ],
+    });
+
+    assert_eq!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "minecraft:oak_planks"),
+        vec![22]
+    );
+    assert_eq!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "minecraft:wooden"),
+        vec![22]
+    );
+    assert!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "bbb:wooden").is_empty()
+    );
+    assert!(
+        crafting_recipe_book_search_recipe_indices(&world, &item_runtime, "minecraft:2").is_empty()
+    );
+}
+
+#[test]
 fn hud_inventory_screen_marks_and_filters_craftable_recipe_book_buttons() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
@@ -10981,7 +11032,14 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
         );
         write_flat_runtime_item_model_and_texture(&assets, model_id, &rgba);
     }
-    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+            "item.minecraft.crafting_table": "Crafting Table",
+            "item.minecraft.stick": "Stick",
+            "item.minecraft.oak_planks": "Wooden Boards"
+        }"#,
+    );
     write_runtime_json(
         &root
             .join("sources")
@@ -11000,6 +11058,27 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
     let runtime = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     std::fs::remove_dir_all(root).unwrap();
     runtime
+}
+
+fn crafting_recipe_book_search_recipe_indices(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    search_text: &str,
+) -> Vec<i32> {
+    crafting_recipe_book_collections(
+        world,
+        RecipeBookCraftingGrid {
+            width: 3,
+            height: 3,
+        },
+        1,
+        false,
+        search_text,
+        Some(item_runtime),
+    )
+    .iter()
+    .filter_map(|collection| collection.recipe_index_at_slot_select_index(0))
+    .collect()
 }
 
 fn shapeless_crafting_recipe_book_entry(

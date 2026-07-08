@@ -1067,9 +1067,8 @@ When an agent does any of the following, update this file in the same slice:
     notification pulse, furnace-family recipe-grid baseline,
     furnace-family ghost recipe projection, and furnace-family stacked-contents
     craftability, multi-recipe cycling, and right-click multi-recipe picker
-    baseline:
-    full recipe `FullTextSearchTree` token parity and composite SlotDisplay
-    expansion for ghost and overlay ingredient variants.
+    baseline, and full recipe `FullTextSearchTree` search parity:
+    composite SlotDisplay expansion for ghost and overlay ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1345,16 +1344,30 @@ When an agent does any of the following, update this file in the same slice:
     path via a narrow floating-item scale field, and cycles tag-backed overlay
     ingredients with the vanilla 30-tick slot-select index. Boundary: composite
     SlotDisplay expansion remains open.
-  - Boundary: craftability retry guard, full `FullTextSearchTree` token /
-    namespace-path / intersection semantics for recipe search, full
-    composite SlotDisplay expansion for ghost and overlay variants, exact
-    fake-item y-scaling during animated recipe-book tabs, and narrow-screen
-    overlap remain open. The filter toggle, search text,
+  - Done 2026-07-08 — Recipe-book `FullTextSearchTree` search semantics.
+    Vanilla anchors: `SessionSearchTrees.updateRecipes` indexes each
+    `RecipeCollection` by result item tooltip lines and result item
+    identifiers; `RecipeBookComponent.updateCollections` lowercases the search
+    text and intersects the selected collection list with
+    `connection.searchTrees().recipes().search(...)`;
+    `FullTextSearchTree.searchPlainText` uses only the plain-text tree, while
+    `searchIdentifier` intersects namespace hits with the merged identifier
+    path and plain-text name hits. `IdSearchTree.search` splits on the first
+    colon and trims both sides, and `SearchTree` / `IdentifierSearchTree`
+    insert lowercase strings into suffix arrays. bbb now mirrors those boolean
+    collection semantics: plain searches match result tooltip text only;
+    `namespace:path` searches require a result resource-id namespace match and
+    either a result resource path or tooltip text match; protocol id decimal
+    text no longer matches recipe-book searches.
+  - Boundary: craftability retry guard, full composite SlotDisplay expansion
+    for ghost and overlay variants, exact fake-item y-scaling during animated
+    recipe-book tabs, and narrow-screen overlap remain open. The filter toggle,
+    search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
     item/item-stack crafting ghost slots, visible crafting/furnace-family
-    search filtering,
+    search filtering with `FullTextSearchTree` namespace/path semantics,
     direct-item/tag-backed crafting craftability slot/filtering path, and
     same-result multi-recipe duplicate icon overlay, and first-item tag-backed
     crafting ghost ingredient projection plus tag-backed ghost ingredient

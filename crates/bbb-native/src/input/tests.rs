@@ -4072,29 +4072,34 @@ fn recipe_book_recipe_button_click_queues_place_recipe_command() {
 
 #[test]
 fn recipe_book_recipe_button_click_uses_search_filtered_collection() {
+    let root = unique_input_temp_dir("recipe-book-search");
+    write_input_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     input.recipe_book_crafting_tab_index = 1;
-    input.recipe_book_search_text = "201".to_string();
+    input.recipe_book_search_text = "combo".to_string();
     let mut counters = NetCounters::default();
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
         replace: true,
         entries: vec![
             recipe_book_shapeless_entry(42, 2, 200),
-            recipe_book_shapeless_entry(43, 2, 201),
+            recipe_book_shapeless_entry(43, 2, 0),
         ],
     });
     let surface_size = PhysicalSize::new(800, 600);
     let origin_x = (800.0 - 320.0) / 2.0;
     let origin_y = (600.0 - 166.0) / 2.0;
 
-    assert!(handle_inventory_mouse_input(
+    assert!(handle_inventory_mouse_input_with_item_runtime(
         &mut input,
         &mut world,
         &mut counters,
         &commands,
+        Some(&item_runtime),
         MouseButton::Left,
         ElementState::Pressed,
         Some(PhysicalPosition::new(
@@ -4113,6 +4118,8 @@ fn recipe_book_recipe_button_click_uses_search_filtered_collection() {
             use_max_items: false,
         })
     );
+
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
