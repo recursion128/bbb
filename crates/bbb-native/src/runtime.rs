@@ -3511,8 +3511,13 @@ fn hud_recipe_book_ghost_layers_and_items(
     let item_tag_entries = world
         .registry_tags("minecraft:item")
         .map(|registry| &registry.tags);
-    let ghost_slots =
-        hud_recipe_book_ghost_slots_for_background(world, background, display, item_tag_entries);
+    let ghost_slots = hud_recipe_book_ghost_slots_for_background(
+        world,
+        background,
+        display,
+        item_tag_entries,
+        recipe_book_slot_select_index(world, partial_tick),
+    );
     let mut fill_layers = Vec::new();
     let mut ghost_items = Vec::new();
     for ghost_slot in ghost_slots {
@@ -3582,14 +3587,21 @@ fn hud_recipe_book_ghost_slots_for_background<'a>(
     background: InventoryScreenBackground,
     display: &'a bbb_protocol::packets::RecipeDisplaySummary,
     item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    slot_select_index: usize,
 ) -> Vec<RecipeBookGhostSlot<'a>> {
     if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
-        return crafting_recipe_book_ghost_slots(display, grid, item_tag_entries);
+        return crafting_recipe_book_ghost_slots(
+            display,
+            grid,
+            item_tag_entries,
+            slot_select_index,
+        );
     }
     if recipe_book_furnace_family_for_background(background).is_some() {
         return furnace_recipe_book_ghost_slots(
             display,
             item_tag_entries,
+            slot_select_index,
             furnace_recipe_book_fuel_slot_is_empty(world),
         );
     }

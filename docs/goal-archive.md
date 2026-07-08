@@ -2004,6 +2004,15 @@
   index 轮换。剩余：craftability retry guard、完整 `FullTextSearchTree`
   token/namespace-path/intersection 语义、ghost ingredient time-cycling 与
   composite SlotDisplay 展开、narrow-screen overlap。
+- [x] tag-backed ghost ingredient cycling（P2 HUD/runtime slice，2026-07-08）：
+  依据 `RecipeBookComponent` 的 `SlotSelectTime = floor(time / 30.0F)`、
+  `GhostSlots.setSlot` 保存 `SlotDisplay.resolveForStacks(context)` 的完整
+  item list，以及 `GhostSlot.getItem(currentIndex % size)` 的渲染选择逻辑，
+  native 现在把同一个 30 tick slot-select index 传入 crafting/furnace ghost
+  slot 投影，direct item display 保持固定，tag-backed result/input/fuel
+  ghost slots 按已同步 `minecraft:item` tag entry 轮换。剩余：craftability
+  retry guard、完整 `FullTextSearchTree` token/namespace-path/intersection
+  语义、composite SlotDisplay 展开、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

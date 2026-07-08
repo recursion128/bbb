@@ -290,7 +290,7 @@ Screen Render Surfaces" 条目）：
   command shell、category tab visibility、crafting ghost slots、visible search filtering
   与 direct-item/tag-backed craftability slot/filtering、same-result multi-recipe icon
   overlay、search cursor/selection rendering、first-item tag-backed ghost ingredient
-  display、tab notification baseline pulse、furnace-family recipe-grid baseline、
+  display/cycling、tab notification baseline pulse、furnace-family recipe-grid baseline、
   furnace-family ghost slots、furnace-family stacked-contents craftability、
   multi-recipe cycling、right-click multi-recipe picker baseline、overlay
   scaled ingredient mini-grid 已完成）/

@@ -6276,6 +6276,55 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
 }
 
 #[test]
+fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![1, 2])]);
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![slot_display_tag("minecraft:planks")],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                        tag: None,
+                    },
+                },
+            ),
+            furnace: None,
+        },
+    });
+
+    let first_screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    let first_icon = first_screen
+        .ghost_items
+        .iter()
+        .find(|item| (item.x, item.y, item.draw_decorations) == (179, 17, false))
+        .map(|item| item.icon.clone())
+        .expect("first tag ghost ingredient");
+
+    world.apply_world_time(PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    let second_screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    let second_icon = second_screen
+        .ghost_items
+        .iter()
+        .find(|item| (item.x, item.y, item.draw_decorations) == (179, 17, false))
+        .map(|item| item.icon.clone())
+        .expect("second tag ghost ingredient");
+
+    assert_ne!(first_icon, second_icon);
+}
+
+#[test]
 fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_fill() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = WorldStore::new();

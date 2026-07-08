@@ -1068,9 +1068,8 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family ghost recipe projection, and furnace-family stacked-contents
     craftability, multi-recipe cycling, and right-click multi-recipe picker
     baseline:
-    full recipe `FullTextSearchTree` token parity, full tag/composite
-    SlotDisplay time-cycling for ghost ingredients, and composite SlotDisplay
-    expansion for overlay ingredient variants.
+    full recipe `FullTextSearchTree` token parity and composite SlotDisplay
+    expansion for ghost and overlay ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1260,8 +1259,18 @@ When an agent does any of the following, update this file in the same slice:
     `SlotDisplaySummary.tag`, passes canonical `UpdateTags` `minecraft:item`
     entries into crafting ghost-slot projection, and renders a tag-backed
     ingredient using the first synced tag item as a count-1 ghost stack.
-    Boundary: vanilla's time-cycling through all resolved tag entries and
-    composite SlotDisplay children remains open.
+    Boundary: vanilla's composite SlotDisplay children remain open; tag entry
+    time-cycling is covered by the following slice.
+  - Done 2026-07-08 — Tag-backed ghost ingredient cycling. Vanilla anchors:
+    `RecipeBookComponent` creates `SlotSelectTime` as
+    `floor(time / 30.0F)`, `GhostSlots.setSlot` stores the full
+    `SlotDisplay.resolveForStacks(context)` list, and
+    `GhostSlot.getItem` selects `items[currentIndex % size]` for fake-item
+    rendering and tooltip lookup. bbb now passes the same 30-tick
+    slot-select index into ghost-slot projection, so direct items stay fixed
+    while tag-backed ghost result/input/fuel slots cycle through synced
+    `minecraft:item` tag entries. Boundary: composite SlotDisplay expansion
+    remains open.
   - Done 2026-07-08 — Recipe-book tab notification baseline pulse. Vanilla
     anchors: `ClientPacketListener.handleRecipeBookAdd` stores highlighted
     recipes via `ClientRecipeBook.addHighlight`, `RecipeBookTabButton.startAnimation`
@@ -1335,12 +1344,12 @@ When an agent does any of the following, update this file in the same slice:
     the equivalent top-left positions, reuses the same GUI item/block-model
     path via a narrow floating-item scale field, and cycles tag-backed overlay
     ingredients with the vanilla 30-tick slot-select index. Boundary: composite
-    SlotDisplay expansion and ghost ingredient time-cycling remain open.
+    SlotDisplay expansion remains open.
   - Boundary: craftability retry guard, full `FullTextSearchTree` token /
     namespace-path / intersection semantics for recipe search, full
-    tag/composite SlotDisplay time-cycling for ghost ingredients and composite
-    overlay variants, exact fake-item y-scaling during animated recipe-book
-    tabs, and narrow-screen overlap remain open. The filter toggle, search text,
+    composite SlotDisplay expansion for ghost and overlay variants, exact
+    fake-item y-scaling during animated recipe-book tabs, and narrow-screen
+    overlap remain open. The filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
@@ -1348,11 +1357,12 @@ When an agent does any of the following, update this file in the same slice:
     search filtering,
     direct-item/tag-backed crafting craftability slot/filtering path, and
     same-result multi-recipe duplicate icon overlay, and first-item tag-backed
-    crafting ghost ingredient projection, highlighted recipe-book tab baseline
-    pulse, furnace-family recipe-grid baseline, furnace-family ghost recipe
-    projection, furnace-family stacked-contents craftability, and multi-recipe
-    cycling, right-click multi-recipe picker baseline, and overlay scaled
-    ingredient mini-grid are live. The first shell models the non-narrow
+    crafting ghost ingredient projection plus tag-backed ghost ingredient
+    cycling, highlighted recipe-book tab baseline pulse, furnace-family
+    recipe-grid baseline, furnace-family ghost recipe projection,
+    furnace-family stacked-contents craftability, and multi-recipe cycling,
+    right-click multi-recipe picker baseline, and overlay scaled ingredient
+    mini-grid are live. The first shell models the non-narrow
     layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
     the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
