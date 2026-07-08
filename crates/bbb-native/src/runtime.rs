@@ -581,6 +581,8 @@ const CHUNK_BORDER_NEIGHBOR_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 0.5];
 const CHUNK_BORDER_CELL_COLOR: [f32; 4] = [0.0, 155.0 / 255.0, 155.0 / 255.0, 1.0];
 const CHUNK_BORDER_YELLOW_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 const CHUNK_BORDER_MAJOR_COLOR: [f32; 4] = [0.25, 0.25, 1.0, 1.0];
+const CHUNK_BORDER_THICK_LINE_WIDTH: f32 = 4.0;
+const CHUNK_BORDER_THIN_LINE_WIDTH: f32 = 1.0;
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
@@ -3180,6 +3182,7 @@ fn debug_chunk_border_outline(
                 [x_start + x, min_y, z_start + z],
                 [x_start + x, max_y, z_start + z],
                 CHUNK_BORDER_NEIGHBOR_COLOR,
+                CHUNK_BORDER_THICK_LINE_WIDTH,
             );
         }
     }
@@ -3195,12 +3198,14 @@ fn debug_chunk_border_outline(
             [x_start + x, min_y, z_start],
             [x_start + x, max_y, z_start],
             color,
+            CHUNK_BORDER_THIN_LINE_WIDTH,
         );
         push_chunk_border_line(
             &mut lines,
             [x_start + x, min_y, z_start + 16],
             [x_start + x, max_y, z_start + 16],
             color,
+            CHUNK_BORDER_THIN_LINE_WIDTH,
         );
     }
 
@@ -3215,12 +3220,14 @@ fn debug_chunk_border_outline(
             [x_start, min_y, z_start + z],
             [x_start, max_y, z_start + z],
             color,
+            CHUNK_BORDER_THIN_LINE_WIDTH,
         );
         push_chunk_border_line(
             &mut lines,
             [x_start + 16, min_y, z_start + z],
             [x_start + 16, max_y, z_start + z],
             color,
+            CHUNK_BORDER_THIN_LINE_WIDTH,
         );
     }
 
@@ -3230,7 +3237,14 @@ fn debug_chunk_border_outline(
         } else {
             CHUNK_BORDER_YELLOW_COLOR
         };
-        push_chunk_border_horizontal_ring(&mut lines, x_start, z_start, y, color);
+        push_chunk_border_horizontal_ring(
+            &mut lines,
+            x_start,
+            z_start,
+            y,
+            color,
+            CHUNK_BORDER_THIN_LINE_WIDTH,
+        );
     }
 
     for x in (0..=16).step_by(16) {
@@ -3240,6 +3254,7 @@ fn debug_chunk_border_outline(
                 [x_start + x, min_y, z_start + z],
                 [x_start + x, max_y, z_start + z],
                 CHUNK_BORDER_MAJOR_COLOR,
+                CHUNK_BORDER_THICK_LINE_WIDTH,
             );
         }
     }
@@ -3251,6 +3266,7 @@ fn debug_chunk_border_outline(
             z_start,
             y,
             CHUNK_BORDER_MAJOR_COLOR,
+            CHUNK_BORDER_THICK_LINE_WIDTH,
         );
     }
 
@@ -3264,6 +3280,7 @@ fn debug_chunk_border_outline(
                 (z_start + 16) as f32,
             ],
             color: CHUNK_BORDER_MAJOR_COLOR,
+            line_width: CHUNK_BORDER_THIN_LINE_WIDTH,
             always_on_top: true,
         }],
         lines,
@@ -3281,30 +3298,35 @@ fn push_chunk_border_horizontal_ring(
     z_start: i32,
     y: i32,
     color: [f32; 4],
+    width: f32,
 ) {
     push_chunk_border_line(
         lines,
         [x_start, y, z_start],
         [x_start, y, z_start + 16],
         color,
+        width,
     );
     push_chunk_border_line(
         lines,
         [x_start, y, z_start + 16],
         [x_start + 16, y, z_start + 16],
         color,
+        width,
     );
     push_chunk_border_line(
         lines,
         [x_start + 16, y, z_start + 16],
         [x_start + 16, y, z_start],
         color,
+        width,
     );
     push_chunk_border_line(
         lines,
         [x_start + 16, y, z_start],
         [x_start, y, z_start],
         color,
+        width,
     );
 }
 
@@ -3313,11 +3335,13 @@ fn push_chunk_border_line(
     from: [i32; 3],
     to: [i32; 3],
     color: [f32; 4],
+    width: f32,
 ) {
     lines.push(SelectionLine {
         from: [from[0] as f32, from[1] as f32, from[2] as f32],
         to: [to[0] as f32, to[1] as f32, to[2] as f32],
         color,
+        width,
     });
 }
 

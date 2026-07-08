@@ -310,6 +310,9 @@ pub(crate) struct CameraUniform {
     /// Vanilla `GlobalSettingsUniform.GameTime` in shader units:
     /// `((gameTime % 24000) + partialTick) / 24000`.
     shader_game_time: [f32; 4],
+    /// Vanilla line shaders consume `ScreenSize` for pixel-width line expansion.
+    /// `[width, height, _, _]`.
+    viewport_size: [f32; 4],
 }
 
 impl CameraUniform {
@@ -529,6 +532,16 @@ impl CameraUniform {
         self
     }
 
+    pub(crate) fn with_viewport_size(mut self, width: f32, height: f32) -> Self {
+        self.viewport_size = [
+            sanitize_viewport_extent(width),
+            sanitize_viewport_extent(height),
+            0.0,
+            0.0,
+        ];
+        self
+    }
+
     #[cfg(test)]
     pub(crate) fn lightmap_brightness_factor(self) -> f32 {
         self.lightmap_effects[1]
@@ -594,6 +607,11 @@ impl CameraUniform {
     #[cfg(test)]
     pub(crate) fn shader_game_time(self) -> [f32; 4] {
         self.shader_game_time
+    }
+
+    #[cfg(test)]
+    pub(crate) fn viewport_size(self) -> [f32; 4] {
+        self.viewport_size
     }
 
     #[cfg(test)]
@@ -664,6 +682,7 @@ impl CameraUniform {
             projection: Mat4::IDENTITY.to_cols_array_2d(),
             sky_model_view: Mat4::IDENTITY.to_cols_array_2d(),
             shader_game_time: [0.0, 0.0, 0.0, 0.0],
+            viewport_size: [1.0, 1.0, 0.0, 0.0],
         }
     }
 }
@@ -760,6 +779,14 @@ fn sanitize_fog_distance(value: f32, fallback: f32) -> f32 {
         value
     } else {
         fallback
+    }
+}
+
+fn sanitize_viewport_extent(value: f32) -> f32 {
+    if value.is_finite() && value > 0.0 {
+        value
+    } else {
+        1.0
     }
 }
 
@@ -1042,6 +1069,26 @@ mod tests {
                 .with_shader_game_time_ticks(24_006.0)
                 .shader_game_time(),
             [6.0 / 24_000.0, 0.0, 0.0, 0.0]
+        );
+    }
+
+    #[test]
+    fn camera_uniform_stores_viewport_size_for_line_widths() {
+        assert_eq!(
+            CameraUniform::identity().viewport_size(),
+            [1.0, 1.0, 0.0, 0.0]
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_viewport_size(1280.0, 720.0)
+                .viewport_size(),
+            [1280.0, 720.0, 0.0, 0.0]
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_viewport_size(0.0, f32::NAN)
+                .viewport_size(),
+            [1.0, 1.0, 0.0, 0.0]
         );
     }
 

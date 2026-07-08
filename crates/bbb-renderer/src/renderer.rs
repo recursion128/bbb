@@ -2136,7 +2136,8 @@ impl Renderer {
         .with_lightmap_environment(self.lightmap_environment)
         .with_fog_environment(self.fog_environment)
         .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
-        .with_shader_game_time_ticks(self.shader_game_time_ticks);
+        .with_shader_game_time_ticks(self.shader_game_time_ticks)
+        .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.update_sky_model_view_dynamics(uniform.sky_model_view_transform());
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
@@ -2144,7 +2145,8 @@ impl Renderer {
         // does not clobber the world camera, which earlier passes in the same submit still read).
         let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32)
             .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
-            .with_shader_game_time_ticks(self.shader_game_time_ticks);
+            .with_shader_game_time_ticks(self.shader_game_time_ticks)
+            .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
     }

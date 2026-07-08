@@ -1895,13 +1895,19 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
     assert_eq!(outline.colored_boxes[0].min, [16.0, 32.0, -16.0]);
     assert_eq!(outline.colored_boxes[0].max, [32.0, 48.0, 0.0]);
     assert_eq!(outline.colored_boxes[0].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert_eq!(
+        outline.colored_boxes[0].line_width,
+        CHUNK_BORDER_THIN_LINE_WIDTH
+    );
     assert!(outline.colored_boxes[0].always_on_top);
     assert_eq!(outline.lines.len(), 920);
     assert_eq!(outline.lines[0].from, [0.0, -64.0, -32.0]);
     assert_eq!(outline.lines[0].to, [0.0, 320.0, -32.0]);
     assert_eq!(outline.lines[0].color, CHUNK_BORDER_NEIGHBOR_COLOR);
+    assert_eq!(outline.lines[0].width, CHUNK_BORDER_THICK_LINE_WIDTH);
     assert_eq!(outline.lines[16].from, [18.0, -64.0, -16.0]);
     assert_eq!(outline.lines[16].color, CHUNK_BORDER_YELLOW_COLOR);
+    assert_eq!(outline.lines[16].width, CHUNK_BORDER_THIN_LINE_WIDTH);
     assert_eq!(outline.lines[18].from, [20.0, -64.0, -16.0]);
     assert_eq!(outline.lines[18].color, CHUNK_BORDER_CELL_COLOR);
     assert_eq!(outline.lines[44].from, [16.0, -64.0, -16.0]);
@@ -1910,6 +1916,7 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
     assert_eq!(outline.lines[816].from, [16.0, -64.0, -16.0]);
     assert_eq!(outline.lines[816].to, [16.0, 320.0, -16.0]);
     assert_eq!(outline.lines[816].color, CHUNK_BORDER_MAJOR_COLOR);
+    assert_eq!(outline.lines[816].width, CHUNK_BORDER_THICK_LINE_WIDTH);
     assert_eq!(outline.lines[920 - 1].from, [32.0, 320.0, -16.0]);
     assert_eq!(outline.lines[920 - 1].to, [16.0, 320.0, -16.0]);
     assert_eq!(outline.lines[920 - 1].color, CHUNK_BORDER_MAJOR_COLOR);

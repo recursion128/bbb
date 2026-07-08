@@ -315,7 +315,6 @@ Screen Render Surfaces" 条目）：
   request routing、F3+F4 GameModeSwitcher input/command shell、ordinary F3
   keymap audit 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
-  chunk-border line-width debug-gizmo styling、
   advanced tooltip component-specific full parity/persistence、F3+I full local
   entity saveWithoutId parity、profiler result clickable feedback payload、
   profiler data sampling and ProfileResults tree navigation、

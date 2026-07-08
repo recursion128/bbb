@@ -5508,17 +5508,25 @@
   当前 chunk corner major lines、camera section cuboid、以及每 16 格 major
   horizontal rings。native 现在通过 `SelectionOutline` 提交这些 colored lines
   和当前 section colored cuboid，并使用 vanilla translucent red/yellow/cyan/major
-  blue 颜色与 world dimension y-range。边界：renderer selection path 仍没有
-  vanilla line widths、`alwaysOnTop`、以及专用 debug gizmo pipeline。
+  blue 颜色与 world dimension y-range。后续 F3+G always-on-top 与 line-width
+  slices 已覆盖专用 debug gizmo styling 缺口。
 - [x] debug overlay F3+G chunk-border always-on-top pipeline（P2 renderer
   slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 先用
   `GizmoStyle.stroke(MAJOR_LINES, 1.0F)` 提交当前 camera section cuboid，
   随后调用 `setAlwaysOnTop()`。renderer 现在在 outline 数据模型中标记该
   camera-section cuboid，并只让这批 split vertices 使用
   `bbb-chunk-border-debug-pipeline` 的 no-depth-test 状态；普通 F3+G
-  chunk-border lines 仍复用带深度测试的 selection line pipeline。边界：
-  vanilla 4.0F thick major/neighbor line widths 仍待后续屏幕空间或几何扩展
-  实现。
+  chunk-border lines 仍复用带深度测试的 selection line pipeline。后续
+  line-width slice 已补齐 4.0F thick major/neighbor line widths。
+- [x] debug overlay F3+G chunk-border line widths（P2 renderer/native slice，
+  2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 对 neighbor/major
+  lines 使用 `4.0F`、thin grid lines 使用 `1.0F`、camera section cuboid
+  使用 `GizmoStyle.stroke(MAJOR_LINES, 1.0F)`，以及 `LineGizmo.emit` →
+  `VertexConsumer.setLineWidth` → `rendertype_lines.vsh` 的
+  `LineWidth / ScreenSize` 屏幕空间扩展。native 现在在 F3+G
+  `SelectionLine`/`SelectionColoredBox` 上携带 vanilla 宽度；renderer
+  selection pipeline 改为 triangle-list 宽线展开，camera uniform 携带
+  viewport size 供 shader 计算像素宽度。
 - [x] debug overlay F3+B Ender Dragon parent hitbox（P2 world/native slice，
   2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 先绘制 entity
   main `getBoundingBox().move(offset)`、再绘制 Ender Dragon sub-entities 的顺序，

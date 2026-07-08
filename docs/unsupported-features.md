@@ -1117,7 +1117,6 @@ When an agent does any of the following, update this file in the same slice:
     shell, and ordinary F3 keymap audit:
     non-default/editable debug entries, actual entity hitbox
     server details,
-    chunk-border line-width debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler result clickable
     feedback payload, profiler data sampling and ProfileResults tree
@@ -1248,17 +1247,28 @@ When an agent does any of the following, update this file in the same slice:
     cadence, current chunk corner major lines, the current camera section
     cuboid, and horizontal major rings every 16 blocks. bbb now projects those
     lines and the current section cuboid through `SelectionOutline` with the
-    vanilla colors and dimension y-range. Boundary: the renderer selection path
-    still lacks vanilla line widths, `alwaysOnTop`, and the dedicated debug
-    gizmo pipeline.
+    vanilla colors and dimension y-range. Superseded boundary: line widths,
+    `alwaysOnTop`, and the dedicated debug gizmo path are covered by later
+    F3+G slices.
   - Done 2026-07-08 — Debug overlay F3+G chunk-border always-on-top pipeline.
     Vanilla anchors: `ChunkBorderRenderer.emitGizmos` submits the current
     camera section cuboid as a `GizmoStyle.stroke(MAJOR_LINES, 1.0F)` and then
     calls `setAlwaysOnTop()`. bbb now marks that camera-section cuboid in the
     outline data model and draws only its split vertex batch through a
     dedicated no-depth-test renderer pipeline; ordinary F3+G chunk-border lines
-    still use the depth-aware selection-line pipeline. Boundary: vanilla 4.0F
-    thick major and neighbor line widths remain future debug-gizmo work.
+    still use the depth-aware selection-line pipeline. Superseded boundary:
+    vanilla 4.0F thick major and neighbor line widths are covered by the next
+    F3+G line-width slice.
+  - Done 2026-07-08 — Debug overlay F3+G chunk-border line widths.
+    Vanilla anchors: `ChunkBorderRenderer.emitGizmos` sends neighbor and major
+    chunk-border lines with width `4.0F`, thin grid lines with width `1.0F`,
+    and the current camera-section cuboid with
+    `GizmoStyle.stroke(MAJOR_LINES, 1.0F)`. Vanilla `LineGizmo.emit` forwards
+    this to `VertexConsumer.setLineWidth`, while `rendertype_lines.vsh` expands
+    the line in screen space via `LineWidth / ScreenSize`. bbb now carries
+    per-line/per-colored-box widths, writes the vanilla F3+G widths from native,
+    expands selection lines into triangle-list quads in the renderer, and adds
+    viewport size to the camera uniform for the shader offset.
   - Done 2026-07-08 — Debug overlay F3+B entity AABB hitbox outline
     rendering. Vanilla anchors: `DebugScreenEntries.ENTITY_HITBOXES` is
     toggled by `KeyboardHandler.handleDebugKeys`, and
@@ -2310,7 +2320,6 @@ When an agent does any of the following, update this file in the same slice:
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
-    chunk-border line-width debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler result clickable feedback
     payload, profiler data sampling and ProfileResults tree navigation,

@@ -16,6 +16,11 @@ pub struct SelectionColoredBox {
     pub min: [f32; 3],
     pub max: [f32; 3],
     pub color: [f32; 4],
+    #[serde(
+        default = "default_selection_line_width",
+        skip_serializing_if = "is_default_selection_line_width"
+    )]
+    pub line_width: f32,
     #[serde(default, skip_serializing_if = "is_false")]
     pub always_on_top: bool,
 }
@@ -25,6 +30,11 @@ pub struct SelectionLine {
     pub from: [f32; 3],
     pub to: [f32; 3],
     pub color: [f32; 4],
+    #[serde(
+        default = "default_selection_line_width",
+        skip_serializing_if = "is_default_selection_line_width"
+    )]
+    pub width: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -89,11 +99,11 @@ impl SelectionOutline {
     }
 }
 
-const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
+const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32, 3 => Float32, 4 => Float32x4];
 #[cfg(test)]
 const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
+const DEFAULT_SELECTION_LINE_WIDTH: f32 = 1.0;
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
 const CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST: bool = false;
 const SELECTION_POINT_PROXY_WORLD_SCALE: f32 = 0.01;
@@ -115,6 +125,11 @@ struct Camera {
     minecraft_light1: vec4<f32>,
     glint_offsets: vec4<f32>,
     view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
+    sky_model_view: mat4x4<f32>,
+    shader_game_time: vec4<f32>,
+    viewport_size: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -122,7 +137,10 @@ var<uniform> camera: Camera;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
-    @location(1) color: vec4<f32>,
+    @location(1) line_direction: vec3<f32>,
+    @location(2) line_width: f32,
+    @location(3) line_side: f32,
+    @location(4) color: vec4<f32>,
 };
 
 struct VertexOut {
@@ -153,7 +171,24 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    out.position = camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0);
+    let line_pos_start = camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0);
+    let line_pos_end = camera.view_proj_view_offset_z * vec4<f32>(input.position + input.line_direction, 1.0);
+    let ndc_start = line_pos_start.xyz / line_pos_start.w;
+    let ndc_end = line_pos_end.xyz / line_pos_end.w;
+    let screen_size = max(camera.viewport_size.xy, vec2<f32>(1.0, 1.0));
+    let screen_direction = (ndc_end.xy - ndc_start.xy) * screen_size;
+    var line_offset = vec2<f32>(0.0, 0.0);
+    if (length(screen_direction) > 0.000001) {
+        let line_screen_direction = normalize(screen_direction);
+        line_offset = vec2<f32>(-line_screen_direction.y, line_screen_direction.x) * input.line_width / screen_size;
+        if (line_offset.x < 0.0) {
+            line_offset = -line_offset;
+        }
+    }
+    out.position = vec4<f32>(
+        (ndc_start + vec3<f32>(line_offset * input.line_side, 0.0)) * line_pos_start.w,
+        line_pos_start.w
+    );
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -181,6 +216,9 @@ pub(super) struct SelectionOutlineGpu {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SelectionVertex {
     position: [f32; 3],
+    line_direction: [f32; 3],
+    line_width: f32,
+    line_side: f32,
     color: [f32; 4],
 }
 
@@ -225,7 +263,7 @@ pub(super) fn create_selection_pipeline(
         )
         .vertex_buffers(&[selection_vertex_layout()])
         .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .topology(wgpu::PrimitiveTopology::LineList)
+        .topology(wgpu::PrimitiveTopology::TriangleList)
         .depth_stencil(depth_stencil_state(
             DEPTH_FORMAT,
             SELECTION_LINES_DEPTH_WRITE,
@@ -247,7 +285,7 @@ pub(super) fn create_chunk_border_always_on_top_pipeline(
         )
         .vertex_buffers(&[selection_vertex_layout()])
         .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .topology(wgpu::PrimitiveTopology::LineList)
+        .topology(wgpu::PrimitiveTopology::TriangleList)
         .depth_stencil(if CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST {
             Some(depth_stencil_state(
                 DEPTH_FORMAT,
@@ -273,17 +311,18 @@ fn selection_outline_vertices_for(
     always_on_top: bool,
 ) -> Vec<SelectionVertex> {
     let mut vertices = Vec::with_capacity(
-        outline.boxes.len() * 24
-            + outline.colored_boxes.len() * 24
-            + outline.lines.len() * 2
-            + outline.points.len() * 6,
+        outline.boxes.len() * 72
+            + outline.colored_boxes.len() * 72
+            + outline.lines.len() * 6
+            + outline.points.len() * 18,
     );
     if !always_on_top {
         for outline_box in &outline.boxes {
-            vertices.extend(selection_box_vertices(
+            vertices.extend(selection_box_vertices_with_width(
                 outline_box.min,
                 outline_box.max,
                 DEFAULT_SELECTION_OUTLINE_COLOR,
+                DEFAULT_SELECTION_LINE_WIDTH,
             ));
         }
     }
@@ -291,10 +330,11 @@ fn selection_outline_vertices_for(
         if outline_box.always_on_top != always_on_top {
             continue;
         }
-        vertices.extend(selection_box_vertices(
+        vertices.extend(selection_box_vertices_with_width(
             outline_box.min,
             outline_box.max,
             outline_box.color,
+            sanitize_line_width(outline_box.line_width),
         ));
     }
     if !always_on_top {
@@ -312,11 +352,28 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 
-fn selection_box_vertices(
+fn default_selection_line_width() -> f32 {
+    DEFAULT_SELECTION_LINE_WIDTH
+}
+
+fn is_default_selection_line_width(value: &f32) -> bool {
+    (*value - DEFAULT_SELECTION_LINE_WIDTH).abs() <= f32::EPSILON
+}
+
+fn sanitize_line_width(value: f32) -> f32 {
+    if value.is_finite() && value > 0.0 {
+        value
+    } else {
+        DEFAULT_SELECTION_LINE_WIDTH
+    }
+}
+
+fn selection_box_vertices_with_width(
     box_min: [f32; 3],
     box_max: [f32; 3],
     color: [f32; 4],
-) -> [SelectionVertex; 24] {
+    line_width: f32,
+) -> Vec<SelectionVertex> {
     let min = Vec3::from_array(box_min).min(Vec3::from_array(box_max)) - Vec3::splat(0.002);
     let max = Vec3::from_array(box_min).max(Vec3::from_array(box_max)) + Vec3::splat(0.002);
     let p000 = [min.x, min.y, min.z];
@@ -328,42 +385,51 @@ fn selection_box_vertices(
     let p011 = [min.x, max.y, max.z];
     let p111 = [max.x, max.y, max.z];
 
+    let mut vertices = Vec::with_capacity(72);
+    for (from, to) in [
+        (p000, p100),
+        (p100, p101),
+        (p101, p001),
+        (p001, p000),
+        (p010, p110),
+        (p110, p111),
+        (p111, p011),
+        (p011, p010),
+        (p000, p010),
+        (p100, p110),
+        (p101, p111),
+        (p001, p011),
+    ] {
+        vertices.extend(selection_line_vertices_with_width(
+            from, to, color, line_width,
+        ));
+    }
+    vertices
+}
+
+fn selection_line_vertices(line: SelectionLine) -> [SelectionVertex; 6] {
+    selection_line_vertices_with_width(line.from, line.to, line.color, line.width)
+}
+
+fn selection_line_vertices_with_width(
+    from: [f32; 3],
+    to: [f32; 3],
+    color: [f32; 4],
+    line_width: f32,
+) -> [SelectionVertex; 6] {
+    let line_width = sanitize_line_width(line_width);
+    let direction = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
     [
-        selection_vertex(p000, color),
-        selection_vertex(p100, color),
-        selection_vertex(p100, color),
-        selection_vertex(p101, color),
-        selection_vertex(p101, color),
-        selection_vertex(p001, color),
-        selection_vertex(p001, color),
-        selection_vertex(p000, color),
-        selection_vertex(p010, color),
-        selection_vertex(p110, color),
-        selection_vertex(p110, color),
-        selection_vertex(p111, color),
-        selection_vertex(p111, color),
-        selection_vertex(p011, color),
-        selection_vertex(p011, color),
-        selection_vertex(p010, color),
-        selection_vertex(p000, color),
-        selection_vertex(p010, color),
-        selection_vertex(p100, color),
-        selection_vertex(p110, color),
-        selection_vertex(p101, color),
-        selection_vertex(p111, color),
-        selection_vertex(p001, color),
-        selection_vertex(p011, color),
+        selection_vertex(from, direction, line_width, 1.0, color),
+        selection_vertex(from, direction, line_width, -1.0, color),
+        selection_vertex(to, direction, line_width, 1.0, color),
+        selection_vertex(to, direction, line_width, 1.0, color),
+        selection_vertex(from, direction, line_width, -1.0, color),
+        selection_vertex(to, direction, line_width, -1.0, color),
     ]
 }
 
-fn selection_line_vertices(line: SelectionLine) -> [SelectionVertex; 2] {
-    [
-        selection_vertex(line.from, line.color),
-        selection_vertex(line.to, line.color),
-    ]
-}
-
-fn selection_point_vertices(point: SelectionPoint) -> [SelectionVertex; 6] {
+fn selection_point_vertices(point: SelectionPoint) -> Vec<SelectionVertex> {
     let half_extent = if point.size.is_finite() {
         point.size.max(0.0) * SELECTION_POINT_PROXY_WORLD_SCALE
     } else {
@@ -373,18 +439,43 @@ fn selection_point_vertices(point: SelectionPoint) -> [SelectionVertex; 6] {
     let x = Vec3::X * half_extent;
     let y = Vec3::Y * half_extent;
     let z = Vec3::Z * half_extent;
-    [
-        selection_vertex((center - x).to_array(), point.color),
-        selection_vertex((center + x).to_array(), point.color),
-        selection_vertex((center - y).to_array(), point.color),
-        selection_vertex((center + y).to_array(), point.color),
-        selection_vertex((center - z).to_array(), point.color),
-        selection_vertex((center + z).to_array(), point.color),
-    ]
+    let width = sanitize_line_width(point.size);
+    let mut vertices = Vec::with_capacity(18);
+    vertices.extend(selection_line_vertices_with_width(
+        (center - x).to_array(),
+        (center + x).to_array(),
+        point.color,
+        width,
+    ));
+    vertices.extend(selection_line_vertices_with_width(
+        (center - y).to_array(),
+        (center + y).to_array(),
+        point.color,
+        width,
+    ));
+    vertices.extend(selection_line_vertices_with_width(
+        (center - z).to_array(),
+        (center + z).to_array(),
+        point.color,
+        width,
+    ));
+    vertices
 }
 
-fn selection_vertex(position: [f32; 3], color: [f32; 4]) -> SelectionVertex {
-    SelectionVertex { position, color }
+fn selection_vertex(
+    position: [f32; 3],
+    line_direction: [f32; 3],
+    line_width: f32,
+    line_side: f32,
+    color: [f32; 4],
+) -> SelectionVertex {
+    SelectionVertex {
+        position,
+        line_direction,
+        line_width,
+        line_side,
+        color,
+    }
 }
 
 fn selection_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -436,12 +527,13 @@ mod tests {
             [1.0, 2.0, 3.0],
             [2.0, 3.0, 4.0],
         ));
-        assert_eq!(vertices.len(), 24);
+        assert_eq!(vertices.len(), 72);
         assert_eq!(vertices[0].position, [0.998, 1.998, 2.998]);
         assert_eq!(vertices[0].color, DEFAULT_SELECTION_OUTLINE_COLOR);
-        assert_eq!(vertices[1].position, [2.002, 1.998, 2.998]);
-        assert_eq!(vertices[22].position, [0.998, 1.998, 4.002]);
-        assert_eq!(vertices[23].position, [0.998, 3.002, 4.002]);
+        assert_eq!(vertices[0].line_width, DEFAULT_SELECTION_LINE_WIDTH);
+        assert_eq!(vertices[2].position, [2.002, 1.998, 2.998]);
+        assert_eq!(vertices[66].position, [0.998, 1.998, 4.002]);
+        assert_eq!(vertices[71].position, [0.998, 3.002, 4.002]);
     }
 
     #[test]
@@ -457,10 +549,10 @@ mod tests {
             },
         ]));
 
-        assert_eq!(vertices.len(), 48);
+        assert_eq!(vertices.len(), 144);
         assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
-        assert_eq!(vertices[24].position, [1.998, -0.002, -0.002]);
-        assert_eq!(vertices[25].position, [3.002, -0.002, -0.002]);
+        assert_eq!(vertices[72].position, [1.998, -0.002, -0.002]);
+        assert_eq!(vertices[74].position, [3.002, -0.002, -0.002]);
     }
 
     #[test]
@@ -470,22 +562,26 @@ mod tests {
                 min: [0.0, 0.0, 0.0],
                 max: [1.0, 1.0, 1.0],
                 color: [1.0, 0.0, 0.0, 1.0],
+                line_width: 2.5,
                 always_on_top: false,
             }],
             [SelectionLine {
                 from: [2.0, 0.0, 0.0],
                 to: [3.0, 1.0, 0.0],
                 color: [0.0, 0.0, 1.0, 1.0],
+                width: 4.0,
             }],
         ));
 
-        assert_eq!(vertices.len(), 26);
+        assert_eq!(vertices.len(), 78);
         assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
         assert_eq!(vertices[0].color, [1.0, 0.0, 0.0, 1.0]);
-        assert_eq!(vertices[24].position, [2.0, 0.0, 0.0]);
-        assert_eq!(vertices[24].color, [0.0, 0.0, 1.0, 1.0]);
-        assert_eq!(vertices[25].position, [3.0, 1.0, 0.0]);
-        assert_eq!(vertices[25].color, [0.0, 0.0, 1.0, 1.0]);
+        assert_eq!(vertices[0].line_width, 2.5);
+        assert_eq!(vertices[72].position, [2.0, 0.0, 0.0]);
+        assert_eq!(vertices[72].color, [0.0, 0.0, 1.0, 1.0]);
+        assert_eq!(vertices[72].line_width, 4.0);
+        assert_eq!(vertices[74].position, [3.0, 1.0, 0.0]);
+        assert_eq!(vertices[74].color, [0.0, 0.0, 1.0, 1.0]);
     }
 
     #[test]
@@ -496,12 +592,14 @@ mod tests {
                     min: [0.0, 0.0, 0.0],
                     max: [1.0, 1.0, 1.0],
                     color: [1.0, 0.0, 0.0, 1.0],
+                    line_width: 1.0,
                     always_on_top: false,
                 },
                 SelectionColoredBox {
                     min: [2.0, 0.0, 0.0],
                     max: [3.0, 1.0, 1.0],
                     color: [0.0, 1.0, 0.0, 1.0],
+                    line_width: 1.0,
                     always_on_top: true,
                 },
             ],
@@ -509,15 +607,16 @@ mod tests {
                 from: [4.0, 0.0, 0.0],
                 to: [5.0, 0.0, 0.0],
                 color: [0.0, 0.0, 1.0, 1.0],
+                width: 1.0,
             }],
         );
 
         let vertices = selection_outline_vertices(&outline);
         let always_on_top_vertices = selection_outline_always_on_top_vertices(&outline);
-        assert_eq!(vertices.len(), 26);
+        assert_eq!(vertices.len(), 78);
         assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
-        assert_eq!(vertices[24].position, [4.0, 0.0, 0.0]);
-        assert_eq!(always_on_top_vertices.len(), 24);
+        assert_eq!(vertices[72].position, [4.0, 0.0, 0.0]);
+        assert_eq!(always_on_top_vertices.len(), 72);
         assert_eq!(always_on_top_vertices[0].position, [1.998, -0.002, -0.002]);
     }
 
@@ -534,13 +633,14 @@ mod tests {
                 }],
             ));
 
-        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices.len(), 18);
         assert_eq!(vertices[0].position, [0.98, 2.0, 3.0]);
-        assert_eq!(vertices[1].position, [1.02, 2.0, 3.0]);
-        assert_eq!(vertices[2].position, [1.0, 1.98, 3.0]);
-        assert_eq!(vertices[3].position, [1.0, 2.02, 3.0]);
-        assert_eq!(vertices[4].position, [1.0, 2.0, 2.98]);
-        assert_eq!(vertices[5].position, [1.0, 2.0, 3.02]);
+        assert_eq!(vertices[2].position, [1.02, 2.0, 3.0]);
+        assert_eq!(vertices[6].position, [1.0, 1.98, 3.0]);
+        assert_eq!(vertices[8].position, [1.0, 2.02, 3.0]);
+        assert_eq!(vertices[12].position, [1.0, 2.0, 2.98]);
+        assert_eq!(vertices[14].position, [1.0, 2.0, 3.02]);
         assert_eq!(vertices[0].color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(vertices[0].line_width, 2.0);
     }
 }
