@@ -361,6 +361,24 @@ impl CameraUniform {
         translation: [f32; 3],
         rotation: [f32; 4],
     ) -> Self {
+        Self::hud_picture_in_picture(
+            width,
+            height,
+            scale,
+            translation,
+            rotation,
+            LightingEntry::EntityInUi,
+        )
+    }
+
+    pub(crate) fn hud_picture_in_picture(
+        width: f32,
+        height: f32,
+        scale: f32,
+        translation: [f32; 3],
+        rotation: [f32; 4],
+        lighting: LightingEntry,
+    ) -> Self {
         let width = width.max(1.0);
         let height = height.max(1.0);
         let projection = Mat4::orthographic_rh(0.0, width, height, 0.0, -1000.0, 1000.0);
@@ -384,7 +402,7 @@ impl CameraUniform {
                 projection, model,
             )
             .to_cols_array_2d(),
-            ..Self::identity().with_lighting_entry(LightingEntry::EntityInUi)
+            ..Self::identity().with_lighting_entry(lighting)
         }
     }
 

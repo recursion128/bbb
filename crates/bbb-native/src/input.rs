@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
     ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, SignUpdate,
 };
-use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
+use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -176,6 +176,16 @@ struct SignEditorInputState {
     selection: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SignEditorHudState {
+    pub(crate) pos: BlockPos,
+    pub(crate) is_front_text: bool,
+    pub(crate) lines: [String; 4],
+    pub(crate) line: usize,
+    pub(crate) cursor: usize,
+    pub(crate) selection: usize,
+}
+
 impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
@@ -328,6 +338,30 @@ impl ClientInputState {
         self.sign_editor.is_some()
             || sign_editor_signature_from_world(world)
                 .is_some_and(|signature| Some(&signature) != self.dismissed_sign_editor.as_ref())
+    }
+
+    pub(crate) fn sign_editor_hud_state(&self, world: &WorldStore) -> Option<SignEditorHudState> {
+        let current_signature = sign_editor_signature_from_world(world);
+        if let Some(editor) = &self.sign_editor {
+            if current_signature.as_ref() == Some(&editor.signature) {
+                return Some(sign_editor_hud_state_from_editor(editor));
+            }
+        }
+
+        let signature = current_signature?;
+        if self.dismissed_sign_editor.as_ref() == Some(&signature) {
+            return None;
+        }
+        let lines = sign_editor_initial_lines(world);
+        let cursor = sign_line_char_len(&lines[0]);
+        Some(SignEditorHudState {
+            pos: world_block_pos_from_protocol(signature.pos),
+            is_front_text: signature.is_front_text,
+            lines,
+            line: 0,
+            cursor,
+            selection: cursor,
+        })
     }
 
     pub(crate) fn chat_entry_is_active(&self) -> bool {
@@ -1424,6 +1458,25 @@ fn sign_editor_initial_lines(world: &WorldStore) -> [String; 4] {
         .last_open_sign_editor()
         .and_then(|editor| world.sign_text_lines(editor.pos, editor.is_front_text))
         .unwrap_or_else(|| std::array::from_fn(|_| String::new()))
+}
+
+fn sign_editor_hud_state_from_editor(editor: &SignEditorInputState) -> SignEditorHudState {
+    SignEditorHudState {
+        pos: world_block_pos_from_protocol(editor.signature.pos),
+        is_front_text: editor.signature.is_front_text,
+        lines: editor.lines.clone(),
+        line: editor.line,
+        cursor: editor.cursor,
+        selection: editor.selection,
+    }
+}
+
+fn world_block_pos_from_protocol(pos: ProtocolBlockPos) -> BlockPos {
+    BlockPos {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+    }
 }
 
 fn submit_sign_editor(

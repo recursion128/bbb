@@ -2470,7 +2470,9 @@ When an agent does any of the following, update this file in the same slice:
   - Block destroy: close remaining destroy-speed and destroy-profile gaps
     outside the mechanically parsed `Blocks.java` declarations.
   - Commands: continue adding focused command queue and encode tests for
-    inventory, interaction, chat, command, and sign editing.
+    inventory, interaction, chat, command, and sign editing. Sign editing now
+    includes renderer presentation for the vanilla sign edit screen; clipboard
+    copy/cut/paste parity remains in the detailed ledger.
   - Inventory: implement remaining rich tooltip behavior (styled component
     runs — bold/colour/underline/strikethrough/shadow/italic-shear/obfuscated
     — now render live in tooltips and labels, see Vanilla Font Provider
@@ -2484,7 +2486,10 @@ When an agent does any of the following, update this file in the same slice:
     implementation covering the currently supported vanilla-shaped behavior:
     serverbound movement/physics projection, sprint/destroy-speed derivation
     from world-owned predicates, command-queue packet encoding, and
-    container/tooltip rendering for the local and opened containers.
+    container/tooltip rendering for the local and opened containers. Sign edit
+    renderer presentation now covers plain sign PIP previews, hanging-sign GUI
+    backgrounds, vanilla titles, line placement, cursor blink, and selection
+    overlays.
 - Detailed per-slice history: docs/unsupported/native-input-movement-interaction-inventory-and-command-flows.md
 
 ### Signed Chat And Chat Acknowledgement Production

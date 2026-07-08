@@ -1959,8 +1959,13 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let previews = match &self.hud_inventory_screen {
-            Some(screen) if !screen.entity_previews.is_empty() => screen.entity_previews.clone(),
+        let previews = match (&self.hud_sign_editor_screen, &self.hud_inventory_screen) {
+            (Some(screen), _) if screen.sign_preview.is_some() => {
+                vec![screen.sign_preview.clone().expect("checked sign preview")]
+            }
+            (_, Some(screen)) if !screen.entity_previews.is_empty() => {
+                screen.entity_previews.clone()
+            }
             _ => {
                 self.hud_entity_preview_pip_targets.clear();
                 return;

@@ -15,26 +15,31 @@
 //! [`CameraUniform::hud_entity_preview_pip`] camera, and the HUD pass blits the color texture
 //! through the HUD sprite pipeline in GUI submission order.
 
+use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt as _;
 
-use crate::camera::CameraUniform;
+use crate::camera::{CameraUniform, LightingEntry};
 use crate::frame_buffers::FrameDataBuffer;
 use crate::gpu::create_depth_target;
 use crate::hud::HudEntityPreview;
+use crate::item_models::GuiItemLightingEntry;
 use crate::Renderer;
 
 use super::catalog::{
-    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout,
-    EntityModelTextureAtlasLayout,
+    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
+    EntityModelTextureAtlasLayout, SignModelAttachment, SignModelWood,
 };
-use super::colored::entity_model_colored_runtime_mesh;
+use super::colored::{entity_model_colored_runtime_mesh, SIGN_RENDER_SCALE};
+use super::dispatch::{EntityModelSink, TexturedSink};
 use super::geometry::{
     EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
     EntityModelTexturedVertex, EntityModelVertex,
 };
 use super::instances::EntityModelInstance;
+use super::model_layers::SignModel;
 use super::textured::{
-    entity_model_textured_meshes_with_dynamic_textures_for_camera, EntityModelTexturedDrawAtlas,
+    entity_model_textured_meshes_with_dynamic_textures_for_camera, sign_textured_layer_passes,
+    EntityModelTexturedDrawAtlas, EntityModelTexturedMeshes,
 };
 
 pub(crate) const HUD_ENTITY_PREVIEW_PIP_PASS_LABEL: &str = "bbb-native-hud-entity-preview-pip-pass";
@@ -172,6 +177,30 @@ impl HudEntityPreviewPipGeometry {
 /// sort camera: the PIP target owns a private depth buffer, so buckets draw in vanilla
 /// render-type order (cutout family, then glint, then the translucent family) and depth testing
 /// resolves overlap exactly like the isolated vanilla PIP pass.
+pub(crate) fn bake_hud_preview_pip_geometry(
+    preview: &HudEntityPreview,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> HudEntityPreviewPipGeometry {
+    if preview.lighting == GuiItemLightingEntry::ItemsFlat {
+        if let EntityModelKind::Sign { wood, attachment } = preview.entity.kind {
+            return bake_hud_gui_sign_preview_pip_geometry(
+                &preview.entity,
+                wood,
+                attachment,
+                atlas,
+            );
+        }
+    }
+    bake_hud_entity_preview_pip_geometry(
+        &preview.entity,
+        atlas,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+    )
+}
+
 pub(crate) fn bake_hud_entity_preview_pip_geometry(
     instance: &EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -249,6 +278,43 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         instance,
     )));
     geometry
+}
+
+fn bake_hud_gui_sign_preview_pip_geometry(
+    instance: &EntityModelInstance,
+    wood: SignModelWood,
+    attachment: SignModelAttachment,
+    atlas: &EntityModelTextureAtlasLayout,
+) -> HudEntityPreviewPipGeometry {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    let scale = if attachment.is_hanging() {
+        1.0
+    } else {
+        SIGN_RENDER_SCALE
+    };
+    let transform = Mat4::from_scale(Vec3::new(scale, -scale, -scale));
+    let passes = sign_textured_layer_passes(wood, attachment);
+    let mut sink = TexturedSink {
+        meshes: &mut meshes,
+        atlas,
+        dynamic_player_skin_atlas: None,
+        dynamic_player_texture_atlas: None,
+    };
+    sink.model(SignModel::new(attachment), transform, instance, &passes);
+
+    let mut geometry = HudEntityPreviewPipGeometry::default();
+    use EntityModelTexturedDrawAtlas::Static;
+    use HudEntityPreviewPipPipeline::Cutout;
+    geometry.append_textured(Cutout, Static, meshes.cutout);
+    geometry
+}
+
+fn hud_preview_lighting_entry(lighting: GuiItemLightingEntry) -> LightingEntry {
+    match lighting {
+        GuiItemLightingEntry::ItemsFlat => LightingEntry::ItemsFlat,
+        GuiItemLightingEntry::Items3d => LightingEntry::Items3d,
+        GuiItemLightingEntry::EntityInUi => LightingEntry::EntityInUi,
+    }
 }
 
 /// Persistent GPU state for one GUI entity preview slot: the vanilla-private color + depth
@@ -411,21 +477,30 @@ impl Renderer {
         target: &mut HudEntityPreviewPipTarget,
         preview: &HudEntityPreview,
     ) -> (u64, u64) {
-        self.queue.write_buffer(
-            &target.camera_buffer,
-            0,
-            bytemuck::bytes_of(&CameraUniform::hud_entity_preview_pip(
+        let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
+            CameraUniform::hud_entity_preview_pip(
                 target.width as f32,
                 target.height as f32,
                 preview.scale,
                 preview.translation,
                 preview.rotation,
-            )),
-        );
+            )
+        } else {
+            CameraUniform::hud_picture_in_picture(
+                target.width as f32,
+                target.height as f32,
+                preview.scale,
+                preview.translation,
+                preview.rotation,
+                hud_preview_lighting_entry(preview.lighting),
+            )
+        };
+        self.queue
+            .write_buffer(&target.camera_buffer, 0, bytemuck::bytes_of(&camera));
 
         let geometry = self.entity_model_texture_atlas.as_ref().map(|atlas| {
-            bake_hud_entity_preview_pip_geometry(
-                &preview.entity,
+            bake_hud_preview_pip_geometry(
+                preview,
                 &atlas.layout,
                 self.entity_dynamic_player_skin_atlas
                     .as_ref()

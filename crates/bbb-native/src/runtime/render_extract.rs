@@ -9,8 +9,8 @@ use bbb_renderer::{
     BlockDestroyOverlay, EntityModelInstance, FirstPersonMapBackgroundSurface,
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
     HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudFoodEffect,
-    HudInventoryScreen, HudJumpBar, HudPlayerHealth, HudStyledTextRun, HudTitleText,
-    HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    HudInventoryScreen, HudJumpBar, HudPlayerHealth, HudSignEditorScreen, HudStyledTextRun,
+    HudTitleText, HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
     ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
     ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, SignTextSurface,
     WorldBorderRenderState,
@@ -790,6 +790,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
     pub(crate) hud_boss_bars: Vec<HudBossBar>,
@@ -858,6 +859,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
     renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
+    renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
     renderer.set_hud_boss_bars(frame.hud_boss_bars);

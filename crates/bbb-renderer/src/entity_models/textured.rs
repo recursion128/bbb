@@ -378,7 +378,7 @@ pub(super) struct EntityModelTexturedMeshes {
 }
 
 impl EntityModelTexturedMeshes {
-    fn new(sort_camera_position: Option<[f32; 3]>) -> Self {
+    pub(in crate::entity_models) fn new(sort_camera_position: Option<[f32; 3]>) -> Self {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),

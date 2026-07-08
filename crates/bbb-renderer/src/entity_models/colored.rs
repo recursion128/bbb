@@ -21,6 +21,7 @@ pub(super) use runtime::{
     quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
 };
 pub(crate) use transforms::sign_base_transformation;
+pub(in crate::entity_models) use transforms::SIGN_RENDER_SCALE;
 pub(super) use transforms::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
     bell_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,

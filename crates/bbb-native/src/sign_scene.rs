@@ -127,7 +127,7 @@ fn hud_runs_from_sign_line(line: &[bbb_protocol::StyledTextRun]) -> Vec<HudStyle
         .collect()
 }
 
-fn sign_model_wood(wood: WorldSignWoodKind) -> SignModelWood {
+pub(crate) fn sign_model_wood(wood: WorldSignWoodKind) -> SignModelWood {
     match wood {
         WorldSignWoodKind::Oak => SignModelWood::Oak,
         WorldSignWoodKind::Spruce => SignModelWood::Spruce,
@@ -144,7 +144,7 @@ fn sign_model_wood(wood: WorldSignWoodKind) -> SignModelWood {
     }
 }
 
-fn sign_model_attachment(attachment: WorldSignModelAttachment) -> SignModelAttachment {
+pub(crate) fn sign_model_attachment(attachment: WorldSignModelAttachment) -> SignModelAttachment {
     match attachment {
         WorldSignModelAttachment::Standing => SignModelAttachment::Standing,
         WorldSignModelAttachment::Wall => SignModelAttachment::Wall,

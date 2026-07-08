@@ -37,6 +37,8 @@ const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+const OAK_SIGN_ROTATION_0_BLOCK_STATE_ID: i32 = 5336;
+const BAMBOO_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID: i32 = 6612;
 const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
 
 /// A hover-name tooltip line: rarity colour run, italic when custom-named
@@ -752,8 +754,11 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(")
         .expect("pump should extract hotbar item icons");
+    let sign_editor_extract = source
+        .find("let hud_sign_editor_screen = hud_sign_editor_screen(input, world);")
+        .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
-        .find("let hud_inventory_screen = hud_inventory_screen_with_local_state(")
+        .find("hud_inventory_screen_with_local_state(")
         .expect("pump should extract inventory screen HUD state");
 
     for advance in [input_advance, destroy_advance, use_advance, using_item_tick] {
@@ -765,6 +770,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     for extraction in [
         selected_slot_extract,
         hotbar_icons_extract,
+        sign_editor_extract,
         inventory_screen_extract,
     ] {
         assert!(
@@ -3417,6 +3423,77 @@ fn sign_editor_open_releases_held_movement() {
         NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
     );
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn hud_sign_editor_screen_projects_standing_sign_preview() {
+    let input = ClientInputState::new(true);
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let pos = BlockPos { x: 1, y: 2, z: 3 };
+    set_lightmap_test_block(&mut world, pos, OAK_SIGN_ROTATION_0_BLOCK_STATE_ID);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        is_front_text: true,
+    });
+
+    let screen = hud_sign_editor_screen(&input, &world).expect("sign editor screen");
+    assert_eq!(screen.title, "Edit Sign Message");
+    assert_eq!(
+        screen.kind,
+        HudSignEditorKind::Standing {
+            wood: SignModelWood::Oak,
+            attachment: SignModelAttachment::Standing,
+        }
+    );
+    let preview = screen.sign_preview.expect("standing sign PIP preview");
+    assert_eq!(preview.lighting, GuiItemLightingEntry::ItemsFlat);
+    assert_eq!(preview.rect.width, 96);
+    assert_eq!(preview.rect.height, 102);
+    assert_eq!(screen.lines, std::array::from_fn(|_| String::new()));
+    assert_eq!(screen.cursor, 0);
+    assert_eq!(screen.selection, 0);
+}
+
+#[test]
+fn hud_sign_editor_screen_projects_hanging_sign_background_state() {
+    let input = ClientInputState::new(true);
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let pos = BlockPos { x: 1, y: 2, z: 3 };
+    set_lightmap_test_block(
+        &mut world,
+        pos,
+        BAMBOO_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID,
+    );
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        is_front_text: true,
+    });
+
+    let screen = hud_sign_editor_screen(&input, &world).expect("hanging sign editor screen");
+    assert_eq!(screen.title, "Edit Hanging Sign Message");
+    assert_eq!(
+        screen.kind,
+        HudSignEditorKind::Hanging {
+            wood: SignModelWood::Bamboo,
+        }
+    );
+    assert!(screen.sign_preview.is_none());
 }
 
 #[test]

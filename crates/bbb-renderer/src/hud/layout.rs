@@ -106,6 +106,15 @@ pub(super) fn centered_hud_rect(
     }
 }
 
+pub(super) fn absolute_hud_rect(x: f32, y: f32, width: u32, height: u32) -> HudRect {
+    HudRect {
+        x,
+        y,
+        width,
+        height,
+    }
+}
+
 pub(super) fn hotbar_hud_rect(surface_size: PhysicalSize<u32>, width: u32, height: u32) -> HudRect {
     let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;

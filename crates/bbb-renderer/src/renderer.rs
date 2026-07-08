@@ -507,6 +507,7 @@ pub struct Renderer {
     pub(super) hud_book_background: Option<HudSpriteGpu>,
     pub(super) hud_page_backward: Option<HudSpriteGpu>,
     pub(super) hud_page_forward: Option<HudSpriteGpu>,
+    pub(super) hud_hanging_sign_backgrounds: [Option<HudSpriteGpu>; 12],
     pub(super) hud_shulker_box_background: Option<HudSpriteGpu>,
     pub(super) hud_stonecutter_background: Option<HudSpriteGpu>,
     pub(super) hud_stonecutter_scroller: Option<HudSpriteGpu>,
@@ -527,6 +528,7 @@ pub struct Renderer {
     pub(super) hud_slot_highlight_back: Option<HudSpriteGpu>,
     pub(super) hud_slot_highlight_front: Option<HudSpriteGpu>,
     pub(super) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(super) hud_sign_editor_screen: Option<crate::hud::HudSignEditorScreen>,
     /// One persistent PIP target per sanitized `hud_inventory_screen` entity preview, indexed by
     /// preview order (vanilla `PictureInPictureRenderer` private color+depth textures).
     pub(super) hud_entity_preview_pip_targets: Vec<HudEntityPreviewPipTarget>,
@@ -1445,6 +1447,7 @@ impl Renderer {
             hud_book_background: None,
             hud_page_backward: None,
             hud_page_forward: None,
+            hud_hanging_sign_backgrounds: std::array::from_fn(|_| None),
             hud_shulker_box_background: None,
             hud_stonecutter_background: None,
             hud_stonecutter_scroller: None,
@@ -1465,6 +1468,7 @@ impl Renderer {
             hud_slot_highlight_back: None,
             hud_slot_highlight_front: None,
             hud_inventory_screen: None,
+            hud_sign_editor_screen: None,
             hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,
             hud_experience_progress: None,

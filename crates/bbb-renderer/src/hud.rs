@@ -1,7 +1,9 @@
 use anyhow::{bail, Result};
 use winit::dpi::PhysicalSize;
 
-use crate::entity_models::{EntityModelInstance, ENTITY_FULL_BRIGHT_LIGHT_COORDS};
+use crate::entity_models::{
+    EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+};
 use crate::item_models::{
     GuiItemLightingEntry, HudBlockItemModel, ItemModelFoil, ItemModelMeshSet,
     ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
@@ -16,7 +18,7 @@ pub(super) use self::gpu::{
     create_hud_sprite_gpu, HudSpriteGpu,
 };
 use self::layout::{
-    air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
+    absolute_hud_rect, air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
     experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
@@ -704,6 +706,30 @@ impl HudEntityPreview {
             None => Some(self.rect),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudSignEditorKind {
+    Standing {
+        wood: SignModelWood,
+        attachment: SignModelAttachment,
+    },
+    Hanging {
+        wood: SignModelWood,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudSignEditorScreen {
+    pub kind: HudSignEditorKind,
+    pub sign_preview: Option<HudEntityPreview>,
+    pub title: String,
+    pub lines: [String; 4],
+    pub line: usize,
+    pub cursor: usize,
+    pub selection: usize,
+    pub cursor_visible: bool,
+    pub text_tint: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1664,6 +1690,18 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_hanging_sign_background(
+        &mut self,
+        wood: SignModelWood,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_hanging_sign_backgrounds[sign_model_wood_index(wood)] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_shulker_box_background(
         &mut self,
         width: u32,
@@ -2223,6 +2261,10 @@ impl Renderer {
         self.hud_inventory_screen = screen.map(sanitize_hud_inventory_screen);
     }
 
+    pub fn set_hud_sign_editor_screen(&mut self, screen: Option<HudSignEditorScreen>) {
+        self.hud_sign_editor_screen = screen.and_then(sanitize_hud_sign_editor_screen);
+    }
+
     pub fn set_hud_action_bar_text(&mut self, action_bar: Option<HudActionBarText>) {
         self.hud_action_bar_text = action_bar.filter(|state| state.partial_tick.is_finite());
     }
@@ -2286,6 +2328,10 @@ impl Renderer {
 
     pub fn clear_hud_inventory_screen(&mut self) {
         self.hud_inventory_screen = None;
+    }
+
+    pub fn clear_hud_sign_editor_screen(&mut self) {
+        self.hud_sign_editor_screen = None;
     }
 
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
@@ -3019,6 +3065,23 @@ impl Renderer {
             );
         }
 
+        if let Some(screen) = &self.hud_sign_editor_screen {
+            push_hud_sign_editor_screen(
+                &mut vertices,
+                &mut commands,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+                !self.hud_entity_preview_pip_targets.is_empty(),
+                &self.hud_hanging_sign_backgrounds,
+            );
+        }
+
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
             push_hud_draw(
                 &mut vertices,
@@ -3661,6 +3724,298 @@ fn push_hud_inventory_text_labels<'a>(
             );
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_sign_editor_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudSignEditorScreen,
+    sign_pip_target_ready: bool,
+    hanging_sign_backgrounds: &'a [Option<HudSpriteGpu>; 12],
+) {
+    match screen.kind {
+        HudSignEditorKind::Standing { .. }
+            if screen.sign_preview.is_some() && sign_pip_target_ready =>
+        {
+            let start = vertices.len() as u32;
+            vertices.extend_from_slice(&hud_quad_vertices(
+                surface_size,
+                hud_sign_editor_standing_preview_rect(surface_size),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            ));
+            commands.push(HudDrawCommand::EntityPreviewBlit {
+                target_index: 0,
+                start,
+                end: vertices.len() as u32,
+            });
+        }
+        HudSignEditorKind::Hanging { wood } => {
+            if let Some(background) = hanging_sign_backgrounds[sign_model_wood_index(wood)].as_ref()
+            {
+                push_hud_draw(
+                    vertices,
+                    commands,
+                    background,
+                    surface_size,
+                    hud_sign_editor_hanging_background_rect(surface_size),
+                );
+            }
+        }
+        _ => {}
+    }
+
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    push_hud_sign_editor_title(
+        vertices,
+        post_gui_item_commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        &screen.title,
+    );
+    push_hud_sign_editor_lines(
+        vertices,
+        post_gui_item_commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        screen,
+    );
+}
+
+fn hud_sign_editor_standing_preview_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    let center_x = surface_size.width.max(1) as f32 * 0.5;
+    absolute_hud_rect(center_x - 48.0, 66.0, 96, 102)
+}
+
+fn hud_sign_editor_hanging_background_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    let center_x = surface_size.width.max(1) as f32 * 0.5;
+    absolute_hud_rect(center_x - 36.0, 30.5, 72, 72)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_sign_editor_title<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    title: &str,
+) {
+    let width = hud_plain_text_width(title, glyphs);
+    let origin = (
+        surface_size.width.max(1) as f32 * 0.5 - width as f32 * 0.5,
+        40.0,
+    );
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        title,
+        origin,
+        HUD_TINT_WHITE,
+        1.0,
+        true,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_sign_editor_lines<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudSignEditorScreen,
+) {
+    let (offset_y, scale, line_height) = match screen.kind {
+        HudSignEditorKind::Standing { .. } => (90.0, 0.976_562_8, 10.0),
+        HudSignEditorKind::Hanging { .. } => (125.0, 1.0, 9.0),
+    };
+    let center_x = surface_size.width.max(1) as f32 * 0.5;
+    let sign_midpoint = 4.0 * line_height * 0.5;
+
+    for (line_index, line) in screen.lines.iter().enumerate() {
+        let line_width = hud_plain_text_width(line, glyphs);
+        if line_width == 0 {
+            continue;
+        }
+        let line_y = line_index as f32 * line_height - sign_midpoint;
+        let origin = (
+            center_x - line_width as f32 * scale * 0.5,
+            offset_y + line_y * scale,
+        );
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            surface_size,
+            line,
+            origin,
+            screen.text_tint,
+            scale,
+            false,
+        );
+    }
+
+    let active_line = &screen.lines[screen.line];
+    let line_width = hud_plain_text_width(active_line, glyphs);
+    let selection_start = screen.cursor.min(screen.selection);
+    let selection_end = screen.cursor.max(screen.selection);
+    let cursor_prefix = hud_prefix_by_chars(active_line, screen.cursor);
+    let cursor_position = hud_plain_text_width(&cursor_prefix, glyphs) as f32;
+    let cursor_x = cursor_position - line_width as f32 * 0.5;
+    let cursor_y = screen.line as f32 * line_height - sign_midpoint;
+
+    if selection_start != selection_end {
+        let start_prefix = hud_prefix_by_chars(active_line, selection_start);
+        let end_prefix = hud_prefix_by_chars(active_line, selection_end);
+        let start_position = hud_plain_text_width(&start_prefix, glyphs) as f32;
+        let end_position = hud_plain_text_width(&end_prefix, glyphs) as f32;
+        let x = center_x + (start_position - line_width as f32 * 0.5) * scale;
+        let y = offset_y + cursor_y * scale;
+        let width = ((end_position - start_position) * scale).ceil().max(1.0) as u32;
+        let height = (line_height * scale).ceil().max(1.0) as u32;
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            absolute_hud_rect(x, y, width, height),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            [0.0, 0.0, 1.0, 1.0],
+        );
+    }
+
+    if !screen.cursor_visible {
+        return;
+    }
+    let cursor_origin = (center_x + cursor_x * scale, offset_y + cursor_y * scale);
+    if screen.cursor >= active_line.chars().count() {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            surface_size,
+            "_",
+            cursor_origin,
+            screen.text_tint,
+            scale,
+            false,
+        );
+    } else {
+        let height = ((line_height + 1.0) * scale).ceil().max(1.0) as u32;
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            absolute_hud_rect(cursor_origin.0, cursor_origin.1 - scale, 1, height),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            screen.text_tint,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_plain_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    origin: (f32, f32),
+    tint: [f32; 4],
+    scale: f32,
+    shadow: bool,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let runs = [HudStyledTextRun::plain(text.to_string())];
+    for (shadow_offset, is_shadow) in shadow
+        .then_some((1.0, true))
+        .into_iter()
+        .chain(std::iter::once((0.0, false)))
+    {
+        let geometry = hud_styled_text_pass_geometry(
+            &runs,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            origin,
+            shadow_offset,
+            is_shadow,
+            tint,
+            None,
+            scale,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
+}
+
+fn hud_plain_text_width(text: &str, glyphs: &HudFontGlyphMap) -> u32 {
+    hud_font_runs_width(&[HudStyledTextRun::plain(text.to_string())], glyphs).unwrap_or_default()
+}
+
+fn hud_prefix_by_chars(text: &str, char_count: usize) -> String {
+    text.chars().take(char_count).collect()
 }
 
 /// One centered HUD overlay text line resolved for this frame: the styled
@@ -4435,6 +4790,35 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
     }
 }
 
+fn sanitize_hud_sign_editor_screen(mut screen: HudSignEditorScreen) -> Option<HudSignEditorScreen> {
+    if !screen
+        .text_tint
+        .iter()
+        .all(|component| component.is_finite())
+    {
+        return None;
+    }
+    screen.title = sanitize_hud_text_preserving_empty(screen.title, 256);
+    if screen.title.is_empty() {
+        return None;
+    }
+    screen.lines = screen
+        .lines
+        .map(|line| sanitize_hud_text_preserving_empty(line, 384));
+    screen.line = screen.line.min(screen.lines.len().saturating_sub(1));
+    let line_len = screen.lines[screen.line].chars().count();
+    screen.cursor = screen.cursor.min(line_len);
+    screen.selection = screen.selection.min(line_len);
+    screen.text_tint = screen.text_tint.map(|component| component.clamp(0.0, 1.0));
+    screen.sign_preview = match screen.kind {
+        HudSignEditorKind::Standing { .. } => {
+            screen.sign_preview.and_then(sanitize_hud_entity_preview)
+        }
+        HudSignEditorKind::Hanging { .. } => None,
+    };
+    Some(screen)
+}
+
 fn sanitize_hud_inventory_background_layer(
     layer: HudInventoryBackgroundLayer,
 ) -> Option<HudInventoryBackgroundLayer> {
@@ -4466,6 +4850,23 @@ fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
     model.lighting == GuiItemLightingEntry::Items3d && !model.quads.is_empty()
 }
 
+fn sign_model_wood_index(wood: SignModelWood) -> usize {
+    match wood {
+        SignModelWood::Oak => 0,
+        SignModelWood::Spruce => 1,
+        SignModelWood::Birch => 2,
+        SignModelWood::Acacia => 3,
+        SignModelWood::Cherry => 4,
+        SignModelWood::Jungle => 5,
+        SignModelWood::DarkOak => 6,
+        SignModelWood::PaleOak => 7,
+        SignModelWood::Crimson => 8,
+        SignModelWood::Warped => 9,
+        SignModelWood::Mangrove => 10,
+        SignModelWood::Bamboo => 11,
+    }
+}
+
 /// The PIP-texture sub-rect (as `0..1` UV fractions of the preview rect) a scissored blit
 /// samples: `visible == rect ∩ scissor` maps to the matching texture region, identity UVs when
 /// no scissor applies. Vanilla scissors the full-rect blit instead; for an axis-aligned scissor
@@ -4491,7 +4892,10 @@ fn hud_entity_preview_blit_uv(
 }
 
 fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntityPreview> {
-    if preview.lighting != GuiItemLightingEntry::EntityInUi || !preview.depth_isolated {
+    let is_gui_sign_preview = is_gui_sign_preview(&preview);
+    if (!is_gui_sign_preview && preview.lighting != GuiItemLightingEntry::EntityInUi)
+        || !preview.depth_isolated
+    {
         return None;
     }
     preview.rect = sanitize_hud_entity_preview_rect(preview.rect)?;
@@ -4530,6 +4934,14 @@ fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntit
         layer.overlay = ITEM_MODEL_NO_OVERLAY;
     }
     Some(preview)
+}
+
+fn is_gui_sign_preview(preview: &HudEntityPreview) -> bool {
+    preview.lighting == GuiItemLightingEntry::ItemsFlat
+        && matches!(
+            preview.entity.kind,
+            crate::entity_models::EntityModelKind::Sign { .. }
+        )
 }
 
 fn sanitize_hud_entity_preview_rect(rect: HudEntityPreviewRect) -> Option<HudEntityPreviewRect> {
@@ -4619,6 +5031,13 @@ fn sanitize_hud_text_line(line: String) -> Option<String> {
         .take(256)
         .collect::<String>();
     (!line.is_empty()).then_some(line)
+}
+
+fn sanitize_hud_text_preserving_empty(line: String, limit: usize) -> String {
+    line.chars()
+        .filter(|ch| !ch.is_control())
+        .take(limit)
+        .collect()
 }
 
 /// Sanitizes a line's styled runs under the same rules as
@@ -7580,6 +7999,115 @@ mod tests {
             ]));
 
         assert!(screen.entity_previews.is_empty());
+    }
+
+    #[test]
+    fn sanitize_entity_preview_allows_items_flat_only_for_gui_signs() {
+        let base = hud_entity_preview_for_test();
+        assert!(sanitize_hud_entity_preview(HudEntityPreview {
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            ..base.clone()
+        })
+        .is_none());
+
+        let gui_sign = HudEntityPreview {
+            entity: EntityModelInstance::sign(
+                -1,
+                [0.0, 0.0, 0.0],
+                0.0,
+                SignModelWood::Oak,
+                SignModelAttachment::Standing,
+            ),
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: 96,
+                height: 102,
+            },
+            scissor: None,
+            translation: [0.0, 0.0, 0.0],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 62.500_004,
+            depth_isolated: true,
+            item_layers: Vec::new(),
+        };
+        let sanitized = sanitize_hud_entity_preview(gui_sign).expect("gui sign preview");
+        assert_eq!(sanitized.lighting, GuiItemLightingEntry::ItemsFlat);
+        assert_eq!(
+            sanitized.entity.render_state.light_coords,
+            ENTITY_FULL_BRIGHT_LIGHT_COORDS
+        );
+    }
+
+    #[test]
+    fn sanitize_sign_editor_screen_clamps_text_state_and_drops_hanging_preview() {
+        let sign_preview = HudEntityPreview {
+            entity: EntityModelInstance::sign(
+                -1,
+                [0.0, 0.0, 0.0],
+                0.0,
+                SignModelWood::Oak,
+                SignModelAttachment::Standing,
+            ),
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: 96,
+                height: 102,
+            },
+            scissor: None,
+            translation: [0.0, 0.0, 0.0],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 62.500_004,
+            depth_isolated: true,
+            item_layers: Vec::new(),
+        };
+        let standing = sanitize_hud_sign_editor_screen(HudSignEditorScreen {
+            kind: HudSignEditorKind::Standing {
+                wood: SignModelWood::Oak,
+                attachment: SignModelAttachment::Standing,
+            },
+            sign_preview: Some(sign_preview.clone()),
+            title: "Edit Sign Message".to_string(),
+            lines: [
+                String::new(),
+                "front".to_string(),
+                "third".to_string(),
+                "fourth".to_string(),
+            ],
+            line: 7,
+            cursor: 99,
+            selection: 98,
+            cursor_visible: true,
+            text_tint: [2.0, 0.5, -1.0, 1.5],
+        })
+        .expect("standing sign editor");
+        assert_eq!(standing.line, 3);
+        assert_eq!(standing.cursor, "fourth".chars().count());
+        assert_eq!(standing.selection, "fourth".chars().count());
+        assert_eq!(standing.lines[0], "");
+        assert_eq!(standing.text_tint, [1.0, 0.5, 0.0, 1.0]);
+        assert!(standing.sign_preview.is_some());
+
+        let hanging = sanitize_hud_sign_editor_screen(HudSignEditorScreen {
+            kind: HudSignEditorKind::Hanging {
+                wood: SignModelWood::Bamboo,
+            },
+            sign_preview: Some(sign_preview),
+            title: "Edit Hanging Sign Message".to_string(),
+            lines: std::array::from_fn(|_| String::new()),
+            line: 0,
+            cursor: 0,
+            selection: 0,
+            cursor_visible: true,
+            text_tint: [1.0, 1.0, 1.0, 1.0],
+        })
+        .expect("hanging sign editor");
+        assert!(hanging.sign_preview.is_none());
     }
 
     #[test]

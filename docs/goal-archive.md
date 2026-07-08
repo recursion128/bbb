@@ -1716,6 +1716,21 @@
   归档在下方 P1-4 段 entity-in-UI 小节（`entity_preview_pip_passes` step +
   per-preview 隔离 PIP target + GUI-ortho 实体绘制 + HUD blit + headless
   readback）。
+- [x] vanilla sign edit screen renderer presentation（P2 HUD slice，
+  2026-07-08）：native 从已有 sign editor input state 投影
+  `HudSignEditorScreen`，普通 sign 按 block state wood/form 生成 flat-light
+  GUI sign PIP preview（96x102，`Lighting.Entry.ITEMS_FLAT`，复用
+  `SignModel` / `sign_textured_layer_passes`，无 world block-entity root
+  transform），hanging sign 加载并绘制
+  `textures/gui/hanging_signs/<wood>.png` 背景。HUD 使用 vanilla
+  `sign.edit` / `hanging_sign.edit` 英文标题、普通/hanging 文本中心 y
+  （90/125）、line height（10/9）、普通 sign text scale `0.9765628`、
+  300ms 光标闪烁、插入/尾部 `_` 光标和 selection overlay；text tint 复用
+  `sign_text_base_color` 的 glowing / darkened dye 规则。RendererFrame
+  单次提交新增 `hud_sign_editor_screen`，sign screen 打开时 suppress
+  inventory screen。测试覆盖 renderer sanitizer（仅 `ItemsFlat + Sign`
+  允许进入 sign GUI PIP、hanging screen 丢弃 PIP）和 native runtime
+  projection（oak standing sign / bamboo hanging sign）。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

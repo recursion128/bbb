@@ -49,7 +49,6 @@
       - command
       - sign editing
     - Sign editing follow-up work:
-      - renderer presentation for the vanilla sign edit screen
       - clipboard parity for copy/cut/paste editing
     - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
       semantics:
@@ -528,6 +527,14 @@
       - cycle lines with vanilla-shaped up/down/confirmation keys
       - close by queueing `ServerboundSignUpdatePacket`
       - release cursor capture and suppress gameplay mouse input while open
+      - render the vanilla sign edit screen presentation:
+        - centered `sign.edit` / `hanging_sign.edit` title text
+        - plain sign GUI PIP model at vanilla 96x102 bounds with flat item
+          lighting
+        - hanging-sign GUI background texture from
+          `textures/gui/hanging_signs/<wood>.png`
+        - four-line editor text, cursor blink, and selection/cursor overlays
+          using vanilla line heights and screen offsets
   - Inventory:
     - Native opens the ordinary local inventory as container `0`.
     - While the local inventory is open, it:

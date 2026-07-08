@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
-use bbb_renderer::{HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling};
+use bbb_renderer::{
+    HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling, SignModelWood,
+};
 
 use bbb_item_model::font::{
     hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
@@ -563,6 +565,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         page_forward.height,
         &page_forward.rgba,
     )?;
+    load_hanging_sign_backgrounds(renderer, roots)?;
     let shulker_box = gui_texture(
         roots,
         "textures/gui/container/shulker_box.png",
@@ -894,6 +897,39 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     );
     Ok(())
 }
+
+fn load_hanging_sign_backgrounds(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    for (wood, name) in HANGING_SIGN_BACKGROUNDS {
+        let path = format!("textures/gui/hanging_signs/{name}.png");
+        let id = format!("minecraft:textures/gui/hanging_signs/{name}");
+        let texture = gui_texture(roots, &path, &id)?;
+        renderer.upload_hud_hanging_sign_background(
+            *wood,
+            texture.width,
+            texture.height,
+            &texture.rgba,
+        )?;
+    }
+    Ok(())
+}
+
+const HANGING_SIGN_BACKGROUNDS: &[(SignModelWood, &str)] = &[
+    (SignModelWood::Oak, "oak"),
+    (SignModelWood::Spruce, "spruce"),
+    (SignModelWood::Birch, "birch"),
+    (SignModelWood::Acacia, "acacia"),
+    (SignModelWood::Cherry, "cherry"),
+    (SignModelWood::Jungle, "jungle"),
+    (SignModelWood::DarkOak, "dark_oak"),
+    (SignModelWood::PaleOak, "pale_oak"),
+    (SignModelWood::Crimson, "crimson"),
+    (SignModelWood::Warped, "warped"),
+    (SignModelWood::Mangrove, "mangrove"),
+    (SignModelWood::Bamboo, "bamboo"),
+];
 
 fn load_gui_sprites(roots: &PackRoots) -> Result<HashMap<String, SpriteImage>> {
     Ok(roots

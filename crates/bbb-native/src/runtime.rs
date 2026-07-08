@@ -17,31 +17,33 @@ use bbb_protocol::{
     },
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
-    FogEnvironment, GuiItemLightingEntry, HudAirSupply, HudBlockItemModel, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPlayerHealth, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
+    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAirSupply,
+    HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
+    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    BlockPos, BookScreenState, ContainerState, EvokerFangsCritParticleState,
-    FireworkRocketTrailParticleState, ItemEquipmentSlot, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, SoundEventState, SoundHolderState,
-    TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo,
-    WorldStore, WorldWeatherState,
+    sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
+    EvokerFangsCritParticleState, FireworkRocketTrailParticleState, ItemEquipmentSlot,
+    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
+    MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
+    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -84,7 +86,7 @@ use crate::{
         SMOKE_PARTICLE_TYPE_ID,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
-    sign_scene::sign_scene_from_world,
+    sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
     skull_scene::skull_model_instances_from_world_at_partial_tick,
     spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
     terrain_runtime::{
@@ -1677,25 +1679,30 @@ pub(crate) fn pump_network_and_terrain(
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
-    let hud_inventory_screen = hud_inventory_screen_with_local_state(
-        world,
-        item_runtime,
-        terrain_textures,
-        input.inventory_hovered_slot(),
-        InventoryHudLocalState {
-            stonecutter_recipe_scroll_row: Some(input.stonecutter_recipe_scroll_row()),
-            beacon_effect_selection: Some(input.beacon_effect_selection()),
-            loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
-            loom_selected_pattern_index: input.loom_selected_pattern_index(),
-            anvil_rename_text: Some(input.anvil_rename_text().to_string()),
-            cursor_position: input.inventory_cursor_position(),
-            quick_craft_button_num: input.inventory_quick_craft_button_num(),
-            quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
-            shift_down: input.shift_down(),
-            keybind_context: item_model_keybind_context,
-        },
-        entity_partial_tick,
-    );
+    let hud_sign_editor_screen = hud_sign_editor_screen(input, world);
+    let hud_inventory_screen = if hud_sign_editor_screen.is_some() {
+        None
+    } else {
+        hud_inventory_screen_with_local_state(
+            world,
+            item_runtime,
+            terrain_textures,
+            input.inventory_hovered_slot(),
+            InventoryHudLocalState {
+                stonecutter_recipe_scroll_row: Some(input.stonecutter_recipe_scroll_row()),
+                beacon_effect_selection: Some(input.beacon_effect_selection()),
+                loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
+                loom_selected_pattern_index: input.loom_selected_pattern_index(),
+                anvil_rename_text: Some(input.anvil_rename_text().to_string()),
+                cursor_position: input.inventory_cursor_position(),
+                quick_craft_button_num: input.inventory_quick_craft_button_num(),
+                quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
+                shift_down: input.shift_down(),
+                keybind_context: item_model_keybind_context,
+            },
+            entity_partial_tick,
+        )
+    };
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
     // `gameRenderer.tick`, and `level.tickEntities`; these projections read the post-tick snapshot.
     // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
@@ -1943,6 +1950,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,
             hud_inventory_screen,
+            hud_sign_editor_screen,
             hud_action_bar_text,
             hud_title_text,
             hud_boss_bars,
@@ -2441,6 +2449,101 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_dialog().is_some()
         || world.current_book().is_some()
         || input.sign_editor_is_active_or_pending(world)
+}
+
+fn hud_sign_editor_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+) -> Option<HudSignEditorScreen> {
+    let state = input.sign_editor_hud_state(world)?;
+    let kind = hud_sign_editor_kind(world, state.pos);
+    let title = match kind {
+        HudSignEditorKind::Hanging { .. } => "Edit Hanging Sign Message",
+        HudSignEditorKind::Standing { .. } => "Edit Sign Message",
+    }
+    .to_string();
+    Some(HudSignEditorScreen {
+        kind,
+        sign_preview: hud_sign_editor_preview(kind),
+        title,
+        lines: state.lines,
+        line: state.line,
+        cursor: state.cursor,
+        selection: state.selection,
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
+        text_tint: hud_sign_editor_text_tint(world, state.pos, state.is_front_text),
+    })
+}
+
+fn hud_sign_editor_kind(world: &WorldStore, pos: BlockPos) -> HudSignEditorKind {
+    let Some((wood, form)) = world
+        .probe_block(pos)
+        .and_then(|probe| probe.block_name)
+        .and_then(|name| sign_wood_and_form_for_block_name(&name))
+    else {
+        return HudSignEditorKind::Standing {
+            wood: SignModelWood::Oak,
+            attachment: SignModelAttachment::Standing,
+        };
+    };
+    let wood = sign_model_wood(wood);
+    match form {
+        SignBlockForm::Standing => HudSignEditorKind::Standing {
+            wood,
+            attachment: sign_model_attachment(bbb_world::SignModelAttachment::Standing),
+        },
+        SignBlockForm::Wall => HudSignEditorKind::Standing {
+            wood,
+            attachment: sign_model_attachment(bbb_world::SignModelAttachment::Wall),
+        },
+        SignBlockForm::HangingCeiling | SignBlockForm::HangingWall => {
+            HudSignEditorKind::Hanging { wood }
+        }
+    }
+}
+
+fn hud_sign_editor_preview(kind: HudSignEditorKind) -> Option<HudEntityPreview> {
+    const ENTITY_ID: i32 = -1;
+    const WIDTH: u32 = 96;
+    const HEIGHT: u32 = 102;
+    const SIGN_SCALE: f32 = 62.500_004;
+
+    let HudSignEditorKind::Standing { wood, attachment } = kind else {
+        return None;
+    };
+    let mut entity = EntityModelInstance::sign(ENTITY_ID, [0.0, 0.0, 0.0], 0.0, wood, attachment)
+        .with_light_coords(ENTITY_FULL_BRIGHT_LIGHT_COORDS);
+    entity.render_state.outline_color = 0;
+    entity.render_state.appears_glowing = false;
+    Some(HudEntityPreview {
+        entity,
+        lighting: GuiItemLightingEntry::ItemsFlat,
+        rect: HudEntityPreviewRect {
+            x: 0,
+            y: 0,
+            width: WIDTH,
+            height: HEIGHT,
+        },
+        scissor: None,
+        translation: [0.0, HEIGHT as f32 / (2.0 * SIGN_SCALE) - 0.75, 0.0],
+        rotation: [0.0, 0.0, 0.0, 1.0],
+        override_camera_rotation: None,
+        scale: SIGN_SCALE,
+        depth_isolated: true,
+        item_layers: Vec::new(),
+    })
+}
+
+fn hud_sign_editor_text_tint(world: &WorldStore, pos: BlockPos, is_front_text: bool) -> [f32; 4] {
+    let color = world
+        .sign_text_state_at(pos)
+        .map(|text| {
+            let side = text.side(is_front_text);
+            sign_text_base_color(side.color.text_color(), side.has_glowing_text)
+        })
+        .unwrap_or_default();
+    let [red, green, blue] = rgb24(color as i32);
+    [red, green, blue, 1.0]
 }
 
 /// Test helper: the inventory screen with default local state and no resident terrain atlas (so block
