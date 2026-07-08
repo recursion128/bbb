@@ -24,25 +24,25 @@ use bbb_renderer::{
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudDebugFrameTimeChart, HudDebugOverlay, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryItemScissor, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
-    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox, SelectionOutline,
-    SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugOverlay, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
+    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
@@ -2835,6 +2835,7 @@ fn hud_debug_overlay(
     if let Some(tps_line) = hud_debug_tps_line(world) {
         left_lines.push(tps_line);
     }
+    let debug_crosshair = camera_pose.map(hud_debug_crosshair);
     if let Some(camera_pose) = camera_pose {
         left_lines.push("".to_string());
         left_lines.extend(hud_debug_position_lines(world, camera_pose));
@@ -2869,6 +2870,7 @@ fn hud_debug_overlay(
     Some(HudDebugOverlay {
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
+        debug_crosshair,
         fps_chart: input
             .debug_fps_charts_visible()
             .then(|| HudDebugFrameTimeChart {
@@ -2876,6 +2878,14 @@ fn hud_debug_overlay(
             }),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
+}
+
+fn hud_debug_crosshair(camera_pose: CameraPose) -> HudDebugCrosshair {
+    HudDebugCrosshair {
+        x_rot_degrees: camera_pose.x_rot,
+        y_rot_degrees: camera_pose.y_rot,
+        gui_scale: 1,
+    }
 }
 
 fn debug_entity_scene_outline(

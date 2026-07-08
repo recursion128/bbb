@@ -5338,6 +5338,18 @@
   在 item/entity line target pass 提交。边界：vanilla colors、line widths、
   `alwaysOnTop`、3x3 neighbor boundary lattice、thin 2-block grid lines、
   horizontal 2/8/16-step rings、以及专用 debug gizmo pipeline 仍未实现。
+- [x] debug overlay 3D crosshair rendering（P2 HUD/runtime/renderer slice，
+  2026-07-08）：依据 `DebugScreenEntries.THREE_DIMENSIONAL_CROSSHAIR` 默认
+  profile、`Gui.extractCrosshair` 对普通 2D crosshair 的 suppress 规则，以及
+  `DebugScreenOverlay.render3dCrosshair` 的 `translate(0,0,-1)`、camera
+  pitch/yaw rotation、`scale(-0.01 * guiScale, 0.01 * guiScale, -0.01 * guiScale)`
+  和黑色 4px / 彩色 2px axis draw 顺序。native 现在在 F3 overlay 可见且有
+  camera pose 时投影 `HudDebugCrosshair`，renderer 在存在该状态时跳过普通
+  HUD crosshair，并用 HUD white-pixel quad 画 X/Y/Z 轴（black underlay →
+  red/green/blue axis），轴长按 bbb 当前 70° perspective camera 和 guiScale 1
+  推导。边界：这轮是 HUD-rasterized proxy；vanilla `RenderPipelines.LINES` /
+  `LINES_DEPTH_BIAS` 的独立 GPU pass、depth texture 交互、以及非 1 guiScale
+  plumbing 仍待后续 parity。
 - [x] debug overlay F3+2 FPS chart rendering（P2 HUD/runtime/renderer slice，
   2026-07-08）：依据 `DebugScreenOverlay.showFpsCharts`、`FpsDebugChart`、
   `AbstractDebugChart` 和 `LocalSampleLogger.CAPACITY = 240`：FPS chart 位于

@@ -1102,13 +1102,26 @@ When an agent does any of the following, update this file in the same slice:
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
     hitbox outline rendering, F3+G chunk section-stack outline rendering, and
-    F3+2 FPS chart rendering: the complete vanilla debug entry list, actual
-    TPS/network chart rendering, actual entity hitbox details/chunk-border full
-    gizmo grid, advanced tooltip full parity, actual dynamic texture dump
-    execution, F3+I recreate command generation, 3D crosshair, profiling metrics
+    F3+2 FPS chart rendering, and 3D crosshair rendering: the complete vanilla
+    debug entry list, actual TPS/network chart rendering, actual entity hitbox
+    details/chunk-border full gizmo grid, advanced tooltip full parity, actual
+    dynamic texture dump execution, F3+I recreate command generation, profiling metrics
     recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
     and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay 3D crosshair rendering. Vanilla anchors:
+    `DebugScreenEntries` enables `THREE_DIMENSIONAL_CROSSHAIR` in the default
+    profile, `Gui.extractCrosshair` suppresses the ordinary 2D crosshair while
+    that entry is enabled, and `DebugScreenOverlay.render3dCrosshair` translates
+    to z=-1, rotates by camera pitch/yaw, scales by `0.01 * guiScale`, then
+    draws black 4px X/Y/Z axes followed by red/green/blue 2px axes. bbb now
+    projects camera pitch/yaw into `HudDebugCrosshair`, suppresses the ordinary
+    HUD crosshair while the debug crosshair is present, and renders the axes as
+    HUD white-pixel quads with the same color/width ordering and 70-degree
+    perspective scale at guiScale 1. Boundary: this is a HUD-rasterized proxy;
+    the exact vanilla `RenderPipelines.LINES` / `LINES_DEPTH_BIAS` GPU pass,
+    depth texture interaction, and non-1 guiScale plumbing remain future
+    renderer parity work.
   - Done 2026-07-08 — Debug overlay F3+2 FPS chart rendering. Vanilla anchors:
     `DebugScreenOverlay.showFpsCharts` extracts `FpsDebugChart` at the bottom
     left with width `min(LocalSampleLogger.CAPACITY + 2, guiWidth / 2)`, and

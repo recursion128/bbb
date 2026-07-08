@@ -103,12 +103,22 @@ pub struct HudTitleText {
 /// resolves enabled entries into left/right line lists, then draws each
 /// non-empty line with a translucent black backdrop at 2px margins and 9px
 /// row stride.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct HudDebugOverlay {
     pub left_lines: Vec<String>,
     pub right_lines: Vec<String>,
+    pub debug_crosshair: Option<HudDebugCrosshair>,
     pub fps_chart: Option<HudDebugFrameTimeChart>,
     pub show_lightmap_preview: bool,
+}
+
+/// Vanilla `DebugScreenEntries.THREE_DIMENSIONAL_CROSSHAIR`: a camera-relative
+/// 3-axis debug gizmo rendered at the screen center while the entry is enabled.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct HudDebugCrosshair {
+    pub x_rot_degrees: f32,
+    pub y_rot_degrees: f32,
+    pub gui_scale: u32,
 }
 
 /// Vanilla `FpsDebugChart` sample stream: frame durations in nanoseconds,
@@ -372,6 +382,12 @@ const HUD_DEBUG_FPS_CHART_TOP_VALUE_MS: f64 = 33.333333333333336;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE: u32 = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN: i32 = 2;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER: i32 = 1;
+const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
+const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
+const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
+const HUD_DEBUG_CROSSHAIR_AXIS_WIDTH: f32 = 2.0;
+const HUD_DEBUG_CROSSHAIR_OUTLINE_ARGB: u32 = 0xFF000000;
+const HUD_DEBUG_CROSSHAIR_AXIS_ARGB: [u32; 3] = [0xFFFF0000, 0xFF00FF00, 0xFF7F7FFF];
 
 /// Which food icon a draw needs, so `hud_food_variant_sprite` can pick the base
 /// or the Hunger-effect variant of that shape.
@@ -3185,8 +3201,20 @@ impl Renderer {
         let mut commands = Vec::new();
         let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
+        let debug_crosshair = self
+            .hud_debug_overlay
+            .as_ref()
+            .and_then(|overlay| overlay.debug_crosshair);
 
-        if let Some(crosshair) = &self.hud_crosshair {
+        if let Some(debug_crosshair) = debug_crosshair {
+            push_hud_debug_crosshair(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                surface_size,
+                debug_crosshair,
+            );
+        } else if let Some(crosshair) = &self.hud_crosshair {
             push_hud_draw(
                 &mut vertices,
                 &mut commands,
@@ -5978,6 +6006,148 @@ fn push_hud_screen_text_draw<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn push_hud_debug_crosshair<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    crosshair: HudDebugCrosshair,
+) {
+    let center = [
+        surface_size.width.max(1) as f32 * 0.5,
+        surface_size.height.max(1) as f32 * 0.5,
+    ];
+    let length = hud_debug_crosshair_axis_length(surface_size, crosshair);
+    let endpoints = hud_debug_crosshair_axis_endpoints(surface_size, crosshair);
+    if length <= f32::EPSILON {
+        return;
+    }
+
+    for endpoint in endpoints {
+        push_hud_debug_crosshair_line(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            center,
+            endpoint,
+            HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH,
+            hud_argb_to_tint(HUD_DEBUG_CROSSHAIR_OUTLINE_ARGB),
+        );
+    }
+    for (axis_index, endpoint) in endpoints.into_iter().enumerate() {
+        push_hud_debug_crosshair_line(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            center,
+            endpoint,
+            HUD_DEBUG_CROSSHAIR_AXIS_WIDTH,
+            hud_argb_to_tint(HUD_DEBUG_CROSSHAIR_AXIS_ARGB[axis_index]),
+        );
+    }
+}
+
+fn push_hud_debug_crosshair_line<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    start: [f32; 2],
+    end: [f32; 2],
+    width: f32,
+    tint: [f32; 4],
+) {
+    let Some(corners) = hud_debug_crosshair_line_corners(start, end, width) else {
+        return;
+    };
+    let vertex_start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_styled_quad_vertices(
+        surface_size,
+        corners,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        tint,
+    ));
+    let vertex_end = vertices.len() as u32;
+    commands.push(HudDrawCommand::Sprite {
+        sprite: white_pixel,
+        start: vertex_start,
+        end: vertex_end,
+    });
+}
+
+fn hud_debug_crosshair_axis_endpoints(
+    surface_size: PhysicalSize<u32>,
+    crosshair: HudDebugCrosshair,
+) -> [[f32; 2]; 3] {
+    let center = [
+        surface_size.width.max(1) as f32 * 0.5,
+        surface_size.height.max(1) as f32 * 0.5,
+    ];
+    let length = hud_debug_crosshair_axis_length(surface_size, crosshair);
+    hud_debug_crosshair_axis_vectors(crosshair).map(|vector| {
+        [
+            center[0] + vector[0] * length,
+            center[1] + vector[1] * length,
+        ]
+    })
+}
+
+fn hud_debug_crosshair_axis_vectors(crosshair: HudDebugCrosshair) -> [[f32; 2]; 3] {
+    let rotation = glam::Quat::from_rotation_x(crosshair.x_rot_degrees.to_radians())
+        * glam::Quat::from_rotation_y(crosshair.y_rot_degrees.to_radians());
+    [glam::Vec3::X, glam::Vec3::Y, glam::Vec3::Z].map(|axis| {
+        let scaled = glam::Vec3::new(-axis.x, axis.y, -axis.z);
+        let rotated = rotation * scaled;
+        [rotated.x, -rotated.y]
+    })
+}
+
+fn hud_debug_crosshair_axis_length(
+    surface_size: PhysicalSize<u32>,
+    crosshair: HudDebugCrosshair,
+) -> f32 {
+    let gui_scale = crosshair.gui_scale.max(1) as f32;
+    let half_height = surface_size.height.max(1) as f32 * 0.5;
+    let cot_half_fov = 1.0 / (HUD_DEBUG_CROSSHAIR_FOV_DEGREES.to_radians() * 0.5).tan();
+    HUD_DEBUG_CROSSHAIR_SCALE * gui_scale * cot_half_fov * half_height
+}
+
+fn hud_debug_crosshair_line_corners(
+    start: [f32; 2],
+    end: [f32; 2],
+    width: f32,
+) -> Option<[[f32; 2]; 4]> {
+    if !start
+        .iter()
+        .chain(end.iter())
+        .all(|coordinate| coordinate.is_finite())
+        || !width.is_finite()
+        || width <= 0.0
+    {
+        return None;
+    }
+    let dx = end[0] - start[0];
+    let dy = end[1] - start[1];
+    let length = dx.hypot(dy);
+    if length <= f32::EPSILON {
+        return None;
+    }
+    let half_width = width * 0.5;
+    let normal = [-dy / length * half_width, dx / length * half_width];
+    Some([
+        [start[0] + normal[0], start[1] + normal[1]],
+        [start[0] - normal[0], start[1] - normal[1]],
+        [end[0] - normal[0], end[1] - normal[1]],
+        [end[0] + normal[0], end[1] + normal[1]],
+    ])
+}
+
+#[allow(clippy::too_many_arguments)]
 fn push_hud_debug_overlay<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -7362,17 +7532,31 @@ fn sanitize_hud_inventory_tooltip_line(
 fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverlay> {
     let left_lines = sanitize_hud_debug_overlay_lines(overlay.left_lines);
     let right_lines = sanitize_hud_debug_overlay_lines(overlay.right_lines);
+    let debug_crosshair = overlay
+        .debug_crosshair
+        .and_then(sanitize_hud_debug_crosshair);
     let fps_chart = overlay.fps_chart.map(sanitize_hud_debug_fps_chart);
     (!left_lines.is_empty()
         || !right_lines.is_empty()
+        || debug_crosshair.is_some()
         || fps_chart.is_some()
         || overlay.show_lightmap_preview)
         .then_some(HudDebugOverlay {
             left_lines,
             right_lines,
+            debug_crosshair,
             fps_chart,
             show_lightmap_preview: overlay.show_lightmap_preview,
         })
+}
+
+fn sanitize_hud_debug_crosshair(crosshair: HudDebugCrosshair) -> Option<HudDebugCrosshair> {
+    (crosshair.x_rot_degrees.is_finite() && crosshair.y_rot_degrees.is_finite()).then_some(
+        HudDebugCrosshair {
+            gui_scale: crosshair.gui_scale.max(1),
+            ..crosshair
+        },
+    )
 }
 
 fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFrameTimeChart {
@@ -7501,6 +7685,12 @@ fn sanitize_hud_item_cooldown_progress(progress: Option<f32>) -> Option<f32> {
 mod tests {
     use super::*;
     use bbb_render_types::{HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET};
+
+    fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!((actual - expected).abs() < 1e-6);
+        }
+    }
 
     #[test]
     fn hud_heart_sprite_names_match_vanilla_assets() {
@@ -8227,6 +8417,7 @@ mod tests {
         let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
             left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
             right_lines: vec!["Right".to_string()],
+            debug_crosshair: None,
             fps_chart: None,
             show_lightmap_preview: false,
         })
@@ -8242,6 +8433,86 @@ mod tests {
         })
         .expect("lightmap preview survives without text lines");
         assert!(preview_only.show_lightmap_preview);
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_keeps_valid_crosshair_and_drops_invalid() {
+        let crosshair_only = sanitize_hud_debug_overlay(HudDebugOverlay {
+            debug_crosshair: Some(HudDebugCrosshair {
+                x_rot_degrees: 15.0,
+                y_rot_degrees: 90.0,
+                gui_scale: 0,
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("3d crosshair survives without text lines");
+
+        assert_eq!(
+            crosshair_only.debug_crosshair,
+            Some(HudDebugCrosshair {
+                x_rot_degrees: 15.0,
+                y_rot_degrees: 90.0,
+                gui_scale: 1,
+            })
+        );
+
+        assert_eq!(
+            sanitize_hud_debug_overlay(HudDebugOverlay {
+                debug_crosshair: Some(HudDebugCrosshair {
+                    x_rot_degrees: f32::NAN,
+                    y_rot_degrees: 0.0,
+                    gui_scale: 1,
+                }),
+                ..HudDebugOverlay::default()
+            }),
+            None
+        );
+    }
+
+    #[test]
+    fn hud_debug_crosshair_axis_length_matches_vanilla_scale_projection() {
+        let length = hud_debug_crosshair_axis_length(
+            PhysicalSize::new(320, 240),
+            HudDebugCrosshair {
+                x_rot_degrees: 0.0,
+                y_rot_degrees: 0.0,
+                gui_scale: 1,
+            },
+        );
+        let expected = 0.01 * (1.0 / 35.0_f32.to_radians().tan()) * 120.0;
+        assert!((length - expected).abs() < 1e-6);
+    }
+
+    #[test]
+    fn hud_debug_crosshair_axes_apply_vanilla_scale_and_rotation_order() {
+        let straight = hud_debug_crosshair_axis_vectors(HudDebugCrosshair {
+            x_rot_degrees: 0.0,
+            y_rot_degrees: 0.0,
+            gui_scale: 1,
+        });
+        assert_close2(straight[0], [-1.0, -0.0]);
+        assert_close2(straight[1], [0.0, -1.0]);
+        assert_close2(straight[2], [0.0, -0.0]);
+
+        let pitched = hud_debug_crosshair_axis_vectors(HudDebugCrosshair {
+            x_rot_degrees: 90.0,
+            y_rot_degrees: 0.0,
+            gui_scale: 1,
+        });
+        assert_close2(pitched[1], [0.0, 0.0]);
+        assert_close2(pitched[2], [0.0, -1.0]);
+    }
+
+    #[test]
+    fn hud_debug_crosshair_line_corners_expand_around_segment_centerline() {
+        assert_eq!(
+            hud_debug_crosshair_line_corners([10.0, 10.0], [14.0, 10.0], 4.0),
+            Some([[10.0, 12.0], [10.0, 8.0], [14.0, 8.0], [14.0, 12.0]])
+        );
+        assert_eq!(
+            hud_debug_crosshair_line_corners([10.0, 10.0], [10.0, 10.0], 4.0),
+            None
+        );
     }
 
     #[test]

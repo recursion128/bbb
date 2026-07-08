@@ -954,6 +954,14 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     assert!(overlay
         .right_lines
         .contains(&"Filtering: Nearest".to_string()));
+    assert_eq!(
+        overlay.debug_crosshair,
+        Some(HudDebugCrosshair {
+            x_rot_degrees: 15.0,
+            y_rot_degrees: 90.0,
+            gui_scale: 1,
+        })
+    );
 }
 
 #[test]
