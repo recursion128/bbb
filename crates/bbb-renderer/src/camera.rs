@@ -307,6 +307,9 @@ pub(crate) struct CameraUniform {
     projection: [[f32; 4]; 4],
     /// Vanilla sky model-view matrix without camera translation (`CameraRenderState.viewRotationMatrix`).
     sky_model_view: [[f32; 4]; 4],
+    /// Vanilla `GlobalSettingsUniform.GameTime` in shader units:
+    /// `((gameTime % 24000) + partialTick) / 24000`.
+    shader_game_time: [f32; 4],
 }
 
 impl CameraUniform {
@@ -516,6 +519,16 @@ impl CameraUniform {
         self
     }
 
+    pub(crate) fn with_shader_game_time_ticks(mut self, ticks: f64) -> Self {
+        let ticks = if ticks.is_finite() {
+            ticks.max(0.0)
+        } else {
+            0.0
+        };
+        self.shader_game_time = [(ticks % 24_000.0) as f32 / 24_000.0, 0.0, 0.0, 0.0];
+        self
+    }
+
     #[cfg(test)]
     pub(crate) fn lightmap_brightness_factor(self) -> f32 {
         self.lightmap_effects[1]
@@ -576,6 +589,11 @@ impl CameraUniform {
     #[cfg(test)]
     pub(crate) fn glint_offsets(self) -> [f32; 4] {
         self.glint_offsets
+    }
+
+    #[cfg(test)]
+    pub(crate) fn shader_game_time(self) -> [f32; 4] {
+        self.shader_game_time
     }
 
     #[cfg(test)]
@@ -645,6 +663,7 @@ impl CameraUniform {
             view_proj_view_offset_z_forward: Mat4::IDENTITY.to_cols_array_2d(),
             projection: Mat4::IDENTITY.to_cols_array_2d(),
             sky_model_view: Mat4::IDENTITY.to_cols_array_2d(),
+            shader_game_time: [0.0, 0.0, 0.0, 0.0],
         }
     }
 }
@@ -1012,6 +1031,17 @@ mod tests {
                 .with_glint_texture_time(1000.0, VANILLA_DEFAULT_GLINT_SPEED)
                 .glint_offsets(),
             [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
+        );
+    }
+
+    #[test]
+    fn camera_uniform_stores_vanilla_shader_game_time() {
+        assert_eq!(CameraUniform::identity().shader_game_time(), [0.0; 4]);
+        assert_eq!(
+            CameraUniform::identity()
+                .with_shader_game_time_ticks(24_006.0)
+                .shader_game_time(),
+            [6.0 / 24_000.0, 0.0, 0.0, 0.0]
         );
     }
 

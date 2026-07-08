@@ -24,9 +24,9 @@ use super::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
     first_person_player_arm_textured_meshes,
     geometry::{
-        EntityModelDissolveMesh, EntityModelDissolveVertex, EntityModelMesh, EntityModelScrollMesh,
-        EntityModelScrollVertex, EntityModelTexturedMesh, EntityModelTexturedVertex,
-        EntityModelVertex,
+        EntityModelDissolveMesh, EntityModelDissolveVertex, EntityModelMesh, EntityModelPortalMesh,
+        EntityModelPortalVertex, EntityModelScrollMesh, EntityModelScrollVertex,
+        EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex,
     },
     instances::EntityModelInstance,
     textured::{
@@ -51,6 +51,13 @@ pub(crate) struct EntityModelTexturedMeshGpu {
 }
 
 pub(crate) struct EntityModelScrollMeshGpu {
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
+    pub(crate) index_count: u32,
+    pub(crate) bounds: Option<TerrainBounds>,
+}
+
+pub(crate) struct EntityModelPortalMeshGpu {
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) index_buffer: wgpu::Buffer,
     pub(crate) index_count: u32,
@@ -110,6 +117,7 @@ impl EntityDynamicPlayerTextureAtlasGpu {
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
 pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
+pub(super) const ENTITY_MODEL_PORTAL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x2];
 pub(super) const ENTITY_MODEL_DISSOLVE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x2, 5 => Float32x2, 6 => Float32x3];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
@@ -923,6 +931,173 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+fn entity_model_portal_shader(portal_layers: u32) -> String {
+    let portal_layer_samples = (0..portal_layers)
+        .map(|index| {
+            let layer = index + 1;
+            format!(
+                r#"    color = color + atlas_repeat_sample(
+        input.portal_rect_min,
+        input.portal_rect_size,
+        end_portal_layer_uv(input.tex_proj, {layer}.0),
+    ) * COLORS[{index}];"#
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        r#"
+struct Camera {{
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
+    sky_model_view: mat4x4<f32>,
+    shader_game_time: vec4<f32>,
+}};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {{
+    @location(0) position: vec3<f32>,
+    @location(1) sky_rect_min: vec2<f32>,
+    @location(2) sky_rect_size: vec2<f32>,
+    @location(3) portal_rect_min: vec2<f32>,
+    @location(4) portal_rect_size: vec2<f32>,
+}};
+
+struct VertexOut {{
+    @builtin(position) position: vec4<f32>,
+    @location(0) tex_proj: vec4<f32>,
+    @location(1) sky_rect_min: vec2<f32>,
+    @location(2) sky_rect_size: vec2<f32>,
+    @location(3) portal_rect_min: vec2<f32>,
+    @location(4) portal_rect_size: vec2<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
+}};
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {{
+    if (vertex_distance <= fog_start) {{
+        return 0.0;
+    }}
+    if (vertex_distance >= fog_end) {{
+        return 1.0;
+    }}
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {{
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}}
+
+fn projection_from_position(position: vec4<f32>) -> vec4<f32> {{
+    var projection = position * 0.5;
+    projection.x = projection.x + projection.w;
+    projection.y = projection.y + projection.w;
+    projection.z = position.z;
+    projection.w = position.w;
+    return projection;
+}}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {{
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.tex_proj = projection_from_position(out.position);
+    out.sky_rect_min = input.sky_rect_min;
+    out.sky_rect_size = input.sky_rect_size;
+    out.portal_rect_min = input.portal_rect_min;
+    out.portal_rect_size = input.portal_rect_size;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}}
+
+fn atlas_repeat_sample(rect_min: vec2<f32>, rect_size: vec2<f32>, uv: vec2<f32>) -> vec3<f32> {{
+    let atlas_uv = rect_min + fract(uv) * rect_size;
+    return textureSample(entity_texture_atlas, entity_sampler, atlas_uv).rgb;
+}}
+
+fn portal_projected_uv(tex_proj: vec4<f32>) -> vec2<f32> {{
+    return tex_proj.xy / tex_proj.w;
+}}
+
+fn end_portal_layer_uv(tex_proj: vec4<f32>, layer: f32) -> vec2<f32> {{
+    let angle = radians((layer * layer * 4321.0 + layer * 9.0) * 2.0);
+    let scale = (4.5 - layer / 4.0) * 2.0;
+    let c = cos(angle);
+    let s = sin(angle);
+    let rotated_scaled = vec2<f32>(
+        (tex_proj.x * c - tex_proj.y * s) * scale,
+        (tex_proj.x * s + tex_proj.y * c) * scale,
+    );
+    let translated = rotated_scaled + vec2<f32>(
+        17.0 / layer,
+        (2.0 + layer / 1.5) * (camera.shader_game_time.x * 1.5),
+    ) * tex_proj.w;
+    return (translated * 0.5 + vec2<f32>(0.25 * tex_proj.w)) / tex_proj.w;
+}}
+
+const PORTAL_LAYERS: u32 = {portal_layers}u;
+const COLORS: array<vec3<f32>, 16> = array<vec3<f32>, 16>(
+    vec3<f32>(0.022087, 0.098399, 0.110818),
+    vec3<f32>(0.011892, 0.095924, 0.089485),
+    vec3<f32>(0.027636, 0.101689, 0.100326),
+    vec3<f32>(0.046564, 0.109883, 0.114838),
+    vec3<f32>(0.064901, 0.117696, 0.097189),
+    vec3<f32>(0.063761, 0.086895, 0.123646),
+    vec3<f32>(0.084817, 0.111994, 0.166380),
+    vec3<f32>(0.097489, 0.154120, 0.091064),
+    vec3<f32>(0.106152, 0.131144, 0.195191),
+    vec3<f32>(0.097721, 0.110188, 0.187229),
+    vec3<f32>(0.133516, 0.138278, 0.148582),
+    vec3<f32>(0.070006, 0.243332, 0.235792),
+    vec3<f32>(0.196766, 0.142899, 0.214696),
+    vec3<f32>(0.047281, 0.315338, 0.321970),
+    vec3<f32>(0.204675, 0.390010, 0.302066),
+    vec3<f32>(0.080955, 0.314821, 0.661491),
+);
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {{
+    var color = atlas_repeat_sample(
+        input.sky_rect_min,
+        input.sky_rect_size,
+        portal_projected_uv(input.tex_proj),
+    ) * COLORS[0];
+{portal_layer_samples}
+    return apply_fog(vec4<f32>(color, 1.0), input.spherical_distance, input.cylindrical_distance);
+}}
+"#
+    )
+}
+
 pub(super) const ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1590,6 +1765,14 @@ pub(super) const ENTITY_MODEL_DRAGON_RAYS_CULL_MODE: Option<wgpu::Face> = None;
 pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED: bool = true;
 pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK: wgpu::ColorWrites =
     wgpu::ColorWrites::empty();
+/// Vanilla `RenderPipelines.END_PORTAL` / `END_GATEWAY`: `DepthStencilState.DEFAULT`, no colour
+/// blend override, default cull enabled, and `PORTAL_LAYERS` specialized to 15 / 16.
+pub(super) const ENTITY_MODEL_PORTAL_DEPTH_WRITE_ENABLED: bool = true;
+pub(super) const ENTITY_MODEL_PORTAL_DEPTH_COMPARE: wgpu::CompareFunction =
+    wgpu::CompareFunction::LessEqual;
+pub(super) const ENTITY_MODEL_PORTAL_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+pub(super) const ENTITY_MODEL_END_PORTAL_LAYERS: u32 = 15;
+pub(super) const ENTITY_MODEL_END_GATEWAY_LAYERS: u32 = 16;
 
 pub(crate) fn create_entity_model_eyes_pipeline(
     device: &wgpu::Device,
@@ -1667,6 +1850,59 @@ pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(
         wgpu::CompareFunction::LessEqual,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
     )
+}
+
+pub(crate) fn create_entity_model_end_portal_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_portal_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-end-portal",
+        ENTITY_MODEL_END_PORTAL_LAYERS,
+    )
+}
+
+pub(crate) fn create_entity_model_end_gateway_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_portal_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-end-gateway",
+        ENTITY_MODEL_END_GATEWAY_LAYERS,
+    )
+}
+
+fn create_entity_model_portal_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label_prefix: &str,
+    portal_layers: u32,
+) -> wgpu::RenderPipeline {
+    let shader = entity_model_portal_shader(portal_layers);
+    RenderPipelineBuilder::new(device, &format!("{label_prefix}-pipeline"))
+        .shader(&format!("{label_prefix}-shader"), &shader)
+        .layout(
+            &format!("{label_prefix}-pipeline-layout"),
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_portal_vertex_layout()])
+        .color_target(format, None)
+        .cull_mode(ENTITY_MODEL_PORTAL_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ENTITY_MODEL_PORTAL_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_PORTAL_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 fn create_entity_model_position_color_pipeline(
@@ -2206,12 +2442,12 @@ impl Renderer {
                 meshes.dragon_rays_depth,
                 "bbb-entity-model-dragon-rays-depth",
             );
-            self.entity_model_end_portal_mesh = create_entity_model_mesh_gpu_from_mesh(
+            self.entity_model_end_portal_mesh = create_entity_model_portal_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.end_portal,
                 "bbb-entity-model-end-portal",
             );
-            self.entity_model_end_gateway_mesh = create_entity_model_mesh_gpu_from_mesh(
+            self.entity_model_end_gateway_mesh = create_entity_model_portal_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.end_gateway,
                 "bbb-entity-model-end-gateway",
@@ -3182,6 +3418,14 @@ fn entity_model_textured_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     }
 }
 
+fn entity_model_portal_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<EntityModelPortalVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ENTITY_MODEL_PORTAL_VERTEX_ATTRIBUTES,
+    }
+}
+
 fn entity_model_scroll_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<EntityModelScrollVertex>() as wgpu::BufferAddress,
@@ -3269,10 +3513,42 @@ fn create_entity_model_dissolve_mesh_gpu_from_mesh(
     })
 }
 
+fn create_entity_model_portal_mesh_gpu_from_mesh(
+    device: &wgpu::Device,
+    mesh: EntityModelPortalMesh,
+    label_prefix: &str,
+) -> Option<EntityModelPortalMeshGpu> {
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let bounds = TerrainBounds::from_points(
+        mesh.vertices
+            .iter()
+            .map(|vertex| Vec3::from_array(vertex.position)),
+    );
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(&format!("{label_prefix}-vertices")),
+        contents: bytemuck::cast_slice(&mesh.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(&format!("{label_prefix}-indices")),
+        contents: bytemuck::cast_slice(&mesh.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    Some(EntityModelPortalMeshGpu {
+        vertex_buffer,
+        index_buffer,
+        index_count: mesh.indices.len() as u32,
+        bounds,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_cutout_z_offset_shader, entity_model_glint_shader,
+        entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
         ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
         ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
@@ -3280,23 +3556,25 @@ mod tests {
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
-        ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_EYES_BLEND,
-        ENTITY_MODEL_EYES_CULL_MODE, ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
-        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
-        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_POSITION_COLOR_SHADER, ENTITY_MODEL_SCROLL_BLEND,
-        ENTITY_MODEL_SCROLL_CULL_MODE, ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
-        ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
-        ENTITY_MODEL_SCROLL_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
-        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
-        ENTITY_MODEL_SURFACE_OPAQUE_BLEND, ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
-        ENTITY_MODEL_TEXTURED_CULL_SHADER, ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
-        ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
-        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
-        ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
-        ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_WATER_MASK_SHADER,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_END_GATEWAY_LAYERS,
+        ENTITY_MODEL_END_PORTAL_LAYERS, ENTITY_MODEL_EYES_BLEND, ENTITY_MODEL_EYES_CULL_MODE,
+        ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED, ENTITY_MODEL_GLINT_BLEND,
+        ENTITY_MODEL_GLINT_DEPTH_COMPARE, ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
+        ENTITY_MODEL_PORTAL_CULL_MODE, ENTITY_MODEL_PORTAL_DEPTH_COMPARE,
+        ENTITY_MODEL_PORTAL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_POSITION_COLOR_SHADER,
+        ENTITY_MODEL_SCROLL_BLEND, ENTITY_MODEL_SCROLL_CULL_MODE,
+        ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SCROLL_SHADER,
+        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND, ENTITY_MODEL_TEXTURED_CULL_SHADER,
+        ENTITY_MODEL_TEXTURED_DEPTH_COMPARE, ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
+        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
 
     #[test]
@@ -3693,6 +3971,41 @@ mod tests {
             ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
             wgpu::ColorWrites::empty(),
             "vanilla DRAGON_RAYS_DEPTH uses ColorTargetState(Optional.empty(), 0)"
+        );
+    }
+
+    #[test]
+    fn entity_model_portal_shader_ports_vanilla_end_portal_layers() {
+        let portal = entity_model_portal_shader(ENTITY_MODEL_END_PORTAL_LAYERS);
+        let gateway = entity_model_portal_shader(ENTITY_MODEL_END_GATEWAY_LAYERS);
+        assert!(portal.contains("const PORTAL_LAYERS: u32 = 15u;"));
+        assert!(gateway.contains("const PORTAL_LAYERS: u32 = 16u;"));
+        assert!(portal.contains("end_portal_layer_uv(input.tex_proj, 15.0)"));
+        assert!(!portal.contains("end_portal_layer_uv(input.tex_proj, 16.0)"));
+        assert!(gateway.contains("end_portal_layer_uv(input.tex_proj, 16.0)"));
+        assert!(portal.contains("projection_from_position"));
+        assert!(portal.contains("17.0 / layer"));
+        assert!(portal.contains("(tex_proj.x * c - tex_proj.y * s) * scale"));
+        assert!(portal.contains("(tex_proj.x * s + tex_proj.y * c) * scale"));
+        assert!(portal.contains("(2.0 + layer / 1.5) * (camera.shader_game_time.x * 1.5)"));
+        assert!(portal.contains("COLORS: array<vec3<f32>, 16>"));
+        assert!(portal.contains("atlas_repeat_sample("));
+        assert!(portal.contains("input.sky_rect_min"));
+        assert!(portal.contains("input.portal_rect_min"));
+    }
+
+    #[test]
+    fn entity_model_portal_pipeline_state_matches_vanilla_end_portal() {
+        assert!(ENTITY_MODEL_PORTAL_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_PORTAL_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual,
+            "vanilla DepthStencilState.DEFAULT uses LESS_EQUAL"
+        );
+        assert_eq!(
+            ENTITY_MODEL_PORTAL_CULL_MODE,
+            Some(wgpu::Face::Back),
+            "RenderPipeline default cull is enabled for END_PORTAL"
         );
     }
 

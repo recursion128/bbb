@@ -4676,6 +4676,28 @@
   `SpawnData.entity` 的自定义实体 metadata/NBT 暂不合成，未知 entity id
   不输出 display instance；逐 BE 距离/视锥剔除与 break-progress crumbling
   仍沿 BER 既有边界。
+- [x] end portal/gateway 15/16-layer shader parity（2026-07-08，BER
+  shader close-out）：关闭上一条 end portal/gateway cube 的
+  position-color approximation defer。vanilla 依据：
+  `RenderTypes.endPortal` / `endGateway`、`RenderPipelines.END_PORTAL` /
+  `END_GATEWAY`、`rendertype_end_portal.vsh` / `.fsh`、`matrix.glsl`、
+  `projection.glsl`、`GlobalSettingsUniform`。renderer 新增
+  `EntityModelPortalVertex` / `EntityModelPortalMesh`，portal/gateway cube
+  mesh 只携带 world position + `end_sky.png` / `end_portal.png` atlas sub-rect；
+  共享 entity atlas 新增 `textures/environment/end_sky.png` 和
+  `textures/entity/end_portal/end_portal.png`（690-count）。GPU 侧新增
+  end portal / end gateway 专用 pipeline：无 color blend、depth write on、
+  `LessEqual`、back cull，WGSL port 保留 vanilla `projection_from_position`、
+  16 组颜色常量、projected sky sample、`PORTAL_LAYERS` 15/16 specialization，
+  以及 `texProj0 * (scale*rotate) * translate * SCALE_TRANSLATE` 的行向量
+  矩阵顺序。native frame 侧新增 `shader_game_time_ticks`，从 post-tick
+  world `game_time + partial_tick` 投进 renderer camera uniform，匹配
+  vanilla `((gameTime % 24000) + partialTick) / 24000`；glint 仍保留独立
+  renderer wall-clock。sorted draw plan 和 fallback unsorted translucent
+  path 都改为 `Portal` draw range + 专用 portal pipeline，不再借用
+  dragon-rays position-color pipeline。测试覆盖 shader 层数/公式字符串、
+  pipeline state、atlas refs、portal vertex sub-rect、cube face transform、
+  sorted range、render.rs fallback 分发，以及 runtime frame 时间抽取。
 
 ## P2：屏幕、HUD、字体与截图
 

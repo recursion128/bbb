@@ -1842,6 +1842,11 @@ pub(crate) fn pump_network_and_terrain(
         .map(|time| time.game_time as f32)
         .unwrap_or(0.0)
         + entity_partial_tick;
+    let shader_game_time_ticks = world
+        .world_time()
+        .map(|time| time.game_time as f64)
+        .unwrap_or(0.0)
+        + f64::from(entity_partial_tick);
     let trim_material_keys = world_trim_material_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
@@ -2142,6 +2147,7 @@ pub(crate) fn pump_network_and_terrain(
             sign_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
+            shader_game_time_ticks,
             cloud_frame,
             weather_render_state,
             world_border_render_state,

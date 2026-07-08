@@ -550,6 +550,8 @@ mod tests {
                 "textures/entity/cow/mooshroom_brown_baby.png",
                 "textures/entity/end_crystal/end_crystal.png",
                 "textures/entity/end_crystal/end_crystal_beam.png",
+                "textures/environment/end_sky.png",
+                "textures/entity/end_portal/end_portal.png",
                 "textures/entity/end_portal/end_gateway_beam.png",
                 "textures/entity/projectiles/arrow.png",
                 "textures/entity/projectiles/arrow_tipped.png",

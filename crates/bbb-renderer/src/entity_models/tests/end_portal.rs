@@ -4,13 +4,20 @@ fn portal_faces() -> [EndPortalModelFace; 2] {
     [EndPortalModelFace::Down, EndPortalModelFace::Up]
 }
 
-fn atlas_with_gateway_beam() -> EntityModelTextureAtlasLayout {
-    let texture = END_GATEWAY_BEAM_TEXTURE_REF;
-    let image = EntityModelTextureImage::new(
+fn atlas_with_portal_textures() -> EntityModelTextureAtlasLayout {
+    let images = [
+        blank_texture(END_SKY_TEXTURE_REF),
+        blank_texture(END_PORTAL_TEXTURE_REF),
+        blank_texture(END_GATEWAY_BEAM_TEXTURE_REF),
+    ];
+    build_entity_model_texture_atlas(&images).unwrap().0
+}
+
+fn blank_texture(texture: EntityModelTextureRef) -> EntityModelTextureImage {
+    EntityModelTextureImage::new(
         texture,
         vec![255; (texture.size[0] * texture.size[1] * 4) as usize],
-    );
-    build_entity_model_texture_atlas(&[image]).unwrap().0
+    )
 }
 
 #[test]
@@ -32,7 +39,7 @@ fn end_portal_model_keys_and_texture_refs_mark_special_render_types() {
 
 #[test]
 fn end_portal_cube_uses_vanilla_y_axis_faces_and_transform() {
-    let atlas = atlas_with_gateway_beam();
+    let atlas = atlas_with_portal_textures();
     let instance = EntityModelInstance::new(
         -1,
         EntityModelKind::EndPortalBlock {
@@ -48,6 +55,9 @@ fn end_portal_cube_uses_vanilla_y_axis_faces_and_transform() {
     assert_eq!(meshes.end_portal.vertices.len(), 8);
     assert_eq!(meshes.end_portal.indices.len(), 12);
     assert!(meshes.end_gateway.vertices.is_empty());
+    assert_eq!(meshes.end_portal.vertices[0].sky_rect_min, [0.0, 0.0]);
+    assert_eq!(meshes.end_portal.vertices[0].portal_rect_min[0], 0.0);
+    assert!(meshes.end_portal.vertices[0].portal_rect_min[1] > 0.0);
     let min_y = meshes
         .end_portal
         .vertices
@@ -70,7 +80,7 @@ fn end_portal_cube_uses_vanilla_y_axis_faces_and_transform() {
 
 #[test]
 fn end_gateway_cube_uses_unit_cube_faces_without_beam_when_inactive() {
-    let atlas = atlas_with_gateway_beam();
+    let atlas = atlas_with_portal_textures();
     let instance = EntityModelInstance::new(
         -1,
         EntityModelKind::EndPortalBlock {
@@ -108,7 +118,7 @@ fn end_gateway_cube_uses_unit_cube_faces_without_beam_when_inactive() {
 
 #[test]
 fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
-    let atlas = atlas_with_gateway_beam();
+    let atlas = atlas_with_portal_textures();
     let instance = EntityModelInstance::new(
         -1,
         EntityModelKind::EndPortalBlock {
@@ -156,8 +166,8 @@ fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
 }
 
 #[test]
-fn end_portal_position_color_draws_sort_with_camera() {
-    let atlas = atlas_with_gateway_beam();
+fn end_portal_portal_draws_sort_with_camera() {
+    let atlas = atlas_with_portal_textures();
     let portal = EntityModelInstance::new(
         -1,
         EntityModelKind::EndPortalBlock {
@@ -177,10 +187,9 @@ fn end_portal_position_color_draws_sort_with_camera() {
     );
 
     assert_eq!(meshes.sorted_main_translucent_draws.len(), 1);
-    let EntityModelTranslucentDrawRange::PositionColor(draw) =
-        meshes.sorted_main_translucent_draws[0]
+    let EntityModelTranslucentDrawRange::Portal(draw) = meshes.sorted_main_translucent_draws[0]
     else {
-        panic!("end portal should sort as position-color custom geometry");
+        panic!("end portal should sort as portal custom geometry");
     };
     assert_eq!(draw.render_type, EntityModelLayerRenderType::EndPortal);
     assert_eq!(draw.index_start, 0);

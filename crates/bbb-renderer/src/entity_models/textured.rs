@@ -31,9 +31,10 @@ use super::{
         append_dissolve_textured_mesh, append_scrolled_textured_mesh, argb_to_tint,
         emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
         fill_entity_textured_overlay, part_pose_transform, EntityModelDissolveMesh,
-        EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
-        EntityModelTexturedVertex, EntityModelVertex, PartPose, TexturedModelCubeDesc,
-        TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
+        EntityModelMesh, EntityModelPortalMesh, EntityModelPortalVertex, EntityModelScrollMesh,
+        EntityModelScrollVertex, EntityModelTexturedMesh, EntityModelTexturedVertex,
+        EntityModelVertex, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+        ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -57,8 +58,9 @@ use super::{
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
         ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
+        END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
+        EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -111,8 +113,6 @@ const DRAGON_RAYS_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 const DRAGON_RAYS_HALF_SQRT_3: f32 = 0.866_025_4;
 const END_PORTAL_BOTTOM: f32 = 0.375;
 const END_PORTAL_HEIGHT: f32 = 0.375;
-const END_PORTAL_APPROX_COLOR: [f32; 4] = [0.06, 0.0, 0.18, 1.0];
-const END_GATEWAY_APPROX_COLOR: [f32; 4] = [0.23, 0.02, 0.36, 1.0];
 
 mod layers;
 #[cfg(test)]
@@ -266,10 +266,21 @@ pub(crate) enum EntityModelTranslucentDrawRange {
     Scroll(EntityModelScrollDrawRange),
     AdditiveScroll(EntityModelScrollDrawRange),
     PositionColor(EntityModelPositionColorDrawRange),
+    Portal(EntityModelPortalDrawRange),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityModelPositionColorDrawRange {
+    pub(crate) render_type: EntityModelLayerRenderType,
+    pub(crate) order: i32,
+    pub(crate) distance_sq: f32,
+    pub(crate) insertion_index: usize,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityModelPortalDrawRange {
     pub(crate) render_type: EntityModelLayerRenderType,
     pub(crate) order: i32,
     pub(crate) distance_sq: f32,
@@ -347,14 +358,12 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) dragon_rays: EntityModelMesh,
     /// Vanilla `RenderTypes.dragonRaysDepth()` replays the same ray shape into a depth-only pipeline.
     pub(super) dragon_rays_depth: EntityModelMesh,
-    /// Approximate no-texture cube faces for vanilla `RenderTypes.endPortal()` block-entity submits.
-    /// The exact 15-layer shader is tracked as renderer parity work; the submitted face set and root
-    /// transform still follow vanilla.
-    pub(super) end_portal: EntityModelMesh,
-    /// Approximate no-texture cube faces for vanilla `RenderTypes.endGateway()` block-entity submits.
-    /// The exact 16-layer shader is tracked as renderer parity work; the gateway beam is emitted
-    /// separately through the scroll bucket.
-    pub(super) end_gateway: EntityModelMesh,
+    /// Vanilla `RenderTypes.endPortal()` block-entity cube faces. The GPU shader owns the 15-layer
+    /// portal sampler formula; the mesh only carries world positions and atlas sub-rect metadata.
+    pub(super) end_portal: EntityModelPortalMesh,
+    /// Vanilla `RenderTypes.endGateway()` block-entity cube faces. The GPU shader owns the 16-layer
+    /// gateway sampler formula; the gateway beam is emitted separately through the scroll bucket.
+    pub(super) end_gateway: EntityModelPortalMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
@@ -413,8 +422,8 @@ impl EntityModelTexturedMeshes {
             water_mask: EntityModelMesh::new(),
             dragon_rays: EntityModelMesh::new(),
             dragon_rays_depth: EntityModelMesh::new(),
-            end_portal: EntityModelMesh::new(),
-            end_gateway: EntityModelMesh::new(),
+            end_portal: EntityModelPortalMesh::new(),
+            end_gateway: EntityModelPortalMesh::new(),
             submissions: Vec::new(),
             custom_submissions: Vec::new(),
             sorted_main_translucent_draws: Vec::new(),
@@ -465,7 +474,8 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
-            | EntityModelLayerRenderBucket::PositionColor => {
+            | EntityModelLayerRenderBucket::PositionColor
+            | EntityModelLayerRenderBucket::Portal => {
                 panic!("scroll/dissolve render types are not emitted into textured mesh buckets")
             }
             EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
@@ -503,6 +513,7 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::PositionColor
+            | EntityModelLayerRenderBucket::Portal
             | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
@@ -545,6 +556,7 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::PositionColor
+            | EntityModelLayerRenderBucket::Portal
             | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
@@ -690,6 +702,29 @@ impl EntityModelTexturedMeshes {
             ));
     }
 
+    fn push_portal_draw_range(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+        sort_key: EntityModelSubmitSortKey,
+        index_start: u32,
+        index_count: u32,
+    ) {
+        if index_count == 0 {
+            return;
+        }
+        self.sorted_main_translucent_draws
+            .push(EntityModelTranslucentDrawRange::Portal(
+                EntityModelPortalDrawRange {
+                    render_type,
+                    order: sort_key.order,
+                    distance_sq: sort_key.distance_sq,
+                    insertion_index: sort_key.insertion_index,
+                    index_start,
+                    index_count,
+                },
+            ));
+    }
+
     fn push_scroll_draw_range(
         &mut self,
         render_type: EntityModelLayerRenderType,
@@ -821,6 +856,11 @@ fn translucent_draw_sort_key(draw: EntityModelTranslucentDrawRange) -> EntityMod
             insertion_index: draw.insertion_index,
         },
         EntityModelTranslucentDrawRange::PositionColor(draw) => EntityModelSubmitSortKey {
+            order: draw.order,
+            distance_sq: draw.distance_sq,
+            insertion_index: draw.insertion_index,
+        },
+        EntityModelTranslucentDrawRange::Portal(draw) => EntityModelSubmitSortKey {
             order: draw.order,
             distance_sq: draw.distance_sq,
             insertion_index: draw.insertion_index,
@@ -1750,6 +1790,15 @@ fn append_scroll_mesh(dest: &mut EntityModelScrollMesh, source: EntityModelScrol
     index_start
 }
 
+fn append_portal_mesh(dest: &mut EntityModelPortalMesh, source: EntityModelPortalMesh) -> u32 {
+    let index_start = u32::try_from(dest.indices.len()).expect("portal index count fits in u32");
+    let base = u32::try_from(dest.vertices.len()).expect("portal vertex count fits in u32");
+    dest.vertices.extend(source.vertices);
+    dest.indices
+        .extend(source.indices.into_iter().map(|index| index + base));
+    index_start
+}
+
 fn append_entity_model_mesh(dest: &mut EntityModelMesh, source: EntityModelMesh) -> u32 {
     let index_start = u32::try_from(dest.indices.len()).expect("entity index count fits in u32");
     let base = u32::try_from(dest.vertices.len()).expect("entity vertex count fits in u32");
@@ -2651,18 +2700,24 @@ pub(in crate::entity_models) fn render_end_portal_block_model(
         return;
     }
 
-    let cube_transform = end_portal_block_root_transform(instance, kind);
-    let (render_type, color) = match kind {
-        EndPortalModelKind::EndPortal => (
-            EntityModelLayerRenderType::EndPortal,
-            END_PORTAL_APPROX_COLOR,
-        ),
-        EndPortalModelKind::EndGateway => (
-            EntityModelLayerRenderType::EndGateway,
-            END_GATEWAY_APPROX_COLOR,
-        ),
+    let render_type = match kind {
+        EndPortalModelKind::EndPortal => EntityModelLayerRenderType::EndPortal,
+        EndPortalModelKind::EndGateway => EntityModelLayerRenderType::EndGateway,
     };
-    emit_end_portal_custom_submission(meshes, render_type, cube_transform, faces, color);
+    if let (Some(sky), Some(portal)) = (
+        entity_model_texture_atlas_entry(atlas, END_SKY_TEXTURE_REF),
+        entity_model_texture_atlas_entry(atlas, END_PORTAL_TEXTURE_REF),
+    ) {
+        let cube_transform = end_portal_block_root_transform(instance, kind);
+        emit_end_portal_custom_submission(
+            meshes,
+            render_type,
+            cube_transform,
+            faces,
+            sky.uv,
+            portal.uv,
+        );
+    }
     if kind == EndPortalModelKind::EndGateway {
         render_end_gateway_beam(meshes, instance, atlas);
     }
@@ -2688,7 +2743,8 @@ fn emit_end_portal_custom_submission(
     render_type: EntityModelLayerRenderType,
     transform: Mat4,
     faces: [EndPortalModelFace; 2],
-    color: [f32; 4],
+    sky_uv: EntityModelUvRect,
+    portal_uv: EntityModelUvRect,
 ) {
     let (submission, insertion_index) =
         meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
@@ -2697,29 +2753,26 @@ fn emit_end_portal_custom_submission(
             order: 0,
             submit_sequence: 0,
         });
-    let mut mesh = EntityModelMesh::new();
-    append_end_portal_cube_mesh(&mut mesh, submission.transform, faces, color);
+    let mut mesh = EntityModelPortalMesh::new();
+    append_end_portal_cube_mesh(&mut mesh, submission.transform, faces, sky_uv, portal_uv);
     let index_count =
         u32::try_from(mesh.indices.len()).expect("end portal cube index count fits in u32");
     let index_start = match render_type {
-        EntityModelLayerRenderType::EndPortal => {
-            append_entity_model_mesh(&mut meshes.end_portal, mesh)
-        }
-        EntityModelLayerRenderType::EndGateway => {
-            append_entity_model_mesh(&mut meshes.end_gateway, mesh)
-        }
+        EntityModelLayerRenderType::EndPortal => append_portal_mesh(&mut meshes.end_portal, mesh),
+        EntityModelLayerRenderType::EndGateway => append_portal_mesh(&mut meshes.end_gateway, mesh),
         _ => unreachable!("end portal custom submission render type"),
     };
     if let Some(sort_key) = meshes.custom_geometry_draw_key(submission, insertion_index) {
-        meshes.push_position_color_draw_range(render_type, sort_key, index_start, index_count);
+        meshes.push_portal_draw_range(render_type, sort_key, index_start, index_count);
     }
 }
 
 fn append_end_portal_cube_mesh(
-    mesh: &mut EntityModelMesh,
+    mesh: &mut EntityModelPortalMesh,
     transform: Mat4,
     faces: [EndPortalModelFace; 2],
-    color: [f32; 4],
+    sky_uv: EntityModelUvRect,
+    portal_uv: EntityModelUvRect,
 ) {
     for face in faces {
         match face {
@@ -2732,8 +2785,8 @@ fn append_end_portal_cube_mesh(
                     Vec3::new(1.0, 0.0, 1.0),
                     Vec3::new(0.0, 0.0, 1.0),
                 ],
-                [0.0, -1.0, 0.0],
-                color,
+                sky_uv,
+                portal_uv,
             ),
             EndPortalModelFace::Up => append_end_portal_face(
                 mesh,
@@ -2744,28 +2797,33 @@ fn append_end_portal_cube_mesh(
                     Vec3::new(1.0, 1.0, 1.0),
                     Vec3::new(1.0, 1.0, 0.0),
                 ],
-                [0.0, 1.0, 0.0],
-                color,
+                sky_uv,
+                portal_uv,
             ),
         }
     }
 }
 
 fn append_end_portal_face(
-    mesh: &mut EntityModelMesh,
+    mesh: &mut EntityModelPortalMesh,
     transform: Mat4,
     corners: [Vec3; 4],
-    normal: [f32; 3],
-    color: [f32; 4],
+    sky_uv: EntityModelUvRect,
+    portal_uv: EntityModelUvRect,
 ) {
     let base = u32::try_from(mesh.vertices.len()).expect("end portal vertex count fits in u32");
+    let sky_rect_size = [sky_uv.max[0] - sky_uv.min[0], sky_uv.max[1] - sky_uv.min[1]];
+    let portal_rect_size = [
+        portal_uv.max[0] - portal_uv.min[0],
+        portal_uv.max[1] - portal_uv.min[1],
+    ];
     for corner in corners {
-        mesh.vertices.push(EntityModelVertex {
+        mesh.vertices.push(EntityModelPortalVertex {
             position: transform.transform_point3(corner).to_array(),
-            color,
-            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
-            overlay: ENTITY_VERTEX_NO_OVERLAY,
-            normal,
+            sky_rect_min: sky_uv.min,
+            sky_rect_size,
+            portal_rect_min: portal_uv.min,
+            portal_rect_size,
         });
     }
     mesh.indices

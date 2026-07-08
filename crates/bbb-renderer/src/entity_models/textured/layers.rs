@@ -250,6 +250,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Scroll,
     AdditiveScroll,
     PositionColor,
+    Portal,
     OutlineOnly,
     DepthOnly,
     GlintOnly,
@@ -305,9 +306,8 @@ impl EntityModelLayerRenderType {
                 EntityModelLayerRenderBucket::Scroll
             }
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
-            Self::EndPortal | Self::EndGateway | Self::DragonRays => {
-                EntityModelLayerRenderBucket::PositionColor
-            }
+            Self::EndPortal | Self::EndGateway => EntityModelLayerRenderBucket::Portal,
+            Self::DragonRays => EntityModelLayerRenderBucket::PositionColor,
             Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
             Self::DragonRaysDepth => EntityModelLayerRenderBucket::DepthOnly,
         }
@@ -340,8 +340,6 @@ impl EntityModelLayerRenderType {
                 | Self::Eyes
                 | Self::BreezeWind
                 | Self::EnergySwirl
-                | Self::EndPortal
-                | Self::EndGateway
                 | Self::EndGatewayBeam
                 | Self::DragonRays
         )

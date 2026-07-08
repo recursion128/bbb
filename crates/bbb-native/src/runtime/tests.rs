@@ -1366,6 +1366,9 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let item_age_extract = source
         .find("let item_model_age_ticks = world")
         .expect("pump should compute dropped item model age");
+    let shader_time_extract = source
+        .find("let shader_game_time_ticks = world")
+        .expect("pump should compute shader GameTime from world time");
     let dropped_models = source
         .find("let dropped_item_models = dropped_item_models(")
         .expect("pump should extract dropped item models");
@@ -1495,6 +1498,10 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(spawner_tick < spawner_instances);
     assert!(skull_instances < spawner_instances);
     assert!(held_models < spawner_instances);
+    let shader_time_frame = source
+        .find("shader_game_time_ticks,")
+        .expect("pump should pass shader GameTime through RendererFrame");
+    assert!(shader_time_extract < shader_time_frame);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");
@@ -1513,6 +1520,10 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         assert!(
             advance < item_age_extract,
             "vanilla `Minecraft.tick` advances gameplay/entity state before `LevelRenderer.extractLevel`"
+        );
+        assert!(
+            advance < shader_time_extract,
+            "vanilla GlobalSettingsUniform.GameTime uses post-tick world time plus the frame partial tick"
         );
     }
     for extraction in [

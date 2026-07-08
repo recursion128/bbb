@@ -56,7 +56,8 @@ pub(crate) use gpu::{
     create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
     create_entity_model_armor_translucent_pipeline, create_entity_model_cutout_z_offset_pipeline,
     create_entity_model_dissolve_pipeline, create_entity_model_dragon_rays_depth_pipeline,
-    create_entity_model_dragon_rays_pipeline, create_entity_model_entity_glint_pipeline,
+    create_entity_model_dragon_rays_pipeline, create_entity_model_end_gateway_pipeline,
+    create_entity_model_end_portal_pipeline, create_entity_model_entity_glint_pipeline,
     create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
     create_entity_model_outline_pipeline, create_entity_model_pipeline,
     create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
@@ -69,7 +70,8 @@ pub(crate) use gpu::{
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
-    EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
+    EntityModelPortalMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
+    EntityModelTexturedMeshGpu,
 };
 #[cfg(test)]
 pub(crate) use gui_preview::bake_hud_entity_preview_pip_geometry;
@@ -171,7 +173,7 @@ use textured::{
     first_person_player_arm_textured_meshes,
 };
 pub(crate) use textured::{
-    ElderGuardianParticleRenderInstance, EntityModelLayerRenderType,
+    ElderGuardianParticleRenderInstance, EntityModelLayerRenderType, EntityModelPortalDrawRange,
     EntityModelPositionColorDrawRange, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
     EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
     ExperienceOrbPickupParticleRenderInstance, ProjectilePickupParticleRenderInstance,

@@ -243,18 +243,18 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
         (
             EntityModelLayerRenderType::EndPortal,
             "end_portal",
-            EntityModelLayerRenderBucket::PositionColor,
+            EntityModelLayerRenderBucket::Portal,
             false,
             false,
-            true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EndGateway,
             "end_gateway",
-            EntityModelLayerRenderBucket::PositionColor,
+            EntityModelLayerRenderBucket::Portal,
             false,
             false,
-            true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EndGatewayBeam,

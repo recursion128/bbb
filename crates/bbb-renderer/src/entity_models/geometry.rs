@@ -67,6 +67,34 @@ impl EntityModelTexturedMesh {
     }
 }
 
+/// A vertex of the end portal/gateway cube mesh. Vanilla `RenderTypes.endPortal()` /
+/// `endGateway()` are position-only custom geometry, but this backend samples the two vanilla
+/// textures from the shared entity atlas, so each vertex carries the atlas sub-rects for
+/// `end_sky.png` and `end_portal.png`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct EntityModelPortalVertex {
+    pub(super) position: [f32; 3],
+    pub(super) sky_rect_min: [f32; 2],
+    pub(super) sky_rect_size: [f32; 2],
+    pub(super) portal_rect_min: [f32; 2],
+    pub(super) portal_rect_size: [f32; 2],
+}
+
+pub(super) struct EntityModelPortalMesh {
+    pub(super) vertices: Vec<EntityModelPortalVertex>,
+    pub(super) indices: Vec<u32>,
+}
+
+impl EntityModelPortalMesh {
+    pub(super) fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+        }
+    }
+}
+
 /// A vertex of the scrolling-overlay mesh (vanilla `breezeWind` / `energySwirl` render types): a
 /// texture-matrix `OffsetTextureTransform` over a `GL_REPEAT` texture. Because our textures live in a
 /// shared atlas (no per-texture `REPEAT`), the scroll is reproduced in the shader: the atlas UV is

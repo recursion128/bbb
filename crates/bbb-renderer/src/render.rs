@@ -11,7 +11,8 @@ use crate::{
         upload_elder_guardian_particle_textured_mesh,
         upload_experience_orb_pickup_particle_textured_mesh,
         upload_projectile_pickup_particle_textured_mesh, EntityModelLayerRenderType,
-        EntityModelMeshGpu, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
+        EntityModelMeshGpu, EntityModelPortalDrawRange, EntityModelPortalMeshGpu,
+        EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
         EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
         EntityModelTranslucentDrawRange,
     },
@@ -2743,6 +2744,55 @@ impl Renderer {
                     pipeline_switches,
                     entity_model_draw_calls,
                 ),
+            EntityModelTranslucentDrawRange::Portal(draw) => self.draw_entity_portal_range(
+                pass,
+                draw,
+                pipeline_switches,
+                entity_model_draw_calls,
+            ),
+        }
+    }
+
+    fn draw_entity_portal_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelPortalDrawRange,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        let Some((mesh, pipeline)) = self.entity_portal_range_resources(draw) else {
+            return;
+        };
+        let index_end = draw.index_start.saturating_add(draw.index_count);
+        if draw.index_count == 0 || index_end > mesh.index_count {
+            return;
+        }
+        let Some(atlas) = &self.entity_model_texture_atlas else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
+        *pipeline_switches += 1;
+        pass.set_bind_group(0, &atlas.bind_group, &[]);
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
+        *entity_model_draw_calls += 1;
+    }
+
+    fn entity_portal_range_resources<'a>(
+        &'a self,
+        draw: EntityModelPortalDrawRange,
+    ) -> Option<(&'a EntityModelPortalMeshGpu, &'a wgpu::RenderPipeline)> {
+        match draw.render_type {
+            EntityModelLayerRenderType::EndPortal => Some((
+                self.entity_model_end_portal_mesh.as_ref()?,
+                &self.entity_model_end_portal_pipeline,
+            )),
+            EntityModelLayerRenderType::EndGateway => Some((
+                self.entity_model_end_gateway_mesh.as_ref()?,
+                &self.entity_model_end_gateway_pipeline,
+            )),
+            _ => None,
         }
     }
 
@@ -2781,14 +2831,6 @@ impl Renderer {
             EntityModelLayerRenderType::DragonRaysDepth => Some((
                 self.entity_model_dragon_rays_depth_mesh.as_ref()?,
                 &self.entity_model_dragon_rays_depth_pipeline,
-            )),
-            EntityModelLayerRenderType::EndPortal => Some((
-                self.entity_model_end_portal_mesh.as_ref()?,
-                &self.entity_model_dragon_rays_pipeline,
-            )),
-            EntityModelLayerRenderType::EndGateway => Some((
-                self.entity_model_end_gateway_mesh.as_ref()?,
-                &self.entity_model_dragon_rays_pipeline,
             )),
             _ => None,
         }
@@ -2965,23 +3007,25 @@ impl Renderer {
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);
             *entity_model_draw_calls += 1;
         }
-        if let Some(mesh) = &self.entity_model_end_portal_mesh {
-            pass.set_pipeline(&self.entity_model_dragon_rays_pipeline);
-            *pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-            *entity_model_draw_calls += 1;
-        }
-        if let Some(mesh) = &self.entity_model_end_gateway_mesh {
-            pass.set_pipeline(&self.entity_model_dragon_rays_pipeline);
-            *pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-            *entity_model_draw_calls += 1;
+        if let Some(atlas) = &self.entity_model_texture_atlas {
+            if let Some(mesh) = &self.entity_model_end_portal_mesh {
+                pass.set_pipeline(&self.entity_model_end_portal_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+            if let Some(mesh) = &self.entity_model_end_gateway_mesh {
+                pass.set_pipeline(&self.entity_model_end_gateway_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
         }
         if let (Some(mesh), Some(atlas)) = (
             &self.entity_model_scroll_mesh,
@@ -4359,8 +4403,10 @@ mod tests {
             source[main_range_helper..scroll_range_helper]
                 .contains("EntityModelTranslucentDrawRange::Scroll(draw)")
                 && source[main_range_helper..scroll_range_helper]
-                    .contains("EntityModelTranslucentDrawRange::AdditiveScroll(draw)"),
-            "main translucent range helper dispatches scroll and additive-scroll draw-plan ranges"
+                    .contains("EntityModelTranslucentDrawRange::AdditiveScroll(draw)")
+                && source[main_range_helper..scroll_range_helper]
+                    .contains("EntityModelTranslucentDrawRange::Portal(draw)"),
+            "main translucent range helper dispatches scroll, additive-scroll, and portal draw-plan ranges"
         );
         assert!(
             source[scroll_range_helper..main_helper]
@@ -4375,6 +4421,11 @@ mod tests {
         assert!(
             source[main_helper..tests_mod].contains("self.draw_entity_main_translucent_range("),
             "main translucent helper dispatches sorted combined draw-plan ranges"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("self.entity_model_end_portal_pipeline")
+                && source[main_helper..tests_mod].contains("self.entity_model_end_gateway_pipeline"),
+            "fallback unsorted translucent features also draw end portal/gateway with dedicated portal pipelines"
         );
     }
 

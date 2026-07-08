@@ -31,6 +31,7 @@ use crate::{
         create_entity_model_armor_translucent_pipeline,
         create_entity_model_cutout_z_offset_pipeline, create_entity_model_dissolve_pipeline,
         create_entity_model_dragon_rays_depth_pipeline, create_entity_model_dragon_rays_pipeline,
+        create_entity_model_end_gateway_pipeline, create_entity_model_end_portal_pipeline,
         create_entity_model_entity_glint_pipeline, create_entity_model_eyes_pipeline,
         create_entity_model_outline_cull_pipeline, create_entity_model_outline_pipeline,
         create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
@@ -39,9 +40,9 @@ use crate::{
         create_entity_model_translucent_emissive_pipeline,
         create_entity_model_translucent_pipeline, create_entity_model_water_mask_pipeline,
         EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
-        EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedDrawRange,
-        EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange, FirstPersonPlayerArm,
-        HudEntityPreviewPipTarget,
+        EntityModelPortalMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
+        EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
+        FirstPersonPlayerArm, HudEntityPreviewPipTarget,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -190,6 +191,7 @@ pub struct Renderer {
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
     pub(super) started_at: Instant,
+    pub(super) shader_game_time_ticks: f64,
     pub(super) main_target: MainTarget,
     pub(super) translucent_target: TranslucentTarget,
     pub(super) item_entity_target: ItemEntityTarget,
@@ -218,6 +220,8 @@ pub struct Renderer {
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_dragon_rays_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_dragon_rays_depth_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_end_portal_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_end_gateway_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_water_mask_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_cull_pipeline: wgpu::RenderPipeline,
@@ -333,8 +337,8 @@ pub struct Renderer {
     pub(super) entity_model_eyes_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_dragon_rays_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_dragon_rays_depth_mesh: Option<EntityModelMeshGpu>,
-    pub(super) entity_model_end_portal_mesh: Option<EntityModelMeshGpu>,
-    pub(super) entity_model_end_gateway_mesh: Option<EntityModelMeshGpu>,
+    pub(super) entity_model_end_portal_mesh: Option<EntityModelPortalMeshGpu>,
+    pub(super) entity_model_end_gateway_mesh: Option<EntityModelPortalMeshGpu>,
     pub(super) entity_model_outline_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_outline_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
@@ -951,6 +955,10 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
             );
+        let entity_model_end_portal_pipeline =
+            create_entity_model_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_end_gateway_pipeline =
+            create_entity_model_end_gateway_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_water_mask_pipeline =
             create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
@@ -1179,6 +1187,7 @@ impl Renderer {
                 ..RendererCounters::default()
             },
             started_at: Instant::now(),
+            shader_game_time_ticks: 0.0,
             main_target,
             translucent_target,
             item_entity_target,
@@ -1207,6 +1216,8 @@ impl Renderer {
             entity_model_eyes_pipeline,
             entity_model_dragon_rays_pipeline,
             entity_model_dragon_rays_depth_pipeline,
+            entity_model_end_portal_pipeline,
+            entity_model_end_gateway_pipeline,
             entity_model_water_mask_pipeline,
             entity_model_outline_pipeline,
             entity_model_outline_cull_pipeline,
@@ -1699,6 +1710,19 @@ impl Renderer {
         self.update_camera();
     }
 
+    pub fn set_shader_game_time_ticks(&mut self, ticks: f64) {
+        let ticks = if ticks.is_finite() {
+            ticks.max(0.0)
+        } else {
+            0.0
+        };
+        if (self.shader_game_time_ticks - ticks).abs() <= f64::EPSILON {
+            return;
+        }
+        self.shader_game_time_ticks = ticks;
+        self.update_camera();
+    }
+
     pub fn set_clear_color(&mut self, clear: ClearColor) {
         self.clear = clear;
     }
@@ -2028,14 +2052,16 @@ impl Renderer {
         }
         .with_lightmap_environment(self.lightmap_environment)
         .with_fog_environment(self.fog_environment)
-        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
+        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_shader_game_time_ticks(self.shader_game_time_ticks);
         self.update_sky_model_view_dynamics(uniform.sky_model_view_transform());
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
         // does not clobber the world camera, which earlier passes in the same submit still read).
         let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32)
-            .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
+            .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+            .with_shader_game_time_ticks(self.shader_game_time_ticks);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
     }

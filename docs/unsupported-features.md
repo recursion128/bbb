@@ -422,30 +422,22 @@ When an agent does any of the following, update this file in the same slice:
 ### Terrain Block Presentation Parity
 
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
-- Status: `partial`
-- Next action (2026-07-08 after the `skipRendering` adjacency-culling slice;
-  the umbrella claims in goal.md P2 were re-verified and most surfaces are
-  already aligned — see Evidence):
-  - Block-entity special renderers (end portal/gateway shader parity;
-    player-head owner skin remains under the
-    broader dynamic profile/texture pipeline): the chest
-    family (2026-07-06), the sign family incl. hanging signs + face text
-    (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
-    (2026-07-06), banner (2026-07-06), the enchanting-table book +
-    lectern book (2026-07-07), conduit (2026-07-08; see Evidence), and
-    skull/head (2026-07-08; see Evidence), end portal/gateway
-    (2026-07-08; see Evidence), and spawner display entity
-    (2026-07-08; see Evidence) are DONE as the first ten BER sub-slices;
-    BE-driven model sources are now clear. Boundary: end portal/gateway cubes
-    currently preserve the vanilla face source, transform, render type
-    metadata, and gateway beam geometry, but their cube surfaces use a
-    position-color approximation until the renderer grows dedicated
-    `RenderTypes.endPortal()` / `endGateway()` shader parity (`end_sky`,
-    `end_portal`, `PORTAL_LAYERS` 15/16).
-    Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
-    smallest sub-slice; audit the `Custom`→`Cube` shape fallback
-    (`block_models/shape.rs` → `textures.rs`) alongside, since
-    unclassifiable elements are mostly BE-driven models.
+- Status: `partial` (P2 Terrain / Block Render Presentation surfaces are
+  closed; the remaining player-head owner skin boundary is tracked under P3
+  dynamic profile/texture loading).
+- Next action (2026-07-08 after the end portal/gateway shader-parity slice):
+  - No remaining P2 terrain/block-presentation action is open in this ledger.
+    Block-entity special renderers are DONE across the chest family
+    (2026-07-06), sign family incl. hanging signs + face text (2026-07-06),
+    bed + bell (2026-07-06), shulker box + decorated pot (2026-07-06),
+    banner (2026-07-06), enchanting-table book + lectern book (2026-07-07),
+    conduit (2026-07-08), skull/head (2026-07-08), end portal/gateway cube
+    + beam + dedicated shader parity (2026-07-08), and ordinary spawner
+    display entity (2026-07-08). BE-driven model sources and the
+    `Custom`→`Cube` shape fallback audit are clear. Boundary: player-head BE
+    `profile` owner skins still require the broader P3 dynamic
+    profile/texture pipeline; profileless player heads use the vanilla
+    default player skin fallback.
 - Evidence / boundary:
   - Done 2026-07-08 — Terrain `skipRendering` adjacency culling. Vanilla facts
     were checked against `ModelBlockRenderer.shouldRenderFace`,
@@ -463,6 +455,33 @@ When an agent does any of the following, update this file in the same slice:
     neighbor behavior. Tests cover world classification, native projection,
     same-block translucent shared-face culling, different glass keys retaining
     faces, and iron-bars connection-gated culling.
+  - Done 2026-07-08 — End portal/gateway shader parity close-out. Vanilla
+    facts were checked against `RenderTypes.endPortal`,
+    `RenderTypes.endGateway`, `RenderPipelines.END_PORTAL`,
+    `RenderPipelines.END_GATEWAY`, the vanilla
+    `rendertype_end_portal.vsh` / `.fsh`, and
+    `GlobalSettingsUniform`: both render types bind `end_sky.png` and
+    `end_portal.png`; the pipelines use no color blend, default
+    `DepthStencilState` (`LessEqual`, depth write on), default culling, and
+    `PORTAL_LAYERS` specialized to 15 for portals and 16 for gateways; shader
+    time is `((gameTime % 24000) + partialTick) / 24000`. Renderer now adds
+    `textures/environment/end_sky.png` and
+    `textures/entity/end_portal/end_portal.png` to the entity atlas
+    (`ENTITY_MODEL_TEXTURE_REFS` 690-count), emits `EntityModelPortalMesh`
+    vertices carrying only world position plus the two atlas sub-rects, and
+    draws `EndPortal` / `EndGateway` through dedicated portal pipelines. The
+    WGSL port keeps vanilla `projection_from_position`, the 16 color
+    constants, projected sky sampling, the specialized 15/16-layer unrolled
+    sampling, and the vanilla translate/rotate/scale matrix order. Native now
+    passes
+    post-tick world `game_time + partial_tick` through `RendererFrame` into
+    `CameraUniform.shader_game_time`; glint animation remains on its separate
+    renderer wall-clock. Sorted and unsorted translucent paths both dispatch
+    portal ranges through the dedicated pipelines rather than the old
+    dragon-rays position-color path. Tests cover shader layer constants,
+    matrix/texture inputs, pipeline depth/cull/blend state, atlas refs,
+    portal mesh rect metadata, sorted draw ranges, fallback render dispatch,
+    and native frame time extraction.
   - Done 2026-07-08 — Ordinary spawner display entity renderer (tenth BER
     sub-slice). Vanilla facts were checked against `SpawnerRenderer`,
     `TrialSpawnerRenderer.extractSpawnerData`, `BaseSpawner`, `SpawnData`,
@@ -501,16 +520,16 @@ When an agent does any of the following, update this file in the same slice:
     `floorMod(gameTime,40)+partial` animation time. Native maps those
     sources to `EntityModelKind::EndPortalBlock` with optional
     `EndGatewayBeamRenderState` and joins the shared entity-model stream
-    after held-item baking. Renderer adds `EndPortal`/`EndGateway` custom
-    position-color render types for the cube faces, `EndGatewayBeam` scroll
-    geometry using the vanilla `BeaconRenderer.renderPart` quad formula, and
-    `textures/entity/end_portal/end_gateway_beam.png` in the entity atlas
-    (`ENTITY_MODEL_TEXTURE_REFS` 688-count). Boundary: the portal/gateway
-    cube shader itself is not yet the official 15/16-layer portal shader; the
-    approximation is intentionally tracked in Next action. Tests cover world
-    NBT/tick/source projection, native instance/beam projection, renderer
-    cube transform/faces/beam geometry/sorted draw range, and runtime
-    tick-before-extract ordering.
+    after held-item baking. Renderer initially added the cube-face render
+    types and `EndGatewayBeam` scroll geometry using the vanilla
+    `BeaconRenderer.renderPart` quad formula, plus
+    `textures/entity/end_portal/end_gateway_beam.png` in the entity atlas.
+    The follow-up shader-parity close-out above replaces the initial
+    position-color cube approximation with dedicated 15/16-layer
+    portal/gateway pipelines and expands the atlas to 690 texture refs. Tests
+    cover world NBT/tick/source projection, native instance/beam projection,
+    renderer cube transform/faces/beam geometry/sorted draw range, and
+    runtime tick-before-extract ordering.
   - Done 2026-07-08 — Skull/head block-entity renderer (eighth BER
     sub-slice). Vanilla facts were checked against `SkullBlockRenderer`,
     `SkullBlockRenderState`, `SkullBlockEntity`, `AbstractSkullBlock`,
