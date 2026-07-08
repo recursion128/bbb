@@ -40,6 +40,7 @@ mod lectern_book_scene;
 mod map_textures;
 mod particle_registry;
 mod particle_runtime;
+mod recipe_book_ui;
 mod runtime;
 mod shulker_box_scene;
 mod sign_scene;

@@ -543,6 +543,10 @@ pub enum HudInventoryBackgroundTexture {
     RecipeBookSlotUncraftable,
     RecipeBookSlotManyCraftable,
     RecipeBookSlotManyUncraftable,
+    RecipeBookPageForward,
+    RecipeBookPageForwardHighlighted,
+    RecipeBookPageBackward,
+    RecipeBookPageBackwardHighlighted,
     BlastFurnace,
     BlastFurnaceLitProgress,
     BlastFurnaceBurnProgress,
@@ -1699,6 +1703,48 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_slot_many_uncraftable =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_page_forward(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_page_forward = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_page_forward_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_page_forward_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_page_backward(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_page_backward = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_page_backward_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_page_backward_highlighted =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3514,6 +3560,18 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable => {
                 self.hud_recipe_book_slot_many_uncraftable.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookPageForward => {
+                self.hud_recipe_book_page_forward.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookPageForwardHighlighted => {
+                self.hud_recipe_book_page_forward_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookPageBackward => {
+                self.hud_recipe_book_page_backward.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookPageBackwardHighlighted => {
+                self.hud_recipe_book_page_backward_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()

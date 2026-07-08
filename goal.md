@@ -285,9 +285,10 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- recipe-book overlay paged/category-backed recipe buttons/ghost recipe/recipe placement/tab
-  notification animation（基础 shell 已完成）/ advancement screen（大件；recipe/advancement state 已
-  ready）；debug overlay（F3，低优先）。
+- recipe-book overlay recipe placement/ghost recipe/recipe-search filtering/craftability and
+  furnace-family recipe-grid parity/tab notification animation（基础 shell 与 crafting
+  category/page shell 已完成）/ advancement screen（大件；recipe/advancement state
+  已 ready）；debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
 结果尽量用 deterministic screenshot/readback 验证。

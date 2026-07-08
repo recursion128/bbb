@@ -1768,7 +1768,7 @@
   在 recipe book 面板投影搜索框，`ClientInputState` 保存搜索文本/焦点，本地
   支持 printable text、backspace/delete、方向键、Home/End、Ctrl+A、点击聚焦
   和 chat-key 聚焦；focused search 下 `E` 不再关闭容器。剩余：
-  recipe-book paged/category-backed recipe buttons、recipe placement、visible recipe-grid search
+  recipe-book category/page recipe buttons、recipe placement、visible recipe-grid search
   filtering、tab visibility/animation、search cursor/selection rendering、ghost
   recipe slots、narrow-screen overlap。
 - [x] recipe-book tab button shell（P2 HUD/input slice，2026-07-08）：依据
@@ -1778,7 +1778,7 @@
   加载并投影 crafting/local inventory、furnace、blast furnace、smoker 的
   vanilla tab sets；tab icons 走既有 HUD item/block-model 图标路径；点击 tab
   只更新本地 selected index、不发包，并取消搜索框焦点。剩余：
-  recipe-book paged/category-backed recipe buttons、recipe placement、recipe-category-backed tab
+  recipe-book category/page recipe buttons、recipe placement、recipe-category-backed tab
   visibility、tab notification animation、visible recipe-grid search filtering、
   ghost recipe slots、narrow-screen overlap。
 - [x] crafting recipe-book recipe button shell（P2 HUD slice，2026-07-08）：依据
@@ -1787,11 +1787,23 @@
   `recipe_book/slot_*` 背景 + `(x+4,y+4)` fake item 结果图标，加载 slot
   sprites，并在 crafting/local inventory 的 search tab 上投影最多 20 条
   `ClientRecipeBookState` 已知 structured crafting recipe 结果；图标复用既有
-  HUD item/block-model 路径。剩余：paged/category-backed recipe buttons、
+  HUD item/block-model 路径。剩余：category/page recipe buttons、
   furnace-family raw recipe displays、craftability/multiple-recipe slot sprite
   selection、recipe placement、recipe-category-backed tab visibility、tab
   notification animation、visible recipe-grid search filtering、ghost recipe
   slots、narrow-screen overlap。
+- [x] crafting recipe-book category/page shell（P2 HUD/input slice，2026-07-08）：
+  依据 `ClientRecipeBook.rebuildCollections` 的 category/group 聚合、
+  `SearchRecipeBookCategory.CRAFTING` 的 equipment/building/misc/redstone
+  展开顺序、`CraftingRecipeBookComponent.canDisplay` 的 2x2/3x3 grid 判定，
+  以及 `RecipeBookPage` 的 20/页、page forward/back 12x17 按钮和
+  `current/total` 页码布局，新增共享 crafting recipe-book UI collections；
+  runtime 按 selected tab/category 和 page 投影按钮、page arrows 与页码，
+  input 点击 arrows 只翻本地页且不发包，tab 切换重置 page。剩余：
+  furnace-family raw recipe displays、craftability slot sprite selection、
+  recipe placement、recipe-category-backed tab visibility、tab notification
+  animation、visible recipe-grid search filtering、search cursor/selection
+  rendering、ghost recipe slots、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

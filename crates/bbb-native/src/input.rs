@@ -49,6 +49,8 @@ pub(crate) use inventory::{
     sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
     RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
     RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+    RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
+    RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y, RECIPE_BOOK_PAGE_FORWARD_BUTTON_X,
     RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X,
     RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
     RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y,
@@ -145,6 +147,10 @@ pub(crate) struct ClientInputState {
     recipe_book_furnace_tab_index: usize,
     recipe_book_blast_furnace_tab_index: usize,
     recipe_book_smoker_tab_index: usize,
+    recipe_book_crafting_page: usize,
+    recipe_book_furnace_page: usize,
+    recipe_book_blast_furnace_page: usize,
+    recipe_book_smoker_page: usize,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -211,6 +217,14 @@ pub(crate) struct RecipeBookSearchHudState {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct RecipeBookTabSelectionHudState {
+    pub(crate) crafting: usize,
+    pub(crate) furnace: usize,
+    pub(crate) blast_furnace: usize,
+    pub(crate) smoker: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct RecipeBookPageHudState {
     pub(crate) crafting: usize,
     pub(crate) furnace: usize,
     pub(crate) blast_furnace: usize,
@@ -450,6 +464,15 @@ impl ClientInputState {
             furnace: self.recipe_book_furnace_tab_index,
             blast_furnace: self.recipe_book_blast_furnace_tab_index,
             smoker: self.recipe_book_smoker_tab_index,
+        }
+    }
+
+    pub(crate) fn recipe_book_page_hud_state(&self) -> RecipeBookPageHudState {
+        RecipeBookPageHudState {
+            crafting: self.recipe_book_crafting_page,
+            furnace: self.recipe_book_furnace_page,
+            blast_furnace: self.recipe_book_blast_furnace_page,
+            smoker: self.recipe_book_smoker_page,
         }
     }
 

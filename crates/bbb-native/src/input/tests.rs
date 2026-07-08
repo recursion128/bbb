@@ -3971,6 +3971,62 @@ fn inventory_key_is_consumed_by_focused_recipe_book_search() {
 }
 
 #[test]
+fn recipe_book_page_arrow_click_updates_local_page_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: (0..21)
+            .map(|index| recipe_book_shapeless_entry(index, 2, 200 + index))
+            .collect(),
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_PAGE_FORWARD_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_PAGE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert_eq!(input.recipe_book_page_hud_state().crafting, 1);
+    assert!(!input.recipe_book_search_hud_state().focused);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_PAGE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert_eq!(input.recipe_book_page_hud_state().crafting, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -5342,6 +5398,69 @@ fn generic_9x1_container_world(
         carried_item: ProtocolItemStackSummary::empty(),
     });
     world
+}
+
+fn open_recipe_book_crafting_table_world() -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ProtocolItemStackSummary::empty(); 46],
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    world
+}
+
+fn recipe_book_shapeless_entry(
+    id: i32,
+    category_id: i32,
+    result_item_id: i32,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
+    bbb_protocol::packets::RecipeBookAddEntry {
+        contents: bbb_protocol::packets::RecipeDisplayEntry {
+            id: bbb_protocol::packets::RecipeDisplayId { index: id },
+            display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+                raw_body: Vec::new(),
+                crafting: Some(
+                    bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                        ingredients: Vec::new(),
+                        result: bbb_protocol::packets::SlotDisplaySummary {
+                            display_type_id: 5,
+                            raw_payload: Vec::new(),
+                            item_stack: Some(test_item_stack(result_item_id, 1)),
+                        },
+                        crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                            display_type_id: 0,
+                            raw_payload: Vec::new(),
+                            item_stack: None,
+                        },
+                    },
+                ),
+            },
+            group: None,
+            category_id,
+            crafting_requirements: None,
+        },
+        flags: 0,
+        notification: false,
+        highlight: false,
+    }
 }
 
 fn open_container_slot_bundle_selection(world: &WorldStore, slot: i16) -> Option<i32> {

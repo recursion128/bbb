@@ -31,6 +31,10 @@ use super::{
     },
     text_edit, AnvilRenameInputSignature, ClientInputState,
 };
+use crate::recipe_book_ui::{
+    clamped_recipe_book_page, crafting_recipe_book_collections, recipe_book_page_count,
+    RecipeBookCraftingGrid,
+};
 use bbb_item_model::NativeItemRuntime;
 
 mod layout;
@@ -43,11 +47,12 @@ pub(crate) use layout::{
     recipe_book_type_for_background, recipe_book_type_settings, InventoryScreenBackground,
     InventoryScreenLayout, InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT,
     RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT,
-    RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y,
-    RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
-    RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y,
-    RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y,
+    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X,
+    RECIPE_BOOK_PAGE_BUTTON_HEIGHT, RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
+    RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH,
+    RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET,
+    RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET, RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT,
+    RECIPE_BOOK_TAB_STRIDE_Y, RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
@@ -240,6 +245,12 @@ enum LecternClickTarget {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RecipeBookPageTurn {
+    Previous,
+    Next,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BeaconClickTarget {
     Confirm,
     Cancel,
@@ -359,6 +370,13 @@ pub(crate) fn handle_inventory_mouse_input(
     }
     if button_num == 0 && maybe_select_recipe_book_tab(input, world, cursor_position, surface_size)
     {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0 && maybe_turn_recipe_book_page(input, world, cursor_position, surface_size) {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
@@ -635,6 +653,29 @@ fn maybe_select_recipe_book_tab(
         return false;
     };
     set_recipe_book_selected_tab_index(input, book_type, index);
+    input.recipe_book_search_focused = false;
+    input.recipe_book_search_suppress_open_key_commit = false;
+    true
+}
+
+fn maybe_turn_recipe_book_page(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((book_type, turn, page_count)) =
+        recipe_book_page_button_at_position(input, world, cursor_position, surface_size)
+    else {
+        return false;
+    };
+    let current_page =
+        selected_recipe_book_page_index(input, book_type).min(page_count.saturating_sub(1));
+    let next_page = match turn {
+        RecipeBookPageTurn::Previous => current_page.saturating_sub(1),
+        RecipeBookPageTurn::Next => (current_page + 1).min(page_count.saturating_sub(1)),
+    };
+    set_recipe_book_page_index(input, book_type, next_page);
     input.recipe_book_search_focused = false;
     input.recipe_book_search_suppress_open_key_commit = false;
     true
@@ -1494,13 +1535,46 @@ fn set_recipe_book_selected_tab_index(
     book_type: RecipeBookType,
     index: usize,
 ) {
-    let selected = match book_type {
-        RecipeBookType::Crafting => &mut input.recipe_book_crafting_tab_index,
-        RecipeBookType::Furnace => &mut input.recipe_book_furnace_tab_index,
-        RecipeBookType::BlastFurnace => &mut input.recipe_book_blast_furnace_tab_index,
-        RecipeBookType::Smoker => &mut input.recipe_book_smoker_tab_index,
-    };
-    *selected = index;
+    if selected_recipe_book_tab_index(input, book_type) != index {
+        set_recipe_book_page_index(input, book_type, 0);
+    }
+    match book_type {
+        RecipeBookType::Crafting => input.recipe_book_crafting_tab_index = index,
+        RecipeBookType::Furnace => input.recipe_book_furnace_tab_index = index,
+        RecipeBookType::BlastFurnace => input.recipe_book_blast_furnace_tab_index = index,
+        RecipeBookType::Smoker => input.recipe_book_smoker_tab_index = index,
+    }
+}
+
+fn selected_recipe_book_tab_index(input: &ClientInputState, book_type: RecipeBookType) -> usize {
+    match book_type {
+        RecipeBookType::Crafting => input.recipe_book_crafting_tab_index,
+        RecipeBookType::Furnace => input.recipe_book_furnace_tab_index,
+        RecipeBookType::BlastFurnace => input.recipe_book_blast_furnace_tab_index,
+        RecipeBookType::Smoker => input.recipe_book_smoker_tab_index,
+    }
+}
+
+fn selected_recipe_book_page_index(input: &ClientInputState, book_type: RecipeBookType) -> usize {
+    match book_type {
+        RecipeBookType::Crafting => input.recipe_book_crafting_page,
+        RecipeBookType::Furnace => input.recipe_book_furnace_page,
+        RecipeBookType::BlastFurnace => input.recipe_book_blast_furnace_page,
+        RecipeBookType::Smoker => input.recipe_book_smoker_page,
+    }
+}
+
+fn set_recipe_book_page_index(
+    input: &mut ClientInputState,
+    book_type: RecipeBookType,
+    page: usize,
+) {
+    match book_type {
+        RecipeBookType::Crafting => input.recipe_book_crafting_page = page,
+        RecipeBookType::Furnace => input.recipe_book_furnace_page = page,
+        RecipeBookType::BlastFurnace => input.recipe_book_blast_furnace_page = page,
+        RecipeBookType::Smoker => input.recipe_book_smoker_page = page,
+    }
 }
 
 fn recipe_book_search_box_is_open(world: &WorldStore) -> bool {
@@ -2150,6 +2224,82 @@ fn recipe_book_tab_at_position(
         }
     }
     None
+}
+
+fn recipe_book_page_button_at_position(
+    input: &ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<(RecipeBookType, RecipeBookPageTurn, usize)> {
+    let layout = inventory_screen_layout(world)?;
+    let book_type = recipe_book_type_for_background(layout.background)?;
+    if recipe_book_main_gui_offset(world, layout.background) == 0 {
+        return None;
+    }
+    let grid = recipe_book_crafting_grid_for_background(layout.background)?;
+    let tab_count = recipe_book_tab_count_for_background(layout.background)?;
+    if tab_count == 0 {
+        return None;
+    }
+    let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
+    let collection_count = crafting_recipe_book_collections(world, grid, selected_tab).len();
+    let page_count = recipe_book_page_count(collection_count);
+    if page_count <= 1 {
+        return None;
+    }
+    let current_page = clamped_recipe_book_page(
+        selected_recipe_book_page_index(input, book_type),
+        collection_count,
+    );
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if current_page + 1 < page_count
+        && recipe_book_page_button_contains(
+            x,
+            y,
+            RECIPE_BOOK_PAGE_FORWARD_BUTTON_X,
+            RECIPE_BOOK_PAGE_BUTTON_Y,
+        )
+    {
+        return Some((book_type, RecipeBookPageTurn::Next, page_count));
+    }
+    if current_page > 0
+        && recipe_book_page_button_contains(
+            x,
+            y,
+            RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X,
+            RECIPE_BOOK_PAGE_BUTTON_Y,
+        )
+    {
+        return Some((book_type, RecipeBookPageTurn::Previous, page_count));
+    }
+    None
+}
+
+fn recipe_book_page_button_contains(x: f64, y: f64, button_x: i32, button_y: i32) -> bool {
+    x >= f64::from(button_x)
+        && x < f64::from(button_x + RECIPE_BOOK_PAGE_BUTTON_WIDTH)
+        && y >= f64::from(button_y)
+        && y < f64::from(button_y + RECIPE_BOOK_PAGE_BUTTON_HEIGHT)
+}
+
+fn recipe_book_crafting_grid_for_background(
+    background: InventoryScreenBackground,
+) -> Option<RecipeBookCraftingGrid> {
+    match background {
+        InventoryScreenBackground::LocalInventory => Some(RecipeBookCraftingGrid {
+            width: 2,
+            height: 2,
+        }),
+        InventoryScreenBackground::CraftingTable => Some(RecipeBookCraftingGrid {
+            width: 3,
+            height: 3,
+        }),
+        _ => None,
+    }
 }
 
 fn enchantment_button_at_position(

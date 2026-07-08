@@ -1060,9 +1060,10 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
-    buttons/search input/tab shell/crafting recipe-button shell: paged and
-    category-backed recipe buttons, recipe placement, ghost recipe slots, and
-    tab notification/category-backed visibility.
+    buttons/search input/tab shell/crafting recipe-button shell/category-page
+    shell: recipe placement, ghost recipe slots, tab notification/category
+    visibility, recipe-search filtering, and craftability/furnace-family
+    recipe-grid parity.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1131,15 +1132,30 @@ When an agent does any of the following, update this file in the same slice:
     crafting/local-inventory search tab, projects up to 20 known structured
     crafting recipe results from `ClientRecipeBookState` onto the recipe-book
     panel with existing HUD item/block-model icon rendering.
-  - Boundary: paged and category-backed recipe buttons, furnace-family raw
-    recipe displays, craftability/multiple-recipe slot sprite selection,
-    recipe placement commands from clicks, recipe-category-backed tab
-    visibility, tab notification animation, recipe-search filtering of visible
-    recipe buttons, cursor/selection rendering inside the search box, and
-    ghost recipe slot rendering remain open. The filter toggle, search text,
-    selected-tab, and first crafting recipe-button shell states are live. The
-    first shell models the non-narrow layout; vanilla's narrow-screen overlap
-    mode (`width < 379`) remains for the input/render follow-up.
+  - Done 2026-07-08 — Crafting recipe-book category/page shell. Vanilla
+    anchors: `ClientRecipeBook.rebuildCollections` groups known recipes by
+    `RecipeBookCategory` and optional group id, then expands
+    `SearchRecipeBookCategory.CRAFTING` in equipment/building-blocks/misc/
+    redstone order; `CraftingRecipeBookComponent.canDisplay` filters shaped
+    recipes by grid width/height and shapeless recipes by grid area;
+    `RecipeBookPage.updateCollections` uses 20 collections per page and
+    page arrows at `(xo + 93, yo + 137)` / `(xo + 38, yo + 137)` with 12x17
+    sprites plus a centered `current/total` label at `xo + 73`, `yo + 141`.
+    bbb now builds shared crafting recipe-book UI collections, maps the
+    vanilla built-in category ids, groups recipe displays by category/group,
+    filters local inventory to 2x2 and crafting table to 3x3 displays, stores
+    local page state, renders page arrows/page numbers, and lets arrow clicks
+    turn pages without sending a packet; tab clicks reset the page like
+    vanilla.
+  - Boundary: furnace-family raw recipe displays, craftability slot sprite
+    selection, recipe placement commands from clicks, recipe-category-backed
+    tab visibility, tab notification animation, recipe-search filtering of
+    visible recipe buttons, cursor/selection rendering inside the search box,
+    and ghost recipe slot rendering remain open. The filter toggle, search
+    text, selected-tab, first crafting recipe-button shell, and crafting
+    category/page states are live. The first shell models the non-narrow
+    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
+    the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
