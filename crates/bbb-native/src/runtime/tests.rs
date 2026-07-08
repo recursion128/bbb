@@ -6325,6 +6325,60 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
 }
 
 #[test]
+fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![slot_display_composite(vec![
+                        slot_display_with_remainder(
+                            stonecutter_item_display(1),
+                            stonecutter_item_display(0),
+                        ),
+                        stonecutter_item_display(2),
+                    ])],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                        tag: None,
+                    },
+                },
+            ),
+            furnace: None,
+        },
+    });
+
+    let first_screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    let first_icon = first_screen
+        .ghost_items
+        .iter()
+        .find(|item| (item.x, item.y, item.draw_decorations) == (179, 17, false))
+        .map(|item| item.icon.clone())
+        .expect("first composite ghost ingredient");
+
+    world.apply_world_time(PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    let second_screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    let second_icon = second_screen
+        .ghost_items
+        .iter()
+        .find(|item| (item.x, item.y, item.draw_decorations) == (179, 17, false))
+        .map(|item| item.icon.clone())
+        .expect("second composite ghost ingredient");
+
+    assert_ne!(first_icon, second_icon);
+}
+
+#[test]
 fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_fill() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = WorldStore::new();
@@ -7007,6 +7061,90 @@ fn hud_inventory_screen_cycles_recipe_book_overlay_tag_ingredient_icon() {
         .find(|item| (item.x, item.y) == (17, 38))
         .map(|item| item.icon.clone())
         .expect("second tag overlay ingredient");
+
+    assert_ne!(first_icon, second_icon);
+}
+
+#[test]
+fn hud_inventory_screen_cycles_composite_recipe_book_overlay_ingredient_icon() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                20,
+                2,
+                Some(7),
+                1,
+                vec![slot_display_composite(vec![
+                    slot_display_with_remainder(
+                        stonecutter_item_display(1),
+                        stonecutter_item_display(0),
+                    ),
+                    stonecutter_item_display(2),
+                ])],
+            ),
+            shapeless_crafting_recipe_book_entry_with_display_ingredients(
+                21,
+                2,
+                Some(7),
+                2,
+                vec![stonecutter_item_display(2)],
+            ),
+        ],
+    });
+    let local_state = InventoryHudLocalState {
+        recipe_book_tabs: RecipeBookTabSelectionHudState {
+            crafting: 1,
+            ..RecipeBookTabSelectionHudState::default()
+        },
+        recipe_book_overlay: Some(RecipeBookOverlayHudState {
+            book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+            tab_index: 1,
+            page_index: 0,
+            button_index: 0,
+            x: 11,
+            y: 31,
+        }),
+        ..InventoryHudLocalState::default()
+    };
+
+    let first_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let first_icon = first_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (17, 38))
+        .map(|item| item.icon.clone())
+        .expect("first composite overlay ingredient");
+
+    world.apply_world_time(PlayTime {
+        game_time: 30,
+        clock_updates: Vec::new(),
+    });
+    let second_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state,
+        0.0,
+    )
+    .unwrap();
+    let second_icon = second_screen
+        .floating_items
+        .iter()
+        .find(|item| (item.x, item.y) == (17, 38))
+        .map(|item| item.icon.clone())
+        .expect("second composite overlay ingredient");
 
     assert_ne!(first_icon, second_icon);
 }
@@ -10893,6 +11031,39 @@ fn slot_display_tag(tag: &str) -> bbb_protocol::packets::SlotDisplaySummary {
         raw_payload: raw_payload.into_inner(),
         item_stack: None,
         tag: Some(tag.to_string()),
+    }
+}
+
+fn slot_display_composite(
+    contents: Vec<bbb_protocol::packets::SlotDisplaySummary>,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut raw_payload = bbb_protocol::codec::Encoder::new();
+    raw_payload.write_var_i32(10);
+    raw_payload.write_var_i32(i32::try_from(contents.len()).unwrap());
+    for content in &contents {
+        raw_payload.write_bytes(&content.raw_payload);
+    }
+    bbb_protocol::packets::SlotDisplaySummary {
+        display_type_id: 10,
+        raw_payload: raw_payload.into_inner(),
+        item_stack: None,
+        tag: None,
+    }
+}
+
+fn slot_display_with_remainder(
+    input: bbb_protocol::packets::SlotDisplaySummary,
+    remainder: bbb_protocol::packets::SlotDisplaySummary,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut raw_payload = bbb_protocol::codec::Encoder::new();
+    raw_payload.write_var_i32(9);
+    raw_payload.write_bytes(&input.raw_payload);
+    raw_payload.write_bytes(&remainder.raw_payload);
+    bbb_protocol::packets::SlotDisplaySummary {
+        display_type_id: 9,
+        raw_payload: raw_payload.into_inner(),
+        item_stack: None,
+        tag: None,
     }
 }
 

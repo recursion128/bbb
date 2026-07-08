@@ -744,16 +744,40 @@ fn slot_display_item_stack_at_index<'a>(
     if let Some(stack) = display.item_stack.as_ref() {
         return Some(Cow::Borrowed(stack));
     }
-    let entries = item_tag_entries?.get(display.tag.as_ref()?)?;
-    if entries.is_empty() {
+    let mut stacks = Vec::new();
+    push_slot_display_item_stack_candidates(display, item_tag_entries, &mut stacks);
+    if stacks.is_empty() {
         return None;
     }
-    let item_id = entries[slot_select_index % entries.len()];
-    Some(Cow::Owned(ItemStackSummary {
-        item_id: Some(item_id),
-        count: 1,
-        component_patch: DataComponentPatchSummary::default(),
-    }))
+    Some(Cow::Owned(stacks[slot_select_index % stacks.len()].clone()))
+}
+
+fn push_slot_display_item_stack_candidates(
+    display: &SlotDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    stacks: &mut Vec<ItemStackSummary>,
+) {
+    if let Some(stack) = display.item_stack.as_ref() {
+        stacks.push(stack.clone());
+        return;
+    }
+    if let Some(entries) = display
+        .tag
+        .as_ref()
+        .and_then(|tag| item_tag_entries.and_then(|tags| tags.get(tag)))
+    {
+        if !entries.is_empty() {
+            stacks.extend(entries.iter().map(|item_id| ItemStackSummary {
+                item_id: Some(*item_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }));
+            return;
+        }
+    }
+    for child in display.stack_resolving_children() {
+        push_slot_display_item_stack_candidates(&child, item_tag_entries, stacks);
+    }
 }
 
 fn normalized_recipe_search_text(search_text: &str) -> Option<String> {

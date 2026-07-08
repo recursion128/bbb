@@ -2025,6 +2025,17 @@
   resource-id namespace 命中，且 result resource path 或 tooltip text 命中；
   protocol id 十进制文本不再参与 recipe-book 搜索。剩余：craftability retry
   guard、composite SlotDisplay 展开、fake-item y-scaling、narrow-screen overlap。
+- [x] recipe-book composite SlotDisplay ingredient expansion（P2 protocol/HUD
+  slice，2026-07-08）：依据 `SlotDisplays.bootstrap` 中 slot-display id 9
+  `with_remainder` 与 id 10 `composite` 的注册顺序、`SlotDisplay.Composite.resolve`
+  对 children 的 ordered flat-map、`SlotDisplay.WithRemainder.resolve` 在
+  `DisplayContentsFactory.ForStacks` 下返回 input display，以及
+  `Ingredient.display` 对 direct holder-list alternatives 生成 `Composite`
+  的行为，protocol 现在从 `SlotDisplaySummary` raw payload 暴露 stack-resolving
+  children；native 在 recipe-book ghost slots 与 overlay ingredient mini-grid
+  中统一 flatten direct item、tag、with-remainder input 与 composite children，
+  再按 30 tick slot-select index 取候选栈。剩余：craftability retry guard、
+  fake-item y-scaling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

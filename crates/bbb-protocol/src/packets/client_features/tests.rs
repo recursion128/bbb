@@ -540,6 +540,57 @@ fn decodes_update_recipes_with_tag_slot_display() {
 }
 
 #[test]
+fn slot_display_summary_exposes_composite_stack_resolving_children() {
+    let item_display = slot_display_item_payload(77);
+    let tag_display = slot_display_tag_payload("planks");
+    let mut option_display = Encoder::new();
+    option_display.write_var_i32(10);
+    option_display.write_var_i32(2);
+    option_display.write_bytes(&item_display);
+    option_display.write_bytes(&tag_display);
+
+    let option_display = decode_update_recipes_option_display(option_display.into_inner());
+    assert_eq!(
+        option_display.stack_resolving_children(),
+        vec![
+            SlotDisplaySummary {
+                display_type_id: 4,
+                raw_payload: item_display,
+                item_stack: Some(item_stack(77, 1)),
+                tag: None,
+            },
+            SlotDisplaySummary {
+                display_type_id: 6,
+                raw_payload: tag_display,
+                item_stack: None,
+                tag: Some("minecraft:planks".to_string()),
+            },
+        ]
+    );
+}
+
+#[test]
+fn slot_display_summary_exposes_with_remainder_input_for_stack_resolution() {
+    let input_display = slot_display_item_payload(55);
+    let remainder_display = slot_display_item_stack_payload(56, 1);
+    let mut option_display = Encoder::new();
+    option_display.write_var_i32(9);
+    option_display.write_bytes(&input_display);
+    option_display.write_bytes(&remainder_display);
+
+    let option_display = decode_update_recipes_option_display(option_display.into_inner());
+    assert_eq!(
+        option_display.stack_resolving_children(),
+        vec![SlotDisplaySummary {
+            display_type_id: 4,
+            raw_payload: input_display,
+            item_stack: Some(item_stack(55, 1)),
+            tag: None,
+        }]
+    );
+}
+
+#[test]
 fn rejects_invalid_update_recipes_identifiers() {
     let mut invalid_property_key = Encoder::new();
     invalid_property_key.write_var_i32(1);
@@ -899,6 +950,48 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
         count,
         component_patch: DataComponentPatchSummary::default(),
     }
+}
+
+fn decode_update_recipes_option_display(option_display: Vec<u8>) -> SlotDisplaySummary {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(11);
+    payload.write_bytes(&option_display);
+    let PlayClientbound::UpdateRecipes(UpdateRecipes {
+        mut stonecutter_recipes,
+        ..
+    }) = decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
+        .unwrap()
+    else {
+        panic!("expected update recipes packet");
+    };
+    stonecutter_recipes.remove(0).option_display
+}
+
+fn slot_display_item_payload(item_id: i32) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(4);
+    payload.write_var_i32(item_id);
+    payload.into_inner()
+}
+
+fn slot_display_item_stack_payload(item_id: i32, count: i32) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(5);
+    payload.write_var_i32(item_id);
+    payload.write_var_i32(count);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.into_inner()
+}
+
+fn slot_display_tag_payload(tag: &str) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(6);
+    payload.write_string(tag);
+    payload.into_inner()
 }
 
 fn compound_with_string(name: &str, value: &str) -> Vec<u8> {

@@ -1067,8 +1067,10 @@ When an agent does any of the following, update this file in the same slice:
     notification pulse, furnace-family recipe-grid baseline,
     furnace-family ghost recipe projection, and furnace-family stacked-contents
     craftability, multi-recipe cycling, and right-click multi-recipe picker
-    baseline, and full recipe `FullTextSearchTree` search parity:
-    composite SlotDisplay expansion for ghost and overlay ingredient variants.
+    baseline, full recipe `FullTextSearchTree` search parity, and composite
+    SlotDisplay ingredient expansion:
+    craftability retry guard, exact animated-tab fake-item y-scaling, and
+    narrow-screen overlap.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1342,8 +1344,7 @@ When an agent does any of the following, update this file in the same slice:
     bbb now projects overlay contents as scaled 6px ingredient mini-items at
     the equivalent top-left positions, reuses the same GUI item/block-model
     path via a narrow floating-item scale field, and cycles tag-backed overlay
-    ingredients with the vanilla 30-tick slot-select index. Boundary: composite
-    SlotDisplay expansion remains open.
+    ingredients with the vanilla 30-tick slot-select index.
   - Done 2026-07-08 — Recipe-book `FullTextSearchTree` search semantics.
     Vanilla anchors: `SessionSearchTrees.updateRecipes` indexes each
     `RecipeCollection` by result item tooltip lines and result item
@@ -1359,10 +1360,20 @@ When an agent does any of the following, update this file in the same slice:
     `namespace:path` searches require a result resource-id namespace match and
     either a result resource path or tooltip text match; protocol id decimal
     text no longer matches recipe-book searches.
-  - Boundary: craftability retry guard, full composite SlotDisplay expansion
-    for ghost and overlay variants, exact fake-item y-scaling during animated
-    recipe-book tabs, and narrow-screen overlap remain open. The filter toggle,
-    search text,
+  - Done 2026-07-08 — Composite SlotDisplay expansion for recipe-book ghost
+    and overlay ingredients. Vanilla anchors: `SlotDisplays.bootstrap`
+    registers `with_remainder` at slot-display id 9 and `composite` at id 10;
+    `SlotDisplay.Composite.resolve` flat-maps each child display in order;
+    `SlotDisplay.WithRemainder.resolve` returns its input display for
+    `DisplayContentsFactory.ForStacks`; and `Ingredient.display` uses
+    `Composite` for direct holder-list alternatives while preserving
+    `WithRemainder` for items with crafting remainders. bbb now exposes those
+    stack-resolving children from protocol `SlotDisplaySummary`, flattens them
+    with direct item and tag candidates, and uses the same 30-tick
+    slot-select index for ghost slots and overlay mini-grid ingredients.
+  - Boundary: craftability retry guard, exact fake-item y-scaling during
+    animated recipe-book tabs, and narrow-screen overlap remain open. The
+    filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
@@ -1375,7 +1386,8 @@ When an agent does any of the following, update this file in the same slice:
     recipe-grid baseline, furnace-family ghost recipe projection,
     furnace-family stacked-contents craftability, and multi-recipe cycling,
     right-click multi-recipe picker baseline, and overlay scaled ingredient
-    mini-grid are live. The first shell models the non-narrow
+    mini-grid plus composite SlotDisplay ingredient expansion are live. The
+    first shell models the non-narrow
     layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
     the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

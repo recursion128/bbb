@@ -63,6 +63,35 @@ pub struct SlotDisplaySummary {
     pub tag: Option<String>,
 }
 
+impl SlotDisplaySummary {
+    pub fn stack_resolving_children(&self) -> Vec<SlotDisplaySummary> {
+        self.decode_stack_resolving_children().unwrap_or_default()
+    }
+
+    fn decode_stack_resolving_children(&self) -> Result<Vec<SlotDisplaySummary>> {
+        let mut decoder = Decoder::new(&self.raw_payload);
+        let display_type_id = decoder.read_var_i32()?;
+        if display_type_id != self.display_type_id {
+            return Ok(Vec::new());
+        }
+        let children = match display_type_id {
+            9 => {
+                let input = decode_slot_display_summary(&mut decoder)?;
+                decode_slot_display_summary(&mut decoder)?;
+                vec![input]
+            }
+            10 => decode_slot_display_list(&mut decoder)?,
+            _ => Vec::new(),
+        };
+        if !decoder.is_empty() {
+            return Err(ProtocolError::InvalidData(
+                "trailing bytes after slot display children".to_string(),
+            ));
+        }
+        Ok(children)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RecipeDisplayId {
     pub index: i32,
