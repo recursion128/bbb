@@ -388,6 +388,26 @@ pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
     )
 }
 
+pub(crate) fn entity_model_kind_for_world_entity_type_at_partial_tick(
+    world: &WorldStore,
+    entity_type_id: i32,
+    entity_age_ticks: f32,
+) -> EntityModelKind {
+    let data_values: &[bbb_protocol::packets::EntityDataValue] = &[];
+    entity_model_kind_with_time_and_registries(
+        entity_type_id,
+        data_values,
+        entity_age_ticks,
+        world.world_time().map(|time| time.game_time).unwrap_or(0),
+        world.registry_content("minecraft:chicken_variant"),
+        world.registry_content("minecraft:cow_variant"),
+        world.registry_content("minecraft:pig_variant"),
+        world.registry_content("minecraft:frog_variant"),
+        world.registry_content("minecraft:cat_variant"),
+        world.registry_content("minecraft:wolf_variant"),
+    )
+}
+
 fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     SelectionBox {
         min: [

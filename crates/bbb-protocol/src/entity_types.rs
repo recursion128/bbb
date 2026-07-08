@@ -161,3 +161,55 @@ pub const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
 pub const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 pub const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 pub const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
+
+/// Resolves a vanilla entity resource id such as `minecraft:zombie` to the
+/// matching 26.1 protocol registry id. The constants above remain the single
+/// checked-in id table; this derives the resource path from their vanilla names.
+pub fn vanilla_entity_type_id_for_resource_id(resource_id: &str) -> Option<i32> {
+    let path = resource_id
+        .strip_prefix("minecraft:")
+        .unwrap_or(resource_id);
+    if path.is_empty() || path.contains(':') {
+        return None;
+    }
+    for line in include_str!("entity_types.rs").lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("pub const VANILLA_ENTITY_TYPE_") else {
+            continue;
+        };
+        let Some((const_name, value)) = rest.split_once("_ID: i32 = ") else {
+            continue;
+        };
+        if const_name.to_ascii_lowercase() != path {
+            continue;
+        }
+        let value = value.strip_suffix(';')?;
+        return value.parse().ok();
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_resource_ids_from_existing_entity_type_constants() {
+        assert_eq!(
+            vanilla_entity_type_id_for_resource_id("minecraft:zombie"),
+            Some(VANILLA_ENTITY_TYPE_ZOMBIE_ID)
+        );
+        assert_eq!(
+            vanilla_entity_type_id_for_resource_id("creeper"),
+            Some(VANILLA_ENTITY_TYPE_CREEPER_ID)
+        );
+        assert_eq!(
+            vanilla_entity_type_id_for_resource_id("minecraft:fishing_bobber"),
+            Some(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
+        );
+        assert_eq!(
+            vanilla_entity_type_id_for_resource_id("minecraft:not_a_mob"),
+            None
+        );
+    }
+}

@@ -57,6 +57,9 @@ pub use crate::skull_blocks::{
     is_skull_block_name, skull_kind_for_block_name, SkullBlockAttachment, SkullBlockKind,
     SkullBlockState, SkullModelSourceState, SkullWallFacing,
 };
+pub use crate::spawner_blocks::{
+    is_spawner_block_name, SpawnerBlockState, SpawnerDisplayEntitySourceState,
+};
 pub use crate::terrain::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockProbe, TerrainBlockCell, TerrainChunkSnapshot,

@@ -926,6 +926,7 @@ fn applies_block_entity_data_update() {
             decorated_pot_sherds: None,
             banner_patterns: None,
             end_gateway: None,
+            spawner: None,
         }
     );
     assert_eq!(

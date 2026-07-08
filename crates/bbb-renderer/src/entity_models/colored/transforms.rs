@@ -28,6 +28,20 @@ const ARMOR_STAND_WOBBLE_TIME: f32 = 5.0;
 const GHAST_SCALE: f32 = 4.5;
 const HAPPY_GHAST_SCALE: f32 = 4.0;
 
+fn entity_root_position_transform(instance: EntityModelInstance) -> Mat4 {
+    let position = Mat4::from_translation(Vec3::from_array(instance.position));
+    if let Some(spawner) = instance.render_state.spawner_display {
+        position
+            * Mat4::from_translation(Vec3::new(0.5, 0.4, 0.5))
+            * Mat4::from_rotation_y(spawner.spin_degrees.to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, -0.2, 0.0))
+            * Mat4::from_rotation_x(-30.0_f32.to_radians())
+            * Mat4::from_scale(Vec3::splat(spawner.scale))
+    } else {
+        position
+    }
+}
+
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     let setup_rotation_tail = match instance.kind {
         EntityModelKind::ArmorStand { .. } => {
@@ -44,7 +58,7 @@ pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityMode
 pub(in crate::entity_models) fn shulker_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * shulker_setup_rotations_transform(instance)
@@ -57,7 +71,7 @@ fn living_entity_model_root_transform_with_extra_setup_rotation(
     instance: EntityModelInstance,
     setup_rotation_tail: Mat4,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_render_offset_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
@@ -74,7 +88,7 @@ pub(in crate::entity_models) fn illusioner_model_root_transform(
     instance: EntityModelInstance,
     clone_offset: [f32; 3],
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_render_offset_transform(instance)
         * Mat4::from_translation(Vec3::from_array(clone_offset))
         * entity_pre_scale_translation(instance)
@@ -89,7 +103,7 @@ fn living_entity_model_root_transform_with_renderer_transform(
     instance: EntityModelInstance,
     renderer_transform: Mat4,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_render_offset_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
@@ -574,7 +588,7 @@ pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f3
 pub(in crate::entity_models) fn ender_dragon_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_rotation_y((-instance.render_state.body_rot).to_radians())
         * Mat4::from_translation(Vec3::new(0.0, 0.0, 1.0))
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
@@ -589,7 +603,7 @@ pub(in crate::entity_models) fn ender_dragon_model_root_transform(
 pub(in crate::entity_models) fn end_crystal_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_scale(Vec3::splat(2.0))
         * Mat4::from_translation(Vec3::new(0.0, -0.5, 0.0))
 }
@@ -602,7 +616,7 @@ pub(in crate::entity_models) fn end_crystal_model_root_transform(
 pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_rotation_y((90.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
@@ -615,7 +629,7 @@ pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
 /// through `body_rot` / `head_pitch` (the instance's `y_rot` and head pitch); `ArrowModel.setupAnim`
 /// applies the impact-shake root zRot inside the model tree.
 pub(in crate::entity_models) fn arrow_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())
         * Mat4::from_rotation_z(instance.render_state.head_pitch.to_radians())
         * Mat4::from_scale(Vec3::splat(0.9))
@@ -630,7 +644,7 @@ pub(in crate::entity_models) fn arrow_model_root_transform(instance: EntityModel
 pub(in crate::entity_models) fn trident_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())
         * Mat4::from_rotation_z((instance.render_state.head_pitch + 90.0).to_radians())
 }
@@ -641,8 +655,7 @@ pub(in crate::entity_models) fn trident_model_root_transform(
 pub(in crate::entity_models) fn leash_knot_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+    entity_root_position_transform(instance) * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
 }
 
 fn conduit_active_bob(anim_time: f32) -> f32 {
@@ -660,7 +673,7 @@ pub(in crate::entity_models) fn conduit_model_root_transform(
 ) -> Mat4 {
     use std::f32::consts::{FRAC_PI_2, PI};
 
-    let block = Mat4::from_translation(Vec3::from_array(instance.position));
+    let block = entity_root_position_transform(instance);
     let center = Mat4::from_translation(Vec3::splat(0.5));
     match part {
         ConduitModelPart::Shell => {
@@ -714,7 +727,7 @@ pub(in crate::entity_models) fn skull_block_model_root_transform(
     instance: EntityModelInstance,
     attachment: SkullBlockModelAttachment,
 ) -> Mat4 {
-    let block = Mat4::from_translation(Vec3::from_array(instance.position));
+    let block = entity_root_position_transform(instance);
     match attachment {
         SkullBlockModelAttachment::Ground => {
             block
@@ -748,7 +761,7 @@ pub(in crate::entity_models) fn skull_block_model_root_transform(
 /// `body_rot` carries `-facing.toYRot()` degrees.
 pub(in crate::entity_models) fn chest_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     let pivot = Vec3::new(0.5, 0.0, 0.5);
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(pivot)
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
         * Mat4::from_translation(-pivot)
@@ -762,7 +775,7 @@ pub(in crate::entity_models) fn chest_model_root_transform(instance: EntityModel
 /// the bed block's min corner and `body_rot` carries `180 + facing.toYRot()` degrees.
 pub(in crate::entity_models) fn bed_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     let pivot = Vec3::new(0.5, 0.5, 0.5);
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.0, 0.5625, 0.0))
         * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2)
         * Mat4::from_translation(pivot)
@@ -775,7 +788,7 @@ pub(in crate::entity_models) fn bed_model_root_transform(instance: EntityModelIn
 /// frame is part of the `bell_*` block models the terrain path draws), and the shake rotation
 /// lives on the `bell_body` part pivot inside `BellModel.setupAnim`.
 pub(in crate::entity_models) fn bell_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
 }
 
 /// Vanilla `Direction.getRotation()` (`Direction.java:144-153`) for the shulker box `FACING`:
@@ -810,7 +823,7 @@ pub(in crate::entity_models) fn shulker_box_model_root_transform(
     instance: EntityModelInstance,
     facing: EntityAttachmentFace,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.5, 0.5, 0.5))
         * Mat4::from_scale(Vec3::splat(0.9995))
         * shulker_box_facing_rotation(facing)
@@ -841,7 +854,7 @@ pub(in crate::entity_models) fn decorated_pot_model_root_transform(
 ) -> Mat4 {
     use std::f32::consts::PI;
 
-    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+    let mut transform = entity_root_position_transform(instance)
         * rotate_around(
             Mat4::from_rotation_y(instance.render_state.body_rot.to_radians()),
             Vec3::new(0.5, 0.5, 0.5),
@@ -881,7 +894,7 @@ pub(in crate::entity_models) const BANNER_RENDER_SCALE: f32 = 0.666_666_7;
 /// `instance.position` is the banner block's min corner and `body_rot`
 /// carries the pre-negated `-angle` degrees, like the signs.
 pub(in crate::entity_models) fn banner_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5))
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
         * Mat4::from_scale(Vec3::new(
@@ -903,7 +916,7 @@ pub(in crate::entity_models) fn banner_model_root_transform(instance: EntityMode
 pub(in crate::entity_models) fn enchanting_table_book_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.5, 0.75, 0.5))
         * Mat4::from_translation(Vec3::new(0.0, instance.render_state.book_float_y, 0.0))
         * Mat4::from_rotation_y(-instance.render_state.body_rot.to_radians())
@@ -919,7 +932,7 @@ pub(in crate::entity_models) fn enchanting_table_book_model_root_transform(
 pub(in crate::entity_models) fn lectern_book_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.5, 1.0625, 0.5))
         * Mat4::from_rotation_y(-instance.render_state.body_rot.to_radians())
         * Mat4::from_rotation_z(67.5_f32.to_radians())
@@ -982,7 +995,7 @@ pub(in crate::entity_models) fn sign_model_root_transform(
 pub(in crate::entity_models) fn llama_spit_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0))
         * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())
         * Mat4::from_rotation_z(instance.render_state.head_pitch.to_radians())
@@ -996,7 +1009,7 @@ pub(in crate::entity_models) fn llama_spit_model_root_transform(
 pub(in crate::entity_models) fn wither_skull_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
         * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
@@ -1018,7 +1031,7 @@ pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
     // `setupAnim` then orients `main` by the bullet's yaw/pitch (innermost), reproduced through
     // `body_rot` / `head_pitch`.
     let t = instance.render_state.age_in_ticks;
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0))
         * Mat4::from_rotation_y((t * 0.1).sin() * std::f32::consts::PI)
         * Mat4::from_rotation_x((t * 0.1).cos() * std::f32::consts::PI)
@@ -1035,11 +1048,11 @@ pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
 pub(in crate::entity_models) fn wind_charge_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
 }
 
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_rotation_x(boat_damage_roll_degrees(instance).to_radians())
@@ -1099,7 +1112,7 @@ fn minecart_pre_model_transform(instance: EntityModelInstance) -> Mat4 {
     } else {
         minecart_old_render_transform(instance)
     };
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * Mat4::from_translation(jitter)
         * renderer_transform
         * Mat4::from_rotation_x(minecart_damage_roll_degrees(instance).to_radians())
@@ -1289,7 +1302,7 @@ pub(in crate::entity_models) fn phantom_model_root_transform(
     size: i32,
 ) -> Mat4 {
     let scale = 1.0 + 0.15 * size as f32;
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
@@ -1308,7 +1321,7 @@ pub(in crate::entity_models) fn pufferfish_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
     let bob = (instance.render_state.age_in_ticks * 0.05).cos() * 0.08;
-    Mat4::from_translation(Vec3::from_array(instance.position))
+    entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * Mat4::from_translation(Vec3::new(0.0, bob, 0.0))
@@ -1335,7 +1348,7 @@ pub(in crate::entity_models) fn squid_model_root_transform(
     baby: bool,
 ) -> Mat4 {
     let (up, down) = if baby { (0.25, -0.6) } else { (0.5, -1.2) };
-    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+    let mut transform = entity_root_position_transform(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * Mat4::from_translation(Vec3::new(0.0, up, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
@@ -1366,7 +1379,7 @@ pub(in crate::entity_models) fn cod_model_root_transform(
     in_water: bool,
 ) -> Mat4 {
     let wiggle = 4.3 * (0.6 * instance.render_state.age_in_ticks).sin();
-    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+    let mut transform = entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
@@ -1394,7 +1407,7 @@ pub(in crate::entity_models) fn salmon_model_root_transform(
 ) -> Mat4 {
     let (amplitude, angle) = if in_water { (1.0, 1.0) } else { (1.3, 1.7) };
     let wiggle = amplitude * 4.3 * (angle * 0.6 * instance.render_state.age_in_ticks).sin();
-    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+    let mut transform = entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
@@ -1429,7 +1442,7 @@ pub(in crate::entity_models) fn tropical_fish_model_root_transform(
     in_water: bool,
 ) -> Mat4 {
     let wiggle = 4.3 * (0.6 * instance.render_state.age_in_ticks).sin();
-    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+    let mut transform = entity_root_position_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
@@ -1441,4 +1454,43 @@ pub(in crate::entity_models) fn tropical_fish_model_root_transform(
     transform
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity_models::SpawnerDisplayRenderState;
+
+    #[test]
+    fn spawner_display_position_transform_wraps_entity_root() {
+        let instance = EntityModelInstance::new(
+            1,
+            EntityModelKind::Zombie { baby: false },
+            [2.0, 3.0, 4.0],
+            0.0,
+        )
+        .with_spawner_display(Some(SpawnerDisplayRenderState {
+            spin_degrees: 0.0,
+            scale: 0.5,
+        }));
+
+        let transform = entity_root_position_transform(instance);
+
+        assert_vec3_approx(
+            transform.transform_point3(Vec3::ZERO),
+            Vec3::new(2.5, 3.2, 4.5),
+        );
+        assert_vec3_approx(
+            transform.transform_point3(Vec3::Y),
+            Vec3::new(2.5, 3.633_012_8, 4.25),
+        );
+    }
+
+    fn assert_vec3_approx(actual: Vec3, expected: Vec3) {
+        let delta = actual - expected;
+        assert!(
+            delta.length() < 0.000_01,
+            "actual={actual:?} expected={expected:?} delta={delta:?}"
+        );
+    }
 }

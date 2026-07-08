@@ -299,6 +299,11 @@ entity_render_state! {
     /// `Axis.YP.rotation(state.activeRotation * PI / 180)` quirk. `0.0` for
     /// every non-conduit instance.
     (with_conduit_active_rotation) conduit_active_rotation: f32 = 0.0;
+    /// Vanilla `SpawnerRenderer.submitEntityInSpawner` wrapper transform:
+    /// centered at `(0.5, 0.4, 0.5)`, spun around Y, dropped by `0.2`,
+    /// pitched by `-30` degrees, and scaled by `0.53125/maxLength`. `None`
+    /// for ordinary world entities.
+    (with_spawner_display) spawner_display: Option<SpawnerDisplayRenderState> = None;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -2865,6 +2870,7 @@ mod tests {
                 book_float_y: 0.0,
                 conduit_anim_time: 0.0,
                 conduit_active_rotation: 0.0,
+                spawner_display: None,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

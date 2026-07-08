@@ -86,6 +86,7 @@ use crate::{
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::sign_scene_from_world,
     skull_scene::skull_model_instances_from_world_at_partial_tick,
+    spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
         TerrainTextureState, TerrainUploadState,
@@ -1525,6 +1526,9 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `SkullBlockEntity.animation` is the client ticker for powered
     // dragon/piglin skull/head blocks.
     world.advance_skull_block_ticks(running_ticks);
+    // Vanilla `BaseSpawner.clientTick` advances the ordinary spawner's display
+    // entity spin only while a nearby player exists.
+    world.advance_spawner_block_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1785,6 +1789,10 @@ pub(crate) fn pump_network_and_terrain(
         entity_partial_tick,
     ));
     entity_instances.extend(skull_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
+    entity_instances.extend(spawner_display_entity_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
     ));

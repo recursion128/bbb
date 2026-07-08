@@ -1140,6 +1140,21 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(end_gateway_tick < skull_tick);
     assert!(skull_tick < skull_instances);
     assert!(held_models < skull_instances);
+    // Ordinary spawners run `BaseSpawner.clientTick` before the renderer reads
+    // the display entity spin/scale source; the display entity itself reuses
+    // the shared entity-model stream.
+    let spawner_tick = source
+        .find("world.advance_spawner_block_ticks(running_ticks);")
+        .expect("pump should advance ordinary spawner ticks");
+    let spawner_instances = source
+        .find(
+            "entity_instances.extend(spawner_display_entity_instances_from_world_at_partial_tick(",
+        )
+        .expect("pump should extract spawner display entity model instances");
+    assert!(skull_tick < spawner_tick);
+    assert!(spawner_tick < spawner_instances);
+    assert!(skull_instances < spawner_instances);
+    assert!(held_models < spawner_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");
@@ -1165,6 +1180,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         billboards,
         entity_instances,
         held_models,
+        spawner_instances,
         item_frame_models,
         entity_block_meshes,
     ] {

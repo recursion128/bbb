@@ -4197,6 +4197,31 @@
   tick-before-extract 顺序。defer 边界：portal/gateway cube 当前是可见
   position-color approximation；完整 `RenderTypes.endPortal()` /
   `endGateway()` 15/16-layer shader parity 留在 unsupported ledger。
+- [x] spawner 旋转 display entity block-entity renderer（2026-07-08，BER
+  第十片）：vanilla `SpawnerRenderer` / `TrialSpawnerRenderer.extractSpawnerData` /
+  `BaseSpawner` / `SpawnData` / `SpawnerBlockEntity` 转写为 repo-native
+  world→native→renderer 链路。world 侧新增普通 `minecraft:spawner` 平铺
+  ticker 与 source-state 投影：chunk 与 `BlockEntityData` 均解码
+  `Delay`、`MinSpawnDelay`、`RequiredPlayerRange`、`SpawnData.entity.id`；
+  `BaseSpawner.clientTick` 近玩家门控用本地玩家位置近似 vanilla
+  `hasNearbyAlivePlayer`，有 display entity 时每 running tick 递减 delay 并
+  推进 `spin=(spin+1000/(delay+200))%360`，BlockEvent(1) 重置到
+  `minSpawnDelay`。source 投影按 vanilla `lerp(oSpin, spin, partial)*10`
+  得出旋转角，实体比例用 `0.53125/max(bbWidth,bbHeight)` 并复用既有
+  entity pick bounds 表。protocol 侧新增 resource id→entity type id 窄查询，
+  从已有 `VANILLA_ENTITY_TYPE_*_ID` 常量名派生，避免维护第二份表。native
+  侧新增 `spawner_scene`，把 source 映射成共享 entity-model stream 的
+  `EntityModelInstance`（-1 哨兵、采样 `block<<4|sky<<20` 光照），实体 kind
+  走现有 `EntityModelKind` 投影。renderer 侧新增
+  `SpawnerDisplayRenderState`，colored entity 根位置统一经
+  `entity_root_position_transform`，普通实体仍是原位置平移，spawner display
+  额外套 `T(0.5,0.4,0.5)·Ry(spin)·T(0,-0.2,0)·Rx(-30°)·S(scale)` wrapper，
+  因此继续复用各 mob 既有模型/纹理/pass。测试覆盖 protocol lookup、world
+  NBT/tick/source/event、native instance 投影、renderer wrapper 原点与倾斜
+  点。defer 边界：trial spawner display 行为不在普通 spawner 片内；
+  `SpawnData.entity` 的自定义实体 metadata/NBT 暂不合成，未知 entity id
+  不输出 display instance；逐 BE 距离/视锥剔除与 break-progress crumbling
+  仍沿 BER 既有边界。
 
 ## P2：屏幕、HUD、字体与截图
 

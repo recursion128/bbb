@@ -435,26 +435,49 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (spawner display entity; end
-    portal/gateway shader parity; player-head owner skin remains under the
+  - Block-entity special renderers (end portal/gateway shader parity;
+    player-head owner skin remains under the
     broader dynamic profile/texture pipeline): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
     (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
     (2026-07-06), banner (2026-07-06), the enchanting-table book +
     lectern book (2026-07-07), conduit (2026-07-08; see Evidence), and
-    skull/head (2026-07-08; see Evidence), and end portal/gateway
-    (2026-07-08; see Evidence) are DONE as the first nine BER sub-slices;
-    the remaining BE-driven model source is the spawner's spinning display
-    entity. Boundary: end portal/gateway cubes currently preserve the vanilla
-    face source, transform, render type metadata, and gateway beam geometry,
-    but their cube surfaces use a position-color approximation until the
-    renderer grows dedicated `RenderTypes.endPortal()` / `endGateway()`
-    shader parity (`end_sky`, `end_portal`, `PORTAL_LAYERS` 15/16).
+    skull/head (2026-07-08; see Evidence), end portal/gateway
+    (2026-07-08; see Evidence), and spawner display entity
+    (2026-07-08; see Evidence) are DONE as the first ten BER sub-slices;
+    BE-driven model sources are now clear. Boundary: end portal/gateway cubes
+    currently preserve the vanilla face source, transform, render type
+    metadata, and gateway beam geometry, but their cube surfaces use a
+    position-color approximation until the renderer grows dedicated
+    `RenderTypes.endPortal()` / `endGateway()` shader parity (`end_sky`,
+    `end_portal`, `PORTAL_LAYERS` 15/16).
     Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
     smallest sub-slice; audit the `Custom`→`Cube` shape fallback
     (`block_models/shape.rs` → `textures.rs`) alongside, since
     unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-08 — Ordinary spawner display entity renderer (tenth BER
+    sub-slice). Vanilla facts were checked against `SpawnerRenderer`,
+    `TrialSpawnerRenderer.extractSpawnerData`, `BaseSpawner`, `SpawnData`,
+    and `SpawnerBlockEntity`: the display entity id comes from
+    `SpawnData.entity.id`; `clientTick` advances `spawnDelay`, `oSpin`, and
+    `spin = (spin + 1000/(spawnDelay+200)) % 360` only while a nearby player
+    exists; BlockEvent(1) resets delay to `minSpawnDelay`; extraction uses
+    `lerp(oSpin, spin, partial) * 10` and scale `0.53125/max(bbWidth,
+    bbHeight)`. World now decodes spawner BE NBT (`Delay`,
+    `MinSpawnDelay`, `RequiredPlayerRange`, and `SpawnData.entity.id`),
+    owns flat per-position ticker state, handles BlockEvent(1), and projects
+    display-entity source states. Native maps those sources to existing
+    `EntityModelKind` values through the protocol entity-type constants and
+    appends block-sentinel `EntityModelInstance`s. Renderer adds
+    `SpawnerDisplayRenderState` and wraps colored entity root transforms with
+    vanilla `T(0.5,0.4,0.5) * Ry(spin) * T(0,-0.2,0) * Rx(-30) * S(scale)`.
+    Boundary: trial spawner display-state behavior is intentionally not part
+    of this ordinary-spawner slice; custom SpawnData entity NBT variants still
+    render through default entity metadata until broader synthetic entity NBT
+    projection exists. Tests cover protocol resource-id lookup, world
+    NBT/tick/source/event behavior, native instance projection, and renderer
+    wrapper transform points.
   - Done 2026-07-08 — End portal/gateway block-entity renderer (ninth BER
     sub-slice). Vanilla facts were checked against
     `AbstractEndPortalRenderer`, `TheEndPortalRenderer`,

@@ -132,6 +132,7 @@ impl WorldStore {
         self.update_shulker_box_lid_from_block_event(pos, event.b0, event.b1);
         self.update_decorated_pot_wobble_from_block_event(pos, event.b0, event.b1);
         self.update_end_gateway_from_block_event(pos, event.b0);
+        self.update_spawner_from_block_event(pos, event.b0);
     }
 
     pub fn apply_level_event(

@@ -53,6 +53,12 @@ pub enum EndPortalModelFace {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpawnerDisplayRenderState {
+    pub spin_degrees: f32,
+    pub scale: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
         variant: ChickenModelVariant,

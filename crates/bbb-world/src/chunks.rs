@@ -6,6 +6,7 @@ mod nbt;
 mod palette;
 mod pot_decorations;
 mod sign_text;
+mod spawner;
 mod state;
 mod store;
 mod vault;
@@ -18,13 +19,14 @@ pub use light::LightData;
 pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
+pub(crate) use spawner::decode_spawner_block_entity_data;
 pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{
     BannerPatternLayerState, BannerPatternsState, BlockEntityRecord, ChunkColumn,
     ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,
     HeightmapData, NbtPayloadSummary, SignBlockEntityTextState, SignTextDyeColor,
-    SignTextSideState, VaultConnectionParticleState, VaultConnectionParticleTargetState,
-    VaultSharedDataState,
+    SignTextSideState, SpawnerBlockEntityData, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
 pub(crate) use vault::decode_vault_shared_data;

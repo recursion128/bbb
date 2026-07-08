@@ -162,6 +162,13 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let spawner = match crate::chunks::decode_spawner_block_entity_data(&packet.raw_nbt) {
+            Ok(spawner) => spawner,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -178,6 +185,7 @@ impl WorldStore {
             decorated_pot_sherds,
             banner_patterns,
             end_gateway,
+            spawner,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;

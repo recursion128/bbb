@@ -93,6 +93,8 @@ pub struct BlockEntityRecord {
     pub banner_patterns: Option<BannerPatternsState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_gateway: Option<EndGatewayBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawner: Option<SpawnerBlockEntityData>,
 }
 
 /// The end gateway block entity fields read by `TheEndGatewayRenderer`:
@@ -101,6 +103,18 @@ pub struct BlockEntityRecord {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EndGatewayBlockEntityData {
     pub age: i64,
+}
+
+/// The ordinary mob spawner block entity fields used by vanilla
+/// `SpawnerRenderer`: the next display entity id and the client-side spin
+/// delay counters. Decoded from chunk block-entity data and
+/// `BlockEntityData` updates.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpawnerBlockEntityData {
+    pub entity_id: Option<String>,
+    pub spawn_delay: i32,
+    pub min_spawn_delay: i32,
+    pub required_player_range: i32,
 }
 
 /// The banner block entity's stored pattern layers — vanilla

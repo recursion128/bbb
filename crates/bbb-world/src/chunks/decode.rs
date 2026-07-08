@@ -156,6 +156,7 @@ fn decode_block_entities(
         let decorated_pot_sherds = crate::chunks::decode_decorated_pot_sherds(&entity.raw_nbt)?;
         let banner_patterns = crate::chunks::decode_banner_patterns(&entity.raw_nbt)?;
         let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&entity.raw_nbt)?;
+        let spawner = crate::chunks::decode_spawner_block_entity_data(&entity.raw_nbt)?;
         out.push(BlockEntityRecord {
             local_x: entity.packed_xz >> 4,
             y: entity.y,
@@ -167,6 +168,7 @@ fn decode_block_entities(
             decorated_pot_sherds,
             banner_patterns,
             end_gateway,
+            spawner,
         });
     }
     Ok(out)
