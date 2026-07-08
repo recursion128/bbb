@@ -296,7 +296,8 @@ Screen Render Surfaces" 条目）：
   memory/system/performance basics、F3+1..4 chart/lightmap toggle state、
   F3+B/G/H hitboxes/chunk-borders/advanced-tooltips toggle state、F3+A
   terrain reload request、F3+D clear-chat display action、F3+P focus-pause
-  option toggle、F3+H advanced tooltip consumption 已完成；
+  option toggle、F3+H advanced tooltip consumption、F3+V version debug chat
+  action 已完成；
   剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、lightmap
   preview 实际绘制、entity hitbox/chunk-border 实际绘制、advanced tooltip
   full parity/持久化、3D crosshair 与其它 F3 组合键，低优先）。

@@ -1107,9 +1107,9 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     assert!(overlay.left_lines.contains(
         &"Debug options: [F3+H] Tooltips enabled; [F3+P] Focus pause disabled".to_string()
     ));
-    assert!(overlay
-        .left_lines
-        .contains(&"Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat".to_string()));
+    assert!(overlay.left_lines.contains(
+        &"Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat; [F3+V] Version".to_string()
+    ));
 }
 
 #[test]

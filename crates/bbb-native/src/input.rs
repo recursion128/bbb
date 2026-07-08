@@ -5,10 +5,13 @@ use std::{
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
-    ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
-    SeenAdvancements, SignUpdate,
+use bbb_protocol::{
+    packets::{
+        BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
+        ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
+        SeenAdvancements, SignUpdate,
+    },
+    MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -662,6 +665,12 @@ impl ClientInputState {
                 self.debug_pause_on_lost_focus = !self.debug_pause_on_lost_focus;
                 true
             }
+            KeyCode::KeyV => {
+                if let Some(world) = world.as_deref_mut() {
+                    push_debug_version_chat_messages(world);
+                }
+                true
+            }
             _ => false,
         }
     }
@@ -709,7 +718,18 @@ impl ClientInputState {
             self.debug_network_charts_visible = false;
         }
     }
+}
 
+fn push_debug_version_chat_messages(world: &mut WorldStore) {
+    world.push_client_system_chat_message("[Debug]: Client version info:");
+    world.push_client_system_chat_message(format!("id = {MC_VERSION}"));
+    world.push_client_system_chat_message(format!("name = {MC_VERSION}"));
+    world.push_client_system_chat_message(format!(
+        "protocol = {PROTOCOL_VERSION} (0x{PROTOCOL_VERSION:x})"
+    ));
+}
+
+impl ClientInputState {
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
         self.loom_selected_pattern_index
     }

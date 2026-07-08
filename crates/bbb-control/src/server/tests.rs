@@ -2309,6 +2309,7 @@ fn client_chat_reads_canonical_world_state() {
                 target_name: None,
             },
         });
+        store.push_client_system_chat_message("[Debug]: Client version info:");
         *state.world.write().unwrap() = store;
     }
 
@@ -2327,6 +2328,17 @@ fn client_chat_reads_canonical_world_state() {
     assert_eq!(chat["messages"][0]["sender_name"], "Server");
     assert_eq!(chat["messages"][0]["chat_type"]["registry_id"], 0);
     assert_eq!(chat["messages"][0]["validation_state"], "Unsigned");
+    assert_eq!(chat["messages"][1]["kind"], "ClientSystem");
+    assert_eq!(
+        chat["messages"][1]["content"],
+        "[Debug]: Client version info:"
+    );
+    assert_eq!(chat["messages"][1]["sender_name"], "");
+    assert_eq!(
+        chat["messages"][1]["chat_type"]["registry_id"],
+        serde_json::Value::Null
+    );
+    assert_eq!(chat["messages"][1]["validation_state"], "Unsigned");
     assert_eq!(chat["deleted_messages"].as_array().unwrap().len(), 0);
 }
 

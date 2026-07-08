@@ -58,6 +58,7 @@ pub struct ChatMessageState {
 pub enum ChatMessageKind {
     Player,
     Disguised,
+    ClientSystem,
 }
 
 impl ChatMessageKind {
@@ -65,6 +66,7 @@ impl ChatMessageKind {
         match self {
             Self::Player => "player",
             Self::Disguised => "disguised",
+            Self::ClientSystem => "client_system",
         }
     }
 }
@@ -152,6 +154,27 @@ impl WorldStore {
     pub fn clear_client_chat_display_messages(&mut self) {
         self.client_chat.messages.clear();
         self.client_chat.deleted_messages.clear();
+        refresh_chat_counters(self);
+    }
+
+    pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
+        self.client_chat.messages.push(ChatMessageState {
+            kind: ChatMessageKind::ClientSystem,
+            content: content.into(),
+            sender: None,
+            sender_name: String::new(),
+            target_name: None,
+            global_index: None,
+            message_index: None,
+            chat_type: ChatTypeState {
+                registry_id: None,
+                direct_translation_key: None,
+            },
+            signature: None,
+            unsigned_content: None,
+            filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
+            validation_state: ChatValidationState::Unsigned,
+        });
         refresh_chat_counters(self);
     }
 
@@ -795,6 +818,26 @@ mod tests {
         assert_eq!(message.content, "notice");
         assert_eq!(message.sender_name, "Server");
         assert_eq!(store.counters().disguised_chat_packets, 1);
+    }
+
+    #[test]
+    fn client_system_chat_tracks_local_display_message_without_protocol_counters() {
+        let mut store = WorldStore::new();
+
+        store.push_client_system_chat_message("[Debug]: Client version info:");
+
+        let message = store.client_chat().messages.last().unwrap();
+        assert_eq!(message.kind, ChatMessageKind::ClientSystem);
+        assert_eq!(message.content, "[Debug]: Client version info:");
+        assert_eq!(message.sender, None);
+        assert!(message.sender_name.is_empty());
+        assert_eq!(message.chat_type.registry_id, None);
+        assert_eq!(message.chat_type.direct_translation_key, None);
+        assert_eq!(message.validation_state, ChatValidationState::Unsigned);
+        assert_eq!(store.counters().chat_messages_tracked, 1);
+        assert_eq!(store.counters().player_chat_packets, 0);
+        assert_eq!(store.counters().disguised_chat_packets, 0);
+        assert_eq!(store.counters().system_chat_packets, 0);
     }
 
     #[test]

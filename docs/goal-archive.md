@@ -5114,6 +5114,19 @@
   recipe-book 搜索索引仍使用 normal tooltip。剩余：`Options.save()` 持久化、
   effective component count 和其它 component-specific advanced tooltip
   additions。
+- [x] debug overlay F3+V version debug chat action（P2 HUD/input/world/control
+  slice，2026-07-08）：依据 `Options.keyDebugDumpVersion = V`、
+  `KeyboardHandler.handleDebugKeys` 对 `debug.version.header` +
+  `VersionCommand.dumpVersion(this::showDebugChat)` 的调度，以及
+  `showDebugChat` 追加 client system chat message 的行为。world 现在有本地
+  `ClientSystem` chat message kind 与
+  `WorldStore::push_client_system_chat_message`；native 在 F3 按住期间消费 V，
+  向 chat display 追加 vanilla debug header 和 repo 已建模的
+  id/name/protocol 行，不污染协议 chat packet counters，并抑制 F3 release
+  触发普通 overlay toggle；control `world.client_chat` 能看到该本地消息，
+  runtime help line 显示 `[F3+V] Version`。剩余：narrator/rich component
+  styling/localization，以及 `WorldVersion` 的 data version、series、
+  build_time、resource/data pack version、stable flag 全字段 dump。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`

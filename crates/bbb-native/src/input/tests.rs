@@ -19,9 +19,10 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
+use bbb_protocol::{MC_VERSION, PROTOCOL_VERSION};
 use bbb_world::{
-    BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, ItemEquipmentSlot, LightData,
-    LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
+    BlockEntityRecord, BlockPos, ChatMessageKind, ChunkColumn, ChunkPos, ChunkState,
+    ItemEquipmentSlot, LightData, LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -846,6 +847,87 @@ fn f3_d_clears_chat_display_without_resetting_signature_state() {
     assert_eq!(counters.player_input_commands_queued, 0);
     assert_eq!(counters.player_action_commands_queued, 0);
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_v_dumps_version_debug_chat_without_toggling_overlay_on_release() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyV),
+        ElementState::Pressed,
+    );
+
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 4);
+    assert!(messages
+        .iter()
+        .all(|message| message.kind == ChatMessageKind::ClientSystem));
+    assert_eq!(messages[0].content, "[Debug]: Client version info:");
+    assert_eq!(messages[1].content, format!("id = {MC_VERSION}"));
+    assert_eq!(messages[2].content, format!("name = {MC_VERSION}"));
+    assert_eq!(
+        messages[3].content,
+        format!("protocol = {PROTOCOL_VERSION} (0x{PROTOCOL_VERSION:x})")
+    );
+    assert_eq!(world.counters().chat_messages_tracked, 4);
+    assert_eq!(world.counters().player_chat_packets, 0);
+    assert_eq!(world.counters().disguised_chat_packets, 0);
+    assert_eq!(world.counters().system_chat_packets, 0);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_v_consumes_without_world_to_suppress_release_toggle() {
+    let mut input = ClientInputState::new(true);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyV),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    assert!(!input.debug_overlay_visible());
 }
 
 #[test]

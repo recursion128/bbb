@@ -1076,12 +1076,27 @@ When an agent does any of the following, update this file in the same slice:
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
-    option toggle: the complete vanilla debug entry list, actual
+    option toggle, and F3+V version debug chat action: the complete vanilla
+    debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+V version debug chat action. Vanilla
+    anchors: `Options.keyDebugDumpVersion` binds V, and
+    `KeyboardHandler.handleDebugKeys` maps it to
+    `debugFeedbackTranslated("debug.version.header")` followed by
+    `VersionCommand.dumpVersion(this::showDebugChat)`. `showDebugChat` adds a
+    client system chat message and queues narrator feedback. bbb now models a
+    local `ClientSystem` chat message kind, exposes
+    `WorldStore::push_client_system_chat_message`, consumes V while F3 is held,
+    appends the vanilla debug header plus repo-known id/name/protocol lines,
+    keeps protocol chat counters unchanged, suppresses the subsequent
+    F3-release overlay toggle, and reflects the action in the debug overlay
+    help line. Boundary: narrator output, rich component styling/localization,
+    and the remaining `WorldVersion` dump fields (data version, series, build
+    time, resource/data pack versions, stable flag) are not modeled yet.
   - Done 2026-07-08 — Debug overlay F3+H advanced item tooltip consumption.
     Vanilla anchors: `Screen.getTooltipFromItem` passes
     `TooltipFlag.Default.ADVANCED` when `Options.advancedItemTooltips` is set,
@@ -1668,11 +1683,11 @@ When an agent does any of the following, update this file in the same slice:
     rendering, the debug overlay F3 left-column shell, debug overlay
     right-column memory/system/performance basics, F3+1..4 chart/lightmap
     toggle state, F3+B/G/H status toggle state, F3+A terrain reload request,
-    F3+D clear-chat display action, and F3+P focus-pause option toggle are
-    live. The remaining open surfaces in this ledger row are the complete
-    debug entry list, actual
+    F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
+    version debug chat action are live. The remaining open surfaces in this
+    ledger row are the complete debug entry list, actual
     charts/lightmap rendering, entity hitbox/chunk-border rendering, advanced
-    tooltip consumption/persistence, 3D crosshair, and the other F3 modifier
+    tooltip full parity/persistence, 3D crosshair, and the other F3 modifier
     combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
