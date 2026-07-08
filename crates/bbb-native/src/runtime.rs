@@ -3098,10 +3098,14 @@ fn hud_recipe_book_recipe_button_layers(
     .map(|(index, collection)| {
         let (x, y) = recipe_book_recipe_button_position(index);
         hud_inventory_background_layer(
-            if collection.has_multiple_recipes() {
-                HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable
-            } else {
-                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable
+            match (
+                collection.has_craftable(),
+                collection.has_multiple_recipes(),
+            ) {
+                (true, true) => HudInventoryBackgroundTexture::RecipeBookSlotManyCraftable,
+                (true, false) => HudInventoryBackgroundTexture::RecipeBookSlotCraftable,
+                (false, true) => HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable,
+                (false, false) => HudInventoryBackgroundTexture::RecipeBookSlotUncraftable,
             },
             x,
             y,
@@ -3293,12 +3297,15 @@ fn hud_recipe_book_crafting_collections<'a>(
     if recipe_book_main_gui_offset(world, background) == 0 {
         return None;
     }
+    let book_type = recipe_book_type_for_background(background)?;
     let grid = recipe_book_crafting_grid_for_background(background)?;
     let selected_tab = recipe_book_selected_tab_index(background, tabs)?;
+    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
     Some(crafting_recipe_book_collections(
         world,
         grid,
         selected_tab,
+        only_craftable,
         &search.text,
         item_runtime,
     ))

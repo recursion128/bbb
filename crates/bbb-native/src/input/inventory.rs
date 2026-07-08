@@ -2347,10 +2347,12 @@ fn recipe_book_page_button_at_position(
         return None;
     }
     let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
+    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
     let collection_count = crafting_recipe_book_collections(
         world,
         grid,
         selected_tab,
+        only_craftable,
         &input.recipe_book_search_text,
         item_runtime,
     )
@@ -2408,10 +2410,12 @@ fn recipe_book_recipe_button_at_position(
         return None;
     }
     let selected_tab = selected_recipe_book_tab_index(input, book_type).min(tab_count - 1);
+    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
     let collections = crafting_recipe_book_collections(
         world,
         grid,
         selected_tab,
+        only_craftable,
         &input.recipe_book_search_text,
         item_runtime,
     );

@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
-    CraftingRecipeDisplaySummary, ItemStackSummary, RecipeDisplayEntry, RecipeDisplaySummary,
-    SlotDisplaySummary,
+    CraftingRecipeDisplaySummary, IngredientSummary, ItemStackSummary, RecipeDisplayEntry,
+    RecipeDisplaySummary, SlotDisplaySummary,
 };
 use bbb_world::WorldStore;
 
@@ -25,6 +25,21 @@ const CRAFTING_BUILDING_BLOCKS_TAB_CATEGORIES: [i32; 1] = [CRAFTING_BUILDING_BLO
 const CRAFTING_MISC_TAB_CATEGORIES: [i32; 1] = [CRAFTING_MISC_CATEGORY_ID];
 const CRAFTING_REDSTONE_TAB_CATEGORIES: [i32; 1] = [CRAFTING_REDSTONE_CATEGORY_ID];
 
+const PLAYER_INVENTORY_SLOT_START: i32 = 0;
+const PLAYER_INVENTORY_SLOT_END: i32 = 36;
+const LOCAL_INVENTORY_CRAFT_SLOT_START: i16 = 1;
+const LOCAL_INVENTORY_CRAFT_SLOT_END: i16 = 5;
+const LOCAL_INVENTORY_PLAYER_MAIN_START: i16 = 9;
+const LOCAL_INVENTORY_PLAYER_MAIN_END: i16 = 36;
+const LOCAL_INVENTORY_HOTBAR_START: i16 = 36;
+const LOCAL_INVENTORY_HOTBAR_END: i16 = 45;
+const CRAFTING_TABLE_CRAFT_SLOT_START: i16 = 1;
+const CRAFTING_TABLE_CRAFT_SLOT_END: i16 = 10;
+const CRAFTING_TABLE_PLAYER_MAIN_START: i16 = 10;
+const CRAFTING_TABLE_PLAYER_MAIN_END: i16 = 37;
+const CRAFTING_TABLE_HOTBAR_START: i16 = 37;
+const CRAFTING_TABLE_HOTBAR_END: i16 = 46;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RecipeBookCraftingGrid {
     pub(crate) width: i32,
@@ -34,6 +49,7 @@ pub(crate) struct RecipeBookCraftingGrid {
 #[derive(Debug, Clone)]
 pub(crate) struct RecipeBookUiCollection<'a> {
     entries: Vec<&'a RecipeDisplayEntry>,
+    has_craftable: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -57,21 +73,34 @@ impl<'a> RecipeBookUiCollection<'a> {
     pub(crate) fn has_multiple_recipes(&self) -> bool {
         self.entries.len() > 1
     }
+
+    pub(crate) fn has_craftable(&self) -> bool {
+        self.has_craftable
+    }
 }
 
 pub(crate) fn crafting_recipe_book_collections<'a>(
     world: &'a WorldStore,
     grid: RecipeBookCraftingGrid,
     selected_tab_index: usize,
+    only_craftable: bool,
     search_text: &str,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Vec<RecipeBookUiCollection<'a>> {
     let Some(categories) = crafting_tab_categories(selected_tab_index) else {
         return Vec::new();
     };
+    let available_items = crafting_recipe_book_available_item_counts(world, grid);
     let mut collections = Vec::new();
     for category_id in categories {
-        push_crafting_category_collections(world, grid, *category_id, &mut collections);
+        push_crafting_category_collections(
+            world,
+            grid,
+            *category_id,
+            only_craftable,
+            &available_items,
+            &mut collections,
+        );
     }
     if let Some(search_text) = normalized_recipe_search_text(search_text) {
         collections.retain(|collection| {
@@ -89,7 +118,8 @@ pub(crate) fn crafting_recipe_book_visible_tab_indices(
     (0..tab_count)
         .filter(|index| {
             *index == 0
-                || !crafting_recipe_book_collections(world, grid, *index, "", None).is_empty()
+                || !crafting_recipe_book_collections(world, grid, *index, false, "", None)
+                    .is_empty()
         })
         .collect()
 }
@@ -276,6 +306,8 @@ fn push_crafting_category_collections<'a>(
     world: &'a WorldStore,
     grid: RecipeBookCraftingGrid,
     category_id: i32,
+    only_craftable: bool,
+    available_items: &BTreeMap<i32, i32>,
     collections: &mut Vec<RecipeBookUiCollection<'a>>,
 ) {
     let mut group_indexes: BTreeMap<i32, usize> = BTreeMap::new();
@@ -283,19 +315,26 @@ fn push_crafting_category_collections<'a>(
         if entry.category_id != category_id || !crafting_recipe_fits_grid(entry, grid) {
             continue;
         }
+        let craftable = recipe_book_entry_is_craftable(entry, available_items);
+        if only_craftable && !craftable {
+            continue;
+        }
         if let Some(group_id) = entry.group {
             if let Some(index) = group_indexes.get(&group_id).copied() {
                 collections[index].entries.push(entry);
+                collections[index].has_craftable |= craftable;
             } else {
                 let index = collections.len();
                 group_indexes.insert(group_id, index);
                 collections.push(RecipeBookUiCollection {
                     entries: vec![entry],
+                    has_craftable: craftable,
                 });
             }
         } else {
             collections.push(RecipeBookUiCollection {
                 entries: vec![entry],
+                has_craftable: craftable,
             });
         }
     }
@@ -322,4 +361,168 @@ fn crafting_recipe_fits_grid(entry: &RecipeDisplayEntry, grid: RecipeBookCraftin
         }
         None => false,
     }
+}
+
+fn crafting_recipe_book_available_item_counts(
+    world: &WorldStore,
+    grid: RecipeBookCraftingGrid,
+) -> BTreeMap<i32, i32> {
+    let mut counts = BTreeMap::new();
+    let mut canonical_player_slots = BTreeSet::new();
+    for slot in &world.inventory().player_slots {
+        if (PLAYER_INVENTORY_SLOT_START..PLAYER_INVENTORY_SLOT_END).contains(&slot.slot) {
+            canonical_player_slots.insert(slot.slot);
+            add_item_stack_count(&mut counts, &slot.item);
+        }
+    }
+
+    if world.local_inventory_is_open() && grid.width == 2 && grid.height == 2 {
+        let container = &world.inventory().inventory_menu;
+        add_container_slot_range_counts(
+            &mut counts,
+            container,
+            LOCAL_INVENTORY_CRAFT_SLOT_START,
+            LOCAL_INVENTORY_CRAFT_SLOT_END,
+        );
+        add_mapped_container_player_slot_counts(
+            &mut counts,
+            container,
+            LOCAL_INVENTORY_PLAYER_MAIN_START,
+            LOCAL_INVENTORY_PLAYER_MAIN_END,
+            |slot| i32::from(slot),
+            &canonical_player_slots,
+        );
+        add_mapped_container_player_slot_counts(
+            &mut counts,
+            container,
+            LOCAL_INVENTORY_HOTBAR_START,
+            LOCAL_INVENTORY_HOTBAR_END,
+            |slot| i32::from(slot - LOCAL_INVENTORY_HOTBAR_START),
+            &canonical_player_slots,
+        );
+        return counts;
+    }
+
+    if grid.width == 3 && grid.height == 3 {
+        let Some(container) = world.inventory().open_container.as_ref() else {
+            return counts;
+        };
+        add_container_slot_range_counts(
+            &mut counts,
+            container,
+            CRAFTING_TABLE_CRAFT_SLOT_START,
+            CRAFTING_TABLE_CRAFT_SLOT_END,
+        );
+        add_mapped_container_player_slot_counts(
+            &mut counts,
+            container,
+            CRAFTING_TABLE_PLAYER_MAIN_START,
+            CRAFTING_TABLE_PLAYER_MAIN_END,
+            |slot| i32::from(slot - 1),
+            &canonical_player_slots,
+        );
+        add_mapped_container_player_slot_counts(
+            &mut counts,
+            container,
+            CRAFTING_TABLE_HOTBAR_START,
+            CRAFTING_TABLE_HOTBAR_END,
+            |slot| i32::from(slot - CRAFTING_TABLE_HOTBAR_START),
+            &canonical_player_slots,
+        );
+    }
+
+    counts
+}
+
+fn add_container_slot_range_counts(
+    counts: &mut BTreeMap<i32, i32>,
+    container: &bbb_world::ContainerState,
+    start: i16,
+    end: i16,
+) {
+    for slot in &container.slots {
+        if (start..end).contains(&slot.slot) {
+            add_item_stack_count(counts, &slot.item);
+        }
+    }
+}
+
+fn add_mapped_container_player_slot_counts(
+    counts: &mut BTreeMap<i32, i32>,
+    container: &bbb_world::ContainerState,
+    start: i16,
+    end: i16,
+    player_slot: impl Fn(i16) -> i32,
+    canonical_player_slots: &BTreeSet<i32>,
+) {
+    for slot in &container.slots {
+        if !(start..end).contains(&slot.slot) {
+            continue;
+        }
+        if canonical_player_slots.contains(&player_slot(slot.slot)) {
+            continue;
+        }
+        add_item_stack_count(counts, &slot.item);
+    }
+}
+
+fn add_item_stack_count(counts: &mut BTreeMap<i32, i32>, stack: &ItemStackSummary) {
+    let (Some(item_id), count) = (stack.item_id, stack.count) else {
+        return;
+    };
+    if count <= 0 {
+        return;
+    }
+    *counts.entry(item_id).or_default() += count;
+}
+
+fn recipe_book_entry_is_craftable(
+    entry: &RecipeDisplayEntry,
+    available_items: &BTreeMap<i32, i32>,
+) -> bool {
+    let Some(requirements) = entry.crafting_requirements.as_ref() else {
+        return false;
+    };
+    let mut options = Vec::with_capacity(requirements.len());
+    for requirement in requirements {
+        let item_options = recipe_book_ingredient_item_options(requirement);
+        if item_options.is_empty() {
+            return false;
+        }
+        options.push(item_options);
+    }
+    options.sort_by_key(Vec::len);
+    let mut remaining = available_items.clone();
+    recipe_book_can_satisfy_ingredients(&options, &mut remaining)
+}
+
+fn recipe_book_ingredient_item_options(ingredient: &IngredientSummary) -> Vec<i32> {
+    if ingredient.tag.is_some() {
+        return Vec::new();
+    }
+    let mut item_ids = ingredient.item_ids.clone();
+    item_ids.sort_unstable();
+    item_ids.dedup();
+    item_ids
+}
+
+fn recipe_book_can_satisfy_ingredients(
+    options: &[Vec<i32>],
+    remaining: &mut BTreeMap<i32, i32>,
+) -> bool {
+    let Some((first, rest)) = options.split_first() else {
+        return true;
+    };
+    for item_id in first {
+        let available = remaining.get(item_id).copied().unwrap_or_default();
+        if available <= 0 {
+            continue;
+        }
+        remaining.insert(*item_id, available - 1);
+        if recipe_book_can_satisfy_ingredients(rest, remaining) {
+            return true;
+        }
+        remaining.insert(*item_id, available);
+    }
+    false
 }

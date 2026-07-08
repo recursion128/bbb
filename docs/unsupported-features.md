@@ -1061,11 +1061,12 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
     buttons/search input/tab shell/crafting recipe-button shell/category-page
-    shell/placement shell/category tab visibility/crafting ghost slots: tab
-    notification animation, craftability/furnace-family recipe-grid parity,
-    multi-recipe overlay/cycling, full recipe `FullTextSearchTree` token
-    parity, and unresolved tag/composite SlotDisplay cycling for ghost
-    ingredients.
+    shell/placement shell/category tab visibility/crafting ghost slots/search
+    filtering/direct-item craftability: tab notification animation,
+    furnace-family recipe-grid parity, multi-recipe overlay/cycling, full
+    recipe `FullTextSearchTree` token parity, and unresolved tag/composite
+    SlotDisplay cycling for ghost ingredients and tag-backed crafting
+    requirements.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1193,19 +1194,37 @@ When an agent does any of the following, update this file in the same slice:
     result resource id, and protocol id text, so HUD recipe buttons, page
     controls/text, and recipe-button click hit-testing all use the same
     search-filtered collection set.
-  - Boundary: furnace-family raw recipe displays, craftability slot sprite
-    selection, craftability retry guard, multi-recipe cycling/right-click
+  - Done 2026-07-08 — Crafting recipe-book direct-item craftability slots and
+    filtering. Vanilla anchors: `RecipeBookComponent.initVisuals` /
+    `updateStackedContents` rebuild `StackedItemContents` from
+    `player.getInventory().fillStackedContents` plus
+    `menu.fillCraftSlotsStackedContents`; `Inventory.fillStackedContents`
+    accounts only the 36 main inventory items, while `AbstractCraftingMenu`
+    accounts the current crafting input slots; `RecipeCollection.selectRecipes`
+    marks craftable entries via `RecipeDisplayEntry.canCraft`; and
+    `RecipeButton.extractWidgetRenderState` chooses
+    `slot_craftable`, `slot_uncraftable`, `slot_many_craftable`, or
+    `slot_many_uncraftable` from `collection.hasCraftable()` and the filtered
+    `selectedEntries` size. bbb now builds a vanilla-shaped direct item-count
+    multiset from canonical player inventory plus local/crafting-table input
+    slots, falls back to open-container player slots only for missing canonical
+    player slots, matches direct-item `IngredientSummary` alternatives with
+    backtracking, projects the craftable/many slot sprites, and makes HUD page
+    controls plus recipe-button click hit-testing use only craftable entries
+    when the crafting filter toggle is enabled.
+  - Boundary: furnace-family raw recipe displays, tag-backed crafting
+    requirements, craftability retry guard, multi-recipe cycling/right-click
     overlay, tab notification animation, full `FullTextSearchTree` token /
     namespace-path / intersection semantics for recipe search, cursor/selection
     rendering inside the search box, tag/composite SlotDisplay cycling for
     ghost ingredients, and narrow-screen overlap remain open. The filter toggle,
-    search text,
-    selected-tab, first crafting recipe-button shell, crafting category/page
-    states, primary recipe placement command path, and crafting category tab
-    visibility plus direct item/item-stack crafting ghost slots and visible
-    crafting search filtering are live. The first shell models the non-narrow
-    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
-    the input/render follow-up.
+    search text, selected-tab, first crafting recipe-button shell, crafting
+    category/page states, primary recipe placement command path, crafting
+    category tab visibility, direct item/item-stack crafting ghost slots,
+    visible crafting search filtering, and direct-item crafting craftability
+    slot/filtering path are live. The first shell models the non-narrow layout;
+    vanilla's narrow-screen overlap mode (`width < 379`) remains for the
+    input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

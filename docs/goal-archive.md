@@ -1855,6 +1855,25 @@
   `FullTextSearchTree` token/namespace-path/intersection 语义、search
   cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
   cycling、narrow-screen overlap。
+- [x] crafting recipe-book direct-item craftability slot/filtering（P2 HUD/input
+  slice，2026-07-08）：依据 `RecipeBookComponent.initVisuals` /
+  `updateStackedContents` 从 player inventory 与 current craft slots 重建
+  `StackedItemContents`，`Inventory.fillStackedContents` 只计 36 个 main
+  inventory items，`AbstractCraftingMenu.fillCraftSlotsStackedContents` 计
+  crafting input slots，`RecipeCollection.selectRecipes` /
+  `RecipeDisplayEntry.canCraft` 标记 craftable entries，以及
+  `RecipeButton.extractWidgetRenderState` 由 `collection.hasCraftable()` 和
+  filtered `selectedEntries` 数量选择四种 slot sprite。native 现在从
+  canonical player inventory 加 local/crafting-table input slots 构造
+  direct item count multiset，open container player slots 只补 canonical 缺失
+  槽位；direct-item `IngredientSummary` alternatives 用回溯匹配；HUD 选择
+  craftable/uncraftable/many slot sprite；filter 开启时 page controls、按钮
+  图标和点击命中都只使用 craftable entries。剩余：furnace-family raw recipe
+  displays、tag-backed crafting requirements、craftability retry guard、
+  multi-recipe cycling/right-click overlay、tab notification animation、完整
+  `FullTextSearchTree` token/namespace-path/intersection 语义、search
+  cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
+  cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

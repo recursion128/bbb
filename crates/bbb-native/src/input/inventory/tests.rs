@@ -5,12 +5,12 @@ use bbb_protocol::packets::{
     AddEntity, ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSetContent,
     ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind,
     HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary, ItemCostSummary,
-    ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen, PlayerAbilities,
-    PlayerExperience, RecipeBookChangeSettingsCommand, RecipeBookSettings, RecipeBookType,
-    RecipeBookTypeSettings, RecipePropertySetSummary, RegistryTags, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory,
-    SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes,
-    UpdateTags, Vec3d,
+    ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen,
+    PlaceRecipeCommand, PlayerAbilities, PlayerExperience, RecipeBookChangeSettingsCommand,
+    RecipeBookSettings, RecipeBookType, RecipeBookTypeSettings, RecipePropertySetSummary,
+    RegistryTags, SelectBundleItem, SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData,
+    SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
+    UpdateRecipes, UpdateTags, Vec3d,
 };
 use uuid::Uuid;
 
@@ -3895,6 +3895,67 @@ fn recipe_book_tab_click_selects_local_tab_without_packet() {
     assert_eq!(input.recipe_book_crafting_tab_index, 1);
     assert!(!input.recipe_book_search_focused);
     assert_eq!(counters.recipe_book_change_settings_commands_queued, 0);
+}
+
+#[test]
+fn recipe_book_recipe_click_uses_craftable_filter_selection() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 46];
+    items[10] = item_stack(50, 1);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: true,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            crafting_recipe_book_entry_with_requirements(20, 2, 120, vec![vec![51]]),
+            crafting_recipe_book_entry_with_requirements(21, 2, 121, vec![vec![50]]),
+        ],
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(496.0, 311.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 21,
+            use_max_items: false,
+        })
+    );
 }
 
 #[test]
@@ -7923,6 +7984,15 @@ fn crafting_recipe_book_entry(
     category_id: i32,
     result_item_id: i32,
 ) -> bbb_protocol::packets::RecipeBookAddEntry {
+    crafting_recipe_book_entry_with_requirements(id, category_id, result_item_id, Vec::new())
+}
+
+fn crafting_recipe_book_entry_with_requirements(
+    id: i32,
+    category_id: i32,
+    result_item_id: i32,
+    requirements: Vec<Vec<i32>>,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
     bbb_protocol::packets::RecipeBookAddEntry {
         contents: bbb_protocol::packets::RecipeDisplayEntry {
             id: bbb_protocol::packets::RecipeDisplayId { index: id },
@@ -7947,7 +8017,15 @@ fn crafting_recipe_book_entry(
             },
             group: None,
             category_id,
-            crafting_requirements: None,
+            crafting_requirements: (!requirements.is_empty()).then(|| {
+                requirements
+                    .into_iter()
+                    .map(|item_ids| IngredientSummary {
+                        tag: None,
+                        item_ids,
+                    })
+                    .collect()
+            }),
         },
         flags: 0,
         notification: false,
