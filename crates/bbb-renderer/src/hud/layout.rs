@@ -245,16 +245,16 @@ pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize)
     }
 }
 
-/// The model→GUI-pixel placement for a 3D inventory item rendered in `rect` (vanilla `GuiItemAtlas`:
-/// `translate(slot_center, 0) · scale(slot_px, -slot_px, slot_px)`). Composed with the item's GUI
-/// display transform and projected by the GUI ortho camera, it seats a `0..1` (post-display) model in the
-/// slot's pixel rect, flipping Y to GUI space.
+/// The model→GUI-pixel placement for a 3D inventory item rendered in `rect`. Composed with the
+/// item's GUI display transform and projected by the GUI ortho camera, it seats a `0..1`
+/// (post-display) model in the slot's pixel rect, flipping Y to GUI space.
 pub(super) fn gui_item_slot_placement(rect: HudRect) -> Mat4 {
-    let size = rect.width as f32;
-    let center_x = rect.x + size / 2.0;
-    let center_y = rect.y + rect.height as f32 / 2.0;
+    let width = rect.width as f32;
+    let height = rect.height as f32;
+    let center_x = rect.x + width / 2.0;
+    let center_y = rect.y + height / 2.0;
     Mat4::from_translation(Vec3::new(center_x, center_y, 0.0))
-        * Mat4::from_scale(Vec3::new(size, -size, size))
+        * Mat4::from_scale(Vec3::new(width, -height, width))
 }
 
 /// One heart sprite to draw (vanilla `Gui.extractHeart`), produced by
@@ -1366,6 +1366,23 @@ mod tests {
         let last = hotbar_item_hud_rect(surface_size, 8);
         assert_eq!(last.x, 712.0);
         assert_eq!(last.y, 701.0);
+    }
+
+    #[test]
+    fn gui_item_slot_placement_respects_non_square_item_rect_height() {
+        let placement = gui_item_slot_placement(HudRect {
+            x: 10.0,
+            y: 20.0,
+            width: 16,
+            height: 24,
+        });
+
+        let top_left = placement * glam::Vec4::new(-0.5, 0.5, 0.0, 1.0);
+        let bottom_right = placement * glam::Vec4::new(0.5, -0.5, 0.0, 1.0);
+        assert_f32_near(top_left.x, 10.0);
+        assert_f32_near(top_left.y, 20.0);
+        assert_f32_near(bottom_right.x, 26.0);
+        assert_f32_near(bottom_right.y, 44.0);
     }
 
     #[test]

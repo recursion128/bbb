@@ -2046,6 +2046,15 @@
   container 记录上次实际发送的 recipe，并抑制同一不可合成 recipe 的重复
   点击；可合成 recipe 的重复点击仍继续发送。剩余：fake-item y-scaling、
   narrow-screen overlap。
+- [x] recipe-book animated-tab fake-item y-scaling（P2 HUD/runtime/renderer
+  slice，2026-07-08）：依据 `RecipeBookTabButton.extractContents` 中
+  `1.0F + 0.1F * sin(animationTime / 15.0F * PI)` 的 y-only scale、pivot
+  `(getX()+8,getY()+12)`、同一 pose 内先画 tab sprite 后画 fake item icon
+  的行为，renderer `HudInventoryItem` 现在有独立 `scale_y`，native 对
+  recipe-book tab icon top-left 和 y-scale 同时应用该 vanilla pivot/公式；
+  GUI 3D block item placement 使用浮动物品 rect 的实际 height 作为 y 轴
+  scale，避免 animated fake item block-model 仍按正方形投影。剩余：
+  narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -294,8 +294,8 @@ Screen Render Surfaces" 条目）：
   furnace-family ghost slots、furnace-family stacked-contents craftability、
   multi-recipe cycling、right-click multi-recipe picker baseline、overlay
   scaled ingredient mini-grid、FullTextSearchTree search parity、composite SlotDisplay
-  ingredient expansion、craftability retry guard 已完成；剩余 animated-tab
-  fake-item y-scaling、narrow-screen overlap）/
+  ingredient expansion、craftability retry guard、animated-tab fake-item y-scaling
+  已完成；剩余 narrow-screen overlap）/
   advancement screen（大件；recipe/advancement state 已 ready）；debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉

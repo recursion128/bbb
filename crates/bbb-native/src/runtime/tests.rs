@@ -6558,6 +6558,7 @@ fn hud_inventory_screen_projects_selected_recipe_book_tab() {
 
 #[test]
 fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
+    let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
     let mut entry = shapeless_crafting_recipe_book_entry(20, 2, None, 120);
     entry.flags |= 0b10;
@@ -6570,7 +6571,7 @@ fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
 
     let screen = hud_inventory_screen_with_local_state(
         &world,
-        None,
+        Some(&item_runtime),
         &TerrainTextureState::default(),
         None,
         InventoryHudLocalState {
@@ -6596,6 +6597,24 @@ fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
                 [1.0, 1.0],
             )
     }));
+
+    let primary_icon = screen
+        .floating_items
+        .iter()
+        .find(|item| item.x == -29)
+        .expect("selected recipe book tab primary icon");
+    assert_eq!(primary_icon.y, 34);
+    assert_eq!(primary_icon.scale, 1.0);
+    assert!((primary_icon.scale_y - 1.1).abs() <= 0.000001);
+
+    let secondary_icon = screen
+        .floating_items
+        .iter()
+        .find(|item| item.x == -18)
+        .expect("selected recipe book tab secondary icon");
+    assert_eq!(secondary_icon.y, 34);
+    assert_eq!(secondary_icon.scale, 1.0);
+    assert!((secondary_icon.scale_y - 1.1).abs() <= 0.000001);
 }
 
 #[test]
@@ -11189,6 +11208,8 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
         ("crafting_table", [120, 80, 40, 255]),
         ("stick", [150, 95, 45, 255]),
         ("oak_planks", [190, 145, 80, 255]),
+        ("iron_axe", [180, 180, 190, 255]),
+        ("golden_sword", [240, 210, 80, 255]),
     ] {
         write_runtime_json(
             &assets.join("items").join(format!("{model_id}.json")),
@@ -11208,7 +11229,9 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
         r#"{
             "item.minecraft.crafting_table": "Crafting Table",
             "item.minecraft.stick": "Stick",
-            "item.minecraft.oak_planks": "Wooden Boards"
+            "item.minecraft.oak_planks": "Wooden Boards",
+            "item.minecraft.iron_axe": "Iron Axe",
+            "item.minecraft.golden_sword": "Golden Sword"
         }"#,
     );
     write_runtime_json(
@@ -11224,6 +11247,8 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
             public static final Item CRAFTING_TABLE = registerItem("crafting_table");
             public static final Item STICK = registerItem("stick");
             public static final Item OAK_PLANKS = registerItem("oak_planks");
+            public static final Item IRON_AXE = registerItem("iron_axe");
+            public static final Item GOLDEN_SWORD = registerItem("golden_sword");
         }"#,
     );
     let runtime = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();

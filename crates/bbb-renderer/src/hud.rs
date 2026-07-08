@@ -648,8 +648,10 @@ pub struct HudInventoryItem {
     pub x: i32,
     /// Item icon y position relative to the centered inventory screen origin.
     pub y: i32,
-    /// Pose scale applied around the item's top-left GUI rect. `1.0` is the normal 16px item.
+    /// Horizontal pose scale applied around the item's top-left GUI rect.
     pub scale: f32,
+    /// Vertical pose scale applied around the item's top-left GUI rect.
+    pub scale_y: f32,
     pub icon: HudItemIcon,
     /// Whether count, durability, and cooldown overlays should be drawn for this floating item.
     pub draw_decorations: bool,
@@ -3986,7 +3988,10 @@ fn inventory_floating_item_hud_rect(
     screen: &HudInventoryScreen,
     item: &HudInventoryItem,
 ) -> HudRect {
-    let size = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale)
+    let width = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale)
+        .round()
+        .clamp(1.0, 512.0) as u32;
+    let height = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale_y)
         .round()
         .clamp(1.0, 512.0) as u32;
     inventory_background_hud_rect(
@@ -3995,8 +4000,8 @@ fn inventory_floating_item_hud_rect(
         screen.height,
         item.x,
         item.y,
-        size,
-        size,
+        width,
+        height,
     )
 }
 
@@ -5733,13 +5738,18 @@ fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
 }
 
 fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryItem> {
-    if !item.scale.is_finite() || item.scale <= 0.0 {
+    if !item.scale.is_finite()
+        || item.scale <= 0.0
+        || !item.scale_y.is_finite()
+        || item.scale_y <= 0.0
+    {
         return None;
     }
     Some(HudInventoryItem {
         x: item.x,
         y: item.y,
         scale: item.scale.clamp(0.0625, 16.0),
+        scale_y: item.scale_y.clamp(0.0625, 16.0),
         icon: sanitize_hud_item_icon(item.icon)?,
         draw_decorations: item.draw_decorations,
         block_model: item.block_model.filter(hud_block_item_model_is_renderable),
@@ -8376,6 +8386,7 @@ mod tests {
                     x: 33,
                     y: 19,
                     scale: 2.0,
+                    scale_y: 20.0,
                     icon: HudItemIcon {
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
@@ -8397,6 +8408,7 @@ mod tests {
                     x: 51,
                     y: 19,
                     scale: 1.0,
+                    scale_y: 1.0,
                     icon: HudItemIcon {
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
@@ -8426,6 +8438,7 @@ mod tests {
         assert_eq!(screen.floating_items[0].x, 33);
         assert_eq!(screen.floating_items[0].y, 19);
         assert_eq!(screen.floating_items[0].scale, 2.0);
+        assert_eq!(screen.floating_items[0].scale_y, 16.0);
         assert!(screen.floating_items[0].draw_decorations);
         assert_eq!(
             screen.floating_items[0].icon,
@@ -9265,6 +9278,7 @@ mod tests {
             x: 0,
             y: 0,
             scale: 1.0,
+            scale_y: 1.0,
             icon: HudItemIcon::single(HudUvRect {
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],

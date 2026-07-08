@@ -1068,8 +1068,9 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family ghost recipe projection, and furnace-family stacked-contents
     craftability, multi-recipe cycling, and right-click multi-recipe picker
     baseline, full recipe `FullTextSearchTree` search parity, and composite
-    SlotDisplay ingredient expansion:
-    exact animated-tab fake-item y-scaling and narrow-screen overlap.
+    SlotDisplay ingredient expansion, craftability retry guard, and animated
+    tab fake-item y-scaling:
+    narrow-screen overlap.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1379,8 +1380,15 @@ When an agent does any of the following, update this file in the same slice:
     recipe for the current container in local input state, carries each recipe
     button and overlay entry's craftable bit through hit-testing, and suppresses
     repeated uncraftable clicks while still allowing craftable repeat clicks.
-  - Boundary: exact fake-item y-scaling during animated recipe-book tabs and
-    narrow-screen overlap remain open. The
+  - Done 2026-07-08 — Animated recipe-book tab fake-item y-scaling. Vanilla
+    anchors: `RecipeBookTabButton.extractContents` applies
+    `1.0 + 0.1 * sin(animationTime / 15.0F * PI)` as a y-only pose scale around
+    `(x + 8, y + 12)`, draws the selected/unselected tab sprite, and then draws
+    its fake item icon in the same pose. bbb now carries a separate vertical
+    scale on HUD floating items, projects animated tab icons through the same
+    pivot math as the tab sprite, and seats GUI block-item models in the actual
+    floating item rect height instead of reusing the width for both axes.
+  - Boundary: narrow-screen overlap remains open. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1394,8 +1402,8 @@ When an agent does any of the following, update this file in the same slice:
     recipe-grid baseline, furnace-family ghost recipe projection,
     furnace-family stacked-contents craftability, and multi-recipe cycling,
     right-click multi-recipe picker baseline, and overlay scaled ingredient
-    mini-grid plus composite SlotDisplay ingredient expansion and craftability
-    retry guard are live. The
+    mini-grid plus composite SlotDisplay ingredient expansion, craftability
+    retry guard, and animated-tab fake-item y-scaling are live. The
     first shell models the non-narrow
     layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
     the input/render follow-up.
