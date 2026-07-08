@@ -433,6 +433,14 @@ fn main() -> Result<()> {
                                 "profiling toggle requested by debug hotkey; native profiler output is not implemented"
                             );
                         }
+                        let debug_options_screen_requests =
+                            input.take_debug_options_screen_requests();
+                        if debug_options_screen_requests > 0 {
+                            tracing::info!(
+                                debug_options_screen_requests,
+                                "debug options screen requested by debug hotkey; native DebugOptionsScreen is not implemented"
+                            );
+                        }
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

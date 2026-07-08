@@ -1253,6 +1253,33 @@ fn f3_l_records_profiling_toggle_request_without_toggling_overlay() {
 }
 
 #[test]
+fn f3_f6_records_debug_options_screen_request_without_toggling_overlay() {
+    let mut input = ClientInputState::new(true);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F6),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert_eq!(input.take_debug_options_screen_requests(), 1);
+    assert_eq!(input.take_debug_options_screen_requests(), 0);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn f3_c_copies_location_tp_command_to_clipboard_and_reports_feedback() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

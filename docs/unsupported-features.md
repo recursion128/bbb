@@ -1097,15 +1097,25 @@ When an agent does any of the following, update this file in the same slice:
     F3+L profiling request shell,
     advanced item tooltips startup config,
     F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
-    help keybind, the default GAME_VERSION entry shape, the default TPS entry
-    shell, and the default FPS entry shell, and actual F3+4 lightmap preview
-    rendering: the complete
+    help keybind, the F3+F6 debug-options request shell, the default
+    GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
+    entry shell, and actual F3+4 lightmap preview rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
     dynamic texture dump execution, F3+I recreate command generation, 3D
-    crosshair, profiling metrics recorder/output, and the other F3 modifier
-    combos remain (large, low priority).
+    crosshair, profiling metrics recorder/output, actual DebugOptionsScreen,
+    and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
+    Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
+    and `KeyboardHandler.handleDebugKeys` toggles an existing
+    `DebugOptionsScreen` closed or opens a new one when `Minecraft.canInterruptScreen()`
+    allows it, while still marking the key as a debug action. bbb now consumes
+    F6 while F3 is held, records a drainable native debug-options screen
+    request, and logs that request in the main event loop without toggling the
+    debug overlay. Boundary: the actual `DebugOptionsScreen`, editable debug
+    entries, option-list refresh, and screen interruption policy are still not
+    implemented.
   - Done 2026-07-08 — Debug overlay F3+L profiling request shell. Vanilla
     anchors: `Options.keyDebugProfiling` binds key code 76 (L), and
     `KeyboardHandler.handleDebugKeys` calls `Minecraft.debugClientMetricsStart`

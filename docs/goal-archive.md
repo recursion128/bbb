@@ -5299,6 +5299,15 @@
   profiler output 尚未实现；F3 release 不触发普通 overlay toggle。边界：
   `ActiveMetricsRecorder`、profiler sampling、自动/手动 stop、`debug/profiling`
   zip 输出、以及 vanilla profiling chat feedback 仍未实现。
+- [x] debug overlay F3+F6 debug-options request shell（P2 input/runtime
+  slice，2026-07-08）：依据 `Options.keyDebugDebugOptions` 绑定 F6，以及
+  `KeyboardHandler.handleDebugKeys` 在 `Minecraft.canInterruptScreen()` 允许
+  时打开 `DebugOptionsScreen`、在已打开时关闭它、并始终把该键视为 debug
+  action 的行为。`ClientInputState` 现在在 F3 按住期间消费 F6，记录一次可
+  drain 的 native debug-options screen request，并让主循环 drain 后写明
+  native `DebugOptionsScreen` 尚未实现；F3 release 不触发普通 overlay
+  toggle。边界：实际 `DebugOptionsScreen`、可编辑 debug entries、option-list
+  refresh、以及 screen interruption policy 仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，
