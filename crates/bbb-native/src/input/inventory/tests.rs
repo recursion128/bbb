@@ -363,6 +363,51 @@ fn crafting_table_layout_offsets_slots_when_recipe_book_is_open() {
 }
 
 #[test]
+fn crafting_table_layout_overlaps_recipe_book_when_screen_is_narrow() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    let layout = inventory_screen_layout_for_surface(&world, PhysicalSize::new(378, 720)).unwrap();
+
+    assert_eq!(layout.width, 176);
+    assert_eq!(layout.height, 166);
+    let recipe_book = layout.recipe_book.unwrap();
+    assert_eq!(recipe_book.x, 14);
+    assert_eq!(recipe_book.main_gui_x_offset, 0);
+    assert!(recipe_book.narrow);
+    assert_eq!(
+        layout.slots[0],
+        InventorySlotLayout {
+            slot_id: 0,
+            x: 124,
+            y: 35,
+        }
+    );
+    assert_eq!(
+        layout.slots[45],
+        InventorySlotLayout {
+            slot_id: 45,
+            x: 152,
+            y: 142,
+        }
+    );
+}
+
+#[test]
 fn enchantment_table_layout_matches_vanilla_menu() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
@@ -3796,6 +3841,93 @@ fn recipe_book_filter_click_toggles_filtering_and_queues_packet() {
             filtering: false,
         })
     );
+}
+
+#[test]
+fn narrow_recipe_book_consumes_underlying_container_click_and_hover() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 46];
+    items[45] = item_stack(90, 1);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+    let surface_size = PhysicalSize::new(378, 720);
+    let origin_x = (378.0 - 176.0) / 2.0;
+    let origin_y = (720.0 - 166.0) / 2.0;
+    let hotbar_slot = Some(PhysicalPosition::new(
+        origin_x + 152.0 + 8.0,
+        origin_y + 142.0 + 8.0,
+    ));
+
+    assert!(handle_inventory_cursor_moved(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        hotbar_slot,
+        surface_size,
+    ));
+    assert_eq!(input.inventory_hovered_slot(), None);
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        hotbar_slot,
+        surface_size,
+    ));
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Released,
+        hotbar_slot,
+        surface_size,
+    ));
+
+    assert!(world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 0);
+    assert_eq!(
+        world
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
+            .slots
+            .iter()
+            .find(|slot| slot.slot == 45)
+            .unwrap()
+            .item,
+        item_stack(90, 1)
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

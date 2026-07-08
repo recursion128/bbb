@@ -45,7 +45,8 @@ pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
     anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
     handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-    handle_inventory_text_input, inventory_screen_layout, inventory_screen_selected_hotbar_slot_id,
+    handle_inventory_text_input, inventory_screen_layout, inventory_screen_layout_for_surface,
+    inventory_screen_selected_hotbar_slot_id, maybe_close_narrow_recipe_book,
     recipe_book_button_position, recipe_book_main_gui_offset,
     recipe_book_search_entry_consumes_key, recipe_book_tab_count_for_background,
     recipe_book_type_for_background, recipe_book_type_settings, recipe_book_visible_tab_indices,
@@ -723,6 +724,7 @@ pub(crate) fn handle_key_input(
         None,
         physical_key,
         state,
+        PhysicalSize::new(1280, 720),
     );
 }
 
@@ -734,6 +736,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     item_runtime: Option<&NativeItemRuntime>,
     physical_key: PhysicalKey,
     state: ElementState,
+    surface_size: PhysicalSize<u32>,
 ) {
     if !input.focused {
         return;
@@ -785,6 +788,11 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     if pressed {
+        if matches!(code, KeyCode::Escape)
+            && maybe_close_narrow_recipe_book(input, world, counters, net_commands, surface_size)
+        {
+            return;
+        }
         if matches!(code, KeyCode::Escape)
             && queue_container_close_command(counters, world, net_commands)
         {

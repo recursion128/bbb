@@ -2055,6 +2055,20 @@
   GUI 3D block item placement 使用浮动物品 rect 的实际 height 作为 y 轴
   scale，避免 animated fake item block-model 仍按正方形投影。剩余：
   narrow-screen overlap。
+- [x] recipe-book narrow-screen overlap（P2 HUD/input/runtime slice，
+  2026-07-08）：依据 `AbstractRecipeBookScreen.init` 的 `width < 379`
+  narrow gate、`RecipeBookComponent.initVisuals` 在 narrow 时 `xOffset = 0`、
+  `updateScreenPosition` 保持 main GUI 居中以及 `getXOrigin` 以 147px
+  recipe book 宽度居中的行为，native layout 现在按实际 surface width 派生
+  recipe-book 布局：非窄屏继续使用 149px main GUI offset，窄屏保持 176px
+  主 GUI/slot 坐标不平移并把 recipe book 放在 x=14。HUD 抽取把 recipe-book
+  background/tab/search/grid/filter/overlay 层、fake item 与页码/search 文本
+  单独按 recipe-book x 偏移，主 GUI button 保持 main GUI 坐标；输入命中同样
+  subtract recipe-book x，窄屏可见时禁用底层 slot hover/click，Escape 先关闭
+  recipe book，recipe button/overlay place 成功后同步关闭并发送
+  `RecipeBookChangeSettingsCommand { open: false }`。recipe-book overlay
+  polish 队列清空；剩余 P2 screen/HUD 队列转入 advancement screen 与 debug
+  overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

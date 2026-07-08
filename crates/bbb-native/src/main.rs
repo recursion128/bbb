@@ -395,6 +395,7 @@ fn main() -> Result<()> {
                         item_runtime.as_ref(),
                         event.physical_key,
                         event.state,
+                        window.inner_size(),
                     );
                 }
                 WindowEvent::Ime(Ime::Commit(text)) => {
@@ -564,6 +565,7 @@ fn main() -> Result<()> {
                         &mut input,
                         &mut world,
                         &mut renderer,
+                        window.inner_size(),
                         &mut net_counters,
                         &mut client_animation_ticks,
                         &mut lightmap_ticks,
@@ -690,6 +692,7 @@ fn main() -> Result<()> {
                     &mut input,
                     &mut world,
                     &mut renderer,
+                    window.inner_size(),
                     &mut net_counters,
                     &mut client_animation_ticks,
                     &mut lightmap_ticks,

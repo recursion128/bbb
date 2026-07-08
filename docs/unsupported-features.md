@@ -1059,20 +1059,8 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Continue the recipe-book overlay after the completed shell and toggle
-    buttons/search input/tab shell/crafting recipe-button shell/category-page
-    shell/placement shell/category tab visibility/crafting ghost slots/search
-    filtering/direct-item craftability/same-result multi-recipe icon overlay,
-    search cursor/selection, tag-backed ghost ingredient display, tab
-    notification pulse, furnace-family recipe-grid baseline,
-    furnace-family ghost recipe projection, and furnace-family stacked-contents
-    craftability, multi-recipe cycling, and right-click multi-recipe picker
-    baseline, full recipe `FullTextSearchTree` search parity, and composite
-    SlotDisplay ingredient expansion, craftability retry guard, and animated
-    tab fake-item y-scaling:
-    narrow-screen overlap.
-  - Then implement the advancement screen (`ClientAdvancementsState` ready) and
-    debug overlay (F3; large, low priority).
+  - Implement the advancement screen (`ClientAdvancementsState` ready).
+  - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
     recipe-capable inventory screens. Vanilla anchors:
@@ -1388,7 +1376,21 @@ When an agent does any of the following, update this file in the same slice:
     scale on HUD floating items, projects animated tab icons through the same
     pivot math as the tab sprite, and seats GUI block-item models in the actual
     floating item rect height instead of reusing the width for both axes.
-  - Boundary: narrow-screen overlap remains open. The
+  - Done 2026-07-08 — Recipe-book narrow-screen overlap. Vanilla anchors:
+    `AbstractRecipeBookScreen.init` marks `width < 379` as narrow,
+    `RecipeBookComponent.initVisuals` uses `xOffset = 0` in that mode, and
+    `RecipeBookComponent.updateScreenPosition` leaves the main GUI centered
+    while `getXOrigin` centers the 147px recipe book over it. Narrow visible
+    recipe books consume underlying container clicks/hover, Escape closes the
+    book before the container, and successful recipe placement closes the book
+    via updated recipe-book settings. bbb now derives inventory layout from the
+    actual surface width, keeps narrow main slots at the unshifted 176px GUI
+    coordinates, projects recipe-book layers/items/text at the centered
+    recipe-book x, disables underlying slot hover/click commands while narrow,
+    and queues `RecipeBookChangeSettingsCommand { open: false }` on narrow
+    Escape or place.
+  - Boundary: recipe-book overlay polish is live, including narrow-screen
+    overlap. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1404,9 +1406,8 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The
-    first shell models the non-narrow
-    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
-    the input/render follow-up.
+    remaining open surfaces in this ledger row are the advancement screen and
+    debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

@@ -36,7 +36,15 @@ pub(crate) struct InventoryScreenLayout {
     pub(crate) width: i32,
     pub(crate) height: i32,
     pub(crate) background: InventoryScreenBackground,
+    pub(crate) recipe_book: Option<InventoryRecipeBookLayout>,
     pub(crate) slots: Vec<InventorySlotLayout>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct InventoryRecipeBookLayout {
+    pub(crate) x: i32,
+    pub(crate) main_gui_x_offset: i32,
+    pub(crate) narrow: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +62,8 @@ pub(crate) const RECIPE_BOOK_MAIN_GUI_X_OFFSET: i32 = 149;
 /// Virtual width whose centered origin matches the vanilla non-narrow
 /// recipe-book origin for even GUI widths.
 const RECIPE_BOOK_ORIGIN_WIDTH: i32 = 320;
+const RECIPE_BOOK_NARROW_SCREEN_WIDTH: u32 = 379;
+const RECIPE_BOOK_WIDTH: i32 = 147;
 pub(crate) const RECIPE_BOOK_BUTTON_WIDTH: i32 = 20;
 pub(crate) const RECIPE_BOOK_BUTTON_HEIGHT: i32 = 18;
 pub(crate) const RECIPE_BOOK_FILTER_BUTTON_X: i32 = 110;
@@ -130,6 +140,23 @@ pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
 }
 
 pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScreenLayout> {
+    inventory_screen_layout_with_recipe_book_mode(world, false)
+}
+
+pub(crate) fn inventory_screen_layout_for_surface(
+    world: &WorldStore,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<InventoryScreenLayout> {
+    inventory_screen_layout_with_recipe_book_mode(
+        world,
+        surface_size.width < RECIPE_BOOK_NARROW_SCREEN_WIDTH,
+    )
+}
+
+fn inventory_screen_layout_with_recipe_book_mode(
+    world: &WorldStore,
+    recipe_book_narrow: bool,
+) -> Option<InventoryScreenLayout> {
     if world.local_inventory_is_open() {
         return Some(recipe_book_overlay_layout(
             world,
@@ -137,8 +164,10 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
                 width: INVENTORY_SCREEN_WIDTH,
                 height: INVENTORY_SCREEN_HEIGHT,
                 background: InventoryScreenBackground::LocalInventory,
+                recipe_book: None,
                 slots: local_inventory_slot_layouts(),
             },
+            recipe_book_narrow,
         ));
     }
 
@@ -157,6 +186,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
                 kind,
                 inventory_columns,
             },
+            recipe_book: None,
             slots: mount_inventory_slot_layouts(inventory_columns, equipment_slots),
         });
     }
@@ -166,6 +196,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: GENERIC_CONTAINER_WIDTH,
             height: GENERIC_CONTAINER_BASE_HEIGHT + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
             background: InventoryScreenBackground::Generic9xRows { rows },
+            recipe_book: None,
             slots: generic_container_slot_layouts(rows),
         });
     }
@@ -174,6 +205,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: GENERIC_3X3_SCREEN_WIDTH,
             height: GENERIC_3X3_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Generic3x3,
+            recipe_book: None,
             slots: generic_3x3_slot_layouts(),
         });
     }
@@ -182,6 +214,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: CRAFTER_SCREEN_WIDTH,
             height: CRAFTER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Crafter,
+            recipe_book: None,
             slots: crafter_slot_layouts(),
         });
     }
@@ -192,8 +225,10 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
                 width: CRAFTING_SCREEN_WIDTH,
                 height: CRAFTING_SCREEN_HEIGHT,
                 background: InventoryScreenBackground::CraftingTable,
+                recipe_book: None,
                 slots: crafting_table_slot_layouts(),
             },
+            recipe_book_narrow,
         ));
     }
     if menu_type_id == ENCHANTMENT_MENU_TYPE_ID {
@@ -201,6 +236,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: ENCHANTMENT_SCREEN_WIDTH,
             height: ENCHANTMENT_SCREEN_HEIGHT,
             background: InventoryScreenBackground::EnchantmentTable,
+            recipe_book: None,
             slots: enchantment_table_slot_layouts(),
         });
     }
@@ -209,6 +245,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: ANVIL_SCREEN_WIDTH,
             height: ANVIL_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Anvil,
+            recipe_book: None,
             slots: anvil_slot_layouts(),
         });
     }
@@ -217,6 +254,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: BEACON_SCREEN_WIDTH,
             height: BEACON_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Beacon,
+            recipe_book: None,
             slots: beacon_slot_layouts(),
         });
     }
@@ -225,6 +263,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: BREWING_STAND_SCREEN_WIDTH,
             height: BREWING_STAND_SCREEN_HEIGHT,
             background: InventoryScreenBackground::BrewingStand,
+            recipe_book: None,
             slots: brewing_stand_slot_layouts(),
         });
     }
@@ -235,8 +274,10 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
                 width: FURNACE_SCREEN_WIDTH,
                 height: FURNACE_SCREEN_HEIGHT,
                 background,
+                recipe_book: None,
                 slots: furnace_slot_layouts(),
             },
+            recipe_book_narrow,
         ));
     }
     if menu_type_id == GRINDSTONE_MENU_TYPE_ID {
@@ -244,6 +285,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: GRINDSTONE_SCREEN_WIDTH,
             height: GRINDSTONE_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Grindstone,
+            recipe_book: None,
             slots: grindstone_slot_layouts(),
         });
     }
@@ -252,6 +294,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: HOPPER_SCREEN_WIDTH,
             height: HOPPER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Hopper,
+            recipe_book: None,
             slots: hopper_slot_layouts(),
         });
     }
@@ -260,6 +303,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: LECTERN_SCREEN_WIDTH,
             height: LECTERN_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Lectern,
+            recipe_book: None,
             slots: Vec::new(),
         });
     }
@@ -268,6 +312,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: LOOM_SCREEN_WIDTH,
             height: LOOM_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Loom,
+            recipe_book: None,
             slots: loom_slot_layouts(),
         });
     }
@@ -276,6 +321,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: MERCHANT_SCREEN_WIDTH,
             height: MERCHANT_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Merchant,
+            recipe_book: None,
             slots: merchant_slot_layouts(),
         });
     }
@@ -284,6 +330,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: SHULKER_BOX_SCREEN_WIDTH,
             height: SHULKER_BOX_SCREEN_HEIGHT,
             background: InventoryScreenBackground::ShulkerBox,
+            recipe_book: None,
             slots: shulker_box_slot_layouts(),
         });
     }
@@ -292,6 +339,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: SMITHING_SCREEN_WIDTH,
             height: SMITHING_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Smithing,
+            recipe_book: None,
             slots: smithing_slot_layouts(),
         });
     }
@@ -300,6 +348,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: CARTOGRAPHY_TABLE_SCREEN_WIDTH,
             height: CARTOGRAPHY_TABLE_SCREEN_HEIGHT,
             background: InventoryScreenBackground::CartographyTable,
+            recipe_book: None,
             slots: cartography_table_slot_layouts(),
         });
     }
@@ -308,6 +357,7 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             width: STONECUTTER_SCREEN_WIDTH,
             height: STONECUTTER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Stonecutter,
+            recipe_book: None,
             slots: stonecutter_slot_layouts(),
         });
     }
@@ -392,14 +442,28 @@ fn recipe_book_is_open_for_background(
 fn recipe_book_overlay_layout(
     world: &WorldStore,
     mut layout: InventoryScreenLayout,
+    narrow: bool,
 ) -> InventoryScreenLayout {
     if !recipe_book_is_open_for_background(world, layout.background) {
         return layout;
     }
 
-    layout.width = RECIPE_BOOK_ORIGIN_WIDTH;
-    for slot in &mut layout.slots {
-        slot.x += RECIPE_BOOK_MAIN_GUI_X_OFFSET;
+    if narrow {
+        layout.recipe_book = Some(InventoryRecipeBookLayout {
+            x: (layout.width - RECIPE_BOOK_WIDTH) / 2,
+            main_gui_x_offset: 0,
+            narrow: true,
+        });
+    } else {
+        layout.width = RECIPE_BOOK_ORIGIN_WIDTH;
+        for slot in &mut layout.slots {
+            slot.x += RECIPE_BOOK_MAIN_GUI_X_OFFSET;
+        }
+        layout.recipe_book = Some(InventoryRecipeBookLayout {
+            x: 0,
+            main_gui_x_offset: RECIPE_BOOK_MAIN_GUI_X_OFFSET,
+            narrow: false,
+        });
     }
     layout
 }

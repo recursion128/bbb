@@ -46,7 +46,8 @@ mod layout;
 #[cfg(test)]
 pub(crate) use layout::local_inventory_slot_layouts;
 pub(crate) use layout::{
-    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
+    inventory_screen_layout, inventory_screen_layout_for_surface,
+    inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
     recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
     recipe_book_type_for_background, recipe_book_type_settings, InventoryScreenBackground,
     InventoryScreenLayout, InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT,
@@ -301,7 +302,7 @@ pub(crate) fn handle_inventory_cursor_moved(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || inventory_screen_layout(world).is_none() {
+    if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }
     input.inventory_cursor_position =
@@ -322,7 +323,11 @@ pub(crate) fn handle_inventory_cursor_moved(
     {
         return true;
     }
-    let hovered = inventory_screen_hovered_slot(world, cursor_position, surface_size);
+    let hovered = if narrow_recipe_book_consumes_container_click(world, surface_size) {
+        None
+    } else {
+        inventory_screen_hovered_slot(world, cursor_position, surface_size)
+    };
     if input.inventory_hovered_slot != hovered {
         if let Some(previous) = input.inventory_hovered_slot {
             handle_bundle_slot_hover_end(world, counters, net_commands, i32::from(previous));
@@ -372,7 +377,7 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || inventory_screen_layout(world).is_none() {
+    if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }
     input.inventory_cursor_position =
@@ -385,6 +390,10 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     };
 
     if matches!(state, ElementState::Released) {
+        if narrow_recipe_book_consumes_container_click(world, surface_size) {
+            local_inventory_clear_quick_craft(input);
+            return true;
+        }
         return handle_inventory_mouse_released(
             input,
             world,
@@ -487,6 +496,16 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if narrow_recipe_book_consumes_container_click(world, surface_size) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        input.recipe_book_overlay = None;
+        input.recipe_book_search_focused = false;
+        input.recipe_book_search_suppress_open_key_commit = false;
         local_inventory_clear_quick_craft(input);
         return true;
     }
@@ -682,6 +701,15 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     true
 }
 
+fn narrow_recipe_book_consumes_container_click(
+    world: &WorldStore,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    inventory_screen_layout_for_surface(world, surface_size)
+        .and_then(|layout| layout.recipe_book)
+        .is_some_and(|recipe_book| recipe_book.narrow)
+}
+
 fn maybe_queue_recipe_book_filter_click(
     world: &mut WorldStore,
     counters: &mut NetCounters,
@@ -809,6 +837,7 @@ fn maybe_handle_recipe_book_overlay_click(
                 net_commands,
                 recipe_index,
                 craftable,
+                surface_size,
             );
         }
     }
@@ -881,6 +910,7 @@ fn maybe_queue_recipe_book_recipe_click(
         net_commands,
         recipe_index,
         craftable,
+        surface_size,
     ) {
         return false;
     }
@@ -896,6 +926,7 @@ fn maybe_queue_recipe_book_place_recipe(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     recipe_index: i32,
     craftable: bool,
+    surface_size: PhysicalSize<u32>,
 ) -> bool {
     let Some(container_id) = world.open_container_id() else {
         return false;
@@ -914,7 +945,80 @@ fn maybe_queue_recipe_book_place_recipe(
             use_max_items: input.shift_down(),
         },
     );
+    close_narrow_recipe_book_after_place(input, world, counters, net_commands, surface_size);
     true
+}
+
+fn close_narrow_recipe_book_after_place(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    surface_size: PhysicalSize<u32>,
+) {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
+        return;
+    };
+    let Some(recipe_book) = layout.recipe_book else {
+        return;
+    };
+    if !recipe_book.narrow {
+        return;
+    }
+    let Some(book_type) = recipe_book_type_for_background(layout.background) else {
+        return;
+    };
+    close_recipe_book(input, world, counters, net_commands, book_type);
+}
+
+pub(crate) fn maybe_close_narrow_recipe_book(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
+        return false;
+    };
+    let Some(recipe_book) = layout.recipe_book else {
+        return false;
+    };
+    if !recipe_book.narrow {
+        return false;
+    }
+    let Some(book_type) = recipe_book_type_for_background(layout.background) else {
+        return false;
+    };
+    close_recipe_book(input, world, counters, net_commands, book_type);
+    true
+}
+
+fn close_recipe_book(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    book_type: RecipeBookType,
+) {
+    let mut settings = recipe_book_type_settings(world, book_type);
+    if !settings.open {
+        return;
+    }
+    settings.open = false;
+    input.recipe_book_overlay = None;
+    input.recipe_book_search_focused = false;
+    input.recipe_book_search_suppress_open_key_commit = false;
+    world.set_local_recipe_book_type_settings(book_type, settings);
+    queue_recipe_book_change_settings_command(
+        counters,
+        net_commands,
+        RecipeBookChangeSettingsCommand {
+            book_type,
+            open: false,
+            filtering: settings.filtering,
+        },
+    );
 }
 
 fn maybe_queue_recipe_book_toggle_click(
@@ -2139,7 +2243,7 @@ pub(crate) fn handle_inventory_mouse_wheel(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || inventory_screen_layout(world).is_none() {
+    if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }
     if maybe_scroll_stonecutter_recipes(input, world, &delta) {
@@ -2356,7 +2460,7 @@ fn inventory_screen_cursor_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<(i32, i32)> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
@@ -2369,11 +2473,14 @@ fn recipe_book_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<RecipeBookType> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let (button_x, button_y) = recipe_book_button_position(layout.background)?;
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let main_offset_x = recipe_book_main_gui_offset(world, layout.background);
+    let main_offset_x = layout
+        .recipe_book
+        .map(|recipe_book| recipe_book.main_gui_x_offset)
+        .unwrap_or_default();
     let x = cursor.x - origin_x - f64::from(main_offset_x + button_x);
     let y = cursor.y - origin_y - f64::from(button_y);
     if x >= 0.0
@@ -2391,14 +2498,12 @@ fn recipe_book_filter_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<RecipeBookType> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
-    if recipe_book_main_gui_offset(world, layout.background) == 0 {
-        return None;
-    }
+    let recipe_book = layout.recipe_book?;
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let x = cursor.x - origin_x - f64::from(RECIPE_BOOK_FILTER_BUTTON_X);
+    let x = cursor.x - origin_x - f64::from(recipe_book.x + RECIPE_BOOK_FILTER_BUTTON_X);
     let y = cursor.y - origin_y - f64::from(RECIPE_BOOK_FILTER_BUTTON_Y);
     if x >= 0.0
         && x < f64::from(RECIPE_BOOK_FILTER_BUTTON_WIDTH)
@@ -2415,19 +2520,20 @@ fn recipe_book_search_box_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         return false;
     };
-    if recipe_book_type_for_background(layout.background).is_none()
-        || recipe_book_main_gui_offset(world, layout.background) == 0
-    {
+    if recipe_book_type_for_background(layout.background).is_none() {
         return false;
     }
+    let Some(recipe_book) = layout.recipe_book else {
+        return false;
+    };
     let Some(cursor) = cursor_position else {
         return false;
     };
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let x = cursor.x - origin_x - f64::from(RECIPE_BOOK_SEARCH_BOX_X);
+    let x = cursor.x - origin_x - f64::from(recipe_book.x + RECIPE_BOOK_SEARCH_BOX_X);
     let y = cursor.y - origin_y - f64::from(RECIPE_BOOK_SEARCH_BOX_Y);
     x >= 0.0
         && x < f64::from(RECIPE_BOOK_SEARCH_BOX_WIDTH)
@@ -2440,18 +2546,16 @@ fn recipe_book_tab_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<(RecipeBookType, usize)> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
-    if recipe_book_main_gui_offset(world, layout.background) == 0 {
-        return None;
-    }
+    let recipe_book = layout.recipe_book?;
     let visible_tabs = recipe_book_visible_tab_indices(world, layout.background);
     if visible_tabs.is_empty() {
         return None;
     }
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let x = cursor.x - origin_x;
+    let x = cursor.x - origin_x - f64::from(recipe_book.x);
     let y = cursor.y - origin_y;
     for (visible_index, tab_index) in visible_tabs.into_iter().enumerate() {
         let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
@@ -2473,11 +2577,9 @@ fn recipe_book_page_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<(RecipeBookType, RecipeBookPageTurn, usize)> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
-    if recipe_book_main_gui_offset(world, layout.background) == 0 {
-        return None;
-    }
+    let recipe_book = layout.recipe_book?;
     let collection_count = recipe_book_collections_for_background(
         input,
         world,
@@ -2496,7 +2598,7 @@ fn recipe_book_page_button_at_position(
     );
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let x = cursor.x - origin_x;
+    let x = cursor.x - origin_x - f64::from(recipe_book.x);
     let y = cursor.y - origin_y;
     if current_page + 1 < page_count
         && recipe_book_page_button_contains(
@@ -2546,11 +2648,9 @@ fn recipe_book_collection_at_position<'a>(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<(RecipeBookType, usize, usize, RecipeBookUiCollection<'a>)> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
-    if recipe_book_main_gui_offset(world, layout.background) == 0 {
-        return None;
-    }
+    let _recipe_book = layout.recipe_book?;
     let collections = recipe_book_collections_for_background(
         input,
         world,
@@ -2579,10 +2679,10 @@ fn recipe_book_overlay_recipe_at_position(
     surface_size: PhysicalSize<u32>,
 ) -> Option<(i32, bool)> {
     let overlay = input.recipe_book_overlay?;
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
-    if overlay.book_type != book_type || recipe_book_main_gui_offset(world, layout.background) == 0
-    {
+    let recipe_book = layout.recipe_book?;
+    if overlay.book_type != book_type {
         return None;
     }
     let collections = recipe_book_collections_for_background(
@@ -2600,7 +2700,7 @@ fn recipe_book_overlay_recipe_at_position(
         .overlay_entries(item_tag_entries, recipe_book_slot_select_index(world, 0.0));
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
-    let x = cursor.x - origin_x;
+    let x = cursor.x - origin_x - f64::from(recipe_book.x);
     let y = cursor.y - origin_y;
     if !x.is_finite() || !y.is_finite() {
         return None;
@@ -2659,9 +2759,10 @@ fn recipe_book_recipe_button_index_at_position(
     surface_size: PhysicalSize<u32>,
     layout: &InventoryScreenLayout,
 ) -> Option<usize> {
+    let recipe_book = layout.recipe_book?;
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, layout);
-    let x = cursor.x - origin_x - f64::from(RECIPE_BOOK_RECIPE_BUTTON_X);
+    let x = cursor.x - origin_x - f64::from(recipe_book.x + RECIPE_BOOK_RECIPE_BUTTON_X);
     let y = cursor.y - origin_y - f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y);
     if !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 {
         return None;
@@ -2737,7 +2838,7 @@ fn enchantment_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i32> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::EnchantmentTable {
         return None;
     }
@@ -2768,7 +2869,7 @@ fn loom_click_target_at_position(
     if selectable_count <= 0 {
         return None;
     }
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::Loom {
         return None;
     }
@@ -2793,7 +2894,7 @@ fn merchant_trade_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i32> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::Merchant {
         return None;
     }
@@ -2834,7 +2935,7 @@ fn merchant_scroller_track_at_position(
     if !merchant_offers_can_scroll(world) {
         return false;
     }
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         return false;
     };
     if layout.background != InventoryScreenBackground::Merchant {
@@ -2860,7 +2961,7 @@ fn loom_scroller_at_position(
     if loom_pattern_max_scroll_row(world).unwrap_or_default() <= 0 {
         return false;
     }
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         return false;
     };
     if layout.background != InventoryScreenBackground::Loom {
@@ -2894,7 +2995,7 @@ fn update_merchant_trade_scroll_from_cursor(
         input.merchant_trade_scrolling = false;
         return false;
     }
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         input.merchant_trade_scrolling = false;
         return false;
     };
@@ -2935,7 +3036,7 @@ fn update_loom_pattern_scroll_from_cursor(
         input.loom_pattern_scrolling = false;
         return false;
     }
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         input.loom_pattern_scrolling = false;
         return false;
     };
@@ -2962,7 +3063,7 @@ fn lectern_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<LecternClickTarget> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::Lectern {
         return None;
     }
@@ -3009,7 +3110,7 @@ fn beacon_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<BeaconClickTarget> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::Beacon {
         return None;
     }
@@ -3109,7 +3210,7 @@ fn stonecutter_recipe_button_at_position(
     if stonecutter_visible_recipe_count(world)? <= 0 {
         return None;
     }
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     if layout.background != InventoryScreenBackground::Stonecutter {
         return None;
     }
@@ -3134,7 +3235,7 @@ fn stonecutter_scroller_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         return false;
     };
     if layout.background != InventoryScreenBackground::Stonecutter {
@@ -3167,7 +3268,7 @@ fn update_stonecutter_recipe_scroll_from_cursor(
         input.stonecutter_recipe_scrolling = false;
         return false;
     }
-    let Some(layout) = inventory_screen_layout(world) else {
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
         input.stonecutter_recipe_scrolling = false;
         return false;
     };
@@ -3388,7 +3489,7 @@ fn inventory_screen_click_target(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<InventoryClickTarget> {
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;

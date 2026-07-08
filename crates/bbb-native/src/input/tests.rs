@@ -2485,6 +2485,7 @@ fn anvil_default_hover_name_is_sent_as_empty_rename() {
         Some(&item_runtime),
         PhysicalKey::Code(KeyCode::Backspace),
         ElementState::Pressed,
+        PhysicalSize::new(1280, 720),
     );
 
     assert_eq!(input.anvil_rename_text(), "Test Combo");
@@ -2536,6 +2537,7 @@ fn anvil_custom_name_matching_hover_name_is_sent_verbatim() {
         Some(&item_runtime),
         PhysicalKey::Code(KeyCode::Backspace),
         ElementState::Pressed,
+        PhysicalSize::new(1280, 720),
     );
 
     assert_eq!(input.anvil_rename_text(), "Custom Combo");
@@ -3901,6 +3903,41 @@ fn escape_key_closes_open_container_and_queues_command() {
 }
 
 #[test]
+fn escape_key_closes_narrow_recipe_book_before_container() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+
+    handle_key_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        None,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+        PhysicalSize::new(378, 720),
+    );
+
+    assert!(world.inventory().open_container.is_some());
+    assert!(!world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.container_close_commands_queued, 0);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(
+            bbb_protocol::packets::RecipeBookChangeSettingsCommand {
+                book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+                open: false,
+                filtering: false,
+            }
+        )
+    );
+}
+
+#[test]
 fn inventory_key_closes_open_container_before_open_inventory_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -4067,6 +4104,61 @@ fn recipe_book_recipe_button_click_queues_place_recipe_command() {
             recipe_index: 42,
             use_max_items: true,
         })
+    );
+}
+
+#[test]
+fn narrow_recipe_book_recipe_button_click_closes_book_and_queues_settings() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![recipe_book_shapeless_entry(42, 2, 200)],
+    });
+    let surface_size = PhysicalSize::new(378, 720);
+    let origin_x = (378.0 - 176.0) / 2.0;
+    let origin_y = (720.0 - 166.0) / 2.0;
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + 14.0 + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert!(!world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+    assert!(!input.recipe_book_search_hud_state().focused);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 42,
+            use_max_items: false,
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(
+            bbb_protocol::packets::RecipeBookChangeSettingsCommand {
+                book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+                open: false,
+                filtering: false,
+            }
+        )
     );
 }
 

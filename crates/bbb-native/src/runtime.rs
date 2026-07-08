@@ -70,7 +70,7 @@ use crate::{
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, inventory_screen_layout,
+        advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
         inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
         recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
         recipe_book_type_for_background, recipe_book_type_settings,
@@ -1444,6 +1444,7 @@ pub(crate) fn pump_network_and_terrain(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     renderer: &mut bbb_renderer::Renderer,
+    surface_size: winit::dpi::PhysicalSize<u32>,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     lightmap_ticks: &mut LightmapTickState,
@@ -1724,7 +1725,7 @@ pub(crate) fn pump_network_and_terrain(
     let hud_inventory_screen = if hud_sign_editor_screen.is_some() {
         None
     } else {
-        hud_inventory_screen_with_local_state(
+        hud_inventory_screen_with_local_state_for_surface(
             world,
             item_runtime,
             terrain_textures,
@@ -1745,6 +1746,7 @@ pub(crate) fn pump_network_and_terrain(
                 shift_down: input.shift_down(),
                 keybind_context: item_model_keybind_context,
             },
+            surface_size,
             entity_partial_tick,
         )
     };
@@ -2610,6 +2612,7 @@ fn hud_inventory_screen(
     )
 }
 
+#[cfg(test)]
 fn hud_inventory_screen_with_local_state(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -2618,17 +2621,47 @@ fn hud_inventory_screen_with_local_state(
     local_state: InventoryHudLocalState,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    hud_inventory_screen_with_local_state_for_surface(
+        world,
+        item_runtime,
+        terrain_textures,
+        hovered_slot_id,
+        local_state,
+        winit::dpi::PhysicalSize::new(1280, 720),
+        partial_tick,
+    )
+}
+
+fn hud_inventory_screen_with_local_state_for_surface(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    hovered_slot_id: Option<i16>,
+    local_state: InventoryHudLocalState,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    partial_tick: f32,
+) -> Option<HudInventoryScreen> {
     if let Some(book) = world.current_book() {
         return Some(hud_book_screen(book));
     }
 
-    let layout = inventory_screen_layout(world)?;
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
     } else {
         world.inventory().open_container.as_ref()?
     };
-    let main_offset_x = recipe_book_main_gui_offset(world, layout.background);
+    let main_offset_x = layout
+        .recipe_book
+        .map(|recipe_book| recipe_book.main_gui_x_offset)
+        .unwrap_or_default();
+    let recipe_book_x = layout
+        .recipe_book
+        .map(|recipe_book| recipe_book.x)
+        .unwrap_or_default();
+    let recipe_book_cursor_position = local_state
+        .cursor_position
+        .map(|(x, y)| (x - recipe_book_x, y));
 
     let selected_hotbar_slot_id = inventory_screen_selected_hotbar_slot_id(world);
     let slots = layout
@@ -2674,36 +2707,52 @@ fn hud_inventory_screen_with_local_state(
         for layer in &mut background_layers {
             layer.x += main_offset_x;
         }
-        background_layers.insert(0, hud_recipe_book_background_layer());
     }
-    background_layers.extend(hud_recipe_book_tab_layers(
+    if let Some(recipe_book) = layout.recipe_book {
+        let mut layer = hud_recipe_book_background_layer();
+        layer.x += recipe_book.x;
+        if recipe_book.narrow {
+            background_layers.push(layer);
+        } else {
+            background_layers.insert(0, layer);
+        }
+    }
+    let mut recipe_book_tab_layers = hud_recipe_book_tab_layers(
         world,
         layout.background,
         &local_state.recipe_book_tabs,
         partial_tick,
-    ));
+    );
+    offset_hud_inventory_background_layers(&mut recipe_book_tab_layers, recipe_book_x);
+    background_layers.extend(recipe_book_tab_layers);
     if let Some(layer) =
         hud_recipe_book_search_box_layer(world, layout.background, &local_state.recipe_book_search)
     {
-        background_layers.push(layer);
+        let mut layers = vec![layer];
+        offset_hud_inventory_background_layers(&mut layers, recipe_book_x);
+        background_layers.extend(layers);
     }
-    background_layers.extend(hud_recipe_book_recipe_button_layers(
+    let mut recipe_book_button_layers = hud_recipe_book_recipe_button_layers(
         world,
         item_runtime,
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
-    ));
-    background_layers.extend(hud_recipe_book_page_button_layers(
+    );
+    offset_hud_inventory_background_layers(&mut recipe_book_button_layers, recipe_book_x);
+    background_layers.extend(recipe_book_button_layers);
+    let mut recipe_book_page_layers = hud_recipe_book_page_button_layers(
         world,
         item_runtime,
         layout.background,
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
-        local_state.cursor_position,
-    ));
+        recipe_book_cursor_position,
+    );
+    offset_hud_inventory_background_layers(&mut recipe_book_page_layers, recipe_book_x);
+    background_layers.extend(recipe_book_page_layers);
     if let Some(layer) = hud_recipe_book_button_layer(
         layout.background,
         main_offset_x,
@@ -2712,11 +2761,13 @@ fn hud_inventory_screen_with_local_state(
         background_layers.push(layer);
     }
     if let Some(layer) =
-        hud_recipe_book_filter_button_layer(world, layout.background, local_state.cursor_position)
+        hud_recipe_book_filter_button_layer(world, layout.background, recipe_book_cursor_position)
     {
-        background_layers.push(layer);
+        let mut layers = vec![layer];
+        offset_hud_inventory_background_layers(&mut layers, recipe_book_x);
+        background_layers.extend(layers);
     }
-    background_layers.extend(hud_recipe_book_overlay_layers(
+    let mut recipe_book_overlay_layers = hud_recipe_book_overlay_layers(
         world,
         item_runtime,
         layout.background,
@@ -2724,9 +2775,11 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
         local_state.recipe_book_overlay,
-        local_state.cursor_position,
+        recipe_book_cursor_position,
         partial_tick,
-    ));
+    );
+    offset_hud_inventory_background_layers(&mut recipe_book_overlay_layers, recipe_book_x);
+    background_layers.extend(recipe_book_overlay_layers);
     let mut floating_items = hud_inventory_floating_items(
         world,
         item_runtime,
@@ -2741,7 +2794,7 @@ fn hud_inventory_screen_with_local_state(
         local_state.keybind_context,
         partial_tick,
     );
-    floating_items.extend(hud_recipe_book_tab_icon_items(
+    let mut recipe_book_tab_icon_items = hud_recipe_book_tab_icon_items(
         world,
         item_runtime,
         terrain_textures,
@@ -2749,8 +2802,10 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_tabs,
         local_state.keybind_context,
         partial_tick,
-    ));
-    floating_items.extend(hud_recipe_book_recipe_button_icon_items(
+    );
+    offset_hud_inventory_items(&mut recipe_book_tab_icon_items, recipe_book_x);
+    floating_items.extend(recipe_book_tab_icon_items);
+    let mut recipe_book_recipe_button_icon_items = hud_recipe_book_recipe_button_icon_items(
         world,
         item_runtime,
         terrain_textures,
@@ -2760,8 +2815,10 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_search,
         local_state.keybind_context,
         partial_tick,
-    ));
-    floating_items.extend(hud_recipe_book_overlay_icon_items(
+    );
+    offset_hud_inventory_items(&mut recipe_book_recipe_button_icon_items, recipe_book_x);
+    floating_items.extend(recipe_book_recipe_button_icon_items);
+    let mut recipe_book_overlay_icon_items = hud_recipe_book_overlay_icon_items(
         world,
         item_runtime,
         terrain_textures,
@@ -2772,7 +2829,9 @@ fn hud_inventory_screen_with_local_state(
         local_state.recipe_book_overlay,
         local_state.keybind_context,
         partial_tick,
-    ));
+    );
+    offset_hud_inventory_items(&mut recipe_book_overlay_icon_items, recipe_book_x);
+    floating_items.extend(recipe_book_overlay_icon_items);
     let (fill_layers, ghost_items) = hud_recipe_book_ghost_layers_and_items(
         world,
         item_runtime,
@@ -2791,10 +2850,11 @@ fn hud_inventory_screen_with_local_state(
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
     let mut text_labels = hud_inventory_text_labels(world, layout.background, &local_state);
     offset_hud_inventory_text_labels(&mut text_labels, main_offset_x);
+    let mut recipe_book_text_labels = Vec::new();
     if let Some(label) =
         hud_recipe_book_search_text_label(world, layout.background, &local_state.recipe_book_search)
     {
-        text_labels.push(label);
+        recipe_book_text_labels.push(label);
     }
     if let Some(label) = hud_recipe_book_page_text_label(
         world,
@@ -2804,8 +2864,10 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
     ) {
-        text_labels.push(label);
+        recipe_book_text_labels.push(label);
     }
+    offset_hud_inventory_text_labels(&mut recipe_book_text_labels, recipe_book_x);
+    text_labels.extend(recipe_book_text_labels);
 
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
@@ -3990,6 +4052,27 @@ fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) 
         if let Some(scissor) = &mut preview.scissor {
             scissor.x += x_offset;
         }
+    }
+}
+
+fn offset_hud_inventory_background_layers(
+    layers: &mut [HudInventoryBackgroundLayer],
+    x_offset: i32,
+) {
+    if x_offset == 0 {
+        return;
+    }
+    for layer in layers {
+        layer.x += x_offset;
+    }
+}
+
+fn offset_hud_inventory_items(items: &mut [HudInventoryItem], x_offset: i32) {
+    if x_offset == 0 {
+        return;
+    }
+    for item in items {
+        item.x += x_offset;
     }
 }
 

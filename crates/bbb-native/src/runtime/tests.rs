@@ -6065,6 +6065,61 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_narrow_recipe_book_over_main_gui() {
+    let world = open_recipe_book_crafting_table_world();
+
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        Some(45),
+        InventoryHudLocalState::default(),
+        winit::dpi::PhysicalSize::new(378, 720),
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.width, 176);
+    assert_eq!(screen.height, 166);
+    assert_eq!(
+        screen
+            .background_layers
+            .iter()
+            .find(|layer| layer.texture == HudInventoryBackgroundTexture::CraftingTable)
+            .map(|layer| layer.x),
+        Some(0)
+    );
+    assert_eq!(
+        screen
+            .background_layers
+            .iter()
+            .find(|layer| layer.texture == HudInventoryBackgroundTexture::RecipeBook)
+            .map(|layer| layer.x),
+        Some(14)
+    );
+    assert_eq!(
+        screen
+            .background_layers
+            .iter()
+            .find(|layer| layer.texture == HudInventoryBackgroundTexture::RecipeBookButton)
+            .map(|layer| layer.x),
+        Some(5)
+    );
+    assert_eq!(
+        screen
+            .background_layers
+            .iter()
+            .find(|layer| layer.texture == HudInventoryBackgroundTexture::WidgetTextField)
+            .map(|layer| layer.x),
+        Some(39)
+    );
+    let result = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+    assert_eq!((result.x, result.y), (124, 35));
+    let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
+    assert_eq!((hotbar.x, hotbar.y), (152, 142));
+}
+
+#[test]
 fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
