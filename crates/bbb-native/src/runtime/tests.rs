@@ -1296,6 +1296,32 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
 }
 
 #[test]
+fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    let mut input = ClientInputState::new(true);
+
+    assert_eq!(debug_entity_scene_outline(&input, &world, 1.0), None);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+
+    let outline = debug_entity_scene_outline(&input, &world, 1.0)
+        .expect("F3+B should enable entity AABB debug outlines");
+    assert_eq!(outline.boxes.len(), 1);
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());

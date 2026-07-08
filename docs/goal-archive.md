@@ -5317,6 +5317,16 @@
   loop 尚未实现；F3 release 不触发普通 overlay toggle。边界：实际 paused
   loop、`PauseScreen(false)`、singleplayer pause eligibility、以及 cursor/screen
   transition behavior 仍未实现。
+- [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
+  renderer/runtime slice，2026-07-08）：依据
+  `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`
+  切换，以及 `EntityHitboxDebugRenderer.showHitboxes` 先提交 visible entity
+  main bounding-box cuboid 的行为。native 现在把现有 entity-scene
+  `SelectionOutline` 抽取接到 F3+B 状态上，只有 hitbox toggle visible 时才向
+  renderer 提交实体 AABB 线框，关闭时不提交。边界：vanilla hitbox colors、
+  position point、passenger box、living eye-height box、Ender Dragon part
+  boxes、view/delta arrows、frustum/invisibility filtering、以及专用 debug
+  gizmo styling 仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

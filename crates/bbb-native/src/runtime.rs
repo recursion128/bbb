@@ -35,8 +35,8 @@ use bbb_renderer::{
     HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
-    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
     DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
     ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -2094,8 +2094,7 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
     let selection_outline = selection_outline_from_camera(world, camera_pose);
-    let entity_scene_outline =
-        entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick);
+    let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
@@ -2848,6 +2847,17 @@ fn hud_debug_overlay(
         right_lines: hud_debug_right_lines(surface_size),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
+}
+
+fn debug_entity_scene_outline(
+    input: &ClientInputState,
+    world: &WorldStore,
+    entity_partial_tick: f32,
+) -> Option<SelectionOutline> {
+    input
+        .debug_entity_hitboxes_visible()
+        .then(|| entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick))
+        .flatten()
 }
 
 fn hud_debug_version_line() -> String {

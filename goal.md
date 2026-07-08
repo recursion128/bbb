@@ -298,9 +298,10 @@ Screen Render Surfaces" 条目）：
   advanced item tooltips startup config、
   F3+A/B/C/G/H/N/P/F4/S/T local debug feedback、F3+F6 debug-options edit help
   keybind、F3+F6 debug-options request shell、default GAME_VERSION entry shape、
-  default TPS entry shell、default FPS entry shell、F3+4 lightmap preview 实际绘制已完成；
+  default TPS entry shell、default FPS entry shell、F3+4 lightmap preview 实际绘制、
+  F3+B entity AABB hitbox outline rendering 已完成；
   剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、entity
-  hitbox/chunk-border 实际绘制、advanced tooltip full parity、dynamic
+  hitbox full details/chunk-border 实际绘制、advanced tooltip full parity、dynamic
   texture dump execution、F3+I recreate command、profiling metrics recorder/output、
   actual DebugOptionsScreen、native pause loop/PauseScreen、3D crosshair 与其它 F3
   组合键，低优先）。

@@ -1100,14 +1100,27 @@ When an agent does any of the following, update this file in the same slice:
     F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the F3+F6 debug-options request shell, the default
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
-    entry shell, and actual F3+4 lightmap preview rendering: the complete
+    entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
+    hitbox outline rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
+    entity hitbox details/chunk-border rendering, advanced tooltip full parity, actual
     dynamic texture dump execution, F3+I recreate command generation, 3D
     crosshair, profiling metrics recorder/output, actual DebugOptionsScreen,
     native pause loop/PauseScreen, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+B entity AABB hitbox outline
+    rendering. Vanilla anchors: `DebugScreenEntries.ENTITY_HITBOXES` is
+    toggled by `KeyboardHandler.handleDebugKeys`, and
+    `EntityHitboxDebugRenderer.showHitboxes` emits each visible entity's main
+    bounding-box cuboid before adding position points, passenger boxes,
+    living-entity eye-height boxes, dragon part boxes, and arrows. bbb now
+    gates the renderer's existing entity-scene `SelectionOutline` extraction
+    behind the F3+B hitbox state, so entity AABB debug lines are submitted only
+    when the native toggle is visible and hidden otherwise. Boundary: vanilla
+    hitbox colors, position point, passenger box, eye-height box, Ender Dragon
+    sub-entity boxes, view/delta arrows, frustum/invisibility filtering, and
+    the dedicated debug gizmo styling are still not implemented.
   - Done 2026-07-08 — Debug overlay F3+Esc pause-without-menu request shell.
     Vanilla anchors: `KeyboardHandler.keyPress` handles Escape as global input
     when no screen, a no-menu pause screen, or the game-mode switcher is
