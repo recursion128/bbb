@@ -1085,11 +1085,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Continue the advancement screen after the local open/close and empty
-    window/Done button/initial display-root selection/root tab/root widget
-    shells/contents background tiling/tree connectivity/wheel/drag scroll clamp
-    and widget-frame partial scissor: fake-item/full scissor and hover rendering
-    are now complete (`ClientAdvancementsState` ready).
   - Continue the debug overlay after the F3 toggle, left-column
     version/position/help shell, and right-column memory/system/performance
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
@@ -1104,6 +1099,15 @@ When an agent does any of the following, update this file in the same slice:
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
+    The local advancement screen now has open/close, empty window, Done button,
+    initial root-tab selection, root tab rendering/click selection, selected
+    root widget frame/icon rendering, tiled contents background, tree
+    connectivity, wheel and left-drag scrolling with vanilla clamp,
+    widget-frame/item contents scissor for flat and 3D fake items, and hover
+    title/progress/description tooltips. `ClientAdvancementsState` is ready for
+    follow-up protocol/state consumers; no remaining advancement screen
+    contents/tree item is open in this ledger.
   - Done 2026-07-08 — Debug overlay default FPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.FPS`,
     and `DebugEntryFps.display` formats the priority line as

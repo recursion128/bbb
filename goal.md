@@ -287,12 +287,6 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 再进入）。具体缺口（消化顺序即列出顺序，判据见账本 "HUD Overlay And
 Screen Render Surfaces" 条目）：
 
-- advancement screen contents/tree rendering（本地 open/close、empty window、
-  footer Done button shell、初始 display-root tab 选择、root tab shell、
-  tab-click `OpenedTab`、root widget frame/icon shell、contents background
-  tiling、tree connectivity、wheel/drag scroll clamp、widget-frame partial
-  scissor、flat/3D fake-item contents scissor、hover title/progress/description
-  tooltip rendering 已完成；`ClientAdvancementsState` ready）。
 - debug overlay（F3 基础 toggle、左列 version/position/help shell、右列
   memory/system/performance basics、F3+1..4 chart/lightmap toggle state、
   F3+B/G/H hitboxes/chunk-borders/advanced-tooltips toggle state、F3+A

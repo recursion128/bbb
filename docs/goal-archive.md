@@ -5084,6 +5084,16 @@
   renderer 增加 advancement hover box sprites 与 foreground layers/items，使
   hover 内容位于 contents fade 遮罩之上且不污染普通 inventory item flow。剩余：
   debug overlay。
+- [x] advancement screen contents/tree rendering closeout（P2 HUD/runtime/
+  renderer/world/input ledger slice，2026-07-08）：原 active 队列中的
+  advancement screen contents/tree rendering 行已清空；本地 open/close、empty
+  window、Done button、初始 root-tab selection、root tab shell/click、
+  selected-root widget frame/icon、contents background tiling、tree
+  connectivity、wheel/left-drag scroll clamp、widget-frame/item contents
+  scissor、3D block fake-item partial scissor、hover title/progress/description
+  tooltip rendering 均已有对应完成 slice。`ClientAdvancementsState` 已可作为
+  后续 protocol/state consumer 的基础；当前账本不再保留 advancement screen
+  contents/tree 开放项。剩余 P2 HUD 队列转入 debug overlay。
 - [x] debug overlay F3 toggle and left-column shell（P2 HUD/input/runtime/
   renderer slice，2026-07-08）：依据 `KeyboardHandler.keyPress` 的 F3 debug
   overlay toggle 路径，以及 `DebugScreenOverlay.extractLines` 的 2px margin、
