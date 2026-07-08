@@ -6775,6 +6775,88 @@ fn hud_inventory_screen_cycles_recipe_book_multi_recipe_icon() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_recipe_book_overlay_picker() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
+            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 2),
+        ],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            recipe_book_overlay: Some(RecipeBookOverlayHudState {
+                book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+                tab_index: 1,
+                page_index: 0,
+                button_index: 0,
+                x: 11,
+                y: 31,
+            }),
+            cursor_position: Some((41, 37)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookOverlayRecipe,
+                11,
+                31,
+                58,
+                33,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabled,
+                15,
+                36,
+                24,
+                24,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabledHighlighted,
+                40,
+                36,
+                24,
+                24,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    let item_positions: Vec<(i32, i32)> = screen
+        .floating_items
+        .iter()
+        .map(|item| (item.x, item.y))
+        .collect();
+    assert!(item_positions.contains(&(19, 40)));
+    assert!(item_positions.contains(&(44, 40)));
+}
+
+#[test]
 fn hud_inventory_screen_filters_recipe_book_buttons_by_crafting_tab_category() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {

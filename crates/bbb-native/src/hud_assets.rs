@@ -231,6 +231,68 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         recipe_book_page_backward_highlighted.height,
         &recipe_book_page_backward_highlighted.rgba,
     )?;
+    let recipe_book_overlay_recipe = hud_sprite(&sprites, "recipe_book/overlay_recipe")?;
+    renderer.upload_hud_recipe_book_overlay_recipe(
+        recipe_book_overlay_recipe.width,
+        recipe_book_overlay_recipe.height,
+        &recipe_book_overlay_recipe.rgba,
+    )?;
+    let recipe_book_crafting_overlay = hud_sprite(&sprites, "recipe_book/crafting_overlay")?;
+    renderer.upload_hud_recipe_book_crafting_overlay(
+        recipe_book_crafting_overlay.width,
+        recipe_book_crafting_overlay.height,
+        &recipe_book_crafting_overlay.rgba,
+    )?;
+    let recipe_book_crafting_overlay_highlighted =
+        hud_sprite(&sprites, "recipe_book/crafting_overlay_highlighted")?;
+    renderer.upload_hud_recipe_book_crafting_overlay_highlighted(
+        recipe_book_crafting_overlay_highlighted.width,
+        recipe_book_crafting_overlay_highlighted.height,
+        &recipe_book_crafting_overlay_highlighted.rgba,
+    )?;
+    let recipe_book_crafting_overlay_disabled =
+        hud_sprite(&sprites, "recipe_book/crafting_overlay_disabled")?;
+    renderer.upload_hud_recipe_book_crafting_overlay_disabled(
+        recipe_book_crafting_overlay_disabled.width,
+        recipe_book_crafting_overlay_disabled.height,
+        &recipe_book_crafting_overlay_disabled.rgba,
+    )?;
+    let recipe_book_crafting_overlay_disabled_highlighted = hud_sprite(
+        &sprites,
+        "recipe_book/crafting_overlay_disabled_highlighted",
+    )?;
+    renderer.upload_hud_recipe_book_crafting_overlay_disabled_highlighted(
+        recipe_book_crafting_overlay_disabled_highlighted.width,
+        recipe_book_crafting_overlay_disabled_highlighted.height,
+        &recipe_book_crafting_overlay_disabled_highlighted.rgba,
+    )?;
+    let recipe_book_furnace_overlay = hud_sprite(&sprites, "recipe_book/furnace_overlay")?;
+    renderer.upload_hud_recipe_book_furnace_overlay(
+        recipe_book_furnace_overlay.width,
+        recipe_book_furnace_overlay.height,
+        &recipe_book_furnace_overlay.rgba,
+    )?;
+    let recipe_book_furnace_overlay_highlighted =
+        hud_sprite(&sprites, "recipe_book/furnace_overlay_highlighted")?;
+    renderer.upload_hud_recipe_book_furnace_overlay_highlighted(
+        recipe_book_furnace_overlay_highlighted.width,
+        recipe_book_furnace_overlay_highlighted.height,
+        &recipe_book_furnace_overlay_highlighted.rgba,
+    )?;
+    let recipe_book_furnace_overlay_disabled =
+        hud_sprite(&sprites, "recipe_book/furnace_overlay_disabled")?;
+    renderer.upload_hud_recipe_book_furnace_overlay_disabled(
+        recipe_book_furnace_overlay_disabled.width,
+        recipe_book_furnace_overlay_disabled.height,
+        &recipe_book_furnace_overlay_disabled.rgba,
+    )?;
+    let recipe_book_furnace_overlay_disabled_highlighted =
+        hud_sprite(&sprites, "recipe_book/furnace_overlay_disabled_highlighted")?;
+    renderer.upload_hud_recipe_book_furnace_overlay_disabled_highlighted(
+        recipe_book_furnace_overlay_disabled_highlighted.width,
+        recipe_book_furnace_overlay_disabled_highlighted.height,
+        &recipe_book_furnace_overlay_disabled_highlighted.rgba,
+    )?;
     let cartography_table = gui_texture(
         roots,
         "textures/gui/container/cartography_table.png",

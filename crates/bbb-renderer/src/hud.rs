@@ -547,6 +547,15 @@ pub enum HudInventoryBackgroundTexture {
     RecipeBookPageForwardHighlighted,
     RecipeBookPageBackward,
     RecipeBookPageBackwardHighlighted,
+    RecipeBookOverlayRecipe,
+    RecipeBookCraftingOverlay,
+    RecipeBookCraftingOverlayHighlighted,
+    RecipeBookCraftingOverlayDisabled,
+    RecipeBookCraftingOverlayDisabledHighlighted,
+    RecipeBookFurnaceOverlay,
+    RecipeBookFurnaceOverlayHighlighted,
+    RecipeBookFurnaceOverlayDisabled,
+    RecipeBookFurnaceOverlayDisabledHighlighted,
     BlastFurnace,
     BlastFurnaceLitProgress,
     BlastFurnaceBurnProgress,
@@ -1789,6 +1798,102 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_page_backward_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_overlay_recipe(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_overlay_recipe = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_crafting_overlay(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_crafting_overlay = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_crafting_overlay_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_crafting_overlay_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_crafting_overlay_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_crafting_overlay_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_crafting_overlay_disabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_crafting_overlay_disabled_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_overlay(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_overlay = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_overlay_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_overlay_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_overlay_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_overlay_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_overlay_disabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_overlay_disabled_highlighted =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3690,6 +3795,33 @@ impl Renderer {
             HudInventoryBackgroundTexture::RecipeBookPageBackwardHighlighted => {
                 self.hud_recipe_book_page_backward_highlighted.as_ref()
             }
+            HudInventoryBackgroundTexture::RecipeBookOverlayRecipe => {
+                self.hud_recipe_book_overlay_recipe.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookCraftingOverlay => {
+                self.hud_recipe_book_crafting_overlay.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookCraftingOverlayHighlighted => {
+                self.hud_recipe_book_crafting_overlay_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabled => {
+                self.hud_recipe_book_crafting_overlay_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabledHighlighted => self
+                .hud_recipe_book_crafting_overlay_disabled_highlighted
+                .as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookFurnaceOverlay => {
+                self.hud_recipe_book_furnace_overlay.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayHighlighted => {
+                self.hud_recipe_book_furnace_overlay_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayDisabled => {
+                self.hud_recipe_book_furnace_overlay_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayDisabledHighlighted => self
+                .hud_recipe_book_furnace_overlay_disabled_highlighted
+                .as_ref(),
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()
             }

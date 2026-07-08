@@ -9,6 +9,11 @@ use bbb_protocol::packets::{
 use bbb_world::WorldStore;
 
 pub(crate) const RECIPE_BOOK_ITEMS_PER_PAGE: usize = 20;
+pub(crate) const RECIPE_BOOK_OVERLAY_BUTTON_SIZE: i32 = 25;
+pub(crate) const RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE: i32 = 24;
+pub(crate) const RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER: i32 = 8;
+pub(crate) const RECIPE_BOOK_OVERLAY_MAX_ROW: usize = 4;
+pub(crate) const RECIPE_BOOK_OVERLAY_MAX_ROW_LARGE: usize = 5;
 
 const CRAFTING_BUILDING_BLOCKS_CATEGORY_ID: i32 = 0;
 const CRAFTING_REDSTONE_CATEGORY_ID: i32 = 1;
@@ -90,7 +95,15 @@ pub(crate) enum RecipeBookFurnaceFamily {
 #[derive(Debug, Clone)]
 pub(crate) struct RecipeBookUiCollection<'a> {
     entries: Vec<&'a RecipeDisplayEntry>,
+    craftable_entries: Vec<bool>,
     has_craftable: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RecipeBookOverlayEntry<'a> {
+    pub(crate) recipe_index: i32,
+    pub(crate) stack: Option<&'a ItemStackSummary>,
+    pub(crate) craftable: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -140,6 +153,13 @@ impl<'a> RecipeBookUiCollection<'a> {
             .all(|entry| recipe_book_result_stack(entry) == Some(first))
     }
 
+    pub(crate) fn overlay_entries(&self) -> Vec<RecipeBookOverlayEntry<'a>> {
+        let mut entries = Vec::with_capacity(self.entries.len());
+        self.push_overlay_entries_with_craftability(true, &mut entries);
+        self.push_overlay_entries_with_craftability(false, &mut entries);
+        entries
+    }
+
     fn entry_at_slot_select_index(
         &self,
         slot_select_index: usize,
@@ -149,12 +169,92 @@ impl<'a> RecipeBookUiCollection<'a> {
         }
         Some(self.entries[slot_select_index % self.entries.len()])
     }
+
+    fn push_overlay_entries_with_craftability(
+        &self,
+        craftable: bool,
+        out: &mut Vec<RecipeBookOverlayEntry<'a>>,
+    ) {
+        for (entry, entry_craftable) in self.entries.iter().zip(&self.craftable_entries) {
+            if *entry_craftable != craftable {
+                continue;
+            }
+            out.push(RecipeBookOverlayEntry {
+                recipe_index: entry.id.index,
+                stack: recipe_book_result_stack(entry),
+                craftable,
+            });
+        }
+    }
 }
 
 pub(crate) fn recipe_book_slot_select_index(world: &WorldStore, partial_tick: f32) -> usize {
     let render_time = world.world_time().map_or(0.0, |time| time.game_time as f64)
         + f64::from(partial_tick.max(0.0));
     (render_time / 30.0).floor().max(0.0) as usize
+}
+
+pub(crate) fn recipe_book_overlay_max_row(entry_count: usize) -> usize {
+    if entry_count <= 16 {
+        RECIPE_BOOK_OVERLAY_MAX_ROW
+    } else {
+        RECIPE_BOOK_OVERLAY_MAX_ROW_LARGE
+    }
+}
+
+pub(crate) fn recipe_book_overlay_rows(entry_count: usize) -> usize {
+    entry_count.div_ceil(recipe_book_overlay_max_row(entry_count))
+}
+
+pub(crate) fn recipe_book_overlay_origin(
+    button_x: i32,
+    button_y: i32,
+    entry_count: usize,
+) -> (i32, i32) {
+    let max_row = recipe_book_overlay_max_row(entry_count);
+    let rows = recipe_book_overlay_rows(entry_count);
+    let mut x = button_x;
+    let mut y = button_y;
+    let right_pos = x + i32::try_from(entry_count.min(max_row)).unwrap_or_default()
+        * RECIPE_BOOK_OVERLAY_BUTTON_SIZE;
+    let max_left_pos = 147 / 2 + 50;
+    if right_pos > max_left_pos {
+        x -= RECIPE_BOOK_OVERLAY_BUTTON_SIZE
+            * ((right_pos - max_left_pos) / RECIPE_BOOK_OVERLAY_BUTTON_SIZE);
+    }
+
+    let bottom_pos = y + i32::try_from(rows).unwrap_or_default() * RECIPE_BOOK_OVERLAY_BUTTON_SIZE;
+    let max_bottom_pos = 13 + 166 / 2 + 50;
+    if bottom_pos > max_bottom_pos {
+        y -= RECIPE_BOOK_OVERLAY_BUTTON_SIZE
+            * ceil_div_i32(bottom_pos - max_bottom_pos, RECIPE_BOOK_OVERLAY_BUTTON_SIZE);
+    }
+
+    let max_top_pos = 13 + 166 / 2 - 100;
+    if y < max_top_pos {
+        y -= RECIPE_BOOK_OVERLAY_BUTTON_SIZE
+            * ceil_div_i32(y - max_top_pos, RECIPE_BOOK_OVERLAY_BUTTON_SIZE);
+    }
+    (x, y)
+}
+
+pub(crate) fn recipe_book_overlay_entry_position(
+    origin_x: i32,
+    origin_y: i32,
+    entry_index: usize,
+    entry_count: usize,
+) -> (i32, i32) {
+    let max_row = recipe_book_overlay_max_row(entry_count);
+    let column = entry_index % max_row;
+    let row = entry_index / max_row;
+    (
+        origin_x + 4 + i32::try_from(column).unwrap_or_default() * RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
+        origin_y + 5 + i32::try_from(row).unwrap_or_default() * RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
+    )
+}
+
+fn ceil_div_i32(value: i32, divisor: i32) -> i32 {
+    value.div_euclid(divisor) + i32::from(value.rem_euclid(divisor) != 0)
 }
 
 pub(crate) fn crafting_recipe_book_collections<'a>(
@@ -561,18 +661,21 @@ fn push_crafting_category_collections<'a>(
         if let Some(group_id) = entry.group {
             if let Some(index) = group_indexes.get(&group_id).copied() {
                 collections[index].entries.push(entry);
+                collections[index].craftable_entries.push(craftable);
                 collections[index].has_craftable |= craftable;
             } else {
                 let index = collections.len();
                 group_indexes.insert(group_id, index);
                 collections.push(RecipeBookUiCollection {
                     entries: vec![entry],
+                    craftable_entries: vec![craftable],
                     has_craftable: craftable,
                 });
             }
         } else {
             collections.push(RecipeBookUiCollection {
                 entries: vec![entry],
+                craftable_entries: vec![craftable],
                 has_craftable: craftable,
             });
         }
@@ -599,18 +702,21 @@ fn push_furnace_category_collections<'a>(
         if let Some(group_id) = entry.group {
             if let Some(index) = group_indexes.get(&group_id).copied() {
                 collections[index].entries.push(entry);
+                collections[index].craftable_entries.push(craftable);
                 collections[index].has_craftable |= craftable;
             } else {
                 let index = collections.len();
                 group_indexes.insert(group_id, index);
                 collections.push(RecipeBookUiCollection {
                     entries: vec![entry],
+                    craftable_entries: vec![craftable],
                     has_craftable: craftable,
                 });
             }
         } else {
             collections.push(RecipeBookUiCollection {
                 entries: vec![entry],
+                craftable_entries: vec![craftable],
                 has_craftable: craftable,
             });
         }

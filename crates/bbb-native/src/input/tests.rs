@@ -4164,6 +4164,76 @@ fn recipe_book_recipe_button_click_uses_current_multi_recipe_cycle() {
 }
 
 #[test]
+fn recipe_book_right_click_overlay_queues_clicked_recipe() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            recipe_book_shapeless_entry_with_group(42, 2, Some(7), 200),
+            recipe_book_shapeless_entry_with_group(43, 2, Some(7), 201),
+        ],
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Right,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert_eq!(
+        input.recipe_book_overlay_hud_state(),
+        Some(RecipeBookOverlayHudState {
+            book_type: bbb_protocol::packets::RecipeBookType::Crafting,
+            tab_index: 1,
+            page_index: 0,
+            button_index: 0,
+            x: 11,
+            y: 31,
+        })
+    );
+    assert_eq!(counters.place_recipe_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(origin_x + 41.0, origin_y + 37.0)),
+        surface_size,
+    ));
+
+    assert_eq!(input.recipe_book_overlay_hud_state(), None);
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 43,
+            use_max_items: false,
+        })
+    );
+}
+
+#[test]
 fn furnace_recipe_book_recipe_button_click_queues_place_recipe_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

@@ -1066,10 +1066,11 @@ When an agent does any of the following, update this file in the same slice:
     search cursor/selection, tag-backed ghost ingredient display, tab
     notification pulse, furnace-family recipe-grid baseline,
     furnace-family ghost recipe projection, and furnace-family stacked-contents
-    craftability, and multi-recipe cycling:
-    right-click multi-recipe picker/overlay, full recipe `FullTextSearchTree` token
-    parity, and full tag/composite SlotDisplay time-cycling for ghost
-    ingredient variants.
+    craftability, multi-recipe cycling, and right-click multi-recipe picker
+    baseline:
+    overlay scaled ingredient-grid parity, full recipe `FullTextSearchTree`
+    token parity, and full tag/composite SlotDisplay time-cycling for ghost
+    and overlay ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1312,12 +1313,24 @@ When an agent does any of the following, update this file in the same slice:
     index from client world time for recipe-book projection, so multi-recipe
     buttons cycle their visible result and left-click `PlaceRecipeCommand`
     target together.
-  - Boundary: craftability retry guard, right-click multi-recipe
-    picker/overlay, full `FullTextSearchTree` token /
+  - Done 2026-07-08 — Right-click multi-recipe picker baseline. Vanilla
+    anchors: `RecipeBookPage.mouseClicked` opens `OverlayRecipeComponent` on
+    right click when a recipe button has multiple entries; the overlay lays out
+    craftable entries first, then uncraftable entries, uses 4 columns up to 16
+    entries and 5 columns after that, clamps against the recipe-book panel
+    center, and left-clicking an overlay button returns that recipe id for
+    `tryPlaceRecipe`. bbb now stores local overlay state, renders the vanilla
+    overlay background and crafting/furnace enabled/disabled/highlighted
+    button sprites, closes the overlay on outside clicks, and queues
+    `PlaceRecipeCommand` for the clicked overlay recipe. Boundary: overlay
+    contents currently use result icons; vanilla's 0.375-scaled ingredient
+    mini-grid from `OverlayRecipeButton.Pos` remains open.
+  - Boundary: craftability retry guard, overlay scaled ingredient-grid parity,
+    full `FullTextSearchTree` token /
     namespace-path / intersection semantics for recipe search, full
-    tag/composite SlotDisplay time-cycling for ghost ingredients, exact
-    fake-item y-scaling during animated recipe-book tabs, and narrow-screen
-    overlap remain open. The filter toggle, search text,
+    tag/composite SlotDisplay time-cycling for ghost and overlay ingredients,
+    exact fake-item y-scaling during animated recipe-book tabs, and
+    narrow-screen overlap remain open. The filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
@@ -1328,9 +1341,9 @@ When an agent does any of the following, update this file in the same slice:
     crafting ghost ingredient projection, highlighted recipe-book tab baseline
     pulse, furnace-family recipe-grid baseline, furnace-family ghost recipe
     projection, furnace-family stacked-contents craftability, and multi-recipe
-    cycling are live. The first shell models the non-narrow layout; vanilla's
-    narrow-screen overlap mode (`width < 379`) remains for the input/render
-    follow-up.
+    cycling, and right-click multi-recipe picker baseline are live. The first
+    shell models the non-narrow layout; vanilla's narrow-screen overlap mode
+    (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

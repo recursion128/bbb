@@ -1982,6 +1982,17 @@
   剩余：craftability retry guard、right-click multi-recipe picker/overlay、
   完整 `FullTextSearchTree` token/namespace-path/intersection 语义、
   tag/composite SlotDisplay time-cycling、narrow-screen overlap。
+- [x] right-click multi-recipe picker baseline（P2 HUD/input/renderer slice，
+  2026-07-08）：依据 `RecipeBookPage.mouseClicked` 右键多配方按钮打开
+  `OverlayRecipeComponent`、overlay 按 craftable 再 uncraftable 排序、4/5
+  列布局和 recipe-book center clamp、左键 overlay button 回传 recipe id
+  给 `tryPlaceRecipe` 的行为，native 现在保存本地 overlay 状态，渲染
+  vanilla overlay background 与 crafting/furnace enabled/disabled/
+  highlighted button sprites，点击外部关闭，点击 overlay 项发送对应
+  `PlaceRecipeCommand`。剩余：overlay 仍用 result icon 代替 vanilla
+  0.375-scaled ingredient mini-grid；craftability retry guard、完整
+  `FullTextSearchTree` token/namespace-path/intersection 语义、
+  tag/composite SlotDisplay time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -4,7 +4,8 @@ use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
-    ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, SignUpdate,
+    ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
+    SignUpdate,
 };
 use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -155,6 +156,7 @@ pub(crate) struct ClientInputState {
     recipe_book_furnace_page: usize,
     recipe_book_blast_furnace_page: usize,
     recipe_book_smoker_page: usize,
+    recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -237,6 +239,16 @@ pub(crate) struct RecipeBookPageHudState {
     pub(crate) smoker: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RecipeBookOverlayHudState {
+    pub(crate) book_type: RecipeBookType,
+    pub(crate) tab_index: usize,
+    pub(crate) page_index: usize,
+    pub(crate) button_index: usize,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+}
+
 impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
@@ -283,6 +295,7 @@ impl ClientInputState {
         self.anvil_rename_hover_name.clear();
         self.recipe_book_search_focused = false;
         self.recipe_book_search_suppress_open_key_commit = false;
+        self.recipe_book_overlay = None;
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
@@ -482,6 +495,10 @@ impl ClientInputState {
             blast_furnace: self.recipe_book_blast_furnace_page,
             smoker: self.recipe_book_smoker_page,
         }
+    }
+
+    pub(crate) fn recipe_book_overlay_hud_state(&self) -> Option<RecipeBookOverlayHudState> {
+        self.recipe_book_overlay
     }
 
     fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {

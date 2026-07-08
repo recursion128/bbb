@@ -29,14 +29,15 @@ use super::{
         queue_place_recipe_command, queue_recipe_book_change_settings_command,
         queue_rename_item_command, queue_select_trade_command, queue_set_beacon_command,
     },
-    text_edit, AnvilRenameInputSignature, ClientInputState,
+    text_edit, AnvilRenameInputSignature, ClientInputState, RecipeBookOverlayHudState,
 };
 use crate::recipe_book_ui::{
     clamped_recipe_book_page, crafting_recipe_book_collections,
     crafting_recipe_book_visible_tab_indices, furnace_recipe_book_collections,
-    furnace_recipe_book_visible_tab_indices, recipe_book_page_count, recipe_book_slot_select_index,
+    furnace_recipe_book_visible_tab_indices, recipe_book_overlay_entry_position,
+    recipe_book_overlay_origin, recipe_book_page_count, recipe_book_slot_select_index,
     RecipeBookCraftingGrid, RecipeBookFurnaceFamily, RecipeBookUiCollection,
-    RECIPE_BOOK_ITEMS_PER_PAGE,
+    RECIPE_BOOK_ITEMS_PER_PAGE, RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE,
 };
 use bbb_item_model::NativeItemRuntime;
 
@@ -405,12 +406,29 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         );
         return true;
     }
+    if maybe_handle_recipe_book_overlay_click(
+        input,
+        world,
+        counters,
+        net_commands,
+        item_runtime,
+        button_num,
+        cursor_position,
+        surface_size,
+    ) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
     if button_num == 0
         && maybe_focus_recipe_book_search(input, world, cursor_position, surface_size)
     {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
+        input.recipe_book_overlay = None;
         local_inventory_clear_quick_craft(input);
         return true;
     }
@@ -441,6 +459,15 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
             cursor_position,
             surface_size,
         )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 1
+        && maybe_open_recipe_book_overlay(input, world, item_runtime, cursor_position, surface_size)
     {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
@@ -700,6 +727,7 @@ fn maybe_focus_recipe_book_search(
     }
 
     input.recipe_book_search_focused = true;
+    input.recipe_book_overlay = None;
     let cursor = text_edit::char_len(&input.recipe_book_search_text);
     set_recipe_book_search_cursor(input, cursor);
     input.recipe_book_search_suppress_open_key_commit = false;
@@ -718,6 +746,7 @@ fn maybe_select_recipe_book_tab(
         return false;
     };
     set_recipe_book_selected_tab_index(input, book_type, index);
+    input.recipe_book_overlay = None;
     input.recipe_book_search_focused = false;
     input.recipe_book_search_suppress_open_key_commit = false;
     true
@@ -746,6 +775,83 @@ fn maybe_turn_recipe_book_page(
         RecipeBookPageTurn::Next => (current_page + 1).min(page_count.saturating_sub(1)),
     };
     set_recipe_book_page_index(input, book_type, next_page);
+    input.recipe_book_overlay = None;
+    input.recipe_book_search_focused = false;
+    input.recipe_book_search_suppress_open_key_commit = false;
+    true
+}
+
+fn maybe_handle_recipe_book_overlay_click(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    button_num: i8,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if input.recipe_book_overlay.is_none() {
+        return false;
+    }
+    if button_num == 0 {
+        if let (Some(recipe_index), Some(container_id)) = (
+            recipe_book_overlay_recipe_at_position(
+                input,
+                world,
+                item_runtime,
+                cursor_position,
+                surface_size,
+            ),
+            world.open_container_id(),
+        ) {
+            queue_place_recipe_command(
+                counters,
+                net_commands,
+                PlaceRecipeCommand {
+                    container_id,
+                    recipe_index,
+                    use_max_items: input.shift_down(),
+                },
+            );
+        }
+    }
+    input.recipe_book_overlay = None;
+    input.recipe_book_search_focused = false;
+    input.recipe_book_search_suppress_open_key_commit = false;
+    true
+}
+
+fn maybe_open_recipe_book_overlay(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((book_type, page, visible_index, collection)) = recipe_book_collection_at_position(
+        input,
+        world,
+        item_runtime,
+        cursor_position,
+        surface_size,
+    ) else {
+        return false;
+    };
+    let entry_count = collection.overlay_entries().len();
+    if entry_count <= 1 {
+        return false;
+    }
+    let (button_x, button_y) = recipe_book_recipe_button_position(visible_index);
+    let (x, y) = recipe_book_overlay_origin(button_x, button_y, entry_count);
+    input.recipe_book_overlay = Some(RecipeBookOverlayHudState {
+        book_type,
+        tab_index: selected_recipe_book_tab_index(input, book_type),
+        page_index: page,
+        button_index: visible_index,
+        x,
+        y,
+    });
     input.recipe_book_search_focused = false;
     input.recipe_book_search_suppress_open_key_commit = false;
     true
@@ -804,6 +910,7 @@ fn maybe_queue_recipe_book_toggle_click(
         input.recipe_book_search_focused = false;
         input.recipe_book_search_suppress_open_key_commit = false;
     }
+    input.recipe_book_overlay = None;
     world.set_local_recipe_book_type_settings(book_type, settings);
     queue_recipe_book_change_settings_command(
         counters,
@@ -2396,6 +2503,24 @@ fn recipe_book_recipe_button_at_position(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i32> {
+    let (_, _, _, collection) = recipe_book_collection_at_position(
+        input,
+        world,
+        item_runtime,
+        cursor_position,
+        surface_size,
+    )?;
+    let slot_select_index = recipe_book_slot_select_index(world, 0.0);
+    collection.recipe_index_at_slot_select_index(slot_select_index)
+}
+
+fn recipe_book_collection_at_position<'a>(
+    input: &ClientInputState,
+    world: &'a WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<(RecipeBookType, usize, usize, RecipeBookUiCollection<'a>)> {
     let layout = inventory_screen_layout(world)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
     if recipe_book_main_gui_offset(world, layout.background) == 0 {
@@ -2415,10 +2540,55 @@ fn recipe_book_recipe_button_at_position(
     let visible_index =
         recipe_book_recipe_button_index_at_position(cursor_position, surface_size, &layout)?;
     let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + visible_index;
-    let slot_select_index = recipe_book_slot_select_index(world, 0.0);
     collections
         .get(collection_index)
-        .and_then(|collection| collection.recipe_index_at_slot_select_index(slot_select_index))
+        .cloned()
+        .map(|collection| (book_type, page, visible_index, collection))
+}
+
+fn recipe_book_overlay_recipe_at_position(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<i32> {
+    let overlay = input.recipe_book_overlay?;
+    let layout = inventory_screen_layout(world)?;
+    let book_type = recipe_book_type_for_background(layout.background)?;
+    if overlay.book_type != book_type || recipe_book_main_gui_offset(world, layout.background) == 0
+    {
+        return None;
+    }
+    let collections = recipe_book_collections_for_background(
+        input,
+        world,
+        item_runtime,
+        layout.background,
+        book_type,
+    )?;
+    let page = clamped_recipe_book_page(overlay.page_index, collections.len());
+    let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + overlay.button_index;
+    let entries = collections.get(collection_index)?.overlay_entries();
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if !x.is_finite() || !y.is_finite() {
+        return None;
+    }
+    for (index, entry) in entries.iter().enumerate() {
+        let (button_x, button_y) =
+            recipe_book_overlay_entry_position(overlay.x, overlay.y, index, entries.len());
+        if x >= f64::from(button_x)
+            && x < f64::from(button_x + RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE)
+            && y >= f64::from(button_y)
+            && y < f64::from(button_y + RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE)
+        {
+            return Some(entry.recipe_index);
+        }
+    }
+    None
 }
 
 fn recipe_book_collections_for_background<'a>(
@@ -2487,6 +2657,17 @@ fn recipe_book_recipe_button_index_at_position(
     let column = column as usize;
     let row = row as usize;
     Some(row * RECIPE_BOOK_RECIPE_BUTTON_COLUMNS + column)
+}
+
+fn recipe_book_recipe_button_position(index: usize) -> (i32, i32) {
+    let column = index % RECIPE_BOOK_RECIPE_BUTTON_COLUMNS;
+    let row = index / RECIPE_BOOK_RECIPE_BUTTON_COLUMNS;
+    (
+        RECIPE_BOOK_RECIPE_BUTTON_X
+            + i32::try_from(column).unwrap_or_default() * RECIPE_BOOK_RECIPE_BUTTON_SIZE,
+        RECIPE_BOOK_RECIPE_BUTTON_Y
+            + i32::try_from(row).unwrap_or_default() * RECIPE_BOOK_RECIPE_BUTTON_SIZE,
+    )
 }
 
 fn recipe_book_page_button_contains(x: f64, y: f64, button_x: i32, button_y: i32) -> bool {

@@ -76,10 +76,10 @@ use crate::{
         recipe_book_type_for_background, recipe_book_type_settings,
         recipe_book_visible_tab_indices, release_active_input, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        InventoryScreenBackground, RecipeBookPageHudState, RecipeBookSearchHudState,
-        RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
+        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT,
+        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -106,9 +106,12 @@ use crate::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
         furnace_recipe_book_collections, furnace_recipe_book_ghost_slots,
-        furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_page_count,
+        furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_overlay_entry_position,
+        recipe_book_overlay_max_row, recipe_book_overlay_rows, recipe_book_page_count,
         recipe_book_slot_select_index, RecipeBookCraftingGrid, RecipeBookFurnaceFamily,
-        RecipeBookGhostSlot, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+        RecipeBookGhostSlot, RecipeBookOverlayEntry, RecipeBookUiCollection,
+        RECIPE_BOOK_ITEMS_PER_PAGE, RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER,
+        RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE, RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -479,6 +482,7 @@ struct InventoryHudLocalState {
     recipe_book_search: RecipeBookSearchHudState,
     recipe_book_tabs: RecipeBookTabSelectionHudState,
     recipe_book_pages: RecipeBookPageHudState,
+    recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -1733,6 +1737,7 @@ pub(crate) fn pump_network_and_terrain(
                 recipe_book_search: input.recipe_book_search_hud_state(),
                 recipe_book_tabs: input.recipe_book_tab_selection_hud_state(),
                 recipe_book_pages: input.recipe_book_page_hud_state(),
+                recipe_book_overlay: input.recipe_book_overlay_hud_state(),
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2710,6 +2715,16 @@ fn hud_inventory_screen_with_local_state(
     {
         background_layers.push(layer);
     }
+    background_layers.extend(hud_recipe_book_overlay_layers(
+        world,
+        item_runtime,
+        layout.background,
+        &local_state.recipe_book_tabs,
+        &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
+        local_state.recipe_book_overlay,
+        local_state.cursor_position,
+    ));
     let mut floating_items = hud_inventory_floating_items(
         world,
         item_runtime,
@@ -2741,6 +2756,18 @@ fn hud_inventory_screen_with_local_state(
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
+        local_state.keybind_context,
+        partial_tick,
+    ));
+    floating_items.extend(hud_recipe_book_overlay_icon_items(
+        world,
+        item_runtime,
+        terrain_textures,
+        layout.background,
+        &local_state.recipe_book_tabs,
+        &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
+        local_state.recipe_book_overlay,
         local_state.keybind_context,
         partial_tick,
     ));
@@ -3265,6 +3292,176 @@ fn hud_recipe_book_recipe_button_icon_items(
         });
     }
     items
+}
+
+fn hud_recipe_book_overlay_layers(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+    pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
+    overlay: Option<RecipeBookOverlayHudState>,
+    cursor_position: Option<(i32, i32)>,
+) -> Vec<HudInventoryBackgroundLayer> {
+    let Some((overlay, entries)) = hud_recipe_book_overlay_entries(
+        world,
+        item_runtime,
+        background,
+        tabs,
+        pages,
+        search,
+        overlay,
+    ) else {
+        return Vec::new();
+    };
+    let columns = entries
+        .len()
+        .min(recipe_book_overlay_max_row(entries.len()));
+    let rows = recipe_book_overlay_rows(entries.len());
+    let mut layers = vec![hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::RecipeBookOverlayRecipe,
+        overlay.x,
+        overlay.y,
+        u32::try_from(
+            i32::try_from(columns).unwrap_or_default() * RECIPE_BOOK_OVERLAY_BUTTON_SIZE
+                + RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER,
+        )
+        .unwrap_or_default(),
+        u32::try_from(
+            i32::try_from(rows).unwrap_or_default() * RECIPE_BOOK_OVERLAY_BUTTON_SIZE
+                + RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER,
+        )
+        .unwrap_or_default(),
+        [0.0, 0.0],
+        [1.0, 1.0],
+    )];
+    let furnace_overlay = recipe_book_furnace_family_for_background(background).is_some();
+    for (index, entry) in entries.iter().enumerate() {
+        let (x, y) = recipe_book_overlay_entry_position(overlay.x, overlay.y, index, entries.len());
+        let highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
+            cursor_x >= x
+                && cursor_x < x + RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE
+                && cursor_y >= y
+                && cursor_y < y + RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE
+        });
+        layers.push(hud_inventory_background_layer(
+            recipe_book_overlay_button_texture(furnace_overlay, entry.craftable, highlighted),
+            x,
+            y,
+            u32::try_from(RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE).unwrap_or_default(),
+            u32::try_from(RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE).unwrap_or_default(),
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    layers
+}
+
+fn hud_recipe_book_overlay_icon_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+    pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
+    overlay: Option<RecipeBookOverlayHudState>,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let Some((overlay, entries)) = hud_recipe_book_overlay_entries(
+        world,
+        Some(item_runtime),
+        background,
+        tabs,
+        pages,
+        search,
+        overlay,
+    ) else {
+        return Vec::new();
+    };
+    let mut items = Vec::new();
+    for (index, entry) in entries.iter().enumerate() {
+        let Some(stack) = entry.stack else {
+            continue;
+        };
+        let Some(icon) = hud_item_icon_for_stack(
+            world,
+            Some(item_runtime),
+            stack,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+            partial_tick,
+        ) else {
+            continue;
+        };
+        let (button_x, button_y) =
+            recipe_book_overlay_entry_position(overlay.x, overlay.y, index, entries.len());
+        items.push(HudInventoryItem {
+            x: button_x + 4,
+            y: button_y + 4,
+            icon,
+            block_model: block_item_3d_model(stack, Some(item_runtime), terrain_textures),
+        });
+    }
+    items
+}
+
+fn hud_recipe_book_overlay_entries<'a>(
+    world: &'a WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+    pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
+    overlay: Option<RecipeBookOverlayHudState>,
+) -> Option<(RecipeBookOverlayHudState, Vec<RecipeBookOverlayEntry<'a>>)> {
+    let overlay = overlay?;
+    if recipe_book_type_for_background(background)? != overlay.book_type {
+        return None;
+    }
+    if recipe_book_selected_tab_index(background, tabs)? != overlay.tab_index {
+        return None;
+    }
+    if recipe_book_selected_page_index(background, pages)? != overlay.page_index {
+        return None;
+    }
+    let collections = hud_recipe_book_collections(world, item_runtime, background, tabs, search)?;
+    let page = clamped_recipe_book_page(overlay.page_index, collections.len());
+    let collection_index = page * RECIPE_BOOK_ITEMS_PER_PAGE + overlay.button_index;
+    let entries = collections.get(collection_index)?.overlay_entries();
+    (entries.len() > 1).then_some((overlay, entries))
+}
+
+fn recipe_book_overlay_button_texture(
+    furnace_overlay: bool,
+    craftable: bool,
+    highlighted: bool,
+) -> HudInventoryBackgroundTexture {
+    match (furnace_overlay, craftable, highlighted) {
+        (false, true, false) => HudInventoryBackgroundTexture::RecipeBookCraftingOverlay,
+        (false, true, true) => HudInventoryBackgroundTexture::RecipeBookCraftingOverlayHighlighted,
+        (false, false, false) => HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabled,
+        (false, false, true) => {
+            HudInventoryBackgroundTexture::RecipeBookCraftingOverlayDisabledHighlighted
+        }
+        (true, true, false) => HudInventoryBackgroundTexture::RecipeBookFurnaceOverlay,
+        (true, true, true) => HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayHighlighted,
+        (true, false, false) => HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayDisabled,
+        (true, false, true) => {
+            HudInventoryBackgroundTexture::RecipeBookFurnaceOverlayDisabledHighlighted
+        }
+    }
 }
 
 fn hud_recipe_book_ghost_layers_and_items(
