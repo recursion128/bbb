@@ -115,6 +115,15 @@ pub(super) fn absolute_hud_rect(x: f32, y: f32, width: u32, height: u32) -> HudR
     }
 }
 
+pub(super) fn hud_rect_bounds(rect: HudRect) -> (f32, f32, f32, f32) {
+    (
+        rect.x,
+        rect.y,
+        rect.x + rect.width as f32,
+        rect.y + rect.height as f32,
+    )
+}
+
 pub(super) fn hud_rect_intersection_uv_span(
     rect: HudRect,
     scissor: HudRect,

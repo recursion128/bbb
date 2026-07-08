@@ -289,8 +289,7 @@ Screen Render Surfaces" 条目）：
   footer Done button shell、初始 display-root tab 选择、root tab shell、
   tab-click `OpenedTab`、root widget frame/icon shell、contents background
   tiling、tree connectivity、wheel/drag scroll clamp、widget-frame partial
-  scissor、flat fake-item contents scissor 已完成；剩余 3D block fake-item
-  partial scissor、hover rendering；
+  scissor、flat/3D fake-item contents scissor 已完成；剩余 hover rendering；
   `ClientAdvancementsState` ready）。
 - debug overlay（F3，低优先）。
 

@@ -5043,3 +5043,11 @@
   完全可见的 block fake item 仍保留 3D GUI item pass；部分越界的 block fake
   item 暂降级为 clipped flat layers。剩余：3D block fake-item partial
   scissor、hover title/description boxes，以及 debug overlay。
+- [x] advancement 3D block fake-item partial scissor（P2 renderer slice，
+  2026-07-08）：延续 `AdvancementTab.extractContents` 的 contents scissor
+  语义，补齐 `renderFakeItem` 为 block/model item 时的 GUI item pass 裁剪。
+  renderer 现在在 HUD 像素坐标中对 scissored floating block item 的 solid、
+  translucent、glint、glintTranslucent mesh bucket 做三角形矩形裁剪，并在
+  scissor 边界插值 UV/color/light/overlay/normal 属性；runtime 传入的
+  advancement contents scissor 因而同时覆盖 flat item 与 3D block fake item。
+  剩余：hover title/description boxes，以及 debug overlay。

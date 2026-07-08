@@ -5,8 +5,8 @@ use crate::entity_models::{
     EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use crate::item_models::{
-    GuiItemLightingEntry, HudBlockItemModel, ItemModelFoil, ItemModelMeshSet,
-    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    GuiItemLightingEntry, HudBlockItemModel, ItemModelFoil, ItemModelMesh, ItemModelMeshSet,
+    ItemModelVertex, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use crate::Renderer;
 
@@ -29,13 +29,13 @@ use self::layout::{
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
     hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
-    hud_rect_intersection_uv_span, hud_styled_quad_vertices, hud_subtitle_text_origin,
-    hud_title_text_origin, hud_vehicle_heart_fill, hud_vehicle_max_hearts,
-    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
-    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
-    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
-    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_rect_bounds, hud_rect_intersection_uv_span, hud_styled_quad_vertices,
+    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
+    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
+    inventory_slot_item_hud_rect, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
+    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
+    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
+    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -3048,42 +3048,42 @@ impl Renderer {
     pub(crate) fn collect_hud_block_item_mesh(&self) -> ItemModelMeshSet {
         let surface_size = self.surface_size();
         let mut meshes = ItemModelMeshSet::default();
-        let mut append_model = |model: &HudBlockItemModel, placement: glam::Mat4| {
-            append_hud_block_item_model_mesh(&mut meshes, model, placement);
+        let mut append_model = |model: &HudBlockItemModel,
+                                placement: glam::Mat4,
+                                scissor: Option<HudRect>| {
+            if let Some(scissor) = scissor {
+                append_hud_block_item_model_mesh_clipped(&mut meshes, model, placement, scissor);
+            } else {
+                append_hud_block_item_model_mesh(&mut meshes, model, placement);
+            }
         };
         for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
             if let Some(model) = model {
                 let placement = gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
-                append_model(model, placement);
+                append_model(model, placement, None);
             }
         }
         // The open inventory screen's block items (container slots + the cursor / floating item) render as
         // 3D icons in the same pass, seated in their slot pixel rects.
         if let Some(screen) = &self.hud_inventory_screen {
-            let mut append = |model: &HudBlockItemModel, rect: HudRect| {
-                let placement = gui_item_slot_placement(rect);
-                append_model(model, placement);
-            };
             for slot in &screen.slots {
                 if let Some(model) = &slot.block_model {
-                    append(
-                        model,
-                        inventory_slot_item_hud_rect(
-                            surface_size,
-                            screen.width,
-                            screen.height,
-                            slot.x,
-                            slot.y,
-                        ),
+                    let rect = inventory_slot_item_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        slot.x,
+                        slot.y,
                     );
+                    append_model(model, gui_item_slot_placement(rect), None);
                 }
             }
             for item in &screen.floating_items {
                 if let Some(model) = &item.block_model {
-                    append(
-                        model,
-                        inventory_floating_item_hud_rect(surface_size, screen, item),
-                    );
+                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
+                    let scissor_rect =
+                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                    append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
                 }
             }
         }
@@ -3777,7 +3777,7 @@ impl Renderer {
                         item.draw_decorations && item.block_model.is_none(),
                     );
                     if item.block_model.is_some() {
-                        push_hud_item_icon(
+                        push_hud_item_icon_clipped(
                             &mut vertices,
                             &mut post_gui_item_commands,
                             atlas,
@@ -3786,6 +3786,7 @@ impl Renderer {
                             &self.hud_digit_glyphs,
                             surface_size,
                             item_rect,
+                            scissor_rect,
                             &item.icon,
                             false,
                             item.draw_decorations,
@@ -4226,6 +4227,169 @@ fn append_hud_block_item_model_mesh(
         ITEM_MODEL_NO_OVERLAY,
         ItemModelFoil::from_has_foil(model.foil),
     );
+}
+
+fn append_hud_block_item_model_mesh_clipped(
+    meshes: &mut ItemModelMeshSet,
+    model: &HudBlockItemModel,
+    placement: glam::Mat4,
+    scissor: HudRect,
+) {
+    let mut unclipped = ItemModelMeshSet::default();
+    append_hud_block_item_model_mesh(&mut unclipped, model, placement);
+    append_item_model_mesh_clipped(&mut meshes.solid, &unclipped.solid, scissor);
+    append_item_model_mesh_clipped(
+        &mut meshes.solid_z_offset_forward,
+        &unclipped.solid_z_offset_forward,
+        scissor,
+    );
+    append_item_model_mesh_clipped(&mut meshes.translucent, &unclipped.translucent, scissor);
+    append_item_model_mesh_clipped(&mut meshes.glint, &unclipped.glint, scissor);
+    append_item_model_mesh_clipped(
+        &mut meshes.glint_translucent,
+        &unclipped.glint_translucent,
+        scissor,
+    );
+}
+
+fn append_item_model_mesh_clipped(
+    out: &mut ItemModelMesh,
+    source: &ItemModelMesh,
+    scissor: HudRect,
+) {
+    for triangle in source.indices.chunks_exact(3) {
+        let Some(vertices) = item_model_triangle_vertices(source, triangle) else {
+            continue;
+        };
+        let clipped = clip_item_model_triangle_to_hud_rect(vertices, scissor);
+        if clipped.len() < 3 {
+            continue;
+        }
+
+        let base = u32::try_from(out.vertices.len()).expect("item-model vertex count fits in u32");
+        out.vertices.extend_from_slice(&clipped);
+        for index in 1..(clipped.len() - 1) {
+            out.indices.push(base);
+            out.indices
+                .push(base + u32::try_from(index).expect("fan index fits in u32"));
+            out.indices
+                .push(base + u32::try_from(index + 1).expect("fan index fits in u32"));
+        }
+    }
+}
+
+fn item_model_triangle_vertices(
+    source: &ItemModelMesh,
+    triangle: &[u32],
+) -> Option<[ItemModelVertex; 3]> {
+    Some([
+        *source.vertices.get(usize::try_from(triangle[0]).ok()?)?,
+        *source.vertices.get(usize::try_from(triangle[1]).ok()?)?,
+        *source.vertices.get(usize::try_from(triangle[2]).ok()?)?,
+    ])
+}
+
+fn clip_item_model_triangle_to_hud_rect(
+    triangle: [ItemModelVertex; 3],
+    scissor: HudRect,
+) -> Vec<ItemModelVertex> {
+    let (left, top, right, bottom) = hud_rect_bounds(scissor);
+    let mut polygon = Vec::from(triangle);
+    for edge in [
+        HudItemMeshClipEdge::Left(left),
+        HudItemMeshClipEdge::Right(right),
+        HudItemMeshClipEdge::Top(top),
+        HudItemMeshClipEdge::Bottom(bottom),
+    ] {
+        polygon = clip_item_model_polygon_to_edge(&polygon, edge);
+        if polygon.is_empty() {
+            break;
+        }
+    }
+    polygon
+}
+
+#[derive(Debug, Clone, Copy)]
+enum HudItemMeshClipEdge {
+    Left(f32),
+    Right(f32),
+    Top(f32),
+    Bottom(f32),
+}
+
+fn clip_item_model_polygon_to_edge(
+    input: &[ItemModelVertex],
+    edge: HudItemMeshClipEdge,
+) -> Vec<ItemModelVertex> {
+    let Some(&last) = input.last() else {
+        return Vec::new();
+    };
+    let mut output = Vec::with_capacity(input.len() + 1);
+    let mut previous = last;
+    let mut previous_inside = item_model_vertex_inside_edge(previous, edge);
+    for &current in input {
+        let current_inside = item_model_vertex_inside_edge(current, edge);
+        match (previous_inside, current_inside) {
+            (true, true) => output.push(current),
+            (true, false) => {
+                output.push(item_model_vertex_edge_intersection(previous, current, edge))
+            }
+            (false, true) => {
+                output.push(item_model_vertex_edge_intersection(previous, current, edge));
+                output.push(current);
+            }
+            (false, false) => {}
+        }
+        previous = current;
+        previous_inside = current_inside;
+    }
+    output
+}
+
+fn item_model_vertex_inside_edge(vertex: ItemModelVertex, edge: HudItemMeshClipEdge) -> bool {
+    match edge {
+        HudItemMeshClipEdge::Left(x) => vertex.position[0] >= x,
+        HudItemMeshClipEdge::Right(x) => vertex.position[0] <= x,
+        HudItemMeshClipEdge::Top(y) => vertex.position[1] >= y,
+        HudItemMeshClipEdge::Bottom(y) => vertex.position[1] <= y,
+    }
+}
+
+fn item_model_vertex_edge_intersection(
+    a: ItemModelVertex,
+    b: ItemModelVertex,
+    edge: HudItemMeshClipEdge,
+) -> ItemModelVertex {
+    let (axis, boundary) = match edge {
+        HudItemMeshClipEdge::Left(x) | HudItemMeshClipEdge::Right(x) => (0, x),
+        HudItemMeshClipEdge::Top(y) | HudItemMeshClipEdge::Bottom(y) => (1, y),
+    };
+    let denominator = b.position[axis] - a.position[axis];
+    let t = if denominator.abs() <= f32::EPSILON {
+        0.0
+    } else {
+        ((boundary - a.position[axis]) / denominator).clamp(0.0, 1.0)
+    };
+    interpolate_item_model_vertex(a, b, t)
+}
+
+fn interpolate_item_model_vertex(
+    a: ItemModelVertex,
+    b: ItemModelVertex,
+    t: f32,
+) -> ItemModelVertex {
+    ItemModelVertex {
+        position: lerp_array(a.position, b.position, t),
+        uv: lerp_array(a.uv, b.uv, t),
+        color: lerp_array(a.color, b.color, t),
+        light: lerp_array(a.light, b.light, t),
+        overlay: lerp_array(a.overlay, b.overlay, t),
+        normal_diffuse: lerp_array(a.normal_diffuse, b.normal_diffuse, t),
+    }
+}
+
+fn lerp_array<const N: usize>(a: [f32; N], b: [f32; N], t: f32) -> [f32; N] {
+    std::array::from_fn(|index| a[index] + (b[index] - a[index]) * t)
 }
 
 fn push_hud_draw<'a>(
@@ -6123,14 +6287,6 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
     let scale = item.scale.clamp(0.0625, 16.0);
     let scale_y = item.scale_y.clamp(0.0625, 16.0);
     let scissor = item.scissor.and_then(sanitize_hud_inventory_item_scissor);
-    let scissored_partial = scissor.is_some_and(|scissor| {
-        !hud_inventory_item_rect_inside_scissor(item.x, item.y, scale, scale_y, scissor)
-    });
-    let block_model = if scissored_partial {
-        None
-    } else {
-        item.block_model.filter(hud_block_item_model_is_renderable)
-    };
     Some(HudInventoryItem {
         x: item.x,
         y: item.y,
@@ -6139,23 +6295,8 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
         icon: sanitize_hud_item_icon(item.icon)?,
         scissor,
         draw_decorations: item.draw_decorations,
-        block_model,
+        block_model: item.block_model.filter(hud_block_item_model_is_renderable),
     })
-}
-
-fn hud_inventory_item_rect_inside_scissor(
-    x: i32,
-    y: i32,
-    scale: f32,
-    scale_y: f32,
-    scissor: HudInventoryItemScissor,
-) -> bool {
-    let (width, height) = hud_inventory_item_scaled_size(scale, scale_y);
-    let right = i64::from(x) + i64::from(width);
-    let bottom = i64::from(y) + i64::from(height);
-    let scissor_right = i64::from(scissor.x) + i64::from(scissor.width);
-    let scissor_bottom = i64::from(scissor.y) + i64::from(scissor.height);
-    x >= scissor.x && y >= scissor.y && right <= scissor_right && bottom <= scissor_bottom
 }
 
 fn sanitize_hud_inventory_item_scissor(
@@ -6643,6 +6784,52 @@ mod tests {
             .chain(&meshes.glint.vertices)
             .chain(&meshes.glint_translucent.vertices)
             .all(|vertex| vertex.light == ITEM_MODEL_FULL_BRIGHT_LIGHT));
+    }
+
+    #[test]
+    fn hud_block_item_mesh_clips_triangles_to_scissor_rect() {
+        let quad = crate::item_models::ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 8.0],
+                [16.0, 0.0, 8.0],
+                [16.0, 16.0, 8.0],
+                [0.0, 16.0, 8.0],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let model = HudBlockItemModel {
+            quads: vec![quad],
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+
+        let mut meshes = ItemModelMeshSet::default();
+        append_hud_block_item_model_mesh_clipped(
+            &mut meshes,
+            &model,
+            glam::Mat4::IDENTITY,
+            absolute_hud_rect(0.5, 0.0, 1, 1),
+        );
+
+        assert!(!meshes.solid.indices.is_empty());
+        assert!(meshes.solid.vertices.iter().all(|vertex| {
+            vertex.position[0] >= 0.5
+                && vertex.position[0] <= 1.0
+                && vertex.position[1] >= 0.0
+                && vertex.position[1] <= 1.0
+        }));
+        assert!(
+            meshes.solid.vertices.iter().any(|vertex| {
+                (vertex.position[0] - 0.5).abs() < f32::EPSILON
+                    && (vertex.uv[0] - 0.5).abs() < f32::EPSILON
+            }),
+            "clipped edge should interpolate UVs at the half-width boundary"
+        );
     }
 
     /// End-to-end GPU proof of the HUD 3D block-item consumer, now through the shared offscreen
@@ -9738,7 +9925,7 @@ mod tests {
                 height: 512,
             })
         );
-        assert!(scissored_partial.block_model.is_none());
+        assert!(scissored_partial.block_model.is_some());
 
         let scissored_inside = sanitize_hud_inventory_item(HudInventoryItem {
             x: 9,
