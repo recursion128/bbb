@@ -5147,6 +5147,17 @@
   crosshair、其它 F3 modifier combos；bbb 尚未建模 Mojang launcher
   `--version` 与 `ClientBrandRetriever` 边界，因此 launchedVersion 使用
   `MC_VERSION`、brand 使用 repo-native `bbb-native`。
+- [x] debug overlay default TPS entry shell（P2 HUD/runtime/world slice，
+  2026-07-08）：依据 `DebugScreenEntries.DEFAULT_PROFILE` 默认启用 `TPS`，
+  以及 `DebugEntryTps.display` 的非集成服务器格式
+  `"<serverBrand>" server<runStatus>, <tx> tx, <rx> rx`。runtime 现在在已有
+  level 时生成该行，从 `WorldStore::server_brand()` 读取 `minecraft:brand`
+  payload 的 server brand，并把 `WorldTickingState` 的 frozen /
+  frozen_ticks_to_run 映射到 vanilla ` (frozen)` /
+  ` (frozen - stepping)` 后缀。剩余：connection average tx/rx 采样、
+  integrated-server MSPT/sprinting 文本、FPS/TPS/network charts 实际绘制、
+  完整 debug entry 列表、lightmap preview、entity hitbox/chunk-border
+  rendering、3D crosshair、其它 F3 modifier combos。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`

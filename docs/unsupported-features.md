@@ -1077,14 +1077,24 @@ When an agent does any of the following, update this file in the same slice:
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, and F3+A/B/G/H/P local
-    debug feedback, the F3+F6 debug-options edit help keybind, and the
-    default GAME_VERSION entry shape: the complete vanilla debug entry list,
-    actual
+    debug feedback, the F3+F6 debug-options edit help keybind, the default
+    GAME_VERSION entry shape, and the default TPS entry shell: the complete
+    vanilla debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
+    `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
+    and `DebugEntryTps.display` formats the non-integrated-server line as
+    `"<serverBrand>" server<runStatus>, <tx> tx, <rx> rx`, with run status
+    ` (frozen - stepping)` before ` (frozen)`. bbb now projects that line
+    when a level is active, reads the server brand from the `minecraft:brand`
+    custom payload state, and maps `WorldTickingState` frozen/step counters
+    to the vanilla status suffix. Boundary: connection average sent/received
+    packet rates are still not sampled, so bbb emits `0 tx, 0 rx`; integrated
+    server MSPT/sprinting text is also not modeled.
   - Done 2026-07-08 — Debug overlay default GAME_VERSION entry shape.
     Vanilla anchors: `DebugScreenEntries.DEFAULT_PROFILE` includes
     `DebugScreenEntries.GAME_VERSION`, and `DebugEntryVersion.display`
@@ -1710,10 +1720,11 @@ When an agent does any of the following, update this file in the same slice:
     F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
     version debug chat action, plus F3+A/B/G/H/P local debug feedback are live.
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
-    shape are also aligned. The remaining open surfaces in this ledger row are
-    the complete debug entry list, actual charts/lightmap rendering, entity
-    hitbox/chunk-border rendering, advanced tooltip full parity/persistence,
-    3D crosshair, and the other F3 modifier combos.
+    shape are also aligned, and the default TPS entry now has a server-brand
+    / frozen-status text shell. The remaining open surfaces in this ledger row
+    are the complete debug entry list, actual charts/lightmap rendering,
+    entity hitbox/chunk-border rendering, advanced tooltip full
+    parity/persistence, 3D crosshair, and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

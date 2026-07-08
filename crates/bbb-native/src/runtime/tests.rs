@@ -968,6 +968,53 @@ fn hud_debug_overlay_formats_memory_lines_like_vanilla_debug_entries() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
+    assert_eq!(hud_debug_tps_line(&WorldStore::new()), None);
+
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    world.apply_custom_payload(bbb_protocol::packets::CustomPayload {
+        id: "minecraft:brand".to_string(),
+        payload: bbb_protocol::packets::CustomPayloadBody::Brand {
+            brand: "vanilla".to_string(),
+        },
+    });
+    assert_eq!(
+        hud_debug_tps_line(&world),
+        Some("\"vanilla\" server, 0 tx, 0 rx".to_string())
+    );
+
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 20.0,
+        frozen: true,
+    });
+    assert_eq!(
+        hud_debug_tps_line(&world),
+        Some("\"vanilla\" server (frozen), 0 tx, 0 rx".to_string())
+    );
+
+    world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 2 });
+    let expected = "\"vanilla\" server (frozen - stepping), 0 tx, 0 rx".to_string();
+    assert_eq!(hud_debug_tps_line(&world), Some(expected.clone()));
+
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None
+    ));
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+    )
+    .expect("F3 should show the debug overlay");
+
+    assert!(overlay.left_lines.contains(&expected));
+}
+
+#[test]
 fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);

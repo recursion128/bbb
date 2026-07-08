@@ -2761,6 +2761,9 @@ fn hud_debug_overlay(
     }
 
     let mut left_lines = vec![hud_debug_version_line()];
+    if let Some(tps_line) = hud_debug_tps_line(world) {
+        left_lines.push(tps_line);
+    }
     if let Some(camera_pose) = camera_pose {
         left_lines.push("".to_string());
         left_lines.extend(hud_debug_position_lines(world, camera_pose));
@@ -2798,6 +2801,21 @@ fn hud_debug_overlay(
 
 fn hud_debug_version_line() -> String {
     format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
+}
+
+fn hud_debug_tps_line(world: &WorldStore) -> Option<String> {
+    world.level_info()?;
+    let ticking = world.ticking();
+    let run_status = if ticking.frozen_ticks_to_run > 0 {
+        " (frozen - stepping)"
+    } else if ticking.frozen {
+        " (frozen)"
+    } else {
+        ""
+    };
+    let brand = world.server_brand().unwrap_or("unknown");
+
+    Some(format!("\"{brand}\" server{run_status}, 0 tx, 0 rx"))
 }
 
 fn hud_debug_visibility_label(visible: bool) -> &'static str {
