@@ -5469,10 +5469,10 @@
   `queryEntityTag` 从 transaction id -1 递增后发送
   `ServerboundBlockEntityTagQueryPacket` / `ServerboundEntityTagQueryPacket`。
   native 现在让 Shift+F3+I 继续走已有 client-side recreate clipboard 路径，
-  unshifted F3+I 在命中 block/entity 时创建带 transaction id 的 pending
-  request，main loop drain 后排入既有 block/entity tag-query net command。边界：
-  gamemaster permission gate、返回 NBT 拼接 `/setblock` / `/summon`、Shift+F3+I
-  本地 NBT、以及 styled/clickable feedback 仍未实现。
+  unshifted authorized F3+I 在命中 block/entity 时创建带 transaction id 的
+  pending request，main loop drain 后排入既有 block/entity tag-query net
+  command；返回 NBT 拼接由后续 response callback slice 覆盖。边界：
+  Shift+F3+I 本地 NBT 以及 styled/clickable feedback 仍未实现。
 - [x] debug overlay F3+B entity hitbox eye/vector detail rendering（P2
   renderer/native/world slice，2026-07-08）：依据
   `EntityHitboxDebugRenderer.showHitboxes` 的白色 client AABB、living
@@ -5556,8 +5556,7 @@
   在 network pump 后消费匹配响应、写 debug clipboard、发送 server-side copied
   feedback，并对不匹配 transaction id 保留 pending。测试覆盖方块、实体、null
   tag、不匹配 id、以及 query 后方块状态变化仍复制发起时状态。边界：
-  gamemaster permission gate、Shift+F3+I 本地 client-side NBT capture、
-  styled/clickable feedback 仍待后续。
+  Shift+F3+I 本地 client-side NBT capture、styled/clickable feedback 仍待后续。
 - [x] debug overlay F3+1 profiler pie chart render-state/rendering（P2
   renderer/native slice，2026-07-08）：依据
   `DebugScreenOverlay.showProfilerChart` 对 overlay-visible + F3+1 状态的
@@ -5572,3 +5571,17 @@
   `ProfileResults` owner 缺失时伪造数据。边界：profiler sampling/results、
   0-9 profiler tree navigation、F3+L metrics recorder/output、以及
   configured-framerate cyan guide 仍待后续。
+- [x] debug overlay F3+I gamemaster permission gate（P2 world/native slice，
+  2026-07-08）：依据 `PlayerList.sendPlayerPermissionLevel` 用
+  `ClientboundEntityEventPacket(player, eventId)` 下发 24..28
+  no-permission/moderator/gamemaster/admin/owner 权限等级，
+  `LocalPlayer.handleEntityEvent` 将这些事件写入本地 `PermissionSet`，以及
+  `KeyboardHandler.handleDebugKeys` 调用
+  `copyRecreateCommand(player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER),
+  !event.hasShiftDown())`。world 现在记录 `LocalPlayerPermissionLevel`，只让
+  本地玩家实体事件 24..28 更新该状态，并暴露
+  `local_player_has_gamemaster_permission`；native F3+I 仅在
+  `addNbt && pullFromServer` 时排队服务器 tag query，无权限普通 F3+I 与
+  Shift+F3+I 均复制客户端无 NBT recreate command。测试覆盖本地/远端权限事件、
+  授权服务器 query、无权限本地复制。边界：Shift+F3+I 本地 client-side NBT
+  capture 与 styled/clickable feedback 仍待后续。

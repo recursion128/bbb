@@ -42,6 +42,8 @@ pub struct LocalPlayerState {
     #[serde(default)]
     pub selected_hotbar_slot: u8,
     #[serde(default)]
+    pub permission_level: LocalPlayerPermissionLevel,
+    #[serde(default)]
     pub default_spawn: Option<DefaultSpawnState>,
     #[serde(default)]
     pub simulation_distance: Option<i32>,
@@ -62,6 +64,7 @@ impl Default for LocalPlayerState {
             health: None,
             experience: None,
             selected_hotbar_slot: 0,
+            permission_level: LocalPlayerPermissionLevel::default(),
             default_spawn: None,
             simulation_distance: None,
             camera: CameraState::default(),
@@ -69,6 +72,33 @@ impl Default for LocalPlayerState {
             last_look_at: None,
             interaction: LocalPlayerInteractionState::default(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LocalPlayerPermissionLevel {
+    #[default]
+    NoPermissions,
+    Moderator,
+    Gamemaster,
+    Admin,
+    Owner,
+}
+
+impl LocalPlayerPermissionLevel {
+    fn from_entity_event_id(event_id: i8) -> Option<Self> {
+        match event_id {
+            24 => Some(Self::NoPermissions),
+            25 => Some(Self::Moderator),
+            26 => Some(Self::Gamemaster),
+            27 => Some(Self::Admin),
+            28 => Some(Self::Owner),
+            _ => None,
+        }
+    }
+
+    pub fn has_gamemaster_permission(self) -> bool {
+        matches!(self, Self::Gamemaster | Self::Admin | Self::Owner)
     }
 }
 
@@ -271,6 +301,38 @@ impl WorldStore {
         }
         abilities.flying = flying;
         true
+    }
+
+    pub(crate) fn reset_local_player_permission_level(&mut self) {
+        self.local_player.permission_level = LocalPlayerPermissionLevel::default();
+    }
+
+    pub(crate) fn apply_local_player_permission_entity_event(
+        &mut self,
+        entity_id: i32,
+        event_id: i8,
+    ) -> bool {
+        if self.local_player_id != Some(entity_id) {
+            return false;
+        }
+        let Some(permission_level) = LocalPlayerPermissionLevel::from_entity_event_id(event_id)
+        else {
+            return false;
+        };
+        self.local_player.permission_level = permission_level;
+        true
+    }
+
+    pub fn local_player_permission_level(&self) -> LocalPlayerPermissionLevel {
+        self.local_player.permission_level
+    }
+
+    pub fn local_player_has_gamemaster_permission(&self) -> bool {
+        self.local_player_id.is_some()
+            && self
+                .local_player
+                .permission_level
+                .has_gamemaster_permission()
     }
 
     pub fn adjust_local_flying_speed(&mut self, delta: f32) -> bool {
@@ -693,8 +755,9 @@ mod tests {
     use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, PlayerLookAtTarget, Vec3d as ProtocolVec3d,
-        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
+        AddEntity as ProtocolAddEntity, EntityEvent as ProtocolEntityEvent, PlayerLookAtTarget,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT,
+        PLAYER_RELATIVE_Y_ROT,
     };
     use uuid::Uuid;
 
@@ -815,6 +878,90 @@ mod tests {
             saturation: 2.0,
         });
         assert!(!store.local_player_is_dead());
+    }
+
+    #[test]
+    fn local_player_permission_entity_events_update_gamemaster_gate_without_entity_projection() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::NoPermissions
+        );
+        assert!(!store.local_player_has_gamemaster_permission());
+
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 7,
+            event_id: 26,
+        }));
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::Gamemaster
+        );
+        assert!(store.local_player_has_gamemaster_permission());
+
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 7,
+            event_id: 25,
+        }));
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::Moderator
+        );
+        assert!(!store.local_player_has_gamemaster_permission());
+
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 7,
+            event_id: 28,
+        }));
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::Owner
+        );
+        assert!(store.local_player_has_gamemaster_permission());
+
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 7,
+            event_id: 24,
+        }));
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::NoPermissions
+        );
+        assert!(!store.local_player_has_gamemaster_permission());
+        assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 0);
+    }
+
+    #[test]
+    fn remote_permission_entity_event_does_not_update_local_player_permission() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.apply_add_entity(ProtocolAddEntity {
+            id: 8,
+            uuid: Uuid::from_u128(8),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 8,
+            event_id: 26,
+        }));
+
+        assert_eq!(
+            store.local_player_permission_level(),
+            LocalPlayerPermissionLevel::NoPermissions
+        );
+        assert!(!store.local_player_has_gamemaster_permission());
+        assert_eq!(store.counters().entity_events_applied, 1);
+        assert_eq!(store.counters().entity_events_ignored, 0);
     }
 
     #[test]

@@ -201,6 +201,7 @@ impl WorldStore {
             self.local_player_vehicle_id = None;
         }
         self.local_player_id = Some(login.player_id);
+        self.reset_local_player_permission_level();
         self.gameplay.show_death_screen = login.show_death_screen;
         self.gameplay.do_limited_crafting = login.do_limited_crafting;
         self.gameplay.reduced_debug_info = login.reduced_debug_info;

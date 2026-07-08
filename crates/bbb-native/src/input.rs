@@ -891,7 +891,25 @@ impl ClientInputState {
                 true
             }
             KeyCode::KeyI => {
-                if self.shift_down() {
+                let pull_from_server = !self.shift_down();
+                let add_nbt = world
+                    .as_deref()
+                    .is_some_and(WorldStore::local_player_has_gamemaster_permission);
+                if add_nbt && pull_from_server {
+                    if let Some(world) = world.as_deref() {
+                        if let Some(target) = debug_recreate_target(world) {
+                            let transaction_id = self.next_debug_query_transaction_id();
+                            if let Some(pending) =
+                                pending_debug_recreate_server_query(world, target, transaction_id)
+                            {
+                                self.pending_debug_recreate_server_query = Some(pending);
+                                self.debug_recreate_server_query_requests.push(
+                                    debug_recreate_server_query_request(target, transaction_id),
+                                );
+                            }
+                        }
+                    }
+                } else {
                     let command = world.as_deref().and_then(debug_copy_recreate_command);
                     if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
                         if clipboard.set_debug_clipboard_text(&copy.command) {
@@ -899,17 +917,6 @@ impl ClientInputState {
                                 world.as_deref_mut(),
                                 copy.feedback_message,
                             );
-                        }
-                    }
-                } else if let Some(world) = world.as_deref() {
-                    if let Some(target) = debug_recreate_target(world) {
-                        let transaction_id = self.next_debug_query_transaction_id();
-                        if let Some(pending) =
-                            pending_debug_recreate_server_query(world, target, transaction_id)
-                        {
-                            self.pending_debug_recreate_server_query = Some(pending);
-                            self.debug_recreate_server_query_requests
-                                .push(debug_recreate_server_query_request(target, transaction_id));
                         }
                     }
                 }

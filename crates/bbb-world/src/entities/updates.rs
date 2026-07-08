@@ -40,12 +40,18 @@ impl WorldStore {
 
     pub fn apply_entity_event(&mut self, packet: ProtocolEntityEvent) -> bool {
         self.counters.entity_events_received += 1;
+        let permission_applied =
+            self.apply_local_player_permission_entity_event(packet.entity_id, packet.event_id);
         let Some(()) = self
             .entities
             .with_transient_events_mut(packet.entity_id, |events| {
                 events.last_event_id = Some(packet.event_id)
             })
         else {
+            if permission_applied {
+                self.counters.entity_events_applied += 1;
+                return true;
+            }
             self.counters.entity_events_ignored += 1;
             return false;
         };

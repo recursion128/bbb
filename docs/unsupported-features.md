@@ -1112,8 +1112,8 @@ When an agent does any of the following, update this file in the same slice:
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
-    actual dynamic texture dump execution, F3+I gamemaster permission gate /
-    local client-side NBT capture / styled feedback, profiler data
+    actual dynamic texture dump execution, F3+I local client-side NBT capture /
+    styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
@@ -1348,9 +1348,9 @@ When an agent does any of the following, update this file in the same slice:
     data to clipboard`; when the target is an entity, it derives the
     `minecraft:*` type id from the protocol entity registry constants and
     writes `/summon ...` using the entity position with two decimals plus
-    client-side entity feedback. Boundary: gamemaster permission gating,
-    Shift+F3+I local client-side NBT capture, exact `StateDefinition` property
-    iteration order, and styled/clickable feedback remain future parity work.
+    client-side entity feedback. Boundary: Shift+F3+I local client-side NBT
+    capture, exact `StateDefinition` property iteration order, and
+    styled/clickable feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
@@ -1359,13 +1359,12 @@ When an agent does any of the following, update this file in the same slice:
     transaction id starts at -1 and increments before sending
     `ServerboundBlockEntityTagQueryPacket` / `ServerboundEntityTagQueryPacket`.
     bbb now routes Shift+F3+I to the existing client-side recreate clipboard
-    path, routes unshifted F3+I to a pending debug recreate server query with
-    vanilla-style transaction id 0 for the first request, and the main event
-    loop drains that request into the existing block/entity tag-query net
-    commands. Follow-up response/callback handling is now covered below.
-    Boundary: bbb still lacks the gamemaster permission gate used to decide
-    `addNbt`, local client-side NBT capture for Shift+F3+I, and styled/clickable
-    vanilla feedback.
+    path, routes unshifted gamemaster-authorized F3+I to a pending debug
+    recreate server query with vanilla-style transaction id 0 for the first
+    request, and the main event loop drains that request into the existing
+    block/entity tag-query net commands. Follow-up response/callback handling
+    is now covered below. Boundary: local client-side NBT capture for
+    Shift+F3+I and styled/clickable vanilla feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side NBT response callback.
     Vanilla anchors: `ClientPacketListener.handleTagQueryPacket` forwards
     `ClientboundTagQueryPacket` to `DebugQueryHandler.handleResponse`, which
@@ -1381,9 +1380,23 @@ When an agent does any of the following, update this file in the same slice:
     final recreate command to the debug clipboard, and ignores mismatched
     transaction ids while preserving the pending callback. Tests cover block,
     entity, null-tag, mismatched-id, and captured-at-query-time block state
-    behavior. Boundary: gamemaster permission gating, Shift+F3+I local
-    client-side NBT capture, and styled/clickable vanilla feedback remain
-    future work.
+    behavior. Boundary: Shift+F3+I local client-side NBT capture and
+    styled/clickable vanilla feedback remain future work.
+  - Done 2026-07-08 — Debug overlay F3+I gamemaster permission gate.
+    Vanilla anchors: `PlayerList.sendPlayerPermissionLevel` sends
+    `ClientboundEntityEventPacket(player, eventId)` with event ids 24..28 for
+    no-permission/moderator/gamemaster/admin/owner levels; `LocalPlayer.handleEntityEvent`
+    maps those ids to the local `PermissionSet`; and
+    `KeyboardHandler.handleDebugKeys` calls
+    `copyRecreateCommand(player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER),
+    !event.hasShiftDown())`. bbb now stores a world-owned
+    `LocalPlayerPermissionLevel`, applies local-player entity events 24..28,
+    exposes `local_player_has_gamemaster_permission`, and native F3+I queues a
+    server tag query only when `addNbt && pullFromServer`; otherwise it copies
+    the client-side no-NBT recreate command. Tests cover local and remote
+    permission entity events plus authorized/unprivileged F3+I routing.
+    Boundary: Shift+F3+I local client-side NBT capture and styled/clickable
+    vanilla feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -2123,7 +2136,7 @@ When an agent does any of the following, update this file in the same slice:
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I
-    gamemaster permission gate / local client-side NBT capture / styled feedback,
+    local client-side NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

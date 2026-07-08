@@ -8,17 +8,18 @@ use bbb_protocol::packets::{
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DeleteChat,
-    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EntityTagQuery,
-    EquipmentSlot, EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
-    HashedComponentPatch, HashedItemStack, HashedStack,
-    ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
-    PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
-    PlayerHealth, RenameItem, SeenAdvancements, SelectBundleItem,
-    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEquipment,
-    SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, TagQuery, UpdateAdvancements,
-    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
+    FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent, HashedComponentPatch,
+    HashedItemStack, HashedStack, ItemStackSummary as ProtocolItemStackSummary,
+    LastSeenMessagesUpdate, MessageSignature, OpenBook, OpenScreen as ProtocolOpenScreen,
+    OpenSignEditor, PackedMessageSignature, PaddleBoat, PlayLogin, PlayerAbilities,
+    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth, RenameItem,
+    SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetEquipment, SetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
+    SignedMessageBody, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
+    WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::{
@@ -94,6 +95,17 @@ fn world_with_debug_player(reduced_debug_info: bool) -> WorldStore {
         enforces_secure_chat: true,
     });
     world
+}
+
+fn grant_debug_recreate_nbt_permission(world: &mut WorldStore) {
+    let player_id = world
+        .local_player_id()
+        .expect("debug recreate test world has a local player");
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: player_id,
+        event_id: 26,
+    }));
+    assert!(world.local_player_has_gamemaster_permission());
 }
 
 fn handle_text_input_without_world(
@@ -1348,6 +1360,7 @@ fn shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() 
 fn f3_i_without_shift_records_server_recreate_query_request_shell() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
     let target_pos = BlockPos { x: 0, y: 1, z: 3 };
     insert_empty_chunk_for_block(&mut world, target_pos);
     assert!(world.apply_block_update(ProtocolBlockUpdate {
@@ -1421,9 +1434,65 @@ fn f3_i_without_shift_records_server_recreate_query_request_shell() {
 }
 
 #[test]
+fn f3_i_without_gamemaster_permission_copies_client_recreate_command_without_query() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]")
+    );
+    assert_eq!(input.pending_debug_recreate_server_query, None);
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side block data to clipboard"
+    );
+}
+
+#[test]
 fn f3_i_server_block_tag_response_copies_recreate_command() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
     let target_pos = BlockPos { x: 0, y: 1, z: 3 };
     insert_empty_chunk_for_block(&mut world, target_pos);
     assert!(world.apply_block_update(ProtocolBlockUpdate {
@@ -1508,6 +1577,7 @@ fn f3_i_server_block_tag_response_copies_recreate_command() {
 fn f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 50,
         uuid: Uuid::from_u128(50),
@@ -1603,6 +1673,7 @@ fn f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos()
 fn f3_i_null_server_tag_response_copies_command_without_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
     let target_pos = BlockPos { x: 0, y: 1, z: 3 };
     insert_empty_chunk_for_block(&mut world, target_pos);
     assert!(world.apply_block_update(ProtocolBlockUpdate {

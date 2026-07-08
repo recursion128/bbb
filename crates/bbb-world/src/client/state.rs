@@ -38,7 +38,7 @@ pub use crate::client::inventory::{
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,
     LocalPlayerHealthState, LocalPlayerInputState, LocalPlayerInteractionState,
-    LocalPlayerLookAtState, LocalPlayerPoseState, LocalPlayerState,
+    LocalPlayerLookAtState, LocalPlayerPermissionLevel, LocalPlayerPoseState, LocalPlayerState,
 };
 pub use crate::client::local_player_collision::ParticleBlockFluidSurfaceSample;
 pub use crate::client::local_player_destroy::{
