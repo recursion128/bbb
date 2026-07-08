@@ -2782,6 +2782,7 @@ fn hud_debug_overlay(
         hud_debug_visibility_label(input.debug_chunk_borders_visible()),
         hud_debug_enabled_label(input.debug_advanced_item_tooltips())
     ));
+    left_lines.push("Debug actions: [F3+D] Clear chat".to_string());
     left_lines.push("To edit: press [F3+F5]".to_string());
 
     Some(HudDebugOverlay {

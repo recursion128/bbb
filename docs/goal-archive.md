@@ -5103,6 +5103,16 @@
   lines 会显示对应 visible/hidden 或 enabled/disabled。剩余：entity
   hitbox/chunk-border 实际绘制、advanced tooltip 渲染/持久化、完整 debug
   entry 列表、3D crosshair、其它 F3 modifier combos。
+- [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
+  slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
+  `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`
+  清 GUI chat messages/deletion queue 但不清 recent chat history 的行为。
+  world 现在提供 display-only chat clear，`ClientInputState` 在 F3 按住期间
+  消费 D 并清 `ClientChatState` 的 display messages/deleted display
+  records，刷新 display counters，并在使用组合键后抑制 F3 release 触发普通
+  overlay toggle；signature cache、expected player-chat index、last-seen
+  tracker 和 pending acknowledgement 保持不变。剩余：queued chat-listener
+  delivery/recent chat history 独立模型、其它 F3 modifier combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

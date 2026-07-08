@@ -5,17 +5,18 @@ use bbb_protocol::packets::{
     AdvancementSummary, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser,
     CommandNode, CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions,
     Commands, CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
-    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DialogHolder,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
+    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DeleteChat,
+    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
     EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin,
-    PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
-    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
-    SetEntityData as ProtocolSetEntityData, SetEquipment, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
-    SignedMessageBody, UpdateAdvancements, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
+    PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
+    PlayerHealth, RenameItem, SeenAdvancements, SelectBundleItem,
+    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEquipment,
+    SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, UpdateAdvancements,
+    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
@@ -776,6 +777,72 @@ fn f3_debug_status_keys_follow_player_reduced_debug_gate() {
         ElementState::Released,
     );
     assert!(reduced_input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_d_clears_chat_display_without_resetting_signature_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    let _ = world.apply_player_chat(player_chat_with_signature(
+        0,
+        MessageSignature {
+            bytes: vec![9; 256],
+        },
+    ));
+    world.apply_delete_chat(DeleteChat {
+        message_signature: PackedMessageSignature {
+            cache_id: Some(0),
+            full_signature: None,
+        },
+    });
+    assert_eq!(world.client_chat().messages.len(), 1);
+    assert_eq!(world.client_chat().deleted_messages.len(), 1);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyD),
+        ElementState::Pressed,
+    );
+    assert!(world.client_chat().messages.is_empty());
+    assert!(world.client_chat().deleted_messages.is_empty());
+    assert_eq!(world.client_chat().expected_player_chat_global_index, 1);
+    assert!(world
+        .client_chat()
+        .signature_cache
+        .iter()
+        .any(Option::is_some));
+    assert_eq!(world.client_chat().acknowledgement.pending_offset, 1);
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+    assert_eq!(world.counters().chat_messages_tracked, 0);
+    assert_eq!(world.counters().deleted_chat_messages_tracked, 0);
+    assert_eq!(world.counters().chat_signature_cache_entries, 1);
+    assert_eq!(world.counters().reset_chat_packets, 0);
     assert_eq!(counters.player_input_commands_queued, 0);
     assert_eq!(counters.player_action_commands_queued, 0);
     assert!(rx.try_recv().is_err());

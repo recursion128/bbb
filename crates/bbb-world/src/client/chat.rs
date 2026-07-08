@@ -149,6 +149,12 @@ impl WorldStore {
         refresh_chat_counters(self);
     }
 
+    pub fn clear_client_chat_display_messages(&mut self) {
+        self.client_chat.messages.clear();
+        self.client_chat.deleted_messages.clear();
+        refresh_chat_counters(self);
+    }
+
     pub fn apply_player_chat(&mut self, packet: PlayerChat) -> Option<ProtocolChatAcknowledgement> {
         self.counters.player_chat_packets += 1;
         let mut validation_state = if packet.signature.is_some() {
@@ -847,6 +853,77 @@ mod tests {
         assert_eq!(store.counters().chat_messages_tracked, 0);
         assert_eq!(store.counters().deleted_chat_messages_tracked, 0);
         assert_eq!(store.counters().chat_signature_cache_entries, 0);
+    }
+
+    #[test]
+    fn clear_client_chat_display_messages_preserves_signature_state() {
+        let mut store = WorldStore::new();
+        let _ = store.apply_player_chat(PlayerChat {
+            global_index: 0,
+            sender: Uuid::from_u128(1),
+            index: 0,
+            signature: Some(signature(9)),
+            body: SignedMessageBody {
+                content: "hello".to_string(),
+                timestamp_millis: 1,
+                salt: 2,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            filter_mask: FilterMask {
+                kind: FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: chat_type("Alice"),
+        });
+        store.apply_delete_chat(ProtocolDeleteChat {
+            message_signature: PackedMessageSignature {
+                cache_id: Some(0),
+                full_signature: None,
+            },
+        });
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(store.client_chat().deleted_messages.len(), 1);
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .any(Option::is_some));
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .any(Option::is_some));
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+
+        store.clear_client_chat_display_messages();
+
+        assert!(store.client_chat().messages.is_empty());
+        assert!(store.client_chat().deleted_messages.is_empty());
+        assert_eq!(store.client_chat().expected_player_chat_global_index, 1);
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .any(Option::is_some));
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .any(Option::is_some));
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+        assert_eq!(store.counters().reset_chat_packets, 0);
+        assert_eq!(store.counters().player_chat_packets, 1);
+        assert_eq!(store.counters().delete_chat_packets, 1);
+        assert_eq!(store.counters().chat_messages_tracked, 0);
+        assert_eq!(store.counters().deleted_chat_messages_tracked, 0);
+        assert_eq!(store.counters().chat_signature_cache_entries, 1);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            1
+        );
     }
 
     fn signature(byte: u8) -> MessageSignature {

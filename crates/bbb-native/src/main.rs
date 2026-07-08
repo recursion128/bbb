@@ -371,8 +371,11 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.handle_debug_overlay_key(event.physical_key, event.state, Some(&world))
-                    {
+                    if input.handle_debug_overlay_key(
+                        event.physical_key,
+                        event.state,
+                        Some(&mut world),
+                    ) {
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

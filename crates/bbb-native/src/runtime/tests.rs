@@ -995,30 +995,30 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
 
 #[test]
 fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
-    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let mut input = ClientInputState::new(true);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
-        Some(&world)
+        Some(&mut world)
     ));
     for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH] {
         assert!(input.handle_debug_overlay_key(
             PhysicalKey::Code(code),
             ElementState::Pressed,
-            Some(&world)
+            Some(&mut world)
         ));
     }
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        Some(&world)
+        Some(&mut world)
     ));
     assert!(!input.debug_overlay_visible());
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        Some(&world)
+        Some(&mut world)
     ));
 
     let overlay = hud_debug_overlay(
@@ -1033,6 +1033,9 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         &"Debug toggles: [F3+B] Hitboxes visible; [F3+G] Chunks visible; [F3+H] Tooltips enabled"
             .to_string()
     ));
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug actions: [F3+D] Clear chat".to_string()));
 }
 
 #[test]

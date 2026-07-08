@@ -558,7 +558,7 @@ impl ClientInputState {
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
-        world: Option<&WorldStore>,
+        world: Option<&mut WorldStore>,
     ) -> bool {
         if !self.focused {
             return false;
@@ -598,7 +598,7 @@ impl ClientInputState {
     fn handle_debug_overlay_modifier_key(
         &mut self,
         code: KeyCode,
-        world: Option<&WorldStore>,
+        mut world: Option<&mut WorldStore>,
     ) -> bool {
         match code {
             KeyCode::Digit1 => {
@@ -617,15 +617,22 @@ impl ClientInputState {
                 self.toggle_debug_lightmap_texture();
                 true
             }
+            KeyCode::KeyD => {
+                let Some(world) = world.as_deref_mut() else {
+                    return false;
+                };
+                world.clear_client_chat_display_messages();
+                true
+            }
             KeyCode::KeyB => {
-                if !Self::debug_world_status_toggles_allowed(world) {
+                if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
                 self.debug_entity_hitboxes_visible = !self.debug_entity_hitboxes_visible;
                 true
             }
             KeyCode::KeyG => {
-                if !Self::debug_world_status_toggles_allowed(world) {
+                if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
                 self.debug_chunk_borders_visible = !self.debug_chunk_borders_visible;

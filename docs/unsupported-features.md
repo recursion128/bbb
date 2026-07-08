@@ -1073,13 +1073,25 @@ When an agent does any of the following, update this file in the same slice:
     are now complete (`ClientAdvancementsState` ready).
   - Continue the debug overlay after the F3 toggle, left-column
     version/position/help shell, and right-column memory/system/performance
-    basics, F3+1..4 chart/lightmap toggle state, and F3+B/G/H
-    hitboxes/chunk-borders/advanced-tooltips toggle state: the complete
-    vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    lightmap preview rendering, actual entity hitbox/chunk-border rendering,
-    advanced tooltip consumption/persistence, 3D crosshair, and the other F3
-    modifier combos remain (large, low priority).
+    basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
+    hitboxes/chunk-borders/advanced-tooltips toggle state, and F3+D
+    clear-chat display action: the complete vanilla debug entry list, actual
+    FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
+    entity hitbox/chunk-border rendering, advanced tooltip
+    consumption/persistence, 3D crosshair, and the other F3 modifier combos
+    remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+D clear-chat display action. Vanilla
+    anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugClearChat` to
+    `ChatComponent.clearMessages(false)`, which flushes queued GUI chat,
+    clears the deletion queue, and clears displayed `trimmedMessages` /
+    `allMessages` without clearing recent chat history. bbb now consumes D
+    while F3 is held, clears `ClientChatState` display messages and deletion
+    display records, refreshes display counters, suppresses the subsequent
+    F3-release overlay toggle, and keeps protocol chat state such as expected
+    player-chat index, signature cache, last-seen tracker, and pending
+    acknowledgement intact. Boundary: queued chat-listener delivery and
+    in-game recent chat history are not modeled separately yet.
   - Done 2026-07-08 — Debug overlay F3+B/G/H status toggle state. Vanilla
     anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugShowHitboxes` to
     `DebugScreenEntries.ENTITY_HITBOXES`, `keyDebugShowChunkBorders` to
@@ -1624,10 +1636,12 @@ When an agent does any of the following, update this file in the same slice:
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, animated-tab fake-item y-scaling, advancement hover
     rendering, the debug overlay F3 left-column shell, debug overlay
-    right-column memory/system/performance basics, and F3+1..4 chart/lightmap
-    toggle state are live. The remaining open surfaces in this ledger row are
-    the complete debug entry list, actual charts/lightmap rendering, 3D
-    crosshair, and the other F3 modifier combos.
+    right-column memory/system/performance basics, F3+1..4 chart/lightmap
+    toggle state, F3+B/G/H status toggle state, and F3+D clear-chat display
+    action are live. The remaining open surfaces in this ledger row are the
+    complete debug entry list, actual charts/lightmap rendering, entity
+    hitbox/chunk-border rendering, advanced tooltip consumption/persistence,
+    3D crosshair, and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
