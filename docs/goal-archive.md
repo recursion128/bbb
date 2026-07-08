@@ -5113,6 +5113,16 @@
   overlay toggle；signature cache、expected player-chat index、last-seen
   tracker 和 pending acknowledgement 保持不变。剩余：queued chat-listener
   delivery/recent chat history 独立模型、其它 F3 modifier combos。
+- [x] debug overlay F3+A terrain reload request（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
+  `keyDebugReloadChunk` 的调度，以及 `LevelRenderer.allChanged()` 的全量
+  chunk renderer 重建语义。`ClientInputState` 现在在 F3 按住期间消费 A，
+  对 `TerrainUploadState` 设置一次性 all-chunks reload 请求，使下一次
+  `maybe_upload_decoded_terrain` 即使 world counters/已上传 chunk 数未变化也会
+  绕过去抖和 current no-op 路径整批重建 terrain meshes，并在成功上传后清除
+  请求；使用组合键后同样抑制 F3 release 触发普通 overlay toggle，runtime help
+  line 显示 `[F3+A] Reload chunks`。剩余：debug chat feedback、其它 F3
+  modifier combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

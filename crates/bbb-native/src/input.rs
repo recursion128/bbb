@@ -26,6 +26,7 @@ mod movement;
 mod text_edit;
 
 use crate::crosshair::protocol_block_pos_from_world;
+use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
@@ -559,6 +560,7 @@ impl ClientInputState {
         physical_key: PhysicalKey,
         state: ElementState,
         world: Option<&mut WorldStore>,
+        terrain_upload: Option<&mut TerrainUploadState>,
     ) -> bool {
         if !self.focused {
             return false;
@@ -586,7 +588,7 @@ impl ClientInputState {
 
         if matches!(state, ElementState::Pressed)
             && self.debug_modifier_down
-            && self.handle_debug_overlay_modifier_key(code, world)
+            && self.handle_debug_overlay_modifier_key(code, world, terrain_upload)
         {
             self.debug_modifier_used = true;
             return true;
@@ -599,8 +601,16 @@ impl ClientInputState {
         &mut self,
         code: KeyCode,
         mut world: Option<&mut WorldStore>,
+        mut terrain_upload: Option<&mut TerrainUploadState>,
     ) -> bool {
         match code {
+            KeyCode::KeyA => {
+                let Some(terrain_upload) = terrain_upload.as_deref_mut() else {
+                    return false;
+                };
+                terrain_upload.request_reload_all_chunks();
+                true
+            }
             KeyCode::Digit1 => {
                 self.toggle_debug_profiler_chart();
                 true
@@ -1284,7 +1294,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
-    if input.handle_debug_overlay_key(physical_key, state, Some(world)) {
+    if input.handle_debug_overlay_key(physical_key, state, Some(world), None) {
         return;
     }
 

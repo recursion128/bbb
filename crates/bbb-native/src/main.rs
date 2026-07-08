@@ -375,6 +375,7 @@ fn main() -> Result<()> {
                         event.physical_key,
                         event.state,
                         Some(&mut world),
+                        Some(&mut terrain_upload),
                     ) {
                         return;
                     }

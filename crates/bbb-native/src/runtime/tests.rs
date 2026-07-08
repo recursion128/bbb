@@ -896,6 +896,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
+        None,
         None
     ));
     let overlay = hud_debug_overlay(
@@ -964,16 +965,19 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
+        None,
         None
     ));
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::Digit2),
         ElementState::Pressed,
+        None,
         None
     ));
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
+        None,
         None
     ));
 
@@ -994,31 +998,62 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
 }
 
 #[test]
+fn f3_a_requests_terrain_reload_without_toggling_overlay_on_release() {
+    let mut input = ClientInputState::new(true);
+    let mut terrain_upload = TerrainUploadState::default();
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+        None,
+        Some(&mut terrain_upload)
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+
+    assert!(terrain_upload.reload_all_chunks_requested());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let mut input = ClientInputState::new(true);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
-        Some(&mut world)
+        Some(&mut world),
+        None
     ));
     for code in [KeyCode::KeyB, KeyCode::KeyG, KeyCode::KeyH] {
         assert!(input.handle_debug_overlay_key(
             PhysicalKey::Code(code),
             ElementState::Pressed,
-            Some(&mut world)
+            Some(&mut world),
+            None
         ));
     }
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        Some(&mut world)
+        Some(&mut world),
+        None
     ));
     assert!(!input.debug_overlay_visible());
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        Some(&mut world)
+        Some(&mut world),
+        None
     ));
 
     let overlay = hud_debug_overlay(
@@ -1035,7 +1070,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     ));
     assert!(overlay
         .left_lines
-        .contains(&"Debug actions: [F3+D] Clear chat".to_string()));
+        .contains(&"Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat".to_string()));
 }
 
 #[test]

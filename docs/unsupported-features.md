@@ -1074,13 +1074,22 @@ When an agent does any of the following, update this file in the same slice:
   - Continue the debug overlay after the F3 toggle, left-column
     version/position/help shell, and right-column memory/system/performance
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
-    hitboxes/chunk-borders/advanced-tooltips toggle state, and F3+D
-    clear-chat display action: the complete vanilla debug entry list, actual
-    FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip
-    consumption/persistence, 3D crosshair, and the other F3 modifier combos
-    remain (large, low priority).
+    hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
+    reload request, and F3+D clear-chat display action: the complete vanilla
+    debug entry list, actual FPS/TPS/network chart rendering, actual lightmap
+    preview rendering, actual entity hitbox/chunk-border rendering, advanced
+    tooltip consumption/persistence, 3D crosshair, and the other F3 modifier
+    combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+A terrain reload request. Vanilla
+    anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugReloadChunk` to
+    `minecraft.levelRenderer.allChanged()` plus the
+    `debug.reload_chunks.message` feedback. bbb now consumes A while F3 is
+    held, marks `TerrainUploadState` for a one-shot all-chunks reload that
+    bypasses the normal world-counter/debounce no-op path on the next terrain
+    upload pass, suppresses the subsequent F3-release overlay toggle, and
+    reflects the action in the debug overlay help line. Boundary: local debug
+    chat feedback is not modeled yet.
   - Done 2026-07-08 — Debug overlay F3+D clear-chat display action. Vanilla
     anchors: `KeyboardHandler.handleDebugKeys` maps `keyDebugClearChat` to
     `ChatComponent.clearMessages(false)`, which flushes queued GUI chat,
@@ -1637,11 +1646,12 @@ When an agent does any of the following, update this file in the same slice:
     retry guard, animated-tab fake-item y-scaling, advancement hover
     rendering, the debug overlay F3 left-column shell, debug overlay
     right-column memory/system/performance basics, F3+1..4 chart/lightmap
-    toggle state, F3+B/G/H status toggle state, and F3+D clear-chat display
-    action are live. The remaining open surfaces in this ledger row are the
-    complete debug entry list, actual charts/lightmap rendering, entity
-    hitbox/chunk-border rendering, advanced tooltip consumption/persistence,
-    3D crosshair, and the other F3 modifier combos.
+    toggle state, F3+B/G/H status toggle state, F3+A terrain reload request,
+    and F3+D clear-chat display action are live. The remaining open surfaces
+    in this ledger row are the complete debug entry list, actual
+    charts/lightmap rendering, entity hitbox/chunk-border rendering, advanced
+    tooltip consumption/persistence, 3D crosshair, and the other F3 modifier
+    combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
