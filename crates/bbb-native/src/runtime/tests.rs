@@ -6187,6 +6187,52 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_furnace_ghost_recipe_slots() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_furnace_world();
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: furnace_recipe_display(2, 1, 0),
+    });
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+
+    assert_eq!(
+        screen
+            .fill_layers
+            .iter()
+            .filter(|layer| layer.stage == HudInventoryFillStage::BeforeGhostItem)
+            .map(|layer| (layer.x, layer.y, layer.width, layer.height))
+            .collect::<Vec<_>>(),
+        vec![(265, 35, 16, 16), (205, 17, 16, 16), (205, 53, 16, 16)]
+    );
+    assert_eq!(
+        screen
+            .ghost_items
+            .iter()
+            .map(|item| (item.x, item.y, item.draw_decorations))
+            .collect::<Vec<_>>(),
+        vec![(265, 35, true), (205, 17, false), (205, 53, false)]
+    );
+
+    world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 1,
+        item: item_stack(1, 1),
+    });
+    let fuel_occupied = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    assert_eq!(
+        fuel_occupied
+            .ghost_items
+            .iter()
+            .map(|item| (item.x, item.y, item.draw_decorations))
+            .collect::<Vec<_>>(),
+        vec![(265, 35, true), (205, 17, false)]
+    );
+}
+
+#[test]
 fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
@@ -10704,24 +10750,7 @@ fn furnace_recipe_book_entry(
                 display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
                 raw_body: Vec::new(),
                 crafting: None,
-                furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
-                    ingredient: stonecutter_item_display(2),
-                    fuel: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 1,
-                        raw_payload: vec![1],
-                        item_stack: None,
-                        tag: None,
-                    },
-                    result: stonecutter_item_stack_display(result_item_id, 1),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
-                        raw_payload: vec![0],
-                        item_stack: None,
-                        tag: None,
-                    },
-                    duration: 200,
-                    experience_bits: 0.0_f32.to_bits(),
-                }),
+                furnace: Some(furnace_recipe_display_body(2, 1, result_item_id)),
             },
             group,
             category_id,
@@ -10730,6 +10759,43 @@ fn furnace_recipe_book_entry(
         flags: 0,
         notification: false,
         highlight: false,
+    }
+}
+
+fn furnace_recipe_display(
+    ingredient_item_id: i32,
+    fuel_item_id: i32,
+    result_item_id: i32,
+) -> bbb_protocol::packets::RecipeDisplaySummary {
+    bbb_protocol::packets::RecipeDisplaySummary {
+        display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
+        raw_body: Vec::new(),
+        crafting: None,
+        furnace: Some(furnace_recipe_display_body(
+            ingredient_item_id,
+            fuel_item_id,
+            result_item_id,
+        )),
+    }
+}
+
+fn furnace_recipe_display_body(
+    ingredient_item_id: i32,
+    fuel_item_id: i32,
+    result_item_id: i32,
+) -> bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+    bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+        ingredient: stonecutter_item_display(ingredient_item_id),
+        fuel: stonecutter_item_display(fuel_item_id),
+        result: stonecutter_item_stack_display(result_item_id, 1),
+        crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+            display_type_id: 0,
+            raw_payload: vec![0],
+            item_stack: None,
+            tag: None,
+        },
+        duration: 200,
+        experience_bits: 0.0_f32.to_bits(),
     }
 }
 

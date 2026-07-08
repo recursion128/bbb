@@ -1064,11 +1064,11 @@ When an agent does any of the following, update this file in the same slice:
     shell/placement shell/category tab visibility/crafting ghost slots/search
     filtering/direct-item craftability/same-result multi-recipe icon overlay,
     search cursor/selection, tag-backed ghost ingredient display, tab
-    notification pulse, and furnace-family recipe-grid baseline:
-    furnace-family ghost recipe projection, exact smeltable/fuel filter
-    parity, multi-recipe picker/cycling, full recipe `FullTextSearchTree`
-    token parity, and full tag/composite SlotDisplay time-cycling for ghost
-    ingredient variants.
+    notification pulse, furnace-family recipe-grid baseline, and
+    furnace-family ghost recipe projection:
+    exact smeltable/fuel filter parity, multi-recipe picker/cycling, full
+    recipe `FullTextSearchTree` token parity, and full tag/composite
+    SlotDisplay time-cycling for ghost ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1283,12 +1283,19 @@ When an agent does any of the following, update this file in the same slice:
     blast-furnace / smoker collections from canonical recipe-book entries,
     renders category-filtered recipe buttons, result icons, page arrows, and
     page text on those screens, and uses the same filtered collection for
-    recipe-button click hit-testing and `PlaceRecipeCommand`. Boundary:
-    furnace-family ghost recipe projection and exact smeltable/fuel filter
-    parity remain open.
-  - Boundary: furnace-family ghost recipe projection, exact smeltable/fuel
-    filter parity, craftability retry guard, multi-recipe
-    picker/cycling/right-click overlay, full
+    recipe-button click hit-testing and `PlaceRecipeCommand`. Boundary: exact
+    smeltable/fuel filter parity remains open.
+  - Done 2026-07-08 — Furnace-family ghost recipe projection. Vanilla
+    anchors: `FurnaceRecipeBookComponent.fillGhostRecipe` sets the result
+    ghost from `menu.getResultSlot()`, sets input slot 0 from the furnace
+    ingredient display, and sets fuel slot 1 only when that slot's item is
+    empty; `AbstractFurnaceMenu` defines slot ids 0/1/2 for ingredient/fuel/
+    result. bbb now projects structured furnace displays into furnace,
+    blast-furnace, and smoker ghost slots at the shifted screen slot
+    positions, preserves result decorations, and suppresses the fuel ghost
+    when the fuel slot is occupied.
+  - Boundary: exact smeltable/fuel filter parity, craftability retry guard,
+    multi-recipe picker/cycling/right-click overlay, full
     `FullTextSearchTree` token / namespace-path / intersection semantics for
     recipe search, full tag/composite SlotDisplay time-cycling for ghost
     ingredients, exact fake-item y-scaling during animated recipe-book tabs,
@@ -1296,11 +1303,13 @@ When an agent does any of the following, update this file in the same slice:
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
-    item/item-stack crafting ghost slots, visible crafting/furnace-family search filtering,
+    item/item-stack crafting ghost slots, visible crafting/furnace-family
+    search filtering,
     direct-item/tag-backed crafting craftability slot/filtering path, and
     same-result multi-recipe duplicate icon overlay, and first-item tag-backed
     crafting ghost ingredient projection, highlighted recipe-book tab baseline
-    pulse, and furnace-family recipe-grid baseline are live. The first shell
+    pulse, furnace-family recipe-grid baseline, and furnace-family ghost
+    recipe projection are live. The first shell
     models the non-narrow layout; vanilla's narrow-screen overlap mode
     (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

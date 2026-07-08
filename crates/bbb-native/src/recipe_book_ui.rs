@@ -65,6 +65,8 @@ const CRAFTING_TABLE_PLAYER_MAIN_END: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_START: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_END: i16 = 46;
 const FURNACE_INGREDIENT_SLOT: i16 = 0;
+const FURNACE_FUEL_SLOT: i16 = 1;
+const FURNACE_RESULT_SLOT: i16 = 2;
 const FURNACE_PLAYER_MAIN_START: i16 = 3;
 const FURNACE_PLAYER_MAIN_END: i16 = 30;
 const FURNACE_HOTBAR_START: i16 = 30;
@@ -276,7 +278,7 @@ pub(crate) fn crafting_recipe_book_ghost_slots<'a>(
             result,
             ..
         } => {
-            push_recipe_book_ghost_result(result, item_tag_entries, &mut slots);
+            push_recipe_book_ghost_result_at_slot(0, result, item_tag_entries, &mut slots);
             let slot_count = ingredients
                 .len()
                 .min((grid.width * grid.height).max(0) as usize);
@@ -296,7 +298,7 @@ pub(crate) fn crafting_recipe_book_ghost_slots<'a>(
             result,
             ..
         } => {
-            push_recipe_book_ghost_result(result, item_tag_entries, &mut slots);
+            push_recipe_book_ghost_result_at_slot(0, result, item_tag_entries, &mut slots);
             place_shaped_recipe_ghost_inputs(
                 grid,
                 *width,
@@ -306,6 +308,38 @@ pub(crate) fn crafting_recipe_book_ghost_slots<'a>(
                 &mut slots,
             );
         }
+    }
+    slots
+}
+
+pub(crate) fn furnace_recipe_book_ghost_slots<'a>(
+    display: &'a RecipeDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+    fuel_slot_empty: bool,
+) -> Vec<RecipeBookGhostSlot<'a>> {
+    let Some(furnace) = display.furnace.as_ref() else {
+        return Vec::new();
+    };
+    let mut slots = Vec::new();
+    push_recipe_book_ghost_result_at_slot(
+        FURNACE_RESULT_SLOT,
+        &furnace.result,
+        item_tag_entries,
+        &mut slots,
+    );
+    push_recipe_book_ghost_input(
+        &furnace.ingredient,
+        i32::from(FURNACE_INGREDIENT_SLOT),
+        item_tag_entries,
+        &mut slots,
+    );
+    if fuel_slot_empty {
+        push_recipe_book_ghost_input(
+            &furnace.fuel,
+            i32::from(FURNACE_FUEL_SLOT),
+            item_tag_entries,
+            &mut slots,
+        );
     }
     slots
 }
@@ -327,7 +361,8 @@ fn recipe_book_furnace_result_stack(entry: &RecipeDisplayEntry) -> Option<&ItemS
     entry.display.furnace.as_ref()?.result.item_stack.as_ref()
 }
 
-fn push_recipe_book_ghost_result<'a>(
+fn push_recipe_book_ghost_result_at_slot<'a>(
+    slot_id: i16,
     display: &'a SlotDisplaySummary,
     item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     slots: &mut Vec<RecipeBookGhostSlot<'a>>,
@@ -336,7 +371,7 @@ fn push_recipe_book_ghost_result<'a>(
         return;
     };
     slots.push(RecipeBookGhostSlot {
-        slot_id: 0,
+        slot_id,
         stack,
         is_result: true,
     });

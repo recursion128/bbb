@@ -1952,6 +1952,16 @@
   multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
   token/namespace-path/intersection 语义、tag/composite SlotDisplay
   time-cycling、narrow-screen overlap。
+- [x] furnace-family recipe-book ghost slots（P2 HUD/runtime slice，
+  2026-07-08）：依据 `FurnaceRecipeBookComponent.fillGhostRecipe` 对 result
+  slot、input slot 0、空 fuel slot 1 的 ghost 填充，以及
+  `AbstractFurnaceMenu` 的 ingredient/fuel/result slot id 0/1/2，native
+  现在把结构化 furnace display 投影到 furnace、blast furnace、smoker 的
+  shifted slot 坐标；result ghost 保留 item decorations，fuel slot 已有 item
+  时不投影 fuel ghost。剩余：exact smeltable/fuel filter parity、
+  craftability retry guard、multi-recipe picker/cycling/right-click overlay、
+  完整 `FullTextSearchTree` token/namespace-path/intersection 语义、
+  tag/composite SlotDisplay time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

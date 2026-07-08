@@ -105,8 +105,9 @@ use crate::{
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
-        furnace_recipe_book_collections, furnace_recipe_book_tab_has_highlighted_recipe,
-        recipe_book_page_count, RecipeBookCraftingGrid, RecipeBookFurnaceFamily,
+        furnace_recipe_book_collections, furnace_recipe_book_ghost_slots,
+        furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_page_count,
+        RecipeBookCraftingGrid, RecipeBookFurnaceFamily, RecipeBookGhostSlot,
         RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
@@ -3282,19 +3283,18 @@ fn hud_recipe_book_ghost_layers_and_items(
     if world.open_container_id() != Some(ghost_recipe.container_id) {
         return (Vec::new(), Vec::new());
     }
-    let Some(grid) = recipe_book_crafting_grid_for_background(background) else {
-        return (Vec::new(), Vec::new());
-    };
     let Some(display) = ghost_recipe.recipe_display.as_ref() else {
         return (Vec::new(), Vec::new());
     };
 
-    let mut fill_layers = Vec::new();
-    let mut ghost_items = Vec::new();
     let item_tag_entries = world
         .registry_tags("minecraft:item")
         .map(|registry| &registry.tags);
-    for ghost_slot in crafting_recipe_book_ghost_slots(display, grid, item_tag_entries) {
+    let ghost_slots =
+        hud_recipe_book_ghost_slots_for_background(world, background, display, item_tag_entries);
+    let mut fill_layers = Vec::new();
+    let mut ghost_items = Vec::new();
+    for ghost_slot in ghost_slots {
         let Some(layout_slot) = layout_slots
             .iter()
             .find(|layout_slot| layout_slot.slot_id == ghost_slot.slot_id)
@@ -3354,6 +3354,34 @@ fn hud_recipe_book_ghost_layers_and_items(
     }
 
     (fill_layers, ghost_items)
+}
+
+fn hud_recipe_book_ghost_slots_for_background<'a>(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    display: &'a bbb_protocol::packets::RecipeDisplaySummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+) -> Vec<RecipeBookGhostSlot<'a>> {
+    if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
+        return crafting_recipe_book_ghost_slots(display, grid, item_tag_entries);
+    }
+    if recipe_book_furnace_family_for_background(background).is_some() {
+        return furnace_recipe_book_ghost_slots(
+            display,
+            item_tag_entries,
+            furnace_recipe_book_fuel_slot_is_empty(world),
+        );
+    }
+    Vec::new()
+}
+
+fn furnace_recipe_book_fuel_slot_is_empty(world: &WorldStore) -> bool {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.slots.iter().find(|slot| slot.slot == 1))
+        .is_none_or(|slot| item_stack_is_empty(&slot.item))
 }
 
 fn recipe_book_result_slot_fill_is_big(background: InventoryScreenBackground) -> bool {
