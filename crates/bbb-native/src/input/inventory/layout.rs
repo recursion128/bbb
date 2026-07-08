@@ -77,6 +77,10 @@ pub(crate) const RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X: i32 = 38;
 pub(crate) const RECIPE_BOOK_PAGE_BUTTON_Y: i32 = 137;
 pub(crate) const RECIPE_BOOK_PAGE_BUTTON_WIDTH: i32 = 12;
 pub(crate) const RECIPE_BOOK_PAGE_BUTTON_HEIGHT: i32 = 17;
+pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_X: i32 = 11;
+pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_Y: i32 = 31;
+pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_SIZE: i32 = 25;
+pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_COLUMNS: usize = 5;
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);

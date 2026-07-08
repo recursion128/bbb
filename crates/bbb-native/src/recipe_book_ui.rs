@@ -39,6 +39,10 @@ impl<'a> RecipeBookUiCollection<'a> {
             .and_then(|entry| recipe_book_crafting_result_stack(entry))
     }
 
+    pub(crate) fn first_recipe_index(&self) -> Option<i32> {
+        self.entries.first().map(|entry| entry.id.index)
+    }
+
     pub(crate) fn has_multiple_recipes(&self) -> bool {
         self.entries.len() > 1
     }

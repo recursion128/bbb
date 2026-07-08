@@ -4027,6 +4027,50 @@ fn recipe_book_page_arrow_click_updates_local_page_state() {
 }
 
 #[test]
+fn recipe_book_recipe_button_click_queues_place_recipe_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    input.recipe_book_search_focused = true;
+    input.shift_left_down = true;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![recipe_book_shapeless_entry(42, 2, 200)],
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert!(!input.recipe_book_search_hud_state().focused);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 42,
+            use_max_items: true,
+        })
+    );
+}
+
+#[test]
 fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

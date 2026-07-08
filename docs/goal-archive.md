@@ -1804,6 +1804,19 @@
   recipe placement、recipe-category-backed tab visibility、tab notification
   animation、visible recipe-grid search filtering、search cursor/selection
   rendering、ghost recipe slots、narrow-screen overlap。
+- [x] recipe-book placement command shell（P2 input slice，2026-07-08）：
+  依据 `RecipeBookPage.mouseClicked` 在 page arrows 之后处理 recipe button、
+  左键取 `RecipeButton.getCurrentRecipe()`，以及
+  `RecipeBookComponent.tryPlaceRecipe` 调用
+  `handlePlaceRecipe(containerId, recipe, event.hasShiftDown())`，在 bbb 的
+  recipe book input path 中命中当前可见 crafting recipe button 后排队
+  `PlaceRecipeCommand`，携带 open container id、recipe index 和 shift
+  状态作为 `use_max_items`；不发额外 settings 包并取消 search focus。剩余：
+  furnace-family raw recipe displays、craftability slot sprite selection、
+  craftability retry guard、multi-recipe cycling/right-click overlay、
+  recipe-category-backed tab visibility、tab notification animation、visible
+  recipe-grid search filtering、search cursor/selection rendering、ghost recipe
+  slots、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

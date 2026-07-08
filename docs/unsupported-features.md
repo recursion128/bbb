@@ -1061,9 +1061,9 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
     buttons/search input/tab shell/crafting recipe-button shell/category-page
-    shell: recipe placement, ghost recipe slots, tab notification/category
-    visibility, recipe-search filtering, and craftability/furnace-family
-    recipe-grid parity.
+    shell/placement shell: ghost recipe slots, tab notification/category
+    visibility, recipe-search filtering, craftability/furnace-family
+    recipe-grid parity, and multi-recipe overlay/cycling.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1147,15 +1147,25 @@ When an agent does any of the following, update this file in the same slice:
     local page state, renders page arrows/page numbers, and lets arrow clicks
     turn pages without sending a packet; tab clicks reset the page like
     vanilla.
+  - Done 2026-07-08 — Recipe-book placement command shell. Vanilla anchors:
+    `RecipeBookPage.mouseClicked` handles page arrows before recipe buttons,
+    records `RecipeButton.getCurrentRecipe()` on left click, and
+    `RecipeBookComponent.tryPlaceRecipe` calls
+    `handlePlaceRecipe(containerId, recipe, event.hasShiftDown())`. bbb now
+    hit-tests the visible crafting recipe button grid after page arrows and
+    before filter/toggle/main slot handling, queues `PlaceRecipeCommand` with
+    the open container id, clicked recipe index, and current shift state as
+    `use_max_items`, and keeps the action local to the recipe book input path.
   - Boundary: furnace-family raw recipe displays, craftability slot sprite
-    selection, recipe placement commands from clicks, recipe-category-backed
-    tab visibility, tab notification animation, recipe-search filtering of
-    visible recipe buttons, cursor/selection rendering inside the search box,
-    and ghost recipe slot rendering remain open. The filter toggle, search
-    text, selected-tab, first crafting recipe-button shell, and crafting
-    category/page states are live. The first shell models the non-narrow
-    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
-    the input/render follow-up.
+    selection, craftability retry guard, multi-recipe cycling/right-click
+    overlay, recipe-category-backed tab visibility, tab notification
+    animation, recipe-search filtering of visible recipe buttons,
+    cursor/selection rendering inside the search box, and ghost recipe slot
+    rendering remain open. The filter toggle, search text, selected-tab, first
+    crafting recipe-button shell, crafting category/page states, and primary
+    recipe placement command path are live. The first shell models the
+    non-narrow layout; vanilla's narrow-screen overlap mode (`width < 379`)
+    remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
