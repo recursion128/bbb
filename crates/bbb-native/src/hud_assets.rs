@@ -80,6 +80,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafting_table.height,
         &crafting_table.rgba,
     )?;
+    let advancements_window = gui_texture(
+        roots,
+        "textures/gui/advancements/window.png",
+        "minecraft:textures/gui/advancements/window",
+    )?;
+    renderer.upload_hud_advancements_window(
+        advancements_window.width,
+        advancements_window.height,
+        &advancements_window.rgba,
+    )?;
     let recipe_book = gui_texture(
         roots,
         "textures/gui/recipe_book.png",

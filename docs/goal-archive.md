@@ -2080,6 +2080,16 @@
   把该 screen 纳入 cursor-owning 与 input-screen-open 判定。剩余：
   advancement window/tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
   overlay。
+- [x] advancement screen empty window shell（P2 HUD/runtime/renderer slice，
+  2026-07-08）：依据 `AdvancementsScreen.WINDOW_LOCATION` 的
+  `textures/gui/advancements/window.png`、252x140 window、`extractInside`
+  无 selected tab 时的 `(9,18,234,113)` 黑色填充与 y=70/y=122 居中文案、
+  `extractWindow` 的 256x256 UV blit 和 `(8,6)` 深灰标题；renderer 现在加载
+  vanilla advancement window 纹理，runtime 在本地 advancement screen 打开时
+  投影 252x140 HUD screen、黑色内容区以及 `Advancements` /
+  `There doesn't seem to be anything here...` / `:(` 文案。剩余：Done button、
+  advancement tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
+  overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

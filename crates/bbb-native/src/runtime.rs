@@ -338,6 +338,23 @@ const BOOK_PAGE_TEXT_WIDTH: u32 = 114;
 const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
 const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
 const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+const ADVANCEMENTS_WINDOW_WIDTH: u32 = 252;
+const ADVANCEMENTS_WINDOW_HEIGHT: u32 = 140;
+const ADVANCEMENTS_WINDOW_INSIDE_X: i32 = 9;
+const ADVANCEMENTS_WINDOW_INSIDE_Y: i32 = 18;
+const ADVANCEMENTS_WINDOW_INSIDE_WIDTH: u32 = 234;
+const ADVANCEMENTS_WINDOW_INSIDE_HEIGHT: u32 = 113;
+const ADVANCEMENTS_WINDOW_TITLE_X: i32 = 8;
+const ADVANCEMENTS_WINDOW_TITLE_Y: i32 = 6;
+const ADVANCEMENTS_EMPTY_TEXT_CENTER_X: i32 = 126;
+const ADVANCEMENTS_EMPTY_TEXT_Y: i32 = 70;
+const ADVANCEMENTS_SAD_TEXT_Y: i32 = 122;
+const ADVANCEMENTS_TITLE_TEXT: &str = "Advancements";
+const ADVANCEMENTS_EMPTY_TEXT: &str = "There doesn't seem to be anything here...";
+const ADVANCEMENTS_SAD_TEXT: &str = ":(";
+const ADVANCEMENTS_TITLE_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
+const ADVANCEMENTS_EMPTY_TEXT_COLOR: [f32; 4] = rgba32(-1);
+const ADVANCEMENTS_EMPTY_BACKGROUND_TINT: [f32; 4] = rgba32(-16_777_216);
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
@@ -2646,6 +2663,10 @@ fn hud_inventory_screen_with_local_state_for_surface(
         return Some(hud_book_screen(book));
     }
 
+    if world.advancements_screen_is_open() {
+        return Some(hud_advancements_screen());
+    }
+
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
@@ -4438,6 +4459,81 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
         hovered_slot_id: None,
         tooltip: None,
     }
+}
+
+fn hud_advancements_screen() -> HudInventoryScreen {
+    HudInventoryScreen {
+        width: ADVANCEMENTS_WINDOW_WIDTH,
+        height: ADVANCEMENTS_WINDOW_HEIGHT,
+        background_layers: vec![hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementsWindow,
+            0,
+            0,
+            ADVANCEMENTS_WINDOW_WIDTH,
+            ADVANCEMENTS_WINDOW_HEIGHT,
+            [0.0, 0.0],
+            [
+                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+            ],
+        )],
+        fill_layers: vec![HudInventoryFillLayer {
+            x: ADVANCEMENTS_WINDOW_INSIDE_X,
+            y: ADVANCEMENTS_WINDOW_INSIDE_Y,
+            width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+            height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+            tint: ADVANCEMENTS_EMPTY_BACKGROUND_TINT,
+            stage: HudInventoryFillStage::BeforeGhostItem,
+        }],
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        ghost_items: Vec::new(),
+        entity_previews: Vec::new(),
+        text_labels: advancements_screen_text_labels(),
+        hovered_slot_id: None,
+        tooltip: None,
+    }
+}
+
+fn advancements_screen_text_labels() -> Vec<HudInventoryTextLabel> {
+    let mut labels = vec![HudInventoryTextLabel {
+        x: ADVANCEMENTS_WINDOW_TITLE_X,
+        y: ADVANCEMENTS_WINDOW_TITLE_Y,
+        width: hud_ascii_approx_text_width(ADVANCEMENTS_TITLE_TEXT).unwrap_or_default(),
+        text: ADVANCEMENTS_TITLE_TEXT.to_string(),
+        tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
+        background: None,
+        input: None,
+        shadow: false,
+        runs: Vec::new(),
+    }];
+    push_centered_advancements_label(
+        &mut labels,
+        ADVANCEMENTS_EMPTY_TEXT,
+        ADVANCEMENTS_EMPTY_TEXT_Y,
+    );
+    push_centered_advancements_label(&mut labels, ADVANCEMENTS_SAD_TEXT, ADVANCEMENTS_SAD_TEXT_Y);
+    labels
+}
+
+fn push_centered_advancements_label(labels: &mut Vec<HudInventoryTextLabel>, text: &str, y: i32) {
+    let Some(width) = hud_ascii_approx_text_width(text) else {
+        return;
+    };
+    let Ok(width_i32) = i32::try_from(width) else {
+        return;
+    };
+    labels.push(HudInventoryTextLabel {
+        x: ADVANCEMENTS_EMPTY_TEXT_CENTER_X - width_i32 / 2,
+        y,
+        width,
+        text: text.to_string(),
+        tint: ADVANCEMENTS_EMPTY_TEXT_COLOR,
+        background: None,
+        input: None,
+        shadow: false,
+        runs: Vec::new(),
+    });
 }
 
 fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBackgroundLayer> {

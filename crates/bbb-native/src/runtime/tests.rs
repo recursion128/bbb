@@ -9349,6 +9349,78 @@ fn hud_inventory_screen_projects_current_book_screen() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_empty_advancements_screen() {
+    let mut world = WorldStore::new();
+    assert!(world.open_advancements_screen());
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert_eq!(screen.width, ADVANCEMENTS_WINDOW_WIDTH);
+    assert_eq!(screen.height, ADVANCEMENTS_WINDOW_HEIGHT);
+    assert!(screen.slots.is_empty());
+    assert!(screen.floating_items.is_empty());
+    assert_eq!(
+        screen.background_layers,
+        vec![hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementsWindow,
+            0,
+            0,
+            ADVANCEMENTS_WINDOW_WIDTH,
+            ADVANCEMENTS_WINDOW_HEIGHT,
+            [0.0, 0.0],
+            [
+                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+            ],
+        )]
+    );
+    assert_eq!(
+        screen.fill_layers,
+        vec![HudInventoryFillLayer {
+            x: ADVANCEMENTS_WINDOW_INSIDE_X,
+            y: ADVANCEMENTS_WINDOW_INSIDE_Y,
+            width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+            height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+            tint: ADVANCEMENTS_EMPTY_BACKGROUND_TINT,
+            stage: HudInventoryFillStage::BeforeGhostItem,
+        }]
+    );
+    assert_eq!(
+        screen.text_labels,
+        vec![
+            HudInventoryTextLabel {
+                x: ADVANCEMENTS_WINDOW_TITLE_X,
+                y: ADVANCEMENTS_WINDOW_TITLE_Y,
+                width: hud_ascii_approx_text_width(ADVANCEMENTS_TITLE_TEXT).unwrap(),
+                text: ADVANCEMENTS_TITLE_TEXT.to_string(),
+                tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
+                background: None,
+                input: None,
+                shadow: false,
+                runs: Vec::new(),
+            },
+            advancements_centered_text_label(ADVANCEMENTS_EMPTY_TEXT, ADVANCEMENTS_EMPTY_TEXT_Y),
+            advancements_centered_text_label(ADVANCEMENTS_SAD_TEXT, ADVANCEMENTS_SAD_TEXT_Y),
+        ]
+    );
+}
+
+fn advancements_centered_text_label(text: &str, y: i32) -> HudInventoryTextLabel {
+    let width = hud_ascii_approx_text_width(text).unwrap();
+    HudInventoryTextLabel {
+        x: ADVANCEMENTS_EMPTY_TEXT_CENTER_X - i32::try_from(width).unwrap() / 2,
+        y,
+        width,
+        text: text.to_string(),
+        tint: ADVANCEMENTS_EMPTY_TEXT_COLOR,
+        background: None,
+        input: None,
+        shadow: false,
+        runs: Vec::new(),
+    }
+}
+
+#[test]
 fn hud_inventory_screen_projects_shulker_box_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

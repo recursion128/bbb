@@ -1059,9 +1059,9 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Continue the advancement screen after the local open/close shell:
-    window/tab/tree rendering and selected-tab `OpenedTab` behavior
-    (`ClientAdvancementsState` ready).
+  - Continue the advancement screen after the local open/close and empty
+    window shells: Done button, tab/tree rendering, and selected-tab
+    `OpenedTab` behavior (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1401,8 +1401,20 @@ When an agent does any of the following, update this file in the same slice:
     `L` only on the gameplay key path, releases active input on open, treats it
     as a cursor-owning screen in the runtime/main loop, and closes it with
     Escape or `L` while queueing `SeenAdvancements::ClosedScreen`.
+  - Done 2026-07-08 — Advancement screen empty window shell. Vanilla anchors:
+    `AdvancementsScreen.WINDOW_LOCATION` points at
+    `textures/gui/advancements/window.png`; `WINDOW_WIDTH=252`,
+    `WINDOW_HEIGHT=140`; `extractInside` fills `(9,18,234,113)` black when no
+    tab is selected, then centers `advancements.empty` at y=70 and
+    `advancements.sad_label` at y=122; `extractWindow` blits the 252x140
+    window from a 256x256 texture and writes `gui.advancements` at `(8,6)` in
+    `-12566464`. bbb now loads the vanilla window texture, projects a
+    252x140 HUD screen while the local advancement screen is open, draws the
+    black empty content fill, and emits the vanilla en_us title/empty labels
+    at those coordinates.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
-    overlap, and the advancement screen local open/close shell is live. The
+    overlap, and the advancement screen local open/close plus empty window
+    shells are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1418,8 +1430,8 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The
-    remaining open surfaces in this ledger row are the advancement screen
-    visual/tab/tree pass and debug overlay.
+    remaining open surfaces in this ledger row are the advancement screen Done
+    button/tab/tree pass and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
