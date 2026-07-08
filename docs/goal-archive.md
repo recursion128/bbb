@@ -5542,3 +5542,19 @@
   passenger slab target；native F3+B 在实体 hitbox 后提交黄色 slab。边界：
   vanilla arrowheads、local-server debug boxes/arrows、labels、以及专用 debug
   gizmo styling 仍待后续。
+- [x] debug overlay F3+I server-side NBT response callback（P2
+  world/native/runtime slice，2026-07-08）：依据
+  `ClientPacketListener.handleTagQueryPacket` 只把
+  `ClientboundTagQueryPacket` 交给 `DebugQueryHandler.handleResponse`，而
+  `DebugQueryHandler` 仅在 transaction id 匹配当前 pending callback 时执行并
+  清空 callback；同时依据 `KeyboardHandler.copyRecreateCommand` 在 query 发起
+  时捕获 block state 或 entity id/position，方块把返回 `CompoundTag` 直接
+  拼到 `/setblock` 描述后，实体在 `/summon` 前删除 root `UUID` / `Pos` 并用
+  `NbtUtils.toPrettyComponent` 文本化。world `TagQueryResponseState` 现在能把
+  raw unnamed-root NBT 转成 compact block SNBT 或 entity pretty SNBT；native
+  input 保存单个 pending transaction 与 query-time 捕获的目标数据，main loop
+  在 network pump 后消费匹配响应、写 debug clipboard、发送 server-side copied
+  feedback，并对不匹配 transaction id 保留 pending。测试覆盖方块、实体、null
+  tag、不匹配 id、以及 query 后方块状态变化仍复制发起时状态。边界：
+  gamemaster permission gate、Shift+F3+I 本地 client-side NBT capture、
+  styled/clickable feedback 仍待后续。

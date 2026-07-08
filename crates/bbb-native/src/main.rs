@@ -458,7 +458,7 @@ fn main() -> Result<()> {
                         if recreate_server_query_request_count > 0 {
                             tracing::info!(
                                 recreate_server_query_request_count,
-                                "debug recreate server query requested by F3+I; NBT response copy is not implemented"
+                                "debug recreate server query requested by F3+I"
                             );
                         }
                         let pause_without_menu_requests =
@@ -727,6 +727,10 @@ fn main() -> Result<()> {
                         target.exit();
                         return;
                     }
+                    input.consume_debug_recreate_server_query_response(
+                        &mut world,
+                        &mut debug_clipboard,
+                    );
                     code_of_conduct_overlay.update_renderer(
                         &mut renderer,
                         &world,
@@ -857,6 +861,10 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
+                input.consume_debug_recreate_server_query_response(
+                    &mut world,
+                    &mut debug_clipboard,
+                );
                 code_of_conduct_overlay.update_renderer(
                     &mut renderer,
                     &world,

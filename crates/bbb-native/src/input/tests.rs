@@ -17,7 +17,7 @@ use bbb_protocol::packets::{
     PlayerHealth, RenameItem, SeenAdvancements, SelectBundleItem,
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEquipment,
     SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, UpdateAdvancements,
+    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, TagQuery, UpdateAdvancements,
     Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
@@ -1387,6 +1387,16 @@ fn f3_i_without_shift_records_server_recreate_query_request_shell() {
 
     assert_eq!(clipboard.text, None);
     assert_eq!(
+        input.pending_debug_recreate_server_query,
+        Some(PendingDebugRecreateServerQuery {
+            transaction_id: 0,
+            target: PendingDebugRecreateServerQueryTarget::Block {
+                pos: target_pos,
+                description: "minecraft:oak_log[axis=x]".to_string(),
+            },
+        })
+    );
+    assert_eq!(
         input.take_debug_recreate_server_query_requests(),
         vec![DebugRecreateServerQueryRequest::BlockEntityTag {
             transaction_id: 0,
@@ -1398,13 +1408,7 @@ fn f3_i_without_shift_records_server_recreate_query_request_shell() {
         }]
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Requested server-side recreate data; NBT response copy is not implemented"
-    );
+    assert!(world.client_chat().messages.is_empty());
 
     assert!(input.handle_debug_overlay_key_with_clipboard(
         PhysicalKey::Code(KeyCode::F3),
@@ -1414,6 +1418,245 @@ fn f3_i_without_shift_records_server_recreate_query_request_shell() {
         Some(&mut clipboard)
     ));
     assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_i_server_block_tag_response_copies_recreate_command() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        input.take_debug_recreate_server_query_requests(),
+        vec![DebugRecreateServerQueryRequest::BlockEntityTag {
+            transaction_id: 0,
+            pos: ProtocolBlockPos {
+                x: target_pos.x,
+                y: target_pos.y,
+                z: target_pos.z,
+            },
+        }]
+    );
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    world.apply_tag_query(TagQuery {
+        transaction_id: 0,
+        tag_present: true,
+        raw_nbt: nbt_compound(vec![
+            nbt_string("id", "minecraft:chest"),
+            nbt_string("Lock", "secret"),
+        ]),
+    });
+
+    assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]{Lock:\"secret\",id:\"minecraft:chest\"}")
+    );
+    assert_eq!(input.pending_debug_recreate_server_query, None);
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied server-side block data to clipboard"
+    );
+}
+
+#[test]
+fn f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 50,
+        uuid: Uuid::from_u128(50),
+        entity_type_id: VANILLA_ENTITY_TYPE_CREEPER_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        input.take_debug_recreate_server_query_requests(),
+        vec![DebugRecreateServerQueryRequest::EntityTag {
+            transaction_id: 0,
+            entity_id: 50,
+        }]
+    );
+    world.apply_tag_query(TagQuery {
+        transaction_id: 99,
+        tag_present: true,
+        raw_nbt: nbt_compound(vec![nbt_byte("Charged", 1)]),
+    });
+    assert!(!input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(clipboard.text, None);
+    assert!(input.pending_debug_recreate_server_query.is_some());
+
+    world.apply_tag_query(TagQuery {
+        transaction_id: 0,
+        tag_present: true,
+        raw_nbt: nbt_compound(vec![
+            nbt_long_array("UUID", &[1, 2]),
+            nbt_list(
+                "Pos",
+                6,
+                vec![
+                    0.0f64.to_be_bytes().to_vec(),
+                    0.0f64.to_be_bytes().to_vec(),
+                    3.0f64.to_be_bytes().to_vec(),
+                ],
+            ),
+            nbt_byte("Charged", 1),
+            nbt_string("CustomName", "Boom"),
+        ]),
+    });
+
+    assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/summon minecraft:creeper 0.00 0.00 3.00 {Charged: 1b, CustomName: \"Boom\"}")
+    );
+    assert_eq!(input.pending_debug_recreate_server_query, None);
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied server-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn f3_i_null_server_tag_response_copies_command_without_nbt() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:stone", []),
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    input.take_debug_recreate_server_query_requests();
+    world.apply_tag_query(TagQuery {
+        transaction_id: 0,
+        tag_present: false,
+        raw_nbt: vec![0],
+    });
+
+    assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/setblock 0 1 3 minecraft:stone")
+    );
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied server-side block data to clipboard"
+    );
 }
 
 #[test]
@@ -1455,6 +1698,70 @@ fn queues_debug_recreate_server_query_requests_as_tag_query_commands() {
             entity_id: 88,
         })
     );
+}
+
+fn nbt_compound(entries: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut out = vec![10];
+    for entry in entries {
+        out.extend_from_slice(&entry);
+    }
+    out.push(0);
+    out
+}
+
+fn nbt_byte(name: &str, value: i8) -> Vec<u8> {
+    let mut out = vec![1];
+    write_mutf8(&mut out, name);
+    out.push(value as u8);
+    out
+}
+
+fn nbt_string(name: &str, value: &str) -> Vec<u8> {
+    let mut out = vec![8];
+    write_mutf8(&mut out, name);
+    write_mutf8(&mut out, value);
+    out
+}
+
+fn nbt_list(name: &str, element_type: u8, values: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut out = vec![9];
+    write_mutf8(&mut out, name);
+    out.push(element_type);
+    out.extend_from_slice(&(values.len() as i32).to_be_bytes());
+    for value in values {
+        out.extend_from_slice(&value);
+    }
+    out
+}
+
+fn nbt_long_array(name: &str, values: &[i64]) -> Vec<u8> {
+    let mut out = vec![12];
+    write_mutf8(&mut out, name);
+    out.extend_from_slice(&(values.len() as i32).to_be_bytes());
+    for value in values {
+        out.extend_from_slice(&value.to_be_bytes());
+    }
+    out
+}
+
+fn write_mutf8(out: &mut Vec<u8>, value: &str) {
+    let mut bytes = Vec::new();
+    for unit in value.encode_utf16() {
+        if unit == 0 {
+            bytes.extend_from_slice(&[0xc0, 0x80]);
+        } else if unit <= 0x7f {
+            bytes.push(unit as u8);
+        } else if unit <= 0x7ff {
+            bytes.push((0xc0 | ((unit >> 6) & 0x1f)) as u8);
+            bytes.push((0x80 | (unit & 0x3f)) as u8);
+        } else {
+            bytes.push((0xe0 | ((unit >> 12) & 0x0f)) as u8);
+            bytes.push((0x80 | ((unit >> 6) & 0x3f)) as u8);
+            bytes.push((0x80 | (unit & 0x3f)) as u8);
+        }
+    }
+    out.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
+    out.extend_from_slice(&bytes);
 }
 
 #[test]

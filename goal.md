@@ -308,7 +308,8 @@ Screen Render Surfaces" 条目）：
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
   advanced tooltip full parity、dynamic texture dump execution、F3+I
-  NBT response/callback recreate parity、profiling metrics recorder/output、actual
+  gamemaster permission gate/local client-side NBT capture/styled feedback、
+  profiling metrics recorder/output、actual
   DebugOptionsScreen、native pause loop/PauseScreen、其它 F3 组合键，
   低优先）。
 

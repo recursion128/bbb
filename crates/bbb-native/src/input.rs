@@ -15,7 +15,9 @@ use bbb_protocol::{
     MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
-use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
+use bbb_world::{
+    BlockPos, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState, WorldStore,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -214,6 +216,7 @@ pub(crate) struct ClientInputState {
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
     debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
+    pending_debug_recreate_server_query: Option<PendingDebugRecreateServerQuery>,
     debug_query_transaction_id: i32,
     debug_crash_started_at: Option<Instant>,
     debug_crash_last_reported_at: Option<Instant>,
@@ -326,6 +329,24 @@ pub(crate) enum DebugRecreateServerQueryRequest {
 enum DebugRecreateTarget {
     Block(BlockPos),
     Entity(i32),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct PendingDebugRecreateServerQuery {
+    transaction_id: i32,
+    target: PendingDebugRecreateServerQueryTarget,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum PendingDebugRecreateServerQueryTarget {
+    Block {
+        pos: BlockPos,
+        description: String,
+    },
+    Entity {
+        entity_type: String,
+        position: [f64; 3],
+    },
 }
 
 impl ClientInputState {
@@ -634,6 +655,41 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_recreate_server_query_requests)
     }
 
+    pub(crate) fn consume_debug_recreate_server_query_response(
+        &mut self,
+        world: &mut WorldStore,
+        clipboard: &mut dyn DebugClipboard,
+    ) -> bool {
+        let Some(pending) = self.pending_debug_recreate_server_query.clone() else {
+            return false;
+        };
+        let Some(response) = world.last_tag_query().cloned() else {
+            return false;
+        };
+        if response.transaction_id != pending.transaction_id {
+            return false;
+        }
+
+        self.pending_debug_recreate_server_query = None;
+        let copy = match debug_copy_recreate_server_response_command(&pending.target, &response) {
+            Ok(copy) => copy,
+            Err(_) => {
+                push_debug_feedback_chat_message(
+                    Some(world),
+                    "Failed to decode server-side recreate data",
+                );
+                return true;
+            }
+        };
+        let Some(copy) = copy else {
+            return true;
+        };
+        if clipboard.set_debug_clipboard_text(&copy.command) {
+            push_debug_feedback_chat_message(Some(world), copy.feedback_message);
+        }
+        true
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -845,14 +901,17 @@ impl ClientInputState {
                             );
                         }
                     }
-                } else if let Some(target) = world.as_deref().and_then(debug_recreate_target) {
-                    let transaction_id = self.next_debug_query_transaction_id();
-                    self.debug_recreate_server_query_requests
-                        .push(debug_recreate_server_query_request(target, transaction_id));
-                    push_debug_feedback_chat_message(
-                        world.as_deref_mut(),
-                        "Requested server-side recreate data; NBT response copy is not implemented",
-                    );
+                } else if let Some(world) = world.as_deref() {
+                    if let Some(target) = debug_recreate_target(world) {
+                        let transaction_id = self.next_debug_query_transaction_id();
+                        if let Some(pending) =
+                            pending_debug_recreate_server_query(world, target, transaction_id)
+                        {
+                            self.pending_debug_recreate_server_query = Some(pending);
+                            self.debug_recreate_server_query_requests
+                                .push(debug_recreate_server_query_request(target, transaction_id));
+                        }
+                    }
                 }
                 true
             }
@@ -1073,6 +1132,21 @@ fn debug_copy_recreate_command(world: &WorldStore) -> Option<DebugRecreateCopy> 
     }
 }
 
+fn debug_copy_recreate_server_response_command(
+    target: &PendingDebugRecreateServerQueryTarget,
+    response: &TagQueryResponseState,
+) -> bbb_world::Result<Option<DebugRecreateCopy>> {
+    match target {
+        PendingDebugRecreateServerQueryTarget::Block { pos, description } => {
+            debug_copy_recreate_server_block_command(*pos, description, response)
+        }
+        PendingDebugRecreateServerQueryTarget::Entity {
+            entity_type,
+            position,
+        } => debug_copy_recreate_server_entity_command(entity_type, *position, response),
+    }
+}
+
 fn debug_recreate_target(world: &WorldStore) -> Option<DebugRecreateTarget> {
     if world.local_player_id().is_none() || world.local_player_has_reduced_debug_info() {
         return None;
@@ -1101,6 +1175,35 @@ fn debug_recreate_server_query_request(
     }
 }
 
+fn pending_debug_recreate_server_query(
+    world: &WorldStore,
+    target: DebugRecreateTarget,
+    transaction_id: i32,
+) -> Option<PendingDebugRecreateServerQuery> {
+    let target = match target {
+        DebugRecreateTarget::Block(pos) => {
+            let block = world.probe_block(pos)?;
+            let block_name = block.block_name.as_deref()?;
+            PendingDebugRecreateServerQueryTarget::Block {
+                pos,
+                description: debug_block_state_description(block_name, &block.block_properties),
+            }
+        }
+        DebugRecreateTarget::Entity(entity_id) => {
+            let entity = world.probe_entity(entity_id)?;
+            let entity_type = vanilla_entity_resource_id_for_type_id(entity.entity_type_id)?;
+            PendingDebugRecreateServerQueryTarget::Entity {
+                entity_type: entity_type.to_string(),
+                position: [entity.position.x, entity.position.y, entity.position.z],
+            }
+        }
+    };
+    Some(PendingDebugRecreateServerQuery {
+        transaction_id,
+        target,
+    })
+}
+
 fn debug_copy_recreate_block_command(
     world: &WorldStore,
     pos: BlockPos,
@@ -1112,6 +1215,21 @@ fn debug_copy_recreate_block_command(
         command: format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description),
         feedback_message: "Copied client-side block data to clipboard",
     })
+}
+
+fn debug_copy_recreate_server_block_command(
+    pos: BlockPos,
+    description: &str,
+    response: &TagQueryResponseState,
+) -> bbb_world::Result<Option<DebugRecreateCopy>> {
+    let mut command = format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description);
+    if let Some(snbt) = response.compact_snbt()? {
+        command.push_str(&snbt);
+    }
+    Ok(Some(DebugRecreateCopy {
+        command,
+        feedback_message: "Copied server-side block data to clipboard",
+    }))
 }
 
 fn debug_copy_recreate_entity_command(
@@ -1127,6 +1245,28 @@ fn debug_copy_recreate_entity_command(
         ),
         feedback_message: "Copied client-side entity data to clipboard",
     })
+}
+
+fn debug_copy_recreate_server_entity_command(
+    entity_type: &str,
+    position: [f64; 3],
+    response: &TagQueryResponseState,
+) -> bbb_world::Result<Option<DebugRecreateCopy>> {
+    let command = if let Some(snbt) = response.pretty_snbt_without_root_keys(&["UUID", "Pos"])? {
+        format!(
+            "/summon {} {:.2} {:.2} {:.2} {}",
+            entity_type, position[0], position[1], position[2], snbt
+        )
+    } else {
+        format!(
+            "/summon {} {:.2} {:.2} {:.2}",
+            entity_type, position[0], position[1], position[2]
+        )
+    };
+    Ok(Some(DebugRecreateCopy {
+        command,
+        feedback_message: "Copied server-side entity data to clipboard",
+    }))
 }
 
 fn debug_block_state_description(
