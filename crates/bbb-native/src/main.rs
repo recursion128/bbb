@@ -416,6 +416,15 @@ fn main() -> Result<()> {
                                 "resource pack reload requested by debug hotkey"
                             );
                         }
+                        let dynamic_texture_dump_requests =
+                            input.take_debug_dynamic_texture_dump_requests();
+                        if dynamic_texture_dump_requests > 0 {
+                            tracing::info!(
+                                dynamic_texture_dump_requests,
+                                path = "screenshots/debug",
+                                "dynamic texture dump requested by debug hotkey"
+                            );
+                        }
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

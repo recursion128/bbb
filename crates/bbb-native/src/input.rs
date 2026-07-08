@@ -204,6 +204,7 @@ pub(crate) struct ClientInputState {
     debug_advanced_item_tooltips: bool,
     debug_pause_on_lost_focus: bool,
     debug_resource_pack_reload_requests: u32,
+    debug_dynamic_texture_dump_requests: u32,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -578,6 +579,10 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_resource_pack_reload_requests)
     }
 
+    pub(crate) fn take_debug_dynamic_texture_dump_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.debug_dynamic_texture_dump_requests)
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -757,6 +762,15 @@ impl ClientInputState {
                 self.debug_resource_pack_reload_requests =
                     self.debug_resource_pack_reload_requests.saturating_add(1);
                 push_debug_feedback_chat_message(world.as_deref_mut(), "Reloaded resource packs");
+                true
+            }
+            KeyCode::KeyS => {
+                self.debug_dynamic_texture_dump_requests =
+                    self.debug_dynamic_texture_dump_requests.saturating_add(1);
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    "Saved dynamic textures to screenshots/debug",
+                );
                 true
             }
             KeyCode::KeyC => {

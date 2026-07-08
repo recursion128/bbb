@@ -1092,15 +1092,29 @@ When an agent does any of the following, update this file in the same slice:
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, F3+C copy-location
     clipboard action, F3+T resource-pack reload request,
+    F3+S dynamic texture dump request,
     advanced item tooltips startup config,
-    F3+A/B/C/G/H/N/P/F4/T local debug feedback, the F3+F6 debug-options edit
+    F3+A/B/C/G/H/N/P/F4/S/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the default GAME_VERSION entry shape, the default TPS entry
     shell, and the default FPS entry shell, and actual F3+4 lightmap preview
     rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip full parity, 3D
-    crosshair, and the other F3 modifier combos remain (large, low priority).
+    entity hitbox/chunk-border rendering, advanced tooltip full parity, actual
+    dynamic texture dump execution, 3D crosshair, and the other F3 modifier
+    combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
+    Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
+    (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
+    `screenshots/debug`, and `KeyboardHandler.handleDebugKeys` calls
+    `TextureManager.dumpAllSheets(debugTexturePath)` before emitting
+    `debug.dump_dynamic_textures`. bbb now consumes S while F3 is held,
+    appends `[Debug]: Saved dynamic textures to screenshots/debug`, records a
+    drainable native dump request counter, drains it in the main event loop
+    with the same relative path, suppresses the F3-release overlay toggle, and
+    exposes the action in debug help. Boundary: actual renderer/texture-manager
+    sheet dumping and clickable/open-file chat styling are still not
+    implemented.
   - Done 2026-07-08 — Debug overlay advanced item tooltips startup config.
     Vanilla anchors: `Options.advancedItemTooltips` is loaded/saved through the
     options file, and `KeyboardHandler.handleDebugKeys` toggles it on F3+H,

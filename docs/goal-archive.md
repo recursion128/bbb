@@ -5270,6 +5270,18 @@
   抑制 F3 release 触发普通 overlay toggle。边界：实际资源包、item/entity/
   terrain/audio/runtime/renderer 热重载仍未实现，本 slice 只落地输入请求和
   反馈路径。剩余：热重载执行链、其它 F3 modifier combos。
+- [x] debug overlay F3+S dynamic texture dump request（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `Options.keyDebugDumpDynamicTextures` 绑定 S，
+  `TextureUtil.getDebugTexturePath(gameDirectory)` 返回
+  `screenshots/debug`，以及 `KeyboardHandler.handleDebugKeys` 调用
+  `TextureManager.dumpAllSheets(debugTexturePath)` 后发送
+  `debug.dump_dynamic_textures` 的行为。`ClientInputState` 现在在 F3 按住期间
+  消费 S，追加 `[Debug]: Saved dynamic textures to screenshots/debug` local
+  client-system feedback，记录一次可 drain 的 native dump request，并让主循环
+  drain 后带相对路径写日志；runtime help line 显示 `[F3+S] Dump textures`，
+  使用组合键后同样抑制 F3 release 触发普通 overlay toggle。边界：实际
+  renderer/texture-manager sheet dump 与 clickable/open-file chat styling
+  仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

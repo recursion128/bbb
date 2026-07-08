@@ -2838,8 +2838,8 @@ fn hud_debug_overlay(
         hud_debug_enabled_label(input.debug_pause_on_lost_focus())
     ));
     left_lines.push("Debug actions: [F3+A] Reload chunks; [F3+C] Copy location".to_string());
-    left_lines
-        .push("Debug actions: [F3+D] Clear chat; [F3+T] Reload packs; [F3+V] Version".to_string());
+    left_lines.push("Debug actions: [F3+D] Clear chat; [F3+S] Dump textures".to_string());
+    left_lines.push("Debug actions: [F3+T] Reload packs; [F3+V] Version".to_string());
     left_lines.push("Game mode: [F3+N] Spectator; [F3+F4] Switcher".to_string());
     left_lines.push("To edit: press [F3+F6]".to_string());
 

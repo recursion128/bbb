@@ -1281,9 +1281,12 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     assert!(overlay
         .left_lines
         .contains(&"Debug actions: [F3+A] Reload chunks; [F3+C] Copy location".to_string()));
-    assert!(overlay.left_lines.contains(
-        &"Debug actions: [F3+D] Clear chat; [F3+T] Reload packs; [F3+V] Version".to_string()
-    ));
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug actions: [F3+D] Clear chat; [F3+S] Dump textures".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Debug actions: [F3+T] Reload packs; [F3+V] Version".to_string()));
     assert!(overlay
         .left_lines
         .contains(&"Game mode: [F3+N] Spectator; [F3+F4] Switcher".to_string()));
