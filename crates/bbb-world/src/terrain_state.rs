@@ -49,6 +49,10 @@ pub use crate::sign_blocks::{
     sign_rotation_segment_to_degrees, sign_wood_and_form_for_block_name, SignBlockForm,
     SignModelAttachment, SignModelSourceState, SignWoodKind,
 };
+pub use crate::skull_blocks::{
+    is_skull_block_name, skull_kind_for_block_name, SkullBlockAttachment, SkullBlockKind,
+    SkullBlockState, SkullModelSourceState, SkullWallFacing,
+};
 pub use crate::terrain::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, BlockProbe, TerrainBlockCell, TerrainChunkSnapshot,

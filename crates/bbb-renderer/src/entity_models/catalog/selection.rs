@@ -97,6 +97,7 @@ impl EntityModelKind {
             Self::EvokerFangs => "evoker_fangs",
             Self::LeashKnot => "leash_knot",
             Self::Conduit { .. } => "conduit",
+            Self::SkullBlock { .. } => "skull_block",
             Self::Chest {
                 half: ChestModelHalf::Single,
                 ..
@@ -438,6 +439,7 @@ impl EntityModelKind {
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
             Self::LeashKnot => Some(LEASH_KNOT_TEXTURE_REF),
             Self::Conduit { part } => Some(conduit_texture_ref(part)),
+            Self::SkullBlock { skull, .. } => Some(skull_block_texture_ref(skull)),
             Self::Chest { texture, half } => Some(chest_texture_ref(texture, half)),
             Self::Sign { wood, attachment } => Some(sign_texture_ref(wood, attachment)),
             Self::Bed { color, .. } => Some(bed_texture_ref(color)),
@@ -754,6 +756,18 @@ impl EntityModelKind {
             } => &IRON_GOLEM_CRACKINESS_HIGH_LAYER_TEXTURE_REFS,
             _ => &[],
         }
+    }
+}
+
+fn skull_block_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRef {
+    match skull {
+        EntityCustomHeadSkull::Skeleton => SKELETON_TEXTURE_REF,
+        EntityCustomHeadSkull::WitherSkeleton => WITHER_SKELETON_TEXTURE_REF,
+        EntityCustomHeadSkull::Player(skin) => default_player_skin_texture_ref(skin.fallback()),
+        EntityCustomHeadSkull::Zombie => ZOMBIE_TEXTURE_REF,
+        EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
+        EntityCustomHeadSkull::Dragon => ENDER_DRAGON_TEXTURE_REF,
+        EntityCustomHeadSkull::Piglin => PIGLIN_TEXTURE_REF,
     }
 }
 

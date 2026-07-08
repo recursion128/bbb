@@ -3414,6 +3414,51 @@ pub(in crate::entity_models) fn render_custom_head_skull_layer_with_root_transfo
     );
 }
 
+pub(in crate::entity_models) fn render_skull_block_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    skull: EntityCustomHeadSkull,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    match skull {
+        EntityCustomHeadSkull::Dragon => {
+            let mut model = CustomHeadDragonSkullModel::new();
+            model.prepare(&instance);
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+            return;
+        }
+        EntityCustomHeadSkull::Piglin => {
+            let mut model = CustomHeadPiglinSkullModel::new();
+            model.prepare(&instance);
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+            return;
+        }
+        _ => {}
+    }
+
+    let mut model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player(_)));
+    model.prepare(&instance);
+    let texture = custom_head_skull_texture_ref(skull);
+    let pass = custom_head_skull_layer_pass(skull, texture);
+    if let Some(dynamic_player_skin) = custom_head_dynamic_player_skin(skull) {
+        render_textured_no_overlay_layer_pass_with_dynamic_player_skin(
+            meshes,
+            &model,
+            transform,
+            pass,
+            dynamic_player_skin,
+            atlas,
+            dynamic_player_skin_atlas,
+        );
+        return;
+    }
+    render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+}
+
 fn render_custom_head_skull_layer_at_transform(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,

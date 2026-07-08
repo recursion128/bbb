@@ -52,6 +52,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) decorated_pot_wobbles: Vec<crate::DecoratedPotWobbleState>,
     #[serde(default)]
+    pub(crate) skull_blocks: Vec<crate::SkullBlockState>,
+    #[serde(default)]
     pub(crate) conduit_blocks: Vec<crate::ConduitBlockState>,
     #[serde(default)]
     pub(crate) enchanting_table_books: Vec<crate::EnchantingTableBookState>,

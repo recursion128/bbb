@@ -34,6 +34,12 @@ pub enum EntityAttachmentFace {
     East,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkullBlockModelAttachment {
+    Ground,
+    Wall { facing: EntityAttachmentFace },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -225,6 +231,15 @@ pub enum EntityModelKind {
     /// (`entity_id` is a sentinel), not the entity list.
     Conduit {
         part: ConduitModelPart,
+    },
+    /// Vanilla 26.1 `SkullBlockRenderer` / `BuiltInBlockModels` skull and
+    /// head block-entity model. The static skull models/textures are shared
+    /// with `CustomHeadLayer`; `attachment` selects the ground 16-segment
+    /// transform or the wall-facing offset transform. Instances are projected
+    /// from skull/head block states, not the entity list.
+    SkullBlock {
+        skull: EntityCustomHeadSkull,
+        attachment: SkullBlockModelAttachment,
     },
     /// Vanilla 26.1 `ChestModel` submitted by the `ChestRenderer` block-entity renderer — the first
     /// (and so far only) block-entity model in the scene. `half` selects the single or the

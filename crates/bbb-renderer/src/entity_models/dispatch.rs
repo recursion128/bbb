@@ -15,12 +15,12 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
-    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
-    EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, WolfModelVariant,
-    ZombieVariantModelFamily,
+    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityCustomHeadSkull,
+    EntityDyeColor, EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout,
+    EntityModelKind, EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant,
+    HorseMarkings, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+    WolfModelVariant, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
@@ -40,11 +40,12 @@ use super::colored::{
     piglin_model_color, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, shulker_box_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, sign_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
-    tropical_fish_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform,
-    wither_skeleton_model_root_transform, wither_skull_model_root_transform, zombie_variant_color,
-    zombie_variant_root_transform, GIANT_SCALE,
+    skull_block_model_root_transform, slime_model_root_transform, squid_model_root_transform,
+    trident_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wind_charge_model_root_transform,
+    wither_model_root_transform, wither_skeleton_model_root_transform,
+    wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
+    GIANT_SCALE,
 };
 use super::geometry::{
     emit_model_cube, emit_model_part, part_pose_transform, EntityModelMesh, PartPose,
@@ -108,8 +109,8 @@ use super::textured::{
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
-    render_skeleton_clothing_layer, render_strider_saddle_layer, render_textured_layers,
-    render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_skeleton_clothing_layer, render_skull_block_model, render_strider_saddle_layer,
+    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
     render_villager_profession_layers, render_wings_layer, render_wither_energy_swirl,
     render_wolf_body_armor_layer, render_worn_humanoid_armor, salmon_textured_layer_passes,
     sheep_textured_layer_passes, shulker_box_textured_layer_passes,
@@ -348,6 +349,14 @@ pub(in crate::entity_models) trait EntityModelSink {
         _root_transform: Mat4,
     ) {
         self.custom_head_skull_layer(instance);
+    }
+
+    fn skull_block_model(
+        &mut self,
+        _instance: &EntityModelInstance,
+        _skull: EntityCustomHeadSkull,
+        _root_transform: Mat4,
+    ) {
     }
 
     fn wings_layer(&mut self, _instance: &EntityModelInstance) {}
@@ -825,6 +834,22 @@ impl EntityModelSink for TexturedSink<'_> {
         render_custom_head_skull_layer_with_root_transform(
             self.meshes,
             *instance,
+            root_transform,
+            self.atlas,
+            self.dynamic_player_skin_atlas,
+        );
+    }
+
+    fn skull_block_model(
+        &mut self,
+        instance: &EntityModelInstance,
+        skull: EntityCustomHeadSkull,
+        root_transform: Mat4,
+    ) {
+        render_skull_block_model(
+            self.meshes,
+            *instance,
+            skull,
             root_transform,
             self.atlas,
             self.dynamic_player_skin_atlas,
@@ -1677,6 +1702,13 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &conduit_textured_layer_passes(part),
         ),
+        EntityModelKind::SkullBlock { skull, attachment } => {
+            sink.skull_block_model(
+                instance,
+                skull,
+                skull_block_model_root_transform(*instance, attachment),
+            );
+        }
         EntityModelKind::Chest { texture, half } => sink.model(
             ChestModel::new(half),
             chest_model_root_transform(*instance),

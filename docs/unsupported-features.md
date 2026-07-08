@@ -435,21 +435,46 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (skull/head, end portal/gateway, spawner
-    display entity): the chest
+  - Block-entity special renderers (end portal/gateway, spawner display
+    entity; player-head owner skin remains under the broader dynamic
+    profile/texture pipeline): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
     (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
     (2026-07-06), banner (2026-07-06), the enchanting-table book +
-    lectern book (2026-07-07), and conduit (2026-07-08; see Evidence)
-    are DONE as the first seven
+    lectern book (2026-07-07), conduit (2026-07-08; see Evidence), and
+    skull/head (2026-07-08; see Evidence) are DONE as the first eight
     BER sub-slices; every other BE-driven block still bakes a
-    particle-only model into near-empty terrain geometry (remaining:
-    skull/head, end portal/gateway, the spawner's spinning display
-    entity). Vanilla: `BlockEntityRenderDispatcher` + per-BE
+    particle-only model into near-empty terrain geometry (remaining: end
+    portal/gateway and the spawner's spinning display entity). Vanilla:
+    `BlockEntityRenderDispatcher` + per-BE
     renderers. Continue by smallest sub-slice; audit the `Custom`→`Cube`
     shape fallback (`block_models/shape.rs` → `textures.rs`) alongside,
     since unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-08 — Skull/head block-entity renderer (eighth BER
+    sub-slice). Vanilla facts were checked against `SkullBlockRenderer`,
+    `SkullBlockRenderState`, `SkullBlockEntity`, `AbstractSkullBlock`,
+    `SkullBlock`, `WallSkullBlock`, and `BuiltInBlockModels`: ground skulls
+    use `ROTATION_16` with `RotationSegment.convertToDegrees(segment)`,
+    wall skulls use `FACING`, all variants apply the vanilla
+    `WallAndGroundTransformations`, and only powered dragon/piglin heads tick
+    `animationTickCount`. World now maps the seven vanilla skull/head
+    families, owns flat `SkullBlockState`, advances powered dragon/piglin
+    animation on running ticks, and projects source states with ground/wall
+    attachment plus partial animation progress. Native maps those sources to
+    `EntityModelKind::SkullBlock`, samples block+sky light, applies ground
+    yaw `-RotationSegment` degrees or wall attachment, and joins the shared
+    entity-model stream after held-item baking. Renderer reuses the existing
+    custom-head `SkullModel`, `DragonHeadModel`, and `PiglinHeadModel`
+    geometry, dispatches skeleton/wither/player/zombie/creeper/dragon/piglin
+    textures with vanilla `entityCutoutZOffset`, submits no overlay, and keeps
+    dragon/piglin animation progress in the skull model state. Boundary:
+    player-head BE `profile` owner skins still need the broader dynamic
+    profile/texture plumbing; profileless player heads currently render the
+    vanilla default player skin fallback. Tests cover world family/state/tick
+    projection, native static/wall/animated source projection, renderer model
+    key/texture/root transform/mesh bucket behavior, and runtime
+    tick-before-extract ordering.
   - Done 2026-07-08 — Conduit block-entity renderer (seventh BER
     sub-slice). Vanilla facts were checked against
     `ConduitBlockEntity.java`, `ConduitRenderer.java`, and

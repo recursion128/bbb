@@ -42,6 +42,7 @@ mod particle_runtime;
 mod runtime;
 mod shulker_box_scene;
 mod sign_scene;
+mod skull_scene;
 mod sky_assets;
 mod startup;
 mod terrain_runtime;

@@ -1631,6 +1631,24 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Conduit { part }, position, 0.0)
     }
 
+    /// A skull/head block-entity model instance at the block min corner.
+    /// `y_rot` carries the ground skull's vanilla `-RotationSegment` yaw; wall
+    /// skull yaw/offset rides `attachment`.
+    pub fn skull_block(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        skull: EntityCustomHeadSkull,
+        attachment: SkullBlockModelAttachment,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::SkullBlock { skull, attachment },
+            position,
+            y_rot,
+        )
+    }
+
     /// A shulker box block-entity model instance at the box block's min
     /// corner. The six-way `facing` rides the kind (the
     /// `ShulkerBoxRenderer.createModelTransform` rotation is a full

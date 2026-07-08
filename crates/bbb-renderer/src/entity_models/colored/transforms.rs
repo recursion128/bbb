@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3};
 
 use super::super::catalog::{
     ConduitModelPart, EntityAttachmentFace, EntityModelKind, SalmonModelSize, SignModelAttachment,
+    SkullBlockModelAttachment,
 };
 use super::super::geometry::{part_pose_transform, PartPose};
 use super::super::instances::EntityModelInstance;
@@ -701,6 +702,40 @@ pub(in crate::entity_models) fn conduit_model_root_transform(
                 * Mat4::from_rotation_z(PI)
                 * Mat4::from_rotation_y(PI)
                 * Mat4::from_scale(Vec3::splat(4.0 / 3.0))
+        }
+    }
+}
+
+/// Vanilla `SkullBlockRenderer.TRANSFORMATIONS`: ground heads translate to the block
+/// center, rotate by the 16-segment yaw, then `scale(-1, -1, 1)`; wall heads
+/// translate a quarter block off the supporting wall and rotate by
+/// `-facing.getOpposite().toYRot()`.
+pub(in crate::entity_models) fn skull_block_model_root_transform(
+    instance: EntityModelInstance,
+    attachment: SkullBlockModelAttachment,
+) -> Mat4 {
+    let block = Mat4::from_translation(Vec3::from_array(instance.position));
+    match attachment {
+        SkullBlockModelAttachment::Ground => {
+            block
+                * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5))
+                * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+                * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        }
+        SkullBlockModelAttachment::Wall { facing } => {
+            let (step_x, step_z, opposite_y_rot) = match facing {
+                EntityAttachmentFace::North => (0.0_f32, -1.0_f32, 0.0_f32),
+                EntityAttachmentFace::South => (0.0_f32, 1.0_f32, 180.0_f32),
+                EntityAttachmentFace::West => (-1.0_f32, 0.0_f32, -90.0_f32),
+                EntityAttachmentFace::East => (1.0_f32, 0.0_f32, 90.0_f32),
+                EntityAttachmentFace::Down | EntityAttachmentFace::Up => {
+                    (0.0_f32, 0.0_f32, 0.0_f32)
+                }
+            };
+            block
+                * Mat4::from_translation(Vec3::new(0.5 - step_x * 0.25, 0.25, 0.5 - step_z * 0.25))
+                * Mat4::from_rotation_y((-opposite_y_rot).to_radians())
+                * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         }
     }
 }

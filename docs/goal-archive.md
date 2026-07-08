@@ -4156,6 +4156,26 @@
   测试覆盖 world 激活/水门控/source、native inactive/active/camera eye、renderer
   cube/texture/layer/transform/mesh bucket，以及 runtime tick-before-extract
   顺序。defer 边界保持 BER break-progress crumbling 与逐 BE 距离/视锥剔除。
+- [x] skull/head block-entity renderer（2026-07-08，BER 第八片）：vanilla
+  `SkullBlockRenderer` / `SkullBlockRenderState` / `SkullBlockEntity` /
+  `SkullBlock` / `WallSkullBlock` 转写为 repo-native world→native→renderer
+  链路。world 侧新增 7 类 skull/head 映射（skeleton、wither skeleton、zombie、
+  player、creeper、dragon、piglin）与平铺 `SkullBlockState`，standing head 从
+  `ROTATION_16` 派生 yaw，wall head 从 `FACING` 派生墙面 attachment；只有
+  powered dragon/piglin skull/head 按 vanilla client ticker 推进
+  `animationTickCount`。native runtime 在 running ticks 上 advance skull 状态，
+  并把 source 投成共享 entity-model stream 中的 `EntityModelKind::SkullBlock`，
+  采样 `block<<4 | sky<<20` 光照，ground yaw 使用
+  `-RotationSegment.convertToDegrees(segment)`，wall 使用 vanilla
+  `WallAndGroundTransformations` attachment。renderer 复用既有 custom-head
+  `SkullModel` / `DragonHeadModel` / `PiglinHeadModel` 几何，按 vanilla
+  skeleton/wither/player/zombie/creeper/dragon/piglin texture 分派
+  `entityCutoutZOffset` no-overlay pass，并把 dragon/piglin animation progress
+  写入 skull model state。测试覆盖 world family/state/tick/source、native
+  ground/wall/animated 投影、renderer key/texture/root transform/mesh bucket，
+  以及 runtime tick-before-extract 顺序。defer 边界：player-head BE
+  `profile` owner skin 仍归 P3 动态 profile/texture 管线，profileless player
+  head 先使用 vanilla default skin fallback。
 
 ## P2：屏幕、HUD、字体与截图
 

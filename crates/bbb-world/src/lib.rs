@@ -28,6 +28,7 @@ mod recipes;
 mod registries;
 mod shulker_box_blocks;
 mod sign_blocks;
+mod skull_blocks;
 mod store;
 mod terrain;
 mod terrain_state;

@@ -1117,6 +1117,18 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(conduit_tick < conduit_instances);
     assert!(camera_pose < conduit_instances);
     assert!(held_models < conduit_instances);
+    // Powered dragon and piglin skull/head block entities tick their animation
+    // clock before the renderer reads the skull model animation position; the
+    // model instances join the same entity stream after held-item baking.
+    let skull_tick = source
+        .find("world.advance_skull_block_ticks(running_ticks);")
+        .expect("pump should advance skull block-entity animation ticks");
+    let skull_instances = source
+        .find("entity_instances.extend(skull_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract skull block-entity model instances");
+    assert!(conduit_tick < skull_tick);
+    assert!(skull_tick < skull_instances);
+    assert!(held_models < skull_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

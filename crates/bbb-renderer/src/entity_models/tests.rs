@@ -77,6 +77,7 @@ mod shulker_bullet;
 mod sign;
 mod silverfish;
 mod skeleton;
+mod skull_block;
 mod sleeping;
 mod slime;
 mod sniffer;
