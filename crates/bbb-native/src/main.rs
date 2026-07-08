@@ -63,7 +63,8 @@ use input::{
     handle_inventory_cursor_moved, handle_inventory_mouse_input_with_item_runtime,
     handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
-    handle_text_input_with_item_runtime, release_active_input, ClientInputState, DebugClipboard,
+    handle_text_input_with_item_runtime, queue_debug_recreate_server_query_request,
+    release_active_input, ClientInputState, DebugClipboard,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -441,6 +442,23 @@ fn main() -> Result<()> {
                             tracing::info!(
                                 debug_options_screen_requests,
                                 "debug options screen requested by debug hotkey; native DebugOptionsScreen is not implemented"
+                            );
+                        }
+                        let recreate_server_query_requests =
+                            input.take_debug_recreate_server_query_requests();
+                        let recreate_server_query_request_count =
+                            recreate_server_query_requests.len();
+                        for request in recreate_server_query_requests {
+                            queue_debug_recreate_server_query_request(
+                                &mut net_counters,
+                                &net_commands,
+                                request,
+                            );
+                        }
+                        if recreate_server_query_request_count > 0 {
+                            tracing::info!(
+                                recreate_server_query_request_count,
+                                "debug recreate server query requested by F3+I; NBT response copy is not implemented"
                             );
                         }
                         let pause_without_menu_requests =

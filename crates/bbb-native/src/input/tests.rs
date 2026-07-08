@@ -3,13 +3,13 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CREEPER_ID;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
-    AdvancementSummary, BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
-    ChatCommand, CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestion,
-    CommandSuggestionRequest, CommandSuggestions, Commands, CommonPlayerSpawnInfo, ContainerClick,
-    ContainerCloseRequest, ContainerInput, ContainerSetContent as ProtocolContainerSetContent,
-    DataComponentPatchSummary, DeleteChat, DialogHolder,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
-    EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
+    AdvancementSummary, BlockEntityTagQuery, BlockPos as ProtocolBlockPos,
+    BlockUpdate as ProtocolBlockUpdate, ChatCommand, CommandArgumentParser, CommandNode,
+    CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
+    CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
+    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DeleteChat,
+    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EntityTagQuery,
+    EquipmentSlot, EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
@@ -1281,7 +1281,7 @@ fn f3_i_consumes_copy_data_modifier_without_toggling_overlay() {
 }
 
 #[test]
-fn f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
+fn shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     let target_pos = BlockPos { x: 0, y: 1, z: 3 };
@@ -1305,6 +1305,7 @@ fn f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
         ..LocalPlayerPoseState::default()
     });
     let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
 
     assert!(input.handle_debug_overlay_key_with_clipboard(
         PhysicalKey::Code(KeyCode::F3),
@@ -1344,7 +1345,120 @@ fn f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
 }
 
 #[test]
-fn f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback() {
+fn f3_i_without_shift_records_server_recreate_query_request_shell() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(clipboard.text, None);
+    assert_eq!(
+        input.take_debug_recreate_server_query_requests(),
+        vec![DebugRecreateServerQueryRequest::BlockEntityTag {
+            transaction_id: 0,
+            pos: ProtocolBlockPos {
+                x: target_pos.x,
+                y: target_pos.y,
+                z: target_pos.z,
+            },
+        }]
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Requested server-side recreate data; NBT response copy is not implemented"
+    );
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn queues_debug_recreate_server_query_requests_as_tag_query_commands() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+
+    queue_debug_recreate_server_query_request(
+        &mut counters,
+        &commands,
+        DebugRecreateServerQueryRequest::BlockEntityTag {
+            transaction_id: 3,
+            pos: ProtocolBlockPos { x: -1, y: 2, z: 7 },
+        },
+    );
+    queue_debug_recreate_server_query_request(
+        &mut counters,
+        &commands,
+        DebugRecreateServerQueryRequest::EntityTag {
+            transaction_id: 4,
+            entity_id: 88,
+        },
+    );
+
+    assert_eq!(counters.block_entity_tag_query_commands_queued, 1);
+    assert_eq!(counters.entity_tag_query_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::BlockEntityTagQuery(BlockEntityTagQuery {
+            transaction_id: 3,
+            pos: ProtocolBlockPos { x: -1, y: 2, z: 7 },
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::EntityTagQuery(EntityTagQuery {
+            transaction_id: 4,
+            entity_id: 88,
+        })
+    );
+}
+
+#[test]
+fn shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     world.apply_add_entity(AddEntity {
@@ -1373,6 +1487,7 @@ fn f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback() {
         ..LocalPlayerPoseState::default()
     });
     let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
 
     assert!(input.handle_debug_overlay_key_with_clipboard(
         PhysicalKey::Code(KeyCode::F3),
@@ -1433,6 +1548,7 @@ fn f3_i_is_consumed_but_does_not_copy_when_reduced_debug_info_blocks_inspect() {
     ));
 
     assert_eq!(clipboard.text, None);
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
     assert!(world.client_chat().messages.is_empty());
 
     assert!(input.handle_debug_overlay_key_with_clipboard(

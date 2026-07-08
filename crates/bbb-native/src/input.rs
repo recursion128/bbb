@@ -8,9 +8,9 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::vanilla_entity_resource_id_for_type_id,
     packets::{
-        BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
-        ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
-        SeenAdvancements, SignUpdate,
+        BlockEntityTagQuery, BlockPos as ProtocolBlockPos, Direction as ProtocolDirection,
+        EntityTagQuery, InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction,
+        PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
     },
     MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
@@ -213,6 +213,8 @@ pub(crate) struct ClientInputState {
     debug_profiling_toggle_requests: u32,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
+    debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
+    debug_query_transaction_id: i32,
     debug_crash_started_at: Option<Instant>,
     debug_crash_last_reported_at: Option<Instant>,
     debug_crash_report_count: u32,
@@ -308,11 +310,30 @@ pub(crate) struct RecipeBookOverlayHudState {
     pub(crate) y: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugRecreateServerQueryRequest {
+    BlockEntityTag {
+        transaction_id: i32,
+        pos: ProtocolBlockPos,
+    },
+    EntityTag {
+        transaction_id: i32,
+        entity_id: i32,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DebugRecreateTarget {
+    Block(BlockPos),
+    Entity(i32),
+}
+
 impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
             focused,
             debug_pause_on_lost_focus: true,
+            debug_query_transaction_id: -1,
             ..Self::default()
         }
     }
@@ -607,6 +628,12 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_pause_without_menu_requests)
     }
 
+    pub(crate) fn take_debug_recreate_server_query_requests(
+        &mut self,
+    ) -> Vec<DebugRecreateServerQueryRequest> {
+        std::mem::take(&mut self.debug_recreate_server_query_requests)
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -808,14 +835,24 @@ impl ClientInputState {
                 true
             }
             KeyCode::KeyI => {
-                let command = world.as_deref().and_then(debug_copy_recreate_command);
-                if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
-                    if clipboard.set_debug_clipboard_text(&copy.command) {
-                        push_debug_feedback_chat_message(
-                            world.as_deref_mut(),
-                            copy.feedback_message,
-                        );
+                if self.shift_down() {
+                    let command = world.as_deref().and_then(debug_copy_recreate_command);
+                    if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
+                        if clipboard.set_debug_clipboard_text(&copy.command) {
+                            push_debug_feedback_chat_message(
+                                world.as_deref_mut(),
+                                copy.feedback_message,
+                            );
+                        }
                     }
+                } else if let Some(target) = world.as_deref().and_then(debug_recreate_target) {
+                    let transaction_id = self.next_debug_query_transaction_id();
+                    self.debug_recreate_server_query_requests
+                        .push(debug_recreate_server_query_request(target, transaction_id));
+                    push_debug_feedback_chat_message(
+                        world.as_deref_mut(),
+                        "Requested server-side recreate data; NBT response copy is not implemented",
+                    );
                 }
                 true
             }
@@ -904,6 +941,11 @@ impl ClientInputState {
         })
     }
 
+    fn next_debug_query_transaction_id(&mut self) -> i32 {
+        self.debug_query_transaction_id = self.debug_query_transaction_id.saturating_add(1);
+        self.debug_query_transaction_id
+    }
+
     fn toggle_debug_profiler_chart(&mut self) {
         self.debug_profiler_chart_visible =
             !self.debug_overlay_visible || !self.debug_profiler_chart_visible;
@@ -974,6 +1016,37 @@ fn push_debug_feedback_chat_message(world: Option<&mut WorldStore>, message: &st
     }
 }
 
+pub(crate) fn queue_debug_recreate_server_query_request(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    request: DebugRecreateServerQueryRequest,
+) {
+    match request {
+        DebugRecreateServerQueryRequest::BlockEntityTag {
+            transaction_id,
+            pos,
+        } => queue_block_entity_tag_query_command(
+            counters,
+            net_commands,
+            BlockEntityTagQuery {
+                transaction_id,
+                pos,
+            },
+        ),
+        DebugRecreateServerQueryRequest::EntityTag {
+            transaction_id,
+            entity_id,
+        } => queue_entity_tag_query_command(
+            counters,
+            net_commands,
+            EntityTagQuery {
+                transaction_id,
+                entity_id,
+            },
+        ),
+    }
+}
+
 fn debug_copy_location_command(world: &WorldStore) -> Option<String> {
     if !ClientInputState::debug_world_status_toggles_allowed(Some(world)) {
         return None;
@@ -992,14 +1065,39 @@ struct DebugRecreateCopy {
 }
 
 fn debug_copy_recreate_command(world: &WorldStore) -> Option<DebugRecreateCopy> {
+    match debug_recreate_target(world)? {
+        DebugRecreateTarget::Block(pos) => debug_copy_recreate_block_command(world, pos),
+        DebugRecreateTarget::Entity(entity_id) => {
+            debug_copy_recreate_entity_command(world, entity_id)
+        }
+    }
+}
+
+fn debug_recreate_target(world: &WorldStore) -> Option<DebugRecreateTarget> {
     if world.local_player_id().is_none() || world.local_player_has_reduced_debug_info() {
         return None;
     }
     let target =
         crosshair_target_from_camera_at_partial_tick(world, camera_pose_from_world(world), 1.0)?;
     match target {
-        CrosshairTarget::Block(hit) => debug_copy_recreate_block_command(world, hit.pos),
-        CrosshairTarget::Entity(hit) => debug_copy_recreate_entity_command(world, hit.entity_id),
+        CrosshairTarget::Block(hit) => Some(DebugRecreateTarget::Block(hit.pos)),
+        CrosshairTarget::Entity(hit) => Some(DebugRecreateTarget::Entity(hit.entity_id)),
+    }
+}
+
+fn debug_recreate_server_query_request(
+    target: DebugRecreateTarget,
+    transaction_id: i32,
+) -> DebugRecreateServerQueryRequest {
+    match target {
+        DebugRecreateTarget::Block(pos) => DebugRecreateServerQueryRequest::BlockEntityTag {
+            transaction_id,
+            pos: protocol_block_pos_from_world(pos),
+        },
+        DebugRecreateTarget::Entity(entity_id) => DebugRecreateServerQueryRequest::EntityTag {
+            transaction_id,
+            entity_id,
+        },
     }
 }
 

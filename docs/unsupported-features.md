@@ -1095,6 +1095,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+C actual manual-crash trigger, F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
     F3+I block/entity recreate clipboard action,
+    F3+I server-side tag-query request,
     F3+L profiling request shell,
     F3+Esc pause-without-menu request shell,
     advanced item tooltips startup config,
@@ -1107,7 +1108,7 @@ When an agent does any of the following, update this file in the same slice:
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
     details/chunk-border full gizmo grid, advanced tooltip full parity,
-    actual dynamic texture dump execution, F3+I NBT/server-query parity,
+    actual dynamic texture dump execution, F3+I NBT response/callback parity,
     profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
@@ -1250,6 +1251,21 @@ When an agent does any of the following, update this file in the same slice:
     client-side entity feedback. Boundary: client/server NBT selection and
     debug-query round trips, exact `StateDefinition` property iteration order,
     and styled/clickable feedback remain future parity work.
+  - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
+    Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
+    pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
+    when `addNbt && pullFromServer`, it calls
+    `DebugQueryHandler.queryBlockEntityTag` or `queryEntityTag`, whose
+    transaction id starts at -1 and increments before sending
+    `ServerboundBlockEntityTagQueryPacket` / `ServerboundEntityTagQueryPacket`.
+    bbb now routes Shift+F3+I to the existing client-side recreate clipboard
+    path, routes unshifted F3+I to a pending debug recreate server query with
+    vanilla-style transaction id 0 for the first request, and the main event
+    loop drains that request into the existing block/entity tag-query net
+    commands. Boundary: bbb still lacks the gamemaster permission gate used to
+    decide `addNbt`, the response callback that appends returned NBT into
+    `/setblock` / `/summon`, local client-side NBT capture for Shift+F3+I, and
+    styled/clickable vanilla feedback.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -1986,8 +2002,8 @@ When an agent does any of the following, update this file in the same slice:
     / frozen-status text shell. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox full
     details/chunk-border full gizmo grid, advanced tooltip full
-    parity/persistence, actual dynamic texture dump execution, F3+I NBT/server-
-    query recreate parity, profiling metrics recorder/output, actual
+    parity/persistence, actual dynamic texture dump execution, F3+I NBT
+    response/callback recreate parity, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

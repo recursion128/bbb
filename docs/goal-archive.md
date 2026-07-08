@@ -5463,3 +5463,14 @@
   full-minus-idle min/avg/max label、stacked tick-method/tasks/other bars、
   TPS label 与 vanilla 阈值色。边界：profiler pie chart contents、
   configured-framerate cyan guide、以及完整 debug subscription 家族仍为后续项。
+- [x] debug overlay F3+I server-side tag-query request（P2 input/net slice，
+  2026-07-08）：依据 `KeyboardHandler.copyRecreateCommand(addNbt,
+  pullFromServer)` 用 `pullFromServer = !event.hasShiftDown()` 区分服务器拉取
+  与客户端本地数据，以及 `DebugQueryHandler.queryBlockEntityTag` /
+  `queryEntityTag` 从 transaction id -1 递增后发送
+  `ServerboundBlockEntityTagQueryPacket` / `ServerboundEntityTagQueryPacket`。
+  native 现在让 Shift+F3+I 继续走已有 client-side recreate clipboard 路径，
+  unshifted F3+I 在命中 block/entity 时创建带 transaction id 的 pending
+  request，main loop drain 后排入既有 block/entity tag-query net command。边界：
+  gamemaster permission gate、返回 NBT 拼接 `/setblock` / `/summon`、Shift+F3+I
+  本地 NBT、以及 styled/clickable feedback 仍未实现。
