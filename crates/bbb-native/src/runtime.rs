@@ -1791,6 +1791,7 @@ pub(crate) fn pump_network_and_terrain(
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
     render_distance_chunks: u32,
     client_framerate_limit: u32,
+    client_vsync: bool,
     hide_lightning_flash: bool,
 ) -> bool {
     let mut audio_events = audio_events;
@@ -2128,6 +2129,7 @@ pub(crate) fn pump_network_and_terrain(
         surface_size,
         hud_debug_fps_sampler,
         client_framerate_limit,
+        client_vsync,
         hud_debug_network_sampler,
         hud_debug_tps_sampler,
         net_counters,
@@ -3053,6 +3055,7 @@ fn hud_debug_overlay(
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
     client_framerate_limit: u32,
+    client_vsync: bool,
     network_sampler: &HudDebugNetworkSampler,
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
@@ -3065,6 +3068,7 @@ fn hud_debug_overlay(
     left_lines.push(hud_debug_fps_line(
         fps_sampler.fps(),
         client_framerate_limit,
+        client_vsync,
     ));
     if let Some(tps_line) = hud_debug_tps_line(world) {
         left_lines.push(tps_line);
@@ -3320,13 +3324,14 @@ fn hud_debug_version_line() -> String {
     format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
 }
 
-fn hud_debug_fps_line(fps: u32, client_framerate_limit: u32) -> String {
+fn hud_debug_fps_line(fps: u32, client_framerate_limit: u32, client_vsync: bool) -> String {
     let limit = if client_framerate_limit == VANILLA_UNLIMITED_FRAMERATE_LIMIT {
         "inf".to_string()
     } else {
         client_framerate_limit.to_string()
     };
-    format!("{fps} fps T: {limit}")
+    let vsync = if client_vsync { " vsync" } else { "" };
+    format!("{fps} fps T: {limit}{vsync}")
 }
 
 fn hud_debug_configured_framerate_limit(client_framerate_limit: u32) -> Option<u32> {

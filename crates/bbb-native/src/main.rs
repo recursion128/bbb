@@ -306,7 +306,10 @@ fn main() -> Result<()> {
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 
-    let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
+    let mut renderer = pollster::block_on(bbb_renderer::Renderer::new_with_vsync(
+        &window,
+        args.client_vsync,
+    ))?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = particle_runtime.as_mut() {
@@ -748,6 +751,7 @@ fn main() -> Result<()> {
                         Some(&mut code_of_conduct_acceptance),
                         args.render_distance_chunks,
                         args.client_framerate_limit,
+                        args.client_vsync,
                         args.hide_lightning_flash,
                     ) {
                         target.exit();
@@ -888,6 +892,7 @@ fn main() -> Result<()> {
                     Some(&mut code_of_conduct_acceptance),
                     args.render_distance_chunks,
                     args.client_framerate_limit,
+                    args.client_vsync,
                     args.hide_lightning_flash,
                 ) {
                     target.exit();

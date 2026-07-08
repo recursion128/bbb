@@ -305,11 +305,12 @@ Screen Render Surfaces" 条目）：
   rendering、F3+B entity hitbox eye/vector detail rendering、
   F3+1 profiler pie chart render-state/rendering、
   F3+2 FPS/TPS chart rendering、F3+3 network ping/bandwidth chart
-  rendering、configured-framerate FPS guide、3D crosshair rendering、
+  rendering、configured-framerate FPS guide、vsync FPS debug text/config、
+  3D crosshair rendering、
   default-profile debug entry coverage 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
-  advanced tooltip full parity、vsync FPS debug text/config、F3+I
+  advanced tooltip full parity、F3+I
   local client-side NBT capture/styled feedback、
   profiler data sampling/navigation、profiling metrics recorder/output、actual
   DebugOptionsScreen、native pause loop/PauseScreen、其它 F3 组合键，

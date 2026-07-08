@@ -762,8 +762,45 @@ fn translucent_section_draw_order(
     order
 }
 
+fn choose_present_mode(
+    present_modes: &[wgpu::PresentMode],
+    vsync_enabled: bool,
+) -> Result<wgpu::PresentMode> {
+    if vsync_enabled {
+        return present_modes
+            .iter()
+            .copied()
+            .find(|mode| *mode == wgpu::PresentMode::Fifo)
+            .or_else(|| present_modes.first().copied())
+            .ok_or_else(|| anyhow!("surface has no present modes"));
+    }
+
+    present_modes
+        .iter()
+        .copied()
+        .find(|mode| *mode == wgpu::PresentMode::Immediate)
+        .or_else(|| {
+            present_modes
+                .iter()
+                .copied()
+                .find(|mode| *mode == wgpu::PresentMode::Mailbox)
+        })
+        .or_else(|| {
+            present_modes
+                .iter()
+                .copied()
+                .find(|mode| *mode != wgpu::PresentMode::Fifo)
+        })
+        .or_else(|| present_modes.first().copied())
+        .ok_or_else(|| anyhow!("surface has no present modes"))
+}
+
 impl Renderer {
     pub async fn new(window: &Window) -> Result<Self> {
+        Self::new_with_vsync(window, true).await
+    }
+
+    pub async fn new_with_vsync(window: &Window, vsync_enabled: bool) -> Result<Self> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
@@ -795,14 +832,7 @@ impl Renderer {
 
         let caps = surface.get_capabilities(&adapter);
         let format = choose_format(&caps.formats)?;
-        let present_mode = if caps.present_modes.contains(&wgpu::PresentMode::Fifo) {
-            wgpu::PresentMode::Fifo
-        } else {
-            caps.present_modes
-                .first()
-                .copied()
-                .ok_or_else(|| anyhow!("surface has no present modes"))?
-        };
+        let present_mode = choose_present_mode(&caps.present_modes, vsync_enabled)?;
         let alpha_mode = caps
             .alpha_modes
             .first()
@@ -2348,7 +2378,10 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 
 #[cfg(test)]
 mod tests {
-    use super::{choose_format, translucent_section_draw_order, TerrainTranslucentSortState};
+    use super::{
+        choose_format, choose_present_mode, translucent_section_draw_order,
+        TerrainTranslucentSortState,
+    };
     use crate::camera::TerrainBounds;
     use crate::terrain::TerrainVertex;
     use glam::Vec3;
@@ -2405,6 +2438,46 @@ mod tests {
         assert!(err
             .to_string()
             .contains("surface does not expose an RGBA/BGRA 8-bit format"));
+    }
+
+    #[test]
+    fn choose_present_mode_tracks_vsync_preference() {
+        assert_eq!(
+            choose_present_mode(
+                &[
+                    wgpu::PresentMode::Fifo,
+                    wgpu::PresentMode::Immediate,
+                    wgpu::PresentMode::Mailbox,
+                ],
+                true,
+            )
+            .unwrap(),
+            wgpu::PresentMode::Fifo
+        );
+        assert_eq!(
+            choose_present_mode(
+                &[
+                    wgpu::PresentMode::Fifo,
+                    wgpu::PresentMode::Immediate,
+                    wgpu::PresentMode::Mailbox,
+                ],
+                false,
+            )
+            .unwrap(),
+            wgpu::PresentMode::Immediate
+        );
+        assert_eq!(
+            choose_present_mode(
+                &[wgpu::PresentMode::Fifo, wgpu::PresentMode::Mailbox],
+                false
+            )
+            .unwrap(),
+            wgpu::PresentMode::Mailbox
+        );
+        assert_eq!(
+            choose_present_mode(&[wgpu::PresentMode::Fifo], false).unwrap(),
+            wgpu::PresentMode::Fifo
+        );
     }
 
     #[test]

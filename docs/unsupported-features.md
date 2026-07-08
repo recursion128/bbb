@@ -1107,12 +1107,12 @@ When an agent does any of the following, update this file in the same slice:
     F3+B entity hitbox eye/vector detail rendering, F3+1 profiler pie chart
     render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
-    rendering, configured-framerate FPS guide, 3D crosshair rendering, and default-profile debug entry
-    coverage: non-default/editable debug entries, actual entity hitbox
+    rendering, configured-framerate FPS guide, vsync FPS debug text/config,
+    3D crosshair rendering, and default-profile debug entry coverage:
+    non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
-    vsync FPS debug text/config,
     F3+I local client-side NBT capture / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
@@ -1489,7 +1489,7 @@ When an agent does any of the following, update this file in the same slice:
     native per-frame FPS sampler, feeds the sampled value into the debug
     overlay's default priority lines, and formats the line from the startup
     `--client-framerate-limit` value (`260` / `inf` as unlimited). Boundary:
-    profiler `ProfileResults` data/navigation and vsync text parity remain open.
+    profiler `ProfileResults` data/navigation remains open.
   - Done 2026-07-08 — Debug overlay configured-framerate FPS guide.
     Vanilla anchors: `FpsDebugChart.drawAdditionalLinesAndLabels` draws a cyan
     horizontal line at `getSampleHeight(1.0E9 / framerateLimit)` only when
@@ -1500,7 +1500,15 @@ When an agent does any of the following, update this file in the same slice:
     `HudDebugFrameTimeChart`, sanitizes out non-vanilla guide values, and renders
     the cyan target line in the F3+2 FPS chart.
     Boundary: this is startup configuration only; no in-game options UI or
-    vsync toggle is implemented.
+    DebugOptionsScreen is implemented.
+  - Done 2026-07-08 — Debug overlay vsync FPS text/config. Vanilla anchors:
+    `Options.enableVsync` is the boolean `options.vsync` option with default
+    `true`, `Minecraft` applies it to the window on startup, and
+    `DebugEntryFps.display` appends ` vsync` to the FPS line when it is enabled.
+    bbb now accepts startup-only `--client-vsync` (default true), uses it to
+    prefer a vsynced FIFO surface present mode or a non-vsynced Immediate/Mailbox
+    present mode when available, and projects the same optional ` vsync` suffix
+    in the F3 FPS priority line.
   - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
     paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
     `keyDebugSpectate` to either `ServerboundChangeGameModePacket` or
@@ -2154,7 +2162,7 @@ When an agent does any of the following, update this file in the same slice:
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity/persistence, vsync FPS debug text/config, F3+I local client-side NBT capture / styled feedback,
+    advanced tooltip full parity/persistence, F3+I local client-side NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

@@ -91,6 +91,8 @@ pub(crate) struct Args {
         value_parser = parse_client_framerate_limit
     )]
     pub(crate) client_framerate_limit: u32,
+    #[arg(long = "client-vsync", default_value_t = true, action = ArgAction::Set)]
+    pub(crate) client_vsync: bool,
     #[arg(
         long = "client-gamma",
         default_value_t = VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -417,6 +419,15 @@ mod tests {
         );
 
         assert!(Args::try_parse_from(["bbb-native", "--client-framerate-limit", "251"]).is_err());
+    }
+
+    #[test]
+    fn args_accept_vanilla_default_vsync_toggle() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.client_vsync);
+
+        let disabled = Args::try_parse_from(["bbb-native", "--client-vsync", "false"]).unwrap();
+        assert!(!disabled.client_vsync);
     }
 
     #[test]

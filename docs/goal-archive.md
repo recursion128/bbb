@@ -5382,8 +5382,8 @@
   `HudDebugFpsSampler` 现在记录 240 个 frame-time nanos 样本，F3+2 visible 时投影
   `HudDebugFrameTimeChart`；renderer 通过 HUD white-pixel quad/text 路径绘制 chart
   background、bars、border、labels 和 60 FPS guide。边界：TPS chart、profiler
-  pie chart contents、以及 configured framerate cyan guide（bbb 尚无
-  framerate/vsync config）仍未实现。
+  pie chart contents 当时仍未实现；configured-framerate/vsync 后续已由独立
+  slices 补齐。
 - [x] debug overlay F3+3 network ping/bandwidth chart rendering（P2
   HUD/runtime/net/renderer slice，2026-07-08）：依据
   `DebugScreenOverlay.showNetworkCharts`、`PingDebugChart`、
@@ -5604,4 +5604,12 @@
   finite 模式用该值调度 redraw deadline，debug overlay 左列显示 `T: <limit>`
   或 `T: inf`，F3+2 FPS chart 状态携带有限目标帧率；renderer 清洗非 vanilla
   guide 值，并在 FPS chart 画出 cyan configured-framerate 参考线。边界：该配置
-  是启动参数，不引入 in-game options UI；vsync 文本 parity 仍待后续。
+  是启动参数，不引入 in-game options UI / DebugOptionsScreen。
+- [x] debug overlay vsync FPS text/config（P2 startup/native/renderer slice，
+  2026-07-08）：依据 `Options.enableVsync` 是默认 true 的
+  `options.vsync`，`Minecraft` 启动时把它应用到 window，以及
+  `DebugEntryFps.display` 在 FPS priority line 后按开关附加 ` vsync`。startup
+  现在接受启动参数 `--client-vsync`（默认 true），native 用它创建 renderer
+  swapchain 并投影 debug FPS 文本；renderer 在 vsync 开启时优先 FIFO present
+  mode，关闭时优先 Immediate、其次 Mailbox，最后回退到可用 present mode。
+  边界：该配置仍为启动参数，不引入 in-game options UI / DebugOptionsScreen。
