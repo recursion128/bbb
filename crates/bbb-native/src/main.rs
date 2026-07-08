@@ -28,6 +28,7 @@ mod conduit_scene;
 mod crosshair;
 mod decorated_pot_scene;
 mod enchanting_table_book_scene;
+mod end_portal_scene;
 mod entity_assets;
 mod entity_scene;
 mod hud_assets;

@@ -35,6 +35,10 @@ pub use crate::enchanting_table_books::{
     is_enchanting_table_block_name, EnchantingBookRandom, EnchantingTableBookSourceState,
     EnchantingTableBookState,
 };
+pub use crate::end_portal_blocks::{
+    end_portal_kind_for_block_name, is_end_portal_block_name, EndGatewayBeamSourceState,
+    EndGatewayBlockState, EndPortalBlockKind, EndPortalFace, EndPortalModelSourceState,
+};
 pub use crate::lectern_books::{is_lectern_block_name, LecternBookModelSourceState};
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{

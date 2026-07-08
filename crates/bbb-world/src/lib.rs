@@ -12,6 +12,7 @@ mod counters;
 mod decorated_pot_blocks;
 mod diagnostics;
 mod enchanting_table_books;
+mod end_portal_blocks;
 mod entities;
 mod error;
 mod exports;

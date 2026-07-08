@@ -435,22 +435,52 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (end portal/gateway, spawner display
-    entity; player-head owner skin remains under the broader dynamic
-    profile/texture pipeline): the chest
+  - Block-entity special renderers (spawner display entity; end
+    portal/gateway shader parity; player-head owner skin remains under the
+    broader dynamic profile/texture pipeline): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
     (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
     (2026-07-06), banner (2026-07-06), the enchanting-table book +
     lectern book (2026-07-07), conduit (2026-07-08; see Evidence), and
-    skull/head (2026-07-08; see Evidence) are DONE as the first eight
-    BER sub-slices; every other BE-driven block still bakes a
-    particle-only model into near-empty terrain geometry (remaining: end
-    portal/gateway and the spawner's spinning display entity). Vanilla:
-    `BlockEntityRenderDispatcher` + per-BE
-    renderers. Continue by smallest sub-slice; audit the `Custom`→`Cube`
-    shape fallback (`block_models/shape.rs` → `textures.rs`) alongside,
-    since unclassifiable elements are mostly BE-driven models.
+    skull/head (2026-07-08; see Evidence), and end portal/gateway
+    (2026-07-08; see Evidence) are DONE as the first nine BER sub-slices;
+    the remaining BE-driven model source is the spawner's spinning display
+    entity. Boundary: end portal/gateway cubes currently preserve the vanilla
+    face source, transform, render type metadata, and gateway beam geometry,
+    but their cube surfaces use a position-color approximation until the
+    renderer grows dedicated `RenderTypes.endPortal()` / `endGateway()`
+    shader parity (`end_sky`, `end_portal`, `PORTAL_LAYERS` 15/16).
+    Vanilla: `BlockEntityRenderDispatcher` + per-BE renderers. Continue by
+    smallest sub-slice; audit the `Custom`→`Cube` shape fallback
+    (`block_models/shape.rs` → `textures.rs`) alongside, since
+    unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-08 — End portal/gateway block-entity renderer (ninth BER
+    sub-slice). Vanilla facts were checked against
+    `AbstractEndPortalRenderer`, `TheEndPortalRenderer`,
+    `TheEndGatewayRenderer`, `TheEndPortalBlockEntity`,
+    `TheEndGatewayBlockEntity`, `EndPortalBlock`, `EndGatewayBlock`,
+    `RenderPipelines`, `RenderTypes`, `DyeColor`, and `BeaconRenderer`:
+    both blocks submit only Y-axis faces; end portals apply
+    `T(0,0.375,0) * S(1,0.375,1)`; gateways keep the unit cube and submit a
+    beacon-style beam while spawning or cooling down. World now decodes
+    gateway `Age` from BE NBT, owns flat gateway age/cooldown state, handles
+    BlockEvent(1) cooldown, advances `beamAnimationTick` on running ticks,
+    and projects source states with vanilla spawn/cooldown percent,
+    `sin(percent*PI)` scale, height, magenta/purple colors, and
+    `floorMod(gameTime,40)+partial` animation time. Native maps those
+    sources to `EntityModelKind::EndPortalBlock` with optional
+    `EndGatewayBeamRenderState` and joins the shared entity-model stream
+    after held-item baking. Renderer adds `EndPortal`/`EndGateway` custom
+    position-color render types for the cube faces, `EndGatewayBeam` scroll
+    geometry using the vanilla `BeaconRenderer.renderPart` quad formula, and
+    `textures/entity/end_portal/end_gateway_beam.png` in the entity atlas
+    (`ENTITY_MODEL_TEXTURE_REFS` 688-count). Boundary: the portal/gateway
+    cube shader itself is not yet the official 15/16-layer portal shader; the
+    approximation is intentionally tracked in Next action. Tests cover world
+    NBT/tick/source projection, native instance/beam projection, renderer
+    cube transform/faces/beam geometry/sorted draw range, and runtime
+    tick-before-extract ordering.
   - Done 2026-07-08 — Skull/head block-entity renderer (eighth BER
     sub-slice). Vanilla facts were checked against `SkullBlockRenderer`,
     `SkullBlockRenderState`, `SkullBlockEntity`, `AbstractSkullBlock`,
@@ -491,7 +521,7 @@ When an agent does any of the following, update this file in the same slice:
     adds `EntityModelKind::Conduit { part }`, the four vanilla model layers
     (`CONDUIT_EYE`, `WIND`, `SHELL`, `CAGE`), and the six textures
     `entity/conduit/{base,cage,wind,wind_vertical,open_eye,closed_eye}` into
-    the shared entity atlas (`ENTITY_MODEL_TEXTURE_REFS` 687-count).
+    the shared entity atlas.
     Root transforms transcribe `ConduitRenderer.submit`: inactive shell
     centered with vanilla's `activeRotation * PI / 180` rotation quirk;
     active cage bob + `(0.5,1,0.5)` axis rotation; outer wind phase

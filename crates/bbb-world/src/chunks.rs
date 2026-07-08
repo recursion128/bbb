@@ -1,5 +1,6 @@
 mod banner_patterns;
 mod decode;
+mod end_gateway;
 mod light;
 mod nbt;
 mod palette;
@@ -12,10 +13,12 @@ mod vault;
 pub(crate) use banner_patterns::decode_banner_patterns;
 pub use decode::decode_level_chunk_with_light;
 pub(crate) use decode::{decode_biome_sections, decode_nbt_payload_summary};
+pub(crate) use end_gateway::decode_end_gateway_block_entity_data;
 pub use light::LightData;
 pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
+pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{
     BannerPatternLayerState, BannerPatternsState, BlockEntityRecord, ChunkColumn,
     ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,

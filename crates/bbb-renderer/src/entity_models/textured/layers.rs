@@ -69,6 +69,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EnderDragonBase,
     EnderDragonEyes,
     EnderDragonBeam,
+    EndGatewayBeam,
     EndermanBase,
     EndermanEyes,
     EvokerFangsBase,
@@ -219,6 +220,12 @@ pub(crate) enum EntityModelLayerRenderType {
     EnergySwirl,
     /// Vanilla `RenderTypes.endCrystalBeam(texture)`.
     EndCrystalBeam,
+    /// Vanilla `RenderTypes.endPortal()`.
+    EndPortal,
+    /// Vanilla `RenderTypes.endGateway()`.
+    EndGateway,
+    /// Vanilla `BeaconRenderer` beam render type used by `TheEndGatewayRenderer`.
+    EndGatewayBeam,
     /// Vanilla `RenderTypes.dragonRays()`.
     DragonRays,
     /// Vanilla `RenderTypes.dragonRaysDepth()`.
@@ -250,7 +257,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 20] = [
+    pub(in crate::entity_models) const ALL: [Self; 23] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -268,6 +275,9 @@ impl EntityModelLayerRenderType {
         Self::BreezeWind,
         Self::EnergySwirl,
         Self::EndCrystalBeam,
+        Self::EndPortal,
+        Self::EndGateway,
+        Self::EndGatewayBeam,
         Self::DragonRays,
         Self::DragonRaysDepth,
         Self::WaterMask,
@@ -291,9 +301,13 @@ impl EntityModelLayerRenderType {
             Self::Outline => EntityModelLayerRenderBucket::OutlineOnly,
             Self::EntityGlint | Self::ArmorEntityGlint => EntityModelLayerRenderBucket::GlintOnly,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
-            Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
+            Self::BreezeWind | Self::EndCrystalBeam | Self::EndGatewayBeam => {
+                EntityModelLayerRenderBucket::Scroll
+            }
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
-            Self::DragonRays => EntityModelLayerRenderBucket::PositionColor,
+            Self::EndPortal | Self::EndGateway | Self::DragonRays => {
+                EntityModelLayerRenderBucket::PositionColor
+            }
             Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
             Self::DragonRaysDepth => EntityModelLayerRenderBucket::DepthOnly,
         }
@@ -326,6 +340,9 @@ impl EntityModelLayerRenderType {
                 | Self::Eyes
                 | Self::BreezeWind
                 | Self::EnergySwirl
+                | Self::EndPortal
+                | Self::EndGateway
+                | Self::EndGatewayBeam
                 | Self::DragonRays
         )
     }
@@ -361,6 +378,9 @@ impl EntityModelLayerRenderType {
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",
             Self::EndCrystalBeam => "end_crystal_beam",
+            Self::EndPortal => "end_portal",
+            Self::EndGateway => "end_gateway",
+            Self::EndGatewayBeam => "end_gateway_beam",
             Self::DragonRays => "dragonRays",
             Self::DragonRaysDepth => "dragonRaysDepth",
             Self::WaterMask => "waterMask",
@@ -859,6 +879,19 @@ pub(in crate::entity_models) fn end_crystal_textured_layer_passes() -> Vec<Entit
             submit_sequence: 1,
         },
     ]
+}
+
+pub(in crate::entity_models) fn end_gateway_beam_layer_pass() -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::EndGatewayBeam,
+        render_type: EntityModelLayerRenderType::EndGatewayBeam,
+        model_layer: "",
+        texture: END_GATEWAY_BEAM_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 1,
+    }
 }
 
 pub(in crate::entity_models) fn copper_golem_textured_layer_passes(

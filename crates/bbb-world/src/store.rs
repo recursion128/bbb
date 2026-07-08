@@ -56,6 +56,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) conduit_blocks: Vec<crate::ConduitBlockState>,
     #[serde(default)]
+    pub(crate) end_gateways: Vec<crate::EndGatewayBlockState>,
+    #[serde(default)]
     pub(crate) enchanting_table_books: Vec<crate::EnchantingTableBookState>,
     #[serde(default)]
     pub(crate) enchanting_book_random: crate::EnchantingBookRandom,

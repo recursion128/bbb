@@ -30,6 +30,7 @@ mod death;
 mod decorated_pot;
 mod dolphin;
 mod end_crystal;
+mod end_portal;
 mod ender_dragon;
 mod enderman;
 mod endermite;
@@ -238,6 +239,30 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
             false,
             false,
+        ),
+        (
+            EntityModelLayerRenderType::EndPortal,
+            "end_portal",
+            EntityModelLayerRenderBucket::PositionColor,
+            false,
+            false,
+            true,
+        ),
+        (
+            EntityModelLayerRenderType::EndGateway,
+            "end_gateway",
+            EntityModelLayerRenderBucket::PositionColor,
+            false,
+            false,
+            true,
+        ),
+        (
+            EntityModelLayerRenderType::EndGatewayBeam,
+            "end_gateway_beam",
+            EntityModelLayerRenderBucket::Scroll,
+            false,
+            false,
+            true,
         ),
         (
             EntityModelLayerRenderType::DragonRays,

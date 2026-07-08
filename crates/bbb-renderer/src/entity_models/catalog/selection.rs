@@ -98,6 +98,14 @@ impl EntityModelKind {
             Self::LeashKnot => "leash_knot",
             Self::Conduit { .. } => "conduit",
             Self::SkullBlock { .. } => "skull_block",
+            Self::EndPortalBlock {
+                kind: EndPortalModelKind::EndPortal,
+                ..
+            } => "end_portal_block",
+            Self::EndPortalBlock {
+                kind: EndPortalModelKind::EndGateway,
+                ..
+            } => "end_gateway_block",
             Self::Chest {
                 half: ChestModelHalf::Single,
                 ..

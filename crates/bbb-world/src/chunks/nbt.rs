@@ -8,6 +8,7 @@ const MAX_NBT_LIST_ITEMS: usize = 4096;
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum NbtValue {
     Double(f64),
+    Long(i64),
     String(String),
     List(Vec<NbtValue>),
     Compound(Vec<(String, NbtValue)>),
@@ -58,10 +59,7 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
             decoder.read_exact(4, "nbt int/float")?;
             Ok(NbtValue::Other)
         }
-        4 => {
-            decoder.read_exact(8, "nbt long")?;
-            Ok(NbtValue::Other)
-        }
+        4 => Ok(NbtValue::Long(decoder.read_i64()?)),
         6 => Ok(NbtValue::Double(decoder.read_f64()?)),
         7 => {
             let len = read_nbt_len(decoder)?;

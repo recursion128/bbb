@@ -2460,6 +2460,8 @@ impl Renderer {
                 || self.entity_model_eyes_mesh.is_some()
                 || self.entity_model_dragon_rays_mesh.is_some()
                 || self.entity_model_dragon_rays_depth_mesh.is_some()
+                || self.entity_model_end_portal_mesh.is_some()
+                || self.entity_model_end_gateway_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
                 || self.entity_model_scroll_additive_mesh.is_some()))
             || (self.entity_dynamic_player_skin_atlas.is_some()
@@ -2775,6 +2777,14 @@ impl Renderer {
                 self.entity_model_dragon_rays_depth_mesh.as_ref()?,
                 &self.entity_model_dragon_rays_depth_pipeline,
             )),
+            EntityModelLayerRenderType::EndPortal => Some((
+                self.entity_model_end_portal_mesh.as_ref()?,
+                &self.entity_model_dragon_rays_pipeline,
+            )),
+            EntityModelLayerRenderType::EndGateway => Some((
+                self.entity_model_end_gateway_mesh.as_ref()?,
+                &self.entity_model_dragon_rays_pipeline,
+            )),
             _ => None,
         }
     }
@@ -2787,7 +2797,9 @@ impl Renderer {
         entity_model_draw_calls: &mut u64,
     ) {
         let (mesh, uses_lightmap) = match draw.render_type {
-            EntityModelLayerRenderType::BreezeWind | EntityModelLayerRenderType::EndCrystalBeam => {
+            EntityModelLayerRenderType::BreezeWind
+            | EntityModelLayerRenderType::EndCrystalBeam
+            | EntityModelLayerRenderType::EndGatewayBeam => {
                 let Some(mesh) = self.entity_model_scroll_mesh.as_ref() else {
                     return;
                 };
@@ -2941,6 +2953,24 @@ impl Renderer {
         }
         if let Some(mesh) = &self.entity_model_dragon_rays_depth_mesh {
             pass.set_pipeline(&self.entity_model_dragon_rays_depth_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let Some(mesh) = &self.entity_model_end_portal_mesh {
+            pass.set_pipeline(&self.entity_model_dragon_rays_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let Some(mesh) = &self.entity_model_end_gateway_mesh {
+            pass.set_pipeline(&self.entity_model_dragon_rays_pipeline);
             *pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));

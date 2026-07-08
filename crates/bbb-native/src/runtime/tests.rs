@@ -1117,6 +1117,17 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(conduit_tick < conduit_instances);
     assert!(camera_pose < conduit_instances);
     assert!(held_models < conduit_instances);
+    // End gateways run their client block-entity beam ticker before the
+    // renderer reads age/cooldown for the cube+beam model instance.
+    let end_gateway_tick = source
+        .find("world.advance_end_gateway_ticks(running_ticks);")
+        .expect("pump should advance end gateway ticks");
+    let end_portal_instances = source
+        .find("entity_instances.extend(end_portal_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract end portal/gateway block-entity model instances");
+    assert!(conduit_tick < end_gateway_tick);
+    assert!(end_gateway_tick < end_portal_instances);
+    assert!(held_models < end_portal_instances);
     // Powered dragon and piglin skull/head block entities tick their animation
     // clock before the renderer reads the skull model animation position; the
     // model instances join the same entity stream after held-item baking.
@@ -1126,7 +1137,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let skull_instances = source
         .find("entity_instances.extend(skull_model_instances_from_world_at_partial_tick(")
         .expect("pump should extract skull block-entity model instances");
-    assert!(conduit_tick < skull_tick);
+    assert!(end_gateway_tick < skull_tick);
     assert!(skull_tick < skull_instances);
     assert!(held_models < skull_instances);
     let item_frame_models = source

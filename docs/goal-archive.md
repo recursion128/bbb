@@ -4147,8 +4147,8 @@
   camera-facing eye 四个 `EntityModelInstance`，采样 `block<<4 | sky<<20` 光照。
   renderer 新增 `ConduitModelPart`、`EntityModelKind::Conduit { part }`、
   `ConduitModel` 四层 cube（eye 8×8×0 + 0.01 deformation、wind 16³、shell 6³、
-  cage 8³）、6 张 `textures/entity/conduit/*` 纹理进共享 entity atlas
-  （687-count），layer pass 按 vanilla 区分 inactive `entitySolid(base)` 与
+  cage 8³）、6 张 `textures/entity/conduit/*` 纹理进共享 entity atlas，layer
+  pass 按 vanilla 区分 inactive `entitySolid(base)` 与
   active `entityCutout(cage/wind/wind_vertical/open_eye/closed_eye)`。根变换转写
   inactive shell center + `activeRotation * PI / 180` quirk，active cage bob +
   `(0.5,1,0.5)` 轴旋转，outer wind phase 0/1/2，inner wind 0.875 scale +
@@ -4176,6 +4176,27 @@
   以及 runtime tick-before-extract 顺序。defer 边界：player-head BE
   `profile` owner skin 仍归 P3 动态 profile/texture 管线，profileless player
   head 先使用 vanilla default skin fallback。
+- [x] end portal/gateway block-entity renderer（2026-07-08，BER 第九片）：
+  vanilla `AbstractEndPortalRenderer` / `TheEndPortalRenderer` /
+  `TheEndGatewayRenderer` / `TheEndGatewayBlockEntity` / `BeaconRenderer`
+  转写为 repo-native world→native→renderer 链路。world 侧新增 gateway
+  `Age` NBT 解码、平铺 age/cooldown 状态、BlockEvent(1) cooldown、client
+  ticker `beamAnimationTick` 推进，以及 source-state 投影：portal/gateway
+  只提交 Y 轴 faces，portal 使用 `T(0,0.375,0) * S(1,0.375,1)`，gateway
+  beam 使用 spawn/cooldown percent、`sin(percent*PI)` scale、height、magenta/
+  purple `DyeColor`、`floorMod(gameTime,40)+partial` animation time。native
+  runtime 在 running ticks 上 advance gateway 状态，并把 source 投成共享
+  entity-model stream 中的 `EntityModelKind::EndPortalBlock` + optional
+  `EndGatewayBeamRenderState`。renderer 新增 `EndPortalModelKind` /
+  `EndPortalModelFace` / `EndGatewayBeamRenderState`，portal/gateway cube
+  进入 position-color custom geometry，gateway beam 进入 scroll bucket 并按
+  vanilla `BeaconRenderer.renderPart` 生成内层旋转 beam + alpha=32 glow；新增
+  `textures/entity/end_portal/end_gateway_beam.png` 到共享 entity atlas
+  （688-count）。测试覆盖 world NBT/tick/source、native instance/beam 投影、
+  renderer cube transform/faces/beam geometry/sorted draw range，以及 runtime
+  tick-before-extract 顺序。defer 边界：portal/gateway cube 当前是可见
+  position-color approximation；完整 `RenderTypes.endPortal()` /
+  `endGateway()` 15/16-layer shader parity 留在 unsupported ledger。
 
 ## P2：屏幕、HUD、字体与截图
 

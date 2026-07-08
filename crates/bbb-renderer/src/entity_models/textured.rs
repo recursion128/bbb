@@ -14,8 +14,9 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial,
-        EntityCustomHeadSkull, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
+        ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndGatewayBeamRenderState,
+        EndPortalModelFace, EndPortalModelKind, EntityArmorMaterial, EntityCustomHeadSkull,
+        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
@@ -108,6 +109,10 @@ const DRAGON_RAYS_RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const DRAGON_RAYS_RANDOM_INCREMENT: u64 = 11;
 const DRAGON_RAYS_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 const DRAGON_RAYS_HALF_SQRT_3: f32 = 0.866_025_4;
+const END_PORTAL_BOTTOM: f32 = 0.375;
+const END_PORTAL_HEIGHT: f32 = 0.375;
+const END_PORTAL_APPROX_COLOR: [f32; 4] = [0.06, 0.0, 0.18, 1.0];
+const END_GATEWAY_APPROX_COLOR: [f32; 4] = [0.23, 0.02, 0.36, 1.0];
 
 mod layers;
 #[cfg(test)]
@@ -125,7 +130,7 @@ pub(super) use layers::{
     copper_golem_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
     creeper_textured_layer_passes, custom_head_skull_layer_pass,
     decorated_pot_textured_layer_passes, donkey_textured_layer_passes,
-    drowned_textured_layer_passes, end_crystal_textured_layer_passes,
+    drowned_textured_layer_passes, end_crystal_textured_layer_passes, end_gateway_beam_layer_pass,
     ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, equipment_layer_pass, evoker_fangs_textured_layer_passes,
     feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
@@ -342,6 +347,14 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) dragon_rays: EntityModelMesh,
     /// Vanilla `RenderTypes.dragonRaysDepth()` replays the same ray shape into a depth-only pipeline.
     pub(super) dragon_rays_depth: EntityModelMesh,
+    /// Approximate no-texture cube faces for vanilla `RenderTypes.endPortal()` block-entity submits.
+    /// The exact 15-layer shader is tracked as renderer parity work; the submitted face set and root
+    /// transform still follow vanilla.
+    pub(super) end_portal: EntityModelMesh,
+    /// Approximate no-texture cube faces for vanilla `RenderTypes.endGateway()` block-entity submits.
+    /// The exact 16-layer shader is tracked as renderer parity work; the gateway beam is emitted
+    /// separately through the scroll bucket.
+    pub(super) end_gateway: EntityModelMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
@@ -400,6 +413,8 @@ impl EntityModelTexturedMeshes {
             water_mask: EntityModelMesh::new(),
             dragon_rays: EntityModelMesh::new(),
             dragon_rays_depth: EntityModelMesh::new(),
+            end_portal: EntityModelMesh::new(),
+            end_gateway: EntityModelMesh::new(),
             submissions: Vec::new(),
             custom_submissions: Vec::new(),
             sorted_main_translucent_draws: Vec::new(),
@@ -2622,6 +2637,340 @@ pub(in crate::entity_models) fn render_ender_dragon_death_rays(
         normalized_death_time,
         3,
     );
+}
+
+pub(in crate::entity_models) fn render_end_portal_block_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let EntityModelKind::EndPortalBlock { kind, faces } = instance.kind else {
+        return;
+    };
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
+
+    let cube_transform = end_portal_block_root_transform(instance, kind);
+    let (render_type, color) = match kind {
+        EndPortalModelKind::EndPortal => (
+            EntityModelLayerRenderType::EndPortal,
+            END_PORTAL_APPROX_COLOR,
+        ),
+        EndPortalModelKind::EndGateway => (
+            EntityModelLayerRenderType::EndGateway,
+            END_GATEWAY_APPROX_COLOR,
+        ),
+    };
+    emit_end_portal_custom_submission(meshes, render_type, cube_transform, faces, color);
+    if kind == EndPortalModelKind::EndGateway {
+        render_end_gateway_beam(meshes, instance, atlas);
+    }
+}
+
+fn end_portal_block_root_transform(
+    instance: EntityModelInstance,
+    kind: EndPortalModelKind,
+) -> Mat4 {
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position));
+    match kind {
+        EndPortalModelKind::EndPortal => {
+            transform
+                * Mat4::from_translation(Vec3::new(0.0, END_PORTAL_BOTTOM, 0.0))
+                * Mat4::from_scale(Vec3::new(1.0, END_PORTAL_HEIGHT, 1.0))
+        }
+        EndPortalModelKind::EndGateway => transform,
+    }
+}
+
+fn emit_end_portal_custom_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    render_type: EntityModelLayerRenderType,
+    transform: Mat4,
+    faces: [EndPortalModelFace; 2],
+    color: [f32; 4],
+) {
+    let (submission, insertion_index) =
+        meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
+            render_type,
+            transform,
+            order: 0,
+            submit_sequence: 0,
+        });
+    let mut mesh = EntityModelMesh::new();
+    append_end_portal_cube_mesh(&mut mesh, submission.transform, faces, color);
+    let index_count =
+        u32::try_from(mesh.indices.len()).expect("end portal cube index count fits in u32");
+    let index_start = match render_type {
+        EntityModelLayerRenderType::EndPortal => {
+            append_entity_model_mesh(&mut meshes.end_portal, mesh)
+        }
+        EntityModelLayerRenderType::EndGateway => {
+            append_entity_model_mesh(&mut meshes.end_gateway, mesh)
+        }
+        _ => unreachable!("end portal custom submission render type"),
+    };
+    if let Some(sort_key) = meshes.custom_geometry_draw_key(submission, insertion_index) {
+        meshes.push_position_color_draw_range(render_type, sort_key, index_start, index_count);
+    }
+}
+
+fn append_end_portal_cube_mesh(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    faces: [EndPortalModelFace; 2],
+    color: [f32; 4],
+) {
+    for face in faces {
+        match face {
+            EndPortalModelFace::Down => append_end_portal_face(
+                mesh,
+                transform,
+                [
+                    Vec3::new(0.0, 0.0, 0.0),
+                    Vec3::new(1.0, 0.0, 0.0),
+                    Vec3::new(1.0, 0.0, 1.0),
+                    Vec3::new(0.0, 0.0, 1.0),
+                ],
+                [0.0, -1.0, 0.0],
+                color,
+            ),
+            EndPortalModelFace::Up => append_end_portal_face(
+                mesh,
+                transform,
+                [
+                    Vec3::new(0.0, 1.0, 0.0),
+                    Vec3::new(0.0, 1.0, 1.0),
+                    Vec3::new(1.0, 1.0, 1.0),
+                    Vec3::new(1.0, 1.0, 0.0),
+                ],
+                [0.0, 1.0, 0.0],
+                color,
+            ),
+        }
+    }
+}
+
+fn append_end_portal_face(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    corners: [Vec3; 4],
+    normal: [f32; 3],
+    color: [f32; 4],
+) {
+    let base = u32::try_from(mesh.vertices.len()).expect("end portal vertex count fits in u32");
+    for corner in corners {
+        mesh.vertices.push(EntityModelVertex {
+            position: transform.transform_point3(corner).to_array(),
+            color,
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal,
+        });
+    }
+    mesh.indices
+        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+}
+
+fn render_end_gateway_beam(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(beam) = instance.render_state.end_gateway_beam else {
+        return;
+    };
+    if beam.height <= 0 {
+        return;
+    }
+    let tint = argb_to_tint(beam.color_argb);
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position));
+    let submit =
+        no_overlay_layer_submission_with_tint(end_gateway_beam_layer_pass(), tint, transform)
+            .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+    emit_end_gateway_beam_submission(meshes, submit, atlas, beam);
+}
+
+fn emit_end_gateway_beam_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    atlas: &EntityModelTextureAtlasLayout,
+    beam: EndGatewayBeamRenderState,
+) {
+    render_scroll_geometry_submission(
+        meshes,
+        submit,
+        EntityModelLayerRenderBucket::Scroll,
+        atlas,
+        |mesh, entry, submit| {
+            let beam_start = -beam.height;
+            let height = beam.height * 2;
+            let beam_end = beam_start + height;
+            let transform = submit.transform * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5));
+            let scroll = if height < 0 {
+                beam.animation_time
+            } else {
+                -beam.animation_time
+            };
+            let tex_v_off = frac(scroll * 0.2 - (scroll * 0.1).floor());
+            let vv2 = -1.0 + tex_v_off;
+
+            let solid_radius = 0.15;
+            let solid_vv1 = height as f32 * beam.scale * (0.5 / solid_radius) + vv2;
+            let inner_transform =
+                transform * Mat4::from_rotation_y((beam.animation_time * 2.25 - 45.0).to_radians());
+            append_beacon_beam_part(
+                mesh,
+                entry,
+                inner_transform,
+                beam_start,
+                beam_end,
+                [
+                    (0.0, solid_radius),
+                    (solid_radius, 0.0),
+                    (-solid_radius, 0.0),
+                    (0.0, -solid_radius),
+                ],
+                submit.tint,
+                solid_vv1,
+                vv2,
+            );
+
+            let glow_radius = 0.175;
+            let glow_vv1 = height as f32 * beam.scale + vv2;
+            let mut glow_tint = submit.tint;
+            glow_tint[3] = 32.0 / 255.0;
+            append_beacon_beam_part(
+                mesh,
+                entry,
+                transform,
+                beam_start,
+                beam_end,
+                [
+                    (-glow_radius, -glow_radius),
+                    (glow_radius, -glow_radius),
+                    (-glow_radius, glow_radius),
+                    (glow_radius, glow_radius),
+                ],
+                glow_tint,
+                glow_vv1,
+                vv2,
+            );
+        },
+    );
+}
+
+fn append_beacon_beam_part(
+    mesh: &mut EntityModelScrollMesh,
+    entry: EntityModelTextureAtlasEntry,
+    transform: Mat4,
+    beam_start: i32,
+    beam_end: i32,
+    corners: [(f32, f32); 4],
+    tint: [f32; 4],
+    vv1: f32,
+    vv2: f32,
+) {
+    let [(wnx, wnz), (enx, enz), (wsx, wsz), (esx, esz)] = corners;
+    append_beacon_beam_quad(
+        mesh,
+        entry,
+        transform,
+        beam_start,
+        beam_end,
+        (wnx, wnz),
+        (enx, enz),
+        tint,
+        vv1,
+        vv2,
+    );
+    append_beacon_beam_quad(
+        mesh,
+        entry,
+        transform,
+        beam_start,
+        beam_end,
+        (esx, esz),
+        (wsx, wsz),
+        tint,
+        vv1,
+        vv2,
+    );
+    append_beacon_beam_quad(
+        mesh,
+        entry,
+        transform,
+        beam_start,
+        beam_end,
+        (enx, enz),
+        (esx, esz),
+        tint,
+        vv1,
+        vv2,
+    );
+    append_beacon_beam_quad(
+        mesh,
+        entry,
+        transform,
+        beam_start,
+        beam_end,
+        (wsx, wsz),
+        (wnx, wnz),
+        tint,
+        vv1,
+        vv2,
+    );
+}
+
+fn append_beacon_beam_quad(
+    mesh: &mut EntityModelScrollMesh,
+    entry: EntityModelTextureAtlasEntry,
+    transform: Mat4,
+    beam_start: i32,
+    beam_end: i32,
+    first: (f32, f32),
+    second: (f32, f32),
+    tint: [f32; 4],
+    vv1: f32,
+    vv2: f32,
+) {
+    let base =
+        u32::try_from(mesh.vertices.len()).expect("end gateway beam vertex count fits in u32");
+    for (position, local_uv) in [
+        (Vec3::new(first.0, beam_end as f32, first.1), [1.0, vv1]),
+        (Vec3::new(first.0, beam_start as f32, first.1), [1.0, vv2]),
+        (Vec3::new(second.0, beam_start as f32, second.1), [0.0, vv2]),
+        (Vec3::new(second.0, beam_end as f32, second.1), [0.0, vv1]),
+    ] {
+        append_beacon_beam_vertex(mesh, entry, transform, position, local_uv, tint);
+    }
+    mesh.indices
+        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+}
+
+fn append_beacon_beam_vertex(
+    mesh: &mut EntityModelScrollMesh,
+    entry: EntityModelTextureAtlasEntry,
+    transform: Mat4,
+    position: Vec3,
+    local_uv: [f32; 2],
+    tint: [f32; 4],
+) {
+    let rect = entry.uv;
+    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+    mesh.vertices.push(EntityModelScrollVertex {
+        position: transform.transform_point3(position).to_array(),
+        local_uv,
+        uv_rect_min: rect.min,
+        uv_rect_size: size,
+        tint,
+        light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+        overlay: ENTITY_VERTEX_NO_OVERLAY,
+    });
+}
+
+fn frac(value: f32) -> f32 {
+    value - value.floor()
 }
 
 fn emit_dragon_rays_custom_submission(

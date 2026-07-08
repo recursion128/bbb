@@ -91,6 +91,16 @@ pub struct BlockEntityRecord {
     pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub banner_patterns: Option<BannerPatternsState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_gateway: Option<EndGatewayBlockEntityData>,
+}
+
+/// The end gateway block entity fields read by `TheEndGatewayRenderer`:
+/// vanilla saves `Age` in BE NBT and receives cooldown through block event
+/// `1`. Decoded from chunk block-entity data and `BlockEntityData` updates.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndGatewayBlockEntityData {
+    pub age: i64,
 }
 
 /// The banner block entity's stored pattern layers — vanilla

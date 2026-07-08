@@ -58,6 +58,7 @@ use crate::{
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
+    end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
@@ -1518,6 +1519,9 @@ pub(crate) fn pump_network_and_terrain(
     // ticker: it advances tickCount/activeRotation and refreshes the water +
     // prismarine frame every 40 game ticks.
     world.advance_conduit_ticks(running_ticks);
+    // Vanilla `TheEndGatewayBlockEntity.beamAnimationTick` advances age and
+    // cooldown on the client block-entity ticker.
+    world.advance_end_gateway_ticks(running_ticks);
     // Vanilla `SkullBlockEntity.animation` is the client ticker for powered
     // dragon/piglin skull/head blocks.
     world.advance_skull_block_ticks(running_ticks);
@@ -1774,6 +1778,10 @@ pub(crate) fn pump_network_and_terrain(
     entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(
         world,
         camera_pose,
+        entity_partial_tick,
+    ));
+    entity_instances.extend(end_portal_model_instances_from_world_at_partial_tick(
+        world,
         entity_partial_tick,
     ));
     entity_instances.extend(skull_model_instances_from_world_at_partial_tick(

@@ -40,6 +40,18 @@ pub enum SkullBlockModelAttachment {
     Wall { facing: EntityAttachmentFace },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EndPortalModelKind {
+    EndPortal,
+    EndGateway,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EndPortalModelFace {
+    Down,
+    Up,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -240,6 +252,15 @@ pub enum EntityModelKind {
     SkullBlock {
         skull: EntityCustomHeadSkull,
         attachment: SkullBlockModelAttachment,
+    },
+    /// Vanilla 26.1 `TheEndPortalRenderer` / `TheEndGatewayRenderer` block-entity cube source.
+    /// Both submit only the Y-axis faces from `AbstractEndPortalRenderer` (`shouldRenderFace`
+    /// returns true for `Direction.Axis.Y`). End portals apply the vanilla
+    /// `T(0, 0.375, 0) * S(1, 0.375, 1)` cube transform; gateways keep the unit cube and may add
+    /// the spawn/cooldown beacon-style beam through `EntityRenderState.end_gateway_beam`.
+    EndPortalBlock {
+        kind: EndPortalModelKind,
+        faces: [EndPortalModelFace; 2],
     },
     /// Vanilla 26.1 `ChestModel` submitted by the `ChestRenderer` block-entity renderer — the first
     /// (and so far only) block-entity model in the scene. `half` selects the single or the
@@ -991,6 +1012,19 @@ pub struct EndCrystalBeamRenderState {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EnderDragonBeamRenderState {
     pub beam_offset: [f32; 3],
+}
+
+/// Vanilla `TheEndGatewayRenderer` beam render state. `scale` is the
+/// `sin(percent * PI)` envelope, `height` is the positive block distance used
+/// to submit a beam from `-height` to `+height`, `color_argb` is magenta while
+/// spawning or purple while cooling down, and `animation_time` is
+/// `floorMod(gameTime, 40) + partialTick`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EndGatewayBeamRenderState {
+    pub scale: f32,
+    pub height: i32,
+    pub color_argb: u32,
+    pub animation_time: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

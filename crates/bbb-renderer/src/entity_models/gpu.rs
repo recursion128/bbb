@@ -2206,6 +2206,16 @@ impl Renderer {
                 meshes.dragon_rays_depth,
                 "bbb-entity-model-dragon-rays-depth",
             );
+            self.entity_model_end_portal_mesh = create_entity_model_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.end_portal,
+                "bbb-entity-model-end-portal",
+            );
+            self.entity_model_end_gateway_mesh = create_entity_model_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.end_gateway,
+                "bbb-entity-model-end-gateway",
+            );
             self.entity_model_outline_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.outline,
@@ -2361,6 +2371,8 @@ impl Renderer {
             self.entity_model_eyes_mesh = None;
             self.entity_model_dragon_rays_mesh = None;
             self.entity_model_dragon_rays_depth_mesh = None;
+            self.entity_model_end_portal_mesh = None;
+            self.entity_model_end_gateway_mesh = None;
             self.entity_model_outline_mesh = None;
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
@@ -2423,6 +2435,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_dragon_rays_depth_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_end_portal_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_end_gateway_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_outline_mesh
