@@ -422,11 +422,30 @@ fn main() -> Result<()> {
                         let dynamic_texture_dump_requests =
                             input.take_debug_dynamic_texture_dump_requests();
                         if dynamic_texture_dump_requests > 0 {
-                            tracing::info!(
-                                dynamic_texture_dump_requests,
-                                path = "screenshots/debug",
-                                "dynamic texture dump requested by debug hotkey"
-                            );
+                            let debug_texture_path = std::path::Path::new("screenshots")
+                                .join("debug");
+                            match renderer.dump_dynamic_textures(&debug_texture_path) {
+                                Ok(summary) => {
+                                    tracing::info!(
+                                        dynamic_texture_dump_requests,
+                                        files_written = summary.files_written,
+                                        dynamic_player_skin_atlas =
+                                            summary.dynamic_player_skin_atlas,
+                                        dynamic_player_texture_atlas =
+                                            summary.dynamic_player_texture_atlas,
+                                        path = %debug_texture_path.display(),
+                                        "dumped dynamic textures requested by debug hotkey"
+                                    );
+                                }
+                                Err(err) => {
+                                    tracing::warn!(
+                                        ?err,
+                                        dynamic_texture_dump_requests,
+                                        path = %debug_texture_path.display(),
+                                        "failed to dump dynamic textures requested by debug hotkey"
+                                    );
+                                }
+                            }
                         }
                         let profiling_toggle_requests =
                             input.take_debug_profiling_toggle_requests();

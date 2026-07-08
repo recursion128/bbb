@@ -2971,7 +2971,7 @@ fn create_entity_model_texture_sampler(
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
-pub(super) fn build_dynamic_player_skin_atlas(
+pub(crate) fn build_dynamic_player_skin_atlas(
     images: &[DynamicPlayerSkinImage],
 ) -> Result<(EntityDynamicPlayerSkinAtlasLayout, Vec<u8>)> {
     if images.is_empty() {
@@ -3027,7 +3027,7 @@ pub(super) fn build_dynamic_player_skin_atlas(
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
-pub(super) fn build_dynamic_player_texture_atlas(
+pub(crate) fn build_dynamic_player_texture_atlas(
     images: &[DynamicPlayerTextureImage],
 ) -> Result<(EntityDynamicPlayerTextureAtlasLayout, Vec<u8>)> {
     if images.is_empty() {

@@ -2,6 +2,7 @@ mod block_destroy;
 mod camera;
 mod clouds;
 mod counters;
+mod debug_textures;
 mod entity_models;
 mod exports;
 mod frame_buffers;

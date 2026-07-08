@@ -1112,8 +1112,7 @@ When an agent does any of the following, update this file in the same slice:
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
-    actual dynamic texture dump execution, F3+I local client-side NBT capture /
-    styled feedback, profiler data
+    F3+I local client-side NBT capture / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
@@ -1406,9 +1405,20 @@ When an agent does any of the following, update this file in the same slice:
     appends `[Debug]: Saved dynamic textures to screenshots/debug`, records a
     drainable native dump request counter, drains it in the main event loop
     with the same relative path, suppresses the F3-release overlay toggle, and
-    exposes the action in debug help. Boundary: actual renderer/texture-manager
-    sheet dumping and clickable/open-file chat styling are still not
-    implemented.
+    exposes the action in debug help. Boundary: clickable/open-file chat
+    styling is still not implemented.
+  - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump execution.
+    Vanilla anchors: `KeyboardHandler.handleDebugKeys` resolves
+    `TextureUtil.getDebugTexturePath(gameDirectory)` and calls
+    `TextureManager.dumpAllSheets(debugTexturePath)`, while each dumpable
+    texture writes its current sheet into that directory. bbb now drains the
+    F3+S request by calling renderer-owned `dump_dynamic_textures` for the same
+    `screenshots/debug` relative path; the renderer creates the target
+    directory and writes PNG sheets for the current dynamic player skin atlas
+    and dynamic player profile texture atlas when those atlases have uploaded
+    images. Focused tests cover empty dumps and RGBA/dimension-preserving atlas
+    PNG output. Boundary: broader non-profile dynamic texture loading and
+    clickable/open-file chat styling remain future parity work.
   - Done 2026-07-08 — Debug overlay advanced item tooltips startup config.
     Vanilla anchors: `Options.advancedItemTooltips` is loaded/saved through the
     options file, and `KeyboardHandler.handleDebugKeys` toggles it on F3+H,
@@ -2135,8 +2145,7 @@ When an agent does any of the following, update this file in the same slice:
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I
-    local client-side NBT capture / styled feedback,
+    advanced tooltip full parity/persistence, F3+I local client-side NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

@@ -44,15 +44,8 @@ use geometry::*;
 use glam::{Mat4, Vec3};
 #[cfg(test)]
 pub(crate) use gpu::build_entity_model_texture_atlas;
-#[cfg(test)]
-use gpu::{
-    build_dynamic_player_skin_atlas, build_dynamic_player_texture_atlas,
-    entity_model_vertex_layout, rgba_offset, sanitize_entity_model_instances,
-    ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SCROLL_SHADER,
-    ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_CULL_SHADER, ENTITY_MODEL_TEXTURED_SHADER,
-    ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES, ENTITY_MODEL_VERTEX_ATTRIBUTES,
-};
 pub(crate) use gpu::{
+    build_dynamic_player_skin_atlas, build_dynamic_player_texture_atlas,
     create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
     create_entity_model_armor_translucent_pipeline, create_entity_model_cutout_z_offset_pipeline,
     create_entity_model_dissolve_pipeline, create_entity_model_dragon_rays_depth_pipeline,
@@ -67,6 +60,13 @@ pub(crate) use gpu::{
     create_entity_model_water_mask_pipeline, upload_elder_guardian_particle_textured_mesh,
     upload_experience_orb_pickup_particle_textured_mesh,
     upload_projectile_pickup_particle_textured_mesh,
+};
+#[cfg(test)]
+use gpu::{
+    entity_model_vertex_layout, rgba_offset, sanitize_entity_model_instances,
+    ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SCROLL_SHADER,
+    ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_CULL_SHADER, ENTITY_MODEL_TEXTURED_SHADER,
+    ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES, ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,

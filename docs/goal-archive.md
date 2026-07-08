@@ -5585,3 +5585,13 @@
   Shift+F3+I 均复制客户端无 NBT recreate command。测试覆盖本地/远端权限事件、
   授权服务器 query、无权限本地复制。边界：Shift+F3+I 本地 client-side NBT
   capture 与 styled/clickable feedback 仍待后续。
+- [x] debug overlay F3+S dynamic texture dump execution（P2 renderer/native
+  slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对 F3+S 调用
+  `TextureUtil.getDebugTexturePath(gameDirectory)` 后执行
+  `TextureManager.dumpAllSheets(debugTexturePath)`，以及 `Dumpable` texture
+  将当前 sheet 写入该目录。renderer 现在暴露 `dump_dynamic_textures`，复用现有
+  dynamic player skin/profile texture atlas builder 生成 RGBA 并写出
+  `screenshots/debug` 下的 PNG；native 主循环在 F3+S request drain 时调用该
+  API，并在日志记录写出的 atlas 种类和文件数。测试覆盖空 dump 创建目录，以及
+  skin/profile dynamic atlas PNG 的尺寸与像素保真。边界：broader non-profile
+  dynamic texture loading 与 clickable/open-file feedback 仍待后续。
