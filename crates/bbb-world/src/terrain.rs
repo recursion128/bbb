@@ -68,8 +68,48 @@ pub struct TerrainBlockCell {
     pub block_properties: BTreeMap<String, String>,
     pub biome_id: Option<i32>,
     pub material: TerrainMaterialClass,
+    #[serde(default)]
+    pub skip_rendering: TerrainSkipRendering,
     pub fluid: Option<TerrainFluidState>,
     pub light: TerrainLight,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainSkipRendering {
+    pub same_block_key: u64,
+    pub same_block_culls_all_faces: bool,
+    pub iron_bars_block: bool,
+    pub bars_tag: bool,
+    pub north: bool,
+    pub south: bool,
+    pub west: bool,
+    pub east: bool,
+}
+
+impl TerrainSkipRendering {
+    pub const NONE: Self = Self {
+        same_block_key: 0,
+        same_block_culls_all_faces: false,
+        iron_bars_block: false,
+        bars_tag: false,
+        north: false,
+        south: false,
+        west: false,
+        east: false,
+    };
+
+    fn with_same_block_key(mut self, block_name: &str) -> Self {
+        self.same_block_key = stable_block_name_key(block_name);
+        self
+    }
+
+    fn with_connections(mut self, properties: &BTreeMap<String, String>) -> Self {
+        self.north = block_property_is_true(properties, "north");
+        self.south = block_property_is_true(properties, "south");
+        self.west = block_property_is_true(properties, "west");
+        self.east = block_property_is_true(properties, "east");
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -149,6 +189,31 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
         name if is_translucent_block_name(name) => TerrainMaterialClass::Translucent,
         _ => TerrainMaterialClass::Opaque,
     }
+}
+
+pub fn classify_terrain_skip_rendering(
+    block_name: Option<&str>,
+    properties: &BTreeMap<String, String>,
+) -> TerrainSkipRendering {
+    let Some(name) = block_name else {
+        return TerrainSkipRendering::NONE;
+    };
+    if is_half_transparent_skip_rendering_block_name(name) {
+        return TerrainSkipRendering {
+            same_block_culls_all_faces: true,
+            ..TerrainSkipRendering::NONE.with_same_block_key(name)
+        };
+    }
+    if is_iron_bars_block_name(name) {
+        return TerrainSkipRendering {
+            iron_bars_block: true,
+            bars_tag: is_bars_tag_block_name(name),
+            ..TerrainSkipRendering::NONE
+                .with_same_block_key(name)
+                .with_connections(properties)
+        };
+    }
+    TerrainSkipRendering::NONE
 }
 
 pub fn block_name_is_air(name: &str) -> bool {
@@ -263,7 +328,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_no_collision_fire_or_wire_block_name(name)
         || is_no_collision_banner_block_name(name)
         || is_copper_grate_block_name(name)
-        || is_bar_block_name(name)
+        || is_bars_tag_block_name(name)
         || is_chain_block_name(name)
         || is_door_block_name(name)
         || is_trapdoor_block_name(name)
@@ -281,7 +346,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_pointed_dripstone_block_name(name)
 }
 
-fn is_bar_block_name(name: &str) -> bool {
+fn is_bars_tag_block_name(name: &str) -> bool {
     matches!(
         name,
         "minecraft:iron_bars"
@@ -294,6 +359,46 @@ fn is_bar_block_name(name: &str) -> bool {
             | "minecraft:waxed_weathered_copper_bars"
             | "minecraft:waxed_oxidized_copper_bars"
     )
+}
+
+fn is_iron_bars_block_name(name: &str) -> bool {
+    is_bars_tag_block_name(name)
+        || matches!(name, "minecraft:glass_pane")
+        || name
+            .strip_prefix("minecraft:")
+            .is_some_and(|stem| stem.ends_with("_stained_glass_pane"))
+}
+
+fn is_half_transparent_skip_rendering_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:glass"
+            | "minecraft:tinted_glass"
+            | "minecraft:ice"
+            | "minecraft:frosted_ice"
+            | "minecraft:blue_ice"
+            | "minecraft:slime_block"
+            | "minecraft:honey_block"
+    ) || name
+        .strip_prefix("minecraft:")
+        .is_some_and(|stem| stem.ends_with("_stained_glass"))
+}
+
+fn block_property_is_true(properties: &BTreeMap<String, String>, key: &str) -> bool {
+    properties.get(key).is_some_and(|value| value == "true")
+}
+
+fn stable_block_name_key(name: &str) -> u64 {
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    let hash = name.as_bytes().iter().fold(FNV_OFFSET, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
+    });
+    if hash == 0 {
+        1
+    } else {
+        hash
+    }
 }
 
 fn is_chain_block_name(name: &str) -> bool {
@@ -1018,6 +1123,71 @@ mod tests {
     }
 
     #[test]
+    fn classifies_vanilla_skip_rendering_blocks() {
+        let glass = classify_terrain_skip_rendering(Some("minecraft:glass"), &BTreeMap::new());
+        assert_ne!(glass.same_block_key, 0);
+        assert!(glass.same_block_culls_all_faces);
+        assert!(!glass.iron_bars_block);
+        assert!(!glass.bars_tag);
+        assert_eq!(
+            glass.same_block_key,
+            classify_terrain_skip_rendering(Some("minecraft:glass"), &BTreeMap::new())
+                .same_block_key
+        );
+        assert_ne!(
+            glass.same_block_key,
+            classify_terrain_skip_rendering(
+                Some("minecraft:white_stained_glass"),
+                &BTreeMap::new()
+            )
+            .same_block_key
+        );
+
+        let pane = classify_terrain_skip_rendering(
+            Some("minecraft:white_stained_glass_pane"),
+            &properties([
+                ("north", "true"),
+                ("south", "false"),
+                ("west", "false"),
+                ("east", "true"),
+            ]),
+        );
+        assert_ne!(pane.same_block_key, 0);
+        assert!(!pane.same_block_culls_all_faces);
+        assert!(pane.iron_bars_block);
+        assert!(!pane.bars_tag);
+        assert!(pane.north);
+        assert!(!pane.south);
+        assert!(!pane.west);
+        assert!(pane.east);
+
+        let bars = classify_terrain_skip_rendering(
+            Some("minecraft:copper_bars"),
+            &properties([
+                ("north", "false"),
+                ("south", "true"),
+                ("west", "true"),
+                ("east", "false"),
+            ]),
+        );
+        assert!(bars.iron_bars_block);
+        assert!(bars.bars_tag);
+        assert!(!bars.north);
+        assert!(bars.south);
+        assert!(bars.west);
+        assert!(!bars.east);
+
+        assert_eq!(
+            classify_terrain_skip_rendering(Some("minecraft:stone"), &BTreeMap::new()),
+            TerrainSkipRendering::NONE
+        );
+        assert_eq!(
+            classify_terrain_skip_rendering(None, &BTreeMap::new()),
+            TerrainSkipRendering::NONE
+        );
+    }
+
+    #[test]
     fn maps_fluid_state_from_liquids_and_waterlogged_blocks() {
         assert_eq!(
             terrain_fluid_state(Some("minecraft:water"), &properties([("level", "3")])),
@@ -1121,6 +1291,7 @@ mod tests {
             block_properties: BTreeMap::new(),
             biome_id: None,
             material,
+            skip_rendering: TerrainSkipRendering::NONE,
             fluid,
             light: TerrainLight::FULL_BRIGHT,
         }

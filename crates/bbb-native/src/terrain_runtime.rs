@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting, TerrainCell,
     TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
-    TerrainTint,
+    TerrainSkipRendering, TerrainTint,
 };
 use bbb_world::{ChunkPos, WorldCardinalLighting, WorldStore};
 
@@ -280,6 +280,7 @@ fn convert_terrain_snapshot(
                 },
                 tint,
                 face_transparency,
+                skip_rendering: renderer_skip_rendering(cell.skip_rendering),
             }
         })
         .collect();
@@ -313,6 +314,21 @@ fn build_biome_blend(
         }
     }
     BiomeBlend::new(center, samples)
+}
+
+fn renderer_skip_rendering(
+    skip_rendering: bbb_world::TerrainSkipRendering,
+) -> TerrainSkipRendering {
+    TerrainSkipRendering {
+        same_block_key: skip_rendering.same_block_key,
+        same_block_culls_all_faces: skip_rendering.same_block_culls_all_faces,
+        iron_bars_block: skip_rendering.iron_bars_block,
+        bars_tag: skip_rendering.bars_tag,
+        north: skip_rendering.north,
+        south: skip_rendering.south,
+        west: skip_rendering.west,
+        east: skip_rendering.east,
+    }
 }
 
 fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
@@ -365,6 +381,34 @@ mod tests {
                 true,
             )),
             TerrainFluid::new(TerrainFluidKind::Lava, 8, true)
+        );
+    }
+
+    #[test]
+    fn renderer_skip_rendering_preserves_world_flags() {
+        let skip = bbb_world::TerrainSkipRendering {
+            same_block_key: 42,
+            same_block_culls_all_faces: true,
+            iron_bars_block: true,
+            bars_tag: true,
+            north: true,
+            south: false,
+            west: true,
+            east: false,
+        };
+
+        assert_eq!(
+            renderer_skip_rendering(skip),
+            TerrainSkipRendering {
+                same_block_key: 42,
+                same_block_culls_all_faces: true,
+                iron_bars_block: true,
+                bars_tag: true,
+                north: true,
+                south: false,
+                west: true,
+                east: false,
+            }
         );
     }
 

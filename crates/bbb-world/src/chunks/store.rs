@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
-    terrain::{classify_terrain_material, terrain_fluid_state},
+    terrain::{classify_terrain_material, classify_terrain_skip_rendering, terrain_fluid_state},
     BannerPatternsState, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos,
     ChunkProbeSummaryState, ChunkViewState, DecoratedPotSherdsState, HeightmapData, RegistrySet,
     Result, SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
@@ -534,6 +534,10 @@ impl WorldStore {
                         block_state_id: block_value.global_id,
                         biome_id,
                         material: classify_terrain_material(block_name.as_deref()),
+                        skip_rendering: classify_terrain_skip_rendering(
+                            block_name.as_deref(),
+                            &block_properties,
+                        ),
                         fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
                         block_name,
                         block_properties,

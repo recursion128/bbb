@@ -1,7 +1,7 @@
 use super::super::{
     TerrainCardinalLighting, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight,
-    TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainTextureAtlas, TerrainTint,
-    TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainSkipRendering, TerrainTextureAtlas,
+    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::{
     culls_face_between_cells,
@@ -109,6 +109,7 @@ pub(super) fn emit_box(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
+    skip_rendering: TerrainSkipRendering,
     fluid: Option<TerrainFluid>,
     light: TerrainLight,
     tint: [TerrainTint; 6],
@@ -157,6 +158,7 @@ pub(super) fn emit_box(
             face_present,
             face_transparency,
             face_cull,
+            skip_rendering,
             material,
             fluid,
             mode,
@@ -175,6 +177,7 @@ pub(super) fn emit_box(
             face_present,
             face_transparency,
             face_cull,
+            skip_rendering,
             material,
             fluid,
             mode,
@@ -199,7 +202,14 @@ pub(super) fn emit_box(
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
                 .map(|neighbor| {
-                    culls_face_between_cells(mode, face_material, fluid, cull_face, neighbor)
+                    culls_face_between_cells(
+                        mode,
+                        skip_rendering,
+                        face_material,
+                        fluid,
+                        cull_face,
+                        neighbor,
+                    )
                 })
                 .unwrap_or(false)
             {
@@ -368,6 +378,7 @@ fn box_face_will_render(
     face_present: [bool; 6],
     face_transparency: [TerrainTransparency; 6],
     face_cull: [Option<TerrainFace>; 6],
+    skip_rendering: TerrainSkipRendering,
     material: TerrainMaterialClass,
     fluid: Option<TerrainFluid>,
     mode: TerrainMeshMode,
@@ -384,7 +395,14 @@ fn box_face_will_render(
     if let Some(cull_face) = face_cull[face_index] {
         let (dx, dy, dz) = cull_offset(cull_face);
         if lookup.cell(x + dx, y + dy, z + dz).is_some_and(|neighbor| {
-            culls_face_between_cells(mode, face_material, fluid, cull_face, neighbor)
+            culls_face_between_cells(
+                mode,
+                skip_rendering,
+                face_material,
+                fluid,
+                cull_face,
+                neighbor,
+            )
         }) {
             return false;
         }
@@ -399,6 +417,7 @@ pub(super) fn emit_quads(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
+    skip_rendering: TerrainSkipRendering,
     light: TerrainLight,
     quads: &[TerrainQuad],
     atlas: &TerrainTextureAtlas,
@@ -417,7 +436,14 @@ pub(super) fn emit_quads(
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
                 .map(|neighbor| {
-                    culls_face_between_cells(mode, face_material, None, cull_face, neighbor)
+                    culls_face_between_cells(
+                        mode,
+                        skip_rendering,
+                        face_material,
+                        None,
+                        cull_face,
+                        neighbor,
+                    )
                 })
                 .unwrap_or(false)
             {

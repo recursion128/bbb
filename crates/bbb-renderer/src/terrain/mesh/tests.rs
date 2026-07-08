@@ -3,7 +3,7 @@ use super::super::{
     build_terrain_mesh_layers_with_atlas, build_terrain_mesh_layers_with_atlas_and_camera,
     build_terrain_meshes_with_atlas, TerrainBox, TerrainCardinalLighting, TerrainCross,
     TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMesh, TerrainQuad,
-    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainSkipRendering, TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -615,6 +615,7 @@ fn cross_layers_preserve_emissive_light() {
             },
         ]),
         face_transparency: [TerrainTransparency::OPAQUE; 6],
+        skip_rendering: TerrainSkipRendering::NONE,
     };
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
@@ -883,6 +884,76 @@ fn cutout_slab_neighbor_does_not_occlude_opaque_face() {
 }
 
 #[test]
+fn same_block_translucent_cubes_skip_shared_face() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_texture(10, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(same_block_all_faces_skip(7));
+    cells[cell_index(2, 0, 2, 1)] =
+        TerrainCell::with_texture(11, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(same_block_all_faces_skip(7));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let mesh = &layers.translucent[0];
+
+    assert_eq!(mesh.translucent_faces, 10);
+    assert_eq!(mesh.culled_faces, 2);
+    assert!(face_vertices(mesh, 10, [1.0, 0.0, 0.0]).is_empty());
+    assert!(face_vertices(mesh, 11, [-1.0, 0.0, 0.0]).is_empty());
+}
+
+#[test]
+fn different_translucent_block_keys_keep_shared_face() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_texture(10, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(same_block_all_faces_skip(7));
+    cells[cell_index(2, 0, 2, 1)] =
+        TerrainCell::with_texture(11, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(same_block_all_faces_skip(8));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.translucent[0].translucent_faces, 12);
+    assert_eq!(layers.translucent[0].culled_faces, 0);
+}
+
+#[test]
+fn iron_bars_skip_connected_same_tag_faces() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(20, TerrainMaterialClass::Cutout, 0)
+        .with_skip_rendering(iron_bars_skip(20, true, false, false, false, true));
+    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_texture(21, TerrainMaterialClass::Cutout, 0)
+        .with_skip_rendering(iron_bars_skip(21, true, false, false, true, false));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let mesh = &layers.cutout[0];
+
+    assert_eq!(mesh.cutout_faces, 10);
+    assert_eq!(mesh.culled_faces, 2);
+    assert!(face_vertices(mesh, 20, [1.0, 0.0, 0.0]).is_empty());
+    assert!(face_vertices(mesh, 21, [-1.0, 0.0, 0.0]).is_empty());
+}
+
+#[test]
+fn iron_bars_keep_unconnected_horizontal_same_block_face() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(20, TerrainMaterialClass::Cutout, 0)
+        .with_skip_rendering(iron_bars_skip(20, false, false, false, false, false));
+    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_texture(21, TerrainMaterialClass::Cutout, 0)
+        .with_skip_rendering(iron_bars_skip(20, false, false, false, false, false));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.cutout[0].cutout_faces, 12);
+    assert_eq!(layers.cutout[0].culled_faces, 0);
+}
+
+#[test]
 fn cross_neighbor_does_not_occlude_opaque_face() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
@@ -1015,6 +1086,7 @@ fn multi_box_model_skips_absent_faces() {
             upper,
         ]),
         face_transparency: [TerrainTransparency::OPAQUE; 6],
+        skip_rendering: TerrainSkipRendering::NONE,
     };
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
@@ -1101,6 +1173,7 @@ fn boxes_use_per_box_texture_and_tint() {
             },
         ]),
         face_transparency: [TerrainTransparency::OPAQUE; 6],
+        skip_rendering: TerrainSkipRendering::NONE,
     };
     let atlas = TerrainTextureAtlas {
         rects: vec![
@@ -1657,6 +1730,34 @@ fn fluid_cell(block_state_id: i32, kind: TerrainFluidKind, amount: u8) -> Terrai
 
 fn all_face_cull() -> [Option<TerrainFace>; 6] {
     TerrainFace::ALL.map(Some)
+}
+
+fn same_block_all_faces_skip(same_block_key: u64) -> TerrainSkipRendering {
+    TerrainSkipRendering {
+        same_block_key,
+        same_block_culls_all_faces: true,
+        ..TerrainSkipRendering::NONE
+    }
+}
+
+fn iron_bars_skip(
+    same_block_key: u64,
+    bars_tag: bool,
+    north: bool,
+    south: bool,
+    west: bool,
+    east: bool,
+) -> TerrainSkipRendering {
+    TerrainSkipRendering {
+        same_block_key,
+        iron_bars_block: true,
+        bars_tag,
+        north,
+        south,
+        west,
+        east,
+        ..TerrainSkipRendering::NONE
+    }
 }
 
 fn face_vertices(mesh: &TerrainMesh, block_state_id: i32, normal: [f32; 3]) -> Vec<TerrainVertex> {

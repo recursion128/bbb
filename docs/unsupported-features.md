@@ -423,18 +423,9 @@ When an agent does any of the following, update this file in the same slice:
 
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 - Status: `partial`
-- Next action (2026-07-05 entry audit; the umbrella claims in goal.md P2 were
-  re-verified and most surfaces are already aligned — see Evidence):
-  - `skipRendering` same-block adjacency culling (glass / iron bars): vanilla
-    `HalfTransparentBlock.skipRendering` culls the shared face between two
-    identical glass-family blocks (`neighborState.is(this)`), and
-    `IronBarsBlock.skipRendering` culls between `BARS`-tag blocks per
-    connection property (`Block.java:310`). bbb has no equivalent — non-opaque
-    (`Cutout`) neighbors never occlude, so adjacent glass renders both internal
-    faces. Deferred as a separate slice: it needs a cross-crate data-model
-    change (block-family / connection tagging on `TerrainCell`, classified on
-    the `bbb-world` side) that the geometry-only per-face occlusion work does
-    not touch.
+- Next action (2026-07-08 after the `skipRendering` adjacency-culling slice;
+  the umbrella claims in goal.md P2 were re-verified and most surfaces are
+  already aligned — see Evidence):
   - Block-entity special renderers (end portal/gateway shader parity;
     player-head owner skin remains under the
     broader dynamic profile/texture pipeline): the chest
@@ -456,6 +447,22 @@ When an agent does any of the following, update this file in the same slice:
     (`block_models/shape.rs` → `textures.rs`) alongside, since
     unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-08 — Terrain `skipRendering` adjacency culling. Vanilla facts
+    were checked against `ModelBlockRenderer.shouldRenderFace`,
+    `Block.shouldRenderFace`, `HalfTransparentBlock.skipRendering`, and
+    `IronBarsBlock.skipRendering`: half-transparent blocks cull the shared face
+    against the same block (`neighborState.is(this)`), while iron-bars-family
+    blocks cull vertical same-block/`BARS`-tag faces and horizontal faces only
+    when both sides are connected on the shared direction. World now classifies
+    `TerrainSkipRendering` from block name + north/south/west/east properties,
+    including glass/tinted/stained glass, ice/slime/honey, glass panes/stained
+    panes, and `BlockTags.BARS` iron/copper bars. Native projects that pure
+    value into renderer snapshots. Renderer mesh culling now consumes the
+    current cell's skip marker plus the neighbor cell before falling back to the
+    existing opaque face-occlusion path, preserving ordinary non-opaque/cutout
+    neighbor behavior. Tests cover world classification, native projection,
+    same-block translucent shared-face culling, different glass keys retaining
+    faces, and iron-bars connection-gated culling.
   - Done 2026-07-08 — Ordinary spawner display entity renderer (tenth BER
     sub-slice). Vanilla facts were checked against `SpawnerRenderer`,
     `TrialSpawnerRenderer.extractSpawnerData`, `BaseSpawner`, `SpawnData`,

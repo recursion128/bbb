@@ -16,7 +16,7 @@ use self::{
 };
 use super::{
     TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainFluid, TerrainMaterialClass,
-    TerrainMesh, TerrainRenderShape, TerrainTextureAtlas,
+    TerrainMesh, TerrainRenderShape, TerrainSkipRendering, TerrainTextureAtlas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -151,6 +151,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             world_z,
                             cell.block_state_id,
                             cell.material,
+                            cell.skip_rendering,
                             cell.fluid,
                             cell.light,
                             cell.tint,
@@ -182,6 +183,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 world_z,
                                 cell.block_state_id,
                                 cell.material,
+                                cell.skip_rendering,
                                 cell.fluid,
                                 cell.light,
                                 model_box.tint,
@@ -213,6 +215,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             world_z,
                             cell.block_state_id,
                             cell.material,
+                            cell.skip_rendering,
                             cell.light,
                             model_quads,
                             atlas,
@@ -239,6 +242,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         .map(|neighbor| {
                             culls_face_between_cells(
                                 mode,
+                                cell.skip_rendering,
                                 face_material,
                                 cell.fluid,
                                 face.face,
@@ -384,6 +388,7 @@ fn emit_fluid_overlay(
         world_z,
         cell.block_state_id,
         TerrainMaterialClass::Fluid,
+        TerrainSkipRendering::NONE,
         cell.fluid,
         cell.light,
         cell.fluid_tint,
@@ -408,6 +413,7 @@ fn emit_fluid_overlay(
 
 pub(super) fn culls_face_between_cells(
     mode: TerrainMeshMode,
+    current_skip: TerrainSkipRendering,
     current: TerrainMaterialClass,
     current_fluid: Option<TerrainFluid>,
     direction: TerrainFace,
@@ -419,6 +425,22 @@ pub(super) fn culls_face_between_cells(
         }
         if matches!(neighbor.material, TerrainMaterialClass::Fluid) {
             return true;
+        }
+    }
+    let neighbor_skip = neighbor.skip_rendering;
+    if current_skip.same_block_culls_all_faces && current_skip.is_same_block(neighbor_skip) {
+        return true;
+    }
+    if current_skip.iron_bars_block {
+        let same_block = current_skip.is_same_block(neighbor_skip);
+        let bars_pair =
+            current_skip.bars_tag && neighbor_skip.bars_tag && neighbor_skip.iron_bars_block;
+        if same_block || bars_pair {
+            if !direction.is_horizontal() {
+                return true;
+            }
+            return current_skip.is_connected(direction)
+                && neighbor_skip.is_connected(direction.opposite());
         }
     }
     // Vanilla `Block.shouldRenderFace` (Block.java:304): the current face at the

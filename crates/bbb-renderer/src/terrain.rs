@@ -139,6 +139,47 @@ pub struct TerrainCell {
     pub light: TerrainLight,
     pub tint: [TerrainTint; 6],
     pub face_transparency: [TerrainTransparency; 6],
+    #[serde(default)]
+    pub skip_rendering: TerrainSkipRendering,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainSkipRendering {
+    pub same_block_key: u64,
+    pub same_block_culls_all_faces: bool,
+    pub iron_bars_block: bool,
+    pub bars_tag: bool,
+    pub north: bool,
+    pub south: bool,
+    pub west: bool,
+    pub east: bool,
+}
+
+impl TerrainSkipRendering {
+    pub const NONE: Self = Self {
+        same_block_key: 0,
+        same_block_culls_all_faces: false,
+        iron_bars_block: false,
+        bars_tag: false,
+        north: false,
+        south: false,
+        west: false,
+        east: false,
+    };
+
+    fn is_same_block(self, neighbor: Self) -> bool {
+        self.same_block_key != 0 && self.same_block_key == neighbor.same_block_key
+    }
+
+    fn is_connected(self, face: TerrainFace) -> bool {
+        match face {
+            TerrainFace::North => self.north,
+            TerrainFace::South => self.south,
+            TerrainFace::West => self.west,
+            TerrainFace::East => self.east,
+            TerrainFace::Down | TerrainFace::Up => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -225,6 +266,7 @@ impl TerrainCell {
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         face_transparency: [TerrainTransparency::OPAQUE; 6],
+        skip_rendering: TerrainSkipRendering::NONE,
     };
 
     pub fn with_texture(
@@ -246,6 +288,7 @@ impl TerrainCell {
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
+            skip_rendering: TerrainSkipRendering::NONE,
         }
     }
 
@@ -269,6 +312,7 @@ impl TerrainCell {
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
+            skip_rendering: TerrainSkipRendering::NONE,
         }
     }
 
@@ -318,6 +362,11 @@ impl TerrainCell {
 
     pub fn with_face_transparency(mut self, face_transparency: [TerrainTransparency; 6]) -> Self {
         self.face_transparency = face_transparency;
+        self
+    }
+
+    pub fn with_skip_rendering(mut self, skip_rendering: TerrainSkipRendering) -> Self {
+        self.skip_rendering = skip_rendering;
         self
     }
 }
@@ -462,6 +511,10 @@ impl TerrainFace {
             Self::West => Self::East,
             Self::East => Self::West,
         }
+    }
+
+    pub(crate) fn is_horizontal(self) -> bool {
+        matches!(self, Self::North | Self::South | Self::West | Self::East)
     }
 }
 

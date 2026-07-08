@@ -5092,3 +5092,13 @@
   触发普通 overlay toggle；runtime help lines 会显示对应 visible/hidden。
   剩余：实际 FPS/TPS/network chart 绘制、lightmap preview 绘制、完整 debug
   entry 列表、3D crosshair、其它 F3 modifier combos。
+- [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
+  slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
+  `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /
+  `IronBarsBlock.skipRendering`。world 现在为 terrain snapshot 产出
+  `TerrainSkipRendering`（same-block identity、half-transparent 全面剔除、
+  iron-bars-family、`BARS` tag、四向连接属性），native 逐字段投影到 renderer
+  `TerrainCell`，renderer 在 cube/box/quad cull 路径中先执行 vanilla
+  skip-rendering 判定，再落回现有 opaque face-occlusion。普通 cutout 邻居仍不
+  遮挡；同 block 玻璃/冰/蜂蜜/史莱姆内部面、同类玻璃板/铁栏杆竖向面、以及
+  双侧连接的 `BARS` 水平共享面会被剔除。
