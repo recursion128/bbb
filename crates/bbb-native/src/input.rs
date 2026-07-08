@@ -118,6 +118,10 @@ enum BookScreenClickTarget {
     NextPage,
 }
 
+pub(crate) trait DebugClipboard {
+    fn set_debug_clipboard_text(&mut self, text: &str) -> bool;
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -577,6 +581,23 @@ impl ClientInputState {
         world: Option<&mut WorldStore>,
         terrain_upload: Option<&mut TerrainUploadState>,
     ) -> bool {
+        self.handle_debug_overlay_key_with_clipboard(
+            physical_key,
+            state,
+            world,
+            terrain_upload,
+            None,
+        )
+    }
+
+    pub(crate) fn handle_debug_overlay_key_with_clipboard(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        world: Option<&mut WorldStore>,
+        terrain_upload: Option<&mut TerrainUploadState>,
+        clipboard: Option<&mut dyn DebugClipboard>,
+    ) -> bool {
         if !self.focused {
             return false;
         }
@@ -603,7 +624,7 @@ impl ClientInputState {
 
         if matches!(state, ElementState::Pressed)
             && self.debug_modifier_down
-            && self.handle_debug_overlay_modifier_key(code, world, terrain_upload)
+            && self.handle_debug_overlay_modifier_key(code, world, terrain_upload, clipboard)
         {
             self.debug_modifier_used = true;
             return true;
@@ -617,6 +638,7 @@ impl ClientInputState {
         code: KeyCode,
         mut world: Option<&mut WorldStore>,
         mut terrain_upload: Option<&mut TerrainUploadState>,
+        mut clipboard: Option<&mut dyn DebugClipboard>,
     ) -> bool {
         match code {
             KeyCode::KeyA => {
@@ -733,6 +755,25 @@ impl ClientInputState {
                 push_debug_feedback_chat_message(world.as_deref_mut(), "Reloaded resource packs");
                 true
             }
+            KeyCode::KeyC => {
+                let Some(world_ref) = world.as_deref() else {
+                    return false;
+                };
+                let Some(command) = debug_copy_location_command(world_ref) else {
+                    return false;
+                };
+                let Some(clipboard) = clipboard.as_deref_mut() else {
+                    return false;
+                };
+                if !clipboard.set_debug_clipboard_text(&command) {
+                    return false;
+                }
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    "Copied location to clipboard",
+                );
+                true
+            }
             _ => false,
         }
     }
@@ -811,6 +852,18 @@ fn push_debug_feedback_chat_message(world: Option<&mut WorldStore>, message: &st
     if let Some(world) = world {
         world.push_client_system_chat_message(format!("[Debug]: {message}"));
     }
+}
+
+fn debug_copy_location_command(world: &WorldStore) -> Option<String> {
+    if !ClientInputState::debug_world_status_toggles_allowed(Some(world)) {
+        return None;
+    }
+    let level = world.level_info()?;
+    let pose = world.local_player_pose()?;
+    Some(format!(
+        "/execute in {} run tp @s {:.2} {:.2} {:.2} {:.2} {:.2}",
+        level.dimension, pose.position.x, pose.position.y, pose.position.z, pose.y_rot, pose.x_rot
+    ))
 }
 
 impl ClientInputState {

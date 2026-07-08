@@ -132,6 +132,32 @@ fn world_with_local_player_id(player_id: i32) -> WorldStore {
     world
 }
 
+#[derive(Default)]
+struct MockDebugClipboard {
+    text: Option<String>,
+    accepts_text: bool,
+}
+
+impl MockDebugClipboard {
+    fn accepting() -> Self {
+        Self {
+            text: None,
+            accepts_text: true,
+        }
+    }
+}
+
+impl DebugClipboard for MockDebugClipboard {
+    fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
+        if self.accepts_text {
+            self.text = Some(text.to_string());
+            true
+        } else {
+            false
+        }
+    }
+}
+
 fn world_with_local_boat(player_id: i32) -> WorldStore {
     world_with_local_vehicle(player_id, 10, VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID)
 }
@@ -1055,6 +1081,100 @@ fn f3_t_consumes_without_world_and_records_reload_request() {
         None
     ));
     assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_c_copies_location_tp_command_to_clipboard_and_reports_feedback() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 10.25,
+            y: 64.0,
+            z: -5.75,
+        },
+        y_rot: 90.5,
+        x_rot: -15.25,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/execute in minecraft:overworld run tp @s 10.25 64.00 -5.75 90.50 -15.25")
+    );
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(messages[0].content, "[Debug]: Copied location to clipboard");
+    assert_eq!(world.counters().chat_messages_tracked, 1);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_c_does_not_consume_when_reduced_debug_info_blocks_location_copy() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(true);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 10.25,
+            y: 64.0,
+            z: -5.75,
+        },
+        y_rot: 90.5,
+        x_rot: -15.25,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert_eq!(clipboard.text, None);
+    assert!(world.client_chat().messages.is_empty());
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.debug_overlay_visible());
 }
 
 #[test]

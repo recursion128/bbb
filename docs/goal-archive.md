@@ -5260,6 +5260,17 @@
   抑制 F3 release 触发普通 overlay toggle。边界：实际资源包、item/entity/
   terrain/audio/runtime/renderer 热重载仍未实现，本 slice 只落地输入请求和
   反馈路径。剩余：热重载执行链、其它 F3 modifier combos。
+- [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
+  slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
+  `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，
+  发送 `debug.copy_location.message`，并把
+  `/execute in %s run tp @s %.2f %.2f %.2f %.2f %.2f` 写入 OS clipboard
+  的行为。native 现在通过 `DebugClipboard` 平台 sink 接入 `arboard`，
+  在 F3 按住期间只在 clipboard 写入成功时消费 C，写入包含 dimension、位置、
+  yaw、pitch 的两位小数 `/execute ... tp` 命令，追加
+  `[Debug]: Copied location to clipboard` local feedback，并在 reduced-debug
+  或 clipboard 不可用时不消费组合键。剩余：F3+C 长按手动崩溃路径、其它 F3
+  modifier combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

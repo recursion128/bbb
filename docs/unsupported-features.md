@@ -1090,16 +1090,29 @@ When an agent does any of the following, update this file in the same slice:
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
-    option toggle, F3+V version debug chat action, F3+T resource-pack reload
-    request, F3+A/B/G/H/N/P/F4/T local debug feedback, the F3+F6
-    debug-options edit help keybind, the default GAME_VERSION entry shape,
-    the default TPS entry shell, and the default FPS entry shell, and actual
-    F3+4 lightmap preview rendering: the complete
+    option toggle, F3+V version debug chat action, F3+C copy-location
+    clipboard action, F3+T resource-pack reload request,
+    F3+A/B/C/G/H/N/P/F4/T local debug feedback, the F3+F6 debug-options edit
+    help keybind, the default GAME_VERSION entry shape, the default TPS entry
+    shell, and the default FPS entry shell, and actual F3+4 lightmap preview
+    rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full parity/
     persistence, 3D crosshair, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action.
+    Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
+    `KeyboardHandler.handleDebugKeys` requires a player plus non-reduced debug
+    info, sends `debug.copy_location.message`, then writes
+    `/execute in %s run tp @s %.2f %.2f %.2f %.2f %.2f` to the OS clipboard
+    from the local player's dimension, position, yaw, and pitch. bbb now
+    exposes a native debug clipboard sink backed by `arboard`, consumes C while
+    F3 is held only when the clipboard write succeeds, writes the same
+    dimension-scoped `/execute ... tp` command with two-decimal fields, appends
+    `[Debug]: Copied location to clipboard`, and keeps reduced-debug/no-player/
+    clipboard-failure cases unconsumed so F3 release still toggles the overlay.
+    Boundary: the long-hold F3+C manual crash path is still not implemented.
   - Done 2026-07-08 — Debug overlay F3+T resource-pack reload request.
     Vanilla anchors: `Options.keyDebugReloadResourcePacks` binds key code 84
     (T), and `KeyboardHandler.handleDebugKeys` maps it to

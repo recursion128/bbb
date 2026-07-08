@@ -63,7 +63,7 @@ use input::{
     handle_inventory_cursor_moved, handle_inventory_mouse_input_with_item_runtime,
     handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
-    handle_text_input_with_item_runtime, release_active_input, ClientInputState,
+    handle_text_input_with_item_runtime, release_active_input, ClientInputState, DebugClipboard,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -78,6 +78,34 @@ use startup::{
     NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
+
+#[derive(Default)]
+struct NativeDebugClipboard {
+    clipboard: Option<arboard::Clipboard>,
+}
+
+impl DebugClipboard for NativeDebugClipboard {
+    fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
+        if self.clipboard.is_none() {
+            match arboard::Clipboard::new() {
+                Ok(clipboard) => self.clipboard = Some(clipboard),
+                Err(err) => {
+                    tracing::warn!(?err, "debug clipboard unavailable");
+                    return false;
+                }
+            }
+        }
+
+        let Some(clipboard) = self.clipboard.as_mut() else {
+            return false;
+        };
+        if let Err(err) = clipboard.set_text(text.to_string()) {
+            tracing::warn!(?err, "failed to set debug clipboard text");
+            return false;
+        }
+        true
+    }
+}
 
 fn main() -> Result<()> {
     init_tracing();
@@ -273,6 +301,7 @@ fn main() -> Result<()> {
     let window = build_window(&event_loop)?;
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
+    let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
@@ -372,11 +401,12 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.handle_debug_overlay_key(
+                    if input.handle_debug_overlay_key_with_clipboard(
                         event.physical_key,
                         event.state,
                         Some(&mut world),
                         Some(&mut terrain_upload),
+                        Some(&mut debug_clipboard),
                     ) {
                         let reload_requests = input.take_debug_resource_pack_reload_requests();
                         if reload_requests > 0 {
