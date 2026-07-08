@@ -144,6 +144,32 @@ fn entity_scene_outline_projects_living_eye_height_box_and_view_vector() {
 }
 
 #[test]
+fn entity_scene_outline_projects_ender_dragon_part_hitboxes_without_entity_gizmos() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        100,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+        [0.0, 64.0, 0.0],
+    ));
+    world.advance_entity_client_animations(1);
+
+    let outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.0)
+        .expect("expected dragon debug outline");
+
+    assert!(outline.boxes.is_empty());
+    assert_eq!(outline.colored_boxes.len(), 8);
+    assert!(outline.points.is_empty());
+    assert!(outline.lines.is_empty());
+    for part_box in &outline.colored_boxes {
+        assert_eq!(part_box.color, ENTITY_DRAGON_PART_HITBOX_COLOR);
+    }
+    assert!((outline.colored_boxes[0].max[0] - outline.colored_boxes[0].min[0] - 1.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[0].max[1] - outline.colored_boxes[0].min[1] - 1.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[6].max[0] - outline.colored_boxes[6].min[0] - 4.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[6].max[1] - outline.colored_boxes[6].min[1] - 2.0).abs() < 1e-5);
+}
+
+#[test]
 fn entity_model_instances_project_chicken_adult_and_baby_models() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(

@@ -66,7 +66,9 @@ use crate::entities::dimensions::{
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
     VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
-use crate::entities::dragon::ender_dragon_part_pick_targets_at_partial_tick;
+use crate::entities::dragon::{
+    ender_dragon_part_parent_id, ender_dragon_part_pick_targets_at_partial_tick,
+};
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -2577,6 +2579,14 @@ impl EntityStore {
             .get::<&EntityMount>(entity)
             .ok()
             .map(|mount| (*mount).clone())
+    }
+
+    pub(crate) fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {
+        ender_dragon_part_parent_id(part_id, |parent_id| {
+            self.identity(parent_id).is_some_and(|identity| {
+                identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+            })
+        })
     }
 
     #[cfg(test)]

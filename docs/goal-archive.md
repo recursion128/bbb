@@ -5348,7 +5348,7 @@
   main bounding-box cuboid 的行为。native 现在把现有 entity-scene
   `SelectionOutline` 抽取接到 F3+B 状态上，只有 hitbox toggle visible 时才向
   renderer 提交实体 AABB 线框，关闭时不提交。边界：vanilla hitbox colors、
-  passenger box、living eye-height box、Ender Dragon part boxes、
+  passenger box、living eye-height box、Ender Dragon parent box、
   view/delta arrows、frustum/invisibility filtering、以及专用 debug
   gizmo styling 仍未实现。
 - [x] debug overlay F3+G chunk section-stack outline rendering（P2
@@ -5482,9 +5482,8 @@
   和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
   entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
   并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
-  arrowheads、passenger vehicle slabs、Ender Dragon sub-part boxes、local-server
-  green boxes/delta arrows、missing-server labels、以及专用 debug gizmo styling
-  仍未实现。
+  arrowheads、passenger vehicle slabs、Ender Dragon parent box、local-server green
+  boxes/delta arrows、missing-server labels、以及专用 debug gizmo styling 仍未实现。
 - [x] debug overlay F3+B entity position point markers（P2 renderer/native
   slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 紧跟
   hitbox 后调用 `Gizmos.point(currentPosition, mainColor, 2.0F)`，以及
@@ -5494,3 +5493,13 @@
   非本地/非相机 entity 在 partial-tick 当前位置提交白色 point。当前 renderer
   没有专用 `debugPoint` pipeline，因此把 point 展开成三轴短线 proxy；精确
   point-size GPU 语义归后续专用 debug gizmo styling。
+- [x] debug overlay F3+B Ender Dragon sub-part hitboxes（P2 world/native
+  slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 对
+  `EnderDragon.getSubEntities()` 的 partial-tick sub-entity AABB 绘制，以及
+  `ARGB.colorFromFloat(1.0F, 0.25F, 1.0F, 0.0F)` 的 sub-part 颜色。world 已有
+  parent id + 1..8 的 dragon part pick targets；本轮新增 world-owned
+  dragon-part parent query，native F3+B 通过它识别 synthetic part targets，
+  将这些 cuboid 改为 vanilla sub-part 颜色，并跳过 point/view-vector gizmos。
+  边界：Ender Dragon parent entity 自身 main AABB 仍未提交，因为当前 world
+  pick-target surface 暴露 sub-parts 而不是 parent target；passenger slabs、
+  local-server debug boxes/arrows、labels、以及专用 debug gizmo styling 仍待后续。

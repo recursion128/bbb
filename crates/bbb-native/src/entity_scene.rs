@@ -56,6 +56,7 @@ pub(crate) const THROWN_ITEM_PROJECTILE_BILLBOARDS: &[(i32, f32)] = &[
 ];
 const ENTITY_HITBOX_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+const ENTITY_DRAGON_PART_HITBOX_COLOR: [f32; 4] = [0.25, 1.0, 0.0, 1.0];
 const ENTITY_VIEW_VECTOR_COLOR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
@@ -311,9 +312,9 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
-    let sources_by_id: HashMap<_, _> = world
-        .entity_model_sources_at_partial_tick(entity_partial_tick)
-        .into_iter()
+    let sources = world.entity_model_sources_at_partial_tick(entity_partial_tick);
+    let sources_by_id: HashMap<_, _> = sources
+        .iter()
         .map(|source| (source.entity_id, source))
         .collect();
     let mut boxes = Vec::new();
@@ -323,31 +324,28 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     for target in world
         .entity_pick_targets_at_partial_tick(entity_partial_tick)
         .into_iter()
-        .filter(|target| {
-            local_player_id != Some(target.entity_id) && camera_entity_id != Some(target.entity_id)
-        })
     {
-        boxes.push(entity_debug_hitbox_box(target));
-        points.push(entity_debug_position_point([
-            target.position.x,
-            target.position.y,
-            target.position.z,
-        ]));
-        let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
+        if let Some(parent_id) = world.ender_dragon_part_parent_id(target.entity_id) {
+            if local_player_id == Some(parent_id) || camera_entity_id == Some(parent_id) {
+                continue;
+            }
+            boxes.push(entity_debug_hitbox_box_with_color(
+                target,
+                ENTITY_DRAGON_PART_HITBOX_COLOR,
+            ));
             continue;
         };
-        let source = sources_by_id.get(&target.entity_id);
-        if source.is_some_and(|source| vanilla_entity_type_is_living(source.entity_type_id)) {
-            boxes.push(entity_debug_eye_height_box(target, pose.eye_height));
+        if local_player_id == Some(target.entity_id) || camera_entity_id == Some(target.entity_id) {
+            continue;
         }
-        let y_rot = source.map_or(pose.y_rot, |source| source.y_rot);
-        let x_rot = source.map_or(pose.x_rot, |source| source.x_rot);
-        lines.push(entity_debug_view_vector_line(
-            [target.position.x, target.position.y, target.position.z],
-            pose.eye_height,
-            y_rot,
-            x_rot,
-        ));
+        push_entity_debug_gizmos(
+            &mut boxes,
+            &mut lines,
+            &mut points,
+            target,
+            sources_by_id.get(&target.entity_id).copied(),
+            world,
+        );
     }
 
     (!boxes.is_empty() || !lines.is_empty() || !points.is_empty())
@@ -466,12 +464,49 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     }
 }
 
+fn push_entity_debug_gizmos(
+    boxes: &mut Vec<SelectionColoredBox>,
+    lines: &mut Vec<SelectionLine>,
+    points: &mut Vec<SelectionPoint>,
+    target: EntityPickTargetState,
+    source: Option<&EntityModelSourceState>,
+    world: &WorldStore,
+) {
+    boxes.push(entity_debug_hitbox_box(target));
+    points.push(entity_debug_position_point([
+        target.position.x,
+        target.position.y,
+        target.position.z,
+    ]));
+    let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
+        return;
+    };
+    if source.is_some_and(|source| vanilla_entity_type_is_living(source.entity_type_id)) {
+        boxes.push(entity_debug_eye_height_box(target, pose.eye_height));
+    }
+    let y_rot = source.map_or(pose.y_rot, |source| source.y_rot);
+    let x_rot = source.map_or(pose.x_rot, |source| source.x_rot);
+    lines.push(entity_debug_view_vector_line(
+        [target.position.x, target.position.y, target.position.z],
+        pose.eye_height,
+        y_rot,
+        x_rot,
+    ));
+}
+
 fn entity_debug_hitbox_box(target: EntityPickTargetState) -> SelectionColoredBox {
+    entity_debug_hitbox_box_with_color(target, ENTITY_HITBOX_COLOR)
+}
+
+fn entity_debug_hitbox_box_with_color(
+    target: EntityPickTargetState,
+    color: [f32; 4],
+) -> SelectionColoredBox {
     let selection_box = entity_pick_target_box(target);
     SelectionColoredBox {
         min: selection_box.min,
         max: selection_box.max,
-        color: ENTITY_HITBOX_COLOR,
+        color,
     }
 }
 

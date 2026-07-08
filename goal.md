@@ -305,7 +305,7 @@ Screen Render Surfaces" 条目）：
   rendering、F3+B entity hitbox eye/vector detail rendering、
   F3+2 FPS/TPS chart rendering、F3+3 network ping/bandwidth chart
   rendering、3D crosshair rendering、default-profile debug entry coverage 已完成；
-  剩余非默认/可编辑 debug entries、entity hitbox vehicle/dragon/server
+  剩余非默认/可编辑 debug entries、entity hitbox vehicle/dragon-parent/server
   details、chunk-border full gizmo grid、
   advanced tooltip full parity、dynamic texture dump execution、F3+I
   NBT response/callback recreate parity、profiling metrics recorder/output、actual

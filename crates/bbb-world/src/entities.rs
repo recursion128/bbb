@@ -2095,6 +2095,10 @@ impl WorldStore {
         self.entities.get(id)
     }
 
+    pub fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {
+        self.entities.ender_dragon_part_parent_id(part_id)
+    }
+
     pub fn probe_entity_status(&self, id: i32) -> Option<EntityStatusProbeState> {
         let entity = self.probe_entity(id)?;
         Some(EntityStatusProbeState {

@@ -261,6 +261,16 @@ pub(crate) fn ender_dragon_part_pick_targets_at_partial_tick(
         .collect()
 }
 
+pub(crate) fn ender_dragon_part_parent_id(
+    part_id: i32,
+    is_dragon_parent: impl Fn(i32) -> bool,
+) -> Option<i32> {
+    ENDER_DRAGON_PARTS.iter().find_map(|part| {
+        let parent_id = part_id - part.id_offset;
+        is_dragon_parent(parent_id).then_some(parent_id)
+    })
+}
+
 fn part_position(
     transform: EntityTransform,
     offset: EnderDragonPartOffset,
