@@ -249,6 +249,10 @@ pub(crate) fn vanilla_eye_height_for_entity_data(
     attributes: &[AttributeSnapshot],
     client_animations: Option<EntityClientAnimationState>,
 ) -> Option<f32> {
+    if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+        // Vanilla 26.1 `EntityDimensions.defaultEyeHeight`: `height * 0.85F`.
+        return Some(8.0 * DEFAULT_ENTITY_EYE_HEIGHT_RATIO);
+    }
     let bounds = vanilla_pick_bounds_for_entity_data(
         entity_type_id,
         add_entity_data,

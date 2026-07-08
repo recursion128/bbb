@@ -33,6 +33,10 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
         debug_targets[0].bounds,
         EntityPickBoundsState::from_base_size(16.0, 8.0, 0.0)
     );
+    let dragon_pose = store
+        .probe_entity_camera_pose(100)
+        .expect("dragon parent should expose vanilla eye height");
+    assert!((dragon_pose.eye_height - 6.8).abs() < 1e-5);
 
     let targets = store.entity_pick_targets();
     assert_eq!(

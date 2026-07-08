@@ -157,22 +157,28 @@ fn entity_scene_outline_projects_ender_dragon_parent_and_part_hitboxes() {
         .expect("expected dragon debug outline");
 
     assert!(outline.boxes.is_empty());
-    assert_eq!(outline.colored_boxes.len(), 9);
+    assert_eq!(outline.colored_boxes.len(), 10);
     assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
     assert!(
         (outline.colored_boxes[0].max[0] - outline.colored_boxes[0].min[0] - 16.0).abs() < 1e-5
     );
     assert!((outline.colored_boxes[0].max[1] - outline.colored_boxes[0].min[1] - 8.0).abs() < 1e-5);
+    assert_eq!(outline.colored_boxes[1].color, ENTITY_EYE_HEIGHT_COLOR);
+    assert_selection_box_close(outline.colored_boxes[1].min, [-8.0, 70.79, -8.0]);
+    assert_selection_box_close(outline.colored_boxes[1].max, [8.0, 70.81, 8.0]);
     assert_eq!(outline.points.len(), 1);
     assert_eq!(outline.points[0].position, [0.0, 64.0, 0.0]);
-    assert!(outline.lines.is_empty());
-    for part_box in &outline.colored_boxes[1..] {
+    assert_eq!(outline.lines.len(), 1);
+    assert_eq!(outline.lines[0].color, ENTITY_VIEW_VECTOR_COLOR);
+    assert_selection_box_close(outline.lines[0].from, [0.0, 70.8, 0.0]);
+    assert_selection_box_close(outline.lines[0].to, [0.0, 70.8, 2.0]);
+    for part_box in &outline.colored_boxes[2..] {
         assert_eq!(part_box.color, ENTITY_DRAGON_PART_HITBOX_COLOR);
     }
-    assert!((outline.colored_boxes[1].max[0] - outline.colored_boxes[1].min[0] - 1.0).abs() < 1e-5);
-    assert!((outline.colored_boxes[1].max[1] - outline.colored_boxes[1].min[1] - 1.0).abs() < 1e-5);
-    assert!((outline.colored_boxes[7].max[0] - outline.colored_boxes[7].min[0] - 4.0).abs() < 1e-5);
-    assert!((outline.colored_boxes[7].max[1] - outline.colored_boxes[7].min[1] - 2.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[2].max[0] - outline.colored_boxes[2].min[0] - 1.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[2].max[1] - outline.colored_boxes[2].min[1] - 1.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[8].max[0] - outline.colored_boxes[8].min[0] - 4.0).abs() < 1e-5);
+    assert!((outline.colored_boxes[8].max[1] - outline.colored_boxes[8].min[1] - 2.0).abs() < 1e-5);
 }
 
 #[test]

@@ -481,7 +481,10 @@ fn push_entity_debug_gizmos(
     let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
         return;
     };
-    if source.is_some_and(|source| vanilla_entity_type_is_living(source.entity_type_id)) {
+    let entity_type_id = source
+        .map(|source| source.entity_type_id)
+        .or_else(|| world.entity_type_id(target.entity_id));
+    if entity_type_id.is_some_and(entity_debug_target_type_is_living) {
         boxes.push(entity_debug_eye_height_box(target, pose.eye_height));
     }
     let y_rot = source.map_or(pose.y_rot, |source| source.y_rot);
@@ -492,6 +495,11 @@ fn push_entity_debug_gizmos(
         y_rot,
         x_rot,
     ));
+}
+
+fn entity_debug_target_type_is_living(entity_type_id: i32) -> bool {
+    vanilla_entity_type_is_living(entity_type_id)
+        || entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
 }
 
 fn entity_debug_hitbox_box(target: EntityPickTargetState) -> SelectionColoredBox {

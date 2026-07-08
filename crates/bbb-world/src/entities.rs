@@ -2095,6 +2095,10 @@ impl WorldStore {
         self.entities.get(id)
     }
 
+    pub fn entity_type_id(&self, id: i32) -> Option<i32> {
+        self.entities.entity_type_id(id)
+    }
+
     pub fn ender_dragon_part_parent_id(&self, part_id: i32) -> Option<i32> {
         self.entities.ender_dragon_part_parent_id(part_id)
     }
