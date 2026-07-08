@@ -1212,6 +1212,9 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     ));
     assert!(overlay
         .left_lines
+        .contains(&"Game mode: [F3+N] Spectator; [F3+F4] Switcher".to_string()));
+    assert!(overlay
+        .left_lines
         .contains(&"To edit: press [F3+F6]".to_string()));
 }
 

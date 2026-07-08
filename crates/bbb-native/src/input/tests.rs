@@ -982,6 +982,72 @@ fn f3_v_consumes_without_world_to_suppress_release_toggle() {
 }
 
 #[test]
+fn f3_game_mode_keys_report_no_permission_without_gameplay_commands() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyN),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(!input.debug_overlay_visible());
+    let feedback: Vec<_> = world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect();
+    assert_eq!(
+        feedback,
+        vec![
+            "[Debug]: Unable to switch game mode; no permission",
+            "[Debug]: Unable to open game mode switcher; no permission",
+        ]
+    );
+    assert!(world
+        .client_chat()
+        .messages
+        .iter()
+        .all(|message| message.kind == ChatMessageKind::ClientSystem));
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(counters.change_game_mode_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn slash_text_opens_command_entry_and_releases_pressed_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

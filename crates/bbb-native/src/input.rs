@@ -699,6 +699,23 @@ impl ClientInputState {
                 );
                 true
             }
+            KeyCode::KeyN => {
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    "Unable to switch game mode; no permission",
+                );
+                true
+            }
+            KeyCode::F4 => {
+                if world.as_deref().and_then(WorldStore::level_info).is_none() {
+                    return false;
+                }
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    "Unable to open game mode switcher; no permission",
+                );
+                true
+            }
             KeyCode::KeyV => {
                 if let Some(world) = world.as_deref_mut() {
                     push_debug_version_chat_messages(world);

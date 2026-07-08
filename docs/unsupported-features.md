@@ -1076,7 +1076,7 @@ When an agent does any of the following, update this file in the same slice:
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
-    option toggle, F3+V version debug chat action, and F3+A/B/G/H/P local
+    option toggle, F3+V version debug chat action, F3+A/B/G/H/N/P/F4 local
     debug feedback, the F3+F6 debug-options edit help keybind, the default
     GAME_VERSION entry shape, and the default TPS entry shell: the complete
     vanilla debug entry list, actual
@@ -1085,6 +1085,18 @@ When an agent does any of the following, update this file in the same slice:
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
+    paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
+    `keyDebugSpectate` to either `ServerboundChangeGameModePacket` or
+    `debug.creative_spectator.error`, and maps `keyDebugSwitchGameMode` to
+    `GameModeSwitcherScreen` or `debug.gamemodes.error` while a level is
+    active and no screen is open. bbb now consumes F3+N and F3+F4 in the
+    debug modifier path, appends the vanilla no-permission debug chat
+    feedback, suppresses the subsequent F3-release overlay toggle, avoids
+    gameplay F4 handling, and shows the game-mode help line in the overlay.
+    Boundary: player permission modeling, `ServerboundChangeGameModePacket`
+    emission, previous-game-mode cycling, and the actual
+    `GameModeSwitcherScreen` are not implemented.
   - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
     and `DebugEntryTps.display` formats the non-integrated-server line as
@@ -1718,7 +1730,7 @@ When an agent does any of the following, update this file in the same slice:
     right-column memory/system/performance basics, F3+1..4 chart/lightmap
     toggle state, F3+B/G/H status toggle state, F3+A terrain reload request,
     F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
-    version debug chat action, plus F3+A/B/G/H/P local debug feedback are live.
+    version debug chat action, plus F3+A/B/G/H/N/P/F4 local debug feedback are live.
     The F3+F6 debug-options edit help keybind and default GAME_VERSION entry
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row

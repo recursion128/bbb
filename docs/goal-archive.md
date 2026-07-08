@@ -5158,6 +5158,17 @@
   integrated-server MSPT/sprinting 文本、FPS/TPS/network charts 实际绘制、
   完整 debug entry 列表、lightmap preview、entity hitbox/chunk-border
   rendering、3D crosshair、其它 F3 modifier combos。
+- [x] debug overlay F3+N/F3+F4 no-permission feedback paths（P2
+  HUD/input/runtime slice，2026-07-08）：依据
+  `KeyboardHandler.handleDebugKeys` 对 `keyDebugSpectate` / `keyDebugSwitchGameMode`
+  的调度：无权限时分别显示 `debug.creative_spectator.error` 与
+  `debug.gamemodes.error`，并消费 debug modifier。native 现在在 F3 按住期间
+  消费 N/F4，向本地 chat display 追加 `[Debug]: Unable to switch game mode; no
+  permission` / `[Debug]: Unable to open game mode switcher; no permission`，
+  抑制 F3 release 触发普通 overlay toggle，避免 F4 继续走 spectator-shader
+  gameplay handling，并在 runtime help line 显示 `[F3+N] Spectator` /
+  `[F3+F4] Switcher`。剩余：权限模型、`ServerboundChangeGameModePacket`、
+  previous-game-mode cycling、实际 `GameModeSwitcherScreen`。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`
