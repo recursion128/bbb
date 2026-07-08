@@ -9352,33 +9352,63 @@ fn hud_inventory_screen_projects_current_book_screen() {
 fn hud_inventory_screen_projects_empty_advancements_screen() {
     let mut world = WorldStore::new();
     assert!(world.open_advancements_screen());
+    let terrain_textures = TerrainTextureState::default();
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let local_state = InventoryHudLocalState {
+        cursor_position: Some((400, 580)),
+        ..Default::default()
+    };
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let (done_button_x, done_button_y) = advancements_done_button_origin_for_surface(surface_size);
 
-    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &terrain_textures,
+        None,
+        local_state,
+        surface_size,
+        0.0,
+    )
+    .unwrap();
 
-    assert_eq!(screen.width, ADVANCEMENTS_WINDOW_WIDTH);
-    assert_eq!(screen.height, ADVANCEMENTS_WINDOW_HEIGHT);
+    assert_eq!(screen.width, 800);
+    assert_eq!(screen.height, 600);
+    assert_eq!((window_x, window_y), (274, 230));
+    assert_eq!((done_button_x, done_button_y), (300, 573));
     assert!(screen.slots.is_empty());
     assert!(screen.floating_items.is_empty());
     assert_eq!(
         screen.background_layers,
-        vec![hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::AdvancementsWindow,
-            0,
-            0,
-            ADVANCEMENTS_WINDOW_WIDTH,
-            ADVANCEMENTS_WINDOW_HEIGHT,
-            [0.0, 0.0],
-            [
-                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
-                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
-            ],
-        )]
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementsWindow,
+                window_x,
+                window_y,
+                ADVANCEMENTS_WINDOW_WIDTH,
+                ADVANCEMENTS_WINDOW_HEIGHT,
+                [0.0, 0.0],
+                [
+                    ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                    ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+                ],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+                done_button_x,
+                done_button_y,
+                ADVANCEMENTS_DONE_BUTTON_WIDTH,
+                ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
     );
     assert_eq!(
         screen.fill_layers,
         vec![HudInventoryFillLayer {
-            x: ADVANCEMENTS_WINDOW_INSIDE_X,
-            y: ADVANCEMENTS_WINDOW_INSIDE_Y,
+            x: window_x + ADVANCEMENTS_WINDOW_INSIDE_X,
+            y: window_y + ADVANCEMENTS_WINDOW_INSIDE_Y,
             width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
             height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
             tint: ADVANCEMENTS_EMPTY_BACKGROUND_TINT,
@@ -9389,8 +9419,8 @@ fn hud_inventory_screen_projects_empty_advancements_screen() {
         screen.text_labels,
         vec![
             HudInventoryTextLabel {
-                x: ADVANCEMENTS_WINDOW_TITLE_X,
-                y: ADVANCEMENTS_WINDOW_TITLE_Y,
+                x: window_x + ADVANCEMENTS_WINDOW_TITLE_X,
+                y: window_y + ADVANCEMENTS_WINDOW_TITLE_Y,
                 width: hud_ascii_approx_text_width(ADVANCEMENTS_TITLE_TEXT).unwrap(),
                 text: ADVANCEMENTS_TITLE_TEXT.to_string(),
                 tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
@@ -9399,20 +9429,41 @@ fn hud_inventory_screen_projects_empty_advancements_screen() {
                 shadow: false,
                 runs: Vec::new(),
             },
-            advancements_centered_text_label(ADVANCEMENTS_EMPTY_TEXT, ADVANCEMENTS_EMPTY_TEXT_Y),
-            advancements_centered_text_label(ADVANCEMENTS_SAD_TEXT, ADVANCEMENTS_SAD_TEXT_Y),
+            advancements_centered_text_label(
+                ADVANCEMENTS_EMPTY_TEXT,
+                window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+                window_y + ADVANCEMENTS_EMPTY_TEXT_Y,
+                ADVANCEMENTS_EMPTY_TEXT_COLOR,
+            ),
+            advancements_centered_text_label(
+                ADVANCEMENTS_SAD_TEXT,
+                window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+                window_y + ADVANCEMENTS_SAD_TEXT_Y,
+                ADVANCEMENTS_EMPTY_TEXT_COLOR,
+            ),
+            advancements_centered_text_label(
+                ADVANCEMENTS_DONE_TEXT,
+                done_button_x + ADVANCEMENTS_DONE_BUTTON_WIDTH as i32 / 2,
+                done_button_y + ADVANCEMENTS_DONE_BUTTON_TEXT_Y_OFFSET,
+                ADVANCEMENTS_DONE_TEXT_COLOR,
+            ),
         ]
     );
 }
 
-fn advancements_centered_text_label(text: &str, y: i32) -> HudInventoryTextLabel {
+fn advancements_centered_text_label(
+    text: &str,
+    center_x: i32,
+    y: i32,
+    tint: [f32; 4],
+) -> HudInventoryTextLabel {
     let width = hud_ascii_approx_text_width(text).unwrap();
     HudInventoryTextLabel {
-        x: ADVANCEMENTS_EMPTY_TEXT_CENTER_X - i32::try_from(width).unwrap() / 2,
+        x: center_x - i32::try_from(width).unwrap() / 2,
         y,
         width,
         text: text.to_string(),
-        tint: ADVANCEMENTS_EMPTY_TEXT_COLOR,
+        tint,
         background: None,
         input: None,
         shadow: false,

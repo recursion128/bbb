@@ -2090,6 +2090,20 @@
   `There doesn't seem to be anything here...` / `:(` 文案。剩余：Done button、
   advancement tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
   overlay。
+- [x] advancement screen footer Done button（P2 HUD/input/runtime/renderer slice，
+  2026-07-08）：依据 `AdvancementsScreen.init` 把
+  `Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(200)`
+  加入默认 `HeaderAndFooterLayout` footer；`HeaderAndFooterLayout` footer 高
+  33px，`FrameLayout` 居中 200x20 child，故按钮坐标为
+  `x=(screenWidth-200)/2`、`y=screenHeight-27`；`AbstractButton` 使用
+  `widget/button` / `widget/button_highlighted` sprite，文本经
+  `acceptScrollingWithDefaultCenter` 垂直居中到 `buttonY+6`。renderer/native
+  现在上传通用按钮 sprite，runtime 用 full-screen HUD 坐标投影 advancement
+  window 与 footer Done 按钮（窗口继续 252x140 居中，按钮按 viewport footer
+  定位、hover 高亮并绘制 `Done`），main/input 在 screen 打开时消费鼠标并在
+  Done 命中时关闭 screen + 发送 `SeenAdvancements::ClosedScreen`。剩余：
+  advancement tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
+  overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

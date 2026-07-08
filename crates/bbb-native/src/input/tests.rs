@@ -4742,6 +4742,36 @@ fn advancements_key_closes_advancements_screen_and_queues_seen_packet() {
 }
 
 #[test]
+fn advancements_done_button_click_closes_screen_and_queues_seen_packet() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_advancements_screen());
+
+    let handled = handle_advancements_screen_mouse_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(400.0, 580.0)),
+        PhysicalSize::new(800, 600),
+    );
+
+    assert!(handled);
+    assert!(!world.advancements_screen_is_open());
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen)
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn movement_key_changes_queue_player_input_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

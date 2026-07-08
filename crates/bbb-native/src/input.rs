@@ -85,6 +85,9 @@ const BOOK_MENU_BUTTON_Y: i32 = 194;
 const BOOK_MENU_DONE_BUTTON_X: i32 = -4;
 const BOOK_MENU_BUTTON_WIDTH: i32 = 200;
 const BOOK_MENU_BUTTON_HEIGHT: i32 = 20;
+const ADVANCEMENTS_FOOTER_HEIGHT: i32 = 33;
+const ADVANCEMENTS_DONE_BUTTON_WIDTH: i32 = 200;
+const ADVANCEMENTS_DONE_BUTTON_HEIGHT: i32 = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BookScreenClickTarget {
@@ -673,6 +676,45 @@ fn close_advancements_screen_and_queue(
         release_active_input(input, world, counters, net_commands);
         queue_seen_advancements_command(counters, net_commands, SeenAdvancements::ClosedScreen);
     }
+}
+
+pub(crate) fn handle_advancements_screen_mouse_input(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button: MouseButton,
+    state: ElementState,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if !world.advancements_screen_is_open() {
+        return false;
+    }
+    if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+        return true;
+    }
+    if advancements_done_button_contains(cursor_position, surface_size) {
+        close_advancements_screen_and_queue(input, counters, world, net_commands);
+    }
+    true
+}
+
+fn advancements_done_button_contains(
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let x =
+        (f64::from(surface_size.width.max(1)) - f64::from(ADVANCEMENTS_DONE_BUTTON_WIDTH)) * 0.5;
+    let y = f64::from(surface_size.height.max(1)) - f64::from(ADVANCEMENTS_FOOTER_HEIGHT)
+        + f64::from(ADVANCEMENTS_FOOTER_HEIGHT - ADVANCEMENTS_DONE_BUTTON_HEIGHT) * 0.5;
+    cursor.x >= x
+        && cursor.x < x + f64::from(ADVANCEMENTS_DONE_BUTTON_WIDTH)
+        && cursor.y >= y
+        && cursor.y < y + f64::from(ADVANCEMENTS_DONE_BUTTON_HEIGHT)
 }
 
 pub(crate) fn handle_book_screen_mouse_input(

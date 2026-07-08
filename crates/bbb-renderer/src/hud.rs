@@ -491,6 +491,8 @@ pub enum HudInventoryBackgroundTexture {
     CrafterUnpoweredRedstone,
     WidgetTextField,
     WidgetTextFieldHighlighted,
+    WidgetButton,
+    WidgetButtonHighlighted,
     Anvil,
     AnvilTextField,
     AnvilTextFieldDisabled,
@@ -1244,6 +1246,21 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_text_field_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_button(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_widget_button = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_button_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -3665,6 +3682,10 @@ impl Renderer {
             HudInventoryBackgroundTexture::WidgetTextField => self.hud_widget_text_field.as_ref(),
             HudInventoryBackgroundTexture::WidgetTextFieldHighlighted => {
                 self.hud_widget_text_field_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetButton => self.hud_widget_button.as_ref(),
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted => {
+                self.hud_widget_button_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
             HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),

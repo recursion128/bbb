@@ -58,11 +58,11 @@ use code_of_conduct_overlay::CodeOfConductOverlayState;
 use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
-    handle_book_screen_mouse_input, handle_focus_change, handle_inventory_cursor_moved,
-    handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-    handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick, handle_mouse_motion,
-    handle_mouse_wheel, handle_text_input_with_item_runtime, release_active_input,
-    ClientInputState,
+    handle_advancements_screen_mouse_input, handle_book_screen_mouse_input, handle_focus_change,
+    handle_inventory_cursor_moved, handle_inventory_mouse_input_with_item_runtime,
+    handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
+    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
+    handle_text_input_with_item_runtime, release_active_input, ClientInputState,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -465,6 +465,20 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_book_screen_mouse_input(
                             &mut world,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
+                        return;
+                    }
+                    if world.advancements_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_advancements_screen_mouse_input(
+                            &mut input,
+                            &mut net_counters,
+                            &mut world,
+                            &net_commands,
                             button,
                             state,
                             cursor_position,

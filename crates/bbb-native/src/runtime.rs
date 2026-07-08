@@ -349,11 +349,17 @@ const ADVANCEMENTS_WINDOW_TITLE_Y: i32 = 6;
 const ADVANCEMENTS_EMPTY_TEXT_CENTER_X: i32 = 126;
 const ADVANCEMENTS_EMPTY_TEXT_Y: i32 = 70;
 const ADVANCEMENTS_SAD_TEXT_Y: i32 = 122;
+const ADVANCEMENTS_FOOTER_HEIGHT: i32 = 33;
+const ADVANCEMENTS_DONE_BUTTON_WIDTH: u32 = 200;
+const ADVANCEMENTS_DONE_BUTTON_HEIGHT: u32 = 20;
+const ADVANCEMENTS_DONE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const ADVANCEMENTS_TITLE_TEXT: &str = "Advancements";
 const ADVANCEMENTS_EMPTY_TEXT: &str = "There doesn't seem to be anything here...";
 const ADVANCEMENTS_SAD_TEXT: &str = ":(";
+const ADVANCEMENTS_DONE_TEXT: &str = "Done";
 const ADVANCEMENTS_TITLE_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
 const ADVANCEMENTS_EMPTY_TEXT_COLOR: [f32; 4] = rgba32(-1);
+const ADVANCEMENTS_DONE_TEXT_COLOR: [f32; 4] = rgba32(-1);
 const ADVANCEMENTS_EMPTY_BACKGROUND_TINT: [f32; 4] = rgba32(-16_777_216);
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
@@ -2664,7 +2670,10 @@ fn hud_inventory_screen_with_local_state_for_surface(
     }
 
     if world.advancements_screen_is_open() {
-        return Some(hud_advancements_screen());
+        return Some(hud_advancements_screen(
+            surface_size,
+            local_state.cursor_position,
+        ));
     }
 
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;
@@ -4461,25 +4470,54 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
     }
 }
 
-fn hud_advancements_screen() -> HudInventoryScreen {
+fn hud_advancements_screen(
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    cursor_position: Option<(i32, i32)>,
+) -> HudInventoryScreen {
+    let screen_width = surface_size.width.max(1);
+    let screen_height = surface_size.height.max(1);
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let (done_button_x, done_button_y) = advancements_done_button_origin_for_surface(surface_size);
+    let done_button_highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
+        cursor_x >= done_button_x
+            && cursor_x < done_button_x + ADVANCEMENTS_DONE_BUTTON_WIDTH as i32
+            && cursor_y >= done_button_y
+            && cursor_y < done_button_y + ADVANCEMENTS_DONE_BUTTON_HEIGHT as i32
+    });
+    let done_button_texture = if done_button_highlighted {
+        HudInventoryBackgroundTexture::WidgetButtonHighlighted
+    } else {
+        HudInventoryBackgroundTexture::WidgetButton
+    };
     HudInventoryScreen {
-        width: ADVANCEMENTS_WINDOW_WIDTH,
-        height: ADVANCEMENTS_WINDOW_HEIGHT,
-        background_layers: vec![hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::AdvancementsWindow,
-            0,
-            0,
-            ADVANCEMENTS_WINDOW_WIDTH,
-            ADVANCEMENTS_WINDOW_HEIGHT,
-            [0.0, 0.0],
-            [
-                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
-                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
-            ],
-        )],
+        width: screen_width,
+        height: screen_height,
+        background_layers: vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementsWindow,
+                window_x,
+                window_y,
+                ADVANCEMENTS_WINDOW_WIDTH,
+                ADVANCEMENTS_WINDOW_HEIGHT,
+                [0.0, 0.0],
+                [
+                    ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                    ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+                ],
+            ),
+            hud_inventory_background_layer(
+                done_button_texture,
+                done_button_x,
+                done_button_y,
+                ADVANCEMENTS_DONE_BUTTON_WIDTH,
+                ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ],
         fill_layers: vec![HudInventoryFillLayer {
-            x: ADVANCEMENTS_WINDOW_INSIDE_X,
-            y: ADVANCEMENTS_WINDOW_INSIDE_Y,
+            x: window_x + ADVANCEMENTS_WINDOW_INSIDE_X,
+            y: window_y + ADVANCEMENTS_WINDOW_INSIDE_Y,
             width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
             height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
             tint: ADVANCEMENTS_EMPTY_BACKGROUND_TINT,
@@ -4489,16 +4527,49 @@ fn hud_advancements_screen() -> HudInventoryScreen {
         floating_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
-        text_labels: advancements_screen_text_labels(),
+        text_labels: advancements_screen_text_labels(
+            window_x,
+            window_y,
+            done_button_x,
+            done_button_y,
+        ),
         hovered_slot_id: None,
         tooltip: None,
     }
 }
 
-fn advancements_screen_text_labels() -> Vec<HudInventoryTextLabel> {
+fn advancements_window_origin_for_surface(
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> (i32, i32) {
+    let screen_width = i32::try_from(surface_size.width.max(1)).unwrap_or(i32::MAX);
+    let screen_height = i32::try_from(surface_size.height.max(1)).unwrap_or(i32::MAX);
+    (
+        (screen_width - ADVANCEMENTS_WINDOW_WIDTH as i32) / 2,
+        (screen_height - ADVANCEMENTS_WINDOW_HEIGHT as i32) / 2,
+    )
+}
+
+fn advancements_done_button_origin_for_surface(
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> (i32, i32) {
+    let screen_width = i32::try_from(surface_size.width.max(1)).unwrap_or(i32::MAX);
+    let screen_height = i32::try_from(surface_size.height.max(1)).unwrap_or(i32::MAX);
+    (
+        (screen_width - ADVANCEMENTS_DONE_BUTTON_WIDTH as i32) / 2,
+        screen_height - ADVANCEMENTS_FOOTER_HEIGHT
+            + (ADVANCEMENTS_FOOTER_HEIGHT - ADVANCEMENTS_DONE_BUTTON_HEIGHT as i32) / 2,
+    )
+}
+
+fn advancements_screen_text_labels(
+    window_x: i32,
+    window_y: i32,
+    done_button_x: i32,
+    done_button_y: i32,
+) -> Vec<HudInventoryTextLabel> {
     let mut labels = vec![HudInventoryTextLabel {
-        x: ADVANCEMENTS_WINDOW_TITLE_X,
-        y: ADVANCEMENTS_WINDOW_TITLE_Y,
+        x: window_x + ADVANCEMENTS_WINDOW_TITLE_X,
+        y: window_y + ADVANCEMENTS_WINDOW_TITLE_Y,
         width: hud_ascii_approx_text_width(ADVANCEMENTS_TITLE_TEXT).unwrap_or_default(),
         text: ADVANCEMENTS_TITLE_TEXT.to_string(),
         tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
@@ -4510,13 +4581,30 @@ fn advancements_screen_text_labels() -> Vec<HudInventoryTextLabel> {
     push_centered_advancements_label(
         &mut labels,
         ADVANCEMENTS_EMPTY_TEXT,
-        ADVANCEMENTS_EMPTY_TEXT_Y,
+        window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+        window_y + ADVANCEMENTS_EMPTY_TEXT_Y,
     );
-    push_centered_advancements_label(&mut labels, ADVANCEMENTS_SAD_TEXT, ADVANCEMENTS_SAD_TEXT_Y);
+    push_centered_advancements_label(
+        &mut labels,
+        ADVANCEMENTS_SAD_TEXT,
+        window_x + ADVANCEMENTS_EMPTY_TEXT_CENTER_X,
+        window_y + ADVANCEMENTS_SAD_TEXT_Y,
+    );
+    push_centered_advancements_label(
+        &mut labels,
+        ADVANCEMENTS_DONE_TEXT,
+        done_button_x + ADVANCEMENTS_DONE_BUTTON_WIDTH as i32 / 2,
+        done_button_y + ADVANCEMENTS_DONE_BUTTON_TEXT_Y_OFFSET,
+    );
     labels
 }
 
-fn push_centered_advancements_label(labels: &mut Vec<HudInventoryTextLabel>, text: &str, y: i32) {
+fn push_centered_advancements_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: &str,
+    center_x: i32,
+    y: i32,
+) {
     let Some(width) = hud_ascii_approx_text_width(text) else {
         return;
     };
@@ -4524,11 +4612,15 @@ fn push_centered_advancements_label(labels: &mut Vec<HudInventoryTextLabel>, tex
         return;
     };
     labels.push(HudInventoryTextLabel {
-        x: ADVANCEMENTS_EMPTY_TEXT_CENTER_X - width_i32 / 2,
+        x: center_x - width_i32 / 2,
         y,
         width,
         text: text.to_string(),
-        tint: ADVANCEMENTS_EMPTY_TEXT_COLOR,
+        tint: if text == ADVANCEMENTS_DONE_TEXT {
+            ADVANCEMENTS_DONE_TEXT_COLOR
+        } else {
+            ADVANCEMENTS_EMPTY_TEXT_COLOR
+        },
         background: None,
         input: None,
         shadow: false,

@@ -1060,7 +1060,7 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
-    window shells: Done button, tab/tree rendering, and selected-tab
+    window/Done button shells: tab/tree rendering and selected-tab
     `OpenedTab` behavior (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1412,9 +1412,21 @@ When an agent does any of the following, update this file in the same slice:
     252x140 HUD screen while the local advancement screen is open, draws the
     black empty content fill, and emits the vanilla en_us title/empty labels
     at those coordinates.
+  - Done 2026-07-08 — Advancement screen footer Done button. Vanilla anchors:
+    `AdvancementsScreen.init` adds
+    `Button.builder(CommonComponents.GUI_DONE, button -> this.onClose())`
+    with `.width(200)` to a default `HeaderAndFooterLayout`; that layout uses
+    33px footer height and centers the 200x20 button at
+    `x=(screenWidth-200)/2`, `y=screenHeight-27`. `AbstractButton` uses the
+    `widget/button` and `widget/button_highlighted` sprites. bbb now loads
+    those vanilla sprites, projects the advancement HUD in full-screen
+    coordinates so the 252x140 window stays centered while the footer button
+    sits at the vanilla screen-bottom position, highlights the button from
+    cursor position, draws the `Done` label, and closes via
+    `SeenAdvancements::ClosedScreen` when the button is clicked.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
-    overlap, and the advancement screen local open/close plus empty window
-    shells are live. The
+    overlap, and the advancement screen local open/close, empty window, and
+    footer Done shells are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1429,9 +1441,9 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family stacked-contents craftability, and multi-recipe cycling,
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
-    retry guard, and animated-tab fake-item y-scaling are live. The
-    remaining open surfaces in this ledger row are the advancement screen Done
-    button/tab/tree pass and debug overlay.
+    retry guard, and animated-tab fake-item y-scaling are live. The remaining
+    open surfaces in this ledger row are the advancement screen tab/tree pass
+    and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
