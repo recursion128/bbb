@@ -82,6 +82,8 @@ pub struct BlockEntityRecord {
     pub y: i16,
     pub local_z: u8,
     pub type_id: i32,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub raw_nbt: Vec<u8>,
     pub nbt: Option<NbtPayloadSummary>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sign_text: Option<SignBlockEntityTextState>,

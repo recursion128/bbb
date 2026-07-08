@@ -917,6 +917,7 @@ fn applies_block_entity_data_update() {
             y: 7,
             local_z: 2,
             type_id: 9,
+            raw_nbt: raw_nbt.clone(),
             nbt: Some(NbtPayloadSummary {
                 root_type: 10,
                 byte_len: raw_nbt.len(),
@@ -938,6 +939,14 @@ fn applies_block_entity_data_update() {
         Some(9)
     );
     assert_eq!(
+        store.block_entity_raw_nbt_at(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        }),
+        Some(raw_nbt.as_slice())
+    );
+    assert_eq!(
         store.block_entity_type_id_at(BlockPos {
             x: 34,
             y: 7,
@@ -955,12 +964,20 @@ fn applies_block_entity_data_update() {
                 z: -46,
             },
             block_entity_type_id: 11,
-            raw_nbt: replacement_nbt,
+            raw_nbt: replacement_nbt.clone(),
         })
         .unwrap());
     let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
     assert_eq!(chunk.block_entities.len(), 1);
     assert_eq!(chunk.block_entities[0].type_id, 11);
+    assert_eq!(
+        store.block_entity_raw_nbt_at(BlockPos {
+            x: 33,
+            y: 7,
+            z: -46,
+        }),
+        Some(replacement_nbt.as_slice())
+    );
     assert_eq!(
         store.block_entity_type_id_at(BlockPos {
             x: 33,

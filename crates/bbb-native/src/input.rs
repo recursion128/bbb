@@ -1218,10 +1218,24 @@ fn debug_copy_recreate_block_command(
     let block = world.probe_block(pos)?;
     let block_name = block.block_name.as_deref()?;
     let description = debug_block_state_description(block_name, &block.block_properties);
+    let mut command = format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description);
+    if let Some(snbt) = debug_local_block_entity_compact_snbt(world, pos) {
+        command.push_str(&snbt);
+    }
     Some(DebugRecreateCopy {
-        command: format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description),
+        command,
         feedback_message: "Copied client-side block data to clipboard",
     })
+}
+
+fn debug_local_block_entity_compact_snbt(world: &WorldStore, pos: BlockPos) -> Option<String> {
+    let raw_nbt = world.block_entity_raw_nbt_at(pos)?;
+    let response = TagQueryResponseState {
+        transaction_id: 0,
+        tag_present: raw_nbt.first().is_some_and(|tag_id| *tag_id != 0),
+        raw_nbt: raw_nbt.to_vec(),
+    };
+    response.compact_snbt().ok().flatten()
 }
 
 fn debug_copy_recreate_server_block_command(

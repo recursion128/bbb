@@ -179,6 +179,7 @@ impl WorldStore {
             y,
             local_z: pos.z.rem_euclid(16) as u8,
             type_id: packet.block_entity_type_id,
+            raw_nbt: packet.raw_nbt,
             nbt,
             sign_text,
             vault_shared_data,
@@ -336,6 +337,11 @@ impl WorldStore {
     pub fn block_entity_type_id_at(&self, pos: BlockPos) -> Option<i32> {
         self.block_entity_record_at(pos)
             .map(|entity| entity.type_id)
+    }
+
+    pub fn block_entity_raw_nbt_at(&self, pos: BlockPos) -> Option<&[u8]> {
+        self.block_entity_record_at(pos)
+            .map(|entity| entity.raw_nbt.as_slice())
     }
 
     pub fn vault_shared_data_at(&self, pos: BlockPos) -> Option<&VaultSharedDataState> {

@@ -144,24 +144,31 @@ fn decode_block_entities(
 ) -> Result<Vec<BlockEntityRecord>> {
     let mut out = Vec::with_capacity(block_entities.len());
     for entity in block_entities {
-        let mut decoder = Decoder::new(&entity.raw_nbt);
+        let ProtocolLevelChunkBlockEntity {
+            packed_xz,
+            y,
+            block_entity_type_id,
+            raw_nbt,
+        } = entity;
+        let mut decoder = Decoder::new(&raw_nbt);
         let nbt = skip_nbt_any(&mut decoder)?;
         if !decoder.is_empty() {
             return Err(WorldDecodeError::TrailingBlockEntityData {
                 remaining: decoder.remaining_len(),
             });
         }
-        let sign_text = decode_sign_block_entity_text(&entity.raw_nbt)?;
-        let vault_shared_data = crate::chunks::decode_vault_shared_data(&entity.raw_nbt)?;
-        let decorated_pot_sherds = crate::chunks::decode_decorated_pot_sherds(&entity.raw_nbt)?;
-        let banner_patterns = crate::chunks::decode_banner_patterns(&entity.raw_nbt)?;
-        let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&entity.raw_nbt)?;
-        let spawner = crate::chunks::decode_spawner_block_entity_data(&entity.raw_nbt)?;
+        let sign_text = decode_sign_block_entity_text(&raw_nbt)?;
+        let vault_shared_data = crate::chunks::decode_vault_shared_data(&raw_nbt)?;
+        let decorated_pot_sherds = crate::chunks::decode_decorated_pot_sherds(&raw_nbt)?;
+        let banner_patterns = crate::chunks::decode_banner_patterns(&raw_nbt)?;
+        let end_gateway = crate::chunks::decode_end_gateway_block_entity_data(&raw_nbt)?;
+        let spawner = crate::chunks::decode_spawner_block_entity_data(&raw_nbt)?;
         out.push(BlockEntityRecord {
-            local_x: entity.packed_xz >> 4,
-            y: entity.y,
-            local_z: entity.packed_xz & 0x0f,
-            type_id: entity.block_entity_type_id,
+            local_x: packed_xz >> 4,
+            y,
+            local_z: packed_xz & 0x0f,
+            type_id: block_entity_type_id,
+            raw_nbt,
             nbt,
             sign_text,
             vault_shared_data,

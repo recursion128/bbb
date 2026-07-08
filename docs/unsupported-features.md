@@ -1108,12 +1108,13 @@ When an agent does any of the following, update this file in the same slice:
     render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
-    3D crosshair rendering, and default-profile debug entry coverage:
+    3D crosshair rendering, default-profile debug entry coverage, and F3+I
+    local block-entity NBT capture:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
-    F3+I local client-side NBT capture / styled feedback, profiler data
+    F3+I local entity NBT capture / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
@@ -1346,9 +1347,10 @@ When an agent does any of the following, update this file in the same slice:
     data to clipboard`; when the target is an entity, it derives the
     `minecraft:*` type id from the protocol entity registry constants and
     writes `/summon ...` using the entity position with two decimals plus
-    client-side entity feedback. Boundary: Shift+F3+I local client-side NBT
-    capture, exact `StateDefinition` property iteration order, and
-    styled/clickable feedback remain future parity work.
+    client-side entity feedback. Boundary: Shift+F3+I local block-entity NBT
+    capture is now covered below; exact `StateDefinition` property iteration
+    order, local entity NBT capture, and styled/clickable feedback remain
+    future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
@@ -1361,8 +1363,9 @@ When an agent does any of the following, update this file in the same slice:
     recreate server query with vanilla-style transaction id 0 for the first
     request, and the main event loop drains that request into the existing
     block/entity tag-query net commands. Follow-up response/callback handling
-    is now covered below. Boundary: local client-side NBT capture for
-    Shift+F3+I and styled/clickable vanilla feedback remain future parity work.
+    is now covered below. Boundary: local block-entity NBT capture is now
+    covered below; local entity NBT capture and styled/clickable vanilla
+    feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side NBT response callback.
     Vanilla anchors: `ClientPacketListener.handleTagQueryPacket` forwards
     `ClientboundTagQueryPacket` to `DebugQueryHandler.handleResponse`, which
@@ -1378,8 +1381,9 @@ When an agent does any of the following, update this file in the same slice:
     final recreate command to the debug clipboard, and ignores mismatched
     transaction ids while preserving the pending callback. Tests cover block,
     entity, null-tag, mismatched-id, and captured-at-query-time block state
-    behavior. Boundary: Shift+F3+I local client-side NBT capture and
-    styled/clickable vanilla feedback remain future work.
+    behavior. Boundary: Shift+F3+I local block-entity NBT capture is now
+    covered below; local entity NBT capture and styled/clickable vanilla
+    feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I gamemaster permission gate.
     Vanilla anchors: `PlayerList.sendPlayerPermissionLevel` sends
     `ClientboundEntityEventPacket(player, eventId)` with event ids 24..28 for
@@ -1393,7 +1397,21 @@ When an agent does any of the following, update this file in the same slice:
     server tag query only when `addNbt && pullFromServer`; otherwise it copies
     the client-side no-NBT recreate command. Tests cover local and remote
     permission entity events plus authorized/unprivileged F3+I routing.
-    Boundary: Shift+F3+I local client-side NBT capture and styled/clickable
+    Boundary: Shift+F3+I local block-entity NBT capture is now covered below;
+    local entity NBT capture and styled/clickable vanilla feedback remain future
+    work.
+  - Done 2026-07-08 — Debug overlay F3+I local block-entity NBT capture.
+    Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
+    pullFromServer)` uses `BlockEntity.saveWithoutMetadata` when `addNbt` is
+    true and `pullFromServer` is false, appending that `CompoundTag` to the
+    `/setblock` command before emitting `debug.inspect.client.block`.
+    `ClientboundLevelChunkPacketData.BlockEntityInfo` and
+    `ClientboundBlockEntityDataPacket` both carry block entity `getUpdateTag`
+    data. bbb now stores raw block-entity NBT on `BlockEntityRecord`, replaces it
+    on block-entity data updates, exposes it through `WorldStore`, and appends a
+    compact SNBT payload to Shift+F3+I local block recreate copies when the local
+    player has gamemaster permission. Boundary: this uses client-owned network
+    block-entity NBT; local entity `saveWithoutId` capture and styled/clickable
     vanilla feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
@@ -2162,7 +2180,7 @@ When an agent does any of the following, update this file in the same slice:
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity/persistence, F3+I local client-side NBT capture / styled feedback,
+    advanced tooltip full parity/persistence, F3+I local entity NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

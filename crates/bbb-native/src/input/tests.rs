@@ -1,6 +1,7 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CREEPER_ID;
+use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
     AdvancementSummary, BlockEntityTagQuery, BlockPos as ProtocolBlockPos,
@@ -250,6 +251,7 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
             y: i16::try_from(pos.y).unwrap(),
             local_z: pos.z.rem_euclid(16) as u8,
             type_id: 7,
+            raw_nbt: vec![0],
             nbt: None,
             sign_text: Some(SignBlockEntityTextState {
                 front: sign_text_side(front),
@@ -1354,6 +1356,73 @@ fn shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() 
         Some(&mut clipboard)
     ));
     assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn shift_f3_i_with_permission_copies_local_block_entity_nbt_to_clipboard() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+    }));
+    assert!(world
+        .apply_block_entity_data(BlockEntityData {
+            pos: ProtocolBlockPos {
+                x: target_pos.x,
+                y: target_pos.y,
+                z: target_pos.z,
+            },
+            block_entity_type_id: 9,
+            raw_nbt: nbt_compound(vec![nbt_string("Lock", "secret")]),
+        })
+        .expect("local block entity nbt should decode"));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]{Lock:\"secret\"}")
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side block data to clipboard"
+    );
 }
 
 #[test]

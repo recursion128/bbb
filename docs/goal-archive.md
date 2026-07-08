@@ -5583,8 +5583,9 @@
   `local_player_has_gamemaster_permission`；native F3+I 仅在
   `addNbt && pullFromServer` 时排队服务器 tag query，无权限普通 F3+I 与
   Shift+F3+I 均复制客户端无 NBT recreate command。测试覆盖本地/远端权限事件、
-  授权服务器 query、无权限本地复制。边界：Shift+F3+I 本地 client-side NBT
-  capture 与 styled/clickable feedback 仍待后续。
+  授权服务器 query、无权限本地复制。边界：Shift+F3+I 本地 block-entity NBT
+  capture 已由后续 slice 覆盖；local entity NBT capture 与 styled/clickable
+  feedback 仍待后续。
 - [x] debug overlay F3+S dynamic texture dump execution（P2 renderer/native
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对 F3+S 调用
   `TextureUtil.getDebugTexturePath(gameDirectory)` 后执行
@@ -5613,3 +5614,13 @@
   swapchain 并投影 debug FPS 文本；renderer 在 vsync 开启时优先 FIFO present
   mode，关闭时优先 Immediate、其次 Mailbox，最后回退到可用 present mode。
   边界：该配置仍为启动参数，不引入 in-game options UI / DebugOptionsScreen。
+- [x] debug overlay F3+I local block-entity NBT capture（P2 world/native
+  slice，2026-07-08）：依据 `KeyboardHandler.copyRecreateCommand(addNbt,
+  pullFromServer)` 在 `addNbt && !pullFromServer` 的 block hit 分支读取
+  `BlockEntity.saveWithoutMetadata` 并追加到 `/setblock`，以及 chunk
+  `BlockEntityInfo` / `ClientboundBlockEntityDataPacket` 都承载 block entity
+  `getUpdateTag`。world 现在在 `BlockEntityRecord` 中保留 raw block-entity
+  NBT，并在 block-entity data update 时替换；native Shift+F3+I 本地 block
+  recreate copy 在本地玩家具备 gamemaster 权限且目标有 BE NBT 时追加 compact
+  SNBT。边界：该路径使用 client-owned 网络 BE NBT；local entity
+  `saveWithoutId` capture 与 styled/clickable feedback 仍待后续。
