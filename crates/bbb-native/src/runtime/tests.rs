@@ -1163,6 +1163,9 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
     assert!(overlay.left_lines.contains(
         &"Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat; [F3+V] Version".to_string()
     ));
+    assert!(overlay
+        .left_lines
+        .contains(&"To edit: press [F3+F6]".to_string()));
 }
 
 #[test]

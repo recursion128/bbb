@@ -1077,12 +1077,19 @@ When an agent does any of the following, update this file in the same slice:
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, and F3+A/B/G/H/P local
-    debug feedback: the complete vanilla debug entry list, actual
+    debug feedback, and the F3+F6 debug-options edit help keybind: the
+    complete vanilla debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay debug-options edit help keybind. Vanilla
+    anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6), and
+    `DebugScreenOverlay` renders `To edit: press ` plus that keybind. bbb now
+    shows `To edit: press [F3+F6]` in the debug overlay and locks it with a
+    HUD projection test. Boundary: the actual `DebugOptionsScreen` is not
+    implemented yet.
   - Done 2026-07-08 — Debug overlay F3+V version debug chat action. Vanilla
     anchors: `Options.keyDebugDumpVersion` binds V, and
     `KeyboardHandler.handleDebugKeys` maps it to
@@ -1691,8 +1698,8 @@ When an agent does any of the following, update this file in the same slice:
     toggle state, F3+B/G/H status toggle state, F3+A terrain reload request,
     F3+D clear-chat display action, F3+P focus-pause option toggle, and F3+V
     version debug chat action, plus F3+A/B/G/H/P local debug feedback are live.
-    The remaining open surfaces in this ledger row are the complete debug
-    entry list, actual
+    The F3+F6 debug-options edit help keybind is also aligned. The remaining
+    open surfaces in this ledger row are the complete debug entry list, actual
     charts/lightmap rendering, entity hitbox/chunk-border rendering, advanced
     tooltip full parity/persistence, 3D crosshair, and the other F3 modifier
     combos.

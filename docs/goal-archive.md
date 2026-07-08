@@ -5130,6 +5130,12 @@
   Version`。剩余：narrator/rich component styling/localization，以及
   build_time 的 Java `Date.toString()` 本地时区格式；bbb 当前输出原始
   `version.json` ISO timestamp。
+- [x] debug overlay debug-options edit help keybind（P2 HUD/runtime
+  slice，2026-07-08）：依据 `Options.keyDebugDebugOptions` 绑定 F6，以及
+  `DebugScreenOverlay` 用 `formatKeybind(keyDebugModifier,
+  options.keyDebugDebugOptions)` 渲染 `To edit: press ...`。runtime 现在显示
+  `To edit: press [F3+F6]` 并有 HUD projection 测试锁定。剩余：实际
+  `DebugOptionsScreen`。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`

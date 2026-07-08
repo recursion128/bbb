@@ -2790,7 +2790,7 @@ fn hud_debug_overlay(
     ));
     left_lines
         .push("Debug actions: [F3+A] Reload chunks; [F3+D] Clear chat; [F3+V] Version".to_string());
-    left_lines.push("To edit: press [F3+F5]".to_string());
+    left_lines.push("To edit: press [F3+F6]".to_string());
 
     Some(HudDebugOverlay {
         left_lines,
