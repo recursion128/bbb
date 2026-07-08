@@ -6655,6 +6655,62 @@ fn hud_inventory_screen_marks_and_filters_craftable_recipe_book_buttons() {
 }
 
 #[test]
+fn hud_inventory_screen_marks_tagged_recipe_book_requirements_craftable() {
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 10,
+        item: item_stack(50, 1),
+    });
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![50])]);
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry_with_requirement_summaries(
+                20,
+                2,
+                None,
+                120,
+                vec![bbb_protocol::packets::IngredientSummary {
+                    tag: Some("minecraft:planks".to_string()),
+                    item_ids: Vec::new(),
+                }],
+            ),
+        ],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotCraftable,
+                11,
+                31,
+                25,
+                25,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+}
+
+#[test]
 fn hud_inventory_screen_projects_recipe_book_page_controls_and_current_page() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
@@ -10332,6 +10388,28 @@ fn shapeless_crafting_recipe_book_entry_with_requirements(
     result_item_id: i32,
     requirements: Vec<Vec<i32>>,
 ) -> bbb_protocol::packets::RecipeBookAddEntry {
+    shapeless_crafting_recipe_book_entry_with_requirement_summaries(
+        id,
+        category_id,
+        group,
+        result_item_id,
+        requirements
+            .into_iter()
+            .map(|item_ids| bbb_protocol::packets::IngredientSummary {
+                tag: None,
+                item_ids,
+            })
+            .collect(),
+    )
+}
+
+fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
+    id: i32,
+    category_id: i32,
+    group: Option<i32>,
+    result_item_id: i32,
+    requirements: Vec<bbb_protocol::packets::IngredientSummary>,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
     bbb_protocol::packets::RecipeBookAddEntry {
         contents: bbb_protocol::packets::RecipeDisplayEntry {
             id: bbb_protocol::packets::RecipeDisplayId { index: id },
@@ -10356,20 +10434,27 @@ fn shapeless_crafting_recipe_book_entry_with_requirements(
             },
             group,
             category_id,
-            crafting_requirements: (!requirements.is_empty()).then(|| {
-                requirements
-                    .into_iter()
-                    .map(|item_ids| bbb_protocol::packets::IngredientSummary {
-                        tag: None,
-                        item_ids,
-                    })
-                    .collect()
-            }),
+            crafting_requirements: (!requirements.is_empty()).then_some(requirements),
         },
         flags: 0,
         notification: false,
         highlight: false,
     }
+}
+
+fn apply_item_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: tags
+                .into_iter()
+                .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {
+                    tag: tag.to_string(),
+                    entries,
+                })
+                .collect(),
+        }],
+    });
 }
 
 fn written_book_stack(pages: Vec<&str>) -> bbb_protocol::packets::ItemStackSummary {

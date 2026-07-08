@@ -1065,8 +1065,7 @@ When an agent does any of the following, update this file in the same slice:
     filtering/direct-item craftability: tab notification animation,
     furnace-family recipe-grid parity, multi-recipe overlay/cycling, full
     recipe `FullTextSearchTree` token parity, and unresolved tag/composite
-    SlotDisplay cycling for ghost ingredients and tag-backed crafting
-    requirements.
+    SlotDisplay cycling for ghost ingredients.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1212,19 +1211,29 @@ When an agent does any of the following, update this file in the same slice:
     backtracking, projects the craftable/many slot sprites, and makes HUD page
     controls plus recipe-button click hit-testing use only craftable entries
     when the crafting filter toggle is enabled.
-  - Boundary: furnace-family raw recipe displays, tag-backed crafting
-    requirements, craftability retry guard, multi-recipe cycling/right-click
-    overlay, tab notification animation, full `FullTextSearchTree` token /
-    namespace-path / intersection semantics for recipe search, cursor/selection
-    rendering inside the search box, tag/composite SlotDisplay cycling for
-    ghost ingredients, and narrow-screen overlap remain open. The filter toggle,
-    search text, selected-tab, first crafting recipe-button shell, crafting
-    category/page states, primary recipe placement command path, crafting
-    category tab visibility, direct item/item-stack crafting ghost slots,
-    visible crafting search filtering, and direct-item crafting craftability
-    slot/filtering path are live. The first shell models the non-narrow layout;
-    vanilla's narrow-screen overlap mode (`width < 379`) remains for the
-    input/render follow-up.
+  - Done 2026-07-08 — Crafting recipe-book tag-backed requirement
+    craftability. Vanilla anchors: `Ingredient.CONTENTS_STREAM_CODEC` uses
+    `ByteBufCodecs.holderSet(Registries.ITEM)`, whose named holder-set wire
+    form is VarInt `0` followed by the tag id; `Ingredient` wraps that
+    `HolderSet<Item>`, and `RecipeDisplayEntry.canCraft` asks
+    `StackedItemContents.canCraft` against the decoded requirements. bbb now
+    expands `IngredientSummary.tag` through canonical `UpdateTags`
+    `minecraft:item` entries before matching the existing direct-item
+    multiset, so tag-backed craftable recipes affect slot sprites, filtering,
+    page controls, and recipe-button click hit-testing; absent tag data remains
+    uncraftable.
+  - Boundary: furnace-family raw recipe displays, craftability retry guard,
+    multi-recipe cycling/right-click overlay, tab notification animation, full
+    `FullTextSearchTree` token / namespace-path / intersection semantics for
+    recipe search, cursor/selection rendering inside the search box,
+    tag/composite SlotDisplay cycling for ghost ingredients, and narrow-screen
+    overlap remain open. The filter toggle, search text, selected-tab, first
+    crafting recipe-button shell, crafting category/page states, primary recipe
+    placement command path, crafting category tab visibility, direct
+    item/item-stack crafting ghost slots, visible crafting search filtering,
+    and direct-item/tag-backed crafting craftability slot/filtering path are
+    live. The first shell models the non-narrow layout; vanilla's narrow-screen
+    overlap mode (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

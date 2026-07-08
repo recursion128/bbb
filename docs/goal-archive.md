@@ -1874,6 +1874,20 @@
   `FullTextSearchTree` token/namespace-path/intersection 语义、search
   cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
   cycling、narrow-screen overlap。
+- [x] crafting recipe-book tag-backed requirement craftability（P2 HUD/input
+  slice，2026-07-08）：依据 `Ingredient.CONTENTS_STREAM_CODEC` /
+  `ByteBufCodecs.holderSet(Registries.ITEM)` 的 named holder-set wire form
+  （VarInt `0` + tag id）、`Ingredient` 的 HolderSet 包装，以及
+  `RecipeDisplayEntry.canCraft` 对 decoded requirements 的
+  `StackedItemContents.canCraft` 查询，native 现在把 `IngredientSummary.tag`
+  经 canonical `UpdateTags` 的 `minecraft:item` tag entries 展开后进入现有
+  ingredient matching；tag-backed craftable recipes 会驱动 slot sprite、
+  filtering、page controls 与 recipe-button click hit-testing，缺失 tag data
+  仍判不可合成。剩余：furnace-family raw recipe displays、craftability retry
+  guard、multi-recipe cycling/right-click overlay、tab notification animation、
+  完整 `FullTextSearchTree` token/namespace-path/intersection 语义、search
+  cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
+  cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

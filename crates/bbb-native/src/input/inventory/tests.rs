@@ -3928,11 +3928,20 @@ fn recipe_book_recipe_click_uses_craftable_filter_selection() {
         blast_furnace: RecipeBookTypeSettings::default(),
         smoker: RecipeBookTypeSettings::default(),
     });
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![50])]);
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
         replace: true,
         entries: vec![
             crafting_recipe_book_entry_with_requirements(20, 2, 120, vec![vec![51]]),
-            crafting_recipe_book_entry_with_requirements(21, 2, 121, vec![vec![50]]),
+            crafting_recipe_book_entry_with_requirement_summaries(
+                21,
+                2,
+                121,
+                vec![IngredientSummary {
+                    tag: Some("minecraft:planks".to_string()),
+                    item_ids: Vec::new(),
+                }],
+            ),
         ],
     });
 
@@ -7993,6 +8002,26 @@ fn crafting_recipe_book_entry_with_requirements(
     result_item_id: i32,
     requirements: Vec<Vec<i32>>,
 ) -> bbb_protocol::packets::RecipeBookAddEntry {
+    crafting_recipe_book_entry_with_requirement_summaries(
+        id,
+        category_id,
+        result_item_id,
+        requirements
+            .into_iter()
+            .map(|item_ids| IngredientSummary {
+                tag: None,
+                item_ids,
+            })
+            .collect(),
+    )
+}
+
+fn crafting_recipe_book_entry_with_requirement_summaries(
+    id: i32,
+    category_id: i32,
+    result_item_id: i32,
+    requirements: Vec<IngredientSummary>,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
     bbb_protocol::packets::RecipeBookAddEntry {
         contents: bbb_protocol::packets::RecipeDisplayEntry {
             id: bbb_protocol::packets::RecipeDisplayId { index: id },
@@ -8017,15 +8046,7 @@ fn crafting_recipe_book_entry_with_requirements(
             },
             group: None,
             category_id,
-            crafting_requirements: (!requirements.is_empty()).then(|| {
-                requirements
-                    .into_iter()
-                    .map(|item_ids| IngredientSummary {
-                        tag: None,
-                        item_ids,
-                    })
-                    .collect()
-            }),
+            crafting_requirements: (!requirements.is_empty()).then_some(requirements),
         },
         flags: 0,
         notification: false,

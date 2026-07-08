@@ -91,6 +91,9 @@ pub(crate) fn crafting_recipe_book_collections<'a>(
         return Vec::new();
     };
     let available_items = crafting_recipe_book_available_item_counts(world, grid);
+    let item_tag_entries = world
+        .registry_tags("minecraft:item")
+        .map(|registry| &registry.tags);
     let mut collections = Vec::new();
     for category_id in categories {
         push_crafting_category_collections(
@@ -99,6 +102,7 @@ pub(crate) fn crafting_recipe_book_collections<'a>(
             *category_id,
             only_craftable,
             &available_items,
+            item_tag_entries,
             &mut collections,
         );
     }
@@ -308,6 +312,7 @@ fn push_crafting_category_collections<'a>(
     category_id: i32,
     only_craftable: bool,
     available_items: &BTreeMap<i32, i32>,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
     collections: &mut Vec<RecipeBookUiCollection<'a>>,
 ) {
     let mut group_indexes: BTreeMap<i32, usize> = BTreeMap::new();
@@ -315,7 +320,7 @@ fn push_crafting_category_collections<'a>(
         if entry.category_id != category_id || !crafting_recipe_fits_grid(entry, grid) {
             continue;
         }
-        let craftable = recipe_book_entry_is_craftable(entry, available_items);
+        let craftable = recipe_book_entry_is_craftable(entry, available_items, item_tag_entries);
         if only_craftable && !craftable {
             continue;
         }
@@ -479,13 +484,14 @@ fn add_item_stack_count(counts: &mut BTreeMap<i32, i32>, stack: &ItemStackSummar
 fn recipe_book_entry_is_craftable(
     entry: &RecipeDisplayEntry,
     available_items: &BTreeMap<i32, i32>,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
 ) -> bool {
     let Some(requirements) = entry.crafting_requirements.as_ref() else {
         return false;
     };
     let mut options = Vec::with_capacity(requirements.len());
     for requirement in requirements {
-        let item_options = recipe_book_ingredient_item_options(requirement);
+        let item_options = recipe_book_ingredient_item_options(requirement, item_tag_entries);
         if item_options.is_empty() {
             return false;
         }
@@ -496,11 +502,20 @@ fn recipe_book_entry_is_craftable(
     recipe_book_can_satisfy_ingredients(&options, &mut remaining)
 }
 
-fn recipe_book_ingredient_item_options(ingredient: &IngredientSummary) -> Vec<i32> {
-    if ingredient.tag.is_some() {
-        return Vec::new();
+fn recipe_book_ingredient_item_options(
+    ingredient: &IngredientSummary,
+    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
+) -> Vec<i32> {
+    if let Some(tag) = ingredient.tag.as_ref() {
+        return item_tag_entries
+            .and_then(|tags| tags.get(tag))
+            .map(|item_ids| normalized_item_options(item_ids.clone()))
+            .unwrap_or_default();
     }
-    let mut item_ids = ingredient.item_ids.clone();
+    normalized_item_options(ingredient.item_ids.clone())
+}
+
+fn normalized_item_options(mut item_ids: Vec<i32>) -> Vec<i32> {
     item_ids.sort_unstable();
     item_ids.dedup();
     item_ids
