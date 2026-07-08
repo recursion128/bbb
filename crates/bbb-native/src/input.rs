@@ -139,6 +139,11 @@ struct DebugNetContext<'a> {
     net_commands: &'a Option<mpsc::Sender<NetCommand>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DebugGameModeSwitcherState {
+    selected: GameType,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -226,6 +231,7 @@ pub(crate) struct ClientInputState {
     debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
+    debug_game_mode_switcher: Option<DebugGameModeSwitcherState>,
     debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
     pending_debug_recreate_server_query: Option<PendingDebugRecreateServerQuery>,
     debug_query_transaction_id: i32,
@@ -414,6 +420,7 @@ impl ClientInputState {
         self.advancement_is_scrolling = false;
         self.debug_modifier_down = false;
         self.debug_modifier_used = false;
+        self.debug_game_mode_switcher = None;
         self.reset_debug_crash_hold();
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
@@ -664,6 +671,13 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_pause_without_menu_requests)
     }
 
+    #[cfg(test)]
+    pub(crate) fn debug_game_mode_switcher_selected(&self) -> Option<GameType> {
+        self.debug_game_mode_switcher
+            .as_ref()
+            .map(|switcher| switcher.selected)
+    }
+
     pub(crate) fn take_debug_recreate_server_query_requests(
         &mut self,
     ) -> Vec<DebugRecreateServerQueryRequest> {
@@ -768,7 +782,7 @@ impl ClientInputState {
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
-        world: Option<&mut WorldStore>,
+        mut world: Option<&mut WorldStore>,
         terrain_upload: Option<&mut TerrainUploadState>,
         clipboard: Option<&mut dyn DebugClipboard>,
         mut net_context: Option<DebugNetContext<'_>>,
@@ -788,6 +802,19 @@ impl ClientInputState {
                 ElementState::Released => {
                     self.debug_modifier_down = false;
                     self.reset_debug_crash_hold();
+                    if let Some(switcher) = self.debug_game_mode_switcher.take() {
+                        self.debug_modifier_used = false;
+                        if let (Some(world), Some(context)) =
+                            (world.as_deref_mut(), net_context.as_mut())
+                        {
+                            queue_debug_game_mode_switcher_selection(
+                                world,
+                                context,
+                                switcher.selected,
+                            );
+                        }
+                        return true;
+                    }
                     if self.debug_modifier_used {
                         self.debug_modifier_used = false;
                     } else {
@@ -813,6 +840,10 @@ impl ClientInputState {
             )
         {
             self.debug_modifier_used = true;
+            return true;
+        }
+
+        if self.debug_game_mode_switcher.is_some() {
             return true;
         }
 
@@ -939,13 +970,26 @@ impl ClientInputState {
                 true
             }
             KeyCode::F4 => {
-                if world.as_deref().and_then(WorldStore::level_info).is_none() {
+                if let Some(switcher) = self.debug_game_mode_switcher.as_mut() {
+                    switcher.selected = next_debug_game_mode_icon(switcher.selected);
+                    return true;
+                }
+                let Some(world) = world.as_deref_mut() else {
+                    return false;
+                };
+                if world.level_info().is_none() {
                     return false;
                 }
-                push_debug_feedback_chat_message(
-                    world.as_deref_mut(),
-                    "Unable to open game mode switcher; no permission",
-                );
+                if !world.local_player_has_gamemaster_permission() {
+                    push_debug_feedback_chat_message(
+                        Some(world),
+                        "Unable to open game mode switcher; no permission",
+                    );
+                } else {
+                    self.debug_game_mode_switcher = Some(DebugGameModeSwitcherState {
+                        selected: default_debug_game_mode_switcher_selection(world),
+                    });
+                }
                 true
             }
             KeyCode::KeyV => {
@@ -1164,6 +1208,44 @@ fn debug_spectate_target_game_mode(world: &WorldStore) -> GameType {
     } else {
         GameType::Spectator
     }
+}
+
+fn default_debug_game_mode_switcher_selection(world: &WorldStore) -> GameType {
+    if let Some(previous_game_type) = world.gameplay().previous_game_type {
+        GameType::from_id(previous_game_type)
+    } else if GameType::from_id(world.gameplay().game_type) == GameType::Creative {
+        GameType::Survival
+    } else {
+        GameType::Creative
+    }
+}
+
+fn next_debug_game_mode_icon(game_type: GameType) -> GameType {
+    match game_type {
+        GameType::Creative => GameType::Survival,
+        GameType::Survival => GameType::Adventure,
+        GameType::Adventure => GameType::Spectator,
+        GameType::Spectator => GameType::Creative,
+    }
+}
+
+fn queue_debug_game_mode_switcher_selection(
+    world: &WorldStore,
+    context: &mut DebugNetContext<'_>,
+    selected: GameType,
+) {
+    if !world.local_player_has_gamemaster_permission()
+        || GameType::from_id(world.gameplay().game_type) == selected
+    {
+        return;
+    }
+    queue_change_game_mode_command(
+        context.counters,
+        context.net_commands,
+        ChangeGameModeCommand {
+            game_mode: selected,
+        },
+    );
 }
 
 fn push_debug_version_chat_messages(world: &mut WorldStore) {

@@ -312,14 +312,15 @@ Screen Render Surfaces" 条目）：
   capture、debug feedback styled prefix baseline、
   F3+S dynamic texture dump clickable/open-file feedback payload、
   profiler chart numeric-key routing shell、F3+N spectator change-game-mode
-  request routing 已完成；
+  request routing、F3+F4 GameModeSwitcher input/command shell 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
   advanced tooltip component-specific full parity/persistence、F3+I full local
   entity saveWithoutId parity、profiler result clickable feedback payload、
   profiler data sampling and ProfileResults tree navigation、
-  profiling metrics recorder/output、actual DebugOptionsScreen、native pause
-  loop/PauseScreen、其它 F3 组合键，
+  profiling metrics recorder/output、actual DebugOptionsScreen、F3+F4
+  GameModeSwitcher rendering/mouse polish、native pause loop/PauseScreen、
+  其它 F3 组合键，
   低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉

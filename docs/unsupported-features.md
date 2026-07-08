@@ -1113,16 +1113,18 @@ When an agent does any of the following, update this file in the same slice:
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
     profiler chart numeric-key routing shell, and F3+N spectator
-    change-game-mode request routing:
+    change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
+    shell:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler result clickable
     feedback payload, profiler data sampling and ProfileResults tree
-    navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
-    pause loop/PauseScreen, and the other F3 modifier combos remain (large,
-    low priority).
+    navigation, profiling metrics recorder/output, actual DebugOptionsScreen,
+    F3+F4 GameModeSwitcher rendering/mouse polish, native pause
+    loop/PauseScreen, and the other F3 modifier combos remain (large, low
+    priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -1609,8 +1611,9 @@ When an agent does any of the following, update this file in the same slice:
     debug modifier path, appends the vanilla no-permission debug chat
     feedback, suppresses the subsequent F3-release overlay toggle, avoids
     gameplay F4 handling, and shows the game-mode help line in the overlay.
-    Boundary: successful F3+N routing is covered below; exact permission-source
-    parity and the actual `GameModeSwitcherScreen` are not implemented.
+    Boundary: successful F3+N and the F3+F4 input/command shell are covered
+    below; exact permission-source parity plus GameModeSwitcher rendering and
+    mouse polish are not implemented.
   - Done 2026-07-08 — Debug overlay F3+N spectator change-game-mode request
     routing. Vanilla anchors: `KeyboardHandler.handleDebugKeys` sends
     `ServerboundChangeGameModePacket(SPECTATOR)` when
@@ -1620,7 +1623,20 @@ When an agent does any of the following, update this file in the same slice:
     existing `ChangeGameMode` net command with `Spectator` / previous mode /
     `Creative`, emits no success feedback, and keeps the no-permission debug
     feedback path unchanged. Boundary: exact vanilla permission-source parity
-    and F3+F4 `GameModeSwitcherScreen` remain future work.
+    and F3+F4 GameModeSwitcher rendering/mouse polish remain future work.
+  - Done 2026-07-08 — Debug overlay F3+F4 GameModeSwitcher input/command
+    shell. Vanilla anchors: `GameModeSwitcherScreen.getDefaultSelected` picks
+    `previousPlayerMode`, otherwise `SURVIVAL` when currently creative or
+    `CREATIVE` otherwise; `GameModeIcon.getNext` cycles creative -> survival
+    -> adventure -> spectator; releasing the debug modifier calls
+    `switchToHoveredGameMode`, sends `ServerboundChangeGameModePacket` only
+    when the selected mode differs from the current mode, then closes the
+    non-pausing screen. bbb now opens a native switcher state from permitted
+    F3+F4, cycles selection on additional F4 presses, consumes gameplay input
+    while open, and queues the existing `ChangeGameMode` command on F3 release.
+    Boundary: HUD rendering of slots/icons/text/background, first-mouse
+    suppression, hover selection, mouse-release selection, cursor capture, and
+    exact screen interruption policy remain future work.
   - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
     and `DebugEntryTps.display` formats the non-integrated-server line as
@@ -2267,7 +2283,8 @@ When an agent does any of the following, update this file in the same slice:
     run with an `open_file` click payload. Profiler chart digit presses now
     route to a drainable navigation shell without blocking hotbar keys.
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
-    request. The remaining open surfaces in
+    request. F3+F4 now has a native GameModeSwitcher input/command shell. The
+    remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
@@ -2275,8 +2292,9 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler result clickable feedback
     payload, profiler data sampling and ProfileResults tree navigation,
-    profiling metrics recorder/output, actual DebugOptionsScreen, native pause
-    loop/PauseScreen, and the other F3 modifier combos.
+    profiling metrics recorder/output, actual DebugOptionsScreen, F3+F4
+    GameModeSwitcher rendering/mouse polish, native pause loop/PauseScreen, and
+    the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

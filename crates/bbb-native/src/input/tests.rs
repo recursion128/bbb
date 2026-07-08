@@ -2644,6 +2644,7 @@ fn f3_game_mode_keys_report_no_permission_without_gameplay_commands() {
     assert_eq!(counters.player_input_commands_queued, 0);
     assert_eq!(counters.player_command_commands_queued, 0);
     assert_eq!(counters.change_game_mode_commands_queued, 0);
+    assert_eq!(input.debug_game_mode_switcher_selected(), None);
     assert!(rx.try_recv().is_err());
 }
 
@@ -2732,6 +2733,115 @@ fn f3_n_queues_previous_or_creative_game_mode_when_already_spectator() {
             })
         );
     }
+}
+
+#[test]
+fn f3_f4_game_mode_switcher_queues_default_selection_on_f3_release() {
+    for (game_type, previous_game_type, expected_game_mode) in [
+        (0, -1, bbb_protocol::packets::GameType::Creative),
+        (1, -1, bbb_protocol::packets::GameType::Survival),
+        (3, 0, bbb_protocol::packets::GameType::Survival),
+    ] {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = world_with_debug_player_in_game_mode(false, game_type, previous_game_type);
+        grant_debug_recreate_nbt_permission(&mut world);
+
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Pressed,
+        );
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::F4),
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            input.debug_game_mode_switcher_selected(),
+            Some(expected_game_mode)
+        );
+        assert_eq!(counters.change_game_mode_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Released,
+        );
+
+        assert_eq!(input.debug_game_mode_switcher_selected(), None);
+        assert!(!input.debug_overlay_visible());
+        assert_eq!(counters.change_game_mode_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeGameMode(bbb_protocol::packets::ChangeGameModeCommand {
+                game_mode: expected_game_mode,
+            })
+        );
+    }
+}
+
+#[test]
+fn f3_f4_game_mode_switcher_cycles_with_additional_f4_presses() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    for _ in 0..3 {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::F4),
+            ElementState::Pressed,
+        );
+    }
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Adventure)
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert_eq!(counters.change_game_mode_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChangeGameMode(bbb_protocol::packets::ChangeGameModeCommand {
+            game_mode: bbb_protocol::packets::GameType::Adventure,
+        })
+    );
 }
 
 #[test]

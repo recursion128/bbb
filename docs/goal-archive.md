@@ -5685,3 +5685,12 @@
   `previous_game_type` 选择 Spectator / previous / Creative，成功路径不追加
   debug feedback，无权限路径保持原反馈。边界：exact vanilla permission-source
   parity、F3+F4 `GameModeSwitcherScreen` 仍待后续。
+- [x] debug overlay F3+F4 GameModeSwitcher input/command shell（P2 native
+  slice，2026-07-08）：依据 `GameModeSwitcherScreen.getDefaultSelected`、`GameModeIcon.getNext`
+  与 `keyReleased(keyDebugModifier)` 的 `switchToHoveredGameMode` 行为，native
+  input 现在在有权限 F3+F4 时打开本地 switcher 状态，默认选择 previous mode /
+  current creative -> survival / otherwise creative；后续 F4 按 creative ->
+  survival -> adventure -> spectator 循环；释放 F3 时若选择不同于当前 game
+  type，则经既有 `ChangeGameMode` net command 发送并关闭该非暂停 screen。边界：
+  HUD rendering、first-mouse suppression、hover/mouse release、cursor capture 与
+  exact screen interruption policy 仍待后续。
