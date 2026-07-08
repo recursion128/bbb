@@ -5633,3 +5633,15 @@
   默认 component type-id 集合，item runtime 按 patch added/removed ids 计算并
   渲染本地化暗灰组件计数。边界：component-specific tooltip provider parity、
   `TooltipDisplay` hidden-components 过滤和 options persistence 仍待后续。
+- [x] debug overlay F3+I local entity transform NBT capture（P2
+  native/world slice，2026-07-08）：依据
+  `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit
+  且 `addNbt && !pullFromServer` 时调用 `TagValueOutput` +
+  `Entity.saveWithoutId`，再由 `copyCreateEntityCommand` 移除 root `UUID` /
+  `Pos` 并 pretty-print 到 `/summon`。native 现在把 local `add_nbt` gate
+  传入 client-side recreate copy，确保无 gamemaster 权限时 block/entity 本地
+  NBT 都不会写入 clipboard；授权 Shift+F3+I 命中实体时，根据
+  `EntityState` 的 `Motion`、`Rotation` 和已知 `OnGround` 合成 pretty SNBT
+  追加到 summon 命令。边界：这里只使用 bbb 已拥有的 canonical transform
+  state；完整 local entity `saveWithoutId` base fields、metadata/custom data、
+  passenger/entity-specific save data，以及 styled/clickable feedback 仍待后续。

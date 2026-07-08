@@ -16,7 +16,8 @@ use bbb_protocol::{
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{
-    BlockPos, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState, WorldStore,
+    BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
+    TagQueryResponseState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -910,7 +911,9 @@ impl ClientInputState {
                         }
                     }
                 } else {
-                    let command = world.as_deref().and_then(debug_copy_recreate_command);
+                    let command = world
+                        .as_deref()
+                        .and_then(|world| debug_copy_recreate_command(world, add_nbt));
                     if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
                         if clipboard.set_debug_clipboard_text(&copy.command) {
                             push_debug_feedback_chat_message(
@@ -1130,11 +1133,11 @@ struct DebugRecreateCopy {
     feedback_message: &'static str,
 }
 
-fn debug_copy_recreate_command(world: &WorldStore) -> Option<DebugRecreateCopy> {
+fn debug_copy_recreate_command(world: &WorldStore, add_nbt: bool) -> Option<DebugRecreateCopy> {
     match debug_recreate_target(world)? {
-        DebugRecreateTarget::Block(pos) => debug_copy_recreate_block_command(world, pos),
+        DebugRecreateTarget::Block(pos) => debug_copy_recreate_block_command(world, pos, add_nbt),
         DebugRecreateTarget::Entity(entity_id) => {
-            debug_copy_recreate_entity_command(world, entity_id)
+            debug_copy_recreate_entity_command(world, entity_id, add_nbt)
         }
     }
 }
@@ -1214,13 +1217,16 @@ fn pending_debug_recreate_server_query(
 fn debug_copy_recreate_block_command(
     world: &WorldStore,
     pos: BlockPos,
+    add_nbt: bool,
 ) -> Option<DebugRecreateCopy> {
     let block = world.probe_block(pos)?;
     let block_name = block.block_name.as_deref()?;
     let description = debug_block_state_description(block_name, &block.block_properties);
     let mut command = format!("/setblock {} {} {} {}", pos.x, pos.y, pos.z, description);
-    if let Some(snbt) = debug_local_block_entity_compact_snbt(world, pos) {
-        command.push_str(&snbt);
+    if add_nbt {
+        if let Some(snbt) = debug_local_block_entity_compact_snbt(world, pos) {
+            command.push_str(&snbt);
+        }
     }
     Some(DebugRecreateCopy {
         command,
@@ -1256,16 +1262,80 @@ fn debug_copy_recreate_server_block_command(
 fn debug_copy_recreate_entity_command(
     world: &WorldStore,
     entity_id: i32,
+    add_nbt: bool,
 ) -> Option<DebugRecreateCopy> {
     let entity = world.probe_entity(entity_id)?;
     let entity_type = vanilla_entity_resource_id_for_type_id(entity.entity_type_id)?;
+    let mut command = format!(
+        "/summon {} {:.2} {:.2} {:.2}",
+        entity_type, entity.position.x, entity.position.y, entity.position.z
+    );
+    if add_nbt {
+        if let Some(snbt) = debug_local_entity_pretty_snbt(&entity) {
+            command.push(' ');
+            command.push_str(&snbt);
+        }
+    }
     Some(DebugRecreateCopy {
-        command: format!(
-            "/summon {} {:.2} {:.2} {:.2}",
-            entity_type, entity.position.x, entity.position.y, entity.position.z
-        ),
+        command,
         feedback_message: "Copied client-side entity data to clipboard",
     })
+}
+
+fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
+    let mut fields = Vec::new();
+    if let Some(motion) = debug_snbt_vec3d("Motion", entity.delta_movement) {
+        fields.push(motion);
+    }
+    if let Some(rotation) = debug_snbt_rotation(entity.y_rot, entity.x_rot) {
+        fields.push(rotation);
+    }
+    if let Some(on_ground) = entity.on_ground {
+        fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
+    }
+    (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_snbt_vec3d(name: &str, value: EntityVec3) -> Option<String> {
+    Some(format!(
+        "{}: [{}, {}, {}]",
+        name,
+        debug_snbt_double(value.x)?,
+        debug_snbt_double(value.y)?,
+        debug_snbt_double(value.z)?
+    ))
+}
+
+fn debug_snbt_rotation(y_rot: f32, x_rot: f32) -> Option<String> {
+    Some(format!(
+        "Rotation: [{}, {}]",
+        debug_snbt_float(y_rot)?,
+        debug_snbt_float(x_rot)?
+    ))
+}
+
+fn debug_snbt_double(value: f64) -> Option<String> {
+    if !value.is_finite() {
+        return None;
+    }
+    let value = if value == 0.0 { 0.0 } else { value };
+    Some(debug_snbt_number_text(value.to_string(), 'd'))
+}
+
+fn debug_snbt_float(value: f32) -> Option<String> {
+    if !value.is_finite() {
+        return None;
+    }
+    let value = if value == 0.0 { 0.0 } else { value };
+    Some(debug_snbt_number_text(value.to_string(), 'f'))
+}
+
+fn debug_snbt_number_text(mut text: String, suffix: char) -> String {
+    if !text.contains('.') && !text.contains('e') && !text.contains('E') {
+        text.push_str(".0");
+    }
+    text.push(suffix);
+    text
 }
 
 fn debug_copy_recreate_server_entity_command(

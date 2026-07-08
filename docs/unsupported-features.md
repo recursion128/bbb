@@ -1108,14 +1108,14 @@ When an agent does any of the following, update this file in the same slice:
     render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
-    3D crosshair rendering, default-profile debug entry coverage, and F3+I
-    local block-entity NBT capture, and advanced tooltip component-count
-    display:
+    3D crosshair rendering, default-profile debug entry coverage, F3+I
+    local block-entity NBT capture, advanced tooltip component-count display,
+    and F3+I local entity transform NBT capture:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
-    F3+I local entity NBT capture / styled feedback, profiler data
+    F3+I full local entity saveWithoutId parity / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
@@ -1361,10 +1361,10 @@ When an agent does any of the following, update this file in the same slice:
     data to clipboard`; when the target is an entity, it derives the
     `minecraft:*` type id from the protocol entity registry constants and
     writes `/summon ...` using the entity position with two decimals plus
-    client-side entity feedback. Boundary: Shift+F3+I local block-entity NBT
+    client-side entity feedback. Boundary: Shift+F3+I local block/entity NBT
     capture is now covered below; exact `StateDefinition` property iteration
-    order, local entity NBT capture, and styled/clickable feedback remain
-    future parity work.
+    order, full local entity `saveWithoutId` field parity, and
+    styled/clickable feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
@@ -1377,9 +1377,9 @@ When an agent does any of the following, update this file in the same slice:
     recreate server query with vanilla-style transaction id 0 for the first
     request, and the main event loop drains that request into the existing
     block/entity tag-query net commands. Follow-up response/callback handling
-    is now covered below. Boundary: local block-entity NBT capture is now
-    covered below; local entity NBT capture and styled/clickable vanilla
-    feedback remain future parity work.
+    is now covered below. Boundary: local block/entity NBT capture is now
+    covered below; full local entity `saveWithoutId` field parity and
+    styled/clickable vanilla feedback remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side NBT response callback.
     Vanilla anchors: `ClientPacketListener.handleTagQueryPacket` forwards
     `ClientboundTagQueryPacket` to `DebugQueryHandler.handleResponse`, which
@@ -1395,9 +1395,9 @@ When an agent does any of the following, update this file in the same slice:
     final recreate command to the debug clipboard, and ignores mismatched
     transaction ids while preserving the pending callback. Tests cover block,
     entity, null-tag, mismatched-id, and captured-at-query-time block state
-    behavior. Boundary: Shift+F3+I local block-entity NBT capture is now
-    covered below; local entity NBT capture and styled/clickable vanilla
-    feedback remain future work.
+    behavior. Boundary: Shift+F3+I local block/entity NBT capture is now
+    covered below; full local entity `saveWithoutId` field parity and
+    styled/clickable vanilla feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I gamemaster permission gate.
     Vanilla anchors: `PlayerList.sendPlayerPermissionLevel` sends
     `ClientboundEntityEventPacket(player, eventId)` with event ids 24..28 for
@@ -1411,9 +1411,9 @@ When an agent does any of the following, update this file in the same slice:
     server tag query only when `addNbt && pullFromServer`; otherwise it copies
     the client-side no-NBT recreate command. Tests cover local and remote
     permission entity events plus authorized/unprivileged F3+I routing.
-    Boundary: Shift+F3+I local block-entity NBT capture is now covered below;
-    local entity NBT capture and styled/clickable vanilla feedback remain future
-    work.
+    Boundary: Shift+F3+I local block/entity NBT capture is now covered below;
+    full local entity `saveWithoutId` field parity and styled/clickable vanilla
+    feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+I local block-entity NBT capture.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` uses `BlockEntity.saveWithoutMetadata` when `addNbt` is
@@ -1425,8 +1425,25 @@ When an agent does any of the following, update this file in the same slice:
     on block-entity data updates, exposes it through `WorldStore`, and appends a
     compact SNBT payload to Shift+F3+I local block recreate copies when the local
     player has gamemaster permission. Boundary: this uses client-owned network
-    block-entity NBT; local entity `saveWithoutId` capture and styled/clickable
-    vanilla feedback remain future work.
+    block-entity NBT; local entity transform NBT capture is covered below, and
+    full local entity `saveWithoutId` field parity plus styled/clickable vanilla
+    feedback remain future work.
+  - Done 2026-07-08 — Debug overlay F3+I local entity transform NBT capture.
+    Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
+    pullFromServer)` uses `TagValueOutput` plus `Entity.saveWithoutId` for an
+    entity hit when `addNbt` is true and `pullFromServer` is false, and
+    `copyCreateEntityCommand` removes root `UUID`/`Pos` before pretty-printing
+    the remaining tag into `/summon`. `Entity.saveWithoutId` writes root
+    `Motion`, `Rotation`, `OnGround`, and other base/entity-specific fields.
+    bbb now passes the local `add_nbt` gate into client-side recreate copies,
+    keeps local block/entity NBT hidden when the local player lacks gamemaster
+    permission, and appends pretty SNBT synthesized from canonical
+    `EntityState` transform fields (`Motion`, `Rotation`, and known
+    `OnGround`) to Shift+F3+I entity recreate commands. Boundary: this only
+    uses client-owned canonical transform state; full local entity
+    `saveWithoutId` field parity (base save fields, metadata-derived flags,
+    custom data, passengers, and entity-specific save data) plus
+    styled/clickable vanilla feedback remain future work.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -2191,11 +2208,14 @@ When an agent does any of the following, update this file in the same slice:
     shape are also aligned, the default TPS entry now has a server-brand /
     frozen-status text shell, and the F3+1 profiler pie chart renderer can
     draw `ProfileResults`-shaped data. Advanced tooltip component counts now
-    use parsed default item components plus stack patch ids. The remaining open surfaces in this ledger row
+    use parsed default item components plus stack patch ids. Shift+F3+I local
+    entity recreate copies now include client-owned transform SNBT for
+    `Motion`, `Rotation`, and known `OnGround`. The remaining open surfaces in
+    this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip component-specific full parity/persistence, F3+I local entity NBT capture / styled feedback,
+    advanced tooltip component-specific full parity/persistence, F3+I full local entity saveWithoutId parity / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.
