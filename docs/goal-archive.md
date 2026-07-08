@@ -2145,6 +2145,20 @@
   234x113 内容区的 widget frame/icon shell，并在 selected tab 时移除临时
   empty black fill。剩余：advancement tiled background、tree connectivity、
   scroll/scissor、hover title/description boxes，以及 debug overlay。
+- [x] advancement selected-tab contents background tiling（P2
+  world/native/renderer slice，2026-07-08）：依据
+  `AdvancementTab.extractContents` 从 root display background 解析
+  `ClientAsset.ResourceTexture`，无背景走 `TextureManager.INTENTIONAL_MISSING_TEXTURE`；
+  首次 contents 沿用 widget bounds 居中，随后在 234x113 内容 scissor 中按
+  `floor(scroll)%16` 平铺 16x16 背景 tile（vanilla 循环 `x=-1..15`、
+  `y=-1..8`）。world 现在把 root display `background` 投影到
+  `AdvancementRootTabSummary`；renderer/native 上传 vanilla 五张
+  `textures/gui/advancements/backgrounds/{stone,adventure,nether,end,husbandry}.png`
+  和生成的 missing checkerboard；runtime 兼容 vanilla asset id
+  `minecraft:gui/advancements/backgrounds/<name>` 与既有
+  `minecraft:textures/.../<name>.png` 字符串，并生成裁剪后的 HUD tile layers。
+  剩余：tree connectivity、scroll/scissor、hover title/description boxes，以及
+  debug overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

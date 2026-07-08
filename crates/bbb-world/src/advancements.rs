@@ -29,6 +29,7 @@ pub struct AdvancementRootTabSummary {
     pub id: String,
     pub title: String,
     pub icon: ProtocolAdvancementIconSummary,
+    pub background: Option<String>,
     pub display_index: usize,
 }
 
@@ -252,6 +253,7 @@ impl WorldStore {
             id: root.to_string(),
             title: display.title.clone(),
             icon: display.icon.clone(),
+            background: display.background.clone(),
             display_index,
         })
     }
@@ -448,11 +450,17 @@ mod tests {
     #[test]
     fn advancement_root_tabs_skip_hidden_roots_and_stop_after_vanilla_capacity() {
         let mut added = vec![advancement("minecraft:hidden/root", None)];
+        let mut first_displayed = displayed_advancement("minecraft:displayed/root_00", None);
+        first_displayed.display.as_mut().unwrap().background =
+            Some("minecraft:gui/advancements/backgrounds/stone".to_string());
+        added.push(first_displayed);
         for index in 0..27 {
-            added.push(displayed_advancement(
-                &format!("minecraft:displayed/root_{index:02}"),
-                None,
-            ));
+            if index != 0 {
+                added.push(displayed_advancement(
+                    &format!("minecraft:displayed/root_{index:02}"),
+                    None,
+                ));
+            }
         }
         let mut store = WorldStore::new();
         store.apply_update_advancements(UpdateAdvancements {
@@ -467,6 +475,10 @@ mod tests {
         assert_eq!(tabs.len(), MAX_ADVANCEMENT_ROOT_TABS);
         assert_eq!(tabs[0].id, "minecraft:displayed/root_00");
         assert_eq!(tabs[0].title, "minecraft:displayed/root_00");
+        assert_eq!(
+            tabs[0].background.as_deref(),
+            Some("minecraft:gui/advancements/backgrounds/stone")
+        );
         assert_eq!(tabs[0].display_index, 0);
         assert_eq!(tabs[25].id, "minecraft:displayed/root_25");
         assert_eq!(tabs[25].display_index, 25);

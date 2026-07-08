@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
-    HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay,
-    HudHeartKind, HudNineSliceScaling, SignModelWood,
+    HudAdvancementBackgroundTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
+    HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling, SignModelWood,
 };
 
 use bbb_item_model::font::{
@@ -100,6 +100,30 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
             &sprite.rgba,
         )?;
     }
+    for background in HudAdvancementBackgroundTexture::VANILLA {
+        let texture = gui_texture(
+            roots,
+            background
+                .texture_path()
+                .expect("vanilla advancement background has a texture path"),
+            background
+                .texture_resource_id()
+                .expect("vanilla advancement background has a resource id"),
+        )?;
+        renderer.upload_hud_advancement_background(
+            background,
+            texture.width,
+            texture.height,
+            &texture.rgba,
+        )?;
+    }
+    let missing_background = missing_texture_rgba(16, 16);
+    renderer.upload_hud_advancement_background(
+        HudAdvancementBackgroundTexture::Missing,
+        16,
+        16,
+        &missing_background,
+    )?;
     for frame_sprite in HudAdvancementWidgetFrameSprite::ALL {
         let sprite = hud_sprite(&sprites, frame_sprite.sprite_path())?;
         renderer.upload_hud_advancement_widget_frame(
@@ -1236,6 +1260,20 @@ fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
         .get_resource(&location)
         .with_context(|| format!("missing GUI texture minecraft:{path}"))?;
     SpriteImage::from_png_file(id, resource.path)
+}
+
+fn missing_texture_rgba(width: u32, height: u32) -> Vec<u8> {
+    let mut rgba = Vec::with_capacity((width as usize) * (height as usize) * 4);
+    for y in 0..height {
+        for x in 0..width {
+            if (y < height / 2) ^ (x < width / 2) {
+                rgba.extend_from_slice(&[0xf8, 0x00, 0xf8, 0xff]);
+            } else {
+                rgba.extend_from_slice(&[0x00, 0x00, 0x00, 0xff]);
+            }
+        }
+    }
+    rgba
 }
 
 #[cfg(test)]

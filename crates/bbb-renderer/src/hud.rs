@@ -594,6 +594,68 @@ impl HudAdvancementWidgetFrameSprite {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudAdvancementBackgroundTexture {
+    Stone,
+    Adventure,
+    Nether,
+    End,
+    Husbandry,
+    Missing,
+}
+
+impl HudAdvancementBackgroundTexture {
+    pub(crate) const COUNT: usize = 6;
+
+    pub const VANILLA: [Self; 5] = [
+        Self::Stone,
+        Self::Adventure,
+        Self::Nether,
+        Self::End,
+        Self::Husbandry,
+    ];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn texture_path(self) -> Option<&'static str> {
+        match self {
+            Self::Stone => Some("textures/gui/advancements/backgrounds/stone.png"),
+            Self::Adventure => Some("textures/gui/advancements/backgrounds/adventure.png"),
+            Self::Nether => Some("textures/gui/advancements/backgrounds/nether.png"),
+            Self::End => Some("textures/gui/advancements/backgrounds/end.png"),
+            Self::Husbandry => Some("textures/gui/advancements/backgrounds/husbandry.png"),
+            Self::Missing => None,
+        }
+    }
+
+    pub fn texture_resource_id(self) -> Option<&'static str> {
+        match self {
+            Self::Stone => Some("minecraft:textures/gui/advancements/backgrounds/stone"),
+            Self::Adventure => Some("minecraft:textures/gui/advancements/backgrounds/adventure"),
+            Self::Nether => Some("minecraft:textures/gui/advancements/backgrounds/nether"),
+            Self::End => Some("minecraft:textures/gui/advancements/backgrounds/end"),
+            Self::Husbandry => Some("minecraft:textures/gui/advancements/backgrounds/husbandry"),
+            Self::Missing => None,
+        }
+    }
+
+    pub fn from_resource_id(id: &str) -> Option<Self> {
+        let path = id.strip_prefix("minecraft:").unwrap_or(id);
+        let path = path.strip_suffix(".png").unwrap_or(path);
+        let path = path.strip_prefix("textures/").unwrap_or(path);
+        match path {
+            "gui/advancements/backgrounds/stone" => Some(Self::Stone),
+            "gui/advancements/backgrounds/adventure" => Some(Self::Adventure),
+            "gui/advancements/backgrounds/nether" => Some(Self::Nether),
+            "gui/advancements/backgrounds/end" => Some(Self::End),
+            "gui/advancements/backgrounds/husbandry" => Some(Self::Husbandry),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
     Inventory,
     GenericContainer,
@@ -660,6 +722,7 @@ pub enum HudInventoryBackgroundTexture {
     FurnaceBurnProgress,
     AdvancementsWindow,
     AdvancementTab(HudAdvancementTabSprite),
+    AdvancementBackground(HudAdvancementBackgroundTexture),
     AdvancementWidgetFrame(HudAdvancementWidgetFrameSprite),
     RecipeBook,
     RecipeBookTab,
@@ -1765,6 +1828,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_advancement_tabs[sprite.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_advancement_background(
+        &mut self,
+        texture: HudAdvancementBackgroundTexture,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_advancement_backgrounds[texture.as_index()] =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3937,6 +4012,9 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::AdvancementTab(sprite) => {
                 self.hud_advancement_tabs[sprite.as_index()].as_ref()
+            }
+            HudInventoryBackgroundTexture::AdvancementBackground(texture) => {
+                self.hud_advancement_backgrounds[texture.as_index()].as_ref()
             }
             HudInventoryBackgroundTexture::AdvancementWidgetFrame(sprite) => {
                 self.hud_advancement_widget_frames[sprite.as_index()].as_ref()

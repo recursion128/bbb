@@ -19,16 +19,17 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
+    HudAdvancementBackgroundTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
+    HudAirSupply, HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
+    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
@@ -362,6 +363,7 @@ const ADVANCEMENTS_TITLE_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
 const ADVANCEMENTS_EMPTY_TEXT_COLOR: [f32; 4] = rgba32(-1);
 const ADVANCEMENTS_DONE_TEXT_COLOR: [f32; 4] = rgba32(-1);
 const ADVANCEMENTS_EMPTY_BACKGROUND_TINT: [f32; 4] = rgba32(-16_777_216);
+const ADVANCEMENTS_BACKGROUND_TILE_SIZE: i32 = 16;
 const ADVANCEMENTS_TAB_ABOVE_WIDTH: u32 = 28;
 const ADVANCEMENTS_TAB_ABOVE_HEIGHT: u32 = 32;
 const ADVANCEMENTS_TAB_ABOVE_MAX: usize = 8;
@@ -4527,29 +4529,33 @@ fn hud_advancements_screen(
     } else {
         HudInventoryBackgroundTexture::WidgetButton
     };
-    let mut background_layers = vec![
-        hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::AdvancementsWindow,
-            window_x,
-            window_y,
-            ADVANCEMENTS_WINDOW_WIDTH,
-            ADVANCEMENTS_WINDOW_HEIGHT,
-            [0.0, 0.0],
-            [
-                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
-                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
-            ],
-        ),
-        hud_inventory_background_layer(
-            done_button_texture,
-            done_button_x,
-            done_button_y,
-            ADVANCEMENTS_DONE_BUTTON_WIDTH,
-            ADVANCEMENTS_DONE_BUTTON_HEIGHT,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ),
-    ];
+    let mut background_layers = vec![hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementsWindow,
+        window_x,
+        window_y,
+        ADVANCEMENTS_WINDOW_WIDTH,
+        ADVANCEMENTS_WINDOW_HEIGHT,
+        [0.0, 0.0],
+        [
+            ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+            ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+        ],
+    )];
+    background_layers.extend(advancements_background_layers(
+        selected_tab.as_ref(),
+        &selected_widgets,
+        window_x,
+        window_y,
+    ));
+    background_layers.push(hud_inventory_background_layer(
+        done_button_texture,
+        done_button_x,
+        done_button_y,
+        ADVANCEMENTS_DONE_BUTTON_WIDTH,
+        ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
     if show_root_tabs {
         background_layers.extend(advancements_tab_background_layers(
             &root_tabs,
@@ -4769,6 +4775,78 @@ fn advancements_tab_background_layers(
         ));
     }
     layers
+}
+
+fn advancements_background_layers(
+    selected_tab: Option<&bbb_world::AdvancementRootTabSummary>,
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    window_x: i32,
+    window_y: i32,
+) -> Vec<HudInventoryBackgroundLayer> {
+    let Some(selected_tab) = selected_tab else {
+        return Vec::new();
+    };
+    let texture = selected_tab
+        .background
+        .as_deref()
+        .and_then(HudAdvancementBackgroundTexture::from_resource_id)
+        .unwrap_or(HudAdvancementBackgroundTexture::Missing);
+    let (scroll_x, scroll_y) = advancements_widget_scroll(widgets).unwrap_or((0, 0));
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let left = scroll_x % ADVANCEMENTS_BACKGROUND_TILE_SIZE;
+    let top = scroll_y % ADVANCEMENTS_BACKGROUND_TILE_SIZE;
+    let mut layers = Vec::new();
+    for tile_x in -1..=15 {
+        for tile_y in -1..=8 {
+            let x = inside_x + left + ADVANCEMENTS_BACKGROUND_TILE_SIZE * tile_x;
+            let y = inside_y + top + ADVANCEMENTS_BACKGROUND_TILE_SIZE * tile_y;
+            if let Some(layer) =
+                clipped_advancement_background_tile(texture, x, y, inside_x, inside_y)
+            {
+                layers.push(layer);
+            }
+        }
+    }
+    layers
+}
+
+fn clipped_advancement_background_tile(
+    texture: HudAdvancementBackgroundTexture,
+    tile_x: i32,
+    tile_y: i32,
+    inside_x: i32,
+    inside_y: i32,
+) -> Option<HudInventoryBackgroundLayer> {
+    let inside_right = inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32;
+    let inside_bottom = inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32;
+    let tile_right = tile_x + ADVANCEMENTS_BACKGROUND_TILE_SIZE;
+    let tile_bottom = tile_y + ADVANCEMENTS_BACKGROUND_TILE_SIZE;
+    let x = tile_x.max(inside_x);
+    let y = tile_y.max(inside_y);
+    let right = tile_right.min(inside_right);
+    let bottom = tile_bottom.min(inside_bottom);
+    if x >= right || y >= bottom {
+        return None;
+    }
+
+    let uv_min = [
+        (x - tile_x) as f32 / ADVANCEMENTS_BACKGROUND_TILE_SIZE as f32,
+        (y - tile_y) as f32 / ADVANCEMENTS_BACKGROUND_TILE_SIZE as f32,
+    ];
+    let uv_max = [
+        (right - tile_x) as f32 / ADVANCEMENTS_BACKGROUND_TILE_SIZE as f32,
+        (bottom - tile_y) as f32 / ADVANCEMENTS_BACKGROUND_TILE_SIZE as f32,
+    ];
+    Some(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementBackground(texture),
+        x,
+        y,
+        (right - x) as u32,
+        (bottom - y) as u32,
+        uv_min,
+        uv_max,
+    ))
 }
 
 fn advancements_tab_icon_items(

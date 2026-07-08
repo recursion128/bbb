@@ -51,9 +51,9 @@ use crate::{
     },
     hud::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
-        create_hud_sprite_gpu, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
-        HudDigitGlyph, HudFontGlyphMap, HudInventoryScreen, HudItemIcon, HudNineSliceSprite,
-        HudObfuscatedGlyphPool, HudSpriteGpu, HUD_HOTBAR_SLOTS,
+        create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementTabSprite,
+        HudAdvancementWidgetFrameSprite, HudDigitGlyph, HudFontGlyphMap, HudInventoryScreen,
+        HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -492,6 +492,8 @@ pub struct Renderer {
     pub(super) hud_furnace_burn_progress: Option<HudSpriteGpu>,
     pub(super) hud_advancements_window: Option<HudSpriteGpu>,
     pub(super) hud_advancement_tabs: [Option<HudSpriteGpu>; HudAdvancementTabSprite::COUNT],
+    pub(super) hud_advancement_backgrounds:
+        [Option<HudSpriteGpu>; HudAdvancementBackgroundTexture::COUNT],
     pub(super) hud_advancement_widget_frames:
         [Option<HudSpriteGpu>; HudAdvancementWidgetFrameSprite::COUNT],
     pub(super) hud_recipe_book_background: Option<HudSpriteGpu>,
@@ -1470,6 +1472,7 @@ impl Renderer {
             hud_furnace_burn_progress: None,
             hud_advancements_window: None,
             hud_advancement_tabs: std::array::from_fn(|_| None),
+            hud_advancement_backgrounds: std::array::from_fn(|_| None),
             hud_advancement_widget_frames: std::array::from_fn(|_| None),
             hud_recipe_book_background: None,
             hud_recipe_book_tab: None,

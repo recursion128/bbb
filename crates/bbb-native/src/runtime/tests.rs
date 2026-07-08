@@ -9455,10 +9455,13 @@ fn hud_inventory_screen_projects_empty_advancements_screen() {
 #[test]
 fn hud_inventory_screen_projects_advancement_root_tabs() {
     let mut world = WorldStore::new();
+    let mut selected_root = runtime_displayed_advancement("minecraft:y/root", None);
+    selected_root.display.as_mut().unwrap().background =
+        Some("minecraft:gui/advancements/backgrounds/stone".to_string());
     world.apply_update_advancements(UpdateAdvancements {
         reset: true,
         added: vec![
-            runtime_displayed_advancement("minecraft:y/root", None),
+            selected_root,
             runtime_displayed_advancement("minecraft:a/root", None),
         ],
         removed: Vec::new(),
@@ -9488,61 +9491,116 @@ fn hud_inventory_screen_projects_advancement_root_tabs() {
     .unwrap();
 
     assert_eq!(
-        screen.background_layers,
-        vec![
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::AdvancementsWindow,
-                window_x,
-                window_y,
-                ADVANCEMENTS_WINDOW_WIDTH,
-                ADVANCEMENTS_WINDOW_HEIGHT,
-                [0.0, 0.0],
-                [
-                    ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
-                    ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
-                ],
+        screen.background_layers[0],
+        hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementsWindow,
+            window_x,
+            window_y,
+            ADVANCEMENTS_WINDOW_WIDTH,
+            ADVANCEMENTS_WINDOW_HEIGHT,
+            [0.0, 0.0],
+            [
+                ADVANCEMENTS_WINDOW_WIDTH as f32 / 256.0,
+                ADVANCEMENTS_WINDOW_HEIGHT as f32 / 256.0,
+            ],
+        )
+    );
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let background_tiles: Vec<_> = screen
+        .background_layers
+        .iter()
+        .filter(|layer| {
+            matches!(
+                layer.texture,
+                HudInventoryBackgroundTexture::AdvancementBackground(
+                    HudAdvancementBackgroundTexture::Stone
+                )
+            )
+        })
+        .collect();
+    assert_eq!(background_tiles.len(), 128);
+    assert_eq!(
+        *background_tiles[0],
+        hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementBackground(
+                HudAdvancementBackgroundTexture::Stone,
             ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::WidgetButton,
-                done_button_x,
-                done_button_y,
-                ADVANCEMENTS_DONE_BUTTON_WIDTH,
-                ADVANCEMENTS_DONE_BUTTON_HEIGHT,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::AdvancementTab(
-                    HudAdvancementTabSprite::AboveLeftSelected,
-                ),
-                window_x,
-                window_y - 28,
-                28,
-                32,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::AdvancementTab(HudAdvancementTabSprite::AboveMiddle),
-                window_x + 32,
-                window_y - 28,
-                28,
-                32,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::AdvancementWidgetFrame(
-                    HudAdvancementWidgetFrameSprite::TaskUnobtained,
-                ),
-                window_x + ADVANCEMENTS_WINDOW_INSIDE_X + 106,
-                window_y + ADVANCEMENTS_WINDOW_INSIDE_Y + 43,
-                26,
-                26,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-        ]
+            inside_x,
+            inside_y,
+            7,
+            11,
+            [9.0 / 16.0, 5.0 / 16.0],
+            [1.0, 1.0],
+        )
+    );
+    assert!(background_tiles.iter().all(|layer| {
+        layer.x >= inside_x
+            && layer.y >= inside_y
+            && layer.x + layer.width as i32 <= inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
+            && layer.y + layer.height as i32 <= inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
+    }));
+    let done_button_layer = hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::WidgetButton,
+        done_button_x,
+        done_button_y,
+        ADVANCEMENTS_DONE_BUTTON_WIDTH,
+        ADVANCEMENTS_DONE_BUTTON_HEIGHT,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    );
+    let selected_tab_layer = hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementTab(HudAdvancementTabSprite::AboveLeftSelected),
+        window_x,
+        window_y - 28,
+        28,
+        32,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    );
+    let second_tab_layer = hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementTab(HudAdvancementTabSprite::AboveMiddle),
+        window_x + 32,
+        window_y - 28,
+        28,
+        32,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    );
+    let widget_frame_layer = hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementWidgetFrame(
+            HudAdvancementWidgetFrameSprite::TaskUnobtained,
+        ),
+        inside_x + 106,
+        inside_y + 43,
+        26,
+        26,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    );
+    assert!(screen.background_layers.contains(&done_button_layer));
+    assert!(screen.background_layers.contains(&selected_tab_layer));
+    assert!(screen.background_layers.contains(&second_tab_layer));
+    assert!(screen.background_layers.contains(&widget_frame_layer));
+    let first_background_index = screen
+        .background_layers
+        .iter()
+        .position(|layer| {
+            matches!(
+                layer.texture,
+                HudInventoryBackgroundTexture::AdvancementBackground(_)
+            )
+        })
+        .unwrap();
+    let widget_index = screen
+        .background_layers
+        .iter()
+        .position(|layer| *layer == widget_frame_layer)
+        .unwrap();
+    assert!(first_background_index < widget_index);
+    assert_eq!(
+        screen.background_layers.len(),
+        1 + background_tiles.len() + 1 + 2 + 1
     );
     assert!(screen.fill_layers.is_empty());
     assert!(screen.floating_items.is_empty());
