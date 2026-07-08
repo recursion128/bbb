@@ -46,6 +46,15 @@ pub(crate) struct InventorySlotLayout {
     pub(crate) y: i32,
 }
 
+/// Vanilla `RecipeBookComponent.updateScreenPosition` seats the main 176px GUI
+/// 149px to the right of the recipe-book panel in the non-narrow case
+/// (`imageWidth == 176`): recipe book origin `(width - 147) / 2 - 86`,
+/// main GUI origin `177 + (width - imageWidth - 200) / 2`.
+pub(crate) const RECIPE_BOOK_MAIN_GUI_X_OFFSET: i32 = 149;
+/// Virtual width whose centered origin matches the vanilla non-narrow
+/// recipe-book origin for even GUI widths.
+const RECIPE_BOOK_ORIGIN_WIDTH: i32 = 320;
+
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
     slots.push(InventorySlotLayout {
@@ -95,12 +104,15 @@ pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
 
 pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScreenLayout> {
     if world.local_inventory_is_open() {
-        return Some(InventoryScreenLayout {
-            width: INVENTORY_SCREEN_WIDTH,
-            height: INVENTORY_SCREEN_HEIGHT,
-            background: InventoryScreenBackground::LocalInventory,
-            slots: local_inventory_slot_layouts(),
-        });
+        return Some(recipe_book_overlay_layout(
+            world,
+            InventoryScreenLayout {
+                width: INVENTORY_SCREEN_WIDTH,
+                height: INVENTORY_SCREEN_HEIGHT,
+                background: InventoryScreenBackground::LocalInventory,
+                slots: local_inventory_slot_layouts(),
+            },
+        ));
     }
 
     let container = world.inventory().open_container.as_ref()?;
@@ -147,12 +159,15 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
         });
     }
     if menu_type_id == CRAFTING_MENU_TYPE_ID {
-        return Some(InventoryScreenLayout {
-            width: CRAFTING_SCREEN_WIDTH,
-            height: CRAFTING_SCREEN_HEIGHT,
-            background: InventoryScreenBackground::CraftingTable,
-            slots: crafting_table_slot_layouts(),
-        });
+        return Some(recipe_book_overlay_layout(
+            world,
+            InventoryScreenLayout {
+                width: CRAFTING_SCREEN_WIDTH,
+                height: CRAFTING_SCREEN_HEIGHT,
+                background: InventoryScreenBackground::CraftingTable,
+                slots: crafting_table_slot_layouts(),
+            },
+        ));
     }
     if menu_type_id == ENCHANTMENT_MENU_TYPE_ID {
         return Some(InventoryScreenLayout {
@@ -187,12 +202,15 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
         });
     }
     if let Some(background) = furnace_screen_background(menu_type_id) {
-        return Some(InventoryScreenLayout {
-            width: FURNACE_SCREEN_WIDTH,
-            height: FURNACE_SCREEN_HEIGHT,
-            background,
-            slots: furnace_slot_layouts(),
-        });
+        return Some(recipe_book_overlay_layout(
+            world,
+            InventoryScreenLayout {
+                width: FURNACE_SCREEN_WIDTH,
+                height: FURNACE_SCREEN_HEIGHT,
+                background,
+                slots: furnace_slot_layouts(),
+            },
+        ));
     }
     if menu_type_id == GRINDSTONE_MENU_TYPE_ID {
         return Some(InventoryScreenLayout {
@@ -267,6 +285,48 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
         });
     }
     None
+}
+
+pub(crate) fn recipe_book_main_gui_offset(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+) -> i32 {
+    if recipe_book_is_open_for_background(world, background) {
+        RECIPE_BOOK_MAIN_GUI_X_OFFSET
+    } else {
+        0
+    }
+}
+
+fn recipe_book_is_open_for_background(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+) -> bool {
+    let settings = &world.recipe_book().settings;
+    match background {
+        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
+            settings.crafting.open
+        }
+        InventoryScreenBackground::Furnace => settings.furnace.open,
+        InventoryScreenBackground::BlastFurnace => settings.blast_furnace.open,
+        InventoryScreenBackground::Smoker => settings.smoker.open,
+        _ => false,
+    }
+}
+
+fn recipe_book_overlay_layout(
+    world: &WorldStore,
+    mut layout: InventoryScreenLayout,
+) -> InventoryScreenLayout {
+    if !recipe_book_is_open_for_background(world, layout.background) {
+        return layout;
+    }
+
+    layout.width = RECIPE_BOOK_ORIGIN_WIDTH;
+    for slot in &mut layout.slots {
+        slot.x += RECIPE_BOOK_MAIN_GUI_X_OFFSET;
+    }
+    layout
 }
 
 pub(crate) fn inventory_screen_selected_hotbar_slot_id(world: &WorldStore) -> Option<i16> {

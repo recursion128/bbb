@@ -1731,6 +1731,15 @@
   inventory screen。测试覆盖 renderer sanitizer（仅 `ItemsFlat + Sign`
   允许进入 sign GUI PIP、hanging screen 丢弃 PIP）和 native runtime
   projection（oak standing sign / bamboo hanging sign）。
+- [x] recipe-book overlay shell（P2 HUD slice，2026-07-08）：依据
+  `AbstractRecipeBookScreen` / `RecipeBookComponent`，在
+  `RecipeBookSettings.open` 为 true 时为 local inventory、crafting table、
+  furnace、blast furnace、smoker 投影 147x166
+  `textures/gui/recipe_book.png` 面板；非窄屏主 GUI 按 vanilla 相对 recipe
+  book origin 右移 149px，slot hover/tooltip、主 GUI 背景、文字、实体预览和
+  非 cursor 浮动物品使用同一 offset。剩余：recipe-book button/tabs/page
+  recipe buttons、search/filter input、recipe placement、ghost recipe slots、
+  narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

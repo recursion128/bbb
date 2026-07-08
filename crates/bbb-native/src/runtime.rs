@@ -69,8 +69,8 @@ use crate::{
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout,
-        inventory_screen_selected_hotbar_slot_id, release_active_input,
-        sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+        inventory_screen_selected_hotbar_slot_id, recipe_book_main_gui_offset,
+        release_active_input, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
@@ -2583,6 +2583,7 @@ fn hud_inventory_screen_with_local_state(
     } else {
         world.inventory().open_container.as_ref()?
     };
+    let main_offset_x = recipe_book_main_gui_offset(world, layout.background);
 
     let selected_hotbar_slot_id = inventory_screen_selected_hotbar_slot_id(world);
     let slots = layout
@@ -2622,40 +2623,86 @@ fn hud_inventory_screen_with_local_state(
         })
         .collect();
 
+    let mut background_layers =
+        hud_inventory_background_layers(world, item_runtime, layout.background, &local_state);
+    if main_offset_x != 0 {
+        for layer in &mut background_layers {
+            layer.x += main_offset_x;
+        }
+        background_layers.insert(0, hud_recipe_book_background_layer());
+    }
+    let floating_items = hud_inventory_floating_items(
+        world,
+        item_runtime,
+        terrain_textures,
+        layout.background,
+        main_offset_x,
+        local_state.stonecutter_recipe_scroll_row,
+        local_state.cursor_position,
+        local_state.quick_craft_button_num,
+        &local_state.quick_craft_slots,
+        local_state.shift_down,
+        local_state.keybind_context,
+        partial_tick,
+    );
+    let mut entity_previews = hud_inventory_entity_previews(
+        world,
+        item_runtime,
+        layout.background,
+        &local_state,
+        partial_tick,
+    );
+    offset_hud_entity_previews(&mut entity_previews, main_offset_x);
+    let mut text_labels = hud_inventory_text_labels(world, layout.background, &local_state);
+    offset_hud_inventory_text_labels(&mut text_labels, main_offset_x);
+
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
-        background_layers: hud_inventory_background_layers(
-            world,
-            item_runtime,
-            layout.background,
-            &local_state,
-        ),
+        background_layers,
         slots,
-        floating_items: hud_inventory_floating_items(
-            world,
-            item_runtime,
-            terrain_textures,
-            layout.background,
-            local_state.stonecutter_recipe_scroll_row,
-            local_state.cursor_position,
-            local_state.quick_craft_button_num,
-            &local_state.quick_craft_slots,
-            local_state.shift_down,
-            local_state.keybind_context,
-            partial_tick,
-        ),
-        entity_previews: hud_inventory_entity_previews(
-            world,
-            item_runtime,
-            layout.background,
-            &local_state,
-            partial_tick,
-        ),
-        text_labels: hud_inventory_text_labels(world, layout.background, &local_state),
+        floating_items,
+        entity_previews,
+        text_labels,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
     })
+}
+
+fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {
+    hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::RecipeBook,
+        0,
+        0,
+        147,
+        166,
+        [1.0 / 256.0, 1.0 / 256.0],
+        [148.0 / 256.0, 167.0 / 256.0],
+    )
+}
+
+fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) {
+    if x_offset == 0 {
+        return;
+    }
+    for preview in previews {
+        preview.rect.x += x_offset;
+        if let Some(scissor) = &mut preview.scissor {
+            scissor.x += x_offset;
+        }
+    }
+}
+
+fn offset_hud_inventory_text_labels(labels: &mut [HudInventoryTextLabel], x_offset: i32) {
+    if x_offset == 0 {
+        return;
+    }
+    for label in labels {
+        label.x += x_offset;
+        if let Some(background) = &mut label.background {
+            background.x += x_offset;
+        }
+    }
 }
 
 fn hud_inventory_entity_previews(
@@ -3315,6 +3362,7 @@ fn hud_inventory_floating_items(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     background: InventoryScreenBackground,
+    main_offset_x: i32,
     stonecutter_recipe_scroll_row: Option<i32>,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
@@ -3343,6 +3391,11 @@ fn hud_inventory_floating_items(
         ),
         _ => Vec::new(),
     };
+    if main_offset_x != 0 {
+        for item in &mut items {
+            item.x += main_offset_x;
+        }
+    }
     push_hud_inventory_cursor_item(
         world,
         item_runtime,

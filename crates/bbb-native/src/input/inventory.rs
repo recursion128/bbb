@@ -36,8 +36,8 @@ mod layout;
 #[cfg(test)]
 pub(crate) use layout::local_inventory_slot_layouts;
 pub(crate) use layout::{
-    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, InventoryScreenBackground,
-    InventoryScreenLayout, InventorySlotLayout,
+    inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_main_gui_offset,
+    InventoryScreenBackground, InventoryScreenLayout, InventorySlotLayout,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;

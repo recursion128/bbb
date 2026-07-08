@@ -1059,11 +1059,34 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Sign edit screen (needs a sign block-entity text store; input flow
-    exists), recipe-book overlay (`ClientRecipeBookState` + ghost recipe
-    ready), advancement screen (`ClientAdvancementsState` ready), debug
-    overlay (F3; large, low priority).
+  - Continue the recipe-book overlay after the completed shell:
+    tabs, page recipe buttons, search/filter input, recipe placement, and ghost
+    recipe slots.
+  - Then implement the advancement screen (`ClientAdvancementsState` ready) and
+    debug overlay (F3; large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
+    recipe-capable inventory screens. Vanilla anchors:
+    `AbstractRecipeBookScreen.init` uses `width < 379` as the narrow-screen
+    gate, initializes `RecipeBookComponent`, then gets the shifted main GUI
+    `leftPos` from `RecipeBookComponent.updateScreenPosition`; in the
+    non-narrow visible case with a 176px main GUI, that seats the main GUI
+    149px to the right of the recipe-book origin. `RecipeBookComponent`
+    defines the 147x166 panel, `xOffset = 86`, and blits
+    `textures/gui/recipe_book.png` at UV `(1,1)` with size 147x166.
+    bbb now treats `RecipeBookSettings.open` as the visibility source for
+    local inventory, crafting table, furnace, blast furnace, and smoker
+    screens; `inventory_screen_layout` expands to the recipe-book origin width
+    and offsets slots by 149px, so hover/tooltips align with the shifted main
+    GUI. Runtime HUD projection prepends a `RecipeBook` background layer,
+    shifts the main GUI backgrounds, labels, previews, and non-cursor floating
+    items by the same offset, and leaves the cursor item in composite screen
+    coordinates. HUD assets load the vanilla `textures/gui/recipe_book.png`.
+  - Boundary: recipe-book button/tabs/page buttons, search/filter text input,
+    recipe placement commands from clicks, tab notification animation, and
+    ghost recipe slot rendering remain open. The first shell models the
+    non-narrow layout; vanilla's narrow-screen overlap mode (`width < 379`)
+    remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

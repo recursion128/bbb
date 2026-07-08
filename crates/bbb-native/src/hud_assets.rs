@@ -80,6 +80,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafting_table.height,
         &crafting_table.rgba,
     )?;
+    let recipe_book = gui_texture(
+        roots,
+        "textures/gui/recipe_book.png",
+        "minecraft:textures/gui/recipe_book",
+    )?;
+    renderer.upload_hud_recipe_book_background(
+        recipe_book.width,
+        recipe_book.height,
+        &recipe_book.rgba,
+    )?;
     let cartography_table = gui_texture(
         roots,
         "textures/gui/container/cartography_table.png",

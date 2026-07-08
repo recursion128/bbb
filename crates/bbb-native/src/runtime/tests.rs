@@ -5913,6 +5913,65 @@ fn hud_inventory_screen_projects_crafting_table_layout() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+
+    let screen = hud_inventory_screen(&world, None, Some(45), 0.0).unwrap();
+
+    assert_eq!(screen.width, 320);
+    assert_eq!(screen.height, 166);
+    assert_eq!(
+        screen.background_layers,
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBook,
+                0,
+                0,
+                147,
+                166,
+                [1.0 / 256.0, 1.0 / 256.0],
+                [148.0 / 256.0, 167.0 / 256.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::CraftingTable,
+                149,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            ),
+        ]
+    );
+    assert_eq!(screen.hovered_slot_id, Some(45));
+    let result = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+    assert_eq!((result.x, result.y), (273, 35));
+    let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
+    assert_eq!((hotbar.x, hotbar.y), (301, 142));
+}
+
+#[test]
 fn hud_inventory_screen_projects_enchanting_table_layout_and_lapis_slot_layer() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

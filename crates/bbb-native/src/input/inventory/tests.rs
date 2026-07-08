@@ -6,9 +6,10 @@ use bbb_protocol::packets::{
     ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind,
     HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary, ItemCostSummary,
     ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen, PlayerAbilities,
-    PlayerExperience, RecipePropertySetSummary, RegistryTags, SelectBundleItem, SelectTradeCommand,
-    SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory, SlotDisplaySummary,
-    StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes, UpdateTags, Vec3d,
+    PlayerExperience, RecipeBookSettings, RecipeBookTypeSettings, RecipePropertySetSummary,
+    RegistryTags, SelectBundleItem, SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData,
+    SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
+    UpdateRecipes, UpdateTags, Vec3d,
 };
 use uuid::Uuid;
 
@@ -313,6 +314,48 @@ fn crafting_table_layout_matches_vanilla_crafting_menu() {
         InventorySlotLayout {
             slot_id: 45,
             x: 152,
+            y: 142,
+        }
+    );
+}
+
+#[test]
+fn crafting_table_layout_offsets_slots_when_recipe_book_is_open() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    let layout = inventory_screen_layout(&world).unwrap();
+
+    assert_eq!(layout.width, 320);
+    assert_eq!(layout.height, 166);
+    assert_eq!(recipe_book_main_gui_offset(&world, layout.background), 149);
+    assert_eq!(
+        layout.slots[0],
+        InventorySlotLayout {
+            slot_id: 0,
+            x: 273,
+            y: 35,
+        }
+    );
+    assert_eq!(
+        layout.slots[45],
+        InventorySlotLayout {
+            slot_id: 45,
+            x: 301,
             y: 142,
         }
     );
