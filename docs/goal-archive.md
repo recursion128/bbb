@@ -5348,8 +5348,8 @@
   main bounding-box cuboid 的行为。native 现在把现有 entity-scene
   `SelectionOutline` 抽取接到 F3+B 状态上，只有 hitbox toggle visible 时才向
   renderer 提交实体 AABB 线框，关闭时不提交。边界：vanilla hitbox colors、
-  position point、passenger box、living eye-height box、Ender Dragon part
-  boxes、view/delta arrows、frustum/invisibility filtering、以及专用 debug
+  passenger box、living eye-height box、Ender Dragon part boxes、
+  view/delta arrows、frustum/invisibility filtering、以及专用 debug
   gizmo styling 仍未实现。
 - [x] debug overlay F3+G chunk section-stack outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos`
@@ -5482,6 +5482,15 @@
   和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
   entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
   并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
-  point gizmos、arrowheads、passenger vehicle slabs、Ender Dragon sub-part boxes、
-  local-server green boxes/delta arrows、missing-server labels、以及专用 debug
-  gizmo styling 仍未实现。
+  arrowheads、passenger vehicle slabs、Ender Dragon sub-part boxes、local-server
+  green boxes/delta arrows、missing-server labels、以及专用 debug gizmo styling
+  仍未实现。
+- [x] debug overlay F3+B entity position point markers（P2 renderer/native
+  slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 紧跟
+  hitbox 后调用 `Gizmos.point(currentPosition, mainColor, 2.0F)`，以及
+  `PointGizmo.emit` / `DrawableGizmoPrimitives.renderPoints` 把 point 交给
+  `RenderTypes.debugPoint()` 的行为。renderer `SelectionOutline` 现在支持
+  `SelectionPoint` primitive，并保留 vanilla size 值；native F3+B 对每个可见
+  非本地/非相机 entity 在 partial-tick 当前位置提交白色 point。当前 renderer
+  没有专用 `debugPoint` pipeline，因此把 point 展开成三轴短线 proxy；精确
+  point-size GPU 语义归后续专用 debug gizmo styling。

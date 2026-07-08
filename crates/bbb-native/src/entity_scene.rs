@@ -17,8 +17,8 @@ use bbb_renderer::{
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox,
-    SelectionColoredBox, SelectionLine, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
-    SkeletonModelFamily, SleepingPose, SpearKineticWeapon, TropicalFishModelShape,
+    SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint, SheepHeadEatPose,
+    SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon, TropicalFishModelShape,
     TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
     VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
@@ -59,6 +59,7 @@ const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 const ENTITY_VIEW_VECTOR_COLOR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
+const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
@@ -317,6 +318,7 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
         .collect();
     let mut boxes = Vec::new();
     let mut lines = Vec::new();
+    let mut points = Vec::new();
 
     for target in world
         .entity_pick_targets_at_partial_tick(entity_partial_tick)
@@ -326,6 +328,11 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
         })
     {
         boxes.push(entity_debug_hitbox_box(target));
+        points.push(entity_debug_position_point([
+            target.position.x,
+            target.position.y,
+            target.position.z,
+        ]));
         let Some(pose) = world.probe_entity_camera_pose(target.entity_id) else {
             continue;
         };
@@ -343,8 +350,8 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
         ));
     }
 
-    (!boxes.is_empty() || !lines.is_empty())
-        .then(|| SelectionOutline::from_colored_boxes_and_lines(boxes, lines))
+    (!boxes.is_empty() || !lines.is_empty() || !points.is_empty())
+        .then(|| SelectionOutline::from_colored_boxes_lines_and_points(boxes, lines, points))
 }
 
 pub(crate) fn entity_model_instances_from_world_at_partial_tick(
@@ -486,6 +493,14 @@ fn entity_debug_eye_height_box(
             selection_box.max[2],
         ],
         color: ENTITY_EYE_HEIGHT_COLOR,
+    }
+}
+
+fn entity_debug_position_point(position: [f64; 3]) -> SelectionPoint {
+    SelectionPoint {
+        position: [position[0] as f32, position[1] as f32, position[2] as f32],
+        color: ENTITY_HITBOX_COLOR,
+        size: ENTITY_POSITION_POINT_SIZE,
     }
 }
 

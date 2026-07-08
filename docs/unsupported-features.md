@@ -1108,7 +1108,7 @@ When an agent does any of the following, update this file in the same slice:
     rendering, F3+3 network ping/bandwidth chart
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
-    vehicle/dragon/server/point details, chunk-border full gizmo grid,
+    vehicle/dragon/server details, chunk-border full gizmo grid,
     advanced tooltip full parity,
     actual dynamic texture dump execution, F3+I NBT response/callback parity,
     profiling metrics recorder/output, actual DebugOptionsScreen, native
@@ -1202,9 +1202,9 @@ When an agent does any of the following, update this file in the same slice:
     gates the renderer's existing entity-scene `SelectionOutline` extraction
     behind the F3+B hitbox state, so entity AABB debug lines are submitted only
     when the native toggle is visible and hidden otherwise. Boundary: vanilla
-    hitbox colors, position point, passenger box, eye-height box, Ender Dragon
-    sub-entity boxes, view/delta arrows, frustum/invisibility filtering, and
-    the dedicated debug gizmo styling are still not implemented.
+    hitbox colors, passenger box, eye-height box, Ender Dragon sub-entity
+    boxes, view/delta arrows, frustum/invisibility filtering, and the dedicated
+    debug gizmo styling are still not implemented.
   - Done 2026-07-08 — Debug overlay F3+B entity hitbox eye/vector detail
     rendering.
     Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` draws the
@@ -1216,10 +1216,21 @@ When an agent does any of the following, update this file in the same slice:
     existing black box constructors intact; F3+B entity debug output submits
     white entity AABBs, red living eye-height slabs, and a blue two-block
     view-vector line sampled from the same partial-tick entity source. Boundary:
-    vanilla point gizmos, arrowheads, passenger-vehicle yellow slabs, Ender
-    Dragon sub-part boxes, local-server green boxes/delta arrows, missing
-    server-entity labels, and dedicated debug gizmo styling remain future
-    parity work.
+    vanilla arrowheads, passenger-vehicle yellow slabs, Ender Dragon sub-part
+    boxes, local-server green boxes/delta arrows, missing server-entity labels,
+    and dedicated debug gizmo styling remain future parity work.
+  - Done 2026-07-08 — Debug overlay F3+B entity position point markers.
+    Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` calls
+    `Gizmos.point(currentPosition, mainColor, 2.0F)`, and `PointGizmo.emit`
+    forwards the position, ARGB color, and size to
+    `GizmoPrimitives.addPoint`; `DrawableGizmoPrimitives.renderPoints` submits
+    those vertices through `RenderTypes.debugPoint()`. bbb now carries
+    `SelectionPoint` primitives alongside colored debug boxes/lines and emits
+    one white point at each visible non-local, non-camera entity's partial-tick
+    position while F3+B is active. Boundary: until bbb owns a dedicated
+    `debugPoint` gizmo pipeline, renderer selection output expands point
+    primitives into a small three-axis line proxy while preserving the vanilla
+    size value in the data model.
   - Done 2026-07-08 — Debug overlay F3+Esc pause-without-menu request shell.
     Vanilla anchors: `KeyboardHandler.keyPress` handles Escape as global input
     when no screen, a no-menu pause screen, or the game-mode switcher is
@@ -2018,7 +2029,7 @@ When an agent does any of the following, update this file in the same slice:
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox
-    vehicle/dragon/server/point details, chunk-border full gizmo grid,
+    vehicle/dragon/server details, chunk-border full gizmo grid,
     advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I NBT
     response/callback recreate parity, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3

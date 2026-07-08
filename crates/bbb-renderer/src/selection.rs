@@ -25,6 +25,13 @@ pub struct SelectionLine {
     pub color: [f32; 4],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SelectionPoint {
+    pub position: [f32; 3],
+    pub color: [f32; 4],
+    pub size: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectionOutline {
     pub boxes: Vec<SelectionBox>,
@@ -32,6 +39,8 @@ pub struct SelectionOutline {
     pub colored_boxes: Vec<SelectionColoredBox>,
     #[serde(default)]
     pub lines: Vec<SelectionLine>,
+    #[serde(default)]
+    pub points: Vec<SelectionPoint>,
 }
 
 impl SelectionOutline {
@@ -40,6 +49,7 @@ impl SelectionOutline {
             boxes: vec![SelectionBox { min, max }],
             colored_boxes: Vec::new(),
             lines: Vec::new(),
+            points: Vec::new(),
         }
     }
 
@@ -48,6 +58,7 @@ impl SelectionOutline {
             boxes: boxes.into_iter().collect(),
             colored_boxes: Vec::new(),
             lines: Vec::new(),
+            points: Vec::new(),
         }
     }
 
@@ -55,10 +66,23 @@ impl SelectionOutline {
         colored_boxes: impl IntoIterator<Item = SelectionColoredBox>,
         lines: impl IntoIterator<Item = SelectionLine>,
     ) -> Self {
+        Self::from_colored_boxes_lines_and_points(
+            colored_boxes,
+            lines,
+            std::iter::empty::<SelectionPoint>(),
+        )
+    }
+
+    pub fn from_colored_boxes_lines_and_points(
+        colored_boxes: impl IntoIterator<Item = SelectionColoredBox>,
+        lines: impl IntoIterator<Item = SelectionLine>,
+        points: impl IntoIterator<Item = SelectionPoint>,
+    ) -> Self {
         Self {
             boxes: Vec::new(),
             colored_boxes: colored_boxes.into_iter().collect(),
             lines: lines.into_iter().collect(),
+            points: points.into_iter().collect(),
         }
     }
 }
@@ -69,6 +93,7 @@ const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
 const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
+const SELECTION_POINT_PROXY_WORLD_SCALE: f32 = 0.01;
 
 const SELECTION_SHADER: &str = r#"
 struct Camera {
@@ -196,7 +221,10 @@ pub(super) fn create_selection_pipeline(
 
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
     let mut vertices = Vec::with_capacity(
-        outline.boxes.len() * 24 + outline.colored_boxes.len() * 24 + outline.lines.len() * 2,
+        outline.boxes.len() * 24
+            + outline.colored_boxes.len() * 24
+            + outline.lines.len() * 2
+            + outline.points.len() * 6,
     );
     for outline_box in &outline.boxes {
         vertices.extend(selection_box_vertices(
@@ -214,6 +242,9 @@ fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex
     }
     for line in &outline.lines {
         vertices.extend(selection_line_vertices(*line));
+    }
+    for point in &outline.points {
+        vertices.extend(selection_point_vertices(*point));
     }
     vertices
 }
@@ -266,6 +297,26 @@ fn selection_line_vertices(line: SelectionLine) -> [SelectionVertex; 2] {
     [
         selection_vertex(line.from, line.color),
         selection_vertex(line.to, line.color),
+    ]
+}
+
+fn selection_point_vertices(point: SelectionPoint) -> [SelectionVertex; 6] {
+    let half_extent = if point.size.is_finite() {
+        point.size.max(0.0) * SELECTION_POINT_PROXY_WORLD_SCALE
+    } else {
+        0.0
+    };
+    let center = Vec3::from_array(point.position);
+    let x = Vec3::X * half_extent;
+    let y = Vec3::Y * half_extent;
+    let z = Vec3::Z * half_extent;
+    [
+        selection_vertex((center - x).to_array(), point.color),
+        selection_vertex((center + x).to_array(), point.color),
+        selection_vertex((center - y).to_array(), point.color),
+        selection_vertex((center + y).to_array(), point.color),
+        selection_vertex((center - z).to_array(), point.color),
+        selection_vertex((center + z).to_array(), point.color),
     ]
 }
 
@@ -363,5 +414,28 @@ mod tests {
         assert_eq!(vertices[24].color, [0.0, 0.0, 1.0, 1.0]);
         assert_eq!(vertices[25].position, [3.0, 1.0, 0.0]);
         assert_eq!(vertices[25].color, [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn selection_outline_vertices_emit_point_proxies() {
+        let vertices =
+            selection_outline_vertices(&SelectionOutline::from_colored_boxes_lines_and_points(
+                std::iter::empty::<SelectionColoredBox>(),
+                std::iter::empty::<SelectionLine>(),
+                [SelectionPoint {
+                    position: [1.0, 2.0, 3.0],
+                    color: [1.0, 1.0, 1.0, 1.0],
+                    size: 2.0,
+                }],
+            ));
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices[0].position, [0.98, 2.0, 3.0]);
+        assert_eq!(vertices[1].position, [1.02, 2.0, 3.0]);
+        assert_eq!(vertices[2].position, [1.0, 1.98, 3.0]);
+        assert_eq!(vertices[3].position, [1.0, 2.02, 3.0]);
+        assert_eq!(vertices[4].position, [1.0, 2.0, 2.98]);
+        assert_eq!(vertices[5].position, [1.0, 2.0, 3.02]);
+        assert_eq!(vertices[0].color, [1.0, 1.0, 1.0, 1.0]);
     }
 }

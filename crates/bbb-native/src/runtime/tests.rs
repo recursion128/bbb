@@ -1734,6 +1734,7 @@ fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
     assert!(outline.boxes.is_empty());
     assert_eq!(outline.colored_boxes.len(), 2);
     assert_eq!(outline.lines.len(), 1);
+    assert_eq!(outline.points.len(), 1);
 }
 
 #[test]

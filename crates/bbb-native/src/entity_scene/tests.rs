@@ -43,6 +43,7 @@ fn entity_scene_outline_projects_pick_bounds_for_all_visible_targets() {
     assert!(outline.boxes.is_empty());
     assert_eq!(outline.colored_boxes.len(), 2);
     assert_eq!(outline.lines.len(), 2);
+    assert_eq!(outline.points.len(), 2);
     assert_selection_box_close(outline.colored_boxes[0].min, [-0.49, 1.0, 2.51]);
     assert_selection_box_close(outline.colored_boxes[0].max, [0.49, 1.7, 3.49]);
     assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
@@ -51,6 +52,10 @@ fn entity_scene_outline_projects_pick_bounds_for_all_visible_targets() {
     assert_eq!(outline.colored_boxes[1].color, ENTITY_HITBOX_COLOR);
     assert_eq!(outline.lines[0].color, ENTITY_VIEW_VECTOR_COLOR);
     assert!((outline.lines[0].to[2] - outline.lines[0].from[2] - 2.0).abs() < 1.0e-5);
+    assert_selection_box_close(outline.points[0].position, [0.0, 1.0, 3.0]);
+    assert_eq!(outline.points[0].color, ENTITY_HITBOX_COLOR);
+    assert_eq!(outline.points[0].size, ENTITY_POSITION_POINT_SIZE);
+    assert_selection_box_close(outline.points[1].position, [2.0, 1.0, 3.0]);
 }
 
 #[test]
@@ -95,9 +100,11 @@ fn entity_scene_outline_filters_local_player_and_camera_entity() {
 
     assert_eq!(outline.colored_boxes.len(), 1);
     assert_eq!(outline.lines.len(), 1);
+    assert_eq!(outline.points.len(), 1);
     assert_selection_box_close(outline.colored_boxes[0].min, [3.51, 1.0, 2.51]);
     assert_selection_box_close(outline.colored_boxes[0].max, [4.49, 1.7, 3.49]);
     assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
+    assert_selection_box_close(outline.points[0].position, [4.0, 1.0, 3.0]);
 }
 
 #[test]
@@ -118,6 +125,7 @@ fn entity_scene_outline_projects_living_eye_height_box_and_view_vector() {
 
     assert_eq!(outline.colored_boxes.len(), 2);
     assert_eq!(outline.lines.len(), 1);
+    assert_eq!(outline.points.len(), 1);
     assert_eq!(outline.colored_boxes[0].color, ENTITY_HITBOX_COLOR);
     assert_eq!(outline.colored_boxes[1].color, ENTITY_EYE_HEIGHT_COLOR);
     assert_selection_box_close(
@@ -131,6 +139,8 @@ fn entity_scene_outline_projects_living_eye_height_box_and_view_vector() {
     assert_eq!(outline.lines[0].color, ENTITY_VIEW_VECTOR_COLOR);
     assert_selection_box_close(outline.lines[0].from, [0.0, 1.0 + eye_height, 3.0]);
     assert_selection_box_close(outline.lines[0].to, [-1.7320508, 2.0 + eye_height, 3.0]);
+    assert_selection_box_close(outline.points[0].position, [0.0, 1.0, 3.0]);
+    assert_eq!(outline.points[0].size, ENTITY_POSITION_POINT_SIZE);
 }
 
 #[test]
