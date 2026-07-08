@@ -32,6 +32,17 @@ pub struct AdvancementRootTabSummary {
     pub display_index: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdvancementWidgetSummary {
+    pub id: String,
+    pub icon: ProtocolAdvancementIconSummary,
+    pub frame_type: bbb_protocol::packets::AdvancementFrameType,
+    pub x: i32,
+    pub y: i32,
+    pub hidden: bool,
+    pub done: bool,
+}
+
 impl WorldStore {
     pub fn apply_select_advancements_tab(&mut self, packet: ProtocolSelectAdvancementsTab) {
         self.counters.select_advancements_tab_packets += 1;
@@ -121,6 +132,15 @@ impl WorldStore {
         let id = id.to_string();
         self.advancements.selected_tab = Some(id.clone());
         Some(id)
+    }
+
+    pub fn selected_advancement_widgets(&self) -> Vec<AdvancementWidgetSummary> {
+        let Some(tab) = self.selected_advancement_root_tab() else {
+            return Vec::new();
+        };
+        let mut widgets = Vec::new();
+        self.collect_advancement_widgets(&tab.id, &mut widgets);
+        widgets
     }
 
     pub fn ensure_advancements_screen_selected_tab(&mut self) -> Option<String> {
@@ -236,6 +256,43 @@ impl WorldStore {
         })
     }
 
+    fn collect_advancement_widgets(&self, id: &str, widgets: &mut Vec<AdvancementWidgetSummary>) {
+        if let Some(widget) = self.advancement_widget_summary(id) {
+            widgets.push(widget);
+        }
+
+        let children: Vec<String> = self
+            .advancements
+            .advancements
+            .iter()
+            .filter_map(|(child_id, advancement)| {
+                (advancement.parent.as_deref() == Some(id)).then(|| child_id.clone())
+            })
+            .collect();
+        for child in children {
+            self.collect_advancement_widgets(&child, widgets);
+        }
+    }
+
+    fn advancement_widget_summary(&self, id: &str) -> Option<AdvancementWidgetSummary> {
+        let advancement = self.advancements.advancements.get(id)?;
+        let display = advancement.display.as_ref()?;
+        let done = self
+            .advancements
+            .progress
+            .get(id)
+            .is_some_and(|progress| advancement_progress_is_done(advancement, progress));
+        Some(AdvancementWidgetSummary {
+            id: id.to_string(),
+            icon: display.icon.clone(),
+            frame_type: display.frame_type,
+            x: (display.x * 28.0).floor() as i32,
+            y: (display.y * 27.0).floor() as i32,
+            hidden: display.hidden,
+            done,
+        })
+    }
+
     fn refresh_advancement_counters(&mut self) {
         self.counters.advancements_tracked = self.advancements.advancements.len();
         self.counters.advancement_roots_tracked = self
@@ -281,6 +338,22 @@ fn normalize_progress_for_advancement(
             });
     }
     progress
+}
+
+fn advancement_progress_is_done(
+    advancement: &ProtocolAdvancementSummary,
+    progress: &ProtocolAdvancementProgressSummary,
+) -> bool {
+    if advancement.requirements.is_empty() {
+        return false;
+    }
+    advancement.requirements.iter().all(|group| {
+        group.iter().any(|name| {
+            progress.criteria.iter().any(|criterion| {
+                criterion.name == *name && criterion.obtained_epoch_millis.is_some()
+            })
+        })
+    })
 }
 
 #[cfg(test)]
@@ -445,6 +518,64 @@ mod tests {
             store.select_advancements_root_tab("minecraft:extra/root_25"),
             None
         );
+    }
+
+    #[test]
+    fn selected_advancement_widgets_project_display_geometry_and_done_state() {
+        let mut root = displayed_advancement("minecraft:story/root", None);
+        root.requirements = vec![vec!["root".to_string()]];
+        let mut child =
+            displayed_advancement("minecraft:story/mine_stone", Some("minecraft:story/root"));
+        child.requirements = vec![
+            vec!["has_stone".to_string(), "has_deepslate".to_string()],
+            vec!["has_pickaxe".to_string()],
+        ];
+        let child_display = child.display.as_mut().unwrap();
+        child_display.frame_type = AdvancementFrameType::Goal;
+        child_display.x = 2.0;
+        child_display.y = 1.0;
+        let mut hidden_child =
+            displayed_advancement("minecraft:story/hidden", Some("minecraft:story/root"));
+        hidden_child.display.as_mut().unwrap().hidden = true;
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![
+                root,
+                child,
+                hidden_child,
+                advancement("minecraft:story/no_display", Some("minecraft:story/root")),
+            ],
+            removed: Vec::new(),
+            progress: vec![progress(
+                "minecraft:story/mine_stone",
+                vec![
+                    ("has_stone", Some(1)),
+                    ("has_deepslate", None),
+                    ("has_pickaxe", Some(2)),
+                ],
+            )],
+            show_advancements: false,
+        });
+        assert_eq!(
+            store.ensure_advancements_screen_selected_tab(),
+            Some("minecraft:story/root".to_string())
+        );
+
+        let widgets = store.selected_advancement_widgets();
+        assert_eq!(widgets.len(), 3);
+        assert_eq!(widgets[0].id, "minecraft:story/root");
+        assert_eq!(widgets[0].x, 0);
+        assert_eq!(widgets[0].y, 0);
+        assert!(!widgets[0].done);
+        assert_eq!(widgets[1].id, "minecraft:story/hidden");
+        assert!(widgets[1].hidden);
+        assert!(!widgets[1].done);
+        assert_eq!(widgets[2].id, "minecraft:story/mine_stone");
+        assert_eq!(widgets[2].frame_type, AdvancementFrameType::Goal);
+        assert_eq!(widgets[2].x, 56);
+        assert_eq!(widgets[2].y, 27);
+        assert!(widgets[2].done);
     }
 
     #[test]

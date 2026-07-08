@@ -9531,8 +9531,20 @@ fn hud_inventory_screen_projects_advancement_root_tabs() {
                 [0.0, 0.0],
                 [1.0, 1.0],
             ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementWidgetFrame(
+                    HudAdvancementWidgetFrameSprite::TaskUnobtained,
+                ),
+                window_x + ADVANCEMENTS_WINDOW_INSIDE_X + 106,
+                window_y + ADVANCEMENTS_WINDOW_INSIDE_Y + 43,
+                26,
+                26,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
         ]
     );
+    assert!(screen.fill_layers.is_empty());
     assert!(screen.floating_items.is_empty());
     assert_eq!(
         screen.text_labels,

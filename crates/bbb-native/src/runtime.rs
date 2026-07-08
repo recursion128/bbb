@@ -13,21 +13,22 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     packets::{
-        ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary, Vec3d,
+        AdvancementFrameType, ItemCostSummary, ItemStackSummary, MapPostProcessingSummary,
+        SlotDisplaySummary, Vec3d,
     },
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementTabSprite,
-    HudAirSupply, HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
-    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
@@ -377,6 +378,12 @@ const ADVANCEMENTS_TAB_ABOVE_ICON_OFFSET: (i32, i32) = (6, 9);
 const ADVANCEMENTS_TAB_BELOW_ICON_OFFSET: (i32, i32) = (6, 6);
 const ADVANCEMENTS_TAB_LEFT_ICON_OFFSET: (i32, i32) = (10, 5);
 const ADVANCEMENTS_TAB_RIGHT_ICON_OFFSET: (i32, i32) = (6, 5);
+const ADVANCEMENTS_WIDGET_FRAME_OFFSET_X: i32 = 3;
+const ADVANCEMENTS_WIDGET_FRAME_WIDTH: u32 = 26;
+const ADVANCEMENTS_WIDGET_FRAME_HEIGHT: u32 = 26;
+const ADVANCEMENTS_WIDGET_ICON_OFFSET: (i32, i32) = (8, 5);
+const ADVANCEMENTS_WIDGET_BOUNDS_WIDTH: i32 = 28;
+const ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT: i32 = 27;
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
@@ -4506,6 +4513,7 @@ fn hud_advancements_screen(
     let (done_button_x, done_button_y) = advancements_done_button_origin_for_surface(surface_size);
     let root_tabs = world.advancement_root_tabs();
     let selected_tab = world.selected_advancement_root_tab();
+    let selected_widgets = world.selected_advancement_widgets();
     let selected_tab_id = selected_tab.as_ref().map(|tab| tab.id.as_str());
     let show_root_tabs = root_tabs.len() > 1;
     let done_button_highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
@@ -4550,6 +4558,11 @@ fn hud_advancements_screen(
             window_y,
         ));
     }
+    background_layers.extend(advancements_widget_frame_layers(
+        &selected_widgets,
+        window_x,
+        window_y,
+    ));
     let mut floating_items = Vec::new();
     if show_root_tabs {
         floating_items.extend(advancements_tab_icon_items(
@@ -4563,18 +4576,33 @@ fn hud_advancements_screen(
             partial_tick,
         ));
     }
-    HudInventoryScreen {
-        width: screen_width,
-        height: screen_height,
-        background_layers,
-        fill_layers: vec![HudInventoryFillLayer {
+    floating_items.extend(advancements_widget_icon_items(
+        world,
+        item_runtime,
+        terrain_textures,
+        &selected_widgets,
+        window_x,
+        window_y,
+        keybind_context,
+        partial_tick,
+    ));
+    let fill_layers = if selected_tab.is_some() {
+        Vec::new()
+    } else {
+        vec![HudInventoryFillLayer {
             x: window_x + ADVANCEMENTS_WINDOW_INSIDE_X,
             y: window_y + ADVANCEMENTS_WINDOW_INSIDE_Y,
             width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
             height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
             tint: ADVANCEMENTS_EMPTY_BACKGROUND_TINT,
             stage: HudInventoryFillStage::BeforeGhostItem,
-        }],
+        }]
+    };
+    HudInventoryScreen {
+        width: screen_width,
+        height: screen_height,
+        background_layers,
+        fill_layers,
         slots: Vec::new(),
         floating_items,
         ghost_items: Vec::new(),
@@ -4796,6 +4824,157 @@ fn advancements_tab_icon_items(
         });
     }
     items
+}
+
+fn advancements_widget_frame_layers(
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    window_x: i32,
+    window_y: i32,
+) -> Vec<HudInventoryBackgroundLayer> {
+    let mut layers = Vec::new();
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+        return layers;
+    };
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    for widget in widgets
+        .iter()
+        .filter(|widget| advancement_widget_visible(widget))
+    {
+        let frame_x = inside_x + scroll_x + widget.x + ADVANCEMENTS_WIDGET_FRAME_OFFSET_X;
+        let frame_y = inside_y + scroll_y + widget.y;
+        if !advancement_widget_rect_inside_content(frame_x, frame_y, inside_x, inside_y) {
+            continue;
+        }
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::AdvancementWidgetFrame(advancement_widget_frame_sprite(
+                widget.frame_type,
+                widget.done,
+            )),
+            frame_x,
+            frame_y,
+            ADVANCEMENTS_WIDGET_FRAME_WIDTH,
+            ADVANCEMENTS_WIDGET_FRAME_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    layers
+}
+
+fn advancements_widget_icon_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    window_x: i32,
+    window_y: i32,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+        return Vec::new();
+    };
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let mut items = Vec::new();
+    for widget in widgets
+        .iter()
+        .filter(|widget| advancement_widget_visible(widget))
+    {
+        let (icon_x, icon_y) = ADVANCEMENTS_WIDGET_ICON_OFFSET;
+        let x = inside_x + scroll_x + widget.x + icon_x;
+        let y = inside_y + scroll_y + widget.y + icon_y;
+        if !advancement_widget_rect_inside_content(x, y, inside_x, inside_y) {
+            continue;
+        }
+        let stack = ItemStackSummary {
+            item_id: Some(widget.icon.item_id),
+            count: widget.icon.count,
+            component_patch: widget.icon.component_patch.clone(),
+        };
+        let Some(icon) = hud_item_icon_for_stack(
+            world,
+            Some(item_runtime),
+            &stack,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+            partial_tick,
+        ) else {
+            continue;
+        };
+        items.push(HudInventoryItem {
+            x,
+            y,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon,
+            draw_decorations: false,
+            block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+        });
+    }
+    items
+}
+
+fn advancement_widget_rect_inside_content(x: i32, y: i32, inside_x: i32, inside_y: i32) -> bool {
+    x >= inside_x
+        && x + ADVANCEMENTS_WIDGET_FRAME_WIDTH as i32
+            <= inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
+        && y >= inside_y
+        && y + ADVANCEMENTS_WIDGET_FRAME_HEIGHT as i32
+            <= inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
+}
+
+fn advancements_widget_scroll(
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+) -> Option<(i32, i32)> {
+    let mut iter = widgets.iter();
+    let first = iter.next()?;
+    let mut min_x = first.x;
+    let mut max_x = first.x + ADVANCEMENTS_WIDGET_BOUNDS_WIDTH;
+    let mut min_y = first.y;
+    let mut max_y = first.y + ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT;
+    for widget in iter {
+        min_x = min_x.min(widget.x);
+        max_x = max_x.max(widget.x + ADVANCEMENTS_WIDGET_BOUNDS_WIDTH);
+        min_y = min_y.min(widget.y);
+        max_y = max_y.max(widget.y + ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT);
+    }
+    Some((
+        ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32 / 2 - (max_x + min_x) / 2,
+        ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32 / 2 - (max_y + min_y) / 2,
+    ))
+}
+
+fn advancement_widget_visible(widget: &bbb_world::AdvancementWidgetSummary) -> bool {
+    !widget.hidden || widget.done
+}
+
+fn advancement_widget_frame_sprite(
+    frame_type: AdvancementFrameType,
+    done: bool,
+) -> HudAdvancementWidgetFrameSprite {
+    match (frame_type, done) {
+        (AdvancementFrameType::Task, true) => HudAdvancementWidgetFrameSprite::TaskObtained,
+        (AdvancementFrameType::Task, false) => HudAdvancementWidgetFrameSprite::TaskUnobtained,
+        (AdvancementFrameType::Challenge, true) => {
+            HudAdvancementWidgetFrameSprite::ChallengeObtained
+        }
+        (AdvancementFrameType::Challenge, false) => {
+            HudAdvancementWidgetFrameSprite::ChallengeUnobtained
+        }
+        (AdvancementFrameType::Goal, true) => HudAdvancementWidgetFrameSprite::GoalObtained,
+        (AdvancementFrameType::Goal, false) => HudAdvancementWidgetFrameSprite::GoalUnobtained,
+    }
 }
 
 fn advancements_window_origin_for_surface(

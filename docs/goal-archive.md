@@ -2129,8 +2129,22 @@
   visible root tab projection 与 root-tab selection API；renderer/native 加载并
   投影 vanilla `advancements/tab_*` GUI sprites 和 root display icon；runtime
   在有选中 root tab 时切换窗口标题并隐藏 empty-state labels；input 左键点击
-  root tab 会更新 selected tab 并排队 `SeenAdvancements::OpenedTab`。剩余：
-  advancement contents/tree/background/widget rendering，以及 debug overlay。
+  root tab 会更新 selected tab 并排队 `SeenAdvancements::OpenedTab`。后续 selected
+  root widget frame/icon shell 已在下一条完成；剩余：advancement tiled
+  background、tree connectivity、scroll/scissor、hover rendering，以及 debug
+  overlay。
+- [x] advancement selected root widget frame/icon shell（P2
+  world/native/renderer slice，2026-07-08）：依据 `AdvancementWidget` 将 display
+  坐标 floor 为 `x * 28` / `y * 27`，首次 contents 居中为
+  `117 - (maxX + minX) / 2` 与 `56 - (maxY + minY) / 2`；主渲染使用
+  `AdvancementWidgetType.frameSprite(display.type)` 的 obtained/unobtained
+  task/goal/challenge frame，并以 `fakeItem` 投影 icon；hidden widget 仅在
+  progress done 时可见。world 现在投影 selected-tab display widgets，并按
+  vanilla requirement group 语义计算 done；renderer/native 加载
+  `advancements/*_frame_*` sprite；runtime 在 selected tab 内容区绘制完全落入
+  234x113 内容区的 widget frame/icon shell，并在 selected tab 时移除临时
+  empty black fill。剩余：advancement tiled background、tree connectivity、
+  scroll/scissor、hover title/description boxes，以及 debug overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -556,6 +556,44 @@ impl HudAdvancementTabSprite {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudAdvancementWidgetFrameSprite {
+    TaskObtained,
+    TaskUnobtained,
+    ChallengeObtained,
+    ChallengeUnobtained,
+    GoalObtained,
+    GoalUnobtained,
+}
+
+impl HudAdvancementWidgetFrameSprite {
+    pub(crate) const COUNT: usize = 6;
+
+    pub const ALL: [Self; Self::COUNT] = [
+        Self::TaskObtained,
+        Self::TaskUnobtained,
+        Self::ChallengeObtained,
+        Self::ChallengeUnobtained,
+        Self::GoalObtained,
+        Self::GoalUnobtained,
+    ];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn sprite_path(self) -> &'static str {
+        match self {
+            Self::TaskObtained => "advancements/task_frame_obtained",
+            Self::TaskUnobtained => "advancements/task_frame_unobtained",
+            Self::ChallengeObtained => "advancements/challenge_frame_obtained",
+            Self::ChallengeUnobtained => "advancements/challenge_frame_unobtained",
+            Self::GoalObtained => "advancements/goal_frame_obtained",
+            Self::GoalUnobtained => "advancements/goal_frame_unobtained",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
     Inventory,
     GenericContainer,
@@ -622,6 +660,7 @@ pub enum HudInventoryBackgroundTexture {
     FurnaceBurnProgress,
     AdvancementsWindow,
     AdvancementTab(HudAdvancementTabSprite),
+    AdvancementWidgetFrame(HudAdvancementWidgetFrameSprite),
     RecipeBook,
     RecipeBookTab,
     RecipeBookTabSelected,
@@ -1726,6 +1765,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_advancement_tabs[sprite.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_advancement_widget_frame(
+        &mut self,
+        sprite: HudAdvancementWidgetFrameSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_advancement_widget_frames[sprite.as_index()] =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3886,6 +3937,9 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::AdvancementTab(sprite) => {
                 self.hud_advancement_tabs[sprite.as_index()].as_ref()
+            }
+            HudInventoryBackgroundTexture::AdvancementWidgetFrame(sprite) => {
+                self.hud_advancement_widget_frames[sprite.as_index()].as_ref()
             }
             HudInventoryBackgroundTexture::RecipeBook => self.hud_recipe_book_background.as_ref(),
             HudInventoryBackgroundTexture::RecipeBookTab => self.hud_recipe_book_tab.as_ref(),

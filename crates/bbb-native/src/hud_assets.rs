@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
-    HudAdvancementTabSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind, HudNineSliceScaling,
-    SignModelWood,
+    HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay,
+    HudHeartKind, HudNineSliceScaling, SignModelWood,
 };
 
 use bbb_item_model::font::{
@@ -95,6 +95,15 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         let sprite = hud_sprite(&sprites, tab_sprite.sprite_path())?;
         renderer.upload_hud_advancement_tab(
             tab_sprite,
+            sprite.width,
+            sprite.height,
+            &sprite.rgba,
+        )?;
+    }
+    for frame_sprite in HudAdvancementWidgetFrameSprite::ALL {
+        let sprite = hud_sprite(&sprites, frame_sprite.sprite_path())?;
+        renderer.upload_hud_advancement_widget_frame(
+            frame_sprite,
             sprite.width,
             sprite.height,
             &sprite.rgba,

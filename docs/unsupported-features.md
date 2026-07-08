@@ -1060,8 +1060,9 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
-    window/Done button/initial display-root selection/root tab shells:
-    contents/tree rendering (`ClientAdvancementsState` ready).
+    window/Done button/initial display-root selection/root tab/root widget
+    shells: contents background tiling, tree connectivity, scroll/scissor, and
+    hover rendering (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1450,9 +1451,22 @@ When an agent does any of the following, update this file in the same slice:
     tab backgrounds and fake item icons, switches the window title to the
     selected root display title, hides the empty-state labels when a root tab is
     selected, and queues `SeenAdvancements::OpenedTab` from tab clicks.
+  - Done 2026-07-08 — Advancement selected root widget frame/icon shell.
+    Vanilla anchors: `AdvancementWidget` floors display coordinates as
+    `x * 28` and `y * 27`, centers first contents with
+    `scrollX = 117 - (maxX + minX) / 2` and
+    `scrollY = 56 - (maxY + minY) / 2`, picks obtained/unobtained
+    task/goal/challenge frame sprites from `AdvancementWidgetType`, and shows
+    hidden widgets only once progress is done. bbb now projects selected-tab
+    display widgets from world state with requirement-group done semantics,
+    loads the vanilla widget frame sprites, and draws in-bounds widget
+    frame/icon shells for the selected advancement tab. Background tiling,
+    connection lines, hover title/description boxes, and full scroll/scissor
+    behavior remain deferred.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
-    footer Done plus initial display-root selection/root tab shells are live. The
+    footer Done plus initial display-root selection/root tab/root widget shells
+    are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
