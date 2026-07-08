@@ -1962,6 +1962,17 @@
   craftability retry guard、multi-recipe picker/cycling/right-click overlay、
   完整 `FullTextSearchTree` token/namespace-path/intersection 语义、
   tag/composite SlotDisplay time-cycling、narrow-screen overlap。
+- [x] furnace-family stacked-contents craftability（P2 HUD/runtime slice，
+  2026-07-08）：依据 `RecipeBookComponent.updateStackedContents` 先计入玩家
+  inventory、再调用 `AbstractFurnaceMenu.fillCraftSlotsStackedContents`，
+  以及 furnace menu 将该调用委托给 `SimpleContainer.fillStackedContents`
+  从而计入 0..2 三个 furnace slots 的行为，native 现在把 furnace-family
+  recipe-book available item counts 从只数 ingredient slot 改为计入三格
+  furnace container；slot sprite、filtering、page controls 与 recipe-button
+  hit-testing 共用该 craftability。剩余：craftability retry guard、
+  multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
+  token/namespace-path/intersection 语义、tag/composite SlotDisplay
+  time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

@@ -67,6 +67,8 @@ const CRAFTING_TABLE_HOTBAR_END: i16 = 46;
 const FURNACE_INGREDIENT_SLOT: i16 = 0;
 const FURNACE_FUEL_SLOT: i16 = 1;
 const FURNACE_RESULT_SLOT: i16 = 2;
+const FURNACE_CRAFT_SLOT_START: i16 = 0;
+const FURNACE_CRAFT_SLOT_END: i16 = 3;
 const FURNACE_PLAYER_MAIN_START: i16 = 3;
 const FURNACE_PLAYER_MAIN_END: i16 = 30;
 const FURNACE_HOTBAR_START: i16 = 30;
@@ -715,8 +717,8 @@ fn furnace_recipe_book_available_item_counts(world: &WorldStore) -> BTreeMap<i32
     add_container_slot_range_counts(
         &mut counts,
         container,
-        FURNACE_INGREDIENT_SLOT,
-        FURNACE_INGREDIENT_SLOT + 1,
+        FURNACE_CRAFT_SLOT_START,
+        FURNACE_CRAFT_SLOT_END,
     );
     add_mapped_container_player_slot_counts(
         &mut counts,

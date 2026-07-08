@@ -6617,6 +6617,56 @@ fn hud_inventory_screen_projects_furnace_recipe_book_buttons() {
 }
 
 #[test]
+fn hud_inventory_screen_counts_furnace_slots_for_recipe_book_craftability() {
+    let mut world = open_recipe_book_furnace_world();
+    world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 1,
+        item: item_stack(2, 1),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![furnace_recipe_book_entry_with_requirements(
+            42,
+            4,
+            None,
+            1,
+            vec![vec![2]],
+        )],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                furnace: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotCraftable,
+                11,
+                31,
+                25,
+                25,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+}
+
+#[test]
 fn hud_inventory_screen_draws_same_result_recipe_book_multi_recipe_offset_icons() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
@@ -10743,6 +10793,16 @@ fn furnace_recipe_book_entry(
     group: Option<i32>,
     result_item_id: i32,
 ) -> bbb_protocol::packets::RecipeBookAddEntry {
+    furnace_recipe_book_entry_with_requirements(id, category_id, group, result_item_id, Vec::new())
+}
+
+fn furnace_recipe_book_entry_with_requirements(
+    id: i32,
+    category_id: i32,
+    group: Option<i32>,
+    result_item_id: i32,
+    requirements: Vec<Vec<i32>>,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
     bbb_protocol::packets::RecipeBookAddEntry {
         contents: bbb_protocol::packets::RecipeDisplayEntry {
             id: bbb_protocol::packets::RecipeDisplayId { index: id },
@@ -10754,7 +10814,15 @@ fn furnace_recipe_book_entry(
             },
             group,
             category_id,
-            crafting_requirements: None,
+            crafting_requirements: (!requirements.is_empty()).then(|| {
+                requirements
+                    .into_iter()
+                    .map(|item_ids| bbb_protocol::packets::IngredientSummary {
+                        tag: None,
+                        item_ids,
+                    })
+                    .collect()
+            }),
         },
         flags: 0,
         notification: false,

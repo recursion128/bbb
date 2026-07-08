@@ -1064,11 +1064,12 @@ When an agent does any of the following, update this file in the same slice:
     shell/placement shell/category tab visibility/crafting ghost slots/search
     filtering/direct-item craftability/same-result multi-recipe icon overlay,
     search cursor/selection, tag-backed ghost ingredient display, tab
-    notification pulse, furnace-family recipe-grid baseline, and
-    furnace-family ghost recipe projection:
-    exact smeltable/fuel filter parity, multi-recipe picker/cycling, full
-    recipe `FullTextSearchTree` token parity, and full tag/composite
-    SlotDisplay time-cycling for ghost ingredient variants.
+    notification pulse, furnace-family recipe-grid baseline,
+    furnace-family ghost recipe projection, and furnace-family stacked-contents
+    craftability:
+    multi-recipe picker/cycling, full recipe `FullTextSearchTree` token
+    parity, and full tag/composite SlotDisplay time-cycling for ghost
+    ingredient variants.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1283,8 +1284,7 @@ When an agent does any of the following, update this file in the same slice:
     blast-furnace / smoker collections from canonical recipe-book entries,
     renders category-filtered recipe buttons, result icons, page arrows, and
     page text on those screens, and uses the same filtered collection for
-    recipe-button click hit-testing and `PlaceRecipeCommand`. Boundary: exact
-    smeltable/fuel filter parity remains open.
+    recipe-button click hit-testing and `PlaceRecipeCommand`.
   - Done 2026-07-08 — Furnace-family ghost recipe projection. Vanilla
     anchors: `FurnaceRecipeBookComponent.fillGhostRecipe` sets the result
     ghost from `menu.getResultSlot()`, sets input slot 0 from the furnace
@@ -1294,12 +1294,22 @@ When an agent does any of the following, update this file in the same slice:
     blast-furnace, and smoker ghost slots at the shifted screen slot
     positions, preserves result decorations, and suppresses the fuel ghost
     when the fuel slot is occupied.
-  - Boundary: exact smeltable/fuel filter parity, craftability retry guard,
-    multi-recipe picker/cycling/right-click overlay, full
-    `FullTextSearchTree` token / namespace-path / intersection semantics for
-    recipe search, full tag/composite SlotDisplay time-cycling for ghost
-    ingredients, exact fake-item y-scaling during animated recipe-book tabs,
-    and narrow-screen overlap remain open. The filter toggle, search text,
+  - Done 2026-07-08 — Furnace-family stacked-contents craftability. Vanilla
+    anchors: `RecipeBookComponent.updateStackedContents` accounts the player's
+    36 inventory stacks and then calls `AbstractFurnaceMenu.fillCraftSlotsStackedContents`;
+    furnace menus delegate that to their `SimpleContainer`, whose
+    `fillStackedContents` accounts all three furnace slots, while
+    `RecipeCollection.selectRecipes` still uses `RecipeDisplayEntry.canCraft`
+    against decoded `craftingRequirements`. bbb now includes furnace slots
+    0..2 in furnace-family recipe-book available item counts, so slot sprites,
+    filtering, page controls, and recipe-button hit-testing match the vanilla
+    stacked-contents source.
+  - Boundary: craftability retry guard, multi-recipe
+    picker/cycling/right-click overlay, full `FullTextSearchTree` token /
+    namespace-path / intersection semantics for recipe search, full
+    tag/composite SlotDisplay time-cycling for ghost ingredients, exact
+    fake-item y-scaling during animated recipe-book tabs, and narrow-screen
+    overlap remain open. The filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
@@ -1308,9 +1318,9 @@ When an agent does any of the following, update this file in the same slice:
     direct-item/tag-backed crafting craftability slot/filtering path, and
     same-result multi-recipe duplicate icon overlay, and first-item tag-backed
     crafting ghost ingredient projection, highlighted recipe-book tab baseline
-    pulse, furnace-family recipe-grid baseline, and furnace-family ghost
-    recipe projection are live. The first shell
-    models the non-narrow layout; vanilla's narrow-screen overlap mode
+    pulse, furnace-family recipe-grid baseline, furnace-family ghost recipe
+    projection, and furnace-family stacked-contents craftability are live. The
+    first shell models the non-narrow layout; vanilla's narrow-screen overlap mode
     (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
