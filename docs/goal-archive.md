@@ -5645,3 +5645,12 @@
   追加到 summon 命令。边界：这里只使用 bbb 已拥有的 canonical transform
   state；完整 local entity `saveWithoutId` base fields、metadata/custom data、
   passenger/entity-specific save data，以及 styled/clickable feedback 仍待后续。
+- [x] debug feedback styled prefix baseline（P2 world/native/control slice，
+  2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
+  `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈
+  component。world chat message 现在在既有 plain `content` 旁携带
+  `styled_content` runs，plain chat 走单个默认样式 run，native debug feedback
+  走三段 runs：yellow/bold `[Debug]:`、默认空格、默认正文；control
+  `world.client_chat` 自动暴露该 styled projection。边界：`ComponentStyle`
+  还不建模 click events，F3+S open-file / profiler result clickable payload
+  仍待后续。

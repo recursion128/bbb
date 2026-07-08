@@ -1145,6 +1145,26 @@ fn f3_t_records_resource_pack_reload_request_and_feedback_without_toggling_overl
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
     assert_eq!(messages[0].content, "[Debug]: Reloaded resource packs");
+    assert_eq!(messages[0].styled_content.len(), 3);
+    assert_eq!(messages[0].styled_content[0].text, "[Debug]:");
+    assert_eq!(messages[0].styled_content[0].style.bold, Some(true));
+    assert_eq!(
+        messages[0].styled_content[0].style.color,
+        Some(VANILLA_DEBUG_FEEDBACK_COLOR)
+    );
+    assert_eq!(messages[0].styled_content[1].text, " ");
+    assert_eq!(
+        messages[0].styled_content[1].style,
+        ComponentStyle::default()
+    );
+    assert_eq!(
+        messages[0].styled_content[2].text,
+        "Reloaded resource packs"
+    );
+    assert_eq!(
+        messages[0].styled_content[2].style,
+        ComponentStyle::default()
+    );
     assert_eq!(world.counters().chat_messages_tracked, 1);
     assert_eq!(world.counters().player_chat_packets, 0);
     assert_eq!(world.counters().disguised_chat_packets, 0);

@@ -1110,13 +1110,15 @@ When an agent does any of the following, update this file in the same slice:
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
-    and F3+I local entity transform NBT capture:
+    F3+I local entity transform NBT capture, and debug feedback styled prefix
+    baseline:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip component-specific full parity/persistence,
-    F3+I full local entity saveWithoutId parity / styled feedback, profiler data
-    sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
+    F3+I full local entity saveWithoutId parity, clickable/open-file debug
+    feedback payload, profiler data sampling/navigation, profiling metrics
+    recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
@@ -1443,7 +1445,19 @@ When an agent does any of the following, update this file in the same slice:
     uses client-owned canonical transform state; full local entity
     `saveWithoutId` field parity (base save fields, metadata-derived flags,
     custom data, passengers, and entity-specific save data) plus
-    styled/clickable vanilla feedback remain future work.
+    clickable/open-file debug feedback payloads remain future work.
+  - Done 2026-07-08 — Debug feedback styled prefix baseline.
+    Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
+    translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
+    `BOLD`, then appends a space and the feedback component before pushing a
+    client-system chat message. bbb now stores `ChatMessageState.styled_content`
+    beside the existing plain `content`, projects plain chat messages as one
+    default-style run, and routes native debug feedback through styled runs
+    where `[Debug]:` is yellow/bold while the message body stays default style.
+    Control snapshots expose the new styled projection without changing the
+    existing plain `content` consumers. Boundary: click events are not yet
+    represented in `ComponentStyle`, so F3+S open-file and future profiler
+    result clickable payloads remain future work.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -1453,8 +1467,9 @@ When an agent does any of the following, update this file in the same slice:
     appends `[Debug]: Saved dynamic textures to screenshots/debug`, records a
     drainable native dump request counter, drains it in the main event loop
     with the same relative path, suppresses the F3-release overlay toggle, and
-    exposes the action in debug help. Boundary: clickable/open-file chat
-    styling is still not implemented.
+    exposes the action in debug help. Boundary: the styled debug prefix is now
+    covered by the debug feedback baseline; clickable/open-file chat payload is
+    still not implemented.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump execution.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` resolves
     `TextureUtil.getDebugTexturePath(gameDirectory)` and calls
@@ -2210,15 +2225,18 @@ When an agent does any of the following, update this file in the same slice:
     draw `ProfileResults`-shaped data. Advanced tooltip component counts now
     use parsed default item components plus stack patch ids. Shift+F3+I local
     entity recreate copies now include client-owned transform SNBT for
-    `Motion`, `Rotation`, and known `OnGround`. The remaining open surfaces in
+    `Motion`, `Rotation`, and known `OnGround`. Debug feedback messages now
+    carry a yellow/bold `[Debug]:` styled prefix while preserving plain
+    `content`. The remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip component-specific full parity/persistence, F3+I full local entity saveWithoutId parity / styled feedback,
-    profiler data sampling/navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
-    modifier combos.
+    advanced tooltip component-specific full parity/persistence, F3+I full
+    local entity saveWithoutId parity, clickable/open-file debug feedback
+    payload, profiler data sampling/navigation, profiling metrics
+    recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
+    and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

@@ -2333,6 +2333,20 @@ fn client_chat_reads_canonical_world_state() {
         chat["messages"][1]["content"],
         "[Debug]: Client version info:"
     );
+    assert_eq!(
+        chat["messages"][1]["styled_content"],
+        json!([{
+            "text": "[Debug]: Client version info:",
+            "style": {
+                "bold": null,
+                "italic": null,
+                "underlined": null,
+                "strikethrough": null,
+                "obfuscated": null,
+                "color": null
+            }
+        }])
+    );
     assert_eq!(chat["messages"][1]["sender_name"], "");
     assert_eq!(
         chat["messages"][1]["chat_type"]["registry_id"],

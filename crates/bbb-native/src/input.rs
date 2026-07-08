@@ -12,8 +12,8 @@ use bbb_protocol::{
         EntityTagQuery, InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction,
         PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
     },
-    MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
-    MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
+    ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION,
+    MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
@@ -89,6 +89,7 @@ const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
 const DEBUG_CRASH_TIME: Duration = Duration::from_secs(10);
 const DEBUG_CRASH_REPORT_INTERVAL: Duration = Duration::from_secs(1);
 const CHAT_ENTRY_MAX_LENGTH: usize = 256;
+const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -1055,7 +1056,7 @@ impl ClientInputState {
 }
 
 fn push_debug_version_chat_messages(world: &mut WorldStore) {
-    world.push_client_system_chat_message("[Debug]: Client version info:");
+    push_debug_feedback_chat_message(Some(world), "Client version info:");
     world.push_client_system_chat_message(format!("id = {MC_VERSION}"));
     world.push_client_system_chat_message(format!("name = {MC_VERSION}"));
     world.push_client_system_chat_message(format!("data = {MC_DATA_VERSION}"));
@@ -1081,8 +1082,29 @@ fn push_debug_version_chat_messages(world: &mut WorldStore) {
 
 fn push_debug_feedback_chat_message(world: Option<&mut WorldStore>, message: &str) {
     if let Some(world) = world {
-        world.push_client_system_chat_message(format!("[Debug]: {message}"));
+        world.push_styled_client_system_chat_message(debug_feedback_styled_runs(message));
     }
+}
+
+fn debug_feedback_styled_runs(message: &str) -> Vec<StyledTextRun> {
+    vec![
+        StyledTextRun {
+            text: "[Debug]:".to_string(),
+            style: ComponentStyle {
+                bold: Some(true),
+                color: Some(VANILLA_DEBUG_FEEDBACK_COLOR),
+                ..ComponentStyle::default()
+            },
+        },
+        StyledTextRun {
+            text: " ".to_string(),
+            style: ComponentStyle::default(),
+        },
+        StyledTextRun {
+            text: message.to_string(),
+            style: ComponentStyle::default(),
+        },
+    ]
 }
 
 pub(crate) fn queue_debug_recreate_server_query_request(

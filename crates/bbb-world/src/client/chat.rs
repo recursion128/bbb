@@ -1,8 +1,12 @@
-use bbb_protocol::packets::{
-    ChatAcknowledgement as ProtocolChatAcknowledgement, ChatTypeHolder as ProtocolChatTypeHolder,
-    DeleteChat as ProtocolDeleteChat, DisguisedChat as ProtocolDisguisedChat,
-    FilterMaskKind as ProtocolFilterMaskKind, LastSeenMessagesUpdate,
-    MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
+use bbb_protocol::{
+    packets::{
+        ChatAcknowledgement as ProtocolChatAcknowledgement,
+        ChatTypeHolder as ProtocolChatTypeHolder, DeleteChat as ProtocolDeleteChat,
+        DisguisedChat as ProtocolDisguisedChat, FilterMaskKind as ProtocolFilterMaskKind,
+        LastSeenMessagesUpdate, MessageSignature as ProtocolMessageSignature,
+        PackedMessageSignature, PlayerChat,
+    },
+    ComponentStyle, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -42,6 +46,8 @@ impl Default for ClientChatState {
 pub struct ChatMessageState {
     pub kind: ChatMessageKind,
     pub content: String,
+    #[serde(default)]
+    pub styled_content: Vec<StyledTextRun>,
     pub sender: Option<Uuid>,
     pub sender_name: String,
     pub target_name: Option<String>,
@@ -158,9 +164,25 @@ impl WorldStore {
     }
 
     pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
+        let content = content.into();
+        let styled_content = plain_chat_styled_content(&content);
+        self.push_client_system_chat_message_state(content, styled_content);
+    }
+
+    pub fn push_styled_client_system_chat_message(&mut self, styled_content: Vec<StyledTextRun>) {
+        let content = styled_chat_summary_text(&styled_content);
+        self.push_client_system_chat_message_state(content, styled_content);
+    }
+
+    fn push_client_system_chat_message_state(
+        &mut self,
+        content: String,
+        styled_content: Vec<StyledTextRun>,
+    ) {
         self.client_chat.messages.push(ChatMessageState {
             kind: ChatMessageKind::ClientSystem,
-            content: content.into(),
+            content,
+            styled_content,
             sender: None,
             sender_name: String::new(),
             target_name: None,
@@ -241,6 +263,7 @@ impl WorldStore {
 
         let message = ChatMessageState {
             kind: ChatMessageKind::Player,
+            styled_content: plain_chat_styled_content(&packet.body.content),
             content: packet.body.content,
             sender: Some(packet.sender),
             sender_name: packet.chat_type.name,
@@ -262,6 +285,7 @@ impl WorldStore {
         self.counters.disguised_chat_packets += 1;
         self.client_chat.messages.push(ChatMessageState {
             kind: ChatMessageKind::Disguised,
+            styled_content: plain_chat_styled_content(&packet.message),
             content: packet.message,
             sender: None,
             sender_name: packet.chat_type.name,
@@ -413,6 +437,17 @@ impl WorldStore {
     }
 }
 
+fn plain_chat_styled_content(content: &str) -> Vec<StyledTextRun> {
+    vec![StyledTextRun {
+        text: content.to_string(),
+        style: ComponentStyle::default(),
+    }]
+}
+
+fn styled_chat_summary_text(runs: &[StyledTextRun]) -> String {
+    runs.iter().map(|run| run.text.as_str()).collect()
+}
+
 fn resolve_packed_signature(
     cache: &[Option<ChatSignatureState>],
     packed: &PackedMessageSignature,
@@ -535,6 +570,13 @@ mod tests {
         let message = store.client_chat().messages.last().unwrap();
         assert_eq!(message.kind, ChatMessageKind::Player);
         assert_eq!(message.content, "hello");
+        assert_eq!(
+            message.styled_content,
+            vec![StyledTextRun {
+                text: "hello".to_string(),
+                style: ComponentStyle::default(),
+            }]
+        );
         assert_eq!(message.sender, Some(sender));
         assert_eq!(message.sender_name, "Alice");
         assert_eq!(message.validation_state, ChatValidationState::Unchecked);
@@ -816,6 +858,13 @@ mod tests {
         let message = store.client_chat().messages.last().unwrap();
         assert_eq!(message.kind, ChatMessageKind::Disguised);
         assert_eq!(message.content, "notice");
+        assert_eq!(
+            message.styled_content,
+            vec![StyledTextRun {
+                text: "notice".to_string(),
+                style: ComponentStyle::default(),
+            }]
+        );
         assert_eq!(message.sender_name, "Server");
         assert_eq!(store.counters().disguised_chat_packets, 1);
     }
@@ -829,6 +878,13 @@ mod tests {
         let message = store.client_chat().messages.last().unwrap();
         assert_eq!(message.kind, ChatMessageKind::ClientSystem);
         assert_eq!(message.content, "[Debug]: Client version info:");
+        assert_eq!(
+            message.styled_content,
+            vec![StyledTextRun {
+                text: "[Debug]: Client version info:".to_string(),
+                style: ComponentStyle::default(),
+            }]
+        );
         assert_eq!(message.sender, None);
         assert!(message.sender_name.is_empty());
         assert_eq!(message.chat_type.registry_id, None);
