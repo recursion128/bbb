@@ -1062,10 +1062,11 @@ When an agent does any of the following, update this file in the same slice:
   - Continue the recipe-book overlay after the completed shell and toggle
     buttons/search input/tab shell/crafting recipe-button shell/category-page
     shell/placement shell/category tab visibility/crafting ghost slots/search
-    filtering/direct-item craftability: tab notification animation,
-    furnace-family recipe-grid parity, multi-recipe overlay/cycling, full
-    recipe `FullTextSearchTree` token parity, and unresolved tag/composite
-    SlotDisplay cycling for ghost ingredients.
+    filtering/direct-item craftability/same-result multi-recipe icon overlay:
+    tab notification animation, furnace-family recipe-grid parity,
+    multi-recipe picker/cycling, full recipe `FullTextSearchTree` token
+    parity, and unresolved tag/composite SlotDisplay cycling for ghost
+    ingredients.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1222,8 +1223,20 @@ When an agent does any of the following, update this file in the same slice:
     multiset, so tag-backed craftable recipes affect slot sprites, filtering,
     page controls, and recipe-button click hit-testing; absent tag data remains
     uncraftable.
+  - Done 2026-07-08 — Crafting recipe-book same-result multi-recipe icon
+    overlay. Vanilla anchors: `RecipeButton.init` builds `selectedEntries`
+    from `collection.getSelectedRecipes(CRAFTABLE|ANY)`,
+    `allRecipesHaveSameResultDisplay` verifies every resolved result
+    `ItemStack.isSameItemSameComponents`, and
+    `RecipeButton.extractWidgetRenderState` draws a background copy at
+    `(x + 5, y + 5)` before the foreground fake item at `(x + 3, y + 3)` when
+    the button has multiple recipes with the same result display. bbb now
+    detects same result stacks in the current recipe-book UI collection and
+    projects the duplicate HUD item at those vanilla offsets while preserving
+    the existing many-craftable / many-uncraftable slot sprite selection.
   - Boundary: furnace-family raw recipe displays, craftability retry guard,
-    multi-recipe cycling/right-click overlay, tab notification animation, full
+    multi-recipe picker/cycling/right-click overlay, tab notification
+    animation, full
     `FullTextSearchTree` token / namespace-path / intersection semantics for
     recipe search, cursor/selection rendering inside the search box,
     tag/composite SlotDisplay cycling for ghost ingredients, and narrow-screen
@@ -1231,9 +1244,10 @@ When an agent does any of the following, update this file in the same slice:
     crafting recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
     item/item-stack crafting ghost slots, visible crafting search filtering,
-    and direct-item/tag-backed crafting craftability slot/filtering path are
-    live. The first shell models the non-narrow layout; vanilla's narrow-screen
-    overlap mode (`width < 379`) remains for the input/render follow-up.
+    direct-item/tag-backed crafting craftability slot/filtering path, and
+    same-result multi-recipe duplicate icon overlay are live. The first shell
+    models the non-narrow layout; vanilla's narrow-screen overlap mode
+    (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

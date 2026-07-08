@@ -77,6 +77,15 @@ impl<'a> RecipeBookUiCollection<'a> {
     pub(crate) fn has_craftable(&self) -> bool {
         self.has_craftable
     }
+
+    pub(crate) fn all_result_stacks_same(&self) -> bool {
+        let Some(first) = self.result_stack() else {
+            return true;
+        };
+        self.entries
+            .iter()
+            .all(|entry| recipe_book_crafting_result_stack(entry) == Some(first))
+    }
 }
 
 pub(crate) fn crafting_recipe_book_collections<'a>(

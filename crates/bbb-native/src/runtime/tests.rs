@@ -6428,6 +6428,56 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
 }
 
 #[test]
+fn hud_inventory_screen_draws_same_result_recipe_book_multi_recipe_offset_icons() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
+            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 1),
+        ],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable,
+                11,
+                31,
+                25,
+                25,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    let item_positions: Vec<(i32, i32)> = screen
+        .floating_items
+        .iter()
+        .map(|item| (item.x, item.y))
+        .collect();
+    assert!(item_positions.contains(&(16, 36)));
+    assert!(item_positions.contains(&(14, 34)));
+    assert!(!item_positions.contains(&(15, 35)));
+}
+
+#[test]
 fn hud_inventory_screen_filters_recipe_book_buttons_by_crafting_tab_category() {
     let mut world = open_recipe_book_crafting_table_world();
     world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {

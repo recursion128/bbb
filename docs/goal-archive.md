@@ -1888,6 +1888,18 @@
   完整 `FullTextSearchTree` token/namespace-path/intersection 语义、search
   cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
   cycling、narrow-screen overlap。
+- [x] crafting recipe-book same-result multi-recipe icon overlay（P2 HUD slice，
+  2026-07-08）：依据 `RecipeButton.init` 的 filtered `selectedEntries`、
+  `allRecipesHaveSameResultDisplay` 的全 result stack 同物品同组件判定，以及
+  `RecipeButton.extractWidgetRenderState` 在同结果多 recipe 时先画
+  `(x+5,y+5)` 背后副本、再画 `(x+3,y+3)` 前景 fake item 的行为，native
+  现在在当前 recipe-book UI collection 中检测 same result stacks，并在
+  many-craftable / many-uncraftable slot sprite 上投影同样的 duplicate HUD item
+  偏移。剩余：furnace-family raw recipe displays、craftability retry guard、
+  multi-recipe picker/cycling/right-click overlay、tab notification animation、
+  完整 `FullTextSearchTree` token/namespace-path/intersection 语义、search
+  cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
+  cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

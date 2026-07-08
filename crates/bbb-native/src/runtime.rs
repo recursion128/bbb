@@ -3162,11 +3162,27 @@ fn hud_recipe_book_recipe_button_icon_items(
             continue;
         };
         let (button_x, button_y) = recipe_book_recipe_button_position(index);
+        let block_model = block_item_3d_model(stack, Some(item_runtime), terrain_textures);
+        if collection.has_multiple_recipes() && collection.all_result_stacks_same() {
+            items.push(HudInventoryItem {
+                x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
+                y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
+                icon: icon.clone(),
+                block_model: block_model.clone(),
+            });
+            items.push(HudInventoryItem {
+                x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
+                y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
+                icon,
+                block_model,
+            });
+            continue;
+        }
         items.push(HudInventoryItem {
             x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET,
             y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET,
             icon,
-            block_model: block_item_3d_model(stack, Some(item_runtime), terrain_textures),
+            block_model,
         });
     }
     items

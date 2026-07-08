@@ -288,7 +288,8 @@ Screen Render Surfaces" 条目）：
 - recipe-book overlay furnace-family recipe-grid parity/multi-recipe
   overlay/tab notification animation（基础 shell、crafting category/page shell、placement
   command shell、category tab visibility、crafting ghost slots、visible search filtering
-  与 direct-item/tag-backed craftability slot/filtering 已完成）/
+  与 direct-item/tag-backed craftability slot/filtering、same-result multi-recipe icon
+  overlay 已完成）/
   advancement screen（大件；recipe/advancement state 已 ready）；debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
