@@ -2,11 +2,12 @@ use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
-    AdvancementSummary, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser,
-    CommandNode, CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions,
-    Commands, CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
-    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DeleteChat,
-    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
+    AdvancementSummary, BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
+    ChatCommand, CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestion,
+    CommandSuggestionRequest, CommandSuggestions, Commands, CommonPlayerSpawnInfo, ContainerClick,
+    ContainerCloseRequest, ContainerInput, ContainerSetContent as ProtocolContainerSetContent,
+    DataComponentPatchSummary, DeleteChat, DialogHolder,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
     EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
@@ -24,8 +25,9 @@ use bbb_protocol::{
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{
-    BlockEntityRecord, BlockPos, ChatMessageKind, ChunkColumn, ChunkPos, ChunkState,
-    ItemEquipmentSlot, LightData, LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
+    BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
+    ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
+    PaletteKind, PalettedContainerData, SignBlockEntityTextState, WorldStore,
 };
 use std::{
     collections::BTreeMap,
@@ -250,6 +252,58 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
         light: LightData::default(),
     });
     world
+}
+
+fn insert_empty_chunk_for_block(world: &mut WorldStore, pos: BlockPos) {
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..24).map(|_| empty_chunk_section()).collect(),
+        block_entities: Vec::new(),
+        light: LightData::default(),
+    });
+}
+
+fn empty_chunk_section() -> ChunkSection {
+    ChunkSection {
+        non_empty_block_count: 0,
+        fluid_count: 0,
+        block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
+        biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+    }
+}
+
+fn single_value_container(
+    domain: PaletteDomain,
+    entry_count: usize,
+    global_id: i32,
+) -> PalettedContainerData {
+    PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    }
+}
+
+fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+    BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties(name, &string_props(props))
+        .unwrap_or_else(|| panic!("missing vanilla block state {name} {props:?}"))
+        .id
+}
+
+fn string_props<const N: usize>(props: [(&str, &str); N]) -> BTreeMap<String, String> {
+    props
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect()
 }
 
 fn player_chat_with_signature(global_index: i32, signature: MessageSignature) -> PlayerChat {
@@ -1223,6 +1277,123 @@ fn f3_i_consumes_copy_data_modifier_without_toggling_overlay() {
         None
     ));
     assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    let target_pos = BlockPos { x: 0, y: 1, z: 3 };
+    insert_empty_chunk_for_block(&mut world, target_pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: target_pos.x,
+            y: target_pos.y,
+            z: target_pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "x")]),
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some("/setblock 0 1 3 minecraft:oak_log[axis=x]")
+    );
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side block data to clipboard"
+    );
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_i_is_consumed_but_does_not_copy_when_reduced_debug_info_blocks_inspect() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(true);
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(clipboard.text, None);
+    assert!(world.client_chat().messages.is_empty());
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn debug_block_state_description_matches_vanilla_recreate_property_format() {
+    assert_eq!(
+        debug_block_state_description("minecraft:stone", &BTreeMap::new()),
+        "minecraft:stone"
+    );
+    assert_eq!(
+        debug_block_state_description(
+            "minecraft:mangrove_propagule",
+            &string_props([
+                ("stage", "1"),
+                ("hanging", "true"),
+                ("waterlogged", "false"),
+                ("age", "2"),
+            ])
+        ),
+        "minecraft:mangrove_propagule[age=2,hanging=true,stage=1,waterlogged=false]"
+    );
 }
 
 #[test]

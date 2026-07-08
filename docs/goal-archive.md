@@ -5290,6 +5290,19 @@
   现在在 F3 按住期间消费 I，并在 F3 release 时不触发普通 overlay toggle。
   边界：block/entity recreate command 生成、server/client NBT 选择、target
   inspection、以及该动作的 clipboard 写入仍未实现。
+- [x] debug overlay F3+I block recreate clipboard action（P2
+  input/crosshair/platform slice，2026-07-08）：依据
+  `KeyboardHandler.copyRecreateCommand` 对 block hit 读取
+  `level.getBlockState(blockPos)`，调用 `BlockStateParser.serialize(state)`，
+  写入 `/setblock x y z <state>` 并反馈 `debug.inspect.client.block`；同时
+  `handleDebugKeys` 即使 reduced debug info、无 player 或无 target 也消费 I。
+  native 现在在非 reduced-debug 本地玩家对准已加载方块时，复用现有 camera
+  crosshair pick，从 `WorldStore::probe_block` 取 26.1 block state 名称/属性，
+  写入 `/setblock ...` 到 `DebugClipboard`，并追加
+  `[Debug]: Copied client-side block data to clipboard`；无可复制目标时仍只消费
+  组合键并抑制 F3 release 普通 overlay toggle。边界：entity `/summon`
+  recreate、client/server NBT 与 debug-query 往返、精确 `StateDefinition`
+  property iteration order、以及 styled/clickable feedback 仍未实现。
 - [x] debug overlay F3+L profiling request shell（P2 input/runtime slice，
   2026-07-08）：依据 `Options.keyDebugProfiling` 绑定 L，以及
   `KeyboardHandler.handleDebugKeys` 调用 `Minecraft.debugClientMetricsStart`

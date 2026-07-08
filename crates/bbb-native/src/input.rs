@@ -29,7 +29,9 @@ mod mouse;
 mod movement;
 mod text_edit;
 
+use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
+use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
@@ -793,7 +795,18 @@ impl ClientInputState {
                 );
                 true
             }
-            KeyCode::KeyI => true,
+            KeyCode::KeyI => {
+                let command = world.as_deref().and_then(debug_copy_recreate_command);
+                if let (Some(command), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
+                    if clipboard.set_debug_clipboard_text(&command) {
+                        push_debug_feedback_chat_message(
+                            world.as_deref_mut(),
+                            "Copied client-side block data to clipboard",
+                        );
+                    }
+                }
+                true
+            }
             KeyCode::KeyL => {
                 self.debug_profiling_toggle_requests =
                     self.debug_profiling_toggle_requests.saturating_add(1);
@@ -913,6 +926,39 @@ fn debug_copy_location_command(world: &WorldStore) -> Option<String> {
         "/execute in {} run tp @s {:.2} {:.2} {:.2} {:.2} {:.2}",
         level.dimension, pose.position.x, pose.position.y, pose.position.z, pose.y_rot, pose.x_rot
     ))
+}
+
+fn debug_copy_recreate_command(world: &WorldStore) -> Option<String> {
+    if world.local_player_id().is_none() || world.local_player_has_reduced_debug_info() {
+        return None;
+    }
+    let CrosshairTarget::Block(hit) =
+        crosshair_target_from_camera_at_partial_tick(world, camera_pose_from_world(world), 1.0)?
+    else {
+        return None;
+    };
+    let block = world.probe_block(hit.pos)?;
+    let block_name = block.block_name.as_deref()?;
+    let description = debug_block_state_description(block_name, &block.block_properties);
+    Some(format!(
+        "/setblock {} {} {} {}",
+        hit.pos.x, hit.pos.y, hit.pos.z, description
+    ))
+}
+
+fn debug_block_state_description(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+) -> String {
+    if properties.is_empty() {
+        return block_name.to_string();
+    }
+    let properties = properties
+        .iter()
+        .map(|(key, value)| format!("{key}={value}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("{block_name}[{properties}]")
 }
 
 impl ClientInputState {
