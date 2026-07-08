@@ -67,7 +67,8 @@ use crate::entities::dimensions::{
     VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
-    ender_dragon_part_parent_id, ender_dragon_part_pick_targets_at_partial_tick,
+    ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
+    ender_dragon_part_pick_targets_at_partial_tick,
 };
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 use crate::registries::RegistrySet;
@@ -1240,6 +1241,46 @@ impl EntityStore {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                let dragon_animation =
+                    client_animations.and_then(|animations| animations.animations.ender_dragon);
+                targets.extend(ender_dragon_part_pick_targets_at_partial_tick(
+                    identity.id,
+                    *transform,
+                    dragon_animation,
+                    partial_ticks,
+                ));
+            } else if let Some(bounds) = self.pick_bounds(identity.id) {
+                targets.push(super::EntityPickTargetState {
+                    entity_id: identity.id,
+                    position: transform.position,
+                    bounds,
+                });
+            }
+        }
+        targets
+    }
+
+    pub(crate) fn debug_hitbox_targets_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<super::EntityPickTargetState> {
+        let mut targets = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(mut query) = self.ecs.query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                Option<&EntityClientAnimations>,
+            )>(entity) else {
+                continue;
+            };
+            let Some((identity, transform, client_animations)) = query.get() else {
+                continue;
+            };
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                targets.push(ender_dragon_parent_pick_target(identity.id, *transform));
                 let dragon_animation =
                     client_animations.and_then(|animations| animations.animations.ender_dragon);
                 targets.extend(ender_dragon_part_pick_targets_at_partial_tick(

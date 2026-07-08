@@ -5348,7 +5348,7 @@
   main bounding-box cuboid 的行为。native 现在把现有 entity-scene
   `SelectionOutline` 抽取接到 F3+B 状态上，只有 hitbox toggle visible 时才向
   renderer 提交实体 AABB 线框，关闭时不提交。边界：vanilla hitbox colors、
-  passenger box、living eye-height box、Ender Dragon parent box、
+  passenger box、living eye-height box、dragon-parent eye/vector、
   view/delta arrows、frustum/invisibility filtering、以及专用 debug
   gizmo styling 仍未实现。
 - [x] debug overlay F3+G chunk section-stack outline rendering（P2
@@ -5482,8 +5482,9 @@
   和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
   entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
   并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
-  arrowheads、passenger vehicle slabs、Ender Dragon parent box、local-server green
-  boxes/delta arrows、missing-server labels、以及专用 debug gizmo styling 仍未实现。
+  arrowheads、passenger vehicle slabs、dragon-parent eye/vector、local-server
+  green boxes/delta arrows、missing-server labels、以及专用 debug gizmo styling
+  仍未实现。
 - [x] debug overlay F3+B entity position point markers（P2 renderer/native
   slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 紧跟
   hitbox 后调用 `Gizmos.point(currentPosition, mainColor, 2.0F)`，以及
@@ -5500,9 +5501,9 @@
   parent id + 1..8 的 dragon part pick targets；本轮新增 world-owned
   dragon-part parent query，native F3+B 通过它识别 synthetic part targets，
   将这些 cuboid 改为 vanilla sub-part 颜色，并跳过 point/view-vector gizmos。
-  边界：Ender Dragon parent entity 自身 main AABB 仍未提交，因为当前 world
-  pick-target surface 暴露 sub-parts 而不是 parent target；passenger slabs、
-  local-server debug boxes/arrows、labels、以及专用 debug gizmo styling 仍待后续。
+  后续 parent hitbox slice 已补齐 Ender Dragon parent main AABB；剩余
+  dragon-parent eye/vector、passenger slabs、local-server debug boxes/arrows、
+  labels、以及专用 debug gizmo styling 仍待后续。
 - [x] debug overlay F3+G chunk-border full grid rendering（P2 renderer/runtime
   slice，2026-07-08）：依据 `ChunkBorderRenderer.emitGizmos` 的 3x3 chunk
   boundary lattice、当前 chunk 2-block vertical grid、每 2 格 horizontal rings、
@@ -5511,3 +5512,13 @@
   和当前 section colored cuboid，并使用 vanilla translucent red/yellow/cyan/major
   blue 颜色与 world dimension y-range。边界：renderer selection path 仍没有
   vanilla line widths、`alwaysOnTop`、以及专用 debug gizmo pipeline。
+- [x] debug overlay F3+B Ender Dragon parent hitbox（P2 world/native slice，
+  2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 先绘制 entity
+  main `getBoundingBox().move(offset)`、再绘制 Ender Dragon sub-entities 的顺序，
+  以及 `EntityType.ENDER_DRAGON.sized(16.0F, 8.0F)`。world 现在保留交互
+  pick target 对 dragon 只暴露 8 个 sub-parts 的语义，同时新增 debug hitbox
+  target query，按 vanilla 顺序输出 parent 16x8 hitbox 后接 sub-parts；native
+  F3+B 改用该 query，渲染 parent 白色 AABB 和 parent position point。边界：
+  dragon-parent eye-height slab/view vector 仍受现有 camera-pose/model-source
+  bounds 路径限制未提交；passenger slabs、local-server debug boxes/arrows、
+  labels、以及专用 debug gizmo styling 仍待后续。

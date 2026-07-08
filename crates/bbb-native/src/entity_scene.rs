@@ -322,7 +322,7 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     let mut points = Vec::new();
 
     for target in world
-        .entity_pick_targets_at_partial_tick(entity_partial_tick)
+        .entity_debug_hitbox_targets_at_partial_tick(entity_partial_tick)
         .into_iter()
     {
         if let Some(parent_id) = world.ender_dragon_part_parent_id(target.entity_id) {

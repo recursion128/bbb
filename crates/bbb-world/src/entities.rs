@@ -2478,6 +2478,17 @@ impl WorldStore {
             .collect()
     }
 
+    pub fn entity_debug_hitbox_targets_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<EntityPickTargetState> {
+        self.entities
+            .debug_hitbox_targets_at_partial_tick(partial_ticks)
+            .into_iter()
+            .filter(|target| self.entity_passes_spectator_filter(target.entity_id))
+            .collect()
+    }
+
     pub fn entity_model_sources_at_partial_tick(
         &self,
         partial_ticks: f32,

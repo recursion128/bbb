@@ -261,6 +261,18 @@ pub(crate) fn ender_dragon_part_pick_targets_at_partial_tick(
         .collect()
 }
 
+pub(crate) fn ender_dragon_parent_pick_target(
+    parent_id: i32,
+    transform: EntityTransform,
+) -> EntityPickTargetState {
+    EntityPickTargetState {
+        entity_id: parent_id,
+        position: transform.position,
+        // Vanilla 26.1 `EntityType.ENDER_DRAGON.sized(16.0F, 8.0F)`.
+        bounds: EntityPickBoundsState::from_base_size(16.0, 8.0, 0.0),
+    }
+}
+
 pub(crate) fn ender_dragon_part_parent_id(
     part_id: i32,
     is_dragon_parent: impl Fn(i32) -> bool,

@@ -13,6 +13,27 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     store.advance_entity_client_animations(1);
 
     assert_eq!(store.probe_entity_pick_bounds(100), None);
+    let debug_targets = store.entity_debug_hitbox_targets_at_partial_tick(1.0);
+    assert_eq!(
+        debug_targets
+            .iter()
+            .map(|target| target.entity_id)
+            .collect::<Vec<_>>(),
+        vec![100, 101, 102, 103, 104, 105, 106, 107, 108]
+    );
+    assert_entity_vec3_close(
+        debug_targets[0].position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        },
+    );
+    assert_eq!(
+        debug_targets[0].bounds,
+        EntityPickBoundsState::from_base_size(16.0, 8.0, 0.0)
+    );
+
     let targets = store.entity_pick_targets();
     assert_eq!(
         targets

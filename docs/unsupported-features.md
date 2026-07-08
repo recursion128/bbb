@@ -1108,7 +1108,7 @@ When an agent does any of the following, update this file in the same slice:
     rendering, F3+3 network ping/bandwidth chart
     rendering, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
-    vehicle/dragon-parent/server details,
+    vehicle/dragon-parent eye-vector/server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
     actual dynamic texture dump execution, F3+I NBT response/callback parity,
@@ -1213,7 +1213,7 @@ When an agent does any of the following, update this file in the same slice:
     gates the renderer's existing entity-scene `SelectionOutline` extraction
     behind the F3+B hitbox state, so entity AABB debug lines are submitted only
     when the native toggle is visible and hidden otherwise. Boundary: vanilla
-    hitbox colors, passenger box, eye-height box, Ender Dragon parent box,
+    hitbox colors, passenger box, eye-height box, dragon-parent eye/vector,
     view/delta arrows, frustum/invisibility filtering, and the dedicated
     debug gizmo styling are still not implemented.
   - Done 2026-07-08 — Debug overlay F3+B entity hitbox eye/vector detail
@@ -1228,7 +1228,7 @@ When an agent does any of the following, update this file in the same slice:
     white entity AABBs, red living eye-height slabs, and a blue two-block
     view-vector line sampled from the same partial-tick entity source. Boundary:
     vanilla arrowheads, passenger-vehicle yellow slabs, Ender Dragon parent
-    box, local-server green boxes/delta arrows, missing server-entity labels,
+    eye/vector, local-server green boxes/delta arrows, missing server-entity labels,
     and dedicated debug gizmo styling remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+B entity position point markers.
     Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` calls
@@ -1251,10 +1251,22 @@ When an agent does any of the following, update this file in the same slice:
     identifies those targets through a world-owned dragon-part parent query,
     colors their cuboids with the vanilla sub-part color, and does not attach
     entity point/view-vector gizmos to the synthetic part targets. Boundary:
-    the Ender Dragon parent entity's own main AABB is still absent because
-    world pick targets intentionally expose the sub-parts instead of a parent
-    pick target; passenger slabs, local-server boxes/arrows, labels, and
-    dedicated debug gizmo styling remain future work.
+    the Ender Dragon parent entity's own main AABB is now covered by the
+    later parent hitbox slice; dragon-parent eye/vector, passenger slabs,
+    local-server boxes/arrows, labels, and dedicated debug gizmo styling remain
+    future work.
+  - Done 2026-07-08 — Debug overlay F3+B Ender Dragon parent hitbox.
+    Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` draws an entity's
+    main `getBoundingBox().move(offset)` before the Ender Dragon sub-entity
+    boxes, and `EntityType.ENDER_DRAGON` is `sized(16.0F, 8.0F)`. bbb now keeps
+    the interaction pick-target surface unchanged (dragon pick targets remain
+    the 8 vanilla sub-parts), adds a separate world-owned debug hitbox target
+    query that emits the dragon parent target before the parts, and native F3+B
+    renders the parent white AABB plus parent position point. Boundary:
+    dragon-parent eye-height slab and view vector are still absent because the
+    existing camera-pose/model-source paths are tied to ordinary entity bounds;
+    passenger slabs, local-server boxes/arrows, labels, and dedicated debug
+    gizmo styling remain future work.
   - Done 2026-07-08 — Debug overlay F3+Esc pause-without-menu request shell.
     Vanilla anchors: `KeyboardHandler.keyPress` handles Escape as global input
     when no screen, a no-menu pause screen, or the game-mode switcher is
@@ -2053,7 +2065,7 @@ When an agent does any of the following, update this file in the same slice:
     shape are also aligned, and the default TPS entry now has a server-brand
     / frozen-status text shell. The remaining open surfaces in this ledger row
     are non-default/editable debug entries, entity hitbox
-    vehicle/dragon-parent/server details,
+    vehicle/dragon-parent eye-vector/server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity/persistence, actual dynamic texture dump execution, F3+I NBT
     response/callback recreate parity, profiling metrics recorder/output, actual
