@@ -1107,11 +1107,12 @@ When an agent does any of the following, update this file in the same slice:
     F3+B entity hitbox eye/vector detail rendering, F3+1 profiler pie chart
     render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
-    rendering, 3D crosshair rendering, and default-profile debug entry
+    rendering, configured-framerate FPS guide, 3D crosshair rendering, and default-profile debug entry
     coverage: non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
     advanced tooltip full parity,
+    vsync FPS debug text/config,
     F3+I local client-side NBT capture / styled feedback, profiler data
     sampling/navigation, profiling metrics recorder/output, actual DebugOptionsScreen, native
     pause loop/PauseScreen, and the other F3 modifier combos remain (large,
@@ -1164,9 +1165,7 @@ When an agent does any of the following, update this file in the same slice:
     samples in `HudDebugFpsSampler`, projects them into `HudDebugOverlay` only
     while F3+2 is visible, and renders the FPS chart through the HUD white-pixel
     quad/text path with vanilla sample height and green/yellow/red thresholds.
-    Boundary: profiler `ProfileResults` data/navigation and the cyan configured-framerate
-    guide remain unimplemented until bbb owns the corresponding profiler /
-    framerate config samples.
+    Boundary: profiler `ProfileResults` data/navigation remains future work.
   - Done 2026-07-08 — Debug overlay F3+2 TPS chart rendering. Vanilla anchors:
     `ClientDebugSubscriber.requestedSubscriptions` subscribes to
     `RemoteDebugSampleType.TICK_TIME` while `showFpsCharts` is enabled, using
@@ -1181,7 +1180,7 @@ When an agent does any of the following, update this file in the same slice:
     with vanilla 240-sample capacity, 60px height, full-minus-idle labels,
     stacked component bars, TPS label, and threshold colors. Boundary: bbb only
     has the dedicated tick-time subscription owner; profiler `ProfileResults`
-    data/navigation and configured-framerate guide parity remain future work.
+    data/navigation remains future work.
   - Done 2026-07-08 — Debug overlay F3+3 network ping/bandwidth chart
     rendering. Vanilla anchors: `DebugScreenOverlay.showNetworkCharts` renders
     `BandwidthDebugChart` on the left for non-local connections and
@@ -1473,7 +1472,7 @@ When an agent does any of the following, update this file in the same slice:
     samples the renderer-owned dynamic lightmap texture through a HUD-layout
     nearest sampler, and keeps the vanilla mutual exclusion with FPS/network
     charts from the existing input state. Boundary: profiler `ProfileResults`
-    data/navigation and configured-framerate guide parity remain open.
+    data/navigation remains open.
   - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
     The local advancement screen now has open/close, empty window, Done button,
     initial root-tab selection, root tab rendering/click selection, selected
@@ -1488,10 +1487,20 @@ When an agent does any of the following, update this file in the same slice:
     and `DebugEntryFps.display` formats the priority line as
     `<fps> fps T: <framerateLimit>` plus optional ` vsync`. bbb now keeps a
     native per-frame FPS sampler, feeds the sampled value into the debug
-    overlay's default priority lines, and formats the line as
-    `<fps> fps T: inf` because startup/runtime configuration has no frame-rate
-    cap or vsync option. Boundary: profiler `ProfileResults` data/navigation and
-    configured-framerate guide parity remain open.
+    overlay's default priority lines, and formats the line from the startup
+    `--client-framerate-limit` value (`260` / `inf` as unlimited). Boundary:
+    profiler `ProfileResults` data/navigation and vsync text parity remain open.
+  - Done 2026-07-08 — Debug overlay configured-framerate FPS guide.
+    Vanilla anchors: `FpsDebugChart.drawAdditionalLinesAndLabels` draws a cyan
+    horizontal line at `getSampleHeight(1.0E9 / framerateLimit)` only when
+    `Options.framerateLimit()` is `1..=250`, and `DebugEntryFps.display`
+    renders `260` as `inf`. bbb now accepts `--client-framerate-limit`
+    (`1..=250`, `260`, `inf`, or `unlimited`), uses finite values for redraw
+    deadline scheduling, projects `260` as `T: inf`, carries finite limits into
+    `HudDebugFrameTimeChart`, sanitizes out non-vanilla guide values, and renders
+    the cyan target line in the F3+2 FPS chart.
+    Boundary: this is startup configuration only; no in-game options UI or
+    vsync toggle is implemented.
   - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
     paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
     `keyDebugSpectate` to either `ServerboundChangeGameModePacket` or
@@ -2145,7 +2154,7 @@ When an agent does any of the following, update this file in the same slice:
     are non-default/editable debug entries, entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
-    advanced tooltip full parity/persistence, F3+I local client-side NBT capture / styled feedback,
+    advanced tooltip full parity/persistence, vsync FPS debug text/config, F3+I local client-side NBT capture / styled feedback,
     profiler data sampling/navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
     modifier combos.

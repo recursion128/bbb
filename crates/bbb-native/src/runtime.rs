@@ -125,6 +125,7 @@ use crate::{
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
     skull_scene::skull_model_instances_from_world_at_partial_tick,
     spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
+    startup::VANILLA_UNLIMITED_FRAMERATE_LIMIT,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
         TerrainTextureState, TerrainUploadState,
@@ -1789,6 +1790,7 @@ pub(crate) fn pump_network_and_terrain(
     control_requests: &SharedControlRequests,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
     render_distance_chunks: u32,
+    client_framerate_limit: u32,
     hide_lightning_flash: bool,
 ) -> bool {
     let mut audio_events = audio_events;
@@ -2125,6 +2127,7 @@ pub(crate) fn pump_network_and_terrain(
         camera_pose,
         surface_size,
         hud_debug_fps_sampler,
+        client_framerate_limit,
         hud_debug_network_sampler,
         hud_debug_tps_sampler,
         net_counters,
@@ -3049,6 +3052,7 @@ fn hud_debug_overlay(
     camera_pose: Option<CameraPose>,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
+    client_framerate_limit: u32,
     network_sampler: &HudDebugNetworkSampler,
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
@@ -3058,7 +3062,10 @@ fn hud_debug_overlay(
     }
 
     let mut left_lines = vec![hud_debug_version_line()];
-    left_lines.push(hud_debug_fps_line(fps_sampler.fps()));
+    left_lines.push(hud_debug_fps_line(
+        fps_sampler.fps(),
+        client_framerate_limit,
+    ));
     if let Some(tps_line) = hud_debug_tps_line(world) {
         left_lines.push(tps_line);
     }
@@ -3103,6 +3110,9 @@ fn hud_debug_overlay(
             .debug_fps_charts_visible()
             .then(|| HudDebugFrameTimeChart {
                 frame_time_nanos: fps_sampler.frame_time_nanos(),
+                configured_framerate_limit: hud_debug_configured_framerate_limit(
+                    client_framerate_limit,
+                ),
             }),
         tps_chart: input
             .debug_fps_charts_visible()
@@ -3310,8 +3320,19 @@ fn hud_debug_version_line() -> String {
     format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
 }
 
-fn hud_debug_fps_line(fps: u32) -> String {
-    format!("{fps} fps T: inf")
+fn hud_debug_fps_line(fps: u32, client_framerate_limit: u32) -> String {
+    let limit = if client_framerate_limit == VANILLA_UNLIMITED_FRAMERATE_LIMIT {
+        "inf".to_string()
+    } else {
+        client_framerate_limit.to_string()
+    };
+    format!("{fps} fps T: {limit}")
+}
+
+fn hud_debug_configured_framerate_limit(client_framerate_limit: u32) -> Option<u32> {
+    (1..=250)
+        .contains(&client_framerate_limit)
+        .then_some(client_framerate_limit)
 }
 
 fn hud_debug_tps_line(world: &WorldStore) -> Option<String> {

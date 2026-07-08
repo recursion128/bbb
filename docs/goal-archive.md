@@ -5595,3 +5595,13 @@
   API，并在日志记录写出的 atlas 种类和文件数。测试覆盖空 dump 创建目录，以及
   skin/profile dynamic atlas PNG 的尺寸与像素保真。边界：broader non-profile
   dynamic texture loading 与 clickable/open-file feedback 仍待后续。
+- [x] debug overlay configured-framerate FPS guide（P2 startup/native/renderer
+  slice，2026-07-08）：依据 `FpsDebugChart.drawAdditionalLinesAndLabels` 在
+  `Options.framerateLimit()` 为 `1..=250` 时按
+  `getSampleHeight(1.0E9 / framerateLimit)` 绘制 cyan 水平线，以及
+  `DebugEntryFps.display` 将 `260` 显示为 `inf`。startup 现在接受
+  `--client-framerate-limit`（`1..=250`、`260`、`inf`、`unlimited`），native
+  finite 模式用该值调度 redraw deadline，debug overlay 左列显示 `T: <limit>`
+  或 `T: inf`，F3+2 FPS chart 状态携带有限目标帧率；renderer 清洗非 vanilla
+  guide 值，并在 FPS chart 画出 cyan configured-framerate 参考线。边界：该配置
+  是启动参数，不引入 in-game options UI；vsync 文本 parity 仍待后续。

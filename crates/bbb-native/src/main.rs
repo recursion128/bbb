@@ -6,7 +6,7 @@ use bbb_pack::{
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
@@ -74,9 +74,9 @@ use runtime::{
 };
 use sky_assets::load_sky_textures;
 use startup::{
-    build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
-    run_probe_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
-    NetworkHandles,
+    build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
+    load_pack_roots, parse_args, run_probe_if_requested, spawn_frame_tick, start_control_api,
+    start_network_if_requested, NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
@@ -355,13 +355,19 @@ fn main() -> Result<()> {
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
     let mut cursor_position = None;
     let mut cursor_captured = false;
+    let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
+    let mut next_redraw_at = Instant::now();
 
     *world_shared
         .write()
         .expect("world lock poisoned before event loop") = world;
 
     event_loop.run(move |event, target| {
-        target.set_control_flow(ControlFlow::Poll);
+        target.set_control_flow(
+            frame_interval
+                .map(|_| ControlFlow::WaitUntil(next_redraw_at))
+                .unwrap_or(ControlFlow::Poll),
+        );
         let mut world_guard = world_shared.write().expect("world lock poisoned");
         let mut world = &mut *world_guard;
         match event {
@@ -741,6 +747,7 @@ fn main() -> Result<()> {
                         &control_requests,
                         Some(&mut code_of_conduct_acceptance),
                         args.render_distance_chunks,
+                        args.client_framerate_limit,
                         args.hide_lightning_flash,
                     ) {
                         target.exit();
@@ -805,6 +812,9 @@ fn main() -> Result<()> {
                     ) {
                         target.exit();
                     }
+                    if let Some(interval) = frame_interval {
+                        next_redraw_at = Instant::now() + interval;
+                    }
                 }
                 _ => {}
             },
@@ -829,7 +839,9 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
-                window.request_redraw();
+                if frame_interval.is_none() || Instant::now() >= next_redraw_at {
+                    window.request_redraw();
+                }
             }
             Event::AboutToWait => {
                 if !snapshot_is_running(&snapshot) {
@@ -875,6 +887,7 @@ fn main() -> Result<()> {
                     &control_requests,
                     Some(&mut code_of_conduct_acceptance),
                     args.render_distance_chunks,
+                    args.client_framerate_limit,
                     args.hide_lightning_flash,
                 ) {
                     target.exit();
@@ -895,7 +908,9 @@ fn main() -> Result<()> {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
-                window.request_redraw();
+                if frame_interval.is_none() || Instant::now() >= next_redraw_at {
+                    window.request_redraw();
+                }
             }
             Event::LoopExiting => {
                 set_cursor_capture(&window, &mut cursor_captured, false);

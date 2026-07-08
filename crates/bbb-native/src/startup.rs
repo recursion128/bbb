@@ -22,6 +22,8 @@ use winit::{
 
 use crate::code_of_conduct::CodeOfConductAcceptance;
 
+pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
+
 #[derive(Debug, Parser)]
 #[command(name = "bbb-native")]
 pub(crate) struct Args {
@@ -83,6 +85,12 @@ pub(crate) struct Args {
         value_parser = parse_render_distance
     )]
     pub(crate) render_distance_chunks: u32,
+    #[arg(
+        long = "client-framerate-limit",
+        default_value_t = VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        value_parser = parse_client_framerate_limit
+    )]
+    pub(crate) client_framerate_limit: u32,
     #[arg(
         long = "client-gamma",
         default_value_t = VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -269,6 +277,31 @@ fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
     }
 }
 
+fn parse_client_framerate_limit(value: &str) -> std::result::Result<u32, String> {
+    if value.eq_ignore_ascii_case("inf") || value.eq_ignore_ascii_case("unlimited") {
+        return Ok(VANILLA_UNLIMITED_FRAMERATE_LIMIT);
+    }
+    let limit = value
+        .parse::<u32>()
+        .map_err(|_| format!("client framerate limit must be an integer or inf: {value}"))?;
+    if (1..=250).contains(&limit) || limit == VANILLA_UNLIMITED_FRAMERATE_LIMIT {
+        Ok(limit)
+    } else {
+        Err("client framerate limit must be 1..=250, 260, inf, or unlimited".to_string())
+    }
+}
+
+pub(crate) fn client_framerate_limit_interval(client_framerate_limit: u32) -> Option<Duration> {
+    if !(1..=250).contains(&client_framerate_limit) {
+        return None;
+    }
+    Some(Duration::from_nanos(
+        (1_000_000_000.0 / f64::from(client_framerate_limit))
+            .round()
+            .clamp(1.0, u64::MAX as f64) as u64,
+    ))
+}
+
 pub(crate) fn start_control_api(
     runtime: &Runtime,
     addr: Option<SocketAddr>,
@@ -361,6 +394,40 @@ mod tests {
         assert_eq!(
             args.player_skin_cache_dir,
             Some(PathBuf::from("/tmp/bbb-skins"))
+        );
+    }
+
+    #[test]
+    fn args_accept_vanilla_debug_framerate_limits() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.client_framerate_limit,
+            VANILLA_UNLIMITED_FRAMERATE_LIMIT
+        );
+
+        let capped =
+            Args::try_parse_from(["bbb-native", "--client-framerate-limit", "120"]).unwrap();
+        assert_eq!(capped.client_framerate_limit, 120);
+
+        let unlimited =
+            Args::try_parse_from(["bbb-native", "--client-framerate-limit", "inf"]).unwrap();
+        assert_eq!(
+            unlimited.client_framerate_limit,
+            VANILLA_UNLIMITED_FRAMERATE_LIMIT
+        );
+
+        assert!(Args::try_parse_from(["bbb-native", "--client-framerate-limit", "251"]).is_err());
+    }
+
+    #[test]
+    fn client_framerate_limit_interval_matches_unlimited_and_finite_modes() {
+        assert_eq!(
+            client_framerate_limit_interval(VANILLA_UNLIMITED_FRAMERATE_LIMIT),
+            None
+        );
+        assert_eq!(
+            client_framerate_limit_interval(120),
+            Some(Duration::from_nanos(8_333_333))
         );
     }
 

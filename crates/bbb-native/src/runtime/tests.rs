@@ -908,6 +908,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
             None,
             surface_size,
             &fps_sampler,
+            VANILLA_UNLIMITED_FRAMERATE_LIMIT,
             &HudDebugNetworkSampler::default(),
             &HudDebugTpsSampler::default(),
             &NetCounters::default(),
@@ -932,6 +933,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
         }),
         surface_size,
         &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1006,6 +1008,7 @@ fn hud_debug_overlay_projects_vanilla_default_profile_entries() {
         }),
         surface_size,
         &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1259,6 +1262,7 @@ fn hud_debug_overlay_projects_network_charts_for_connected_f3_3() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &network_sampler,
         &HudDebugTpsSampler::default(),
         &net_counters,
@@ -1315,6 +1319,7 @@ fn hud_debug_overlay_projects_tps_chart_for_f3_2_remote_samples() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &tps_sampler,
         &NetCounters::default(),
@@ -1325,6 +1330,7 @@ fn hud_debug_overlay_projects_tps_chart_for_f3_2_remote_samples() {
         overlay.fps_chart,
         Some(HudDebugFrameTimeChart {
             frame_time_nanos: vec![16_000_000],
+            configured_framerate_limit: None,
         })
     );
     assert_eq!(
@@ -1344,7 +1350,63 @@ fn hud_debug_overlay_projects_tps_chart_for_f3_2_remote_samples() {
 
 #[test]
 fn hud_debug_fps_line_matches_vanilla_shape_without_configured_cap() {
-    assert_eq!(hud_debug_fps_line(144), "144 fps T: inf");
+    assert_eq!(
+        hud_debug_fps_line(144, VANILLA_UNLIMITED_FRAMERATE_LIMIT),
+        "144 fps T: inf"
+    );
+    assert_eq!(hud_debug_fps_line(60, 120), "60 fps T: 120");
+    assert_eq!(hud_debug_configured_framerate_limit(120), Some(120));
+    assert_eq!(
+        hud_debug_configured_framerate_limit(VANILLA_UNLIMITED_FRAMERATE_LIMIT),
+        None
+    );
+}
+
+#[test]
+fn hud_debug_overlay_projects_configured_framerate_limit_into_fps_chart() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit2),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(60);
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &fps_sampler,
+        120,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("F3+2 should force the debug overlay visible");
+
+    assert_eq!(overlay.left_lines[1], "60 fps T: 120");
+    assert_eq!(
+        overlay.fps_chart,
+        Some(HudDebugFrameTimeChart {
+            frame_time_nanos: fps_sampler.frame_time_nanos(),
+            configured_framerate_limit: Some(120),
+        })
+    );
 }
 
 #[test]
@@ -1406,6 +1468,7 @@ fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1445,6 +1508,7 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1461,6 +1525,7 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
         overlay.fps_chart,
         Some(HudDebugFrameTimeChart {
             frame_time_nanos: fps_sampler.frame_time_nanos(),
+            configured_framerate_limit: None,
         })
     );
     assert!(!overlay.show_lightmap_preview);
@@ -1495,6 +1560,7 @@ fn hud_debug_overlay_projects_profiler_toggle_without_fake_chart_data() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1538,6 +1604,7 @@ fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
@@ -1722,6 +1789,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),

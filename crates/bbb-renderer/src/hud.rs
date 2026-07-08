@@ -129,6 +129,7 @@ pub struct HudDebugCrosshair {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HudDebugFrameTimeChart {
     pub frame_time_nanos: Vec<u64>,
+    pub configured_framerate_limit: Option<u32>,
 }
 
 /// Vanilla `TpsDebugChart` sample stream. Each sample stores the
@@ -6597,6 +6598,20 @@ fn push_hud_debug_fps_chart<'a>(
         bottom.saturating_sub(30),
         HUD_TINT_WHITE,
     );
+    if let Some(framerate_limit) = chart.configured_framerate_limit {
+        push_hud_debug_chart_horizontal_line(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            left,
+            width,
+            bottom
+                .saturating_sub(hud_debug_fps_configured_framerate_height(framerate_limit))
+                .saturating_sub(1),
+            hud_argb_to_tint(0xFF00FFFF),
+        );
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -7850,10 +7865,18 @@ fn hud_debug_fps_chart_display_string(nanos: f64) -> String {
 }
 
 fn hud_debug_fps_chart_sample_height(nanos: u64) -> i32 {
-    (hud_debug_fps_chart_millis(nanos as f64) * HUD_DEBUG_CHART_HEIGHT as f64
+    hud_debug_fps_chart_sample_height_f64(nanos as f64)
+}
+
+fn hud_debug_fps_chart_sample_height_f64(nanos: f64) -> i32 {
+    (hud_debug_fps_chart_millis(nanos) * HUD_DEBUG_CHART_HEIGHT as f64
         / HUD_DEBUG_FPS_CHART_TOP_VALUE_MS)
         .round()
         .clamp(0.0, i32::MAX as f64) as i32
+}
+
+fn hud_debug_fps_configured_framerate_height(framerate_limit: u32) -> i32 {
+    hud_debug_fps_chart_sample_height_f64(1.0E9 / f64::from(framerate_limit))
 }
 
 fn hud_debug_fps_chart_sample_tint(nanos: u64) -> [f32; 4] {
@@ -8915,6 +8938,9 @@ fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFr
     if chart.frame_time_nanos.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
         let keep_from = chart.frame_time_nanos.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
         chart.frame_time_nanos = chart.frame_time_nanos.split_off(keep_from);
+    }
+    if !matches!(chart.configured_framerate_limit, Some(1..=250)) {
+        chart.configured_framerate_limit = None;
     }
     chart
 }
@@ -10008,6 +10034,7 @@ mod tests {
         let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
             fps_chart: Some(HudDebugFrameTimeChart {
                 frame_time_nanos: (0..300).collect(),
+                configured_framerate_limit: Some(251),
             }),
             ..HudDebugOverlay::default()
         })
@@ -10023,6 +10050,7 @@ mod tests {
             chart.frame_time_nanos[HUD_DEBUG_CHART_SAMPLE_CAPACITY - 1],
             299
         );
+        assert_eq!(chart.configured_framerate_limit, None);
     }
 
     #[test]
@@ -10096,6 +10124,7 @@ mod tests {
     fn hud_debug_fps_chart_sample_height_matches_vanilla_millis_scale() {
         assert_eq!(hud_debug_fps_chart_sample_height(16_666_667), 30);
         assert_eq!(hud_debug_fps_chart_sample_height(33_333_333), 60);
+        assert_eq!(hud_debug_fps_configured_framerate_height(120), 15);
         assert_eq!(hud_debug_fps_chart_display_string(16_666_667.0), "17 ms");
     }
 
