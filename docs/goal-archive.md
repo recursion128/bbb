@@ -5322,7 +5322,18 @@
   drain 的 native profiling toggle request，并让主循环 drain 后写明 native
   profiler output 尚未实现；F3 release 不触发普通 overlay toggle。边界：
   `ActiveMetricsRecorder`、profiler sampling、自动/手动 stop、`debug/profiling`
-  zip 输出、以及 vanilla profiling chat feedback 仍未实现。
+  zip 输出仍未实现。
+- [x] debug overlay F3+L profiler stop clickable feedback payload（P2
+  input/runtime slice，2026-07-08）：依据 `Minecraft.debugClientMetricsStart`
+  发送 `debug.profiling.start`，以及 `onFinished` 回调用带
+  `ClickEvent.OpenFile(profilePath.getParent())` 的 underlined archive path
+  发送 `debug.profiling.stop`。`ClientInputState` 现在跟踪 profiling shell
+  的 start/stop 状态，start 时写入 vanilla-shaped start feedback，stop 时写入
+  `[Debug]: Profiling ended...` styled client-system chat，其中结果目录 run
+  underlined 且 `open_file` 指向 `debug/profiling`；主循环 drain 时分别统计
+  start/stop 请求数并确保该反馈目录存在。边界：仍不伪造 `ProfileResults`
+  或 zip 内容，`ActiveMetricsRecorder`、采样、自动/manual stop timing、真实
+  `debug/profiling` zip 输出仍待后续。
 - [x] debug overlay F3+F6 debug-options request shell（P2 input/runtime
   slice，2026-07-08）：依据 `Options.keyDebugDebugOptions` 绑定 F6，以及
   `KeyboardHandler.handleDebugKeys` 在 `Minecraft.canInterruptScreen()` 允许
@@ -5669,8 +5680,8 @@
   `styled_content` runs，plain chat 走单个默认样式 run，native debug feedback
   走三段 runs：yellow/bold `[Debug]:`、默认空格、默认正文；control
   `world.client_chat` 自动暴露该 styled projection。边界：`ComponentStyle`
-  还不建模 click events，F3+S open-file / profiler result clickable payload
-  仍待后续。
+  click events 已由后续 F3+S open-file 与 F3+L profiler stop payload slice
+  覆盖。
 - [x] debug overlay F3+S dynamic texture dump clickable feedback payload（P2
   protocol/native/control slice，2026-07-08）：依据
   `KeyboardHandler.handleDebugKeys` 在 dump dynamic textures 后构造
@@ -5681,8 +5692,8 @@
   `ComponentClickEvent` 并在 styled component traversal 中继承解析，native
   F3+S feedback 在 plain `content` 不变的同时把 `screenshots/debug` run 标为
   underlined + `open_file`，control snapshot 随 `styled_content` 暴露该 payload。
-  边界：当前 payload 使用 native dump drain 的同一相对路径；profiler result
-  clickable payload 随 profiler output 后续推进。
+  边界：当前 payload 使用 native dump drain 的同一相对路径；profiler stop
+  clickable feedback 已由后续 F3+L slice 覆盖。
 - [x] debug overlay profiler chart numeric-key routing shell（P2 native
   slice，2026-07-08）：依据 `KeyboardHandler.keyPress` 在 profiler chart 可见且
   debug modifier 未按下时调用

@@ -64,7 +64,7 @@ use input::{
     handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
     handle_text_input_with_item_runtime, queue_debug_recreate_server_query_request,
-    release_active_input, ClientInputState, DebugClipboard,
+    release_active_input, ClientInputState, DebugClipboard, DebugProfilingToggleRequest,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -459,12 +459,35 @@ fn main() -> Result<()> {
                                 }
                             }
                         }
-                        let profiling_toggle_requests =
-                            input.take_debug_profiling_toggle_requests();
-                        if profiling_toggle_requests > 0 {
+                        let profiling_toggle_requests = input.take_debug_profiling_toggle_requests();
+                        if !profiling_toggle_requests.is_empty() {
+                            let profiling_start_requests = profiling_toggle_requests
+                                .iter()
+                                .filter(|request| {
+                                    matches!(request, DebugProfilingToggleRequest::Start)
+                                })
+                                .count();
+                            let profiling_stop_requests = profiling_toggle_requests
+                                .iter()
+                                .filter(|request| matches!(request, DebugProfilingToggleRequest::Stop))
+                                .count();
+                            if profiling_stop_requests > 0 {
+                                let profiling_results_dir = std::path::Path::new(
+                                    input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
+                                );
+                                if let Err(err) = std::fs::create_dir_all(profiling_results_dir) {
+                                    tracing::warn!(
+                                        ?err,
+                                        path = %profiling_results_dir.display(),
+                                        "failed to create profiling feedback directory"
+                                    );
+                                }
+                            }
                             tracing::info!(
-                                profiling_toggle_requests,
-                                "profiling toggle requested by debug hotkey; native profiler output is not implemented"
+                                profiling_toggle_requests = profiling_toggle_requests.len(),
+                                profiling_start_requests,
+                                profiling_stop_requests,
+                                "profiling toggled by debug hotkey; native profiler output is not implemented"
                             );
                         }
                         let profiler_chart_navigation_requests =

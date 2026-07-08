@@ -92,6 +92,7 @@ const DEBUG_CRASH_TIME: Duration = Duration::from_secs(10);
 const DEBUG_CRASH_REPORT_INTERVAL: Duration = Duration::from_secs(1);
 const CHAT_ENTRY_MAX_LENGTH: usize = 256;
 pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
+pub(crate) const DEBUG_PROFILING_RESULTS_RELATIVE_DIR: &str = "debug/profiling";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
@@ -142,6 +143,12 @@ struct DebugNetContext<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DebugGameModeSwitcherState {
     selected: GameType,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugProfilingToggleRequest {
+    Start,
+    Stop,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -227,7 +234,8 @@ pub(crate) struct ClientInputState {
     debug_pause_on_lost_focus: bool,
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
-    debug_profiling_toggle_requests: u32,
+    debug_profiling_recording: bool,
+    debug_profiling_toggle_requests: Vec<DebugProfilingToggleRequest>,
     debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
@@ -655,7 +663,9 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_dynamic_texture_dump_requests)
     }
 
-    pub(crate) fn take_debug_profiling_toggle_requests(&mut self) -> u32 {
+    pub(crate) fn take_debug_profiling_toggle_requests(
+        &mut self,
+    ) -> Vec<DebugProfilingToggleRequest> {
         std::mem::take(&mut self.debug_profiling_toggle_requests)
     }
 
@@ -1045,8 +1055,20 @@ impl ClientInputState {
                 true
             }
             KeyCode::KeyL => {
-                self.debug_profiling_toggle_requests =
-                    self.debug_profiling_toggle_requests.saturating_add(1);
+                if self.debug_profiling_recording {
+                    self.debug_profiling_recording = false;
+                    self.debug_profiling_toggle_requests
+                        .push(DebugProfilingToggleRequest::Stop);
+                    push_debug_profiling_stop_feedback(world.as_deref_mut());
+                } else {
+                    self.debug_profiling_recording = true;
+                    self.debug_profiling_toggle_requests
+                        .push(DebugProfilingToggleRequest::Start);
+                    push_debug_feedback_chat_message(
+                        world.as_deref_mut(),
+                        "Profiling started for 10 seconds. Use F3 + L to stop early",
+                    );
+                }
                 true
             }
             KeyCode::F6 => {
@@ -1297,6 +1319,28 @@ fn push_debug_dynamic_texture_dump_feedback(world: Option<&mut WorldStore>) {
                     underlined: Some(true),
                     click_event: Some(ComponentClickEvent::OpenFile {
                         path: DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH.to_string(),
+                    }),
+                    ..ComponentStyle::default()
+                },
+            },
+        ],
+    );
+}
+
+fn push_debug_profiling_stop_feedback(world: Option<&mut WorldStore>) {
+    push_debug_feedback_chat_runs(
+        world,
+        vec![
+            StyledTextRun {
+                text: "Profiling ended. Results folder ".to_string(),
+                style: ComponentStyle::default(),
+            },
+            StyledTextRun {
+                text: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
+                style: ComponentStyle {
+                    underlined: Some(true),
+                    click_event: Some(ComponentClickEvent::OpenFile {
+                        path: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
                     }),
                     ..ComponentStyle::default()
                 },

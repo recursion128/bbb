@@ -1118,9 +1118,9 @@ When an agent does any of the following, update this file in the same slice:
     non-default/editable debug entries, actual entity hitbox
     server details,
     advanced tooltip component-specific full parity/persistence,
-    F3+I full local entity saveWithoutId parity, profiler result clickable
-    feedback payload, profiler data sampling and ProfileResults tree
-    navigation, profiling metrics recorder/output, actual DebugOptionsScreen,
+    F3+I full local entity saveWithoutId parity, profiler data sampling and
+    ProfileResults tree navigation, profiling metrics recorder/output, actual
+    DebugOptionsScreen,
     F3+F4 GameModeSwitcher rendering/mouse polish, native pause
     loop/PauseScreen, and `SharedConstants.DEBUG_HOTKEYS` /
     `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
@@ -1378,9 +1378,22 @@ When an agent does any of the following, update this file in the same slice:
     feedback from the recorder callbacks. bbb now consumes L while F3 is held,
     records a drainable native profiling toggle request, and logs that request
     in the main event loop without toggling the debug overlay. Boundary:
-    `ActiveMetricsRecorder`, profiler sampling, automatic/manual stop, zipped
-    `debug/profiling` output, and vanilla profiling chat feedback are still
-    not implemented.
+    `ActiveMetricsRecorder`, profiler sampling, automatic/manual stop, and
+    zipped `debug/profiling` output are still not implemented.
+  - Done 2026-07-08 — Debug overlay F3+L profiler stop clickable feedback
+    payload. Vanilla anchors: `Minecraft.debugClientMetricsStart` sends
+    `debug.profiling.start` on start, and its `onFinished` callback builds
+    `debug.profiling.stop` with an underlined profile archive path whose
+    `ClickEvent.OpenFile` opens the archive parent directory
+    (`MetricsPersister.PROFILING_RESULTS_DIR`, `debug/profiling`). bbb now
+    tracks the native profiling shell as start/stop requests, emits the
+    vanilla-shaped start feedback, and on stop pushes styled debug feedback
+    whose result-folder run is underlined and carries an `open_file` payload
+    for `debug/profiling`; the main loop logs start/stop request counts
+    separately and creates that feedback directory on stop requests.
+    Boundary: this is still shell feedback; `ActiveMetricsRecorder`, profiler
+    sampling, automatic/manual stop timing, and real zipped `debug/profiling`
+    output remain future work.
   - Done 2026-07-08 — Debug overlay F3+I block/entity recreate clipboard
     action.
     Vanilla anchors: `Options.keyDebugCopyRecreateCommand` binds key code 73
@@ -1477,8 +1490,8 @@ When an agent does any of the following, update this file in the same slice:
     `OnGround`) to Shift+F3+I entity recreate commands. Boundary: this only
     uses client-owned canonical transform state; full local entity
     `saveWithoutId` field parity (base save fields, metadata-derived flags,
-    custom data, passengers, and entity-specific save data) plus
-    profiler result clickable feedback payloads remain future work.
+    custom data, passengers, and entity-specific save data) remains future
+    work.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -1489,8 +1502,7 @@ When an agent does any of the following, update this file in the same slice:
     where `[Debug]:` is yellow/bold while the message body stays default style.
     Control snapshots expose the new styled projection without changing the
     existing plain `content` consumers. Boundary: `ComponentStyle` click events
-    are covered by the F3+S clickable payload slice; profiler result clickable
-    payloads remain future work with profiler output.
+    are covered by the F3+S and F3+L clickable payload slices.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump
     clickable/open-file feedback payload.
     Vanilla anchors: `KeyboardHandler.handleDebugKeys` builds the
@@ -1503,8 +1515,8 @@ When an agent does any of the following, update this file in the same slice:
     click events into styled runs, and emits the F3+S local feedback as
     `[Debug]: Saved dynamic textures to screenshots/debug` with the final path
     run underlined and carrying an `open_file` click payload for the same
-    relative dump target used by the native drain. Boundary: profiler result
-    clickable payloads remain with profiler output.
+    relative dump target used by the native drain. Boundary: profiler
+    clickable feedback is covered by the F3+L shell slice.
   - Done 2026-07-08 — Debug overlay F3+S dynamic texture dump request.
     Vanilla anchors: `Options.keyDebugDumpDynamicTextures` binds key code 83
     (S), `TextureUtil.getDebugTexturePath(gameDirectory)` resolves
@@ -1527,8 +1539,8 @@ When an agent does any of the following, update this file in the same slice:
     directory and writes PNG sheets for the current dynamic player skin atlas
     and dynamic player profile texture atlas when those atlases have uploaded
     images. Focused tests cover empty dumps and RGBA/dimension-preserving atlas
-    PNG output. Boundary: broader non-profile dynamic texture loading and
-    profiler result clickable payloads remain future parity work.
+    PNG output. Boundary: broader non-profile dynamic texture loading remains
+    future parity work.
   - Done 2026-07-08 — Debug overlay advanced item tooltips startup config.
     Vanilla anchors: `Options.advancedItemTooltips` is loaded/saved through the
     options file, and `KeyboardHandler.handleDebugKeys` toggles it on F3+H,
@@ -2309,9 +2321,11 @@ When an agent does any of the following, update this file in the same slice:
     entity recreate copies now include client-owned transform SNBT for
     `Motion`, `Rotation`, and known `OnGround`. Debug feedback messages now
     carry a yellow/bold `[Debug]:` styled prefix while preserving plain
-    `content`, and F3+S dynamic texture dump feedback now underlines the path
-    run with an `open_file` click payload. Profiler chart digit presses now
-    route to a drainable navigation shell without blocking hotbar keys.
+    `content`, F3+S dynamic texture dump feedback now underlines the path
+    run with an `open_file` click payload, and F3+L profiler stop feedback
+    carries the same underlined/open-file result-path shape. Profiler chart
+    digit presses now route to a drainable navigation shell without blocking
+    hotbar keys.
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
     request. F3+F4 now has a native GameModeSwitcher input/command shell. The
     ordinary F3 keymap has been audited against vanilla `Options.debugKeys`;
@@ -2321,9 +2335,9 @@ When an agent does any of the following, update this file in the same slice:
     are non-default/editable debug entries, entity hitbox
     server details,
     advanced tooltip component-specific full parity/persistence, F3+I full
-    local entity saveWithoutId parity, profiler result clickable feedback
-    payload, profiler data sampling and ProfileResults tree navigation,
-    profiling metrics recorder/output, actual DebugOptionsScreen, F3+F4
+    local entity saveWithoutId parity, profiler data sampling and
+    ProfileResults tree navigation, profiling metrics recorder/output, actual
+    DebugOptionsScreen, F3+F4
     GameModeSwitcher rendering/mouse polish, native pause loop/PauseScreen, and
     `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

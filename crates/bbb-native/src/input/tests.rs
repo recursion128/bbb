@@ -2281,27 +2281,74 @@ fn debug_block_state_description_matches_vanilla_recreate_property_format() {
 }
 
 #[test]
-fn f3_l_records_profiling_toggle_request_without_toggling_overlay() {
+fn f3_l_toggles_profiling_feedback_without_toggling_overlay() {
     let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
 
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
-        None,
+        Some(&mut world),
         None
     ));
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::KeyL),
         ElementState::Pressed,
-        None,
+        Some(&mut world),
         None
     ));
-    assert_eq!(input.take_debug_profiling_toggle_requests(), 1);
-    assert_eq!(input.take_debug_profiling_toggle_requests(), 0);
+    assert_eq!(
+        input.take_debug_profiling_toggle_requests(),
+        vec![DebugProfilingToggleRequest::Start]
+    );
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert_eq!(
+        input.take_debug_profiling_toggle_requests(),
+        vec![DebugProfilingToggleRequest::Stop]
+    );
+    assert!(input.take_debug_profiling_toggle_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 2);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Profiling started for 10 seconds. Use F3 + L to stop early"
+    );
+    assert_eq!(messages[1].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(
+        messages[1].content,
+        "[Debug]: Profiling ended. Results folder debug/profiling"
+    );
+    assert_eq!(messages[1].styled_content.len(), 4);
+    assert_eq!(
+        messages[1].styled_content[2].text,
+        "Profiling ended. Results folder "
+    );
+    assert_eq!(
+        messages[1].styled_content[2].style,
+        ComponentStyle::default()
+    );
+    assert_eq!(
+        messages[1].styled_content[3].text,
+        DEBUG_PROFILING_RESULTS_RELATIVE_DIR
+    );
+    assert_eq!(messages[1].styled_content[3].style.underlined, Some(true));
+    assert_eq!(
+        messages[1].styled_content[3].style.click_event,
+        Some(ComponentClickEvent::OpenFile {
+            path: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
+        })
+    );
+    assert_eq!(world.counters().chat_messages_tracked, 2);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
-        None,
+        Some(&mut world),
         None
     ));
     assert!(!input.debug_overlay_visible());

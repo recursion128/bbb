@@ -316,8 +316,8 @@ Screen Render Surfaces" 条目）：
   keymap audit 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   advanced tooltip component-specific full parity/persistence、F3+I full local
-  entity saveWithoutId parity、profiler result clickable feedback payload、
-  profiler data sampling and ProfileResults tree navigation、
+  entity saveWithoutId parity、profiler data sampling and ProfileResults tree
+  navigation、
   profiling metrics recorder/output、actual DebugOptionsScreen、F3+F4
   GameModeSwitcher rendering/mouse polish、native pause loop/PauseScreen、
   `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys，
