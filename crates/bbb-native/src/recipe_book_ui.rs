@@ -138,6 +138,21 @@ pub(crate) fn crafting_recipe_book_visible_tab_indices(
         .collect()
 }
 
+pub(crate) fn crafting_recipe_book_tab_has_highlighted_recipe(
+    world: &WorldStore,
+    grid: RecipeBookCraftingGrid,
+    tab_index: usize,
+    only_craftable: bool,
+) -> bool {
+    if tab_index == 0 {
+        return false;
+    }
+    crafting_recipe_book_collections(world, grid, tab_index, only_craftable, "", None)
+        .iter()
+        .flat_map(|collection| collection.entries.iter())
+        .any(|entry| world.recipe_book().highlights.contains(&entry.id.index))
+}
+
 pub(crate) fn recipe_book_page_count(collection_count: usize) -> usize {
     collection_count.div_ceil(RECIPE_BOOK_ITEMS_PER_PAGE)
 }

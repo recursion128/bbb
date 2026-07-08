@@ -10,12 +10,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+const RECIPE_BOOK_TAB_ANIMATION_TICKS: u32 = 15;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientRecipeBookState {
     pub known: BTreeMap<i32, ProtocolRecipeDisplayEntry>,
     pub highlights: BTreeSet<i32>,
     pub settings: ProtocolRecipeBookSettings,
     pub notification_ids: Vec<i32>,
+    #[serde(default)]
+    pub tab_animation_ticks_remaining: u32,
 }
 
 impl WorldStore {
@@ -26,19 +30,25 @@ impl WorldStore {
             self.counters.recipe_book_replace_packets += 1;
             self.recipe_book.known.clear();
             self.recipe_book.highlights.clear();
+            self.recipe_book.tab_animation_ticks_remaining = 0;
         }
 
         self.recipe_book.notification_ids.clear();
+        let mut highlighted = false;
         for entry in packet.entries {
             let id = entry.contents.id.index;
             if entry.highlight {
                 self.recipe_book.highlights.insert(id);
+                highlighted = true;
             }
             if entry.notification {
                 self.counters.recipe_book_notifications_received += 1;
                 self.recipe_book.notification_ids.push(id);
             }
             self.recipe_book.known.insert(id, entry.contents);
+        }
+        if highlighted {
+            self.recipe_book.tab_animation_ticks_remaining = RECIPE_BOOK_TAB_ANIMATION_TICKS;
         }
         self.update_recipe_book_counts();
     }
@@ -50,7 +60,17 @@ impl WorldStore {
             self.recipe_book.known.remove(&id.index);
             self.recipe_book.highlights.remove(&id.index);
         }
+        if self.recipe_book.highlights.is_empty() {
+            self.recipe_book.tab_animation_ticks_remaining = 0;
+        }
         self.update_recipe_book_counts();
+    }
+
+    pub fn advance_recipe_book_tab_animation(&mut self, ticks: u32) {
+        self.recipe_book.tab_animation_ticks_remaining = self
+            .recipe_book
+            .tab_animation_ticks_remaining
+            .saturating_sub(ticks);
     }
 
     pub fn apply_recipe_book_settings(&mut self, settings: ProtocolRecipeBookSettings) {
@@ -100,6 +120,14 @@ mod tests {
         assert_eq!(store.recipe_book().known.len(), 2);
         assert!(store.recipe_book().highlights.contains(&7));
         assert_eq!(store.recipe_book().notification_ids, vec![7]);
+        assert_eq!(
+            store.recipe_book().tab_animation_ticks_remaining,
+            RECIPE_BOOK_TAB_ANIMATION_TICKS
+        );
+        store.advance_recipe_book_tab_animation(7);
+        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 8);
+        store.advance_recipe_book_tab_animation(8);
+        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 0);
 
         store.apply_recipe_book_add(ProtocolRecipeBookAdd {
             replace: false,
@@ -108,12 +136,19 @@ mod tests {
         assert_eq!(store.recipe_book().known.len(), 3);
         assert!(store.recipe_book().highlights.contains(&9));
         assert_eq!(store.recipe_book().notification_ids, Vec::<i32>::new());
+        assert_eq!(
+            store.recipe_book().tab_animation_ticks_remaining,
+            RECIPE_BOOK_TAB_ANIMATION_TICKS
+        );
 
         store.apply_recipe_book_remove(ProtocolRecipeBookRemove {
-            recipe_ids: vec![RecipeDisplayId { index: 7 }],
+            recipe_ids: vec![RecipeDisplayId { index: 7 }, RecipeDisplayId { index: 9 }],
         });
         assert!(!store.recipe_book().known.contains_key(&7));
+        assert!(!store.recipe_book().known.contains_key(&9));
         assert!(!store.recipe_book().highlights.contains(&7));
+        assert!(!store.recipe_book().highlights.contains(&9));
+        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 0);
 
         store.apply_recipe_book_settings(ProtocolRecipeBookSettings {
             crafting: RecipeBookTypeSettings {
@@ -142,9 +177,9 @@ mod tests {
         assert_eq!(counters.recipe_book_remove_packets, 1);
         assert_eq!(counters.recipe_book_settings_packets, 1);
         assert_eq!(counters.recipe_book_entries_received, 3);
-        assert_eq!(counters.recipe_book_removed_entries_received, 1);
-        assert_eq!(counters.recipe_book_entries_tracked, 2);
-        assert_eq!(counters.recipe_book_highlights_tracked, 1);
+        assert_eq!(counters.recipe_book_removed_entries_received, 2);
+        assert_eq!(counters.recipe_book_entries_tracked, 1);
+        assert_eq!(counters.recipe_book_highlights_tracked, 0);
         assert_eq!(counters.recipe_book_notifications_received, 1);
     }
 

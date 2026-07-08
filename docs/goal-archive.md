@@ -1924,6 +1924,20 @@
   overlay、tab notification animation、完整 `FullTextSearchTree`
   token/namespace-path/intersection 语义、tag/composite SlotDisplay
   time-cycling、narrow-screen overlap。
+- [x] recipe-book tab notification baseline pulse（P2 HUD/world slice，
+  2026-07-08）：依据 `ClientPacketListener.handleRecipeBookAdd` 将
+  highlighted entries 写入 `ClientRecipeBook`、`RecipeBookTabButton.startAnimation`
+  对非 search category tab 扫 `willHighlight(recipe.id())`，以及
+  `extractContents` 以 15 tick、`1 + 0.1*sin(animationTime/15*PI)`、pivot
+  `(x+8,y+12)` 做 y-scale，world 现在在 highlighted recipe-book entry 到来时
+  启动 15 tick tab 动画窗口并随 client time 递减；native 按当前 filter
+  状态判断 crafting category tab 是否含 highlighted selected recipe，并把
+  vanilla sine/pivot 投影到 tab 背景高度和 tab icon anchor y 坐标。边界：
+  fake-item quads/block-item icons 暂保持 renderer 16x16 rect，未做完整非等比
+  y-scale。剩余：furnace-family raw recipe displays、craftability retry guard、
+  multi-recipe picker/cycling/right-click overlay、完整 `FullTextSearchTree`
+  token/namespace-path/intersection 语义、tag/composite SlotDisplay
+  time-cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

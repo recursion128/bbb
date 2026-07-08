@@ -6404,6 +6404,48 @@ fn hud_inventory_screen_projects_selected_recipe_book_tab() {
 }
 
 #[test]
+fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = shapeless_crafting_recipe_book_entry(20, 2, None, 120);
+    entry.flags |= 0b10;
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+    world.advance_recipe_book_tab_animation(7);
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.5,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTabSelected,
+                -32,
+                29,
+                35,
+                30,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+}
+
+#[test]
 fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

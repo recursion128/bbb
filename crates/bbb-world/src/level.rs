@@ -300,6 +300,8 @@ impl WorldStore {
             return;
         }
 
+        self.advance_recipe_book_tab_animation(ticks);
+
         let Some(time) = self.world_time.as_mut() else {
             return;
         };

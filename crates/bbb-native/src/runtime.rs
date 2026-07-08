@@ -104,8 +104,9 @@ use crate::{
     },
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
-        crafting_recipe_book_ghost_slots, recipe_book_page_count, RecipeBookCraftingGrid,
-        RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+        crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
+        recipe_book_page_count, RecipeBookCraftingGrid, RecipeBookUiCollection,
+        RECIPE_BOOK_ITEMS_PER_PAGE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -2671,6 +2672,7 @@ fn hud_inventory_screen_with_local_state(
         world,
         layout.background,
         &local_state.recipe_book_tabs,
+        partial_tick,
     ));
     if let Some(layer) =
         hud_recipe_book_search_box_layer(world, layout.background, &local_state.recipe_book_search)
@@ -2874,11 +2876,14 @@ const SMOKER_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 2] = [
         secondary: None,
     },
 ];
+const RECIPE_BOOK_TAB_ANIMATION_TIME: f32 = 15.0;
+const RECIPE_BOOK_TAB_ANIMATION_PIVOT_Y: f32 = 12.0;
 
 fn hud_recipe_book_tab_layers(
     world: &WorldStore,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
+    partial_tick: f32,
 ) -> Vec<HudInventoryBackgroundLayer> {
     if recipe_book_main_gui_offset(world, background) == 0 {
         return Vec::new();
@@ -2893,6 +2898,11 @@ fn hud_recipe_book_tab_layers(
         .enumerate()
         .map(|(visible_index, tab_index)| {
             let selected = tab_index == selected_index;
+            let scale_y =
+                recipe_book_tab_animation_scale_y(world, background, tab_index, partial_tick);
+            let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
+            let (y, height) =
+                scaled_recipe_book_tab_y_and_height(y, RECIPE_BOOK_TAB_HEIGHT, scale_y);
             hud_inventory_background_layer(
                 if selected {
                     HudInventoryBackgroundTexture::RecipeBookTabSelected
@@ -2905,14 +2915,69 @@ fn hud_recipe_book_tab_layers(
                     } else {
                         0
                     },
-                RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32,
+                y,
                 u32::try_from(RECIPE_BOOK_TAB_WIDTH).unwrap_or_default(),
-                u32::try_from(RECIPE_BOOK_TAB_HEIGHT).unwrap_or_default(),
+                height,
                 [0.0, 0.0],
                 [1.0, 1.0],
             )
         })
         .collect()
+}
+
+fn recipe_book_tab_animation_scale_y(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    tab_index: usize,
+    partial_tick: f32,
+) -> f32 {
+    if !recipe_book_tab_has_highlight_animation(world, background, tab_index) {
+        return 1.0;
+    }
+    let remaining = world.recipe_book().tab_animation_ticks_remaining;
+    if remaining == 0 {
+        return 1.0;
+    }
+    let animation_time = (remaining as f32 - partial_tick.clamp(0.0, 1.0)).max(0.0);
+    if animation_time <= 0.0 {
+        return 1.0;
+    }
+    1.0 + 0.1 * (animation_time / RECIPE_BOOK_TAB_ANIMATION_TIME * std::f32::consts::PI).sin()
+}
+
+fn recipe_book_tab_has_highlight_animation(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    tab_index: usize,
+) -> bool {
+    let Some(grid) = recipe_book_crafting_grid_for_background(background) else {
+        return false;
+    };
+    let Some(book_type) = recipe_book_type_for_background(background) else {
+        return false;
+    };
+    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
+    crafting_recipe_book_tab_has_highlighted_recipe(world, grid, tab_index, only_craftable)
+}
+
+fn scaled_recipe_book_tab_y_and_height(y: i32, height: i32, scale_y: f32) -> (i32, u32) {
+    if (scale_y - 1.0).abs() <= f32::EPSILON {
+        return (y, u32::try_from(height).unwrap_or_default());
+    }
+    let pivot_y = y as f32 + RECIPE_BOOK_TAB_ANIMATION_PIVOT_Y;
+    let top = pivot_y + (y as f32 - pivot_y) * scale_y;
+    let bottom = pivot_y + ((y + height) as f32 - pivot_y) * scale_y;
+    let scaled_y = top.round() as i32;
+    let scaled_height = (bottom - top).round().max(1.0) as u32;
+    (scaled_y, scaled_height)
+}
+
+fn scaled_recipe_book_tab_child_y(tab_y: i32, child_y: i32, scale_y: f32) -> i32 {
+    if (scale_y - 1.0).abs() <= f32::EPSILON {
+        return child_y;
+    }
+    let pivot_y = tab_y as f32 + RECIPE_BOOK_TAB_ANIMATION_PIVOT_Y;
+    (pivot_y + (child_y as f32 - pivot_y) * scale_y).round() as i32
 }
 
 fn hud_recipe_book_tab_icon_items(
@@ -2947,7 +3012,9 @@ fn hud_recipe_book_tab_icon_items(
         } else {
             0
         };
-        let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32 + 5;
+        let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
+        let scale_y = recipe_book_tab_animation_scale_y(world, background, tab_index, partial_tick);
+        let y = scaled_recipe_book_tab_child_y(tab_y, tab_y + 5, scale_y);
         if let Some(secondary) = icon.secondary {
             push_recipe_book_tab_icon_item(
                 &mut items,
