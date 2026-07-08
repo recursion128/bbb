@@ -2036,6 +2036,16 @@
   中统一 flatten direct item、tag、with-remainder input 与 composite children，
   再按 30 tick slot-select index 取候选栈。剩余：craftability retry guard、
   fake-item y-scaling、narrow-screen overlap。
+- [x] recipe-book craftability retry guard（P2 HUD/input slice，2026-07-08）：
+  依据 `RecipeBookComponent.mouseClicked` 对 recipe button 和 overlay click
+  共用 `tryPlaceRecipe`、`tryPlaceRecipe` 在 recipe 不可合成且等于
+  `lastPlacedRecipe` 时返回 false、否则记录 `lastPlacedRecipe`、清空
+  ghost slots 并通过 `MultiPlayerGameMode.handlePlaceRecipe` 发包的行为，
+  native input 现在把
+  recipe button 和 overlay entry 的 craftable 位带入 hit-test，按当前
+  container 记录上次实际发送的 recipe，并抑制同一不可合成 recipe 的重复
+  点击；可合成 recipe 的重复点击仍继续发送。剩余：fake-item y-scaling、
+  narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

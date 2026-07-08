@@ -11248,7 +11248,11 @@ fn crafting_recipe_book_search_recipe_indices(
         Some(item_runtime),
     )
     .iter()
-    .filter_map(|collection| collection.recipe_index_at_slot_select_index(0))
+    .filter_map(|collection| {
+        collection
+            .recipe_index_and_craftable_at_slot_select_index(0)
+            .map(|(recipe_index, _)| recipe_index)
+    })
     .collect()
 }
 

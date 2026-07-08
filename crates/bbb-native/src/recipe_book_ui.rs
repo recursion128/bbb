@@ -139,12 +139,18 @@ impl<'a> RecipeBookUiCollection<'a> {
             .and_then(recipe_book_result_stack)
     }
 
-    pub(crate) fn recipe_index_at_slot_select_index(
+    pub(crate) fn recipe_index_and_craftable_at_slot_select_index(
         &self,
         slot_select_index: usize,
-    ) -> Option<i32> {
-        self.entry_at_slot_select_index(slot_select_index)
-            .map(|entry| entry.id.index)
+    ) -> Option<(i32, bool)> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        let index = slot_select_index % self.entries.len();
+        Some((
+            self.entries[index].id.index,
+            self.craftable_entries.get(index).copied().unwrap_or(false),
+        ))
     }
 
     pub(crate) fn has_multiple_recipes(&self) -> bool {

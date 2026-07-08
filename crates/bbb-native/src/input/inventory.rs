@@ -783,7 +783,7 @@ fn maybe_turn_recipe_book_page(
 
 fn maybe_handle_recipe_book_overlay_click(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     item_runtime: Option<&NativeItemRuntime>,
@@ -795,24 +795,20 @@ fn maybe_handle_recipe_book_overlay_click(
         return false;
     }
     if button_num == 0 {
-        if let (Some(recipe_index), Some(container_id)) = (
-            recipe_book_overlay_recipe_at_position(
+        if let Some((recipe_index, craftable)) = recipe_book_overlay_recipe_at_position(
+            input,
+            world,
+            item_runtime,
+            cursor_position,
+            surface_size,
+        ) {
+            maybe_queue_recipe_book_place_recipe(
                 input,
                 world,
-                item_runtime,
-                cursor_position,
-                surface_size,
-            ),
-            world.open_container_id(),
-        ) {
-            queue_place_recipe_command(
                 counters,
                 net_commands,
-                PlaceRecipeCommand {
-                    container_id,
-                    recipe_index,
-                    use_max_items: input.shift_down(),
-                },
+                recipe_index,
+                craftable,
             );
         }
     }
@@ -862,14 +858,14 @@ fn maybe_open_recipe_book_overlay(
 
 fn maybe_queue_recipe_book_recipe_click(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(recipe_index) = recipe_book_recipe_button_at_position(
+    let Some((recipe_index, craftable)) = recipe_book_recipe_button_at_position(
         input,
         world,
         item_runtime,
@@ -878,9 +874,37 @@ fn maybe_queue_recipe_book_recipe_click(
     ) else {
         return false;
     };
+    if !maybe_queue_recipe_book_place_recipe(
+        input,
+        world,
+        counters,
+        net_commands,
+        recipe_index,
+        craftable,
+    ) {
+        return false;
+    }
+    input.recipe_book_search_focused = false;
+    input.recipe_book_search_suppress_open_key_commit = false;
+    true
+}
+
+fn maybe_queue_recipe_book_place_recipe(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    recipe_index: i32,
+    craftable: bool,
+) -> bool {
     let Some(container_id) = world.open_container_id() else {
         return false;
     };
+    if !craftable && input.recipe_book_last_placed_recipe == Some((container_id, recipe_index)) {
+        return false;
+    }
+    input.recipe_book_last_placed_recipe = Some((container_id, recipe_index));
+    world.clear_ghost_recipe();
     queue_place_recipe_command(
         counters,
         net_commands,
@@ -890,8 +914,6 @@ fn maybe_queue_recipe_book_recipe_click(
             use_max_items: input.shift_down(),
         },
     );
-    input.recipe_book_search_focused = false;
-    input.recipe_book_search_suppress_open_key_commit = false;
     true
 }
 
@@ -2505,7 +2527,7 @@ fn recipe_book_recipe_button_at_position(
     item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
-) -> Option<i32> {
+) -> Option<(i32, bool)> {
     let (_, _, _, collection) = recipe_book_collection_at_position(
         input,
         world,
@@ -2514,7 +2536,7 @@ fn recipe_book_recipe_button_at_position(
         surface_size,
     )?;
     let slot_select_index = recipe_book_slot_select_index(world, 0.0);
-    collection.recipe_index_at_slot_select_index(slot_select_index)
+    collection.recipe_index_and_craftable_at_slot_select_index(slot_select_index)
 }
 
 fn recipe_book_collection_at_position<'a>(
@@ -2555,7 +2577,7 @@ fn recipe_book_overlay_recipe_at_position(
     item_runtime: Option<&NativeItemRuntime>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
-) -> Option<i32> {
+) -> Option<(i32, bool)> {
     let overlay = input.recipe_book_overlay?;
     let layout = inventory_screen_layout(world)?;
     let book_type = recipe_book_type_for_background(layout.background)?;
@@ -2591,7 +2613,7 @@ fn recipe_book_overlay_recipe_at_position(
             && y >= f64::from(button_y)
             && y < f64::from(button_y + RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE)
         {
-            return Some(entry.recipe_index);
+            return Some((entry.recipe_index, entry.craftable));
         }
     }
     None

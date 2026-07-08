@@ -157,6 +157,10 @@ impl WorldStore {
         });
     }
 
+    pub fn clear_ghost_recipe(&mut self) -> bool {
+        self.client_ui.last_ghost_recipe.take().is_some()
+    }
+
     pub fn apply_pong_response(&mut self, packet: ProtocolPongResponse) {
         self.counters.pong_response_packets += 1;
         self.client_ui.last_pong_response = Some(PongResponseState { time: packet.time });
@@ -572,6 +576,26 @@ mod tests {
                 }),
             })
         );
+        assert_eq!(store.counters().ghost_recipe_packets, 1);
+    }
+
+    #[test]
+    fn clears_client_ui_ghost_recipe_without_packet_counter() {
+        let mut store = WorldStore::new();
+
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 9,
+            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3],
+                crafting: None,
+                furnace: None,
+            },
+        });
+
+        assert!(store.clear_ghost_recipe());
+        assert_eq!(store.last_ghost_recipe(), None);
+        assert!(!store.clear_ghost_recipe());
         assert_eq!(store.counters().ghost_recipe_packets, 1);
     }
 }

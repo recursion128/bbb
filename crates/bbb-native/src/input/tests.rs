@@ -4071,6 +4071,126 @@ fn recipe_book_recipe_button_click_queues_place_recipe_command() {
 }
 
 #[test]
+fn recipe_book_uncraftable_recipe_button_retry_is_guarded() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![recipe_book_shapeless_entry(42, 2, 200)],
+    });
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: None,
+            furnace: None,
+        },
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+    let recipe_button = Some(PhysicalPosition::new(
+        origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+        origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+    ));
+
+    assert!(world.last_ghost_recipe().is_some());
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        recipe_button,
+        surface_size,
+    ));
+    assert!(world.last_ghost_recipe().is_none());
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        recipe_button,
+        surface_size,
+    ));
+
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 42,
+            use_max_items: false,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn recipe_book_craftable_recipe_button_retry_still_queues() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: test_item_stack(50, 1),
+    });
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.contents.crafting_requirements = Some(vec![bbb_protocol::packets::IngredientSummary {
+        tag: None,
+        item_ids: vec![50],
+    }]);
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+    let recipe_button = Some(PhysicalPosition::new(
+        origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+        origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+    ));
+
+    for _ in 0..2 {
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            recipe_button,
+            surface_size,
+        ));
+    }
+
+    assert_eq!(counters.place_recipe_commands_queued, 2);
+    for _ in 0..2 {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+                container_id: 7,
+                recipe_index: 42,
+                use_max_items: false,
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn recipe_book_recipe_button_click_uses_search_filtered_collection() {
     let root = unique_input_temp_dir("recipe-book-search");
     write_input_tooltip_item_assets(&root);
@@ -4238,6 +4358,65 @@ fn recipe_book_right_click_overlay_queues_clicked_recipe() {
             use_max_items: false,
         })
     );
+}
+
+#[test]
+fn recipe_book_overlay_uncraftable_recipe_retry_is_guarded() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            recipe_book_shapeless_entry_with_group(42, 2, Some(7), 200),
+            recipe_book_shapeless_entry_with_group(43, 2, Some(7), 201),
+        ],
+    });
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - 320.0) / 2.0;
+    let origin_y = (600.0 - 166.0) / 2.0;
+    let recipe_button = Some(PhysicalPosition::new(
+        origin_x + f64::from(RECIPE_BOOK_RECIPE_BUTTON_X + 1),
+        origin_y + f64::from(RECIPE_BOOK_RECIPE_BUTTON_Y + 1),
+    ));
+    let overlay_second_recipe = Some(PhysicalPosition::new(origin_x + 41.0, origin_y + 37.0));
+
+    for _ in 0..2 {
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            recipe_button,
+            surface_size,
+        ));
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            overlay_second_recipe,
+            surface_size,
+        ));
+    }
+
+    assert_eq!(counters.place_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 43,
+            use_max_items: false,
+        })
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

@@ -157,6 +157,7 @@ pub(crate) struct ClientInputState {
     recipe_book_blast_furnace_page: usize,
     recipe_book_smoker_page: usize,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
+    recipe_book_last_placed_recipe: Option<(i32, i32)>,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
