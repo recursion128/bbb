@@ -36,6 +36,7 @@ pub struct AdvancementRootTabSummary {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdvancementWidgetSummary {
     pub id: String,
+    pub parent_id: Option<String>,
     pub icon: ProtocolAdvancementIconSummary,
     pub frame_type: bbb_protocol::packets::AdvancementFrameType,
     pub x: i32,
@@ -286,6 +287,7 @@ impl WorldStore {
             .is_some_and(|progress| advancement_progress_is_done(advancement, progress));
         Some(AdvancementWidgetSummary {
             id: id.to_string(),
+            parent_id: self.first_visible_advancement_parent_id(advancement),
             icon: display.icon.clone(),
             frame_type: display.frame_type,
             x: (display.x * 28.0).floor() as i32,
@@ -293,6 +295,21 @@ impl WorldStore {
             hidden: display.hidden,
             done,
         })
+    }
+
+    fn first_visible_advancement_parent_id(
+        &self,
+        advancement: &ProtocolAdvancementSummary,
+    ) -> Option<String> {
+        let mut parent_id = advancement.parent.as_deref();
+        while let Some(id) = parent_id {
+            let parent = self.advancements.advancements.get(id)?;
+            if parent.display.is_some() {
+                return Some(id.to_string());
+            }
+            parent_id = parent.parent.as_deref();
+        }
+        None
     }
 
     fn refresh_advancement_counters(&mut self) {
@@ -549,6 +566,12 @@ mod tests {
         let mut hidden_child =
             displayed_advancement("minecraft:story/hidden", Some("minecraft:story/root"));
         hidden_child.display.as_mut().unwrap().hidden = true;
+        let mut grandchild = displayed_advancement(
+            "minecraft:story/through_no_display",
+            Some("minecraft:story/no_display"),
+        );
+        grandchild.display.as_mut().unwrap().x = 3.0;
+        grandchild.display.as_mut().unwrap().y = 2.0;
         let mut store = WorldStore::new();
         store.apply_update_advancements(UpdateAdvancements {
             reset: true,
@@ -557,6 +580,7 @@ mod tests {
                 child,
                 hidden_child,
                 advancement("minecraft:story/no_display", Some("minecraft:story/root")),
+                grandchild,
             ],
             removed: Vec::new(),
             progress: vec![progress(
@@ -575,19 +599,35 @@ mod tests {
         );
 
         let widgets = store.selected_advancement_widgets();
-        assert_eq!(widgets.len(), 3);
+        assert_eq!(widgets.len(), 4);
         assert_eq!(widgets[0].id, "minecraft:story/root");
+        assert_eq!(widgets[0].parent_id, None);
         assert_eq!(widgets[0].x, 0);
         assert_eq!(widgets[0].y, 0);
         assert!(!widgets[0].done);
         assert_eq!(widgets[1].id, "minecraft:story/hidden");
+        assert_eq!(
+            widgets[1].parent_id.as_deref(),
+            Some("minecraft:story/root")
+        );
         assert!(widgets[1].hidden);
         assert!(!widgets[1].done);
         assert_eq!(widgets[2].id, "minecraft:story/mine_stone");
+        assert_eq!(
+            widgets[2].parent_id.as_deref(),
+            Some("minecraft:story/root")
+        );
         assert_eq!(widgets[2].frame_type, AdvancementFrameType::Goal);
         assert_eq!(widgets[2].x, 56);
         assert_eq!(widgets[2].y, 27);
         assert!(widgets[2].done);
+        assert_eq!(widgets[3].id, "minecraft:story/through_no_display");
+        assert_eq!(
+            widgets[3].parent_id.as_deref(),
+            Some("minecraft:story/root")
+        );
+        assert_eq!(widgets[3].x, 84);
+        assert_eq!(widgets[3].y, 54);
     }
 
     #[test]

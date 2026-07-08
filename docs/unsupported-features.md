@@ -1061,7 +1061,7 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
     window/Done button/initial display-root selection/root tab/root widget
-    shells/contents background tiling: tree connectivity, scroll/scissor, and
+    shells/contents background tiling/tree connectivity: scroll/scissor and
     hover rendering remain (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1460,9 +1460,8 @@ When an agent does any of the following, update this file in the same slice:
     hidden widgets only once progress is done. bbb now projects selected-tab
     display widgets from world state with requirement-group done semantics,
     loads the vanilla widget frame sprites, and draws in-bounds widget
-    frame/icon shells for the selected advancement tab. Connection lines,
-    hover title/description boxes, and full scroll/scissor behavior remain
-    deferred.
+    frame/icon shells for the selected advancement tab. Hover
+    title/description boxes and full scroll/scissor behavior remain deferred.
   - Done 2026-07-08 — Advancement selected-tab contents background tiling.
     Vanilla anchors: `AdvancementTab.extractContents` selects
     `display.getBackground().map(ClientAsset.ResourceTexture::texturePath)` or
@@ -1478,10 +1477,23 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:gui/advancements/backgrounds/<name>` asset ids and legacy
     `minecraft:textures/.../<name>.png` ids, and emits clipped HUD background
     tile layers inside the selected tab contents area.
+  - Done 2026-07-08 — Advancement tree connectivity lines. Vanilla anchors:
+    `AdvancementWidget.attachToParent` connects each display widget to the
+    first visible ancestor widget, skipping no-display ancestors;
+    `AdvancementTab.extractContents` draws connectivity twice before widget
+    frames/icons: black background lines first, then white foreground lines.
+    `AdvancementWidget.extractConnectivity` uses parent center `(x+13,y+13)`,
+    split x `parent.x+30`, child center `(x+13,y+13)`, inclusive
+    `horizontalLine`, and `verticalLine` with endpoint exclusion
+    (`fill(x, y0+1, x+1, y1)`). bbb now projects each selected-tab widget's
+    first visible parent id, uses renderer-owned 1x1 black/white line textures,
+    emits the same 8 black rectangles plus 3 white rectangles per edge, clips
+    them to the 234x113 contents area, and orders them between tiled
+    background and widget frame/icon layers.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
     footer Done plus initial display-root selection/root tab/root widget shells
-    and selected-tab tiled background are live. The
+    plus selected-tab tiled background and tree connectivity are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe

@@ -2159,6 +2159,17 @@
   `minecraft:textures/.../<name>.png` 字符串，并生成裁剪后的 HUD tile layers。
   剩余：tree connectivity、scroll/scissor、hover title/description boxes，以及
   debug overlay。
+- [x] advancement tree connectivity lines（P2 world/native/renderer slice，
+  2026-07-08）：依据 `AdvancementWidget.attachToParent` 跳过无 display 父节点、
+  连接到第一个 visible parent widget；`AdvancementTab.extractContents` 先绘制
+  黑色 background connectivity、再绘制白色 foreground connectivity、最后绘制
+  widget frame/icon；`AdvancementWidget.extractConnectivity` 使用 parent center、
+  `splitX = parent.x + 30`、child center，并沿用 inclusive horizontal line 与
+  endpoint-excluding vertical line。world 现在在 selected widget 摘要中投影
+  `parent_id`；renderer 提供晋升连接线专用 1x1 black/white HUD 纹理；runtime
+  按 vanilla 两 pass 生成每条 edge 的 8 个黑色矩形与 3 个白色矩形，裁剪到
+  234x113 内容区，并把连接线排在背景 tile 之后、widget frame/icon 之前。
+  剩余：scroll/scissor、hover title/description boxes，以及 debug overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

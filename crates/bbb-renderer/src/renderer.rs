@@ -277,6 +277,7 @@ pub struct Renderer {
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
+    pub(super) hud_black_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) camera_buffer: wgpu::Buffer,
     pub(super) gui_item_camera_buffer: wgpu::Buffer,
@@ -1152,6 +1153,14 @@ impl Renderer {
             1,
             &[255, 255, 255, 255],
         )?;
+        let hud_black_pixel = create_hud_sprite_gpu(
+            &device,
+            &queue,
+            &hud_bind_group_layout,
+            1,
+            1,
+            &[0, 0, 0, 255],
+        )?;
 
         Ok(Self {
             surface,
@@ -1270,6 +1279,7 @@ impl Renderer {
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
+            hud_black_pixel,
             terrain_bind_group_layout,
             camera_buffer,
             gui_item_camera_buffer,

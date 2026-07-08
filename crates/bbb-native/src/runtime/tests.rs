@@ -9628,6 +9628,152 @@ fn hud_inventory_screen_projects_advancement_root_tabs() {
     );
 }
 
+#[test]
+fn advancement_widget_connection_layers_match_vanilla_two_pass_lines() {
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let widgets = vec![
+        advancement_widget_summary_for_test("minecraft:story/root", None, 0, 0),
+        advancement_widget_summary_for_test(
+            "minecraft:story/mine_stone",
+            Some("minecraft:story/root"),
+            56,
+            27,
+        ),
+    ];
+
+    let layers = advancements_widget_connection_layers(&widgets, window_x, window_y);
+
+    assert_eq!(
+        layers,
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 88,
+                inside_y + 41,
+                18,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 88,
+                inside_y + 42,
+                19,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 88,
+                inside_y + 43,
+                18,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 104,
+                inside_y + 68,
+                41,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 104,
+                inside_y + 69,
+                41,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 104,
+                inside_y + 70,
+                41,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 104,
+                inside_y + 43,
+                1,
+                26,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Background,
+                ),
+                inside_x + 106,
+                inside_y + 43,
+                1,
+                26,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Foreground,
+                ),
+                inside_x + 88,
+                inside_y + 42,
+                18,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Foreground,
+                ),
+                inside_x + 105,
+                inside_y + 69,
+                40,
+                1,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::AdvancementLine(
+                    HudAdvancementLineTexture::Foreground,
+                ),
+                inside_x + 105,
+                inside_y + 43,
+                1,
+                26,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
+    );
+}
+
 fn advancements_centered_text_label(
     text: &str,
     center_x: i32,
@@ -9669,6 +9815,28 @@ fn runtime_displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementS
         }),
         requirements: Vec::new(),
         sends_telemetry_event: false,
+    }
+}
+
+fn advancement_widget_summary_for_test(
+    id: &str,
+    parent_id: Option<&str>,
+    x: i32,
+    y: i32,
+) -> bbb_world::AdvancementWidgetSummary {
+    bbb_world::AdvancementWidgetSummary {
+        id: id.to_string(),
+        parent_id: parent_id.map(str::to_string),
+        icon: AdvancementIconSummary {
+            item_id: 1,
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        },
+        frame_type: AdvancementFrameType::Task,
+        x,
+        y,
+        hidden: false,
+        done: false,
     }
 }
 

@@ -656,6 +656,12 @@ impl HudAdvancementBackgroundTexture {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudAdvancementLineTexture {
+    Background,
+    Foreground,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
     Inventory,
     GenericContainer,
@@ -723,6 +729,7 @@ pub enum HudInventoryBackgroundTexture {
     AdvancementsWindow,
     AdvancementTab(HudAdvancementTabSprite),
     AdvancementBackground(HudAdvancementBackgroundTexture),
+    AdvancementLine(HudAdvancementLineTexture),
     AdvancementWidgetFrame(HudAdvancementWidgetFrameSprite),
     RecipeBook,
     RecipeBookTab,
@@ -4016,6 +4023,10 @@ impl Renderer {
             HudInventoryBackgroundTexture::AdvancementBackground(texture) => {
                 self.hud_advancement_backgrounds[texture.as_index()].as_ref()
             }
+            HudInventoryBackgroundTexture::AdvancementLine(texture) => match texture {
+                HudAdvancementLineTexture::Background => Some(&self.hud_black_pixel),
+                HudAdvancementLineTexture::Foreground => Some(&self.hud_white_pixel),
+            },
             HudInventoryBackgroundTexture::AdvancementWidgetFrame(sprite) => {
                 self.hud_advancement_widget_frames[sprite.as_index()].as_ref()
             }

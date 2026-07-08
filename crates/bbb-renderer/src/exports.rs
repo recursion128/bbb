@@ -78,18 +78,18 @@ pub use crate::entity_models::{
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{
-    HudActionBarText, HudAdvancementBackgroundTexture, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudAirSupply, HudAsciiGlyph, HudBossBar, HudBossBarColor,
-    HudBossBarOverlay, HudDigitGlyph, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap,
-    HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudJumpBar, HudNineSliceScaling, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorScreen, HudStyledTextRun, HudTextStyle, HudTitleText, HudUvRect, HudVehicleHealth,
-    HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
+    HudActionBarText, HudAdvancementBackgroundTexture, HudAdvancementLineTexture,
+    HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudAsciiGlyph,
+    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudDigitGlyph, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFontGlyphMap, HudFoodEffect, HudHeartKind, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudNineSliceScaling,
+    HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudStyledTextRun, HudTextStyle,
+    HudTitleText, HudUvRect, HudVehicleHealth, HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,

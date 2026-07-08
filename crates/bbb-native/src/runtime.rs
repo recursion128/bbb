@@ -20,16 +20,16 @@ use bbb_protocol::{
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
-    HudAdvancementBackgroundTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
-    HudAirSupply, HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
-    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    HudAdvancementBackgroundTexture, HudAdvancementLineTexture, HudAdvancementTabSprite,
+    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
@@ -4547,6 +4547,16 @@ fn hud_advancements_screen(
         window_x,
         window_y,
     ));
+    background_layers.extend(advancements_widget_connection_layers(
+        &selected_widgets,
+        window_x,
+        window_y,
+    ));
+    background_layers.extend(advancements_widget_frame_layers(
+        &selected_widgets,
+        window_x,
+        window_y,
+    ));
     background_layers.push(hud_inventory_background_layer(
         done_button_texture,
         done_button_x,
@@ -4564,11 +4574,6 @@ fn hud_advancements_screen(
             window_y,
         ));
     }
-    background_layers.extend(advancements_widget_frame_layers(
-        &selected_widgets,
-        window_x,
-        window_y,
-    ));
     let mut floating_items = Vec::new();
     if show_root_tabs {
         floating_items.extend(advancements_tab_icon_items(
@@ -4847,6 +4852,214 @@ fn clipped_advancement_background_tile(
         uv_min,
         uv_max,
     ))
+}
+
+fn advancements_widget_connection_layers(
+    widgets: &[bbb_world::AdvancementWidgetSummary],
+    window_x: i32,
+    window_y: i32,
+) -> Vec<HudInventoryBackgroundLayer> {
+    let Some((scroll_x, scroll_y)) = advancements_widget_scroll(widgets) else {
+        return Vec::new();
+    };
+    let by_id: BTreeMap<&str, &bbb_world::AdvancementWidgetSummary> = widgets
+        .iter()
+        .map(|widget| (widget.id.as_str(), widget))
+        .collect();
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let mut layers = Vec::new();
+    for widget in widgets {
+        let Some(parent_id) = widget.parent_id.as_deref() else {
+            continue;
+        };
+        let Some(parent) = by_id.get(parent_id).copied() else {
+            continue;
+        };
+        let dep_x = inside_x + scroll_x + parent.x + 13;
+        let split_x = inside_x + scroll_x + parent.x + 26 + 4;
+        let dep_y = inside_y + scroll_y + parent.y + 13;
+        let my_x = inside_x + scroll_x + widget.x + 13;
+        let my_y = inside_y + scroll_y + widget.y + 13;
+        push_advancement_connection_layers(
+            &mut layers,
+            HudAdvancementLineTexture::Background,
+            dep_x,
+            split_x,
+            dep_y,
+            my_x,
+            my_y,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_connection_layers(
+            &mut layers,
+            HudAdvancementLineTexture::Foreground,
+            dep_x,
+            split_x,
+            dep_y,
+            my_x,
+            my_y,
+            inside_x,
+            inside_y,
+        );
+    }
+    layers
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_advancement_connection_layers(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    texture: HudAdvancementLineTexture,
+    dep_x: i32,
+    split_x: i32,
+    dep_y: i32,
+    my_x: i32,
+    my_y: i32,
+    inside_x: i32,
+    inside_y: i32,
+) {
+    if matches!(texture, HudAdvancementLineTexture::Background) {
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            split_x,
+            dep_x,
+            dep_y - 1,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            split_x + 1,
+            dep_x,
+            dep_y,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            split_x,
+            dep_x,
+            dep_y + 1,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            my_x,
+            split_x - 1,
+            my_y - 1,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            my_x,
+            split_x - 1,
+            my_y,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_horizontal_line(
+            layers,
+            texture,
+            my_x,
+            split_x - 1,
+            my_y + 1,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_vertical_line(
+            layers,
+            texture,
+            split_x - 1,
+            my_y,
+            dep_y,
+            inside_x,
+            inside_y,
+        );
+        push_advancement_vertical_line(
+            layers,
+            texture,
+            split_x + 1,
+            my_y,
+            dep_y,
+            inside_x,
+            inside_y,
+        );
+    } else {
+        push_advancement_horizontal_line(
+            layers, texture, split_x, dep_x, dep_y, inside_x, inside_y,
+        );
+        push_advancement_horizontal_line(layers, texture, my_x, split_x, my_y, inside_x, inside_y);
+        push_advancement_vertical_line(layers, texture, split_x, my_y, dep_y, inside_x, inside_y);
+    }
+}
+
+fn push_advancement_horizontal_line(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    texture: HudAdvancementLineTexture,
+    mut x0: i32,
+    mut x1: i32,
+    y: i32,
+    inside_x: i32,
+    inside_y: i32,
+) {
+    if x1 < x0 {
+        std::mem::swap(&mut x0, &mut x1);
+    }
+    push_clipped_advancement_line_layer(layers, texture, x0, y, x1 + 1, y + 1, inside_x, inside_y);
+}
+
+fn push_advancement_vertical_line(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    texture: HudAdvancementLineTexture,
+    x: i32,
+    mut y0: i32,
+    mut y1: i32,
+    inside_x: i32,
+    inside_y: i32,
+) {
+    if y1 < y0 {
+        std::mem::swap(&mut y0, &mut y1);
+    }
+    push_clipped_advancement_line_layer(layers, texture, x, y0 + 1, x + 1, y1, inside_x, inside_y);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_clipped_advancement_line_layer(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    texture: HudAdvancementLineTexture,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    inside_x: i32,
+    inside_y: i32,
+) {
+    let inside_right = inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32;
+    let inside_bottom = inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32;
+    let x = x0.max(inside_x);
+    let y = y0.max(inside_y);
+    let right = x1.min(inside_right);
+    let bottom = y1.min(inside_bottom);
+    if x >= right || y >= bottom {
+        return;
+    }
+    layers.push(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::AdvancementLine(texture),
+        x,
+        y,
+        (right - x) as u32,
+        (bottom - y) as u32,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
 }
 
 fn advancements_tab_icon_items(
