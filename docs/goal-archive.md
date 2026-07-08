@@ -5382,9 +5382,21 @@
   0ms green、28ms yellow、56ms red 间用 `ARGB.srgbLerp`。native
   `HudDebugFpsSampler` 现在记录 240 个 frame-time nanos 样本，F3+2 visible 时投影
   `HudDebugFrameTimeChart`；renderer 通过 HUD white-pixel quad/text 路径绘制 chart
-  background、bars、border、labels 和 60 FPS guide。边界：TPS chart、network
-  bandwidth/ping charts、profiler pie chart contents、以及 configured framerate cyan
-  guide（bbb 尚无 framerate/vsync config）仍未实现。
+  background、bars、border、labels 和 60 FPS guide。边界：TPS chart、profiler
+  pie chart contents、以及 configured framerate cyan guide（bbb 尚无
+  framerate/vsync config）仍未实现。
+- [x] debug overlay F3+3 network ping/bandwidth chart rendering（P2
+  HUD/runtime/net/renderer slice，2026-07-08）：依据
+  `DebugScreenOverlay.showNetworkCharts`、`PingDebugChart`、
+  `BandwidthDebugChart`、`PingDebugMonitor` 和 `BandwidthDebugMonitor`。native
+  现在把 `NetEvent::PacketSeen` 聚合为 50ms received-bytes-per-tick 样本，
+  记录 `PongResponse` RTT，F3+3 visible 且 Play 连接时排队
+  `NetCommand::PingRequest`，并在 connected overlay 中投影
+  `HudDebugNetworkCharts`。renderer 在左下绘制 bandwidth chart、右下绘制 ping
+  chart，使用 240 样本容量、半屏宽、60px 高、min/avg/max labels、参考标签和
+  vanilla 阈值色。边界：带宽样本使用 decoded packet payload length 而不是确切
+  compressed frame bytes；local integrated-server 带宽隐藏等到 bbb 拥有 local
+  server path 后再对齐；TPS/profiler charts 仍待后续。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

@@ -30,6 +30,7 @@ use crate::particle_runtime::{
 };
 
 use super::control_state::apply_control_projection_event;
+use crate::runtime::HudDebugNetworkSampler;
 
 const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 const DRIPSTONE_DRIP_LEVEL_EVENT: i32 = 1504;
@@ -84,7 +85,33 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
     )
 }
 
+#[cfg(test)]
 pub(in crate::runtime) fn drain_net_events_with_sinks(
+    rx: &mut mpsc::Receiver<NetEvent>,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: Option<&mut dyn AudioEventSink>,
+    particle_events: Option<&mut dyn ParticleEventSink>,
+    particle_renderer: Option<&mut bbb_renderer::Renderer>,
+    item_runtime: Option<&NativeItemRuntime>,
+    level_event_sound_random: &mut LevelEventSoundRandomState,
+) -> usize {
+    drain_net_events_with_sinks_and_debug(
+        rx,
+        world,
+        counters,
+        net_commands,
+        audio_events,
+        particle_events,
+        particle_renderer,
+        item_runtime,
+        None,
+        level_event_sound_random,
+    )
+}
+
+pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
@@ -93,6 +120,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     mut particle_events: Option<&mut dyn ParticleEventSink>,
     mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
     item_runtime: Option<&NativeItemRuntime>,
+    mut hud_debug_network_sampler: Option<&mut HudDebugNetworkSampler>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let mut drained = 0;
@@ -107,6 +135,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         };
         drained += 1;
 
+        if let Some(sampler) = hud_debug_network_sampler.as_deref_mut() {
+            sampler.record_net_event(&event);
+        }
         apply_control_projection_event(&event, counters);
 
         match event {

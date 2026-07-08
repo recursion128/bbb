@@ -109,6 +109,7 @@ pub struct HudDebugOverlay {
     pub right_lines: Vec<String>,
     pub debug_crosshair: Option<HudDebugCrosshair>,
     pub fps_chart: Option<HudDebugFrameTimeChart>,
+    pub network_charts: Option<HudDebugNetworkCharts>,
     pub show_lightmap_preview: bool,
 }
 
@@ -126,6 +127,16 @@ pub struct HudDebugCrosshair {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HudDebugFrameTimeChart {
     pub frame_time_nanos: Vec<u64>,
+}
+
+/// Vanilla `PingDebugChart` + `BandwidthDebugChart` sample streams. Bandwidth
+/// samples are received bytes per 50ms client tick and are displayed as
+/// bytes/second by the renderer, matching vanilla's `BandwidthDebugChart`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HudDebugNetworkCharts {
+    pub ping_millis: Vec<u64>,
+    pub bandwidth_bytes_per_tick: Vec<u64>,
+    pub show_bandwidth: bool,
 }
 
 /// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
@@ -6217,6 +6228,19 @@ fn push_hud_debug_overlay<'a>(
             chart,
         );
     }
+    if let Some(charts) = &overlay.network_charts {
+        push_hud_debug_network_charts(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            charts,
+        );
+    }
 }
 
 fn push_hud_debug_overlay_column_backgrounds<'a>(
@@ -6499,6 +6523,386 @@ fn push_hud_debug_fps_chart<'a>(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_network_charts<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    charts: &HudDebugNetworkCharts,
+) {
+    let width = hud_debug_chart_width(surface_size);
+    if width == 0 {
+        return;
+    }
+
+    if charts.show_bandwidth {
+        push_hud_debug_bandwidth_chart(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            0,
+            width,
+            &charts.bandwidth_bytes_per_tick,
+        );
+    }
+
+    let surface_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let left = surface_width.saturating_sub(i32::try_from(width).unwrap_or(i32::MAX));
+    push_hud_debug_ping_chart(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        &charts.ping_millis,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_ping_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    left: i32,
+    width: u32,
+    ping_millis: &[u64],
+) {
+    push_hud_debug_sample_chart(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        ping_millis,
+        hud_debug_ping_chart_sample_height,
+        hud_debug_ping_chart_sample_tint,
+        hud_debug_ping_chart_display_string,
+    );
+
+    let bottom = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let top = bottom.saturating_sub(HUD_DEBUG_CHART_HEIGHT);
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        "500 ms",
+        left + 1,
+        top + 1,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_bandwidth_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    left: i32,
+    width: u32,
+    bandwidth_bytes_per_tick: &[u64],
+) {
+    push_hud_debug_sample_chart(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        bandwidth_bytes_per_tick,
+        hud_debug_bandwidth_chart_sample_height,
+        hud_debug_bandwidth_chart_sample_tint,
+        hud_debug_bandwidth_chart_display_string,
+    );
+
+    let bottom = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    push_hud_debug_bandwidth_chart_labeled_line(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        bottom,
+        64,
+    );
+    push_hud_debug_bandwidth_chart_labeled_line(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        bottom,
+        1_024,
+    );
+    push_hud_debug_bandwidth_chart_labeled_line(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        left,
+        width,
+        bottom,
+        16_384,
+    );
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &hud_debug_bandwidth_chart_display_string_internal(1_048_576.0),
+        left + 1,
+        bottom
+            .saturating_sub(hud_debug_bandwidth_chart_sample_height_internal(
+                1_048_576.0,
+            ))
+            .saturating_add(1),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_bandwidth_chart_labeled_line<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    left: i32,
+    width: u32,
+    bottom: i32,
+    bytes_per_second: u64,
+) {
+    let y = bottom.saturating_sub(hud_debug_bandwidth_chart_sample_height_internal(
+        bytes_per_second as f64,
+    ));
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &hud_debug_bandwidth_chart_display_string_internal(bytes_per_second as f64),
+        left + 1,
+        y + 1,
+    );
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        y,
+        HUD_TINT_WHITE,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_sample_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    left: i32,
+    width: u32,
+    samples: &[u64],
+    sample_height: fn(u64) -> i32,
+    sample_tint: fn(u64) -> [f32; 4],
+    display_string: fn(f64) -> String,
+) {
+    let bottom = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let top = bottom.saturating_sub(HUD_DEBUG_CHART_HEIGHT);
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        width,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+    );
+
+    let visible_samples = hud_debug_chart_visible_samples(samples, width);
+    for (index, sample) in visible_samples.iter().copied().enumerate() {
+        let x = left + i32::try_from(index).unwrap_or(i32::MAX).saturating_add(1);
+        let height = sample_height(sample);
+        if height <= 0 {
+            continue;
+        }
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            x,
+            bottom.saturating_sub(height),
+            1,
+            u32::try_from(height).unwrap_or(u32::MAX),
+            sample_tint(sample),
+        );
+    }
+
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        top,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        bottom.saturating_sub(1),
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left + i32::try_from(width.saturating_sub(1)).unwrap_or(i32::MAX),
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+
+    if !visible_samples.is_empty() {
+        let min = visible_samples.iter().copied().min().unwrap_or(0);
+        let max = visible_samples.iter().copied().max().unwrap_or(0);
+        let avg = visible_samples
+            .iter()
+            .map(|sample| *sample as f64)
+            .sum::<f64>()
+            / visible_samples.len() as f64;
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &format!("{} min", display_string(min as f64)),
+            left + 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let avg_text = format!("{} avg", display_string(avg));
+        let avg_width = i32::try_from(hud_plain_text_width(&avg_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &avg_text,
+            left + i32::try_from(width / 2).unwrap_or(i32::MAX) - avg_width / 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let max_text = format!("{} max", display_string(max as f64));
+        let max_width = i32::try_from(hud_plain_text_width(&max_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &max_text,
+            left + i32::try_from(width).unwrap_or(i32::MAX) - max_width - 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+    }
+}
+
 fn push_hud_debug_chart_horizontal_line<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -6649,6 +7053,16 @@ fn hud_debug_chart_width(surface_size: PhysicalSize<u32>) -> u32 {
     (HUD_DEBUG_CHART_SAMPLE_CAPACITY as u32 + 2).min(surface_size.width / 2)
 }
 
+fn hud_debug_chart_visible_samples(samples: &[u64], width: u32) -> &[u64] {
+    let sample_start = HUD_DEBUG_CHART_SAMPLE_CAPACITY
+        .saturating_sub(usize::try_from(width.saturating_sub(2)).unwrap_or(usize::MAX));
+    if sample_start < samples.len() {
+        &samples[sample_start..]
+    } else {
+        &[]
+    }
+}
+
 fn hud_debug_fps_chart_display_string(nanos: f64) -> String {
     format!("{} ms", hud_debug_fps_chart_millis(nanos).round() as i64)
 }
@@ -6669,6 +7083,64 @@ fn hud_debug_fps_chart_sample_tint(nanos: u64) -> [f32; 4] {
 
 fn hud_debug_fps_chart_millis(nanos: f64) -> f64 {
     nanos / 1_000_000.0
+}
+
+fn hud_debug_ping_chart_display_string(millis: f64) -> String {
+    format!("{} ms", millis.round() as i64)
+}
+
+fn hud_debug_ping_chart_sample_height(millis: u64) -> i32 {
+    (millis as f64 * HUD_DEBUG_CHART_HEIGHT as f64 / 500.0)
+        .round()
+        .clamp(0.0, i32::MAX as f64) as i32
+}
+
+fn hud_debug_ping_chart_sample_tint(millis: u64) -> [f32; 4] {
+    hud_argb_to_tint(hud_debug_chart_sample_argb(
+        millis as f64,
+        0.0,
+        0xFF00FF00,
+        250.0,
+        0xFFFFFF00,
+        500.0,
+        0xFFFF0000,
+    ))
+}
+
+fn hud_debug_bandwidth_chart_display_string(bytes_per_tick: f64) -> String {
+    hud_debug_bandwidth_chart_display_string_internal(bytes_per_tick * 20.0)
+}
+
+fn hud_debug_bandwidth_chart_display_string_internal(bytes_per_second: f64) -> String {
+    if bytes_per_second >= 1_048_576.0 {
+        format!("{:.1} MiB/s", bytes_per_second / 1_048_576.0)
+    } else if bytes_per_second >= 1_024.0 {
+        format!("{:.1} KiB/s", bytes_per_second / 1_024.0)
+    } else {
+        format!("{} B/s", bytes_per_second.floor() as u64)
+    }
+}
+
+fn hud_debug_bandwidth_chart_sample_height(bytes_per_tick: u64) -> i32 {
+    hud_debug_bandwidth_chart_sample_height_internal(bytes_per_tick as f64 * 20.0)
+}
+
+fn hud_debug_bandwidth_chart_sample_height_internal(bytes_per_second: f64) -> i32 {
+    ((bytes_per_second + 1.0).ln() * HUD_DEBUG_CHART_HEIGHT as f64 / 1_048_576.0_f64.ln())
+        .round()
+        .clamp(0.0, i32::MAX as f64) as i32
+}
+
+fn hud_debug_bandwidth_chart_sample_tint(bytes_per_tick: u64) -> [f32; 4] {
+    hud_argb_to_tint(hud_debug_chart_sample_argb(
+        bytes_per_tick as f64 * 20.0,
+        0.0,
+        0xFF00FFFF,
+        8_192.0,
+        0xFFA0A0FF,
+        10_485_760.0,
+        0xFFFF0000,
+    ))
 }
 
 fn hud_debug_chart_sample_argb(
@@ -7536,16 +8008,21 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
         .debug_crosshair
         .and_then(sanitize_hud_debug_crosshair);
     let fps_chart = overlay.fps_chart.map(sanitize_hud_debug_fps_chart);
+    let network_charts = overlay
+        .network_charts
+        .map(sanitize_hud_debug_network_charts);
     (!left_lines.is_empty()
         || !right_lines.is_empty()
         || debug_crosshair.is_some()
         || fps_chart.is_some()
+        || network_charts.is_some()
         || overlay.show_lightmap_preview)
         .then_some(HudDebugOverlay {
             left_lines,
             right_lines,
             debug_crosshair,
             fps_chart,
+            network_charts,
             show_lightmap_preview: overlay.show_lightmap_preview,
         })
 }
@@ -7565,6 +8042,18 @@ fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFr
         chart.frame_time_nanos = chart.frame_time_nanos.split_off(keep_from);
     }
     chart
+}
+
+fn sanitize_hud_debug_network_charts(mut charts: HudDebugNetworkCharts) -> HudDebugNetworkCharts {
+    if charts.ping_millis.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
+        let keep_from = charts.ping_millis.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
+        charts.ping_millis = charts.ping_millis.split_off(keep_from);
+    }
+    if charts.bandwidth_bytes_per_tick.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
+        let keep_from = charts.bandwidth_bytes_per_tick.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
+        charts.bandwidth_bytes_per_tick = charts.bandwidth_bytes_per_tick.split_off(keep_from);
+    }
+    charts
 }
 
 fn sanitize_hud_debug_overlay_lines(lines: Vec<String>) -> Vec<String> {
@@ -8419,6 +8908,7 @@ mod tests {
             right_lines: vec!["Right".to_string()],
             debug_crosshair: None,
             fps_chart: None,
+            network_charts: None,
             show_lightmap_preview: false,
         })
         .expect("non-empty debug overlay survives sanitize");
@@ -8562,6 +9052,36 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_hud_debug_overlay_keeps_and_caps_network_chart_samples() {
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            network_charts: Some(HudDebugNetworkCharts {
+                ping_millis: (0..300).collect(),
+                bandwidth_bytes_per_tick: (300..600).collect(),
+                show_bandwidth: true,
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("network chart survives without text lines");
+
+        let charts = overlay
+            .network_charts
+            .expect("network charts should remain");
+        assert_eq!(charts.ping_millis.len(), HUD_DEBUG_CHART_SAMPLE_CAPACITY);
+        assert_eq!(
+            charts.bandwidth_bytes_per_tick.len(),
+            HUD_DEBUG_CHART_SAMPLE_CAPACITY
+        );
+        assert_eq!(charts.ping_millis[0], 60);
+        assert_eq!(charts.ping_millis[HUD_DEBUG_CHART_SAMPLE_CAPACITY - 1], 299);
+        assert_eq!(charts.bandwidth_bytes_per_tick[0], 360);
+        assert_eq!(
+            charts.bandwidth_bytes_per_tick[HUD_DEBUG_CHART_SAMPLE_CAPACITY - 1],
+            599
+        );
+        assert!(charts.show_bandwidth);
+    }
+
+    #[test]
     fn hud_debug_fps_chart_width_matches_vanilla_capacity_and_half_screen_cap() {
         assert_eq!(
             hud_debug_chart_width(PhysicalSize::new(800, 240)),
@@ -8586,6 +9106,45 @@ mod tests {
         );
         assert_eq!(
             hud_debug_fps_chart_sample_tint(56_000_000),
+            [1.0, 0.0, 0.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn hud_debug_ping_chart_sample_rules_match_vanilla_thresholds() {
+        assert_eq!(hud_debug_ping_chart_sample_height(250), 30);
+        assert_eq!(hud_debug_ping_chart_sample_height(500), 60);
+        assert_eq!(hud_debug_ping_chart_display_string(41.6), "42 ms");
+        assert_eq!(hud_debug_ping_chart_sample_tint(0), [0.0, 1.0, 0.0, 1.0]);
+        assert_eq!(hud_debug_ping_chart_sample_tint(250), [1.0, 1.0, 0.0, 1.0]);
+        assert_eq!(hud_debug_ping_chart_sample_tint(500), [1.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn hud_debug_bandwidth_chart_sample_rules_match_vanilla_thresholds() {
+        assert_eq!(
+            hud_debug_bandwidth_chart_display_string_internal(64.0),
+            "64 B/s"
+        );
+        assert_eq!(
+            hud_debug_bandwidth_chart_display_string_internal(1_024.0),
+            "1.0 KiB/s"
+        );
+        assert_eq!(
+            hud_debug_bandwidth_chart_display_string_internal(1_048_576.0),
+            "1.0 MiB/s"
+        );
+        assert_eq!(hud_debug_bandwidth_chart_sample_height_internal(0.0), 0);
+        assert_eq!(
+            hud_debug_bandwidth_chart_sample_height_internal(1_048_576.0),
+            60
+        );
+        assert_eq!(
+            hud_debug_bandwidth_chart_sample_tint(0),
+            [0.0, 1.0, 1.0, 1.0]
+        );
+        assert_eq!(
+            hud_debug_bandwidth_chart_sample_tint(524_288),
             [1.0, 0.0, 0.0, 1.0]
         );
     }

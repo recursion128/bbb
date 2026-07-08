@@ -902,7 +902,15 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     let fps_sampler = hud_debug_fps_sampler_with_reported_fps(57);
     let surface_size = winit::dpi::PhysicalSize::new(320, 240);
     assert_eq!(
-        hud_debug_overlay(&input, &world, None, surface_size, &fps_sampler),
+        hud_debug_overlay(
+            &input,
+            &world,
+            None,
+            surface_size,
+            &fps_sampler,
+            &HudDebugNetworkSampler::default(),
+            &NetCounters::default(),
+        ),
         None
     );
 
@@ -923,6 +931,8 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
         }),
         surface_size,
         &fps_sampler,
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("debug overlay should project when F3 is visible");
 
@@ -994,6 +1004,8 @@ fn hud_debug_overlay_projects_vanilla_default_profile_entries() {
         }),
         surface_size,
         &fps_sampler,
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("default debug profile should project while F3 is visible");
 
@@ -1090,6 +1102,119 @@ fn hud_debug_fps_sampler_keeps_vanilla_sample_capacity() {
 }
 
 #[test]
+fn hud_debug_network_sampler_logs_bandwidth_and_debug_ping_ticks() {
+    let start = Instant::now();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    let net_counters = NetCounters {
+        connected: true,
+        state: Some("Play".to_string()),
+        ..NetCounters::default()
+    };
+    let (tx, mut rx) = mpsc::channel(4);
+    let net_commands = Some(tx);
+    let mut sampler = HudDebugNetworkSampler::default();
+
+    sampler.record_received_packet(12);
+    sampler.record_received_packet(8);
+    sampler.advance_tick(&input, &net_counters, &net_commands, start, 1_000);
+    assert_eq!(sampler.bandwidth_bytes_per_tick(), vec![20]);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::PingRequest(1_000));
+
+    sampler.record_pong_response(940, 1_000);
+    assert_eq!(sampler.ping_millis(), vec![60]);
+
+    sampler.record_received_packet(5);
+    sampler.advance_tick(
+        &input,
+        &net_counters,
+        &net_commands,
+        start + Duration::from_millis(49),
+        1_049,
+    );
+    assert_eq!(sampler.bandwidth_bytes_per_tick(), vec![20]);
+    assert!(rx.try_recv().is_err());
+
+    sampler.advance_tick(
+        &input,
+        &net_counters,
+        &net_commands,
+        start + Duration::from_millis(50),
+        1_050,
+    );
+    assert_eq!(sampler.bandwidth_bytes_per_tick(), vec![20, 5]);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::PingRequest(1_050));
+}
+
+#[test]
+fn hud_debug_overlay_projects_network_charts_for_connected_f3_3() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    let net_counters = NetCounters {
+        connected: true,
+        state: Some("Play".to_string()),
+        ..NetCounters::default()
+    };
+    let mut network_sampler = HudDebugNetworkSampler::default();
+    network_sampler.record_pong_response(900, 1_000);
+    network_sampler.record_received_packet(42);
+    network_sampler.advance_tick(&input, &net_counters, &None, Instant::now(), 1_000);
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        &network_sampler,
+        &net_counters,
+    )
+    .expect("F3+3 should force the debug overlay visible");
+
+    assert!(overlay
+        .left_lines
+        .contains(&"[F3+3] Network visible; [F3+4] Lightmap hidden".to_string()));
+    assert_eq!(overlay.fps_chart, None);
+    assert_eq!(
+        overlay.network_charts,
+        Some(HudDebugNetworkCharts {
+            ping_millis: vec![100],
+            bandwidth_bytes_per_tick: vec![42],
+            show_bandwidth: true,
+        })
+    );
+}
+
+#[test]
 fn hud_debug_fps_line_matches_vanilla_shape_without_configured_cap() {
     assert_eq!(hud_debug_fps_line(144), "144 fps T: inf");
 }
@@ -1153,6 +1278,8 @@ fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("F3 should show the debug overlay");
 
@@ -1189,6 +1316,8 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &fps_sampler,
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("chart toggle should force the debug overlay visible");
 
@@ -1236,6 +1365,8 @@ fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("lightmap toggle should force the debug overlay visible");
 
@@ -1417,6 +1548,8 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         None,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
+        &HudDebugNetworkSampler::default(),
+        &NetCounters::default(),
     )
     .expect("plain F3 should make the debug overlay visible");
 

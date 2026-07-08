@@ -10,7 +10,9 @@ use bbb_world::{
     advance_growth_level_event_particle_randoms, advance_potion_break_level_event_particle_randoms,
     advance_wax_on_level_event_particle_randoms,
 };
+#[cfg(test)]
 pub(super) use dispatcher::drain_net_events_with_sinks;
+pub(super) use dispatcher::drain_net_events_with_sinks_and_debug;
 #[cfg(test)]
 use dispatcher::level_event_particle_context;
 #[cfg(test)]

@@ -24,25 +24,26 @@ use bbb_renderer::{
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugOverlay, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox,
-    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugNetworkCharts, HudDebugOverlay,
+    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
+    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionBox, SelectionOutline,
+    SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
+    WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
@@ -572,6 +573,16 @@ pub(crate) use control_requests::pump_control_net_requests;
 pub(crate) use events::LevelEventSoundRandomState;
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
+const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
+const HUD_DEBUG_NETWORK_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
+
+fn push_capped_hud_debug_sample(samples: &mut Vec<u64>, value: u64, capacity: usize) {
+    samples.push(value);
+    if samples.len() > capacity {
+        let overflow = samples.len() - capacity;
+        samples.drain(0..overflow);
+    }
+}
 
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {
@@ -637,6 +648,107 @@ impl HudDebugFpsSampler {
 
     pub(crate) fn frame_time_nanos(&self) -> Vec<u64> {
         self.frame_time_nanos.clone()
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct HudDebugNetworkSampler {
+    last_sample_at: Option<Instant>,
+    pending_bandwidth_bytes: u64,
+    ping_millis: Vec<u64>,
+    bandwidth_bytes_per_tick: Vec<u64>,
+}
+
+impl HudDebugNetworkSampler {
+    fn record_net_event(&mut self, event: &NetEvent) {
+        match event {
+            NetEvent::PacketSeen { len, .. } => {
+                self.record_received_packet(*len);
+            }
+            NetEvent::Play(bbb_protocol::packets::PlayClientbound::PongResponse(response)) => {
+                self.record_pong_response(response.time, wall_clock_millis_i64());
+            }
+            NetEvent::Disconnected { .. } => {
+                self.reset();
+            }
+            _ => {}
+        }
+    }
+
+    fn record_received_packet(&mut self, len: usize) {
+        self.pending_bandwidth_bytes = self
+            .pending_bandwidth_bytes
+            .saturating_add(u64::try_from(len).unwrap_or(u64::MAX));
+    }
+
+    fn record_pong_response(&mut self, sent_millis: i64, received_millis: i64) {
+        let latency = received_millis.saturating_sub(sent_millis).max(0) as u64;
+        push_capped_hud_debug_sample(
+            &mut self.ping_millis,
+            latency,
+            HUD_DEBUG_NETWORK_SAMPLE_CAPACITY,
+        );
+    }
+
+    fn advance_tick(
+        &mut self,
+        input: &ClientInputState,
+        net_counters: &NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        now: Instant,
+        now_millis: i64,
+    ) {
+        if !net_counters.connected {
+            self.reset();
+            return;
+        }
+
+        let ticks = match self.last_sample_at {
+            Some(last_sample_at) => {
+                let elapsed = now.saturating_duration_since(last_sample_at);
+                let ticks = elapsed.as_millis() / HUD_DEBUG_NETWORK_SAMPLE_INTERVAL.as_millis();
+                if ticks == 0 {
+                    return;
+                }
+                ticks.min(HUD_DEBUG_NETWORK_SAMPLE_CAPACITY as u128) as usize
+            }
+            None => 1,
+        };
+        self.last_sample_at = Some(now);
+
+        for tick in 0..ticks {
+            let bytes = if tick == 0 {
+                std::mem::take(&mut self.pending_bandwidth_bytes)
+            } else {
+                0
+            };
+            push_capped_hud_debug_sample(
+                &mut self.bandwidth_bytes_per_tick,
+                bytes,
+                HUD_DEBUG_NETWORK_SAMPLE_CAPACITY,
+            );
+            if input.debug_network_charts_visible() && net_counters.state.as_deref() == Some("Play")
+            {
+                if let Some(tx) = net_commands {
+                    let _ = tx.try_send(NetCommand::PingRequest(now_millis));
+                }
+            }
+        }
+    }
+
+    fn reset(&mut self) {
+        self.last_sample_at = None;
+        self.pending_bandwidth_bytes = 0;
+        self.ping_millis.clear();
+        self.bandwidth_bytes_per_tick.clear();
+    }
+
+    fn ping_millis(&self) -> Vec<u64> {
+        self.ping_millis.clone()
+    }
+
+    fn bandwidth_bytes_per_tick(&self) -> Vec<u64> {
+        self.bandwidth_bytes_per_tick.clone()
     }
 }
 
@@ -1578,6 +1690,7 @@ pub(crate) fn pump_network_and_terrain(
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     hud_debug_fps_sampler: &mut HudDebugFpsSampler,
+    hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -1599,7 +1712,7 @@ pub(crate) fn pump_network_and_terrain(
         let particle_events_for_drain = particle_events
             .as_mut()
             .map(|particle_events| &mut **particle_events as &mut dyn ParticleEventSink);
-        events::drain_net_events_with_sinks(
+        events::drain_net_events_with_sinks_and_debug(
             rx,
             world,
             net_counters,
@@ -1608,6 +1721,7 @@ pub(crate) fn pump_network_and_terrain(
             particle_events_for_drain,
             Some(renderer),
             item_runtime,
+            Some(hud_debug_network_sampler),
             level_event_sound_random,
         );
     }
@@ -1627,6 +1741,13 @@ pub(crate) fn pump_network_and_terrain(
     );
     let now = Instant::now();
     hud_debug_fps_sampler.record_frame(now);
+    hud_debug_network_sampler.advance_tick(
+        input,
+        net_counters,
+        net_commands,
+        now,
+        wall_clock_millis_i64(),
+    );
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
@@ -1913,6 +2034,8 @@ pub(crate) fn pump_network_and_terrain(
         camera_pose,
         surface_size,
         hud_debug_fps_sampler,
+        hud_debug_network_sampler,
+        net_counters,
     );
     let dropped_item_models = dropped_item_models(
         world,
@@ -2825,6 +2948,8 @@ fn hud_debug_overlay(
     camera_pose: Option<CameraPose>,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
+    network_sampler: &HudDebugNetworkSampler,
+    net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
     if !input.debug_overlay_visible() {
         return None;
@@ -2876,6 +3001,13 @@ fn hud_debug_overlay(
             .then(|| HudDebugFrameTimeChart {
                 frame_time_nanos: fps_sampler.frame_time_nanos(),
             }),
+        network_charts: (input.debug_network_charts_visible() && net_counters.connected).then(
+            || HudDebugNetworkCharts {
+                ping_millis: network_sampler.ping_millis(),
+                bandwidth_bytes_per_tick: network_sampler.bandwidth_bytes_per_tick(),
+                show_bandwidth: true,
+            },
+        ),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
 }
@@ -9795,6 +9927,10 @@ fn wall_clock_millis() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as u64)
         .unwrap_or(0)
+}
+
+fn wall_clock_millis_i64() -> i64 {
+    i64::try_from(wall_clock_millis()).unwrap_or(i64::MAX)
 }
 
 fn particle_local_player_scope_context(
