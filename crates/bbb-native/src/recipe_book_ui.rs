@@ -63,6 +63,18 @@ pub(crate) fn crafting_recipe_book_collections(
     collections
 }
 
+pub(crate) fn crafting_recipe_book_visible_tab_indices(
+    world: &WorldStore,
+    grid: RecipeBookCraftingGrid,
+    tab_count: usize,
+) -> Vec<usize> {
+    (0..tab_count)
+        .filter(|index| {
+            *index == 0 || !crafting_recipe_book_collections(world, grid, *index).is_empty()
+        })
+        .collect()
+}
+
 pub(crate) fn recipe_book_page_count(collection_count: usize) -> usize {
     collection_count.div_ceil(RECIPE_BOOK_ITEMS_PER_PAGE)
 }

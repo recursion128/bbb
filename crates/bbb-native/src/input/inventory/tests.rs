@@ -3684,7 +3684,6 @@ fn recipe_book_button_click_toggles_local_setting_and_queues_packet() {
         blast_furnace: RecipeBookTypeSettings::default(),
         smoker: RecipeBookTypeSettings::default(),
     });
-
     assert!(handle_inventory_mouse_input(
         &mut input,
         &mut world,
@@ -3752,7 +3751,6 @@ fn recipe_book_filter_click_toggles_filtering_and_queues_packet() {
         blast_furnace: RecipeBookTypeSettings::default(),
         smoker: RecipeBookTypeSettings::default(),
     });
-
     assert!(handle_inventory_mouse_input(
         &mut input,
         &mut world,
@@ -3877,6 +3875,10 @@ fn recipe_book_tab_click_selects_local_tab_without_packet() {
         furnace: RecipeBookTypeSettings::default(),
         blast_furnace: RecipeBookTypeSettings::default(),
         smoker: RecipeBookTypeSettings::default(),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![crafting_recipe_book_entry(20, 2, 120)],
     });
 
     assert!(handle_inventory_mouse_input(
@@ -7913,6 +7915,43 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
         item_id: Some(item_id),
         count,
         component_patch: Default::default(),
+    }
+}
+
+fn crafting_recipe_book_entry(
+    id: i32,
+    category_id: i32,
+    result_item_id: i32,
+) -> bbb_protocol::packets::RecipeBookAddEntry {
+    bbb_protocol::packets::RecipeBookAddEntry {
+        contents: bbb_protocol::packets::RecipeDisplayEntry {
+            id: bbb_protocol::packets::RecipeDisplayId { index: id },
+            display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+                raw_body: Vec::new(),
+                crafting: Some(
+                    bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                        ingredients: Vec::new(),
+                        result: SlotDisplaySummary {
+                            display_type_id: 5,
+                            raw_payload: Vec::new(),
+                            item_stack: Some(item_stack(result_item_id, 1)),
+                        },
+                        crafting_station: SlotDisplaySummary {
+                            display_type_id: 0,
+                            raw_payload: Vec::new(),
+                            item_stack: None,
+                        },
+                    },
+                ),
+            },
+            group: None,
+            category_id,
+            crafting_requirements: None,
+        },
+        flags: 0,
+        notification: false,
+        highlight: false,
     }
 }
 

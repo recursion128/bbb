@@ -32,8 +32,9 @@ use super::{
     text_edit, AnvilRenameInputSignature, ClientInputState,
 };
 use crate::recipe_book_ui::{
-    clamped_recipe_book_page, crafting_recipe_book_collections, recipe_book_page_count,
-    RecipeBookCraftingGrid, RECIPE_BOOK_ITEMS_PER_PAGE,
+    clamped_recipe_book_page, crafting_recipe_book_collections,
+    crafting_recipe_book_visible_tab_indices, recipe_book_page_count, RecipeBookCraftingGrid,
+    RECIPE_BOOK_ITEMS_PER_PAGE,
 };
 use bbb_item_model::NativeItemRuntime;
 
@@ -56,6 +57,19 @@ pub(crate) use layout::{
     RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y,
     RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y,
 };
+
+pub(crate) fn recipe_book_visible_tab_indices(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+) -> Vec<usize> {
+    let Some(tab_count) = recipe_book_tab_count_for_background(background) else {
+        return Vec::new();
+    };
+    if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
+        return crafting_recipe_book_visible_tab_indices(world, grid, tab_count);
+    }
+    (0..tab_count).collect()
+}
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
 const INVENTORY_SCREEN_HEIGHT: i32 = 166;
@@ -2256,19 +2270,22 @@ fn recipe_book_tab_at_position(
     if recipe_book_main_gui_offset(world, layout.background) == 0 {
         return None;
     }
-    let tab_count = recipe_book_tab_count_for_background(layout.background)?;
+    let visible_tabs = recipe_book_visible_tab_indices(world, layout.background);
+    if visible_tabs.is_empty() {
+        return None;
+    }
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
-    for index in 0..tab_count {
-        let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * index as i32;
+    for (visible_index, tab_index) in visible_tabs.into_iter().enumerate() {
+        let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
         if x >= f64::from(RECIPE_BOOK_TAB_X)
             && x < f64::from(RECIPE_BOOK_TAB_X + RECIPE_BOOK_TAB_WIDTH)
             && y >= f64::from(tab_y)
             && y < f64::from(tab_y + RECIPE_BOOK_TAB_HEIGHT)
         {
-            return Some((book_type, index));
+            return Some((book_type, tab_index));
         }
     }
     None

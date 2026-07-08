@@ -6029,42 +6029,6 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
                 [1.0, 1.0],
             ),
             hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::RecipeBookTab,
-                -30,
-                30,
-                35,
-                27,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::RecipeBookTab,
-                -30,
-                57,
-                35,
-                27,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::RecipeBookTab,
-                -30,
-                84,
-                35,
-                27,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::RecipeBookTab,
-                -30,
-                111,
-                35,
-                27,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::WidgetTextField,
                 25,
                 13,
@@ -6124,7 +6088,6 @@ fn hud_inventory_screen_projects_recipe_book_search_box_text() {
         blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
         smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
     });
-
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
@@ -6191,6 +6154,10 @@ fn hud_inventory_screen_projects_selected_recipe_book_tab() {
         furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
         blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
         smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![shapeless_crafting_recipe_book_entry(20, 2, None, 120)],
     });
 
     let screen = hud_inventory_screen_with_local_state(

@@ -71,12 +71,13 @@ use crate::{
         advance_using_item_at_partial_tick, inventory_screen_layout,
         inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
         recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
-        recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
-        sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-        sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
-        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
-        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        recipe_book_type_for_background, recipe_book_type_settings,
+        recipe_book_visible_tab_indices, release_active_input, sync_beacon_effect_selection_state,
+        sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
+        InventoryScreenBackground, RecipeBookPageHudState, RecipeBookSearchHudState,
+        RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -2858,13 +2859,16 @@ fn hud_recipe_book_tab_layers(
     if recipe_book_main_gui_offset(world, background) == 0 {
         return Vec::new();
     }
-    let Some(tab_count) = recipe_book_tab_count_for_background(background) else {
+    let visible_tabs = recipe_book_visible_tab_indices(world, background);
+    if visible_tabs.is_empty() {
         return Vec::new();
     };
     let selected_index = recipe_book_selected_tab_index(background, tabs).unwrap_or_default();
-    (0..tab_count)
-        .map(|index| {
-            let selected = index == selected_index;
+    visible_tabs
+        .into_iter()
+        .enumerate()
+        .map(|(visible_index, tab_index)| {
+            let selected = tab_index == selected_index;
             hud_inventory_background_layer(
                 if selected {
                     HudInventoryBackgroundTexture::RecipeBookTabSelected
@@ -2877,7 +2881,7 @@ fn hud_recipe_book_tab_layers(
                     } else {
                         0
                     },
-                RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * index as i32,
+                RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32,
                 u32::try_from(RECIPE_BOOK_TAB_WIDTH).unwrap_or_default(),
                 u32::try_from(RECIPE_BOOK_TAB_HEIGHT).unwrap_or_default(),
                 [0.0, 0.0],
@@ -2908,14 +2912,18 @@ fn hud_recipe_book_tab_icon_items(
     let Some(icons) = recipe_book_tab_icons(background) else {
         return Vec::new();
     };
+    let visible_tabs = recipe_book_visible_tab_indices(world, background);
     let mut items = Vec::new();
-    for (index, icon) in icons.iter().enumerate() {
-        let move_left = if index == selected_index {
+    for (visible_index, tab_index) in visible_tabs.into_iter().enumerate() {
+        let Some(icon) = icons.get(tab_index) else {
+            continue;
+        };
+        let move_left = if tab_index == selected_index {
             RECIPE_BOOK_SELECTED_TAB_X_OFFSET
         } else {
             0
         };
-        let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * index as i32 + 5;
+        let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32 + 5;
         if let Some(secondary) = icon.secondary {
             push_recipe_book_tab_icon_item(
                 &mut items,

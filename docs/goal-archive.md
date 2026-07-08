@@ -1817,6 +1817,17 @@
   recipe-category-backed tab visibility、tab notification animation、visible
   recipe-grid search filtering、search cursor/selection rendering、ghost recipe
   slots、narrow-screen overlap。
+- [x] crafting recipe-book category tab visibility（P2 HUD/input slice，2026-07-08）：
+  依据 `RecipeBookComponent.updateTabs` 固定显示 search tab、category tab
+  仅在 `RecipeBookTabButton.updateVisibility` 发现
+  `RecipeCollection.hasAnySelected()` 时显示，并按可见序号
+  `yOrigin+3+27*visibleIndex` 布局；bbb 现在复用 shared crafting recipe-book
+  collections，只显示有 2x2/3x3 可见 recipes 的 crafting category tabs，
+  渲染位置向上收拢，点击仍映射回原始 category tab index。剩余：
+  furnace-family raw recipe displays、craftability slot sprite selection、
+  craftability retry guard、multi-recipe cycling/right-click overlay、tab
+  notification animation、visible recipe-grid search filtering、search
+  cursor/selection rendering、ghost recipe slots、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
