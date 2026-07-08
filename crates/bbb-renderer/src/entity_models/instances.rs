@@ -287,6 +287,18 @@ entity_render_state! {
     /// transform's vertical translate. `0.0` for the lectern book (a static
     /// transform) and every non-book instance.
     (with_book_float_y) book_float_y: f32 = 0.0;
+    /// Vanilla `ConduitRenderState.animTime` (`tickCount + partialTick`):
+    /// drives the active conduit bob (`sin(t*0.1)`) and the wind phase
+    /// (`floor(t / 66) % 3`). `0.0` for every non-conduit instance and for a
+    /// fresh conduit before its client tick advances.
+    (with_conduit_anim_time) conduit_anim_time: f32 = 0.0;
+    /// Vanilla `ConduitRenderState.activeRotation` from
+    /// `ConduitBlockEntity.getActiveRotation(partialTick)`, in radians
+    /// (`(activeRotation + partialTick) * -0.0375`). The active cage consumes
+    /// it directly; the inactive shell reproduces vanilla's
+    /// `Axis.YP.rotation(state.activeRotation * PI / 180)` quirk. `0.0` for
+    /// every non-conduit instance.
+    (with_conduit_active_rotation) conduit_active_rotation: f32 = 0.0;
     /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
     /// `ThrownTridentRenderer` submits the same `TridentModel` again at
     /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
@@ -1611,6 +1623,14 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Bell, position, 0.0)
     }
 
+    /// A conduit block-entity model part at the conduit block's min corner.
+    /// Active conduits expand into four such instances because vanilla submits
+    /// cage, wind shell, inner wind, and eye with distinct transforms and
+    /// textures; inactive conduits use only [`ConduitModelPart::Shell`].
+    pub fn conduit(entity_id: i32, position: [f32; 3], part: ConduitModelPart) -> Self {
+        Self::new(entity_id, EntityModelKind::Conduit { part }, position, 0.0)
+    }
+
     /// A shulker box block-entity model instance at the box block's min
     /// corner. The six-way `facing` rides the kind (the
     /// `ShulkerBoxRenderer.createModelTransform` rotation is a full
@@ -2822,6 +2842,8 @@ mod tests {
                 book_page_flip_1: 0.0,
                 book_page_flip_2: 0.0,
                 book_float_y: 0.0,
+                conduit_anim_time: 0.0,
+                conduit_active_rotation: 0.0,
                 trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,

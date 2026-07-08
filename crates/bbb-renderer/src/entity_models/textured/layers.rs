@@ -10,15 +10,15 @@ use super::super::{
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BannerPatternLayer, BedModelPart, BoatModelFamily,
         CamelModelFamily, CatModelVariant, ChestModelHalf, ChestModelTexture, ChickenModelVariant,
-        CopperGolemWeathering, CowModelVariant, DecoratedPotPattern, DonkeyModelFamily,
-        EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
-        EntityPlayerSkin, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant,
-        HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
-        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SignModelAttachment, SignModelWood, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        WolfModelVariant,
+        ConduitModelPart, CopperGolemWeathering, CowModelVariant, DecoratedPotPattern,
+        DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor,
+        EntityModelTextureRef, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
+        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+        SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -46,6 +46,10 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BellBase,
     BookBase,
     ChestBase,
+    ConduitShell,
+    ConduitCage,
+    ConduitWind,
+    ConduitEye,
     ChickenBase,
     SignBase,
     SalmonBase,
@@ -421,6 +425,70 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
         });
     }
     passes
+}
+
+pub(in crate::entity_models) fn conduit_textured_layer_passes(
+    part: ConduitModelPart,
+) -> Vec<EntityModelLayerPass> {
+    let (kind, render_type, model_layer, texture, submit_sequence) = match part {
+        ConduitModelPart::Shell => (
+            EntityModelLayerKind::ConduitShell,
+            EntityModelLayerRenderType::EntitySolid,
+            MODEL_LAYER_CONDUIT_SHELL,
+            CONDUIT_BASE_TEXTURE_REF,
+            0,
+        ),
+        ConduitModelPart::Cage => (
+            EntityModelLayerKind::ConduitCage,
+            EntityModelLayerRenderType::EntityCutout,
+            MODEL_LAYER_CONDUIT_CAGE,
+            CONDUIT_CAGE_TEXTURE_REF,
+            0,
+        ),
+        ConduitModelPart::OuterWind { phase } => (
+            EntityModelLayerKind::ConduitWind,
+            EntityModelLayerRenderType::EntityCutout,
+            MODEL_LAYER_CONDUIT_WIND,
+            if phase == 1 {
+                CONDUIT_WIND_VERTICAL_TEXTURE_REF
+            } else {
+                CONDUIT_WIND_TEXTURE_REF
+            },
+            1,
+        ),
+        ConduitModelPart::InnerWind { vertical } => (
+            EntityModelLayerKind::ConduitWind,
+            EntityModelLayerRenderType::EntityCutout,
+            MODEL_LAYER_CONDUIT_WIND,
+            if vertical {
+                CONDUIT_WIND_VERTICAL_TEXTURE_REF
+            } else {
+                CONDUIT_WIND_TEXTURE_REF
+            },
+            2,
+        ),
+        ConduitModelPart::Eye { open } => (
+            EntityModelLayerKind::ConduitEye,
+            EntityModelLayerRenderType::EntityCutout,
+            MODEL_LAYER_CONDUIT_EYE,
+            if open {
+                CONDUIT_OPEN_EYE_TEXTURE_REF
+            } else {
+                CONDUIT_CLOSED_EYE_TEXTURE_REF
+            },
+            3,
+        ),
+    };
+    vec![EntityModelLayerPass {
+        kind,
+        render_type,
+        model_layer,
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence,
+    }]
 }
 
 pub(in crate::entity_models) fn breeze_textured_layer_passes() -> Vec<EntityModelLayerPass> {

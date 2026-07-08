@@ -218,6 +218,14 @@ pub enum EntityModelKind {
     /// `LeashKnotModel` — the single 6×8×6 knot box. The model has no `setupAnim`, so the geometry
     /// is complete; only the texture-backed path is deferred.
     LeashKnot,
+    /// Vanilla 26.1 `ConduitRenderer` submitted per conduit block entity. The inactive form renders
+    /// only the 6x6x6 shell on `entity/conduit/base`; the active form expands into four part
+    /// instances so each vanilla submit can keep its own root transform and texture: cage, outer wind,
+    /// inner wind, and camera-facing eye. Instances are projected from conduit block states
+    /// (`entity_id` is a sentinel), not the entity list.
+    Conduit {
+        part: ConduitModelPart,
+    },
     /// Vanilla 26.1 `ChestModel` submitted by the `ChestRenderer` block-entity renderer — the first
     /// (and so far only) block-entity model in the scene. `half` selects the single or the
     /// double-chest left/right mesh (`MultiblockChestResources.select`), `texture` the
@@ -600,6 +608,15 @@ pub enum EntityModelKind {
         name: &'static str,
         bounds: EntityModelBounds,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConduitModelPart {
+    Shell,
+    Cage,
+    OuterWind { phase: u8 },
+    InnerWind { vertical: bool },
+    Eye { open: bool },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

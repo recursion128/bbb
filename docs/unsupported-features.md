@@ -435,19 +435,49 @@ When an agent does any of the following, update this file in the same slice:
     change (block-family / connection tagging on `TerrainCell`, classified on
     the `bbb-world` side) that the geometry-only per-face occlusion work does
     not touch.
-  - Block-entity special renderers (conduit, skull, …): the chest
+  - Block-entity special renderers (skull/head, end portal/gateway, spawner
+    display entity): the chest
     family (2026-07-06), the sign family incl. hanging signs + face text
     (2026-07-06), bed + bell (2026-07-06), shulker box + decorated pot
-    (2026-07-06), banner (2026-07-06), and the enchanting-table book +
-    lectern book (2026-07-07, see Evidence) are DONE as the first six
+    (2026-07-06), banner (2026-07-06), the enchanting-table book +
+    lectern book (2026-07-07), and conduit (2026-07-08; see Evidence)
+    are DONE as the first seven
     BER sub-slices; every other BE-driven block still bakes a
     particle-only model into near-empty terrain geometry (remaining:
-    conduit, skull/head, end portal/gateway, the spawner's spinning
-    display entity). Vanilla: `BlockEntityRenderDispatcher` + per-BE
+    skull/head, end portal/gateway, the spawner's spinning display
+    entity). Vanilla: `BlockEntityRenderDispatcher` + per-BE
     renderers. Continue by smallest sub-slice; audit the `Custom`→`Cube`
     shape fallback (`block_models/shape.rs` → `textures.rs`) alongside,
     since unclassifiable elements are mostly BE-driven models.
 - Evidence / boundary:
+  - Done 2026-07-08 — Conduit block-entity renderer (seventh BER
+    sub-slice). Vanilla facts were checked against
+    `ConduitBlockEntity.java`, `ConduitRenderer.java`, and
+    `ConduitRenderState.java`: client tick increments `tickCount`, refreshes
+    the water + prismarine/sea-lantern frame every `gameTime % 40 == 0`,
+    sets active at 16 frame blocks and hunting at 42, and increments
+    `activeRotation` while active; `getActiveRotation(partialTick)` is
+    `(activeRotation + partialTick) * -0.0375`. World now owns a flat
+    `ConduitBlockState` store plus source-state projection, including the
+    3x3x3 water requirement and the 5x5x5 ring block count. Native advances
+    this client BE ticker on `running_ticks`, projects inactive conduits as
+    one shell instance, and active conduits as cage, outer wind, inner wind,
+    and camera-facing eye instances with sampled block+sky light. Renderer
+    adds `EntityModelKind::Conduit { part }`, the four vanilla model layers
+    (`CONDUIT_EYE`, `WIND`, `SHELL`, `CAGE`), and the six textures
+    `entity/conduit/{base,cage,wind,wind_vertical,open_eye,closed_eye}` into
+    the shared entity atlas (`ENTITY_MODEL_TEXTURE_REFS` 687-count).
+    Root transforms transcribe `ConduitRenderer.submit`: inactive shell
+    centered with vanilla's `activeRotation * PI / 180` rotation quirk;
+    active cage bob + `(0.5,1,0.5)` axis rotation; outer wind phase
+    rotations; inner wind 0.875 scale + `rotationXYZ(π,0,π)`; eye bob +
+    camera-facing orientation + 4/3 scale. Deferred boundary stays the
+    cross-cutting BER break-progress crumbling and per-BE distance/frustum
+    culling already noted for previous BER slices. Tests cover world shape
+    refresh/activation/hunting/source projection, native inactive/active
+    instance expansion + camera-facing eye fields, renderer cube/texture
+    refs, layer pass metadata, root transform samples, mesh buckets, and
+    runtime tick-before-extract ordering.
   - Done 2026-07-07 — Enchanting-table book + lectern book block-entity
     renderers (sixth BER sub-slice; both share vanilla `ModelLayers.BOOK`
     / `BookModel` + the single `entity/enchantment/enchanting_table_book`
@@ -496,8 +526,8 @@ When an agent does any of the following, update this file in the same slice:
     `EnchantTableRenderer.submit` submit logic (native side); the lectern
     binds the fixed `BookModel.State.forAnimation(0, 0.1, 0.9, 1.2)`
     (openness 1.5). One new 64×32 `entity/enchantment/enchanting_table_book`
-    sprite joins the shared entity atlas (`ENTITY_MODEL_TEXTURE_REFS`
-    681-count) and `entity_assets.rs`. Deferred (honest): BER
+    sprite joins the shared entity atlas and `entity_assets.rs`. Deferred
+    (honest): BER
     `breakProgress` crumbling and per-BE distance/frustum culling (same
     boundary as the previous five slices); the enchanting-table book's
     exact page-flip pattern differs from any given vanilla session (both

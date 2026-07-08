@@ -4123,7 +4123,6 @@
   native 侧闭书默认、partial-tick lerp/yaw 抽取、闭书固定翻页分数、
   lerp/frac/wrap 手算、光照打包、lectern has-book 门控 + 固定 state + facing
   yaw；runtime pump tick-before-extract 序断言。
-
     （submerged 视角可见，底面单面）。
   - terrain / fluid 面已按 chunk 所在维度的 vanilla `CardinalLighting` 着色
     （`BlockModelLighter`：shaded 面 `byFace(dir)`、非 shaded 面 `up()`），由
@@ -4136,6 +4135,27 @@
   破坏进度的 renderer-visible cube crack overlay 已覆盖官方 `destroy_stage_0..9`
   atlas、本地/服务端同位置取最高 stage、400 render tick 过期和 crumbling
   pipeline state；完整模型形状 crack decal 仍随 block destroy presentation 后续推进。
+- [x] conduit block-entity renderer（2026-07-08，BER 第七片）：vanilla
+  `ConduitBlockEntity.clientTick` / `ConduitRenderer.submit` / `ConduitRenderState`
+  转写为 repo-native world→native→renderer 链路。world 侧新增平铺
+  `ConduitBlockState` 与 source-state 投影：每 client tick 推进 `tickCount`，
+  active 时推进 `activeRotation`，每 `gameTime % 40 == 0` 按 3×3×3 water
+  要求 + 5×5×5 prismarine/sea-lantern ring 计数刷新 active/hunting（16/42
+  阈值），`getActiveRotation(partial)` = `(activeRotation + partial) * -0.0375`。
+  native runtime 在 running ticks 上 advance conduit 状态，并把 inactive
+  conduit 投成 shell 单实例、active conduit 投成 cage / outer wind / inner wind /
+  camera-facing eye 四个 `EntityModelInstance`，采样 `block<<4 | sky<<20` 光照。
+  renderer 新增 `ConduitModelPart`、`EntityModelKind::Conduit { part }`、
+  `ConduitModel` 四层 cube（eye 8×8×0 + 0.01 deformation、wind 16³、shell 6³、
+  cage 8³）、6 张 `textures/entity/conduit/*` 纹理进共享 entity atlas
+  （687-count），layer pass 按 vanilla 区分 inactive `entitySolid(base)` 与
+  active `entityCutout(cage/wind/wind_vertical/open_eye/closed_eye)`。根变换转写
+  inactive shell center + `activeRotation * PI / 180` quirk，active cage bob +
+  `(0.5,1,0.5)` 轴旋转，outer wind phase 0/1/2，inner wind 0.875 scale +
+  `rotationXYZ(π,0,π)`，eye bob + camera orientation + `Rz(π)·Ry(π)·S(4/3)`。
+  测试覆盖 world 激活/水门控/source、native inactive/active/camera eye、renderer
+  cube/texture/layer/transform/mesh bucket，以及 runtime tick-before-extract
+  顺序。defer 边界保持 BER break-progress crumbling 与逐 BE 距离/视锥剔除。
 
 ## P2：屏幕、HUD、字体与截图
 

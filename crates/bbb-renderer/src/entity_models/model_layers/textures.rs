@@ -1,10 +1,10 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChestModelHalf,
-    ChestModelTexture, CopperGolemWeathering, DecoratedPotPattern, EntityArmorMaterial,
-    EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant,
-    ParrotModelVariant, RabbitModelVariant, SignModelAttachment, SignModelWood,
-    WolfArmorCrackiness,
+    ChestModelTexture, ConduitModelPart, CopperGolemWeathering, DecoratedPotPattern,
+    EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant,
+    FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 
 mod equine;
@@ -1586,7 +1586,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 681] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 687] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1773,6 +1773,12 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDERMITE_TEXTURE_REF,
     SILVERFISH_TEXTURE_REF,
     LEASH_KNOT_TEXTURE_REF,
+    CONDUIT_BASE_TEXTURE_REF,
+    CONDUIT_CAGE_TEXTURE_REF,
+    CONDUIT_WIND_TEXTURE_REF,
+    CONDUIT_WIND_VERTICAL_TEXTURE_REF,
+    CONDUIT_OPEN_EYE_TEXTURE_REF,
+    CONDUIT_CLOSED_EYE_TEXTURE_REF,
     TRIDENT_TEXTURE_REF,
     CHEST_NORMAL_TEXTURE_REF,
     CHEST_NORMAL_LEFT_TEXTURE_REF,
@@ -3590,6 +3596,82 @@ pub(in crate::entity_models) const BOOK_ENTITY_TEXTURE_REFS: [EntityModelTexture
 
 pub fn book_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BOOK_ENTITY_TEXTURE_REFS
+}
+
+/// Vanilla `ConduitRenderer` textures under `textures/entity/conduit/`, sized like the matching
+/// `CONDUIT_*` model layers.
+pub(in crate::entity_models) const CONDUIT_BASE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/base.png",
+        size: [32, 16],
+    };
+pub(in crate::entity_models) const CONDUIT_CAGE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/cage.png",
+        size: [32, 16],
+    };
+pub(in crate::entity_models) const CONDUIT_WIND_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/wind.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const CONDUIT_WIND_VERTICAL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/wind_vertical.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const CONDUIT_OPEN_EYE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/open_eye.png",
+        size: [16, 16],
+    };
+pub(in crate::entity_models) const CONDUIT_CLOSED_EYE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/conduit/closed_eye.png",
+        size: [16, 16],
+    };
+
+pub(in crate::entity_models) const CONDUIT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
+    CONDUIT_BASE_TEXTURE_REF,
+    CONDUIT_CAGE_TEXTURE_REF,
+    CONDUIT_WIND_TEXTURE_REF,
+    CONDUIT_WIND_VERTICAL_TEXTURE_REF,
+    CONDUIT_OPEN_EYE_TEXTURE_REF,
+    CONDUIT_CLOSED_EYE_TEXTURE_REF,
+];
+
+pub fn conduit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &CONDUIT_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) fn conduit_texture_ref(
+    part: ConduitModelPart,
+) -> EntityModelTextureRef {
+    match part {
+        ConduitModelPart::Shell => CONDUIT_BASE_TEXTURE_REF,
+        ConduitModelPart::Cage => CONDUIT_CAGE_TEXTURE_REF,
+        ConduitModelPart::OuterWind { phase } => {
+            if phase == 1 {
+                CONDUIT_WIND_VERTICAL_TEXTURE_REF
+            } else {
+                CONDUIT_WIND_TEXTURE_REF
+            }
+        }
+        ConduitModelPart::InnerWind { vertical } => {
+            if vertical {
+                CONDUIT_WIND_VERTICAL_TEXTURE_REF
+            } else {
+                CONDUIT_WIND_TEXTURE_REF
+            }
+        }
+        ConduitModelPart::Eye { open } => {
+            if open {
+                CONDUIT_OPEN_EYE_TEXTURE_REF
+            } else {
+                CONDUIT_CLOSED_EYE_TEXTURE_REF
+            }
+        }
+    }
 }
 
 /// A 16×16 `entity/decorated_pot/<name>` sprite (`Sheets.DECORATED_POT_MAPPER`): the plain side

@@ -20,6 +20,7 @@ mod camel;
 mod chest;
 mod chicken;
 mod cod;
+mod conduit;
 mod copper_golem;
 mod cow;
 mod creaking;

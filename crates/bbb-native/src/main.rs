@@ -24,6 +24,7 @@ mod camera_pose;
 mod chest_scene;
 mod code_of_conduct;
 mod code_of_conduct_overlay;
+mod conduit_scene;
 mod crosshair;
 mod decorated_pot_scene;
 mod enchanting_table_book_scene;

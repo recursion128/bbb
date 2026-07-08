@@ -1100,6 +1100,23 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(enchanting_book_tick < enchanting_book_instances);
     assert!(held_models < enchanting_book_instances);
     assert!(held_models < lectern_book_instances);
+    // The conduit ticker (`ConduitBlockEntity.clientTick`) advances the
+    // active rotation and shape/hunting state before render extraction expands
+    // the block entity into shell/cage/wind/eye model instances. The eye uses
+    // the same frame camera pose snapshot as the first-person and level
+    // renderer paths.
+    let conduit_tick = source
+        .find("world.advance_conduit_ticks(running_ticks);")
+        .expect("pump should advance conduit ticks");
+    let camera_pose = source
+        .find("let camera_pose = camera_pose_from_world(world);")
+        .expect("pump should extract the frame camera pose");
+    let conduit_instances = source
+        .find("entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(")
+        .expect("pump should extract conduit block-entity model instances");
+    assert!(conduit_tick < conduit_instances);
+    assert!(camera_pose < conduit_instances);
+    assert!(held_models < conduit_instances);
     let item_frame_models = source
         .find("let item_frame_models = item_frame_models(")
         .expect("pump should extract item frame models");

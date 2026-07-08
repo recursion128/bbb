@@ -54,6 +54,7 @@ use crate::{
     camera_pose::camera_pose_from_world,
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
+    conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
@@ -1512,6 +1513,10 @@ pub(crate) fn pump_network_and_terrain(
     // block-entity ticker, so the hovering books advance on running ticks too
     // (reconciled every call so freshly loaded tables gain state).
     world.advance_enchanting_table_book_ticks(running_ticks);
+    // Vanilla `ConduitBlockEntity.clientTick` is another client block-entity
+    // ticker: it advances tickCount/activeRotation and refreshes the water +
+    // prismarine frame every 40 game ticks.
+    world.advance_conduit_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
@@ -1678,6 +1683,7 @@ pub(crate) fn pump_network_and_terrain(
     let trim_material_keys = world_trim_material_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
+    let camera_pose = camera_pose_from_world(world);
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -1761,7 +1767,11 @@ pub(crate) fn pump_network_and_terrain(
         ),
     );
     entity_instances.extend(lectern_book_model_instances_from_world(world));
-    let camera_pose = camera_pose_from_world(world);
+    entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(
+        world,
+        camera_pose,
+        entity_partial_tick,
+    ));
     let first_person_item_models = first_person_item_models(
         world,
         item_runtime,

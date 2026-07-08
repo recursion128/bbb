@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 
 use super::super::catalog::{
-    EntityAttachmentFace, EntityModelKind, SalmonModelSize, SignModelAttachment,
+    ConduitModelPart, EntityAttachmentFace, EntityModelKind, SalmonModelSize, SignModelAttachment,
 };
 use super::super::geometry::{part_pose_transform, PartPose};
 use super::super::instances::EntityModelInstance;
@@ -642,6 +642,67 @@ pub(in crate::entity_models) fn leash_knot_model_root_transform(
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
+fn conduit_active_bob(anim_time: f32) -> f32 {
+    let wave = (anim_time * 0.1).sin() / 2.0 + 0.5;
+    wave * wave + wave
+}
+
+/// Vanilla `ConduitRenderer.submit`: inactive conduits render the shell centered in the block with
+/// `Axis.YP.rotation(state.activeRotation * PI / 180)`. Active conduits submit each part separately:
+/// the cage bobs and rotates around normalized `(0.5, 1, 0.5)`, the outer wind may rotate by phase,
+/// the inner wind is scaled/flipped, and the eye bobs while billboarded toward the camera.
+pub(in crate::entity_models) fn conduit_model_root_transform(
+    instance: EntityModelInstance,
+    part: ConduitModelPart,
+) -> Mat4 {
+    use std::f32::consts::{FRAC_PI_2, PI};
+
+    let block = Mat4::from_translation(Vec3::from_array(instance.position));
+    let center = Mat4::from_translation(Vec3::splat(0.5));
+    match part {
+        ConduitModelPart::Shell => {
+            block
+                * center
+                * Mat4::from_rotation_y(instance.render_state.conduit_active_rotation * PI / 180.0)
+        }
+        ConduitModelPart::Cage => {
+            let bob = conduit_active_bob(instance.render_state.conduit_anim_time);
+            block
+                * Mat4::from_translation(Vec3::new(0.5, 0.3 + bob * 0.2, 0.5))
+                * Mat4::from_axis_angle(
+                    Vec3::new(0.5, 1.0, 0.5).normalize(),
+                    instance.render_state.conduit_active_rotation,
+                )
+        }
+        ConduitModelPart::OuterWind { phase } => {
+            let phase_rotation = match phase {
+                1 => Mat4::from_rotation_x(FRAC_PI_2),
+                2 => Mat4::from_rotation_z(FRAC_PI_2),
+                _ => Mat4::IDENTITY,
+            };
+            block * center * phase_rotation
+        }
+        ConduitModelPart::InnerWind { .. } => {
+            block
+                * center
+                * Mat4::from_scale(Vec3::splat(0.875))
+                * Mat4::from_rotation_x(PI)
+                * Mat4::from_rotation_z(PI)
+        }
+        ConduitModelPart::Eye { .. } => {
+            let bob = conduit_active_bob(instance.render_state.conduit_anim_time);
+            block
+                * Mat4::from_translation(Vec3::new(0.5, 0.3 + bob * 0.2, 0.5))
+                * Mat4::from_scale(Vec3::splat(0.5))
+                * Mat4::from_rotation_y(-instance.render_state.body_rot.to_radians())
+                * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
+                * Mat4::from_rotation_z(PI)
+                * Mat4::from_rotation_y(PI)
+                * Mat4::from_scale(Vec3::splat(4.0 / 3.0))
+        }
+    }
 }
 
 /// Vanilla `ChestRenderer.submit`: `poseStack.mulPose(modelTransformation(state.facing))`, where

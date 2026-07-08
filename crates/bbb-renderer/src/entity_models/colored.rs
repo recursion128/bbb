@@ -24,8 +24,8 @@ pub(crate) use transforms::sign_base_transformation;
 pub(super) use transforms::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
     bell_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    chest_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
-    decorated_pot_model_root_transform, drowned_model_root_transform,
+    chest_model_root_transform, cod_model_root_transform, conduit_model_root_transform,
+    creeper_model_root_transform, decorated_pot_model_root_transform, drowned_model_root_transform,
     enchanting_table_book_model_root_transform, end_crystal_model_root_transform,
     ender_dragon_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, feline_model_root_transform, fox_model_root_transform,

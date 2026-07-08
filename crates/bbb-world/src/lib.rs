@@ -7,6 +7,7 @@ mod chest_lids;
 mod chunks;
 mod client;
 mod commands;
+mod conduit_blocks;
 mod counters;
 mod decorated_pot_blocks;
 mod diagnostics;
