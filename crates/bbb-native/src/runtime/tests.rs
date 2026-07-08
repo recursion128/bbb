@@ -9833,6 +9833,47 @@ fn advancement_widget_frame_layer_clips_to_contents_with_uvs() {
     );
 }
 
+#[test]
+fn advancement_widget_icon_items_keep_partial_fake_item_with_content_scissor() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let world = WorldStore::new();
+    let terrain_textures = TerrainTextureState::default();
+    let surface_size = winit::dpi::PhysicalSize::new(800, 600);
+    let (window_x, window_y) = advancements_window_origin_for_surface(surface_size);
+    let inside_x = window_x + ADVANCEMENTS_WINDOW_INSIDE_X;
+    let inside_y = window_y + ADVANCEMENTS_WINDOW_INSIDE_Y;
+    let widgets = vec![
+        advancement_widget_summary_for_test("minecraft:story/root", None, 0, 0),
+        advancement_widget_summary_for_test("minecraft:story/far_child", None, 400, 0),
+    ];
+
+    let items = advancements_widget_icon_items(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        &widgets,
+        Some((81.0, 0.0)),
+        window_x,
+        window_y,
+        ItemModelKeybindContext::default(),
+        0.0,
+    );
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].x, inside_x - 8);
+    assert_eq!(items[0].y, inside_y + 48);
+    assert_eq!(
+        items[0].scissor,
+        Some(HudInventoryItemScissor {
+            x: inside_x,
+            y: inside_y,
+            width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+            height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+        })
+    );
+    assert!(!items[0].draw_decorations);
+}
+
 fn advancements_centered_text_label(
     text: &str,
     center_x: i32,

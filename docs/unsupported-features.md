@@ -1515,11 +1515,24 @@ When an agent does any of the following, update this file in the same slice:
     successive `CursorMoved` positions while the screen owns the cursor, applies
     those deltas to the same selected-tab local scroll accumulator as wheel
     input, and stops accumulating after release.
+  - Done 2026-07-08 — Advancement selected-tab fake-item contents scissor.
+    Vanilla anchors: `AdvancementTab.extractContents` enables a
+    `(windowLeft, windowTop, windowLeft+234, windowTop+113)` scissor around
+    the selected tab contents, and `AdvancementWidget.extractRenderState`
+    draws `renderFakeItem(display.getIcon(), x+5, y+5)` inside that same
+    scissor. bbb now gives floating HUD items an optional inventory-relative
+    scissor, keeps advancement widget icons when their 16x16 fake-item rect
+    intersects the contents viewport, and clips flat item sprite/glint layers
+    to `rect ∩ scissor` with matching HUD UV subspans. Fully visible block
+    fake items keep the 3D GUI item path; partially scissored block fake
+    items fall back to clipped flat layers until the GUI block-item pass has
+    geometry-level scissor support.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
     footer Done plus initial display-root selection/root tab/root widget shells
     plus selected-tab tiled background, tree connectivity, wheel/drag scroll
-    clamp, and widget-frame partial scissor are live. The
+    clamp, widget-frame partial scissor, and flat fake-item contents scissor
+    are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1535,7 +1548,7 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The remaining
-    open surfaces in this ledger row are fake-item/full contents scissor,
+    open surfaces in this ledger row are 3D block fake-item partial scissor,
     advancement hover rendering, and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select

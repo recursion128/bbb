@@ -115,6 +115,44 @@ pub(super) fn absolute_hud_rect(x: f32, y: f32, width: u32, height: u32) -> HudR
     }
 }
 
+pub(super) fn hud_rect_intersection_uv_span(
+    rect: HudRect,
+    scissor: HudRect,
+) -> Option<(HudRect, [f32; 2], [f32; 2])> {
+    let left = rect.x.max(scissor.x);
+    let top = rect.y.max(scissor.y);
+    let right = (rect.x + rect.width as f32).min(scissor.x + scissor.width as f32);
+    let bottom = (rect.y + rect.height as f32).min(scissor.y + scissor.height as f32);
+    if left >= right || top >= bottom {
+        return None;
+    }
+
+    let visible_width = (right - left).round() as u32;
+    let visible_height = (bottom - top).round() as u32;
+    if visible_width == 0 || visible_height == 0 {
+        return None;
+    }
+
+    let source_width = rect.width.max(1) as f32;
+    let source_height = rect.height.max(1) as f32;
+    Some((
+        HudRect {
+            x: left,
+            y: top,
+            width: visible_width,
+            height: visible_height,
+        },
+        [
+            (left - rect.x) / source_width,
+            (top - rect.y) / source_height,
+        ],
+        [
+            (right - rect.x) / source_width,
+            (bottom - rect.y) / source_height,
+        ],
+    ))
+}
+
 pub(super) fn hotbar_hud_rect(surface_size: PhysicalSize<u32>, width: u32, height: u32) -> HudRect {
     let surface_width = surface_size.width.max(1) as f32;
     let surface_height = surface_size.height.max(1) as f32;
@@ -1332,6 +1370,46 @@ mod tests {
         );
 
         assert!(vertices.iter().all(|vertex| vertex.tint == tint));
+    }
+
+    #[test]
+    fn hud_rect_intersection_uv_span_returns_visible_rect_and_source_span() {
+        let rect = HudRect {
+            x: 100.0,
+            y: 50.0,
+            width: 16,
+            height: 16,
+        };
+        let scissor = HudRect {
+            x: 108.0,
+            y: 46.0,
+            width: 20,
+            height: 12,
+        };
+
+        let (visible, uv_min, uv_max) = hud_rect_intersection_uv_span(rect, scissor).unwrap();
+
+        assert_eq!(
+            visible,
+            HudRect {
+                x: 108.0,
+                y: 50.0,
+                width: 8,
+                height: 8,
+            }
+        );
+        assert_eq!(uv_min, [0.5, 0.0]);
+        assert_eq!(uv_max, [1.0, 0.5]);
+        assert!(hud_rect_intersection_uv_span(
+            rect,
+            HudRect {
+                x: 116.0,
+                y: 50.0,
+                width: 10,
+                height: 10,
+            }
+        )
+        .is_none());
     }
 
     #[test]

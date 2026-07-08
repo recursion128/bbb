@@ -29,13 +29,13 @@ use self::layout::{
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
     hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
-    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
-    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
-    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, vehicle_heart_hud_rect,
-    HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW,
-    HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
-    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
-    HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_rect_intersection_uv_span, hud_styled_quad_vertices, hud_subtitle_text_origin,
+    hud_title_text_origin, hud_vehicle_heart_fill, hud_vehicle_max_hearts,
+    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
+    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
+    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
+    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -858,11 +858,22 @@ pub struct HudInventoryItem {
     /// Vertical pose scale applied around the item's top-left GUI rect.
     pub scale_y: f32,
     pub icon: HudItemIcon,
+    /// Optional clip rectangle relative to the centered inventory screen origin. This is used for
+    /// vanilla advancement fake items, which are rendered inside the advancement contents scissor.
+    pub scissor: Option<HudInventoryItemScissor>,
     /// Whether count, durability, and cooldown overlays should be drawn for this floating item.
     pub draw_decorations: bool,
     /// The item's 3D block-item model (vanilla 3D inventory icon), when it is a block. See
     /// [`HudInventorySlot::block_model`].
     pub block_model: Option<HudBlockItemModel>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudInventoryItemScissor {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -3749,7 +3760,9 @@ impl Renderer {
             if let Some(atlas) = item_atlas {
                 for item in &screen.floating_items {
                     let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
-                    push_hud_item_icon(
+                    let scissor_rect =
+                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                    push_hud_item_icon_clipped(
                         &mut vertices,
                         &mut commands,
                         atlas,
@@ -3758,6 +3771,7 @@ impl Renderer {
                         &self.hud_digit_glyphs,
                         surface_size,
                         item_rect,
+                        scissor_rect,
                         &item.icon,
                         item.block_model.is_none(),
                         item.draw_decorations && item.block_model.is_none(),
@@ -4274,12 +4288,7 @@ fn inventory_floating_item_hud_rect(
     screen: &HudInventoryScreen,
     item: &HudInventoryItem,
 ) -> HudRect {
-    let width = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale)
-        .round()
-        .clamp(1.0, 512.0) as u32;
-    let height = ((HUD_INVENTORY_ITEM_SIZE as f32) * item.scale_y)
-        .round()
-        .clamp(1.0, 512.0) as u32;
+    let (width, height) = hud_inventory_item_scaled_size(item.scale, item.scale_y);
     inventory_background_hud_rect(
         surface_size,
         screen.width,
@@ -4291,22 +4300,56 @@ fn inventory_floating_item_hud_rect(
     )
 }
 
+fn hud_inventory_item_scaled_size(scale: f32, scale_y: f32) -> (u32, u32) {
+    (
+        ((HUD_INVENTORY_ITEM_SIZE as f32) * scale)
+            .round()
+            .clamp(1.0, 512.0) as u32,
+        ((HUD_INVENTORY_ITEM_SIZE as f32) * scale_y)
+            .round()
+            .clamp(1.0, 512.0) as u32,
+    )
+}
+
+fn inventory_floating_item_scissor_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    item: &HudInventoryItem,
+) -> Option<HudRect> {
+    item.scissor.map(|scissor| {
+        inventory_background_hud_rect(
+            surface_size,
+            screen.width,
+            screen.height,
+            scissor.x,
+            scissor.y,
+            scissor.width,
+            scissor.height,
+        )
+    })
+}
+
+fn hud_uv_rect_subspan(uv: HudUvRect, min: [f32; 2], max: [f32; 2]) -> HudUvRect {
+    let width = uv.max[0] - uv.min[0];
+    let height = uv.max[1] - uv.min[1];
+    HudUvRect {
+        min: [uv.min[0] + width * min[0], uv.min[1] + height * min[1]],
+        max: [uv.min[0] + width * max[0], uv.min[1] + height * max[1]],
+    }
+}
+
 fn push_hud_item_glint<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     item_atlas: &'a HudSpriteGpu,
     surface_size: PhysicalSize<u32>,
     item_rect: HudRect,
-    layer: &HudIconLayer,
+    uv: HudUvRect,
+    alpha: f32,
     foil: HudItemFoil,
 ) {
     let start = vertices.len() as u32;
-    let mut quad_vertices = hud_quad_vertices(
-        surface_size,
-        item_rect,
-        layer.uv,
-        [1.0, 1.0, 1.0, layer.tint[3]],
-    );
+    let mut quad_vertices = hud_quad_vertices(surface_size, item_rect, uv, [1.0, 1.0, 1.0, alpha]);
     if foil == HudItemFoil::Special {
         for vertex in &mut quad_vertices {
             vertex.local_uv = hud_item_special_foil_glint_uv(vertex.local_uv);
@@ -4337,6 +4380,51 @@ fn push_hud_item_icon<'a>(
     draw_layers: bool,
     draw_decorations: bool,
 ) {
+    push_hud_item_icon_clipped(
+        vertices,
+        commands,
+        item_atlas,
+        white_pixel,
+        digit_atlas,
+        glyphs,
+        surface_size,
+        item_rect,
+        None,
+        icon,
+        draw_layers,
+        draw_decorations,
+    );
+}
+
+fn push_hud_item_icon_clipped<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    item_atlas: &'a HudSpriteGpu,
+    white_pixel: &'a HudSpriteGpu,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &[HudDigitGlyph; 10],
+    surface_size: PhysicalSize<u32>,
+    item_rect: HudRect,
+    scissor_rect: Option<HudRect>,
+    icon: &HudItemIcon,
+    // When the slot also renders a 3D block model (in the GUI item pass), its 2D sprite layers are the
+    // flat block-texture stand-in that the 3D icon replaces. Decorations are deferred until after the
+    // GUI item pass so the 3D model cannot cover count / durability / cooldown overlays.
+    draw_layers: bool,
+    draw_decorations: bool,
+) {
+    let (layer_rect, layer_uv_min, layer_uv_max) = match scissor_rect {
+        Some(scissor_rect) => {
+            let Some((visible, uv_min, uv_max)) =
+                hud_rect_intersection_uv_span(item_rect, scissor_rect)
+            else {
+                return;
+            };
+            (visible, uv_min, uv_max)
+        }
+        None => (item_rect, [0.0, 0.0], [1.0, 1.0]),
+    };
+    let draw_decorations = draw_decorations && scissor_rect.is_none();
     for_each_hud_item_icon_draw_step(icon, draw_layers, draw_decorations, |step| match step {
         HudItemIconDrawStep::Layers => {
             for layer in &icon.layers {
@@ -4345,8 +4433,8 @@ fn push_hud_item_icon<'a>(
                     commands,
                     item_atlas,
                     surface_size,
-                    item_rect,
-                    layer.uv,
+                    layer_rect,
+                    hud_uv_rect_subspan(layer.uv, layer_uv_min, layer_uv_max),
                     layer.tint,
                 );
             }
@@ -4358,8 +4446,9 @@ fn push_hud_item_icon<'a>(
                     commands,
                     item_atlas,
                     surface_size,
-                    item_rect,
-                    layer,
+                    layer_rect,
+                    hud_uv_rect_subspan(layer.uv, layer_uv_min, layer_uv_max),
+                    layer.tint[3],
                     icon.foil,
                 );
             }
@@ -6031,14 +6120,51 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
     {
         return None;
     }
+    let scale = item.scale.clamp(0.0625, 16.0);
+    let scale_y = item.scale_y.clamp(0.0625, 16.0);
+    let scissor = item.scissor.and_then(sanitize_hud_inventory_item_scissor);
+    let scissored_partial = scissor.is_some_and(|scissor| {
+        !hud_inventory_item_rect_inside_scissor(item.x, item.y, scale, scale_y, scissor)
+    });
+    let block_model = if scissored_partial {
+        None
+    } else {
+        item.block_model.filter(hud_block_item_model_is_renderable)
+    };
     Some(HudInventoryItem {
         x: item.x,
         y: item.y,
-        scale: item.scale.clamp(0.0625, 16.0),
-        scale_y: item.scale_y.clamp(0.0625, 16.0),
+        scale,
+        scale_y,
         icon: sanitize_hud_item_icon(item.icon)?,
+        scissor,
         draw_decorations: item.draw_decorations,
-        block_model: item.block_model.filter(hud_block_item_model_is_renderable),
+        block_model,
+    })
+}
+
+fn hud_inventory_item_rect_inside_scissor(
+    x: i32,
+    y: i32,
+    scale: f32,
+    scale_y: f32,
+    scissor: HudInventoryItemScissor,
+) -> bool {
+    let (width, height) = hud_inventory_item_scaled_size(scale, scale_y);
+    let right = i64::from(x) + i64::from(width);
+    let bottom = i64::from(y) + i64::from(height);
+    let scissor_right = i64::from(scissor.x) + i64::from(scissor.width);
+    let scissor_bottom = i64::from(scissor.y) + i64::from(scissor.height);
+    x >= scissor.x && y >= scissor.y && right <= scissor_right && bottom <= scissor_bottom
+}
+
+fn sanitize_hud_inventory_item_scissor(
+    scissor: HudInventoryItemScissor,
+) -> Option<HudInventoryItemScissor> {
+    (scissor.width > 0 && scissor.height > 0).then_some(HudInventoryItemScissor {
+        width: scissor.width.min(512),
+        height: scissor.height.min(512),
+        ..scissor
     })
 }
 
@@ -8687,6 +8813,12 @@ mod tests {
                         durability_bar: Some(HudItemDurabilityBar::new(99, [0.25, 2.0, -1.0])),
                         cooldown_progress: Some(1.5),
                     },
+                    scissor: Some(HudInventoryItemScissor {
+                        x: 9,
+                        y: 18,
+                        width: 900,
+                        height: 0,
+                    }),
                     draw_decorations: true,
                     block_model: None,
                 },
@@ -8709,6 +8841,7 @@ mod tests {
                         durability_bar: None,
                         cooldown_progress: None,
                     },
+                    scissor: None,
                     draw_decorations: true,
                     block_model: None,
                 },
@@ -8725,6 +8858,7 @@ mod tests {
         assert_eq!(screen.floating_items[0].y, 19);
         assert_eq!(screen.floating_items[0].scale, 2.0);
         assert_eq!(screen.floating_items[0].scale_y, 16.0);
+        assert_eq!(screen.floating_items[0].scissor, None);
         assert!(screen.floating_items[0].draw_decorations);
         assert_eq!(
             screen.floating_items[0].icon,
@@ -9569,10 +9703,62 @@ mod tests {
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],
             }),
+            scissor: None,
             draw_decorations: true,
             block_model: Some(model(vec![quad])),
         })
         .unwrap();
         assert!(floating.block_model.is_some());
+
+        let scissored_partial = sanitize_hud_inventory_item(HudInventoryItem {
+            x: 0,
+            y: 0,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            scissor: Some(HudInventoryItemScissor {
+                x: 9,
+                y: 18,
+                width: 600,
+                height: 700,
+            }),
+            draw_decorations: true,
+            block_model: Some(model(vec![quad])),
+        })
+        .unwrap();
+        assert_eq!(
+            scissored_partial.scissor,
+            Some(HudInventoryItemScissor {
+                x: 9,
+                y: 18,
+                width: 512,
+                height: 512,
+            })
+        );
+        assert!(scissored_partial.block_model.is_none());
+
+        let scissored_inside = sanitize_hud_inventory_item(HudInventoryItem {
+            x: 9,
+            y: 18,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            scissor: Some(HudInventoryItemScissor {
+                x: 9,
+                y: 18,
+                width: 16,
+                height: 16,
+            }),
+            draw_decorations: true,
+            block_model: Some(model(vec![quad])),
+        })
+        .unwrap();
+        assert!(scissored_inside.block_model.is_some());
     }
 }

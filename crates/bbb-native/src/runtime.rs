@@ -25,15 +25,15 @@ use bbb_renderer::{
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
     HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
-    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
+    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
     DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
     ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -384,6 +384,7 @@ const ADVANCEMENTS_WIDGET_FRAME_OFFSET_X: i32 = 3;
 const ADVANCEMENTS_WIDGET_FRAME_WIDTH: u32 = 26;
 const ADVANCEMENTS_WIDGET_FRAME_HEIGHT: u32 = 26;
 const ADVANCEMENTS_WIDGET_ICON_OFFSET: (i32, i32) = (8, 5);
+const ADVANCEMENTS_WIDGET_ICON_SIZE: i32 = 16;
 const ADVANCEMENTS_WIDGET_BOUNDS_WIDTH: i32 = 28;
 const ADVANCEMENTS_WIDGET_BOUNDS_HEIGHT: i32 = 27;
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -3271,6 +3272,7 @@ fn push_recipe_book_tab_icon_item(
         scale: 1.0,
         scale_y,
         icon,
+        scissor: None,
         draw_decorations: true,
         block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
     });
@@ -3412,6 +3414,7 @@ fn hud_recipe_book_recipe_button_icon_items(
                 scale: 1.0,
                 scale_y: 1.0,
                 icon: icon.clone(),
+                scissor: None,
                 draw_decorations: true,
                 block_model: block_model.clone(),
             });
@@ -3421,6 +3424,7 @@ fn hud_recipe_book_recipe_button_icon_items(
                 scale: 1.0,
                 scale_y: 1.0,
                 icon,
+                scissor: None,
                 draw_decorations: true,
                 block_model,
             });
@@ -3432,6 +3436,7 @@ fn hud_recipe_book_recipe_button_icon_items(
             scale: 1.0,
             scale_y: 1.0,
             icon,
+            scissor: None,
             draw_decorations: true,
             block_model,
         });
@@ -3559,6 +3564,7 @@ fn hud_recipe_book_overlay_icon_items(
                 scale: RECIPE_BOOK_OVERLAY_ITEM_SCALE,
                 scale_y: RECIPE_BOOK_OVERLAY_ITEM_SCALE,
                 icon,
+                scissor: None,
                 draw_decorations: false,
                 block_model: block_item_3d_model(
                     &overlay_item.stack,
@@ -5121,6 +5127,7 @@ fn advancements_tab_icon_items(
             scale: 1.0,
             scale_y: 1.0,
             icon,
+            scissor: None,
             draw_decorations: false,
             block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
         });
@@ -5223,7 +5230,7 @@ fn advancements_widget_icon_items(
         let (icon_x, icon_y) = ADVANCEMENTS_WIDGET_ICON_OFFSET;
         let x = inside_x + scroll_x + widget.x + icon_x;
         let y = inside_y + scroll_y + widget.y + icon_y;
-        if !advancement_widget_rect_inside_content(x, y, inside_x, inside_y) {
+        if !advancement_widget_icon_intersects_content(x, y, inside_x, inside_y) {
             continue;
         }
         let stack = ItemStackSummary {
@@ -5253,6 +5260,7 @@ fn advancements_widget_icon_items(
             scale: 1.0,
             scale_y: 1.0,
             icon,
+            scissor: Some(advancement_widget_content_scissor(window_x, window_y)),
             draw_decorations: false,
             block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
         });
@@ -5260,13 +5268,27 @@ fn advancements_widget_icon_items(
     items
 }
 
-fn advancement_widget_rect_inside_content(x: i32, y: i32, inside_x: i32, inside_y: i32) -> bool {
-    x >= inside_x
-        && x + ADVANCEMENTS_WIDGET_FRAME_WIDTH as i32
-            <= inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
-        && y >= inside_y
-        && y + ADVANCEMENTS_WIDGET_FRAME_HEIGHT as i32
-            <= inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
+fn advancement_widget_content_scissor(window_x: i32, window_y: i32) -> HudInventoryItemScissor {
+    HudInventoryItemScissor {
+        x: ADVANCEMENTS_WINDOW_INSIDE_X + window_x,
+        y: ADVANCEMENTS_WINDOW_INSIDE_Y + window_y,
+        width: ADVANCEMENTS_WINDOW_INSIDE_WIDTH,
+        height: ADVANCEMENTS_WINDOW_INSIDE_HEIGHT,
+    }
+}
+
+fn advancement_widget_icon_intersects_content(
+    x: i32,
+    y: i32,
+    inside_x: i32,
+    inside_y: i32,
+) -> bool {
+    let right = x + ADVANCEMENTS_WIDGET_ICON_SIZE;
+    let bottom = y + ADVANCEMENTS_WIDGET_ICON_SIZE;
+    right > inside_x
+        && x < inside_x + ADVANCEMENTS_WINDOW_INSIDE_WIDTH as i32
+        && bottom > inside_y
+        && y < inside_y + ADVANCEMENTS_WINDOW_INSIDE_HEIGHT as i32
 }
 
 fn advancements_widget_scroll(
@@ -5837,6 +5859,7 @@ fn push_hud_inventory_cursor_item(
         scale: 1.0,
         scale_y: 1.0,
         icon,
+        scissor: None,
         draw_decorations: true,
         block_model,
     });
@@ -6500,6 +6523,7 @@ fn push_merchant_trade_item(
             scale: 1.0,
             scale_y: 1.0,
             icon,
+            scissor: None,
             draw_decorations: true,
             block_model,
         });
@@ -6538,6 +6562,7 @@ fn hud_stonecutter_recipe_items(
                 scale: 1.0,
                 scale_y: 1.0,
                 icon,
+                scissor: None,
                 draw_decorations: true,
                 block_model,
             });

@@ -5032,3 +5032,14 @@
   经同一 selected-tab 本地 scroll accumulator 驱动 runtime 的 vanilla clamp，
   release 后停止累积。剩余：fake-item/full scissor、hover title/description
   boxes，以及 debug overlay。
+- [x] advancement selected-tab fake-item contents scissor（P2
+  HUD/runtime/renderer slice，2026-07-08）：依据
+  `AdvancementTab.extractContents` 对 selected-tab contents 启用 234x113
+  scissor，以及 `AdvancementWidget.extractRenderState` 在同一 scissor 下以
+  `(x+5,y+5)` 调用 `renderFakeItem(display.getIcon(), ...)`。renderer 现在给
+  `HudInventoryItem` 增加可选 contents scissor，按 `rect ∩ scissor` 裁剪
+  flat item sprite/glint 层并调整 UV；runtime 改为只要 16x16 fake-item rect
+  与 contents 相交就保留 advancement icon，并把 contents scissor 传给 item。
+  完全可见的 block fake item 仍保留 3D GUI item pass；部分越界的 block fake
+  item 暂降级为 clipped flat layers。剩余：3D block fake-item partial
+  scissor、hover title/description boxes，以及 debug overlay。
