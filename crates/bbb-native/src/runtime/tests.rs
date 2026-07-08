@@ -1,7 +1,7 @@
 use super::*;
 use std::{
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bbb_pack::{
@@ -900,7 +900,10 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);
     let surface_size = winit::dpi::PhysicalSize::new(320, 240);
-    assert_eq!(hud_debug_overlay(&input, &world, None, surface_size), None);
+    assert_eq!(
+        hud_debug_overlay(&input, &world, None, surface_size, 0),
+        None
+    );
 
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
@@ -918,6 +921,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
             eye_height: 1.62,
         }),
         surface_size,
+        57,
     )
     .expect("debug overlay should project when F3 is visible");
 
@@ -925,6 +929,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
         overlay.left_lines[0],
         format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
     );
+    assert_eq!(overlay.left_lines[1], "57 fps T: inf");
     assert!(overlay
         .left_lines
         .contains(&"XYZ: 10.250 / 64.00000 / -5.750".to_string()));
@@ -948,6 +953,30 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     assert!(overlay
         .right_lines
         .contains(&"Filtering: Nearest".to_string()));
+}
+
+#[test]
+fn hud_debug_fps_sampler_reports_completed_one_second_windows() {
+    let start = Instant::now();
+    let mut sampler = HudDebugFpsSampler::default();
+
+    sampler.record_frame(start);
+    sampler.record_frame(start + Duration::from_millis(500));
+    assert_eq!(sampler.fps(), 0);
+
+    sampler.record_frame(start + Duration::from_secs(1));
+    assert_eq!(sampler.fps(), 3);
+
+    sampler.record_frame(start + Duration::from_millis(1200));
+    assert_eq!(sampler.fps(), 3);
+
+    sampler.record_frame(start + Duration::from_secs(2));
+    assert_eq!(sampler.fps(), 2);
+}
+
+#[test]
+fn hud_debug_fps_line_matches_vanilla_shape_without_configured_cap() {
+    assert_eq!(hud_debug_fps_line(144), "144 fps T: inf");
 }
 
 #[test]
@@ -1008,6 +1037,7 @@ fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
+        0,
     )
     .expect("F3 should show the debug overlay");
 
@@ -1042,6 +1072,7 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
+        0,
     )
     .expect("chart toggle should force the debug overlay visible");
 
@@ -1198,6 +1229,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
+        0,
     )
     .expect("plain F3 should make the debug overlay visible");
 

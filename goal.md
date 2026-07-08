@@ -299,7 +299,8 @@ Screen Render Surfaces" 条目）：
   terrain reload request、F3+D clear-chat display action、F3+P focus-pause
   option toggle、F3+H advanced tooltip consumption、F3+V version debug chat
   action、F3+A/B/G/H/N/P/F4 local debug feedback、F3+F6 debug-options edit
-  help keybind、default GAME_VERSION entry shape、default TPS entry shell 已完成；
+  help keybind、default GAME_VERSION entry shape、default TPS entry shell、
+  default FPS entry shell 已完成；
   剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、lightmap
   preview 实际绘制、entity hitbox/chunk-border 实际绘制、advanced tooltip
   full parity/持久化、3D crosshair 与其它 F3 组合键，低优先）。

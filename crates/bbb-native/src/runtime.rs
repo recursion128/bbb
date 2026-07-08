@@ -586,6 +586,38 @@ impl ClientAnimationTickState {
     }
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct HudDebugFpsSampler {
+    window_started_at: Option<Instant>,
+    frames_in_window: u32,
+    last_reported_fps: u32,
+}
+
+impl HudDebugFpsSampler {
+    pub(crate) fn record_frame(&mut self, now: Instant) {
+        let Some(started_at) = self.window_started_at else {
+            self.window_started_at = Some(now);
+            self.frames_in_window = 1;
+            return;
+        };
+
+        self.frames_in_window = self.frames_in_window.saturating_add(1);
+        let elapsed = now.saturating_duration_since(started_at);
+        if elapsed < Duration::from_secs(1) {
+            return;
+        }
+
+        let fps = self.frames_in_window as f64 / elapsed.as_secs_f64();
+        self.last_reported_fps = fps.round().clamp(0.0, u32::MAX as f64) as u32;
+        self.window_started_at = Some(now);
+        self.frames_in_window = 0;
+    }
+
+    pub(crate) fn fps(&self) -> u32 {
+        self.last_reported_fps
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct LightmapTickState {
     random: LevelEventSoundRandomState,
@@ -1523,6 +1555,7 @@ pub(crate) fn pump_network_and_terrain(
     surface_size: winit::dpi::PhysicalSize<u32>,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
+    hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -1571,6 +1604,7 @@ pub(crate) fn pump_network_and_terrain(
         code_of_conduct,
     );
     let now = Instant::now();
+    hud_debug_fps_sampler.record_frame(now);
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
@@ -1851,7 +1885,13 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
-    let hud_debug_overlay = hud_debug_overlay(input, world, camera_pose, surface_size);
+    let hud_debug_overlay = hud_debug_overlay(
+        input,
+        world,
+        camera_pose,
+        surface_size,
+        hud_debug_fps_sampler.fps(),
+    );
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -2761,12 +2801,14 @@ fn hud_debug_overlay(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
     surface_size: winit::dpi::PhysicalSize<u32>,
+    fps: u32,
 ) -> Option<HudDebugOverlay> {
     if !input.debug_overlay_visible() {
         return None;
     }
 
     let mut left_lines = vec![hud_debug_version_line()];
+    left_lines.push(hud_debug_fps_line(fps));
     if let Some(tps_line) = hud_debug_tps_line(world) {
         left_lines.push(tps_line);
     }
@@ -2808,6 +2850,10 @@ fn hud_debug_overlay(
 
 fn hud_debug_version_line() -> String {
     format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
+}
+
+fn hud_debug_fps_line(fps: u32) -> String {
+    format!("{fps} fps T: inf")
 }
 
 fn hud_debug_tps_line(world: &WorldStore) -> Option<String> {

@@ -1097,13 +1097,22 @@ When an agent does any of the following, update this file in the same slice:
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, F3+A/B/G/H/N/P/F4 local
     debug feedback, the F3+F6 debug-options edit help keybind, the default
-    GAME_VERSION entry shape, and the default TPS entry shell: the complete
-    vanilla debug entry list, actual
+    GAME_VERSION entry shape, the default TPS entry shell, and the default
+    FPS entry shell: the complete vanilla debug entry list, actual
     FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full
     parity/persistence, 3D crosshair, and the other F3 modifier combos remain
     (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay default FPS entry shell. Vanilla anchors:
+    `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.FPS`,
+    and `DebugEntryFps.display` formats the priority line as
+    `<fps> fps T: <framerateLimit>` plus optional ` vsync`. bbb now keeps a
+    native per-frame FPS sampler, feeds the sampled value into the debug
+    overlay's default priority lines, and formats the line as
+    `<fps> fps T: inf` because startup/runtime configuration has no frame-rate
+    cap or vsync option. Boundary: the FPS/TPS/network chart sample storage
+    and actual chart rendering are still not implemented.
   - Done 2026-07-08 — Debug overlay F3+N/F3+F4 no-permission feedback
     paths. Vanilla anchors: `KeyboardHandler.handleDebugKeys` maps
     `keyDebugSpectate` to either `ServerboundChangeGameModePacket` or
@@ -1237,8 +1246,8 @@ When an agent does any of the following, update this file in the same slice:
     approximation of those right-column groups from process `/proc` memory,
     current surface size, native runtime identity, and fixed vanilla-default
     performance-impact labels. Boundary: exact Java heap/allocation rate, GPU
-    vendor/renderer/version strings, FPS/TPS priority lines, and the remaining
-    debug entries still need dedicated owners.
+    vendor/renderer/version strings, and the remaining debug entries still
+    need dedicated owners.
   - Done 2026-07-08 — Debug overlay F3 toggle and left-column shell. Vanilla
     anchors: `KeyboardHandler.keyPress` toggles the debug overlay from the F3
     debug key path, and `DebugScreenOverlay.extractLines` draws each non-empty

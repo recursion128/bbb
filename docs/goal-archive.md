@@ -5180,6 +5180,15 @@
   integrated-server MSPT/sprinting 文本、FPS/TPS/network charts 实际绘制、
   完整 debug entry 列表、lightmap preview、entity hitbox/chunk-border
   rendering、3D crosshair、其它 F3 modifier combos。
+- [x] debug overlay default FPS entry shell（P2 HUD/runtime slice，
+  2026-07-08）：依据 `DebugScreenEntries.DEFAULT_PROFILE` 默认启用 `FPS`，
+  以及 `DebugEntryFps.display` 的 priority line 格式
+  `"<fps> fps T: <framerateLimit>[ vsync]"`。native 现在维护每帧更新的
+  `HudDebugFpsSampler`，runtime 在 debug overlay 默认 priority lines 中投影
+  `"<fps> fps T: inf"`；`inf` 边界来自 bbb 当前无启动/runtime 帧率上限与
+  vsync 配置。剩余：FPS/TPS/network charts 实际绘制、完整 debug entry
+  列表、lightmap preview、entity hitbox/chunk-border rendering、3D
+  crosshair、其它 F3 modifier combos。
 - [x] debug overlay F3+N/F3+F4 no-permission feedback paths（P2
   HUD/input/runtime slice，2026-07-08）：依据
   `KeyboardHandler.handleDebugKeys` 对 `keyDebugSpectate` / `keyDebugSwitchGameMode`
