@@ -57,6 +57,7 @@ pub(crate) fn advance_player_input(
         .as_secs_f64()
         .min(0.25);
     input.last_step = Some(now);
+    input.advance_debug_crash_hold(world, now);
     input.advance_sprint_trigger(dt_seconds);
     input.advance_creative_flight_jump_trigger(dt_seconds);
     maybe_enable_spectator_flying(counters, world, net_commands);

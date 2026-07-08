@@ -1091,7 +1091,8 @@ When an agent does any of the following, update this file in the same slice:
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, F3+C copy-location
-    clipboard action, F3+T resource-pack reload request,
+    clipboard action, F3+C long-hold manual-crash warning shell,
+    F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
     F3+I block/entity recreate clipboard action,
     F3+L profiling request shell,
@@ -1108,7 +1109,7 @@ When an agent does any of the following, update this file in the same slice:
     gizmo grid, advanced tooltip full parity, actual dynamic texture dump
     execution, F3+I NBT/server-query parity, profiling metrics
     recorder/output, actual DebugOptionsScreen,
-    native pause loop/PauseScreen,
+    native pause loop/PauseScreen, actual F3+C manual crash throw,
     and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
@@ -1240,18 +1241,26 @@ When an agent does any of the following, update this file in the same slice:
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; advanced tooltip
     content parity remains open.
-  - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action.
+  - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
+    manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
     `KeyboardHandler.handleDebugKeys` requires a player plus non-reduced debug
     info, sends `debug.copy_location.message`, then writes
     `/execute in %s run tp @s %.2f %.2f %.2f %.2f %.2f` to the OS clipboard
-    from the local player's dimension, position, yaw, and pitch. bbb now
-    exposes a native debug clipboard sink backed by `arboard`, consumes C while
-    F3 is held only when the clipboard write succeeds, writes the same
-    dimension-scoped `/execute ... tp` command with two-decimal fields, appends
-    `[Debug]: Copied location to clipboard`, and keeps reduced-debug/no-player/
-    clipboard-failure cases unconsumed so F3 release still toggles the overlay.
-    Boundary: the long-hold F3+C manual crash path is still not implemented.
+    from the local player's dimension, position, yaw, and pitch. The same
+    physical C key is also `Options.keyDebugCrash`; `KeyboardHandler.keyPress`
+    starts the manual-crash timer while F3+C are held, and
+    `KeyboardHandler.tick` emits `debug.crash.message` after the first second
+    plus `debug.crash.warning` countdown lines while the key remains held. bbb
+    now exposes a native debug clipboard sink backed by `arboard`, writes the
+    same dimension-scoped `/execute ... tp` command with two-decimal fields
+    when location copy is allowed and the clipboard succeeds, appends
+    `[Debug]: Copied location to clipboard`, always consumes F3+C as a debug
+    modifier because it is also the manual-crash key, and emits the vanilla
+    long-hold crash warning/countdown feedback until C or F3 is released.
+    Boundary: the actual crash/`ReportedException` trigger after the countdown,
+    red warning styling, control-key `Blaze3D.youJustLostTheGame`, and
+    rebindable-key message variants remain future work.
   - Done 2026-07-08 — Debug overlay F3+T resource-pack reload request.
     Vanilla anchors: `Options.keyDebugReloadResourcePacks` binds key code 84
     (T), and `KeyboardHandler.handleDebugKeys` maps it to
@@ -1946,8 +1955,8 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox full details/chunk-border full gizmo grid, advanced tooltip
     full parity/persistence, actual dynamic texture dump execution, F3+I
     NBT/server-query recreate parity, profiling metrics recorder/output,
-    actual DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
-    modifier combos.
+    actual DebugOptionsScreen, native pause loop/PauseScreen, actual F3+C
+    manual crash throw, and the other F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

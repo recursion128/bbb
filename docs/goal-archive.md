@@ -5416,3 +5416,15 @@
   memory/system/performance groups、以及 3D crosshair state。边界：
   非默认/可编辑 debug entries、具体 advanced entry renderers、以及
   `DebugOptionsScreen` profile 持久化仍未实现。
+- [x] debug overlay F3+C long-hold manual-crash warning shell（P2 input/world
+  slice，2026-07-08）：依据 `Options.keyDebugCrash` 与
+  `Options.keyDebugCopyLocation` 共同绑定 C、`KeyboardHandler.keyPress`
+  在 F3+C 同时按住时启动 `debugCrashKeyTime`，以及 `KeyboardHandler.tick`
+  每秒发送 `debug.crash.message` / `debug.crash.warning` 的行为。native
+  现在把 F3+C 始终视作 debug modifier（即使 location copy 因 reduced-debug、
+  no-player 或 clipboard 不可用而没有发生），按住超过 1 秒发送
+  `[Debug]: F3 + C is held down. This will crash the game unless released.`，
+  随后发送 `[Debug]: Crashing in N...` 倒计时，并在释放 C 或 F3 时取消；F3
+  release 不再切换 overlay。边界：实际 10 秒后抛出 crash/`ReportedException`、
+  red warning styling、control-key `Blaze3D.youJustLostTheGame`、以及 rebindable
+  key 文案仍未实现。

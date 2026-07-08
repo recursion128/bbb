@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use bbb_control::NetCounters;
@@ -83,6 +83,8 @@ const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
 const SPRINT_TRIGGER_TICKS: u8 = 7;
 const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
+const DEBUG_CRASH_TIME: Duration = Duration::from_secs(10);
+const DEBUG_CRASH_REPORT_INTERVAL: Duration = Duration::from_secs(1);
 const CHAT_ENTRY_MAX_LENGTH: usize = 256;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
@@ -211,6 +213,9 @@ pub(crate) struct ClientInputState {
     debug_profiling_toggle_requests: u32,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
+    debug_crash_started_at: Option<Instant>,
+    debug_crash_last_reported_at: Option<Instant>,
+    debug_crash_report_count: u32,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -356,6 +361,7 @@ impl ClientInputState {
         self.advancement_is_scrolling = false;
         self.debug_modifier_down = false;
         self.debug_modifier_used = false;
+        self.reset_debug_crash_hold();
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
@@ -639,6 +645,7 @@ impl ClientInputState {
                 }
                 ElementState::Released => {
                     self.debug_modifier_down = false;
+                    self.reset_debug_crash_hold();
                     if self.debug_modifier_used {
                         self.debug_modifier_used = false;
                     } else {
@@ -647,6 +654,10 @@ impl ClientInputState {
                 }
             }
             return true;
+        }
+
+        if matches!(state, ElementState::Released) && code == KeyCode::KeyC {
+            self.reset_debug_crash_hold();
         }
 
         if matches!(state, ElementState::Pressed)
@@ -819,26 +830,72 @@ impl ClientInputState {
                 true
             }
             KeyCode::KeyC => {
-                let Some(world_ref) = world.as_deref() else {
-                    return false;
-                };
-                let Some(command) = debug_copy_location_command(world_ref) else {
-                    return false;
-                };
-                let Some(clipboard) = clipboard.as_deref_mut() else {
-                    return false;
-                };
-                if !clipboard.set_debug_clipboard_text(&command) {
-                    return false;
+                if let (Some(command), Some(clipboard)) = (
+                    world.as_deref().and_then(debug_copy_location_command),
+                    clipboard.as_deref_mut(),
+                ) {
+                    if clipboard.set_debug_clipboard_text(&command) {
+                        push_debug_feedback_chat_message(
+                            world.as_deref_mut(),
+                            "Copied location to clipboard",
+                        );
+                    }
                 }
-                push_debug_feedback_chat_message(
-                    world.as_deref_mut(),
-                    "Copied location to clipboard",
-                );
+                // Vanilla shares C between copy-location and the manual crash key,
+                // so F3+C still counts as a debug action even when no copy happens.
                 true
             }
             _ => false,
         }
+    }
+
+    fn reset_debug_crash_hold(&mut self) {
+        self.debug_crash_started_at = None;
+        self.debug_crash_last_reported_at = None;
+        self.debug_crash_report_count = 0;
+    }
+
+    fn advance_debug_crash_hold(&mut self, world: &mut WorldStore, now: Instant) {
+        if !(self.debug_modifier_down && self.pressed_keys.contains(&KeyCode::KeyC)) {
+            self.reset_debug_crash_hold();
+            return;
+        }
+
+        let started_at = match self.debug_crash_started_at {
+            Some(started_at) => started_at,
+            None => {
+                self.debug_crash_started_at = Some(now);
+                self.debug_crash_last_reported_at = Some(now);
+                self.debug_crash_report_count = 0;
+                return;
+            }
+        };
+        let elapsed = now.saturating_duration_since(started_at);
+        if elapsed > DEBUG_CRASH_TIME {
+            return;
+        }
+
+        let last_reported_at = self.debug_crash_last_reported_at.unwrap_or(started_at);
+        if now.saturating_duration_since(last_reported_at) < DEBUG_CRASH_REPORT_INTERVAL {
+            return;
+        }
+
+        if self.debug_crash_report_count == 0 {
+            push_debug_feedback_chat_message(
+                Some(world),
+                "F3 + C is held down. This will crash the game unless released.",
+            );
+        } else {
+            let remaining = DEBUG_CRASH_TIME.saturating_sub(elapsed);
+            let remaining_seconds = remaining.as_secs() + u64::from(remaining.subsec_nanos() > 0);
+            push_debug_feedback_chat_message(
+                Some(world),
+                &format!("Crashing in {remaining_seconds}..."),
+            );
+        }
+
+        self.debug_crash_last_reported_at = Some(now);
+        self.debug_crash_report_count = self.debug_crash_report_count.saturating_add(1);
     }
 
     fn debug_world_status_toggles_allowed(world: Option<&WorldStore>) -> bool {

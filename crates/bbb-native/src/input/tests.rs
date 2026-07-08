@@ -1598,7 +1598,7 @@ fn f3_c_copies_location_tp_command_to_clipboard_and_reports_feedback() {
 }
 
 #[test]
-fn f3_c_does_not_consume_when_reduced_debug_info_blocks_location_copy() {
+fn f3_c_reduced_debug_blocks_location_copy_but_still_consumes_crash_modifier() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(true);
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -1620,7 +1620,7 @@ fn f3_c_does_not_consume_when_reduced_debug_info_blocks_location_copy() {
         None,
         Some(&mut clipboard)
     ));
-    assert!(!input.handle_debug_overlay_key_with_clipboard(
+    assert!(input.handle_debug_overlay_key_with_clipboard(
         PhysicalKey::Code(KeyCode::KeyC),
         ElementState::Pressed,
         Some(&mut world),
@@ -1637,7 +1637,96 @@ fn f3_c_does_not_consume_when_reduced_debug_info_blocks_location_copy() {
         None,
         Some(&mut clipboard)
     ));
-    assert!(input.debug_overlay_visible());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    let start = Instant::now();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+    );
+
+    advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(999),
+    );
+    assert!(world.client_chat().messages.is_empty());
+
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_secs(1),
+    );
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_secs(2),
+    );
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 2);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: F3 + C is held down. This will crash the game unless released."
+    );
+    assert_eq!(messages[1].content, "[Debug]: Crashing in 8...");
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Released,
+    );
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_secs(3),
+    );
+    assert_eq!(world.client_chat().messages.len(), 2);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]
