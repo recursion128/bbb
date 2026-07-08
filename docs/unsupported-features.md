@@ -1114,7 +1114,7 @@ When an agent does any of the following, update this file in the same slice:
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
     profiler chart numeric-key routing shell, and F3+N spectator
     change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
-    shell:
+    shell, and ordinary F3 keymap audit:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
@@ -1123,8 +1123,8 @@ When an agent does any of the following, update this file in the same slice:
     feedback payload, profiler data sampling and ProfileResults tree
     navigation, profiling metrics recorder/output, actual DebugOptionsScreen,
     F3+F4 GameModeSwitcher rendering/mouse polish, native pause
-    loop/PauseScreen, and the other F3 modifier combos remain (large, low
-    priority).
+    loop/PauseScreen, and `SharedConstants.DEBUG_HOTKEYS` /
+    `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -1637,6 +1637,18 @@ When an agent does any of the following, update this file in the same slice:
     Boundary: HUD rendering of slots/icons/text/background, first-mouse
     suppression, hover selection, mouse-release selection, cursor capture, and
     exact screen interruption policy remain future work.
+  - Done 2026-07-08 — Debug overlay ordinary F3 keymap audit. Vanilla anchors:
+    `Options.debugKeys` contains the ordinary F3 mappings already tracked in
+    this row (`A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` plus F3 itself), while
+    `KeyboardHandler.handleDebugKeys` checks `SharedConstants.DEBUG_HOTKEYS`
+    before chunk/dev keys `E/F/L/O/U/V/W` and
+    `SharedConstants.DEBUG_FEATURE_COUNT` before feature-count `L/R`; both
+    flags are `debugFlag(...)` properties and default false unless
+    `DEBUG_ENABLED` and the named system property are active. bbb now keeps the
+    ordinary keymap surface explicit and narrows the remaining combo work to
+    those gated dev-only hotkeys. Boundary: no startup/property model for these
+    vanilla debug flags exists yet, and the gated dev hotkeys are deferred until
+    such a model is intentionally added.
   - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
     and `DebugEntryTps.display` formats the non-integrated-server line as
@@ -2284,6 +2296,8 @@ When an agent does any of the following, update this file in the same slice:
     route to a drainable navigation shell without blocking hotbar keys.
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
     request. F3+F4 now has a native GameModeSwitcher input/command shell. The
+    ordinary F3 keymap has been audited against vanilla `Options.debugKeys`;
+    remaining combo work is limited to debug-flag gated dev hotkeys. The
     remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
@@ -2294,7 +2308,7 @@ When an agent does any of the following, update this file in the same slice:
     payload, profiler data sampling and ProfileResults tree navigation,
     profiling metrics recorder/output, actual DebugOptionsScreen, F3+F4
     GameModeSwitcher rendering/mouse polish, native pause loop/PauseScreen, and
-    the other F3 modifier combos.
+    `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

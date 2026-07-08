@@ -5694,3 +5694,11 @@
   type，则经既有 `ChangeGameMode` net command 发送并关闭该非暂停 screen。边界：
   HUD rendering、first-mouse suppression、hover/mouse release、cursor capture 与
   exact screen interruption policy 仍待后续。
+- [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
+  `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
+  `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；
+  未落到普通 keymap 的额外组合键来自 `SharedConstants.DEBUG_HOTKEYS`
+  （chunk/dev `E/F/L/O/U/V/W`）与 `DEBUG_FEATURE_COUNT`（feature-count
+  `L/R`），二者都经 `debugFlag(...)` 系统属性且默认 false。goal/unsupported
+  已把模糊的“其它 F3 组合键”改写为这些 gated dev hotkeys，后续需先决定是否
+  引入启动期 debug-flag/property 模型。
