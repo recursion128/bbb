@@ -5136,6 +5136,17 @@
   options.keyDebugDebugOptions)` 渲染 `To edit: press ...`。runtime 现在显示
   `To edit: press [F3+F6]` 并有 HUD projection 测试锁定。剩余：实际
   `DebugOptionsScreen`。
+- [x] debug overlay default GAME_VERSION entry shape（P2 HUD/runtime
+  slice，2026-07-08）：依据 `DebugScreenEntries.DEFAULT_PROFILE` 默认启用
+  `GAME_VERSION`，以及 `DebugEntryVersion.display` 输出
+  `Minecraft <version.name> (<launchedVersion>/<clientBrand>)`。runtime 现在把
+  F3 overlay 第一行投影为 `Minecraft 26.1 (26.1/bbb-native)`，协议号保留在
+  F3+V version dump 中，不再塞进 overlay version entry。剩余：完整 debug
+  entry 列表、FPS/TPS/network charts、lightmap preview、entity
+  hitbox/chunk-border rendering、advanced tooltip full parity/持久化、3D
+  crosshair、其它 F3 modifier combos；bbb 尚未建模 Mojang launcher
+  `--version` 与 `ClientBrandRetriever` 边界，因此 launchedVersion 使用
+  `MC_VERSION`、brand 使用 repo-native `bbb-native`。
 - [x] debug overlay F3+D clear-chat display action（P2 HUD/input/world
   slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys` 对
   `keyDebugClearChat` 的调度，以及 `ChatComponent.clearMessages(false)`

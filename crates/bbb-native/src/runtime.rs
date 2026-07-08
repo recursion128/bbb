@@ -17,7 +17,7 @@ use bbb_protocol::{
         AdvancementFrameType, ItemCostSummary, ItemStackSummary, MapPostProcessingSummary,
         SlotDisplaySummary, Vec3d,
     },
-    MC_VERSION, PROTOCOL_VERSION,
+    MC_VERSION,
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
@@ -2760,9 +2760,7 @@ fn hud_debug_overlay(
         return None;
     }
 
-    let mut left_lines = vec![format!(
-        "Minecraft {MC_VERSION} (bbb/native; protocol {PROTOCOL_VERSION})"
-    )];
+    let mut left_lines = vec![hud_debug_version_line()];
     if let Some(camera_pose) = camera_pose {
         left_lines.push("".to_string());
         left_lines.extend(hud_debug_position_lines(world, camera_pose));
@@ -2796,6 +2794,10 @@ fn hud_debug_overlay(
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
     })
+}
+
+fn hud_debug_version_line() -> String {
+    format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
 }
 
 fn hud_debug_visibility_label(visible: bool) -> &'static str {

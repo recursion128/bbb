@@ -923,7 +923,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
 
     assert_eq!(
         overlay.left_lines[0],
-        format!("Minecraft {MC_VERSION} (bbb/native; protocol {PROTOCOL_VERSION})")
+        format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")
     );
     assert!(overlay
         .left_lines
