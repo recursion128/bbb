@@ -70,14 +70,18 @@ use crate::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout,
         inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
-        recipe_book_main_gui_offset, recipe_book_type_for_background, recipe_book_type_settings,
-        release_active_input, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+        recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
+        recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
+        sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
-        RecipeBookSearchHudState, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT,
-        RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y,
-        RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
+        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT,
+        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X,
+        RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET,
+        RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET, RECIPE_BOOK_SELECTED_TAB_X_OFFSET,
+        RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y, RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X,
+        RECIPE_BOOK_TAB_Y,
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
@@ -451,6 +455,7 @@ struct InventoryHudLocalState {
     loom_selected_pattern_index: Option<i32>,
     anvil_rename_text: Option<String>,
     recipe_book_search: RecipeBookSearchHudState,
+    recipe_book_tabs: RecipeBookTabSelectionHudState,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -1703,6 +1708,7 @@ pub(crate) fn pump_network_and_terrain(
                 loom_selected_pattern_index: input.loom_selected_pattern_index(),
                 anvil_rename_text: Some(input.anvil_rename_text().to_string()),
                 recipe_book_search: input.recipe_book_search_hud_state(),
+                recipe_book_tabs: input.recipe_book_tab_selection_hud_state(),
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2640,6 +2646,11 @@ fn hud_inventory_screen_with_local_state(
         }
         background_layers.insert(0, hud_recipe_book_background_layer());
     }
+    background_layers.extend(hud_recipe_book_tab_layers(
+        world,
+        layout.background,
+        &local_state.recipe_book_tabs,
+    ));
     if let Some(layer) =
         hud_recipe_book_search_box_layer(world, layout.background, &local_state.recipe_book_search)
     {
@@ -2657,7 +2668,7 @@ fn hud_inventory_screen_with_local_state(
     {
         background_layers.push(layer);
     }
-    let floating_items = hud_inventory_floating_items(
+    let mut floating_items = hud_inventory_floating_items(
         world,
         item_runtime,
         terrain_textures,
@@ -2671,6 +2682,15 @@ fn hud_inventory_screen_with_local_state(
         local_state.keybind_context,
         partial_tick,
     );
+    floating_items.extend(hud_recipe_book_tab_icon_items(
+        world,
+        item_runtime,
+        terrain_textures,
+        layout.background,
+        &local_state.recipe_book_tabs,
+        local_state.keybind_context,
+        partial_tick,
+    ));
     let mut entity_previews = hud_inventory_entity_previews(
         world,
         item_runtime,
@@ -2710,6 +2730,263 @@ fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {
         [1.0 / 256.0, 1.0 / 256.0],
         [148.0 / 256.0, 167.0 / 256.0],
     )
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RecipeBookTabIconSpec {
+    primary: &'static str,
+    secondary: Option<&'static str>,
+}
+
+const CRAFTING_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 5] = [
+    RecipeBookTabIconSpec {
+        primary: "minecraft:compass",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:iron_axe",
+        secondary: Some("minecraft:golden_sword"),
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:bricks",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:lava_bucket",
+        secondary: Some("minecraft:apple"),
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:redstone",
+        secondary: None,
+    },
+];
+
+const FURNACE_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 4] = [
+    RecipeBookTabIconSpec {
+        primary: "minecraft:compass",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:porkchop",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:stone",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:lava_bucket",
+        secondary: Some("minecraft:emerald"),
+    },
+];
+
+const BLAST_FURNACE_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 3] = [
+    RecipeBookTabIconSpec {
+        primary: "minecraft:compass",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:redstone_ore",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:iron_shovel",
+        secondary: Some("minecraft:golden_leggings"),
+    },
+];
+
+const SMOKER_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 2] = [
+    RecipeBookTabIconSpec {
+        primary: "minecraft:compass",
+        secondary: None,
+    },
+    RecipeBookTabIconSpec {
+        primary: "minecraft:porkchop",
+        secondary: None,
+    },
+];
+
+fn hud_recipe_book_tab_layers(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+) -> Vec<HudInventoryBackgroundLayer> {
+    if recipe_book_main_gui_offset(world, background) == 0 {
+        return Vec::new();
+    }
+    let Some(tab_count) = recipe_book_tab_count_for_background(background) else {
+        return Vec::new();
+    };
+    let selected_index = recipe_book_selected_tab_index(background, tabs).unwrap_or_default();
+    (0..tab_count)
+        .map(|index| {
+            let selected = index == selected_index;
+            hud_inventory_background_layer(
+                if selected {
+                    HudInventoryBackgroundTexture::RecipeBookTabSelected
+                } else {
+                    HudInventoryBackgroundTexture::RecipeBookTab
+                },
+                RECIPE_BOOK_TAB_X
+                    + if selected {
+                        RECIPE_BOOK_SELECTED_TAB_X_OFFSET
+                    } else {
+                        0
+                    },
+                RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * index as i32,
+                u32::try_from(RECIPE_BOOK_TAB_WIDTH).unwrap_or_default(),
+                u32::try_from(RECIPE_BOOK_TAB_HEIGHT).unwrap_or_default(),
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+        })
+        .collect()
+}
+
+fn hud_recipe_book_tab_icon_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    if recipe_book_main_gui_offset(world, background) == 0 {
+        return Vec::new();
+    }
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let Some(selected_index) = recipe_book_selected_tab_index(background, tabs) else {
+        return Vec::new();
+    };
+    let Some(icons) = recipe_book_tab_icons(background) else {
+        return Vec::new();
+    };
+    let mut items = Vec::new();
+    for (index, icon) in icons.iter().enumerate() {
+        let move_left = if index == selected_index {
+            RECIPE_BOOK_SELECTED_TAB_X_OFFSET
+        } else {
+            0
+        };
+        let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * index as i32 + 5;
+        if let Some(secondary) = icon.secondary {
+            push_recipe_book_tab_icon_item(
+                &mut items,
+                world,
+                item_runtime,
+                terrain_textures,
+                icon.primary,
+                RECIPE_BOOK_TAB_X + 3 + move_left,
+                y,
+                keybind_context,
+                partial_tick,
+            );
+            push_recipe_book_tab_icon_item(
+                &mut items,
+                world,
+                item_runtime,
+                terrain_textures,
+                secondary,
+                RECIPE_BOOK_TAB_X + 14 + move_left,
+                y,
+                keybind_context,
+                partial_tick,
+            );
+        } else {
+            push_recipe_book_tab_icon_item(
+                &mut items,
+                world,
+                item_runtime,
+                terrain_textures,
+                icon.primary,
+                RECIPE_BOOK_TAB_X + 9 + move_left,
+                y,
+                keybind_context,
+                partial_tick,
+            );
+        }
+    }
+    items
+}
+
+fn push_recipe_book_tab_icon_item(
+    items: &mut Vec<HudInventoryItem>,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    resource_id: &str,
+    x: i32,
+    y: i32,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) {
+    let Some(item_id) = item_runtime.item_protocol_id(resource_id) else {
+        return;
+    };
+    let stack = ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: Default::default(),
+    };
+    let Some(icon) = hud_item_icon_for_stack(
+        world,
+        Some(item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        keybind_context,
+        0,
+        partial_tick,
+    ) else {
+        return;
+    };
+    items.push(HudInventoryItem {
+        x,
+        y,
+        icon,
+        block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+    });
+}
+
+fn recipe_book_selected_tab_index(
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+) -> Option<usize> {
+    let tab_count = recipe_book_tab_count_for_background(background)?;
+    if tab_count == 0 {
+        return None;
+    }
+    let index = match background {
+        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
+            tabs.crafting
+        }
+        InventoryScreenBackground::Furnace => tabs.furnace,
+        InventoryScreenBackground::BlastFurnace => tabs.blast_furnace,
+        InventoryScreenBackground::Smoker => tabs.smoker,
+        _ => return None,
+    };
+    Some(index.min(tab_count - 1))
+}
+
+fn recipe_book_tab_icons(
+    background: InventoryScreenBackground,
+) -> Option<&'static [RecipeBookTabIconSpec]> {
+    match background {
+        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
+            Some(&CRAFTING_RECIPE_BOOK_TAB_ICONS)
+        }
+        InventoryScreenBackground::Furnace => Some(&FURNACE_RECIPE_BOOK_TAB_ICONS),
+        InventoryScreenBackground::BlastFurnace => Some(&BLAST_FURNACE_RECIPE_BOOK_TAB_ICONS),
+        InventoryScreenBackground::Smoker => Some(&SMOKER_RECIPE_BOOK_TAB_ICONS),
+        _ => None,
+    }
 }
 
 fn hud_recipe_book_search_box_layer(

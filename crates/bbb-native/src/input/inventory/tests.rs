@@ -3857,6 +3857,45 @@ fn recipe_book_search_click_focuses_and_edits_local_text() {
 }
 
 #[test]
+fn recipe_book_tab_click_selects_local_tab_without_packet() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(452.0, 309.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(input.recipe_book_crafting_tab_index, 1);
+    assert!(!input.recipe_book_search_focused);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 0);
+}
+
+#[test]
 fn furnace_mouse_click_queues_pickup() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

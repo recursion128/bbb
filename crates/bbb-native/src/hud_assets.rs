@@ -102,6 +102,18 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_text_field_highlighted.height,
         &widget_text_field_highlighted.rgba,
     )?;
+    let recipe_book_tab = hud_sprite(&sprites, "recipe_book/tab")?;
+    renderer.upload_hud_recipe_book_tab(
+        recipe_book_tab.width,
+        recipe_book_tab.height,
+        &recipe_book_tab.rgba,
+    )?;
+    let recipe_book_tab_selected = hud_sprite(&sprites, "recipe_book/tab_selected")?;
+    renderer.upload_hud_recipe_book_tab_selected(
+        recipe_book_tab_selected.width,
+        recipe_book_tab_selected.height,
+        &recipe_book_tab_selected.rgba,
+    )?;
     let recipe_book_button = hud_sprite(&sprites, "recipe_book/button")?;
     renderer.upload_hud_recipe_book_button(
         recipe_book_button.width,

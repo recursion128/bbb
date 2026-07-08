@@ -6020,6 +6020,51 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
                 [176.0 / 256.0, 166.0 / 256.0],
             ),
             hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTabSelected,
+                -32,
+                3,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTab,
+                -30,
+                30,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTab,
+                -30,
+                57,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTab,
+                -30,
+                84,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTab,
+                -30,
+                111,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::WidgetTextField,
                 25,
                 13,
@@ -6121,6 +6166,61 @@ fn hud_inventory_screen_projects_recipe_book_search_box_text() {
             runs: Vec::new(),
         })
     );
+}
+
+#[test]
+fn hud_inventory_screen_projects_selected_recipe_book_tab() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookTabSelected,
+                -32,
+                30,
+                35,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
 }
 
 #[test]

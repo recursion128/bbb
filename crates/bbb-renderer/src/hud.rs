@@ -527,6 +527,8 @@ pub enum HudInventoryBackgroundTexture {
     FurnaceLitProgress,
     FurnaceBurnProgress,
     RecipeBook,
+    RecipeBookTab,
+    RecipeBookTabSelected,
     RecipeBookButton,
     RecipeBookButtonHighlighted,
     RecipeBookFilterEnabled,
@@ -1525,6 +1527,26 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_tab(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_tab = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_tab_selected(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_tab_selected = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -3403,6 +3425,10 @@ impl Renderer {
                 self.hud_furnace_burn_progress.as_ref()
             }
             HudInventoryBackgroundTexture::RecipeBook => self.hud_recipe_book_background.as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookTab => self.hud_recipe_book_tab.as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookTabSelected => {
+                self.hud_recipe_book_tab_selected.as_ref()
+            }
             HudInventoryBackgroundTexture::RecipeBookButton => self.hud_recipe_book_button.as_ref(),
             HudInventoryBackgroundTexture::RecipeBookButtonHighlighted => {
                 self.hud_recipe_book_button_highlighted.as_ref()

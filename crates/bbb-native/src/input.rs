@@ -44,13 +44,15 @@ pub(crate) use inventory::{
     handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_inventory_text_input,
     inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
     recipe_book_main_gui_offset, recipe_book_search_entry_consumes_key,
-    recipe_book_type_for_background, recipe_book_type_settings, sync_beacon_effect_selection_state,
-    sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state,
-    InventoryScreenBackground, InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT,
-    RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT,
-    RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y,
-    RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
+    recipe_book_tab_count_for_background, recipe_book_type_for_background,
+    recipe_book_type_settings, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
+    RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+    RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+    RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X,
+    RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
+    RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y,
+    RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -139,6 +141,10 @@ pub(crate) struct ClientInputState {
     recipe_book_search_selection: usize,
     recipe_book_search_focused: bool,
     recipe_book_search_suppress_open_key_commit: bool,
+    recipe_book_crafting_tab_index: usize,
+    recipe_book_furnace_tab_index: usize,
+    recipe_book_blast_furnace_tab_index: usize,
+    recipe_book_smoker_tab_index: usize,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -201,6 +207,14 @@ pub(crate) struct SignEditorHudState {
 pub(crate) struct RecipeBookSearchHudState {
     pub(crate) text: String,
     pub(crate) focused: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct RecipeBookTabSelectionHudState {
+    pub(crate) crafting: usize,
+    pub(crate) furnace: usize,
+    pub(crate) blast_furnace: usize,
+    pub(crate) smoker: usize,
 }
 
 impl ClientInputState {
@@ -427,6 +441,15 @@ impl ClientInputState {
         RecipeBookSearchHudState {
             text: self.recipe_book_search_text.clone(),
             focused: self.recipe_book_search_focused,
+        }
+    }
+
+    pub(crate) fn recipe_book_tab_selection_hud_state(&self) -> RecipeBookTabSelectionHudState {
+        RecipeBookTabSelectionHudState {
+            crafting: self.recipe_book_crafting_tab_index,
+            furnace: self.recipe_book_furnace_tab_index,
+            blast_furnace: self.recipe_book_blast_furnace_tab_index,
+            smoker: self.recipe_book_smoker_tab_index,
         }
     }
 

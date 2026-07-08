@@ -66,6 +66,12 @@ pub(crate) const RECIPE_BOOK_SEARCH_BOX_WIDTH: i32 = 81;
 pub(crate) const RECIPE_BOOK_SEARCH_BOX_HEIGHT: i32 = 14;
 pub(crate) const RECIPE_BOOK_SEARCH_TEXT_X_OFFSET: i32 = 4;
 pub(crate) const RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET: i32 = 3;
+pub(crate) const RECIPE_BOOK_TAB_X: i32 = -30;
+pub(crate) const RECIPE_BOOK_TAB_Y: i32 = 3;
+pub(crate) const RECIPE_BOOK_TAB_WIDTH: i32 = 35;
+pub(crate) const RECIPE_BOOK_TAB_HEIGHT: i32 = 27;
+pub(crate) const RECIPE_BOOK_TAB_STRIDE_Y: i32 = 27;
+pub(crate) const RECIPE_BOOK_SELECTED_TAB_X_OFFSET: i32 = -2;
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
@@ -349,6 +355,20 @@ pub(crate) fn recipe_book_type_settings(
         bbb_protocol::packets::RecipeBookType::Furnace => settings.furnace,
         bbb_protocol::packets::RecipeBookType::BlastFurnace => settings.blast_furnace,
         bbb_protocol::packets::RecipeBookType::Smoker => settings.smoker,
+    }
+}
+
+pub(crate) fn recipe_book_tab_count_for_background(
+    background: InventoryScreenBackground,
+) -> Option<usize> {
+    match background {
+        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
+            Some(5)
+        }
+        InventoryScreenBackground::Furnace => Some(4),
+        InventoryScreenBackground::BlastFurnace => Some(3),
+        InventoryScreenBackground::Smoker => Some(2),
+        _ => None,
     }
 }
 

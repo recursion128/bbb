@@ -1060,8 +1060,8 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
-    buttons/search input: tabs, page recipe buttons, recipe placement, and
-    ghost recipe slots.
+    buttons/search input/tab shell: page recipe buttons, recipe placement,
+    ghost recipe slots, and tab notification/category-backed visibility.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1113,14 +1113,24 @@ When an agent does any of the following, update this file in the same slice:
     edits printable text with backspace/delete/arrows/Ctrl+A, focuses on
     click or chat-key, and prevents focused search from closing the container
     on `E`.
-  - Boundary: recipe-book tabs/page buttons, recipe placement commands from
-    clicks, tab notification animation, recipe-search filtering of visible
-    recipe buttons, cursor/selection rendering inside the search box, and
-    ghost recipe slot rendering remain open. The filter toggle and search
-    text states are live, but visible filtered recipe-grid contents wait for
-    the page recipe button implementation. The first shell models the
-    non-narrow layout; vanilla's narrow-screen overlap mode (`width < 379`)
-    remains for the input/render follow-up.
+  - Done 2026-07-08 — Recipe-book tab button shell. Vanilla anchors:
+    `RecipeBookTabButton` uses `recipe_book/tab` and
+    `recipe_book/tab_selected`, size 35x27, selected x offset -2, and icons at
+    `(x+9,y+5)` for one item or `(x+3,y+5)` / `(x+14,y+5)` for two;
+    `RecipeBookComponent.updateTabs` positions tabs at `xOrigin - 30`,
+    `yOrigin + 3 + 27 * index`. bbb now loads the tab sprites, projects the
+    vanilla tab sets for crafting/local inventory, furnace, blast furnace, and
+    smoker, renders their fake item icons through the existing HUD item path,
+    and stores/clicks a local selected tab index without sending a packet.
+  - Boundary: recipe-book page buttons, recipe placement commands from clicks,
+    recipe-category-backed tab visibility, tab notification animation,
+    recipe-search filtering of visible recipe buttons, cursor/selection
+    rendering inside the search box, and ghost recipe slot rendering remain
+    open. The filter toggle, search text, and selected-tab states are live, but
+    visible filtered recipe-grid contents wait for the page recipe button
+    implementation. The first shell models the non-narrow layout; vanilla's
+    narrow-screen overlap mode (`width < 379`) remains for the input/render
+    follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
