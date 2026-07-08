@@ -1900,6 +1900,18 @@
   完整 `FullTextSearchTree` token/namespace-path/intersection 语义、search
   cursor/selection rendering、tag/composite SlotDisplay ghost ingredient
   cycling、narrow-screen overlap。
+- [x] recipe-book search cursor/selection rendering（P2 HUD/input slice，
+  2026-07-08）：依据 `RecipeBookComponent.initVisuals` 的 search `EditBox`
+  几何和 `maxLength=50`、`EditBox.extractWidgetRenderState` 的 visible text
+  window / selection highlight / insert-vs-append cursor 分支，以及
+  `TextCursorUtils` 的 300ms blink cadence，native 现在把 recipe search
+  cursor/selection 暴露到 `RecipeBookSearchHudState`；renderer inventory text
+  label 新增 input decoration，支持空聚焦文本的 caret、宽度裁剪的可见文本、
+  selection fill、1px insert cursor 和尾部 `_` append cursor。剩余：
+  furnace-family raw recipe displays、craftability retry guard、multi-recipe
+  picker/cycling/right-click overlay、tab notification animation、完整
+  `FullTextSearchTree` token/namespace-path/intersection 语义、tag/composite
+  SlotDisplay ghost ingredient cycling、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

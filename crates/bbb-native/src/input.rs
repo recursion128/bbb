@@ -216,6 +216,8 @@ pub(crate) struct SignEditorHudState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct RecipeBookSearchHudState {
     pub(crate) text: String,
+    pub(crate) cursor: usize,
+    pub(crate) selection: usize,
     pub(crate) focused: bool,
 }
 
@@ -458,6 +460,8 @@ impl ClientInputState {
     pub(crate) fn recipe_book_search_hud_state(&self) -> RecipeBookSearchHudState {
         RecipeBookSearchHudState {
             text: self.recipe_book_search_text.clone(),
+            cursor: self.recipe_book_search_cursor,
+            selection: self.recipe_book_search_selection,
             focused: self.recipe_book_search_focused,
         }
     }

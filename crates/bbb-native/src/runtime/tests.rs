@@ -6259,6 +6259,8 @@ fn hud_inventory_screen_projects_recipe_book_search_box_text() {
         InventoryHudLocalState {
             recipe_book_search: RecipeBookSearchHudState {
                 text: "axe".to_string(),
+                cursor: 2,
+                selection: 1,
                 focused: true,
             },
             ..InventoryHudLocalState::default()
@@ -6279,19 +6281,22 @@ fn hud_inventory_screen_projects_recipe_book_search_box_text() {
                 [1.0, 1.0],
             )
     }));
-    assert_eq!(
-        screen.text_labels.last(),
-        Some(&HudInventoryTextLabel {
-            x: 29,
-            y: 16,
-            width: 73,
-            text: "axe".to_string(),
-            tint: [1.0, 1.0, 1.0, 1.0],
-            background: None,
-            shadow: false,
-            runs: Vec::new(),
-        })
-    );
+    let label = screen.text_labels.last().unwrap();
+    assert_eq!(label.x, 29);
+    assert_eq!(label.y, 16);
+    assert_eq!(label.width, 73);
+    assert_eq!(label.text, "axe");
+    assert_eq!(label.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(label.background, None);
+    assert!(!label.shadow);
+    assert!(label.runs.is_empty());
+    let input = label.input.unwrap();
+    assert_eq!(input.cursor, 2);
+    assert_eq!(input.selection, 1);
+    assert_eq!(input.scroll_to, 1);
+    assert_eq!(input.max_length, 50);
+    assert_eq!(input.cursor_tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(input.selection_tint, [0.0, 0.0, 1.0, 1.0]);
 }
 
 #[test]
@@ -6551,6 +6556,8 @@ fn hud_inventory_screen_filters_recipe_book_buttons_by_search_text() {
         InventoryHudLocalState {
             recipe_book_search: RecipeBookSearchHudState {
                 text: "stick".to_string(),
+                cursor: 5,
+                selection: 5,
                 focused: true,
             },
             recipe_book_tabs: RecipeBookTabSelectionHudState {
@@ -7088,6 +7095,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             text: "12".to_string(),
             tint: ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR,
             background: None,
+            input: None,
             shadow: false,
             runs: Vec::new(),
         }]
@@ -7155,6 +7163,7 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             text: "30".to_string(),
             tint: ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR,
             background: None,
+            input: None,
             shadow: false,
             runs: Vec::new(),
         }]
@@ -7576,6 +7585,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
             text: "Sharp Pick".to_string(),
             tint: ANVIL_RENAME_TEXT_COLOR,
             background: None,
+            input: None,
             shadow: false,
             runs: Vec::new(),
         }]
@@ -7628,6 +7638,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
                 height: ANVIL_COST_BACKGROUND_HEIGHT,
                 tint: ANVIL_COST_BACKGROUND_TINT,
             }),
+            input: None,
             shadow: false,
             runs: Vec::new(),
         }]
@@ -7679,6 +7690,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
                 height: ANVIL_COST_BACKGROUND_HEIGHT,
                 tint: ANVIL_COST_BACKGROUND_TINT,
             }),
+            input: None,
             shadow: false,
             runs: Vec::new(),
         }]
@@ -8447,6 +8459,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 text: "Page 2 of 2".to_string(),
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             },
@@ -8457,6 +8470,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 text: "Second page".to_string(),
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             },
@@ -8467,6 +8481,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 text: "Line two".to_string(),
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             },
@@ -8523,6 +8538,7 @@ fn hud_inventory_screen_projects_current_book_screen() {
                 text: "Page 1 of 2".to_string(),
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             },
@@ -8533,6 +8549,7 @@ fn hud_inventory_screen_projects_current_book_screen() {
                 text: "First page".to_string(),
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             },

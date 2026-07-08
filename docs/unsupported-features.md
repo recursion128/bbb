@@ -1234,14 +1234,27 @@ When an agent does any of the following, update this file in the same slice:
     detects same result stacks in the current recipe-book UI collection and
     projects the duplicate HUD item at those vanilla offsets while preserving
     the existing many-craftable / many-uncraftable slot sprite selection.
+  - Done 2026-07-08 — Recipe-book search cursor/selection rendering. Vanilla
+    anchors: `RecipeBookComponent.initVisuals` creates the recipe search
+    `EditBox` at `(xo + 25, yo + 13)` with size 81x14 and `maxLength = 50`;
+    `EditBox.extractWidgetRenderState` clips visible text to the inner width,
+    draws text selection via `graphics.textHighlight`, and uses
+    `TextCursorUtils.isCursorVisible` at a 300ms interval plus insert-cursor
+    and append-`_` cursor helpers. bbb now carries recipe search
+    cursor/selection through `RecipeBookSearchHudState`, keeps focused empty
+    search labels so an empty box can still show a caret, and lets
+    `bbb-renderer` render visible-text windows, selection fills, blinking
+    insert cursors, and append cursors for HUD inventory text labels with
+    input decoration. Boundary: selection is modeled as a solid GUI fill
+    rather than vanilla's exact invert-highlight shader path.
   - Boundary: furnace-family raw recipe displays, craftability retry guard,
     multi-recipe picker/cycling/right-click overlay, tab notification
     animation, full
     `FullTextSearchTree` token / namespace-path / intersection semantics for
-    recipe search, cursor/selection rendering inside the search box,
-    tag/composite SlotDisplay cycling for ghost ingredients, and narrow-screen
-    overlap remain open. The filter toggle, search text, selected-tab, first
-    crafting recipe-button shell, crafting category/page states, primary recipe
+    recipe search, tag/composite SlotDisplay cycling for ghost ingredients,
+    and narrow-screen overlap remain open. The filter toggle, search text,
+    search cursor/selection projection, selected-tab, first crafting
+    recipe-button shell, crafting category/page states, primary recipe
     placement command path, crafting category tab visibility, direct
     item/item-stack crafting ghost slots, visible crafting search filtering,
     direct-item/tag-backed crafting craftability slot/filtering path, and

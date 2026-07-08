@@ -792,6 +792,17 @@ pub struct HudInventoryTextBackground {
     pub tint: [f32; 4],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryTextInputDecoration {
+    pub cursor: usize,
+    pub selection: usize,
+    pub scroll_to: usize,
+    pub max_length: usize,
+    pub cursor_visible: bool,
+    pub cursor_tint: [f32; 4],
+    pub selection_tint: [f32; 4],
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTextLabel {
     /// Text x position relative to the centered inventory screen origin.
@@ -802,6 +813,7 @@ pub struct HudInventoryTextLabel {
     pub text: String,
     pub tint: [f32; 4],
     pub background: Option<HudInventoryTextBackground>,
+    pub input: Option<HudInventoryTextInputDecoration>,
     pub shadow: bool,
     /// Styled draw runs; concatenated run text matches `text`. Leave empty
     /// for plain labels — sanitization synthesizes a single default-style run
@@ -4161,6 +4173,22 @@ fn push_hud_inventory_text_labels<'a>(
             label.x,
             label.y,
         );
+        if let Some(input) = label.input {
+            push_hud_inventory_text_input_label(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                surface_size,
+                label,
+                input,
+                origin,
+            );
+            continue;
+        }
         // Vanilla pass order: the whole line's shadow first, then the main
         // colour (the shadow geometry is the main geometry at +1,+1).
         for (shadow_offset, is_shadow) in label
@@ -4191,6 +4219,227 @@ fn push_hud_inventory_text_labels<'a>(
             );
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_text_input_label<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    label: &HudInventoryTextLabel,
+    input: HudInventoryTextInputDecoration,
+    origin: (f32, f32),
+) {
+    let layout = hud_inventory_text_input_layout(label, input, glyphs);
+    if !layout.displayed_text.is_empty() {
+        let runs = [HudStyledTextRun::plain(layout.displayed_text)];
+        for (shadow_offset, is_shadow) in label
+            .shadow
+            .then_some((1.0, true))
+            .into_iter()
+            .chain(std::iter::once((0.0, false)))
+        {
+            let geometry = hud_styled_text_pass_geometry(
+                &runs,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                origin,
+                shadow_offset,
+                is_shadow,
+                label.tint,
+                Some(label.width),
+                1.0,
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
+        }
+    }
+
+    if let Some((selection_x, selection_width)) = layout.selection_rect {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            absolute_hud_rect(origin.0 + selection_x, origin.1 - 1.0, selection_width, 11),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            input.selection_tint,
+        );
+    }
+
+    if input.cursor_visible && layout.cursor_on_screen {
+        if layout.insert_cursor {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                absolute_hud_rect(origin.0 + layout.cursor_x, origin.1 - 1.0, 1, 11),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                input.cursor_tint,
+            );
+        } else {
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                surface_size,
+                "_",
+                (origin.0 + layout.cursor_x, origin.1),
+                input.cursor_tint,
+                1.0,
+                label.shadow,
+            );
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct HudInventoryTextInputLayout {
+    displayed_text: String,
+    cursor_x: f32,
+    cursor_on_screen: bool,
+    insert_cursor: bool,
+    selection_rect: Option<(f32, u32)>,
+}
+
+fn hud_inventory_text_input_layout(
+    label: &HudInventoryTextLabel,
+    input: HudInventoryTextInputDecoration,
+    glyphs: &HudFontGlyphMap,
+) -> HudInventoryTextInputLayout {
+    let text_len = label.text.chars().count();
+    let cursor = input.cursor.min(text_len);
+    let selection = input.selection.min(text_len);
+    let display_start = hud_text_input_display_start(
+        &label.text,
+        input.scroll_to.min(text_len),
+        label.width,
+        glyphs,
+    );
+    let display_len = hud_plain_head_char_len_by_width(
+        &label.text,
+        display_start,
+        text_len.saturating_sub(display_start),
+        label.width,
+        glyphs,
+    );
+    let display_end = display_start.saturating_add(display_len);
+    let displayed_text = hud_slice_by_chars(&label.text, display_start, display_end);
+    let cursor_on_screen = cursor >= display_start && cursor <= display_end;
+    let cursor_x = if cursor < display_start {
+        0.0
+    } else if cursor > display_end {
+        label.width as f32
+    } else {
+        let rel_cursor = cursor.saturating_sub(display_start);
+        let prefix = hud_prefix_by_chars(&displayed_text, rel_cursor);
+        let mut x = hud_plain_text_width(&prefix, glyphs) as f32;
+        let at_append_position =
+            cursor >= text_len && label.text.encode_utf16().count() < input.max_length;
+        if at_append_position {
+            x += 1.0;
+        }
+        x
+    };
+    let insert_cursor = cursor < text_len || label.text.encode_utf16().count() >= input.max_length;
+    let selection_rect = (selection != cursor).then(|| {
+        let rel_selection = selection.saturating_sub(display_start).min(display_len);
+        let selection_prefix = hud_prefix_by_chars(&displayed_text, rel_selection);
+        let selection_x = hud_plain_text_width(&selection_prefix, glyphs) as f32;
+        let left = cursor_x.min(selection_x);
+        let right = cursor_x.max(selection_x);
+        let width = (right - left).ceil().max(1.0) as u32;
+        (left, width)
+    });
+    HudInventoryTextInputLayout {
+        displayed_text,
+        cursor_x,
+        cursor_on_screen,
+        insert_cursor,
+        selection_rect,
+    }
+}
+
+fn hud_text_input_display_start(
+    text: &str,
+    scroll_to: usize,
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> usize {
+    let scroll_to = scroll_to.min(text.chars().count());
+    if hud_plain_prefix_width_by_chars(text, scroll_to, glyphs) <= width {
+        return 0;
+    }
+
+    let chars = text.chars().take(scroll_to).collect::<Vec<_>>();
+    let mut start = chars.len();
+    let mut used_width = 0u32;
+    while start > 0 {
+        let advance = hud_font_glyph(chars[start - 1], glyphs).styled_advance(Default::default());
+        if used_width.saturating_add(advance) > width {
+            break;
+        }
+        used_width = used_width.saturating_add(advance);
+        start -= 1;
+    }
+    start
+}
+
+fn hud_plain_head_char_len_by_width(
+    text: &str,
+    start: usize,
+    max_chars: usize,
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> usize {
+    let mut used_width = 0u32;
+    let mut len = 0usize;
+    for ch in text.chars().skip(start).take(max_chars) {
+        let advance = hud_font_glyph(ch, glyphs).styled_advance(Default::default());
+        if used_width.saturating_add(advance) > width {
+            break;
+        }
+        used_width = used_width.saturating_add(advance);
+        len += 1;
+    }
+    len
+}
+
+fn hud_plain_prefix_width_by_chars(text: &str, char_count: usize, glyphs: &HudFontGlyphMap) -> u32 {
+    text.chars()
+        .take(char_count)
+        .map(|ch| hud_font_glyph(ch, glyphs).styled_advance(Default::default()))
+        .sum()
+}
+
+fn hud_slice_by_chars(text: &str, start: usize, end: usize) -> String {
+    text.chars()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5468,7 +5717,17 @@ fn sanitize_hud_inventory_text_label(
     let background = label
         .background
         .and_then(sanitize_hud_inventory_text_background);
-    let text = sanitize_hud_text_line(label.text)?;
+    let text = if label.input.is_some() {
+        sanitize_hud_text_preserving_empty(label.text, 256)
+    } else {
+        sanitize_hud_text_line(label.text)?
+    };
+    let input = label
+        .input
+        .and_then(|input| sanitize_hud_inventory_text_input(input, &text));
+    if text.is_empty() && input.is_none() {
+        return None;
+    }
     let runs = sanitize_hud_styled_runs(label.runs, &text);
     (width > 0).then_some(HudInventoryTextLabel {
         x,
@@ -5477,8 +5736,35 @@ fn sanitize_hud_inventory_text_label(
         text,
         tint: tint.map(|component| component.clamp(0.0, 1.0)),
         background,
+        input,
         shadow: label.shadow,
         runs,
+    })
+}
+
+fn sanitize_hud_inventory_text_input(
+    input: HudInventoryTextInputDecoration,
+    text: &str,
+) -> Option<HudInventoryTextInputDecoration> {
+    if !input
+        .cursor_tint
+        .iter()
+        .chain(input.selection_tint.iter())
+        .all(|component| component.is_finite())
+    {
+        return None;
+    }
+    let len = text.chars().count();
+    Some(HudInventoryTextInputDecoration {
+        cursor: input.cursor.min(len),
+        selection: input.selection.min(len),
+        scroll_to: input.scroll_to.min(len),
+        max_length: input.max_length.min(1024),
+        cursor_visible: input.cursor_visible,
+        cursor_tint: input.cursor_tint.map(|component| component.clamp(0.0, 1.0)),
+        selection_tint: input
+            .selection_tint
+            .map(|component| component.clamp(0.0, 1.0)),
     })
 }
 
@@ -6653,6 +6939,76 @@ mod tests {
     }
 
     #[test]
+    fn inventory_text_input_layout_scrolls_to_cursor_with_width_budget() {
+        let glyphs = styled_test_glyphs();
+        let label = HudInventoryTextLabel {
+            x: 0,
+            y: 0,
+            width: 12,
+            text: "aaaaa".to_string(),
+            tint: HUD_TINT_WHITE,
+            background: None,
+            input: None,
+            shadow: false,
+            runs: Vec::new(),
+        };
+
+        let layout = hud_inventory_text_input_layout(
+            &label,
+            HudInventoryTextInputDecoration {
+                cursor: 5,
+                selection: 5,
+                scroll_to: 5,
+                max_length: 50,
+                cursor_visible: true,
+                cursor_tint: HUD_TINT_WHITE,
+                selection_tint: [0.0, 0.0, 1.0, 1.0],
+            },
+            &glyphs,
+        );
+
+        assert_eq!(layout.displayed_text, "aa");
+        assert!(layout.cursor_on_screen);
+        assert!(!layout.insert_cursor);
+        assert_eq!(layout.cursor_x, 13.0);
+        assert_eq!(layout.selection_rect, None);
+    }
+
+    #[test]
+    fn inventory_text_input_layout_highlights_visible_selection_prefix() {
+        let glyphs = styled_test_glyphs();
+        let label = HudInventoryTextLabel {
+            x: 0,
+            y: 0,
+            width: 12,
+            text: "aaaaa".to_string(),
+            tint: HUD_TINT_WHITE,
+            background: None,
+            input: None,
+            shadow: false,
+            runs: Vec::new(),
+        };
+
+        let layout = hud_inventory_text_input_layout(
+            &label,
+            HudInventoryTextInputDecoration {
+                cursor: 5,
+                selection: 0,
+                scroll_to: 0,
+                max_length: 50,
+                cursor_visible: true,
+                cursor_tint: HUD_TINT_WHITE,
+                selection_tint: [0.0, 0.0, 1.0, 1.0],
+            },
+            &glyphs,
+        );
+
+        assert_eq!(layout.displayed_text, "aa");
+        assert!(!layout.cursor_on_screen);
+        assert_eq!(layout.selection_rect, Some((0.0, 12)));
+    }
+
+    #[test]
     fn styled_text_pass_geometry_bold_runs_double_quads_and_widen_the_pen() {
         let glyphs = styled_test_glyphs();
         let geometry = hud_styled_text_pass_geometry(
@@ -7676,6 +8032,7 @@ mod tests {
                         height: 12,
                         tint: [0.0, 0.0, 0.0, 1.5],
                     }),
+                    input: None,
                     shadow: false,
                     runs: Vec::new(),
                 },
@@ -7686,6 +8043,7 @@ mod tests {
                     text: "ignored".to_string(),
                     tint: HUD_TINT_WHITE,
                     background: None,
+                    input: None,
                     shadow: true,
                     runs: Vec::new(),
                 },
@@ -7776,6 +8134,7 @@ mod tests {
                     height: 12,
                     tint: [0.0, 0.0, 0.0, 1.0],
                 }),
+                input: None,
                 shadow: false,
                 // Plain labels (empty runs in) synthesize one default-style
                 // run from the sanitized text.
@@ -7800,6 +8159,46 @@ mod tests {
                         runs: vec![HudStyledTextRun::plain("AttackDamage")],
                     },
                 ],
+            })
+        );
+    }
+
+    #[test]
+    fn sanitize_hud_inventory_text_label_keeps_empty_text_input_decoration() {
+        let label = sanitize_hud_inventory_text_label(HudInventoryTextLabel {
+            x: 29,
+            y: 16,
+            width: 73,
+            text: String::new(),
+            tint: [1.2, 1.0, -1.0, 1.0],
+            background: None,
+            input: Some(HudInventoryTextInputDecoration {
+                cursor: 99,
+                selection: 98,
+                scroll_to: 97,
+                max_length: 2_000,
+                cursor_visible: true,
+                cursor_tint: [2.0, 0.5, -1.0, 1.0],
+                selection_tint: [0.0, 0.0, 2.0, 1.5],
+            }),
+            shadow: false,
+            runs: Vec::new(),
+        })
+        .unwrap();
+
+        assert_eq!(label.text, "");
+        assert_eq!(label.tint, [1.0, 1.0, 0.0, 1.0]);
+        assert_eq!(label.runs, vec![HudStyledTextRun::plain("")]);
+        assert_eq!(
+            label.input,
+            Some(HudInventoryTextInputDecoration {
+                cursor: 0,
+                selection: 0,
+                scroll_to: 0,
+                max_length: 1024,
+                cursor_visible: true,
+                cursor_tint: [1.0, 0.5, 0.0, 1.0],
+                selection_tint: [0.0, 0.0, 1.0, 1.0],
             })
         );
     }

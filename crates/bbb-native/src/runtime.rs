@@ -23,10 +23,11 @@ use bbb_renderer::{
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
     HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
+    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
@@ -331,6 +332,8 @@ const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
 const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
 const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const RECIPE_BOOK_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
 const RECIPE_BOOK_RECIPE_ICON_OFFSET: i32 = 4;
 const RECIPE_BOOK_PAGE_TEXT_CENTER_X: i32 = 73;
 const RECIPE_BOOK_PAGE_TEXT_Y: i32 = 141;
@@ -3547,7 +3550,9 @@ fn hud_recipe_book_search_text_label(
     search: &RecipeBookSearchHudState,
 ) -> Option<HudInventoryTextLabel> {
     recipe_book_type_for_background(background)?;
-    if recipe_book_main_gui_offset(world, background) == 0 || search.text.is_empty() {
+    if recipe_book_main_gui_offset(world, background) == 0
+        || (search.text.is_empty() && !search.focused)
+    {
         return None;
     }
     Some(HudInventoryTextLabel {
@@ -3557,6 +3562,19 @@ fn hud_recipe_book_search_text_label(
         text: search.text.clone(),
         tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
         background: None,
+        input: Some(HudInventoryTextInputDecoration {
+            cursor: search.cursor,
+            selection: search.selection,
+            scroll_to: if search.selection != search.cursor {
+                search.selection
+            } else {
+                search.cursor
+            },
+            max_length: RECIPE_BOOK_SEARCH_MAX_LENGTH,
+            cursor_visible: search.focused && (wall_clock_millis() / 300) % 2 == 0,
+            cursor_tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
+            selection_tint: RECIPE_BOOK_SEARCH_SELECTION_TINT,
+        }),
         shadow: false,
         runs: Vec::new(),
     })
@@ -3589,6 +3607,7 @@ fn hud_recipe_book_page_text_label(
         text,
         tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
         background: None,
+        input: None,
         shadow: false,
         runs: Vec::new(),
     })
@@ -4028,6 +4047,7 @@ fn hud_inventory_text_labels(
                     text: text.clone(),
                     tint: ANVIL_RENAME_TEXT_COLOR,
                     background: None,
+                    input: None,
                     shadow: false,
                     runs: Vec::new(),
                 });
@@ -4064,6 +4084,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 text: page_indicator,
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             });
@@ -4082,6 +4103,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 text,
                 tint: BOOK_TEXT_COLOR,
                 background: None,
+                input: None,
                 shadow: false,
                 runs: Vec::new(),
             });
@@ -4174,6 +4196,7 @@ fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryText
                 ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR
             },
             background: None,
+            input: None,
             shadow: false,
             runs: Vec::new(),
         });
@@ -4224,6 +4247,7 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
             height: ANVIL_COST_BACKGROUND_HEIGHT,
             tint: ANVIL_COST_BACKGROUND_TINT,
         }),
+        input: None,
         shadow: false,
         runs: Vec::new(),
     })
