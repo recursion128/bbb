@@ -130,7 +130,7 @@ impl GameType {
         }
     }
 
-    fn from_id(id: i32) -> Self {
+    pub fn from_id(id: i32) -> Self {
         match id {
             0 => Self::Survival,
             1 => Self::Creative,

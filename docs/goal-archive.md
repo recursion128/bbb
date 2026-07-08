@@ -5675,3 +5675,13 @@
   F3+digit chart toggle 不记录 navigation，普通数字键仍继续选择 hotbar；main
   loop 暂时 drain 并日志记录这些请求。边界：真实 `ProfileResults` tree path
   mutation、profiler sampling/results、F3+L metrics recorder/output 仍待后续。
+- [x] debug overlay F3+N spectator change-game-mode request routing（P2
+  native/protocol slice，2026-07-08）：依据 `KeyboardHandler.handleDebugKeys`
+  的 `keyDebugSpectate` 分支，有权限且非 spectator 时发送
+  `ServerboundChangeGameModePacket(SPECTATOR)`，已是 spectator 时发送
+  `previousPlayerMode` 或默认 `CREATIVE`。protocol 公开既有 `GameType::from_id`
+  作为单一 id→枚举映射；native debug input 现在在 runtime/net context 中把
+  F3+N 接到既有 `ChangeGameMode` net command，按 world 当前 game type 与
+  `previous_game_type` 选择 Spectator / previous / Creative，成功路径不追加
+  debug feedback，无权限路径保持原反馈。边界：exact vanilla permission-source
+  parity、F3+F4 `GameModeSwitcherScreen` 仍待后续。

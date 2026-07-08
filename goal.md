@@ -311,7 +311,8 @@ Screen Render Surfaces" 条目）：
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、
   F3+S dynamic texture dump clickable/open-file feedback payload、
-  profiler chart numeric-key routing shell 已完成；
+  profiler chart numeric-key routing shell、F3+N spectator change-game-mode
+  request routing 已完成；
   剩余非默认/可编辑 debug entries、entity hitbox server details、
   chunk-border line-width/alwaysOnTop debug-gizmo styling、
   advanced tooltip component-specific full parity/persistence、F3+I full local

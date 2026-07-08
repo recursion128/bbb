@@ -414,12 +414,14 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.handle_debug_overlay_key_with_clipboard(
+                    if input.handle_debug_overlay_key_with_clipboard_and_net(
                         event.physical_key,
                         event.state,
                         Some(&mut world),
                         Some(&mut terrain_upload),
                         Some(&mut debug_clipboard),
+                        &mut net_counters,
+                        &net_commands,
                     ) {
                         let reload_requests = input.take_debug_resource_pack_reload_requests();
                         if reload_requests > 0 {

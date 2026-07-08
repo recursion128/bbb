@@ -8,9 +8,10 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::vanilla_entity_resource_id_for_type_id,
     packets::{
-        BlockEntityTagQuery, BlockPos as ProtocolBlockPos, Direction as ProtocolDirection,
-        EntityTagQuery, InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction,
-        PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
+        BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
+        Direction as ProtocolDirection, EntityTagQuery, GameType, InteractionHand,
+        ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
+        SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -131,6 +132,11 @@ enum BookScreenClickTarget {
 
 pub(crate) trait DebugClipboard {
     fn set_debug_clipboard_text(&mut self, text: &str) -> bool;
+}
+
+struct DebugNetContext<'a> {
+    counters: &'a mut NetCounters,
+    net_commands: &'a Option<mpsc::Sender<NetCommand>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -699,6 +705,7 @@ impl ClientInputState {
         true
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -715,6 +722,7 @@ impl ClientInputState {
         )
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_overlay_key_with_clipboard(
         &mut self,
         physical_key: PhysicalKey,
@@ -722,6 +730,48 @@ impl ClientInputState {
         world: Option<&mut WorldStore>,
         terrain_upload: Option<&mut TerrainUploadState>,
         clipboard: Option<&mut dyn DebugClipboard>,
+    ) -> bool {
+        self.handle_debug_overlay_key_inner(
+            physical_key,
+            state,
+            world,
+            terrain_upload,
+            clipboard,
+            None,
+        )
+    }
+
+    pub(crate) fn handle_debug_overlay_key_with_clipboard_and_net(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        world: Option<&mut WorldStore>,
+        terrain_upload: Option<&mut TerrainUploadState>,
+        clipboard: Option<&mut dyn DebugClipboard>,
+        counters: &mut NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) -> bool {
+        self.handle_debug_overlay_key_inner(
+            physical_key,
+            state,
+            world,
+            terrain_upload,
+            clipboard,
+            Some(DebugNetContext {
+                counters,
+                net_commands,
+            }),
+        )
+    }
+
+    fn handle_debug_overlay_key_inner(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        world: Option<&mut WorldStore>,
+        terrain_upload: Option<&mut TerrainUploadState>,
+        clipboard: Option<&mut dyn DebugClipboard>,
+        mut net_context: Option<DebugNetContext<'_>>,
     ) -> bool {
         if !self.focused {
             return false;
@@ -754,7 +804,13 @@ impl ClientInputState {
 
         if matches!(state, ElementState::Pressed)
             && self.debug_modifier_down
-            && self.handle_debug_overlay_modifier_key(code, world, terrain_upload, clipboard)
+            && self.handle_debug_overlay_modifier_key(
+                code,
+                world,
+                terrain_upload,
+                clipboard,
+                net_context.as_mut(),
+            )
         {
             self.debug_modifier_used = true;
             return true;
@@ -769,6 +825,7 @@ impl ClientInputState {
         mut world: Option<&mut WorldStore>,
         mut terrain_upload: Option<&mut TerrainUploadState>,
         mut clipboard: Option<&mut dyn DebugClipboard>,
+        net_context: Option<&mut DebugNetContext<'_>>,
     ) -> bool {
         match code {
             KeyCode::Escape => {
@@ -862,10 +919,23 @@ impl ClientInputState {
                 true
             }
             KeyCode::KeyN => {
-                push_debug_feedback_chat_message(
-                    world.as_deref_mut(),
-                    "Unable to switch game mode; no permission",
-                );
+                let Some(world) = world.as_deref_mut() else {
+                    return true;
+                };
+                if !world.local_player_has_gamemaster_permission() {
+                    push_debug_feedback_chat_message(
+                        Some(world),
+                        "Unable to switch game mode; no permission",
+                    );
+                } else if let Some(context) = net_context {
+                    queue_change_game_mode_command(
+                        context.counters,
+                        context.net_commands,
+                        ChangeGameModeCommand {
+                            game_mode: debug_spectate_target_game_mode(world),
+                        },
+                    );
+                }
                 true
             }
             KeyCode::F4 => {
@@ -1082,6 +1152,18 @@ fn debug_profiler_chart_digit(code: KeyCode) -> Option<u8> {
         KeyCode::Digit9 => 9,
         _ => return None,
     })
+}
+
+fn debug_spectate_target_game_mode(world: &WorldStore) -> GameType {
+    if world.local_player_is_spectator() {
+        world
+            .gameplay()
+            .previous_game_type
+            .map(GameType::from_id)
+            .unwrap_or(GameType::Creative)
+    } else {
+        GameType::Spectator
+    }
 }
 
 fn push_debug_version_chat_messages(world: &mut WorldStore) {
@@ -2051,7 +2133,15 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
-    if input.handle_debug_overlay_key(physical_key, state, Some(world), None) {
+    if input.handle_debug_overlay_key_with_clipboard_and_net(
+        physical_key,
+        state,
+        Some(world),
+        None,
+        None,
+        counters,
+        net_commands,
+    ) {
         return;
     }
 

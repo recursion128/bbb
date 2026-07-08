@@ -1112,7 +1112,8 @@ When an agent does any of the following, update this file in the same slice:
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
-    and profiler chart numeric-key routing shell:
+    profiler chart numeric-key routing shell, and F3+N spectator
+    change-game-mode request routing:
     non-default/editable debug entries, actual entity hitbox
     server details,
     chunk-border line-width/alwaysOnTop debug-gizmo styling,
@@ -1608,9 +1609,18 @@ When an agent does any of the following, update this file in the same slice:
     debug modifier path, appends the vanilla no-permission debug chat
     feedback, suppresses the subsequent F3-release overlay toggle, avoids
     gameplay F4 handling, and shows the game-mode help line in the overlay.
-    Boundary: player permission modeling, `ServerboundChangeGameModePacket`
-    emission, previous-game-mode cycling, and the actual
-    `GameModeSwitcherScreen` are not implemented.
+    Boundary: successful F3+N routing is covered below; exact permission-source
+    parity and the actual `GameModeSwitcherScreen` are not implemented.
+  - Done 2026-07-08 — Debug overlay F3+N spectator change-game-mode request
+    routing. Vanilla anchors: `KeyboardHandler.handleDebugKeys` sends
+    `ServerboundChangeGameModePacket(SPECTATOR)` when
+    `keyDebugSpectate` is pressed by a permitted non-spectator player, and
+    sends `previousPlayerMode` or `CREATIVE` when the player is already
+    spectator. bbb now uses the local gamemaster permission state, queues the
+    existing `ChangeGameMode` net command with `Spectator` / previous mode /
+    `Creative`, emits no success feedback, and keeps the no-permission debug
+    feedback path unchanged. Boundary: exact vanilla permission-source parity
+    and F3+F4 `GameModeSwitcherScreen` remain future work.
   - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
     and `DebugEntryTps.display` formats the non-integrated-server line as
@@ -2255,8 +2265,9 @@ When an agent does any of the following, update this file in the same slice:
     carry a yellow/bold `[Debug]:` styled prefix while preserving plain
     `content`, and F3+S dynamic texture dump feedback now underlines the path
     run with an `open_file` click payload. Profiler chart digit presses now
-    route to a drainable navigation shell without blocking hotbar keys. The
-    remaining open surfaces in
+    route to a drainable navigation shell without blocking hotbar keys.
+    Authorized F3+N now queues the spectator/previous-mode change-game-mode
+    request. The remaining open surfaces in
     this ledger row
     are non-default/editable debug entries, entity hitbox
     server details,

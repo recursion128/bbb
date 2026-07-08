@@ -70,6 +70,14 @@ fn handle_key_input_without_world(
 }
 
 fn world_with_debug_player(reduced_debug_info: bool) -> WorldStore {
+    world_with_debug_player_in_game_mode(reduced_debug_info, 0, -1)
+}
+
+fn world_with_debug_player_in_game_mode(
+    reduced_debug_info: bool,
+    game_type: i8,
+    previous_game_type: i8,
+) -> WorldStore {
     let mut world = WorldStore::new();
     world.apply_login(&PlayLogin {
         player_id: 42,
@@ -85,8 +93,8 @@ fn world_with_debug_player(reduced_debug_info: bool) -> WorldStore {
             dimension_type_id: 0,
             dimension: "minecraft:overworld".to_string(),
             seed: 12345,
-            game_type: 0,
-            previous_game_type: -1,
+            game_type,
+            previous_game_type,
             is_debug: false,
             is_flat: false,
             last_death_location: None,
@@ -2637,6 +2645,93 @@ fn f3_game_mode_keys_report_no_permission_without_gameplay_commands() {
     assert_eq!(counters.player_command_commands_queued, 0);
     assert_eq!(counters.change_game_mode_commands_queued, 0);
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_n_queues_spectator_game_mode_with_permission() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyN),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(!input.debug_overlay_visible());
+    assert!(world.client_chat().messages.is_empty());
+    assert_eq!(counters.change_game_mode_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChangeGameMode(bbb_protocol::packets::ChangeGameModeCommand {
+            game_mode: bbb_protocol::packets::GameType::Spectator,
+        })
+    );
+}
+
+#[test]
+fn f3_n_queues_previous_or_creative_game_mode_when_already_spectator() {
+    for (previous_game_type, expected_game_mode) in [
+        (-1, bbb_protocol::packets::GameType::Creative),
+        (0, bbb_protocol::packets::GameType::Survival),
+        (2, bbb_protocol::packets::GameType::Adventure),
+    ] {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = world_with_debug_player_in_game_mode(false, 3, previous_game_type);
+        grant_debug_recreate_nbt_permission(&mut world);
+        assert!(world.local_player_is_spectator());
+
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Pressed,
+        );
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::KeyN),
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.change_game_mode_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeGameMode(bbb_protocol::packets::ChangeGameModeCommand {
+                game_mode: expected_game_mode,
+            })
+        );
+    }
 }
 
 #[test]
