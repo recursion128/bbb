@@ -539,6 +539,10 @@ pub enum HudInventoryBackgroundTexture {
     RecipeBookFurnaceFilterDisabled,
     RecipeBookFurnaceFilterEnabledHighlighted,
     RecipeBookFurnaceFilterDisabledHighlighted,
+    RecipeBookSlotCraftable,
+    RecipeBookSlotUncraftable,
+    RecipeBookSlotManyCraftable,
+    RecipeBookSlotManyUncraftable,
     BlastFurnace,
     BlastFurnaceLitProgress,
     BlastFurnaceBurnProgress,
@@ -1653,6 +1657,48 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_furnace_filter_disabled_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_slot_craftable(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_slot_craftable = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_slot_uncraftable(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_slot_uncraftable = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_slot_many_craftable(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_slot_many_craftable =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_slot_many_uncraftable(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_slot_many_uncraftable =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3457,6 +3503,18 @@ impl Renderer {
             HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabledHighlighted => self
                 .hud_recipe_book_furnace_filter_disabled_highlighted
                 .as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookSlotCraftable => {
+                self.hud_recipe_book_slot_craftable.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookSlotUncraftable => {
+                self.hud_recipe_book_slot_uncraftable.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookSlotManyCraftable => {
+                self.hud_recipe_book_slot_many_craftable.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookSlotManyUncraftable => {
+                self.hud_recipe_book_slot_many_uncraftable.as_ref()
+            }
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()
             }

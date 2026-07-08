@@ -180,6 +180,31 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         recipe_book_furnace_filter_disabled_highlighted.height,
         &recipe_book_furnace_filter_disabled_highlighted.rgba,
     )?;
+    let recipe_book_slot_craftable = hud_sprite(&sprites, "recipe_book/slot_craftable")?;
+    renderer.upload_hud_recipe_book_slot_craftable(
+        recipe_book_slot_craftable.width,
+        recipe_book_slot_craftable.height,
+        &recipe_book_slot_craftable.rgba,
+    )?;
+    let recipe_book_slot_uncraftable = hud_sprite(&sprites, "recipe_book/slot_uncraftable")?;
+    renderer.upload_hud_recipe_book_slot_uncraftable(
+        recipe_book_slot_uncraftable.width,
+        recipe_book_slot_uncraftable.height,
+        &recipe_book_slot_uncraftable.rgba,
+    )?;
+    let recipe_book_slot_many_craftable = hud_sprite(&sprites, "recipe_book/slot_many_craftable")?;
+    renderer.upload_hud_recipe_book_slot_many_craftable(
+        recipe_book_slot_many_craftable.width,
+        recipe_book_slot_many_craftable.height,
+        &recipe_book_slot_many_craftable.rgba,
+    )?;
+    let recipe_book_slot_many_uncraftable =
+        hud_sprite(&sprites, "recipe_book/slot_many_uncraftable")?;
+    renderer.upload_hud_recipe_book_slot_many_uncraftable(
+        recipe_book_slot_many_uncraftable.width,
+        recipe_book_slot_many_uncraftable.height,
+        &recipe_book_slot_many_uncraftable.rgba,
+    )?;
     let cartography_table = gui_texture(
         roots,
         "textures/gui/container/cartography_table.png",

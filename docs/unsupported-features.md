@@ -1060,8 +1060,9 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
-    buttons/search input/tab shell: page recipe buttons, recipe placement,
-    ghost recipe slots, and tab notification/category-backed visibility.
+    buttons/search input/tab shell/crafting recipe-button shell: paged and
+    category-backed recipe buttons, recipe placement, ghost recipe slots, and
+    tab notification/category-backed visibility.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1122,15 +1123,23 @@ When an agent does any of the following, update this file in the same slice:
     vanilla tab sets for crafting/local inventory, furnace, blast furnace, and
     smoker, renders their fake item icons through the existing HUD item path,
     and stores/clicks a local selected tab index without sending a packet.
-  - Boundary: recipe-book page buttons, recipe placement commands from clicks,
-    recipe-category-backed tab visibility, tab notification animation,
-    recipe-search filtering of visible recipe buttons, cursor/selection
-    rendering inside the search box, and ghost recipe slot rendering remain
-    open. The filter toggle, search text, and selected-tab states are live, but
-    visible filtered recipe-grid contents wait for the page recipe button
-    implementation. The first shell models the non-narrow layout; vanilla's
-    narrow-screen overlap mode (`width < 379`) remains for the input/render
-    follow-up.
+  - Done 2026-07-08 — Crafting recipe-book recipe button shell. Vanilla
+    anchors: `RecipeBookPage` positions 20 `RecipeButton`s at
+    `(xo + 11 + 25 * (i % 5), yo + 31 + 25 * (i / 5))`; `RecipeButton` uses
+    `recipe_book/slot_*` 25x25 sprites and draws the current result fake item
+    at `(x + 4, y + 4)`. bbb now loads the slot sprites and, for the
+    crafting/local-inventory search tab, projects up to 20 known structured
+    crafting recipe results from `ClientRecipeBookState` onto the recipe-book
+    panel with existing HUD item/block-model icon rendering.
+  - Boundary: paged and category-backed recipe buttons, furnace-family raw
+    recipe displays, craftability/multiple-recipe slot sprite selection,
+    recipe placement commands from clicks, recipe-category-backed tab
+    visibility, tab notification animation, recipe-search filtering of visible
+    recipe buttons, cursor/selection rendering inside the search box, and
+    ghost recipe slot rendering remain open. The filter toggle, search text,
+    selected-tab, and first crafting recipe-button shell states are live. The
+    first shell models the non-narrow layout; vanilla's narrow-screen overlap
+    mode (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

@@ -6224,6 +6224,80 @@ fn hud_inventory_screen_projects_selected_recipe_book_tab() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![bbb_protocol::packets::RecipeBookAddEntry {
+            contents: bbb_protocol::packets::RecipeDisplayEntry {
+                id: bbb_protocol::packets::RecipeDisplayId { index: 42 },
+                display: bbb_protocol::packets::RecipeDisplaySummary {
+                    display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+                    raw_body: Vec::new(),
+                    crafting: Some(
+                        bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                            ingredients: Vec::new(),
+                            result: bbb_protocol::packets::SlotDisplaySummary {
+                                display_type_id: 5,
+                                raw_payload: Vec::new(),
+                                item_stack: Some(item_stack(99, 1)),
+                            },
+                            crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                                display_type_id: 0,
+                                raw_payload: Vec::new(),
+                                item_stack: None,
+                            },
+                        },
+                    ),
+                },
+                group: None,
+                category_id: 3,
+                crafting_requirements: None,
+            },
+            flags: 0,
+            notification: false,
+            highlight: false,
+        }],
+    });
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable,
+                11,
+                31,
+                25,
+                25,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+}
+
+#[test]
 fn hud_inventory_screen_highlights_recipe_book_filter_button() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

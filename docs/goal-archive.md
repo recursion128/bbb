@@ -1737,7 +1737,7 @@
   furnace、blast furnace、smoker 投影 147x166
   `textures/gui/recipe_book.png` 面板；非窄屏主 GUI 按 vanilla 相对 recipe
   book origin 右移 149px，slot hover/tooltip、主 GUI 背景、文字、实体预览和
-  非 cursor 浮动物品使用同一 offset。剩余：recipe-book page recipe buttons、
+  非 cursor 浮动物品使用同一 offset。剩余：recipe-book paged/category-backed recipe buttons、
   recipe placement、tab visibility/animation、ghost recipe slots、
   narrow-screen overlap。
 - [x] recipe-book toggle button（P2 HUD/input slice，2026-07-08）：依据
@@ -1748,7 +1748,7 @@
   `recipe_book/button` 与 `recipe_book/button_highlighted`，为 local
   inventory、crafting table、furnace、blast furnace、smoker 处理左键 toggle；
   本地更新对应 `RecipeBookSettings` type、保留 filtering，并排队
-  `RecipeBookChangeSettingsCommand`。剩余：recipe-book page recipe buttons、
+  `RecipeBookChangeSettingsCommand`。剩余：recipe-book paged/category-backed recipe buttons、
   recipe placement、tab visibility/animation、ghost recipe slots、
   narrow-screen overlap。
 - [x] recipe-book filter toggle（P2 HUD/input slice，2026-07-08）：依据
@@ -1758,7 +1758,7 @@
   名称，加载并投影 `recipe_book/filter_*` 与
   `recipe_book/furnace_filter_*`；recipe book 打开时支持 hover 高亮和左键
   toggle，保留 open、翻转 filtering，并排队
-  `RecipeBookChangeSettingsCommand`。剩余：recipe-book page recipe buttons、
+  `RecipeBookChangeSettingsCommand`。剩余：recipe-book paged/category-backed recipe buttons、
   recipe placement、tab visibility/animation、ghost recipe slots、
   narrow-screen overlap。
 - [x] recipe-book search input shell（P2 HUD/input slice，2026-07-08）：依据
@@ -1768,7 +1768,7 @@
   在 recipe book 面板投影搜索框，`ClientInputState` 保存搜索文本/焦点，本地
   支持 printable text、backspace/delete、方向键、Home/End、Ctrl+A、点击聚焦
   和 chat-key 聚焦；focused search 下 `E` 不再关闭容器。剩余：
-  recipe-book page recipe buttons、recipe placement、visible recipe-grid search
+  recipe-book paged/category-backed recipe buttons、recipe placement、visible recipe-grid search
   filtering、tab visibility/animation、search cursor/selection rendering、ghost
   recipe slots、narrow-screen overlap。
 - [x] recipe-book tab button shell（P2 HUD/input slice，2026-07-08）：依据
@@ -1778,9 +1778,20 @@
   加载并投影 crafting/local inventory、furnace、blast furnace、smoker 的
   vanilla tab sets；tab icons 走既有 HUD item/block-model 图标路径；点击 tab
   只更新本地 selected index、不发包，并取消搜索框焦点。剩余：
-  recipe-book page recipe buttons、recipe placement、recipe-category-backed tab
+  recipe-book paged/category-backed recipe buttons、recipe placement、recipe-category-backed tab
   visibility、tab notification animation、visible recipe-grid search filtering、
   ghost recipe slots、narrow-screen overlap。
+- [x] crafting recipe-book recipe button shell（P2 HUD slice，2026-07-08）：依据
+  `RecipeBookPage` 的 20 个 `RecipeButton` 坐标
+  `(xo+11+25*(i%5), yo+31+25*(i/5))` 和 `RecipeButton` 的 25x25
+  `recipe_book/slot_*` 背景 + `(x+4,y+4)` fake item 结果图标，加载 slot
+  sprites，并在 crafting/local inventory 的 search tab 上投影最多 20 条
+  `ClientRecipeBookState` 已知 structured crafting recipe 结果；图标复用既有
+  HUD item/block-model 路径。剩余：paged/category-backed recipe buttons、
+  furnace-family raw recipe displays、craftability/multiple-recipe slot sprite
+  selection、recipe placement、recipe-category-backed tab visibility、tab
+  notification animation、visible recipe-grid search filtering、ghost recipe
+  slots、narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 
