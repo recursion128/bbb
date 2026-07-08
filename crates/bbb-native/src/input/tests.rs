@@ -1,11 +1,12 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
-    AddEntity, AdvancementSummary, BlockPos as ProtocolBlockPos, ChatCommand,
-    CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestion,
-    CommandSuggestionRequest, CommandSuggestions, Commands, CommonPlayerSpawnInfo, ContainerClick,
-    ContainerCloseRequest, ContainerInput, ContainerSetContent as ProtocolContainerSetContent,
-    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
+    AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
+    AdvancementSummary, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser,
+    CommandNode, CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions,
+    Commands, CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
+    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DialogHolder,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
     EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
@@ -4617,6 +4618,13 @@ fn advancements_key_opens_local_screen_without_seen_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![input_advancement("minecraft:hidden/root", None)],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
 
     handle_key_input(
         &mut input,
@@ -4628,6 +4636,7 @@ fn advancements_key_opens_local_screen_without_seen_command() {
     );
 
     assert!(world.advancements_screen_is_open());
+    assert_eq!(world.selected_advancements_tab(), None);
     assert_eq!(counters.advancements_seen_commands_queued, 0);
     assert!(rx.try_recv().is_err());
 }
@@ -4643,7 +4652,8 @@ fn advancements_key_selects_first_root_tab_and_queues_opened_tab() {
         reset: true,
         added: vec![
             input_advancement("minecraft:z/root", None),
-            input_advancement("minecraft:a/root", None),
+            input_displayed_advancement("minecraft:y/root", None),
+            input_displayed_advancement("minecraft:a/root", None),
         ],
         removed: Vec::new(),
         progress: Vec::new(),
@@ -4660,12 +4670,12 @@ fn advancements_key_selects_first_root_tab_and_queues_opened_tab() {
     );
 
     assert!(world.advancements_screen_is_open());
-    assert_eq!(world.selected_advancements_tab(), Some("minecraft:z/root"));
+    assert_eq!(world.selected_advancements_tab(), Some("minecraft:y/root"));
     assert_eq!(counters.advancements_seen_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::SeenAdvancements(SeenAdvancements::OpenedTab {
-            tab: "minecraft:z/root".to_string()
+            tab: "minecraft:y/root".to_string()
         })
     );
     assert!(rx.try_recv().is_err());
@@ -4679,6 +4689,26 @@ fn input_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
         requirements: Vec::new(),
         sends_telemetry_event: false,
     }
+}
+
+fn input_displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
+    let mut advancement = input_advancement(id, parent);
+    advancement.display = Some(AdvancementDisplaySummary {
+        title: id.to_string(),
+        description: String::new(),
+        icon: AdvancementIconSummary {
+            item_id: 1,
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        },
+        frame_type: AdvancementFrameType::Task,
+        show_toast: false,
+        hidden: false,
+        background: None,
+        x: 0.0,
+        y: 0.0,
+    });
+    advancement
 }
 
 #[test]

@@ -88,12 +88,12 @@ impl WorldStore {
             .advancements
             .selected_tab
             .as_deref()
-            .is_some_and(|tab| self.advancement_is_root(tab))
+            .is_some_and(|tab| self.advancement_is_root_tab(tab))
         {
             return None;
         }
 
-        let first_root = self.first_advancement_root_id().map(str::to_string);
+        let first_root = self.first_advancement_root_tab_id().map(str::to_string);
         self.advancements.selected_tab = first_root.clone();
         first_root
     }
@@ -168,21 +168,25 @@ impl WorldStore {
         }
     }
 
-    fn first_advancement_root_id(&self) -> Option<&str> {
+    fn first_advancement_root_tab_id(&self) -> Option<&str> {
         self.advancements.root_order.iter().find_map(|root| {
             self.advancements
                 .advancements
                 .get(root)
-                .is_some_and(|advancement| advancement.parent.is_none())
+                .is_some_and(|advancement| {
+                    advancement.parent.is_none() && advancement.display.is_some()
+                })
                 .then_some(root.as_str())
         })
     }
 
-    fn advancement_is_root(&self, id: &str) -> bool {
+    fn advancement_is_root_tab(&self, id: &str) -> bool {
         self.advancements
             .advancements
             .get(id)
-            .is_some_and(|advancement| advancement.parent.is_none())
+            .is_some_and(|advancement| {
+                advancement.parent.is_none() && advancement.display.is_some()
+            })
     }
 
     fn refresh_advancement_counters(&mut self) {
@@ -236,8 +240,9 @@ fn normalize_progress_for_advancement(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
-        SelectAdvancementsTab, UpdateAdvancements,
+        AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
+        AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary,
+        DataComponentPatchSummary, SelectAdvancementsTab, UpdateAdvancements,
     };
 
     #[test]
@@ -290,7 +295,8 @@ mod tests {
             reset: true,
             added: vec![
                 advancement("minecraft:z/root", None),
-                advancement("minecraft:a/root", None),
+                displayed_advancement("minecraft:y/root", None),
+                displayed_advancement("minecraft:a/root", None),
                 advancement("minecraft:z/task", Some("minecraft:z/root")),
             ],
             removed: Vec::new(),
@@ -300,13 +306,13 @@ mod tests {
 
         assert_eq!(
             store.advancements().root_order,
-            vec!["minecraft:z/root", "minecraft:a/root"]
+            vec!["minecraft:z/root", "minecraft:y/root", "minecraft:a/root"]
         );
         assert_eq!(
             store.ensure_advancements_screen_selected_tab(),
-            Some("minecraft:z/root".to_string())
+            Some("minecraft:y/root".to_string())
         );
-        assert_eq!(store.selected_advancements_tab(), Some("minecraft:z/root"));
+        assert_eq!(store.selected_advancements_tab(), Some("minecraft:y/root"));
         assert_eq!(store.ensure_advancements_screen_selected_tab(), None);
 
         store.apply_select_advancements_tab(SelectAdvancementsTab {
@@ -315,7 +321,7 @@ mod tests {
         assert_eq!(store.selected_advancements_tab(), Some("minecraft:z/task"));
         assert_eq!(
             store.ensure_advancements_screen_selected_tab(),
-            Some("minecraft:z/root".to_string())
+            Some("minecraft:y/root".to_string())
         );
     }
 
@@ -419,6 +425,26 @@ mod tests {
 
     fn advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
         advancement_with_requirements(id, parent, Vec::new())
+    }
+
+    fn displayed_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
+        let mut advancement = advancement(id, parent);
+        advancement.display = Some(AdvancementDisplaySummary {
+            title: id.to_string(),
+            description: String::new(),
+            icon: AdvancementIconSummary {
+                item_id: 1,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            frame_type: AdvancementFrameType::Task,
+            show_toast: false,
+            hidden: false,
+            background: None,
+            x: 0.0,
+            y: 0.0,
+        });
+        advancement
     }
 
     fn advancement_with_requirements(

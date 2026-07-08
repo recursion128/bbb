@@ -286,8 +286,8 @@ load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 scre
 Screen Render Surfaces" 条目）：
 
 - advancement screen tab/tree rendering + tab-click selection pass（本地
-  open/close、empty window、footer Done button shell、初始 root tab 选择已完成；
-  `ClientAdvancementsState` ready）。
+  open/close、empty window、footer Done button shell、初始 display-root tab
+  选择已完成；`ClientAdvancementsState` ready）。
 - debug overlay（F3，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
