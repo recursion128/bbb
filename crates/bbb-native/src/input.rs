@@ -663,6 +663,13 @@ fn open_advancements_screen(
 ) {
     if world.open_advancements_screen() {
         release_active_input(input, world, counters, net_commands);
+        if let Some(tab) = world.ensure_advancements_screen_selected_tab() {
+            queue_seen_advancements_command(
+                counters,
+                net_commands,
+                SeenAdvancements::OpenedTab { tab },
+            );
+        }
     }
 }
 

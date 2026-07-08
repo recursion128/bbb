@@ -2104,6 +2104,18 @@
   Done 命中时关闭 screen + 发送 `SeenAdvancements::ClosedScreen`。剩余：
   advancement tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
   overlay。
+- [x] advancement screen initial root tab selection（P2 world/input slice，
+  2026-07-08）：依据 `ClientAdvancements.setListener` 把
+  `AdvancementTree` roots 按插入顺序 replay 给 `AdvancementsScreen`，随后
+  `AdvancementsScreen.init` 在本地 `selectedTab == null && !tabs.isEmpty()` 时选
+  第一个 root 并以 `tellServer=true` 调用 `ClientAdvancements.setSelectedTab`；
+  后者只在 selected tab 非空时发送
+  `ServerboundSeenAdvancementsPacket.openedTab`。world 现在在
+  `ClientAdvancementsState.root_order` 保留 root tab 插入顺序，reset/remove 时维护
+  清理；input 的 `L` 打开 screen 路径在 screen 真正打开后保留已有有效 root
+  selection，否则选第一个 root 并排队 `SeenAdvancements::OpenedTab`，无 root
+  时只清 stale selection 不发包。剩余：advancement tab/tree 渲染与 tab-click
+  `OpenedTab` 行为，以及 debug overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

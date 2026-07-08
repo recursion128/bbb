@@ -17,6 +17,8 @@ pub struct ClientAdvancementsState {
     pub progress: BTreeMap<String, ProtocolAdvancementProgressSummary>,
     #[serde(default)]
     pub selected_tab: Option<String>,
+    #[serde(default)]
+    pub root_order: Vec<String>,
 }
 
 impl WorldStore {
@@ -33,6 +35,7 @@ impl WorldStore {
             self.counters.update_advancements_reset_packets += 1;
             self.advancements.advancements.clear();
             self.advancements.progress.clear();
+            self.advancements.root_order.clear();
         }
         if packet.show_advancements {
             self.counters.update_advancements_show_packets += 1;
@@ -80,6 +83,21 @@ impl WorldStore {
         self.advancements.selected_tab.as_deref()
     }
 
+    pub fn ensure_advancements_screen_selected_tab(&mut self) -> Option<String> {
+        if self
+            .advancements
+            .selected_tab
+            .as_deref()
+            .is_some_and(|tab| self.advancement_is_root(tab))
+        {
+            return None;
+        }
+
+        let first_root = self.first_advancement_root_id().map(str::to_string);
+        self.advancements.selected_tab = first_root.clone();
+        first_root
+    }
+
     fn remove_advancement_and_children(&mut self, id: &str) -> usize {
         let children: Vec<String> = self
             .advancements
@@ -95,7 +113,10 @@ impl WorldStore {
             removed += self.remove_advancement_and_children(&child);
         }
 
-        if self.advancements.advancements.remove(id).is_some() {
+        if let Some(removed_advancement) = self.advancements.advancements.remove(id) {
+            if removed_advancement.parent.is_none() {
+                self.advancements.root_order.retain(|root| root != id);
+            }
             self.advancements.progress.remove(id);
             removed += 1;
         }
@@ -116,9 +137,7 @@ impl WorldStore {
                 };
                 if parent_ready {
                     let advancement = pending.remove(index);
-                    self.advancements
-                        .advancements
-                        .insert(advancement.id.clone(), advancement);
+                    self.insert_advancement(advancement);
                 } else {
                     index += 1;
                 }
@@ -129,6 +148,41 @@ impl WorldStore {
                 break;
             }
         }
+    }
+
+    fn insert_advancement(&mut self, advancement: ProtocolAdvancementSummary) {
+        let id = advancement.id.clone();
+        let is_root = advancement.parent.is_none();
+        let previous = self
+            .advancements
+            .advancements
+            .insert(id.clone(), advancement);
+        if previous
+            .as_ref()
+            .is_some_and(|advancement| advancement.parent.is_none() && !is_root)
+        {
+            self.advancements.root_order.retain(|root| root != &id);
+        }
+        if is_root && !self.advancements.root_order.iter().any(|root| root == &id) {
+            self.advancements.root_order.push(id);
+        }
+    }
+
+    fn first_advancement_root_id(&self) -> Option<&str> {
+        self.advancements.root_order.iter().find_map(|root| {
+            self.advancements
+                .advancements
+                .get(root)
+                .is_some_and(|advancement| advancement.parent.is_none())
+                .then_some(root.as_str())
+        })
+    }
+
+    fn advancement_is_root(&self, id: &str) -> bool {
+        self.advancements
+            .advancements
+            .get(id)
+            .is_some_and(|advancement| advancement.parent.is_none())
     }
 
     fn refresh_advancement_counters(&mut self) {
@@ -230,6 +284,42 @@ mod tests {
     }
 
     #[test]
+    fn screen_open_selects_first_root_in_packet_order() {
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![
+                advancement("minecraft:z/root", None),
+                advancement("minecraft:a/root", None),
+                advancement("minecraft:z/task", Some("minecraft:z/root")),
+            ],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+
+        assert_eq!(
+            store.advancements().root_order,
+            vec!["minecraft:z/root", "minecraft:a/root"]
+        );
+        assert_eq!(
+            store.ensure_advancements_screen_selected_tab(),
+            Some("minecraft:z/root".to_string())
+        );
+        assert_eq!(store.selected_advancements_tab(), Some("minecraft:z/root"));
+        assert_eq!(store.ensure_advancements_screen_selected_tab(), None);
+
+        store.apply_select_advancements_tab(SelectAdvancementsTab {
+            tab: Some("minecraft:z/task".to_string()),
+        });
+        assert_eq!(store.selected_advancements_tab(), Some("minecraft:z/task"));
+        assert_eq!(
+            store.ensure_advancements_screen_selected_tab(),
+            Some("minecraft:z/root".to_string())
+        );
+    }
+
+    #[test]
     fn update_advancements_applies_reset_removal_and_known_progress_only() {
         let mut store = WorldStore::new();
 
@@ -278,6 +368,10 @@ mod tests {
             .advancements()
             .advancements
             .contains_key("minecraft:orphan"));
+        assert_eq!(
+            store.advancements().root_order,
+            vec!["minecraft:story/root"]
+        );
 
         store.apply_update_advancements(UpdateAdvancements {
             reset: false,
@@ -303,6 +397,10 @@ mod tests {
             .advancements()
             .advancements
             .contains_key("minecraft:nether/root"));
+        assert_eq!(
+            store.advancements().root_order,
+            vec!["minecraft:nether/root"]
+        );
 
         let counters = store.counters();
         assert_eq!(counters.update_advancements_packets, 2);

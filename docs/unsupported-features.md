@@ -1060,8 +1060,8 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the advancement screen after the local open/close and empty
-    window/Done button shells: tab/tree rendering and selected-tab
-    `OpenedTab` behavior (`ClientAdvancementsState` ready).
+    window/Done button/initial root-selection shells: tab/tree rendering and
+    tab-click `OpenedTab` behavior (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1424,9 +1424,22 @@ When an agent does any of the following, update this file in the same slice:
     sits at the vanilla screen-bottom position, highlights the button from
     cursor position, draws the `Done` label, and closes via
     `SeenAdvancements::ClosedScreen` when the button is clicked.
+  - Done 2026-07-08 — Advancement screen initial root tab selection.
+    Vanilla anchors: `ClientAdvancements.setListener` replays
+    `AdvancementTree` roots in insertion order to `AdvancementsScreen`;
+    `AdvancementsScreen.init` then selects the first tab and calls
+    `ClientAdvancements.setSelectedTab(firstRoot, true)` when no selected tab
+    exists. `ClientAdvancements.setSelectedTab` sends
+    `ServerboundSeenAdvancementsPacket.openedTab` only for a non-null selected
+    tab and then updates local selected-tab state. bbb now preserves
+    root-tab insertion order in `ClientAdvancementsState.root_order`; when
+    the local advancement screen opens, it keeps an existing valid root
+    selection or selects the first root and queues
+    `SeenAdvancements::OpenedTab`. If no roots are known, it clears stale
+    local selection without sending a packet.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
     overlap, and the advancement screen local open/close, empty window, and
-    footer Done shells are live. The
+    footer Done plus initial root-selection shells are live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1442,8 +1455,8 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The remaining
-    open surfaces in this ledger row are the advancement screen tab/tree pass
-    and debug overlay.
+    open surfaces in this ledger row are the advancement screen tab/tree
+    rendering + tab-click selection pass and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

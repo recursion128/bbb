@@ -1,11 +1,11 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser, CommandNode,
-    CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
-    CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
-    ContainerSetContent as ProtocolContainerSetContent, DialogHolder,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
+    AddEntity, AdvancementSummary, BlockPos as ProtocolBlockPos, ChatCommand,
+    CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestion,
+    CommandSuggestionRequest, CommandSuggestions, Commands, CommonPlayerSpawnInfo, ContainerClick,
+    ContainerCloseRequest, ContainerInput, ContainerSetContent as ProtocolContainerSetContent,
+    DialogHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
     EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
@@ -14,7 +14,7 @@ use bbb_protocol::packets::{
     RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetEquipment, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
-    SignedMessageBody, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    SignedMessageBody, UpdateAdvancements, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
@@ -4630,6 +4630,55 @@ fn advancements_key_opens_local_screen_without_seen_command() {
     assert!(world.advancements_screen_is_open());
     assert_eq!(counters.advancements_seen_commands_queued, 0);
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn advancements_key_selects_first_root_tab_and_queues_opened_tab() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![
+            input_advancement("minecraft:z/root", None),
+            input_advancement("minecraft:a/root", None),
+        ],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+
+    assert!(world.advancements_screen_is_open());
+    assert_eq!(world.selected_advancements_tab(), Some("minecraft:z/root"));
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::OpenedTab {
+            tab: "minecraft:z/root".to_string()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+fn input_advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {
+    AdvancementSummary {
+        id: id.to_string(),
+        parent: parent.map(str::to_string),
+        display: None,
+        requirements: Vec::new(),
+        sends_telemetry_event: false,
+    }
 }
 
 #[test]
