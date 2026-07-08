@@ -3801,6 +3801,62 @@ fn recipe_book_filter_click_toggles_filtering_and_queues_packet() {
 }
 
 #[test]
+fn recipe_book_search_click_focuses_and_edits_local_text() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(506.0, 291.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+    assert!(input.recipe_book_search_focused);
+
+    assert!(handle_inventory_text_input(
+        &mut input,
+        &world,
+        &mut counters,
+        &commands,
+        None,
+        "axe",
+    ));
+    assert_eq!(input.recipe_book_search_text, "axe");
+
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::Backspace,
+    ));
+    assert_eq!(input.recipe_book_search_text, "ax");
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 0);
+}
+
+#[test]
 fn furnace_mouse_click_queues_pickup() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

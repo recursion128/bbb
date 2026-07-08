@@ -489,6 +489,8 @@ pub enum HudInventoryBackgroundTexture {
     CrafterDisabledSlot,
     CrafterPoweredRedstone,
     CrafterUnpoweredRedstone,
+    WidgetTextField,
+    WidgetTextFieldHighlighted,
     Anvil,
     AnvilTextField,
     AnvilTextFieldDisabled,
@@ -1152,6 +1154,26 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_crafter_unpowered_redstone = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_text_field(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_text_field = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_text_field_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_text_field_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -3286,6 +3308,10 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::CrafterUnpoweredRedstone => {
                 self.hud_crafter_unpowered_redstone.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetTextField => self.hud_widget_text_field.as_ref(),
+            HudInventoryBackgroundTexture::WidgetTextFieldHighlighted => {
+                self.hud_widget_text_field_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
             HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),

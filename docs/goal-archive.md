@@ -1738,8 +1738,7 @@
   `textures/gui/recipe_book.png` 面板；非窄屏主 GUI 按 vanilla 相对 recipe
   book origin 右移 149px，slot hover/tooltip、主 GUI 背景、文字、实体预览和
   非 cursor 浮动物品使用同一 offset。剩余：recipe-book tabs/page recipe
-  buttons、search input、recipe placement、ghost recipe slots、
-  narrow-screen overlap。
+  buttons、recipe placement、ghost recipe slots、narrow-screen overlap。
 - [x] recipe-book toggle button（P2 HUD/input slice，2026-07-08）：依据
   `RecipeBookComponent.RECIPE_BUTTON_SPRITES`、`InventoryScreen` /
   `CraftingScreen` / `AbstractFurnaceScreen` 的按钮位置，以及
@@ -1749,8 +1748,7 @@
   inventory、crafting table、furnace、blast furnace、smoker 处理左键 toggle；
   本地更新对应 `RecipeBookSettings` type、保留 filtering，并排队
   `RecipeBookChangeSettingsCommand`。剩余：recipe-book tabs/page recipe
-  buttons、search input、recipe placement、ghost recipe slots、
-  narrow-screen overlap。
+  buttons、recipe placement、ghost recipe slots、narrow-screen overlap。
 - [x] recipe-book filter toggle（P2 HUD/input slice，2026-07-08）：依据
   `RecipeBookComponent.initVisuals` 的 filter `CycleButton` 坐标
   `(xo+110, yo+12)`、尺寸 26x16、`toggleFiltering` +
@@ -1759,7 +1757,16 @@
   `recipe_book/furnace_filter_*`；recipe book 打开时支持 hover 高亮和左键
   toggle，保留 open、翻转 filtering，并排队
   `RecipeBookChangeSettingsCommand`。剩余：recipe-book tabs/page recipe
-  buttons、search input、recipe placement、ghost recipe slots、
+  buttons、recipe placement、ghost recipe slots、narrow-screen overlap。
+- [x] recipe-book search input shell（P2 HUD/input slice，2026-07-08）：依据
+  `RecipeBookComponent.initVisuals` 的 `EditBox(xo+25, yo+13, 81, 14)`、
+  `maxLength=50`、白色文本和 `widget/text_field(_highlighted)` sprites，以及
+  `RecipeBookComponent.keyPressed` / `charTyped` 的 focused 搜索框吞键行为，
+  在 recipe book 面板投影搜索框，`ClientInputState` 保存搜索文本/焦点，本地
+  支持 printable text、backspace/delete、方向键、Home/End、Ctrl+A、点击聚焦
+  和 chat-key 聚焦；focused search 下 `E` 不再关闭容器。剩余：
+  recipe-book tabs/page recipe buttons、recipe placement、visible recipe-grid
+  search filtering、search cursor/selection rendering、ghost recipe slots、
   narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI

@@ -60,6 +60,12 @@ pub(crate) const RECIPE_BOOK_FILTER_BUTTON_X: i32 = 110;
 pub(crate) const RECIPE_BOOK_FILTER_BUTTON_Y: i32 = 12;
 pub(crate) const RECIPE_BOOK_FILTER_BUTTON_WIDTH: i32 = 26;
 pub(crate) const RECIPE_BOOK_FILTER_BUTTON_HEIGHT: i32 = 16;
+pub(crate) const RECIPE_BOOK_SEARCH_BOX_X: i32 = 25;
+pub(crate) const RECIPE_BOOK_SEARCH_BOX_Y: i32 = 13;
+pub(crate) const RECIPE_BOOK_SEARCH_BOX_WIDTH: i32 = 81;
+pub(crate) const RECIPE_BOOK_SEARCH_BOX_HEIGHT: i32 = 14;
+pub(crate) const RECIPE_BOOK_SEARCH_TEXT_X_OFFSET: i32 = 4;
+pub(crate) const RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET: i32 = 3;
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);

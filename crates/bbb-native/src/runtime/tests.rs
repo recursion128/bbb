@@ -6020,6 +6020,15 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
                 [176.0 / 256.0, 166.0 / 256.0],
             ),
             hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::WidgetTextField,
+                25,
+                13,
+                81,
+                14,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::RecipeBookButton,
                 154,
                 34,
@@ -6044,6 +6053,74 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
     assert_eq!((result.x, result.y), (273, 35));
     let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
     assert_eq!((hotbar.x, hotbar.y), (301, 142));
+}
+
+#[test]
+fn hud_inventory_screen_projects_recipe_book_search_box_text() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_search: RecipeBookSearchHudState {
+                text: "axe".to_string(),
+                focused: true,
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::WidgetTextFieldHighlighted,
+                25,
+                13,
+                81,
+                14,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    assert_eq!(
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
+            x: 29,
+            y: 16,
+            width: 73,
+            text: "axe".to_string(),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            background: None,
+            shadow: false,
+            runs: Vec::new(),
+        })
+    );
 }
 
 #[test]

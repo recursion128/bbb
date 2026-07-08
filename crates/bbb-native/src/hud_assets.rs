@@ -90,6 +90,18 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         recipe_book.height,
         &recipe_book.rgba,
     )?;
+    let widget_text_field = hud_sprite(&sprites, "widget/text_field")?;
+    renderer.upload_hud_widget_text_field(
+        widget_text_field.width,
+        widget_text_field.height,
+        &widget_text_field.rgba,
+    )?;
+    let widget_text_field_highlighted = hud_sprite(&sprites, "widget/text_field_highlighted")?;
+    renderer.upload_hud_widget_text_field_highlighted(
+        widget_text_field_highlighted.width,
+        widget_text_field_highlighted.height,
+        &widget_text_field_highlighted.rgba,
+    )?;
     let recipe_book_button = hud_sprite(&sprites, "recipe_book/button")?;
     renderer.upload_hud_recipe_book_button(
         recipe_book_button.width,

@@ -43,11 +43,14 @@ pub(crate) use inventory::{
     anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
     handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_inventory_text_input,
     inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
-    recipe_book_main_gui_offset, recipe_book_type_for_background, recipe_book_type_settings,
-    sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
-    RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-    RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+    recipe_book_main_gui_offset, recipe_book_search_entry_consumes_key,
+    recipe_book_type_for_background, recipe_book_type_settings, sync_beacon_effect_selection_state,
+    sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state,
+    InventoryScreenBackground, InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT,
+    RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT,
+    RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y,
+    RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -131,6 +134,11 @@ pub(crate) struct ClientInputState {
     anvil_rename_cursor: usize,
     anvil_rename_selection: usize,
     anvil_rename_hover_name: String,
+    recipe_book_search_text: String,
+    recipe_book_search_cursor: usize,
+    recipe_book_search_selection: usize,
+    recipe_book_search_focused: bool,
+    recipe_book_search_suppress_open_key_commit: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -189,6 +197,12 @@ pub(crate) struct SignEditorHudState {
     pub(crate) selection: usize,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct RecipeBookSearchHudState {
+    pub(crate) text: String,
+    pub(crate) focused: bool,
+}
+
 impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
@@ -233,6 +247,8 @@ impl ClientInputState {
         self.anvil_rename_cursor = 0;
         self.anvil_rename_selection = 0;
         self.anvil_rename_hover_name.clear();
+        self.recipe_book_search_focused = false;
+        self.recipe_book_search_suppress_open_key_commit = false;
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
@@ -405,6 +421,13 @@ impl ClientInputState {
 
     pub(crate) fn anvil_rename_text(&self) -> &str {
         &self.anvil_rename_text
+    }
+
+    pub(crate) fn recipe_book_search_hud_state(&self) -> RecipeBookSearchHudState {
+        RecipeBookSearchHudState {
+            text: self.recipe_book_search_text.clone(),
+            focused: self.recipe_book_search_focused,
+        }
     }
 
     fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {
@@ -697,6 +720,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
         if matches!(code, KeyCode::KeyE)
             && !anvil_rename_entry_consumes_key(world, code)
+            && !recipe_book_search_entry_consumes_key(input, world, code)
             && queue_container_close_command(counters, world, net_commands)
         {
             return;

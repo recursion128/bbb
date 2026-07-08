@@ -43,6 +43,8 @@ pub(crate) use layout::{
     InventoryScreenBackground, InventoryScreenLayout, InventorySlotLayout,
     RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
     RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+    RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X,
+    RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
@@ -88,6 +90,7 @@ const ANVIL_SCREEN_WIDTH: i32 = 176;
 const ANVIL_SCREEN_HEIGHT: i32 = 166;
 const ANVIL_SLOT_COUNT: i16 = 3;
 const ANVIL_RENAME_MAX_LENGTH: usize = 50;
+const RECIPE_BOOK_SEARCH_MAX_LENGTH: usize = 50;
 const BEACON_SCREEN_WIDTH: i32 = 230;
 const BEACON_SCREEN_HEIGHT: i32 = 219;
 const BEACON_SLOT_COUNT: i16 = 1;
@@ -343,6 +346,15 @@ pub(crate) fn handle_inventory_mouse_input(
         return true;
     }
     if button_num == 0
+        && maybe_focus_recipe_book_search(input, world, cursor_position, surface_size)
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0
         && maybe_queue_recipe_book_filter_click(
             world,
             counters,
@@ -359,6 +371,7 @@ pub(crate) fn handle_inventory_mouse_input(
     }
     if button_num == 0
         && maybe_queue_recipe_book_toggle_click(
+            input,
             world,
             counters,
             net_commands,
@@ -575,7 +588,32 @@ fn maybe_queue_recipe_book_filter_click(
     true
 }
 
+fn maybe_focus_recipe_book_search(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if !recipe_book_search_box_is_open(world) {
+        input.recipe_book_search_focused = false;
+        input.recipe_book_search_suppress_open_key_commit = false;
+        return false;
+    }
+    if !recipe_book_search_box_at_position(world, cursor_position, surface_size) {
+        input.recipe_book_search_focused = false;
+        input.recipe_book_search_suppress_open_key_commit = false;
+        return false;
+    }
+
+    input.recipe_book_search_focused = true;
+    let cursor = text_edit::char_len(&input.recipe_book_search_text);
+    set_recipe_book_search_cursor(input, cursor);
+    input.recipe_book_search_suppress_open_key_commit = false;
+    true
+}
+
 fn maybe_queue_recipe_book_toggle_click(
+    input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -588,6 +626,10 @@ fn maybe_queue_recipe_book_toggle_click(
     };
     let mut settings = recipe_book_type_settings(world, book_type);
     settings.open = !settings.open;
+    if !settings.open {
+        input.recipe_book_search_focused = false;
+        input.recipe_book_search_suppress_open_key_commit = false;
+    }
     world.set_local_recipe_book_type_settings(book_type, settings);
     queue_recipe_book_change_settings_command(
         counters,
@@ -1085,6 +1127,14 @@ pub(crate) fn anvil_rename_entry_consumes_key(world: &WorldStore, code: KeyCode)
     matches!(code, KeyCode::KeyE) && anvil_rename_input_signature(world).is_some()
 }
 
+pub(crate) fn recipe_book_search_entry_consumes_key(
+    input: &ClientInputState,
+    world: &WorldStore,
+    code: KeyCode,
+) -> bool {
+    matches!(code, KeyCode::KeyE) && recipe_book_search_is_active(input, world)
+}
+
 pub(crate) fn handle_inventory_text_input(
     input: &mut ClientInputState,
     world: &WorldStore,
@@ -1093,7 +1143,15 @@ pub(crate) fn handle_inventory_text_input(
     item_runtime: Option<&NativeItemRuntime>,
     text: &str,
 ) -> bool {
-    if !input.focused || !anvil_screen_is_open(world) {
+    if !input.focused || inventory_screen_layout(world).is_none() {
+        return false;
+    }
+
+    if handle_recipe_book_search_text_input(input, world, text) {
+        return true;
+    }
+
+    if !anvil_screen_is_open(world) {
         return false;
     }
 
@@ -1120,6 +1178,10 @@ pub(crate) fn handle_inventory_key_input(
 ) -> bool {
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
+    }
+
+    if handle_recipe_book_search_key_input(input, world, code) {
+        return true;
     }
 
     if handle_anvil_rename_key_input(input, world, counters, net_commands, item_runtime, code) {
@@ -1158,6 +1220,126 @@ pub(crate) fn handle_inventory_key_input(
     }
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
     true
+}
+
+fn handle_recipe_book_search_text_input(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    text: &str,
+) -> bool {
+    if !recipe_book_search_is_active(input, world) {
+        return false;
+    }
+    if input.recipe_book_search_suppress_open_key_commit {
+        input.recipe_book_search_suppress_open_key_commit = false;
+        if matches!(text, "t" | "T") {
+            return true;
+        }
+    }
+    insert_recipe_book_search_text(input, text);
+    true
+}
+
+fn handle_recipe_book_search_key_input(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    code: KeyCode,
+) -> bool {
+    if !recipe_book_search_box_is_open(world) {
+        input.recipe_book_search_focused = false;
+        input.recipe_book_search_suppress_open_key_commit = false;
+        return false;
+    }
+
+    if !input.recipe_book_search_focused {
+        if matches!(code, KeyCode::KeyT) {
+            input.recipe_book_search_focused = true;
+            let cursor = text_edit::char_len(&input.recipe_book_search_text);
+            set_recipe_book_search_cursor(input, cursor);
+            input.recipe_book_search_suppress_open_key_commit = true;
+            return true;
+        }
+        return false;
+    }
+
+    match code {
+        KeyCode::Escape => false,
+        KeyCode::KeyA if input.control_down() && !input.shift_down() => {
+            select_recipe_book_search_text(input);
+            true
+        }
+        KeyCode::ArrowLeft => {
+            let cursor = if input.control_down() {
+                text_edit::word_position(
+                    &input.recipe_book_search_text,
+                    input.recipe_book_search_cursor,
+                    -1,
+                )
+            } else {
+                input.recipe_book_search_cursor.saturating_sub(1)
+            };
+            set_recipe_book_search_cursor(input, cursor);
+            true
+        }
+        KeyCode::ArrowRight => {
+            let cursor = if input.control_down() {
+                text_edit::word_position(
+                    &input.recipe_book_search_text,
+                    input.recipe_book_search_cursor,
+                    1,
+                )
+            } else {
+                (input.recipe_book_search_cursor + 1)
+                    .min(text_edit::char_len(&input.recipe_book_search_text))
+            };
+            set_recipe_book_search_cursor(input, cursor);
+            true
+        }
+        KeyCode::Home => {
+            set_recipe_book_search_cursor(input, 0);
+            true
+        }
+        KeyCode::End => {
+            let cursor = text_edit::char_len(&input.recipe_book_search_text);
+            set_recipe_book_search_cursor(input, cursor);
+            true
+        }
+        KeyCode::Backspace => {
+            let deleted_selection = delete_recipe_book_search_selection(input);
+            if !deleted_selection && input.control_down() {
+                text_edit::remove_word_before_cursor(
+                    &mut input.recipe_book_search_text,
+                    &mut input.recipe_book_search_cursor,
+                );
+                input.recipe_book_search_selection = input.recipe_book_search_cursor;
+            } else if !deleted_selection {
+                remove_recipe_book_search_char_before_cursor(
+                    &mut input.recipe_book_search_text,
+                    &mut input.recipe_book_search_cursor,
+                );
+                input.recipe_book_search_selection = input.recipe_book_search_cursor;
+            }
+            true
+        }
+        KeyCode::Delete => {
+            let deleted_selection = delete_recipe_book_search_selection(input);
+            if !deleted_selection && input.control_down() {
+                text_edit::remove_word_at_cursor(
+                    &mut input.recipe_book_search_text,
+                    input.recipe_book_search_cursor,
+                );
+                input.recipe_book_search_selection = input.recipe_book_search_cursor;
+            } else if !deleted_selection {
+                remove_recipe_book_search_char_at_cursor(
+                    &mut input.recipe_book_search_text,
+                    input.recipe_book_search_cursor,
+                );
+                input.recipe_book_search_selection = input.recipe_book_search_cursor;
+            }
+            true
+        }
+        _ => true,
+    }
 }
 
 fn handle_anvil_rename_key_input(
@@ -1273,6 +1455,97 @@ fn handle_anvil_rename_key_input(
         }
         _ => false,
     }
+}
+
+fn recipe_book_search_is_active(input: &ClientInputState, world: &WorldStore) -> bool {
+    input.recipe_book_search_focused && recipe_book_search_box_is_open(world)
+}
+
+fn recipe_book_search_box_is_open(world: &WorldStore) -> bool {
+    let Some(layout) = inventory_screen_layout(world) else {
+        return false;
+    };
+    recipe_book_type_for_background(layout.background).is_some()
+        && recipe_book_main_gui_offset(world, layout.background) != 0
+}
+
+fn insert_recipe_book_search_text(input: &mut ClientInputState, text: &str) {
+    delete_recipe_book_search_selection(input);
+    let current = &mut input.recipe_book_search_text;
+    input.recipe_book_search_cursor = input
+        .recipe_book_search_cursor
+        .min(text_edit::char_len(current));
+    let mut remaining =
+        RECIPE_BOOK_SEARCH_MAX_LENGTH.saturating_sub(recipe_book_search_len(current));
+    for ch in text.chars().filter(|ch| is_recipe_book_search_char(*ch)) {
+        let len = ch.len_utf16();
+        if len > remaining {
+            break;
+        }
+        let insert_at = text_edit::byte_index(current, input.recipe_book_search_cursor);
+        current.insert(insert_at, ch);
+        input.recipe_book_search_cursor += 1;
+        remaining -= len;
+    }
+    input.recipe_book_search_selection = input.recipe_book_search_cursor;
+}
+
+fn set_recipe_book_search_cursor(input: &mut ClientInputState, cursor: usize) {
+    input.recipe_book_search_cursor =
+        cursor.min(text_edit::char_len(&input.recipe_book_search_text));
+    input.recipe_book_search_selection = input.recipe_book_search_cursor;
+}
+
+fn select_recipe_book_search_text(input: &mut ClientInputState) {
+    input.recipe_book_search_selection = 0;
+    input.recipe_book_search_cursor = text_edit::char_len(&input.recipe_book_search_text);
+}
+
+fn delete_recipe_book_search_selection(input: &mut ClientInputState) -> bool {
+    if input.recipe_book_search_selection == input.recipe_book_search_cursor {
+        return false;
+    }
+    let start = input
+        .recipe_book_search_selection
+        .min(input.recipe_book_search_cursor);
+    let end = input
+        .recipe_book_search_selection
+        .max(input.recipe_book_search_cursor);
+    let start_byte = text_edit::byte_index(&input.recipe_book_search_text, start);
+    let end_byte = text_edit::byte_index(&input.recipe_book_search_text, end);
+    input
+        .recipe_book_search_text
+        .replace_range(start_byte..end_byte, "");
+    input.recipe_book_search_cursor = start;
+    input.recipe_book_search_selection = start;
+    true
+}
+
+fn is_recipe_book_search_char(ch: char) -> bool {
+    ch != '\u{a7}' && ch >= ' ' && ch != '\u{7f}'
+}
+
+fn recipe_book_search_len(text: &str) -> usize {
+    text.encode_utf16().count()
+}
+
+fn remove_recipe_book_search_char_before_cursor(current: &mut String, cursor: &mut usize) {
+    if *cursor == 0 {
+        return;
+    }
+    let start = text_edit::byte_index(current, *cursor - 1);
+    let end = text_edit::byte_index(current, *cursor);
+    current.replace_range(start..end, "");
+    *cursor -= 1;
+}
+
+fn remove_recipe_book_search_char_at_cursor(current: &mut String, cursor: usize) {
+    if cursor >= text_edit::char_len(current) {
+        return;
+    }
+    let start = text_edit::byte_index(current, cursor);
+    let end = text_edit::byte_index(current, cursor + 1);
+    current.replace_range(start..end, "");
 }
 
 fn sync_anvil_rename_input(
@@ -1782,6 +2055,31 @@ fn recipe_book_filter_button_at_position(
         return Some(book_type);
     }
     None
+}
+
+fn recipe_book_search_box_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(layout) = inventory_screen_layout(world) else {
+        return false;
+    };
+    if recipe_book_type_for_background(layout.background).is_none()
+        || recipe_book_main_gui_offset(world, layout.background) == 0
+    {
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x - f64::from(RECIPE_BOOK_SEARCH_BOX_X);
+    let y = cursor.y - origin_y - f64::from(RECIPE_BOOK_SEARCH_BOX_Y);
+    x >= 0.0
+        && x < f64::from(RECIPE_BOOK_SEARCH_BOX_WIDTH)
+        && y >= 0.0
+        && y < f64::from(RECIPE_BOOK_SEARCH_BOX_HEIGHT)
 }
 
 fn enchantment_button_at_position(

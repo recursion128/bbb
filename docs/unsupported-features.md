@@ -1060,7 +1060,7 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
-    buttons: tabs, page recipe buttons, search input, recipe placement, and
+    buttons/search input: tabs, page recipe buttons, recipe placement, and
     ghost recipe slots.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
@@ -1102,13 +1102,25 @@ When an agent does any of the following, update this file in the same slice:
     renders and highlights those sprites when the recipe book is open, locally
     flips the matching `RecipeBookSettings.filtering` value while preserving
     `open`, and queues `RecipeBookChangeSettingsCommand`.
-  - Boundary: recipe-book tabs/page buttons, search text input, recipe
-    placement commands from clicks, tab notification animation, and ghost
-    recipe slot rendering remain open. The filter toggle state is live, but
-    visible filtered recipe-grid contents wait for the page recipe button
-    implementation. The first shell models the non-narrow layout; vanilla's
-    narrow-screen overlap mode (`width < 379`) remains for the input/render
-    follow-up.
+  - Done 2026-07-08 — Recipe-book search input shell. Vanilla anchors:
+    `RecipeBookComponent.initVisuals` creates an `EditBox` at `(xo + 25,
+    yo + 13)` with size 81x14, `maxLength = 50`, white text, and value
+    preservation; `RecipeBookComponent.keyPressed` lets a focused visible
+    search box consume non-Escape keys and `charTyped` updates the search
+    string. bbb now loads vanilla `widget/text_field` /
+    `widget/text_field_highlighted`, projects the search box on the
+    recipe-book panel, keeps search text/focus locally in `ClientInputState`,
+    edits printable text with backspace/delete/arrows/Ctrl+A, focuses on
+    click or chat-key, and prevents focused search from closing the container
+    on `E`.
+  - Boundary: recipe-book tabs/page buttons, recipe placement commands from
+    clicks, tab notification animation, recipe-search filtering of visible
+    recipe buttons, cursor/selection rendering inside the search box, and
+    ghost recipe slot rendering remain open. The filter toggle and search
+    text states are live, but visible filtered recipe-grid contents wait for
+    the page recipe button implementation. The first shell models the
+    non-narrow layout; vanilla's narrow-screen overlap mode (`width < 379`)
+    remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

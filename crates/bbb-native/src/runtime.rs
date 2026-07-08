@@ -73,8 +73,11 @@ use crate::{
         recipe_book_main_gui_offset, recipe_book_type_for_background, recipe_book_type_settings,
         release_active_input, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
-        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        RecipeBookSearchHudState, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT,
+        RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y,
+        RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
@@ -312,6 +315,7 @@ const BOOK_PAGE_TEXT_WIDTH: u32 = 114;
 const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
 const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
 const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const ANVIL_COST_DATA_ID: i16 = 0;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const ANVIL_TOO_EXPENSIVE_LEVEL_COST: i16 = 40;
@@ -446,6 +450,7 @@ struct InventoryHudLocalState {
     loom_pattern_scroll_row: Option<i32>,
     loom_selected_pattern_index: Option<i32>,
     anvil_rename_text: Option<String>,
+    recipe_book_search: RecipeBookSearchHudState,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -1697,6 +1702,7 @@ pub(crate) fn pump_network_and_terrain(
                 loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
                 loom_selected_pattern_index: input.loom_selected_pattern_index(),
                 anvil_rename_text: Some(input.anvil_rename_text().to_string()),
+                recipe_book_search: input.recipe_book_search_hud_state(),
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2634,6 +2640,11 @@ fn hud_inventory_screen_with_local_state(
         }
         background_layers.insert(0, hud_recipe_book_background_layer());
     }
+    if let Some(layer) =
+        hud_recipe_book_search_box_layer(world, layout.background, &local_state.recipe_book_search)
+    {
+        background_layers.push(layer);
+    }
     if let Some(layer) = hud_recipe_book_button_layer(
         layout.background,
         main_offset_x,
@@ -2670,6 +2681,11 @@ fn hud_inventory_screen_with_local_state(
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
     let mut text_labels = hud_inventory_text_labels(world, layout.background, &local_state);
     offset_hud_inventory_text_labels(&mut text_labels, main_offset_x);
+    if let Some(label) =
+        hud_recipe_book_search_text_label(world, layout.background, &local_state.recipe_book_search)
+    {
+        text_labels.push(label);
+    }
 
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
@@ -2694,6 +2710,30 @@ fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {
         [1.0 / 256.0, 1.0 / 256.0],
         [148.0 / 256.0, 167.0 / 256.0],
     )
+}
+
+fn hud_recipe_book_search_box_layer(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    search: &RecipeBookSearchHudState,
+) -> Option<HudInventoryBackgroundLayer> {
+    recipe_book_type_for_background(background)?;
+    if recipe_book_main_gui_offset(world, background) == 0 {
+        return None;
+    }
+    Some(hud_inventory_background_layer(
+        if search.focused {
+            HudInventoryBackgroundTexture::WidgetTextFieldHighlighted
+        } else {
+            HudInventoryBackgroundTexture::WidgetTextField
+        },
+        RECIPE_BOOK_SEARCH_BOX_X,
+        RECIPE_BOOK_SEARCH_BOX_Y,
+        u32::try_from(RECIPE_BOOK_SEARCH_BOX_WIDTH).unwrap_or_default(),
+        u32::try_from(RECIPE_BOOK_SEARCH_BOX_HEIGHT).unwrap_or_default(),
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ))
 }
 
 fn hud_recipe_book_button_layer(
@@ -2776,6 +2816,27 @@ fn hud_recipe_book_filter_texture(
             HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabledHighlighted
         }
     }
+}
+
+fn hud_recipe_book_search_text_label(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    search: &RecipeBookSearchHudState,
+) -> Option<HudInventoryTextLabel> {
+    recipe_book_type_for_background(background)?;
+    if recipe_book_main_gui_offset(world, background) == 0 || search.text.is_empty() {
+        return None;
+    }
+    Some(HudInventoryTextLabel {
+        x: RECIPE_BOOK_SEARCH_BOX_X + RECIPE_BOOK_SEARCH_TEXT_X_OFFSET,
+        y: RECIPE_BOOK_SEARCH_BOX_Y + RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
+        width: u32::try_from(RECIPE_BOOK_SEARCH_BOX_WIDTH - 8).unwrap_or_default(),
+        text: search.text.clone(),
+        tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
+        background: None,
+        shadow: false,
+        runs: Vec::new(),
+    })
 }
 
 fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) {

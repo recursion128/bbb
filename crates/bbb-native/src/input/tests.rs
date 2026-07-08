@@ -3933,6 +3933,44 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
 }
 
 #[test]
+fn inventory_key_is_consumed_by_focused_recipe_book_search() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 8,
+        menu_type_id: 12,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(world.open_container_id(), Some(8));
+    assert_eq!(counters.container_close_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
