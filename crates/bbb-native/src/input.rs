@@ -872,7 +872,7 @@ impl ClientInputState {
         };
         let elapsed = now.saturating_duration_since(started_at);
         if elapsed > DEBUG_CRASH_TIME {
-            return;
+            panic!("Manually triggered debug crash");
         }
 
         let last_reported_at = self.debug_crash_last_reported_at.unwrap_or(started_at);

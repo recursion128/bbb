@@ -1730,6 +1730,43 @@ fn f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay() {
 }
 
 #[test]
+#[should_panic(expected = "Manually triggered debug crash")]
+fn f3_c_hold_panics_after_vanilla_manual_crash_delay() {
+    let (tx, _rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    let start = Instant::now();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+    );
+
+    advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(10_001),
+    );
+}
+
+#[test]
 fn f3_game_mode_keys_report_no_permission_without_gameplay_commands() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

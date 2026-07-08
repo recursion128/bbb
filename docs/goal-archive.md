@@ -5428,3 +5428,11 @@
   release 不再切换 overlay。边界：实际 10 秒后抛出 crash/`ReportedException`、
   red warning styling、control-key `Blaze3D.youJustLostTheGame`、以及 rebindable
   key 文案仍未实现。
+- [x] debug overlay F3+C actual manual-crash trigger（P2 input slice，
+  2026-07-08）：依据 `KeyboardHandler.tick` 在 F3+C 持续超过
+  `DEBUG_CRASH_TIME = 10000`ms 后构造 `CrashReport("Manually triggered debug
+  crash", ...)` 并抛出 `ReportedException`。native input 现在在同一长按状态
+  超过 10 秒后 panic `Manually triggered debug crash`，并用 `should_panic`
+  测试固定阈值。边界：native panic 仅覆盖触发语义，不包含 Java crash-report
+  metadata、red warning styling、control-key `Blaze3D.youJustLostTheGame`、
+  或 rebindable-key 文案。

@@ -1092,7 +1092,7 @@ When an agent does any of the following, update this file in the same slice:
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, F3+C copy-location
     clipboard action, F3+C long-hold manual-crash warning shell,
-    F3+T resource-pack reload request,
+    F3+C actual manual-crash trigger, F3+T resource-pack reload request,
     F3+S dynamic texture dump request,
     F3+I block/entity recreate clipboard action,
     F3+L profiling request shell,
@@ -1108,8 +1108,7 @@ When an agent does any of the following, update this file in the same slice:
     TPS/network chart rendering, actual entity hitbox details/chunk-border full
     gizmo grid, advanced tooltip full parity, actual dynamic texture dump
     execution, F3+I NBT/server-query parity, profiling metrics
-    recorder/output, actual DebugOptionsScreen,
-    native pause loop/PauseScreen, actual F3+C manual crash throw,
+    recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
     and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
@@ -1258,9 +1257,11 @@ When an agent does any of the following, update this file in the same slice:
     `[Debug]: Copied location to clipboard`, always consumes F3+C as a debug
     modifier because it is also the manual-crash key, and emits the vanilla
     long-hold crash warning/countdown feedback until C or F3 is released.
-    Boundary: the actual crash/`ReportedException` trigger after the countdown,
-    red warning styling, control-key `Blaze3D.youJustLostTheGame`, and
-    rebindable-key message variants remain future work.
+    Holding past the 10-second vanilla threshold now panics with
+    `Manually triggered debug crash`. Boundary: native panic text stands in for
+    Java `ReportedException` crash-report metadata; red warning styling,
+    control-key `Blaze3D.youJustLostTheGame`, and rebindable-key message
+    variants remain future work.
   - Done 2026-07-08 — Debug overlay F3+T resource-pack reload request.
     Vanilla anchors: `Options.keyDebugReloadResourcePacks` binds key code 84
     (T), and `KeyboardHandler.handleDebugKeys` maps it to
@@ -1955,8 +1956,8 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox full details/chunk-border full gizmo grid, advanced tooltip
     full parity/persistence, actual dynamic texture dump execution, F3+I
     NBT/server-query recreate parity, profiling metrics recorder/output,
-    actual DebugOptionsScreen, native pause loop/PauseScreen, actual F3+C
-    manual crash throw, and the other F3 modifier combos.
+    actual DebugOptionsScreen, native pause loop/PauseScreen, and the other F3
+    modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
