@@ -5144,9 +5144,19 @@
   现在保留 normal `tooltip_lines_for_stack` 入口，并提供 explicit options
   入口给 HUD hovered-item tooltip 使用；runtime 把 `ClientInputState` 的
   F3+H 状态传入 inventory-screen tooltip 投影，anvil rename hover-name 和
-  recipe-book 搜索索引仍使用 normal tooltip。剩余：`Options.save()` 持久化、
-  effective component count 和其它 component-specific advanced tooltip
-  additions。
+  recipe-book 搜索索引仍使用 normal tooltip。剩余：effective component
+  count 和其它 component-specific advanced tooltip additions；启动配置边界
+  另见下一条。
+- [x] debug overlay advanced item tooltips startup config（P2
+  startup/input/runtime slice，2026-07-08）：依据
+  `Options.advancedItemTooltips` 经 options 文件读写、F3+H 切换后
+  `Options.save()`，以及本仓库“不做 in-game configuration UI、配置从
+  command-line startup 进入”的约束。native 现在提供
+  `--advanced-item-tooltips` 启动参数，在创建 `ClientInputState` 后初始化
+  advanced tooltip runtime state；F3+H 仍从该初始值继续切换并发送
+  `Advanced tooltips: shown/hidden` local debug feedback。边界：不新增
+  vanilla options 文件持久化或 UI；剩余为 effective component count 与其它
+  component-specific advanced tooltip additions。
 - [x] debug overlay F3+V version debug chat action（P2 HUD/input/world/control
   slice，2026-07-08）：依据 `Options.keyDebugDumpVersion = V`、
   `KeyboardHandler.handleDebugKeys` 对 `debug.version.header` +

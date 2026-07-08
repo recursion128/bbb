@@ -395,6 +395,44 @@ fn prediction_sequence_starts_at_one_and_wraps_positive() {
 }
 
 #[test]
+fn debug_advanced_item_tooltips_startup_state_is_runtime_initial_value() {
+    let mut input = ClientInputState::new(true);
+    input.set_debug_advanced_item_tooltips(true);
+
+    assert!(input.debug_advanced_item_tooltips());
+
+    let commands = None;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyH),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.debug_advanced_item_tooltips());
+    let feedback: Vec<_> = world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect();
+    assert_eq!(feedback, vec!["[Debug]: Advanced tooltips: hidden"]);
+}
+
+#[test]
 fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

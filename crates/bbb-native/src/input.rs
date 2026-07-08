@@ -566,6 +566,10 @@ impl ClientInputState {
         self.debug_advanced_item_tooltips
     }
 
+    pub(crate) fn set_debug_advanced_item_tooltips(&mut self, enabled: bool) {
+        self.debug_advanced_item_tooltips = enabled;
+    }
+
     pub(crate) fn debug_pause_on_lost_focus(&self) -> bool {
         self.debug_pause_on_lost_focus
     }

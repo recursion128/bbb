@@ -91,6 +91,8 @@ pub(crate) struct Args {
     pub(crate) client_gamma: f32,
     #[arg(long = "hide-lightning-flash")]
     pub(crate) hide_lightning_flash: bool,
+    #[arg(long = "advanced-item-tooltips")]
+    pub(crate) advanced_item_tooltips: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -452,6 +454,15 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--hide-lightning-flash"]).unwrap();
         assert!(args.hide_lightning_flash);
+    }
+
+    #[test]
+    fn args_accept_advanced_item_tooltips_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!default_args.advanced_item_tooltips);
+
+        let args = Args::try_parse_from(["bbb-native", "--advanced-item-tooltips"]).unwrap();
+        assert!(args.advanced_item_tooltips);
     }
 
     #[test]

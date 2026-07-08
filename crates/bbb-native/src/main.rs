@@ -301,6 +301,7 @@ fn main() -> Result<()> {
     let window = build_window(&event_loop)?;
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
+    input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 

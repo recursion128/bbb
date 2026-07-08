@@ -1092,15 +1092,25 @@ When an agent does any of the following, update this file in the same slice:
     reload request, F3+D clear-chat display action, and F3+P focus-pause
     option toggle, F3+V version debug chat action, F3+C copy-location
     clipboard action, F3+T resource-pack reload request,
+    advanced item tooltips startup config,
     F3+A/B/C/G/H/N/P/F4/T local debug feedback, the F3+F6 debug-options edit
     help keybind, the default GAME_VERSION entry shape, the default TPS entry
     shell, and the default FPS entry shell, and actual F3+4 lightmap preview
     rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip full parity/
-    persistence, 3D crosshair, and the other F3 modifier combos remain (large,
-    low priority).
+    entity hitbox/chunk-border rendering, advanced tooltip full parity, 3D
+    crosshair, and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay advanced item tooltips startup config.
+    Vanilla anchors: `Options.advancedItemTooltips` is loaded/saved through the
+    options file, and `KeyboardHandler.handleDebugKeys` toggles it on F3+H,
+    calls `Options.save()`, and emits `debug.advanced_tooltips.*` feedback. bbb
+    intentionally keeps configuration at command-line startup, so
+    `--advanced-item-tooltips` now initializes the native debug tooltip state
+    before the event loop; F3+H still toggles that runtime state and emits the
+    same local debug feedback. Boundary: bbb does not add an in-game
+    configuration UI or vanilla options-file persistence; advanced tooltip
+    content parity remains open.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
     `KeyboardHandler.handleDebugKeys` requires a player plus non-reduced debug
@@ -1216,9 +1226,9 @@ When an agent does any of the following, update this file in the same slice:
     inventory-screen hovered item tooltips, keeps anvil hover-name lookup and
     recipe-book search indexing on normal tooltip lines, and appends the
     supported advanced durability/id lines from repo-native item stack state.
-    Boundary: `Options.save()` persistence, effective component-count display,
-    and other component-specific advanced tooltip additions are not modeled
-    yet.
+    Boundary: effective component-count display and other component-specific
+    advanced tooltip additions are not modeled yet; startup configuration is
+    tracked separately because bbb does not expose vanilla's in-game options UI.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
