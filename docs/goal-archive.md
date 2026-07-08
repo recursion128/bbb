@@ -5338,6 +5338,17 @@
   在 item/entity line target pass 提交。边界：vanilla colors、line widths、
   `alwaysOnTop`、3x3 neighbor boundary lattice、thin 2-block grid lines、
   horizontal 2/8/16-step rings、以及专用 debug gizmo pipeline 仍未实现。
+- [x] debug overlay F3+2 FPS chart rendering（P2 HUD/runtime/renderer slice，
+  2026-07-08）：依据 `DebugScreenOverlay.showFpsCharts`、`FpsDebugChart`、
+  `AbstractDebugChart` 和 `LocalSampleLogger.CAPACITY = 240`：FPS chart 位于
+  左下角，宽度为 `min(capacity + 2, guiWidth / 2)`，60px 高，按 frame-duration
+  nanos 画 1px 样本柱、min/avg/max label、30/60 FPS guide，样本色在
+  0ms green、28ms yellow、56ms red 间用 `ARGB.srgbLerp`。native
+  `HudDebugFpsSampler` 现在记录 240 个 frame-time nanos 样本，F3+2 visible 时投影
+  `HudDebugFrameTimeChart`；renderer 通过 HUD white-pixel quad/text 路径绘制 chart
+  background、bars、border、labels 和 60 FPS guide。边界：TPS chart、network
+  bandwidth/ping charts、profiler pie chart contents、以及 configured framerate cyan
+  guide（bbb 尚无 framerate/vsync config）仍未实现。
 - [x] debug overlay F3+C copy-location clipboard action（P2 HUD/input/platform
   slice，2026-07-08）：依据 `Options.keyDebugCopyLocation` 绑定 C，以及
   `KeyboardHandler.handleDebugKeys` 要求 player 存在且非 reduced-debug，

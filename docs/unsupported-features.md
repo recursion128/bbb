@@ -1101,15 +1101,25 @@ When an agent does any of the following, update this file in the same slice:
     help keybind, the F3+F6 debug-options request shell, the default
     GAME_VERSION entry shape, the default TPS entry shell, and the default FPS
     entry shell, actual F3+4 lightmap preview rendering, and F3+B entity AABB
-    hitbox outline rendering, and F3+G chunk section-stack outline rendering:
-    the complete
-    vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
-    entity hitbox details/chunk-border full gizmo grid, advanced tooltip full
-    parity, actual dynamic texture dump execution, F3+I recreate command
-    generation, 3D crosshair, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause loop/PauseScreen, and the other F3 modifier
-    combos remain (large, low priority).
+    hitbox outline rendering, F3+G chunk section-stack outline rendering, and
+    F3+2 FPS chart rendering: the complete vanilla debug entry list, actual
+    TPS/network chart rendering, actual entity hitbox details/chunk-border full
+    gizmo grid, advanced tooltip full parity, actual dynamic texture dump
+    execution, F3+I recreate command generation, 3D crosshair, profiling metrics
+    recorder/output, actual DebugOptionsScreen, native pause loop/PauseScreen,
+    and the other F3 modifier combos remain (large, low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+2 FPS chart rendering. Vanilla anchors:
+    `DebugScreenOverlay.showFpsCharts` extracts `FpsDebugChart` at the bottom
+    left with width `min(LocalSampleLogger.CAPACITY + 2, guiWidth / 2)`, and
+    `AbstractDebugChart` draws a 60px chart, sample bars, min/avg/max labels,
+    plus the 30/60 FPS guides. bbb now records 240 frame-duration nanosecond
+    samples in `HudDebugFpsSampler`, projects them into `HudDebugOverlay` only
+    while F3+2 is visible, and renders the FPS chart through the HUD white-pixel
+    quad/text path with vanilla sample height and green/yellow/red thresholds.
+    Boundary: TPS chart extraction, network bandwidth/ping charts, profiler pie
+    chart contents, and the cyan configured-framerate guide remain unimplemented
+    until bbb owns the corresponding tick/network/framerate config samples.
   - Done 2026-07-08 — Debug overlay F3+G chunk section-stack outline rendering.
     Vanilla anchors: `ChunkBorderRenderer.emitGizmos` derives the camera
     section with `SectionPos.of(cameraEntity.blockPosition())`, samples

@@ -24,7 +24,7 @@ use bbb_renderer::{
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudDebugOverlay, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudDebugFrameTimeChart, HudDebugOverlay, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
     HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
@@ -571,6 +571,8 @@ struct InventoryHudLocalState {
 pub(crate) use control_requests::pump_control_net_requests;
 pub(crate) use events::LevelEventSoundRandomState;
 
+const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
+
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
@@ -590,12 +592,27 @@ impl ClientAnimationTickState {
 #[derive(Debug, Default)]
 pub(crate) struct HudDebugFpsSampler {
     window_started_at: Option<Instant>,
+    last_frame_at: Option<Instant>,
     frames_in_window: u32,
     last_reported_fps: u32,
+    frame_time_nanos: Vec<u64>,
 }
 
 impl HudDebugFpsSampler {
     pub(crate) fn record_frame(&mut self, now: Instant) {
+        if let Some(last_frame_at) = self.last_frame_at {
+            let nanos = now
+                .saturating_duration_since(last_frame_at)
+                .as_nanos()
+                .min(u128::from(u64::MAX)) as u64;
+            self.frame_time_nanos.push(nanos);
+            if self.frame_time_nanos.len() > HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY {
+                let overflow = self.frame_time_nanos.len() - HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY;
+                self.frame_time_nanos.drain(0..overflow);
+            }
+        }
+        self.last_frame_at = Some(now);
+
         let Some(started_at) = self.window_started_at else {
             self.window_started_at = Some(now);
             self.frames_in_window = 1;
@@ -616,6 +633,10 @@ impl HudDebugFpsSampler {
 
     pub(crate) fn fps(&self) -> u32 {
         self.last_reported_fps
+    }
+
+    pub(crate) fn frame_time_nanos(&self) -> Vec<u64> {
+        self.frame_time_nanos.clone()
     }
 }
 
@@ -1891,7 +1912,7 @@ pub(crate) fn pump_network_and_terrain(
         world,
         camera_pose,
         surface_size,
-        hud_debug_fps_sampler.fps(),
+        hud_debug_fps_sampler,
     );
     let dropped_item_models = dropped_item_models(
         world,
@@ -2803,14 +2824,14 @@ fn hud_debug_overlay(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
     surface_size: winit::dpi::PhysicalSize<u32>,
-    fps: u32,
+    fps_sampler: &HudDebugFpsSampler,
 ) -> Option<HudDebugOverlay> {
     if !input.debug_overlay_visible() {
         return None;
     }
 
     let mut left_lines = vec![hud_debug_version_line()];
-    left_lines.push(hud_debug_fps_line(fps));
+    left_lines.push(hud_debug_fps_line(fps_sampler.fps()));
     if let Some(tps_line) = hud_debug_tps_line(world) {
         left_lines.push(tps_line);
     }
@@ -2848,6 +2869,11 @@ fn hud_debug_overlay(
     Some(HudDebugOverlay {
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
+        fps_chart: input
+            .debug_fps_charts_visible()
+            .then(|| HudDebugFrameTimeChart {
+                frame_time_nanos: fps_sampler.frame_time_nanos(),
+            }),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
 }

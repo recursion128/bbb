@@ -300,12 +300,12 @@ Screen Render Surfaces" 条目）：
   keybind、F3+F6 debug-options request shell、default GAME_VERSION entry shape、
   default TPS entry shell、default FPS entry shell、F3+4 lightmap preview 实际绘制、
   F3+B entity AABB hitbox outline rendering、F3+G chunk section-stack outline
-  rendering 已完成；
-  剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、entity
-  hitbox full details/chunk-border full gizmo grid、advanced tooltip full parity、
-  dynamic texture dump execution、F3+I recreate command、profiling metrics
-  recorder/output、actual DebugOptionsScreen、native pause loop/PauseScreen、
-  3D crosshair 与其它 F3 组合键，低优先）。
+  rendering、F3+2 FPS chart rendering 已完成；
+  剩余完整 debug entry 列表、TPS/network charts 实际绘制、entity hitbox full
+  details/chunk-border full gizmo grid、advanced tooltip full parity、dynamic texture
+  dump execution、F3+I recreate command、profiling metrics recorder/output、actual
+  DebugOptionsScreen、native pause loop/PauseScreen、3D crosshair 与其它 F3 组合键，
+  低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
 结果尽量用 deterministic screenshot/readback 验证。

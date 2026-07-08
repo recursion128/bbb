@@ -107,7 +107,15 @@ pub struct HudTitleText {
 pub struct HudDebugOverlay {
     pub left_lines: Vec<String>,
     pub right_lines: Vec<String>,
+    pub fps_chart: Option<HudDebugFrameTimeChart>,
     pub show_lightmap_preview: bool,
+}
+
+/// Vanilla `FpsDebugChart` sample stream: frame durations in nanoseconds,
+/// oldest first, capped to `LocalSampleLogger.CAPACITY`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HudDebugFrameTimeChart {
+    pub frame_time_nanos: Vec<u64>,
 }
 
 /// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
@@ -357,6 +365,10 @@ const HUD_DEBUG_OVERLAY_BACKGROUND_TINT: [f32; 4] =
 const HUD_DEBUG_OVERLAY_MARGIN_X: i32 = 2;
 const HUD_DEBUG_OVERLAY_MARGIN_Y: i32 = 2;
 const HUD_DEBUG_OVERLAY_LINE_HEIGHT: i32 = 9;
+const HUD_DEBUG_CHART_SAMPLE_CAPACITY: usize = 240;
+const HUD_DEBUG_CHART_HEIGHT: i32 = 60;
+const HUD_DEBUG_CHART_LABEL_HEIGHT: i32 = 9;
+const HUD_DEBUG_FPS_CHART_TOP_VALUE_MS: f64 = 33.333333333333336;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE: u32 = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN: i32 = 2;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER: i32 = 1;
@@ -6022,6 +6034,19 @@ fn push_hud_debug_overlay<'a>(
         &overlay.right_lines,
         false,
     );
+    if let Some(chart) = &overlay.fps_chart {
+        push_hud_debug_fps_chart(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            chart,
+        );
+    }
 }
 
 fn push_hud_debug_overlay_column_backgrounds<'a>(
@@ -6117,6 +6142,403 @@ fn push_hud_debug_lightmap_preview<'a>(
     ));
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand::LightmapPreview { start, end });
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_fps_chart<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    chart: &HudDebugFrameTimeChart,
+) {
+    let width = hud_debug_chart_width(surface_size);
+    if width == 0 {
+        return;
+    }
+    let left = 0;
+    let bottom = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let top = bottom.saturating_sub(HUD_DEBUG_CHART_HEIGHT);
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        width,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+    );
+
+    let sample_start = HUD_DEBUG_CHART_SAMPLE_CAPACITY
+        .saturating_sub(usize::try_from(width.saturating_sub(2)).unwrap_or(usize::MAX));
+    let samples = if sample_start < chart.frame_time_nanos.len() {
+        &chart.frame_time_nanos[sample_start..]
+    } else {
+        &[]
+    };
+    for (index, sample) in samples.iter().copied().enumerate() {
+        let x = left + i32::try_from(index).unwrap_or(i32::MAX).saturating_add(1);
+        let height = hud_debug_fps_chart_sample_height(sample);
+        if height <= 0 {
+            continue;
+        }
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            x,
+            bottom.saturating_sub(height),
+            1,
+            u32::try_from(height).unwrap_or(u32::MAX),
+            hud_debug_fps_chart_sample_tint(sample),
+        );
+    }
+
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        top,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        bottom.saturating_sub(1),
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_chart_vertical_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left + i32::try_from(width.saturating_sub(1)).unwrap_or(i32::MAX),
+        top,
+        HUD_DEBUG_CHART_HEIGHT as u32,
+        HUD_TINT_WHITE,
+    );
+
+    if !samples.is_empty() {
+        let min = samples.iter().copied().min().unwrap_or(0);
+        let max = samples.iter().copied().max().unwrap_or(0);
+        let avg = samples.iter().map(|sample| *sample as f64).sum::<f64>() / samples.len() as f64;
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &format!("{} min", hud_debug_fps_chart_display_string(min as f64)),
+            left + 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let avg_text = format!("{} avg", hud_debug_fps_chart_display_string(avg));
+        let avg_width = i32::try_from(hud_plain_text_width(&avg_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &avg_text,
+            left + i32::try_from(width / 2).unwrap_or(i32::MAX) - avg_width / 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+        let max_text = format!("{} max", hud_debug_fps_chart_display_string(max as f64));
+        let max_width = i32::try_from(hud_plain_text_width(&max_text, glyphs)).unwrap_or(i32::MAX);
+        push_hud_debug_chart_label(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &max_text,
+            left + i32::try_from(width).unwrap_or(i32::MAX) - max_width - 2,
+            top.saturating_sub(HUD_DEBUG_CHART_LABEL_HEIGHT),
+        );
+    }
+
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        "30 FPS",
+        left + 1,
+        top + 1,
+    );
+    push_hud_debug_chart_shaded_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        "60 FPS",
+        left + 1,
+        bottom.saturating_sub(30).saturating_add(1),
+    );
+    push_hud_debug_chart_horizontal_line(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        width,
+        bottom.saturating_sub(30),
+        HUD_TINT_WHITE,
+    );
+}
+
+fn push_hud_debug_chart_horizontal_line<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    left: i32,
+    width: u32,
+    y: i32,
+    tint: [f32; 4],
+) {
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        left,
+        y,
+        width,
+        1,
+        tint,
+    );
+}
+
+fn push_hud_debug_chart_vertical_line<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    x: i32,
+    top: i32,
+    height: u32,
+    tint: [f32; 4],
+) {
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        x,
+        top,
+        1,
+        height,
+        tint,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_chart_shaded_label<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    x: i32,
+    y: i32,
+) {
+    let width = hud_plain_text_width(text, glyphs).saturating_add(1);
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        x,
+        y,
+        width,
+        HUD_DEBUG_CHART_LABEL_HEIGHT as u32,
+        HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+    );
+    push_hud_debug_chart_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        x + 1,
+        y + 1,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_chart_label<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    x: i32,
+    y: i32,
+) {
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        (x as f32, y as f32),
+        HUD_DEBUG_OVERLAY_TEXT_TINT,
+        1.0,
+        false,
+    );
+}
+
+fn push_hud_debug_tinted_rect<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    tint: [f32; 4],
+) {
+    if width == 0 || height == 0 {
+        return;
+    }
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        absolute_hud_rect(x as f32, y as f32, width, height),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        tint,
+    );
+}
+
+fn hud_debug_chart_width(surface_size: PhysicalSize<u32>) -> u32 {
+    (HUD_DEBUG_CHART_SAMPLE_CAPACITY as u32 + 2).min(surface_size.width / 2)
+}
+
+fn hud_debug_fps_chart_display_string(nanos: f64) -> String {
+    format!("{} ms", hud_debug_fps_chart_millis(nanos).round() as i64)
+}
+
+fn hud_debug_fps_chart_sample_height(nanos: u64) -> i32 {
+    (hud_debug_fps_chart_millis(nanos as f64) * HUD_DEBUG_CHART_HEIGHT as f64
+        / HUD_DEBUG_FPS_CHART_TOP_VALUE_MS)
+        .round()
+        .clamp(0.0, i32::MAX as f64) as i32
+}
+
+fn hud_debug_fps_chart_sample_tint(nanos: u64) -> [f32; 4] {
+    let millis = hud_debug_fps_chart_millis(nanos as f64);
+    hud_argb_to_tint(hud_debug_chart_sample_argb(
+        millis, 0.0, 0xFF00FF00, 28.0, 0xFFFFFF00, 56.0, 0xFFFF0000,
+    ))
+}
+
+fn hud_debug_fps_chart_millis(nanos: f64) -> f64 {
+    nanos / 1_000_000.0
+}
+
+fn hud_debug_chart_sample_argb(
+    sample: f64,
+    min: f64,
+    min_color: u32,
+    mid: f64,
+    mid_color: u32,
+    max: f64,
+    max_color: u32,
+) -> u32 {
+    let sample = sample.clamp(min, max);
+    if sample < mid {
+        hud_argb_lerp((sample - min) / (mid - min), min_color, mid_color)
+    } else {
+        hud_argb_lerp((sample - mid) / (max - mid), mid_color, max_color)
+    }
+}
+
+fn hud_argb_lerp(alpha: f64, start: u32, end: u32) -> u32 {
+    let alpha = alpha.clamp(0.0, 1.0);
+    let a = hud_lerp_channel(alpha, (start >> 24) & 0xFF, (end >> 24) & 0xFF);
+    let r = hud_lerp_channel(alpha, (start >> 16) & 0xFF, (end >> 16) & 0xFF);
+    let g = hud_lerp_channel(alpha, (start >> 8) & 0xFF, (end >> 8) & 0xFF);
+    let b = hud_lerp_channel(alpha, start & 0xFF, end & 0xFF);
+    (a << 24) | (r << 16) | (g << 8) | b
+}
+
+fn hud_lerp_channel(alpha: f64, start: u32, end: u32) -> u32 {
+    let value = start as i32 + (alpha * f64::from(end as i32 - start as i32)).floor() as i32;
+    value.clamp(0, 255) as u32
+}
+
+fn hud_argb_to_tint(argb: u32) -> [f32; 4] {
+    [
+        ((argb >> 16) & 0xFF) as f32 / 255.0,
+        ((argb >> 8) & 0xFF) as f32 / 255.0,
+        (argb & 0xFF) as f32 / 255.0,
+        ((argb >> 24) & 0xFF) as f32 / 255.0,
+    ]
 }
 
 fn hud_debug_overlay_line_origin(
@@ -6940,13 +7362,25 @@ fn sanitize_hud_inventory_tooltip_line(
 fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverlay> {
     let left_lines = sanitize_hud_debug_overlay_lines(overlay.left_lines);
     let right_lines = sanitize_hud_debug_overlay_lines(overlay.right_lines);
-    (!left_lines.is_empty() || !right_lines.is_empty() || overlay.show_lightmap_preview).then_some(
-        HudDebugOverlay {
+    let fps_chart = overlay.fps_chart.map(sanitize_hud_debug_fps_chart);
+    (!left_lines.is_empty()
+        || !right_lines.is_empty()
+        || fps_chart.is_some()
+        || overlay.show_lightmap_preview)
+        .then_some(HudDebugOverlay {
             left_lines,
             right_lines,
+            fps_chart,
             show_lightmap_preview: overlay.show_lightmap_preview,
-        },
-    )
+        })
+}
+
+fn sanitize_hud_debug_fps_chart(mut chart: HudDebugFrameTimeChart) -> HudDebugFrameTimeChart {
+    if chart.frame_time_nanos.len() > HUD_DEBUG_CHART_SAMPLE_CAPACITY {
+        let keep_from = chart.frame_time_nanos.len() - HUD_DEBUG_CHART_SAMPLE_CAPACITY;
+        chart.frame_time_nanos = chart.frame_time_nanos.split_off(keep_from);
+    }
+    chart
 }
 
 fn sanitize_hud_debug_overlay_lines(lines: Vec<String>) -> Vec<String> {
@@ -7793,6 +8227,7 @@ mod tests {
         let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
             left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
             right_lines: vec!["Right".to_string()],
+            fps_chart: None,
             show_lightmap_preview: false,
         })
         .expect("non-empty debug overlay survives sanitize");
@@ -7830,6 +8265,57 @@ mod tests {
                 min: [0.0, 1.0],
                 max: [1.0, 0.0],
             }
+        );
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_keeps_and_caps_fps_chart_samples() {
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            fps_chart: Some(HudDebugFrameTimeChart {
+                frame_time_nanos: (0..300).collect(),
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("fps chart survives without text lines");
+
+        let chart = overlay.fps_chart.expect("fps chart should remain");
+        assert_eq!(
+            chart.frame_time_nanos.len(),
+            HUD_DEBUG_CHART_SAMPLE_CAPACITY
+        );
+        assert_eq!(chart.frame_time_nanos[0], 60);
+        assert_eq!(
+            chart.frame_time_nanos[HUD_DEBUG_CHART_SAMPLE_CAPACITY - 1],
+            299
+        );
+    }
+
+    #[test]
+    fn hud_debug_fps_chart_width_matches_vanilla_capacity_and_half_screen_cap() {
+        assert_eq!(
+            hud_debug_chart_width(PhysicalSize::new(800, 240)),
+            HUD_DEBUG_CHART_SAMPLE_CAPACITY as u32 + 2
+        );
+        assert_eq!(hud_debug_chart_width(PhysicalSize::new(320, 240)), 160);
+    }
+
+    #[test]
+    fn hud_debug_fps_chart_sample_height_matches_vanilla_millis_scale() {
+        assert_eq!(hud_debug_fps_chart_sample_height(16_666_667), 30);
+        assert_eq!(hud_debug_fps_chart_sample_height(33_333_333), 60);
+        assert_eq!(hud_debug_fps_chart_display_string(16_666_667.0), "17 ms");
+    }
+
+    #[test]
+    fn hud_debug_fps_chart_sample_tint_matches_vanilla_threshold_colors() {
+        assert_eq!(hud_debug_fps_chart_sample_tint(0), [0.0, 1.0, 0.0, 1.0]);
+        assert_eq!(
+            hud_debug_fps_chart_sample_tint(28_000_000),
+            [1.0, 1.0, 0.0, 1.0]
+        );
+        assert_eq!(
+            hud_debug_fps_chart_sample_tint(56_000_000),
+            [1.0, 0.0, 0.0, 1.0]
         );
     }
 

@@ -899,9 +899,10 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
 fn hud_debug_overlay_projects_version_and_camera_position_lines() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(57);
     let surface_size = winit::dpi::PhysicalSize::new(320, 240);
     assert_eq!(
-        hud_debug_overlay(&input, &world, None, surface_size, 0),
+        hud_debug_overlay(&input, &world, None, surface_size, &fps_sampler),
         None
     );
 
@@ -921,7 +922,7 @@ fn hud_debug_overlay_projects_version_and_camera_position_lines() {
             eye_height: 1.62,
         }),
         surface_size,
-        57,
+        &fps_sampler,
     )
     .expect("debug overlay should project when F3 is visible");
 
@@ -961,17 +962,34 @@ fn hud_debug_fps_sampler_reports_completed_one_second_windows() {
     let mut sampler = HudDebugFpsSampler::default();
 
     sampler.record_frame(start);
+    assert!(sampler.frame_time_nanos().is_empty());
     sampler.record_frame(start + Duration::from_millis(500));
     assert_eq!(sampler.fps(), 0);
+    assert_eq!(sampler.frame_time_nanos(), vec![500_000_000]);
 
     sampler.record_frame(start + Duration::from_secs(1));
     assert_eq!(sampler.fps(), 3);
+    assert_eq!(sampler.frame_time_nanos(), vec![500_000_000, 500_000_000]);
 
     sampler.record_frame(start + Duration::from_millis(1200));
     assert_eq!(sampler.fps(), 3);
 
     sampler.record_frame(start + Duration::from_secs(2));
     assert_eq!(sampler.fps(), 2);
+}
+
+#[test]
+fn hud_debug_fps_sampler_keeps_vanilla_sample_capacity() {
+    let start = Instant::now();
+    let mut sampler = HudDebugFpsSampler::default();
+    for frame in 0..=HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY + 2 {
+        sampler.record_frame(start + Duration::from_millis(frame as u64));
+    }
+
+    let samples = sampler.frame_time_nanos();
+    assert_eq!(samples.len(), HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY);
+    assert_eq!(samples[0], 1_000_000);
+    assert_eq!(samples[HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY - 1], 1_000_000);
 }
 
 #[test]
@@ -1037,7 +1055,7 @@ fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
-        0,
+        &HudDebugFpsSampler::default(),
     )
     .expect("F3 should show the debug overlay");
 
@@ -1048,6 +1066,7 @@ fn hud_debug_overlay_projects_tps_server_brand_and_freeze_status() {
 fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     let world = WorldStore::new();
     let mut input = ClientInputState::new(true);
+    let fps_sampler = hud_debug_fps_sampler_with_frame_times(&[16_000_000, 33_000_000]);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Pressed,
@@ -1072,7 +1091,7 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
-        0,
+        &fps_sampler,
     )
     .expect("chart toggle should force the debug overlay visible");
 
@@ -1082,6 +1101,12 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     assert!(overlay
         .left_lines
         .contains(&"[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string()));
+    assert_eq!(
+        overlay.fps_chart,
+        Some(HudDebugFrameTimeChart {
+            frame_time_nanos: fps_sampler.frame_time_nanos(),
+        })
+    );
     assert!(!overlay.show_lightmap_preview);
 }
 
@@ -1113,7 +1138,7 @@ fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
-        0,
+        &HudDebugFpsSampler::default(),
     )
     .expect("lightmap toggle should force the debug overlay visible");
 
@@ -1121,6 +1146,32 @@ fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
     assert!(overlay
         .left_lines
         .contains(&"[F3+3] Network hidden; [F3+4] Lightmap visible".to_string()));
+}
+
+fn hud_debug_fps_sampler_with_reported_fps(fps: u32) -> HudDebugFpsSampler {
+    let start = Instant::now();
+    let mut sampler = HudDebugFpsSampler::default();
+    let frames = fps.max(1);
+    for frame in 0..frames {
+        let nanos = if frames == 1 {
+            1_000_000_000
+        } else {
+            u64::from(frame) * 1_000_000_000 / u64::from(frames - 1)
+        };
+        sampler.record_frame(start + Duration::from_nanos(nanos));
+    }
+    sampler
+}
+
+fn hud_debug_fps_sampler_with_frame_times(frame_times: &[u64]) -> HudDebugFpsSampler {
+    let mut sampler = HudDebugFpsSampler::default();
+    let mut now = Instant::now();
+    sampler.record_frame(now);
+    for frame_time in frame_times {
+        now += Duration::from_nanos(*frame_time);
+        sampler.record_frame(now);
+    }
+    sampler
 }
 
 #[test]
@@ -1268,7 +1319,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
         &world,
         None,
         winit::dpi::PhysicalSize::new(320, 240),
-        0,
+        &HudDebugFpsSampler::default(),
     )
     .expect("plain F3 should make the debug overlay visible");
 
