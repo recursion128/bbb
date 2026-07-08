@@ -2695,8 +2695,11 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::PlaceGhostRecipe(PlaceGhostRecipe {
                 container_id: 9,
-                recipe_display_type: RecipeDisplayType::Stonecutter,
-                recipe_display_body: vec![1, 2, 3],
+                recipe_display: packets::RecipeDisplaySummary {
+                    display_type: packets::RecipeDisplayType::Stonecutter,
+                    raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                    crafting: None,
+                },
             }))
             .await
             .unwrap();
@@ -2743,7 +2746,12 @@ mod tests {
                 container_id: 9,
                 recipe_display_type_id: 3,
                 recipe_display_type: "stonecutter".to_string(),
-                recipe_display_body_len: 3,
+                recipe_display_body_len: 7,
+                recipe_display: Some(packets::RecipeDisplaySummary {
+                    display_type: packets::RecipeDisplayType::Stonecutter,
+                    raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                    crafting: None,
+                }),
             })
         );
         assert_eq!(

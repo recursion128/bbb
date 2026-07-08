@@ -15,8 +15,7 @@ const MAX_STONECUTTER_RECIPE_ENTRIES: usize = 65_536;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlaceGhostRecipe {
     pub container_id: i32,
-    pub recipe_display_type: RecipeDisplayType,
-    pub recipe_display_body: Vec<u8>,
+    pub recipe_display: RecipeDisplaySummary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -199,21 +198,11 @@ impl RecipeDisplayType {
 
 pub(crate) fn decode_place_ghost_recipe(decoder: &mut Decoder<'_>) -> Result<PlaceGhostRecipe> {
     let container_id = decoder.read_var_i32()?;
-    let recipe_display_type = RecipeDisplayType::from_id(decoder.read_var_i32()?)?;
-    let body_len = decoder.remaining_len();
-    if body_len > MAX_RECIPE_DISPLAY_BODY {
-        return Err(ProtocolError::PacketTooLarge(
-            body_len,
-            MAX_RECIPE_DISPLAY_BODY,
-        ));
-    }
+    let recipe_display = decode_recipe_display_summary(decoder)?;
 
     Ok(PlaceGhostRecipe {
         container_id,
-        recipe_display_type,
-        recipe_display_body: decoder
-            .read_exact(body_len, "recipe display body")?
-            .to_vec(),
+        recipe_display,
     })
 }
 

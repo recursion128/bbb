@@ -600,6 +600,24 @@ pub struct HudInventoryBackgroundLayer {
     pub uv: HudUvRect,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudInventoryFillStage {
+    BeforeGhostItem,
+    AfterGhostItem,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryFillLayer {
+    /// Fill x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Fill y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub tint: [f32; 4],
+    pub stage: HudInventoryFillStage,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventorySlot {
     /// Slot id in the currently open inventory container.
@@ -625,6 +643,16 @@ pub struct HudInventoryItem {
     /// The item's 3D block-item model (vanilla 3D inventory icon), when it is a block. See
     /// [`HudInventorySlot::block_model`].
     pub block_model: Option<HudBlockItemModel>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryGhostItem {
+    /// Fake item x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Fake item y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub icon: HudItemIcon,
+    pub draw_decorations: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -806,10 +834,14 @@ pub struct HudInventoryScreen {
     pub width: u32,
     pub height: u32,
     pub background_layers: Vec<HudInventoryBackgroundLayer>,
+    /// Solid GUI fills drawn around recipe-book ghost fake items.
+    pub fill_layers: Vec<HudInventoryFillLayer>,
     /// Slots for the currently open inventory container.
     pub slots: Vec<HudInventorySlot>,
     /// Item icons drawn by the inventory screen that are not container slots.
     pub floating_items: Vec<HudInventoryItem>,
+    /// Recipe-book ghost fake items drawn above normal slots and below the foreground slot highlight.
+    pub ghost_items: Vec<HudInventoryGhostItem>,
     /// Entity previews drawn through vanilla GUI picture-in-picture renderers.
     pub entity_previews: Vec<HudEntityPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
@@ -3207,7 +3239,8 @@ impl Renderer {
                 );
             }
 
-            if let Some(atlas) = &self.hud_item_atlas {
+            let item_atlas = self.hud_item_atlas.as_ref();
+            if let Some(atlas) = item_atlas {
                 for slot in &screen.slots {
                     if let Some(icon) = &slot.icon {
                         let item_rect = inventory_slot_item_hud_rect(
@@ -3247,6 +3280,78 @@ impl Renderer {
                         }
                     }
                 }
+            }
+
+            push_hud_inventory_fill_layers(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                surface_size,
+                screen,
+                HudInventoryFillStage::BeforeGhostItem,
+            );
+            if let Some(atlas) = item_atlas {
+                for item in &screen.ghost_items {
+                    let item_rect = inventory_slot_item_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        item.x,
+                        item.y,
+                    );
+                    push_hud_item_icon(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        atlas,
+                        &self.hud_white_pixel,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        &item.icon,
+                        true,
+                        false,
+                    );
+                }
+            }
+            push_hud_inventory_fill_layers(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                surface_size,
+                screen,
+                HudInventoryFillStage::AfterGhostItem,
+            );
+            if let Some(atlas) = item_atlas {
+                for item in screen
+                    .ghost_items
+                    .iter()
+                    .filter(|item| item.draw_decorations)
+                {
+                    let item_rect = inventory_slot_item_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        item.x,
+                        item.y,
+                    );
+                    push_hud_item_icon(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        atlas,
+                        &self.hud_white_pixel,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        &item.icon,
+                        false,
+                        true,
+                    );
+                }
+            }
+
+            if let Some(atlas) = item_atlas {
                 for item in &screen.floating_items {
                     let item_rect = inventory_slot_item_hud_rect(
                         surface_size,
@@ -3971,6 +4076,43 @@ fn push_hud_item_count_label<'a>(
             );
             pen_x += glyph.advance;
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_fill_layers<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    stage: HudInventoryFillStage,
+) {
+    for layer in screen
+        .fill_layers
+        .iter()
+        .filter(|layer| layer.stage == stage)
+    {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            inventory_background_hud_rect(
+                surface_size,
+                screen.width,
+                screen.height,
+                layer.x,
+                layer.y,
+                layer.width,
+                layer.height,
+            ),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            layer.tint,
+        );
     }
 }
 
@@ -5090,6 +5232,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_inventory_background_layer)
             .collect(),
+        fill_layers: screen
+            .fill_layers
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_fill_layer)
+            .collect(),
         slots: screen
             .slots
             .into_iter()
@@ -5099,6 +5246,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .floating_items
             .into_iter()
             .filter_map(sanitize_hud_inventory_item)
+            .collect(),
+        ghost_items: screen
+            .ghost_items
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_ghost_item)
             .collect(),
         entity_previews: screen
             .entity_previews
@@ -5151,6 +5303,21 @@ fn sanitize_hud_inventory_background_layer(
     (layer.width > 0 && layer.height > 0).then_some(HudInventoryBackgroundLayer { uv, ..layer })
 }
 
+fn sanitize_hud_inventory_fill_layer(
+    layer: HudInventoryFillLayer,
+) -> Option<HudInventoryFillLayer> {
+    if layer.width == 0
+        || layer.height == 0
+        || !layer.tint.iter().all(|component| component.is_finite())
+    {
+        return None;
+    }
+    Some(HudInventoryFillLayer {
+        tint: layer.tint.map(|component| component.clamp(0.0, 1.0)),
+        ..layer
+    })
+}
+
 fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
     HudInventorySlot {
         slot_id: slot.slot_id,
@@ -5167,6 +5334,15 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
         y: item.y,
         icon: sanitize_hud_item_icon(item.icon)?,
         block_model: item.block_model.filter(hud_block_item_model_is_renderable),
+    })
+}
+
+fn sanitize_hud_inventory_ghost_item(item: HudInventoryGhostItem) -> Option<HudInventoryGhostItem> {
+    Some(HudInventoryGhostItem {
+        x: item.x,
+        y: item.y,
+        icon: sanitize_hud_item_icon(item.icon)?,
+        draw_decorations: item.draw_decorations,
     })
 }
 
@@ -7416,6 +7592,24 @@ mod tests {
                     },
                 },
             ],
+            fill_layers: vec![
+                HudInventoryFillLayer {
+                    x: 8,
+                    y: 84,
+                    width: 16,
+                    height: 16,
+                    tint: [2.0, 0.5, -1.0, 0.5],
+                    stage: HudInventoryFillStage::BeforeGhostItem,
+                },
+                HudInventoryFillLayer {
+                    x: 26,
+                    y: 84,
+                    width: 0,
+                    height: 16,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    stage: HudInventoryFillStage::AfterGhostItem,
+                },
+            ],
             slots: vec![
                 HudInventorySlot {
                     slot_id: 5,
@@ -7466,6 +7660,7 @@ mod tests {
                 },
             ],
             floating_items: Vec::new(),
+            ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             text_labels: vec![
                 HudInventoryTextLabel {
@@ -7529,6 +7724,17 @@ mod tests {
         );
         assert_eq!(screen.background_layers[0].uv.min, [0.0, 0.0]);
         assert_eq!(screen.background_layers[0].uv.max, [0.75, 1.0]);
+        assert_eq!(
+            screen.fill_layers,
+            vec![HudInventoryFillLayer {
+                x: 8,
+                y: 84,
+                width: 16,
+                height: 16,
+                tint: [1.0, 0.5, 0.0, 0.5],
+                stage: HudInventoryFillStage::BeforeGhostItem,
+            }]
+        );
         assert_eq!(screen.hovered_slot_id, Some(7));
         assert_eq!(screen.slots.len(), 3);
         assert_eq!(screen.slots[0].slot_id, 5);
@@ -7604,6 +7810,7 @@ mod tests {
             width: 176,
             height: 166,
             background_layers: Vec::new(),
+            fill_layers: Vec::new(),
             slots: Vec::new(),
             floating_items: vec![
                 HudInventoryItem {
@@ -7645,6 +7852,7 @@ mod tests {
                     block_model: None,
                 },
             ],
+            ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             hovered_slot_id: None,
             tooltip: None,
@@ -8220,8 +8428,10 @@ mod tests {
             width: 176,
             height: 166,
             background_layers: Vec::new(),
+            fill_layers: Vec::new(),
             slots: Vec::new(),
             floating_items: Vec::new(),
+            ghost_items: Vec::new(),
             entity_previews,
             text_labels: Vec::new(),
             hovered_slot_id: None,

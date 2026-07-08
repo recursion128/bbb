@@ -1916,8 +1916,11 @@ mod tests {
 
         let ghost_recipe = packets::PlaceGhostRecipe {
             container_id: 9,
-            recipe_display_type: packets::RecipeDisplayType::Stonecutter,
-            recipe_display_body: vec![1, 2, 3],
+            recipe_display: packets::RecipeDisplaySummary {
+                display_type: packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            },
         };
         assert_matching_event!(
             PlayClientbound::PlaceGhostRecipe(ghost_recipe.clone()),

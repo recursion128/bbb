@@ -1061,9 +1061,10 @@ When an agent does any of the following, update this file in the same slice:
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
     buttons/search input/tab shell/crafting recipe-button shell/category-page
-    shell/placement shell/category tab visibility: ghost recipe slots, tab
+    shell/placement shell/category tab visibility/crafting ghost slots: tab
     notification animation, recipe-search filtering, craftability/furnace-
-    family recipe-grid parity, and multi-recipe overlay/cycling.
+    family recipe-grid parity, multi-recipe overlay/cycling, and unresolved
+    tag/composite SlotDisplay cycling for ghost ingredients.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1165,16 +1166,32 @@ When an agent does any of the following, update this file in the same slice:
     the shared crafting recipe-book collections to show only category tabs
     with visible 2x2/3x3 crafting recipes, collapses tab positions by visible
     index, and maps clicks back to the original category tab index.
+  - Done 2026-07-08 — Crafting recipe-book ghost recipe slots. Vanilla
+    anchors: `ClientPacketListener.handlePlaceRecipe` only fills a ghost recipe
+    when `player.containerMenu.containerId` matches the packet container id;
+    `RecipeBookComponent.fillGhostRecipe` clears `GhostSlots` then delegates to
+    the active component; `CraftingRecipeBookComponent.fillGhostRecipe` puts
+    the result in `menu.getResultSlot()` and maps shaped ingredients through
+    `PlaceRecipeHelper.placeRecipe` while shapeless ingredients fill input
+    slots in order; `GhostSlots.extractRenderState` draws the red pre-fill
+    (`0x30ff0000`, 24x24 for big crafting-table result slots), the fake item,
+    the white post-fill (`0x30ffffff`), and result decorations. bbb now decodes
+    `ClientboundPlaceGhostRecipePacket` as a structured `RecipeDisplaySummary`,
+    stores the last display in canonical world UI state, projects matching
+    crafting-table and local-inventory ghost slot fills/items using vanilla
+    shaped centering, and draws the layers after normal slot items but before
+    foreground slot highlights.
   - Boundary: furnace-family raw recipe displays, craftability slot sprite
     selection, craftability retry guard, multi-recipe cycling/right-click
     overlay, tab notification animation, recipe-search filtering of visible
-    recipe buttons, cursor/selection rendering inside the search box, and
-    ghost recipe slot rendering remain open. The filter toggle, search text,
+    recipe buttons, cursor/selection rendering inside the search box,
+    tag/composite SlotDisplay cycling for ghost ingredients, and narrow-screen
+    overlap remain open. The filter toggle, search text,
     selected-tab, first crafting recipe-button shell, crafting category/page
     states, primary recipe placement command path, and crafting category tab
-    visibility are live. The first shell models the non-narrow layout;
-    vanilla's narrow-screen overlap mode (`width < 379`) remains for the
-    input/render follow-up.
+    visibility plus direct item/item-stack crafting ghost slots are live. The
+    first shell models the non-narrow layout; vanilla's narrow-screen overlap
+    mode (`width < 379`) remains for the input/render follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

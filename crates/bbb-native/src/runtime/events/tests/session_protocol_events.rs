@@ -1069,8 +1069,11 @@ fn client_feature_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::PlaceGhostRecipe(
         PlaceGhostRecipe {
             container_id: 9,
-            recipe_display_type: RecipeDisplayType::Stonecutter,
-            recipe_display_body: vec![1, 2, 3],
+            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            },
         },
     )))
     .unwrap();
@@ -1127,7 +1130,12 @@ fn client_feature_events_update_world_and_world_counters() {
             container_id: 9,
             recipe_display_type_id: 3,
             recipe_display_type: "stonecutter".to_string(),
-            recipe_display_body_len: 3,
+            recipe_display_body_len: 7,
+            recipe_display: Some(bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            }),
         })
     );
     assert_eq!(world.counters().ghost_recipe_packets, 1);

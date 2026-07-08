@@ -55,7 +55,12 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
     let mut payload = Encoder::new();
     payload.write_var_i32(9);
     payload.write_var_i32(3);
-    payload.write_bytes(&[0xaa, 0xbb, 0xcc]);
+    payload.write_var_i32(4);
+    payload.write_var_i32(100);
+    payload.write_var_i32(4);
+    payload.write_var_i32(101);
+    payload.write_var_i32(4);
+    payload.write_var_i32(102);
     let payload = payload.into_inner();
 
     let packet =
@@ -64,18 +69,23 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
         packet,
         PlayClientbound::PlaceGhostRecipe(PlaceGhostRecipe {
             container_id: 9,
-            recipe_display_type: RecipeDisplayType::Stonecutter,
-            recipe_display_body: vec![0xaa, 0xbb, 0xcc],
+            recipe_display: RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            },
         })
     );
 
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 9);
     assert_eq!(decoder.read_var_i32().unwrap(), 3);
-    assert_eq!(
-        decoder.read_exact(3, "recipe display body").unwrap(),
-        &[0xaa, 0xbb, 0xcc]
-    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 4);
+    assert_eq!(decoder.read_var_i32().unwrap(), 100);
+    assert_eq!(decoder.read_var_i32().unwrap(), 4);
+    assert_eq!(decoder.read_var_i32().unwrap(), 101);
+    assert_eq!(decoder.read_var_i32().unwrap(), 4);
+    assert_eq!(decoder.read_var_i32().unwrap(), 102);
     assert!(decoder.is_empty());
 }
 

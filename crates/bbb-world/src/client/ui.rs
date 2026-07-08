@@ -2,7 +2,8 @@ use bbb_protocol::packets::{
     DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
     MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
     OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
-    PongResponse as ProtocolPongResponse, ShowDialog as ProtocolShowDialog,
+    PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
+    ShowDialog as ProtocolShowDialog,
 };
 use serde::{Deserialize, Serialize};
 
@@ -76,6 +77,8 @@ pub struct GhostRecipeState {
     pub recipe_display_type_id: i32,
     pub recipe_display_type: String,
     pub recipe_display_body_len: usize,
+    #[serde(default)]
+    pub recipe_display: Option<ProtocolRecipeDisplaySummary>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -144,11 +147,13 @@ impl WorldStore {
 
     pub fn apply_place_ghost_recipe(&mut self, packet: ProtocolPlaceGhostRecipe) {
         self.counters.ghost_recipe_packets += 1;
+        let recipe_display = packet.recipe_display;
         self.client_ui.last_ghost_recipe = Some(GhostRecipeState {
             container_id: packet.container_id,
-            recipe_display_type_id: packet.recipe_display_type.id(),
-            recipe_display_type: packet.recipe_display_type.as_str().to_string(),
-            recipe_display_body_len: packet.recipe_display_body.len(),
+            recipe_display_type_id: recipe_display.display_type.id(),
+            recipe_display_type: recipe_display.display_type.as_str().to_string(),
+            recipe_display_body_len: recipe_display.raw_body.len(),
+            recipe_display: Some(recipe_display),
         });
     }
 
@@ -544,8 +549,11 @@ mod tests {
 
         store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
             container_id: 9,
-            recipe_display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-            recipe_display_body: vec![1, 2, 3],
+            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            },
         });
 
         assert_eq!(
@@ -554,7 +562,12 @@ mod tests {
                 container_id: 9,
                 recipe_display_type_id: 3,
                 recipe_display_type: "stonecutter".to_string(),
-                recipe_display_body_len: 3,
+                recipe_display_body_len: 7,
+                recipe_display: Some(bbb_protocol::packets::RecipeDisplaySummary {
+                    display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                    raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                    crafting: None,
+                }),
             })
         );
         assert_eq!(store.counters().ghost_recipe_packets, 1);

@@ -6065,6 +6065,169 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShaped,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shaped {
+                    width: 2,
+                    height: 1,
+                    ingredients: vec![
+                        stonecutter_item_display(1),
+                        stonecutter_item_stack_display(2, 3),
+                    ],
+                    result: stonecutter_item_stack_display(0, 2),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                    },
+                },
+            ),
+        },
+    });
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+
+    assert_eq!(
+        screen
+            .fill_layers
+            .iter()
+            .filter(|layer| layer.stage == HudInventoryFillStage::BeforeGhostItem)
+            .copied()
+            .collect::<Vec<_>>(),
+        vec![
+            HudInventoryFillLayer {
+                x: 269,
+                y: 31,
+                width: 24,
+                height: 24,
+                tint: RECIPE_BOOK_GHOST_PRE_ITEM_TINT,
+                stage: HudInventoryFillStage::BeforeGhostItem,
+            },
+            HudInventoryFillLayer {
+                x: 179,
+                y: 35,
+                width: 16,
+                height: 16,
+                tint: RECIPE_BOOK_GHOST_PRE_ITEM_TINT,
+                stage: HudInventoryFillStage::BeforeGhostItem,
+            },
+            HudInventoryFillLayer {
+                x: 197,
+                y: 35,
+                width: 16,
+                height: 16,
+                tint: RECIPE_BOOK_GHOST_PRE_ITEM_TINT,
+                stage: HudInventoryFillStage::BeforeGhostItem,
+            },
+        ]
+    );
+    assert_eq!(
+        screen
+            .fill_layers
+            .iter()
+            .filter(|layer| layer.stage == HudInventoryFillStage::AfterGhostItem)
+            .map(|layer| (layer.x, layer.y, layer.width, layer.height, layer.tint))
+            .collect::<Vec<_>>(),
+        vec![
+            (273, 35, 16, 16, RECIPE_BOOK_GHOST_POST_ITEM_TINT),
+            (179, 35, 16, 16, RECIPE_BOOK_GHOST_POST_ITEM_TINT),
+            (197, 35, 16, 16, RECIPE_BOOK_GHOST_POST_ITEM_TINT),
+        ]
+    );
+    assert_eq!(
+        screen
+            .ghost_items
+            .iter()
+            .map(|item| (
+                item.x,
+                item.y,
+                item.draw_decorations,
+                item.icon.count_label.clone()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (273, 35, true, Some(HudItemCountLabel::new("2"))),
+            (179, 35, false, None),
+            (197, 35, false, None),
+        ]
+    );
+
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 99,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![stonecutter_item_display(1)],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                    },
+                },
+            ),
+        },
+    });
+    let stale = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    assert!(stale.fill_layers.is_empty());
+    assert!(stale.ghost_items.is_empty());
+}
+
+#[test]
+fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_fill() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = WorldStore::new();
+    world.open_local_inventory();
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 0,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![stonecutter_item_display(1)],
+                    result: stonecutter_item_display(0),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: 0,
+                        raw_payload: Vec::new(),
+                        item_stack: None,
+                    },
+                },
+            ),
+        },
+    });
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+
+    assert_eq!(
+        screen
+            .fill_layers
+            .iter()
+            .filter(|layer| layer.stage == HudInventoryFillStage::BeforeGhostItem)
+            .map(|layer| (layer.x, layer.y, layer.width, layer.height))
+            .collect::<Vec<_>>(),
+        vec![(154, 28, 16, 16), (98, 18, 16, 16)]
+    );
+    assert_eq!(
+        screen
+            .ghost_items
+            .iter()
+            .map(|item| (item.x, item.y, item.draw_decorations))
+            .collect::<Vec<_>>(),
+        vec![(154, 28, true), (98, 18, false)]
+    );
+}
+
+#[test]
 fn hud_inventory_screen_projects_recipe_book_search_box_text() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -9911,6 +10074,66 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
         smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
     });
     world
+}
+
+fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
+    let root = unique_runtime_temp_dir("recipe-book-ghost-items");
+    let assets = runtime_assets_dir(&root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    for (model_id, rgba) in [
+        ("crafting_table", [120, 80, 40, 255]),
+        ("stick", [150, 95, 45, 255]),
+        ("oak_planks", [190, 145, 80, 255]),
+    ] {
+        write_runtime_json(
+            &assets.join("items").join(format!("{model_id}.json")),
+            &format!(
+                r#"{{
+                    "model": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{model_id}"
+                    }}
+                }}"#
+            ),
+        );
+        write_flat_runtime_item_model_and_texture(&assets, model_id, &rgba);
+    }
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item CRAFTING_TABLE = registerItem("crafting_table");
+            public static final Item STICK = registerItem("stick");
+            public static final Item OAK_PLANKS = registerItem("oak_planks");
+        }"#,
+    );
+    let runtime = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+    runtime
 }
 
 fn shapeless_crafting_recipe_book_entry(

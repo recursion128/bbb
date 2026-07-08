@@ -1828,6 +1828,20 @@
   craftability retry guard、multi-recipe cycling/right-click overlay、tab
   notification animation、visible recipe-grid search filtering、search
   cursor/selection rendering、ghost recipe slots、narrow-screen overlap。
+- [x] crafting recipe-book ghost recipe slots（P2 HUD/protocol slice，2026-07-08）：
+  依据 `ClientPacketListener.handlePlaceRecipe` 的 container id 匹配门槛、
+  `RecipeBookComponent.fillGhostRecipe` / `CraftingRecipeBookComponent.fillGhostRecipe`
+  的 result/input 分派、`PlaceRecipeHelper.placeRecipe` 的 shaped recipe
+  居中映射，以及 `GhostSlots.extractRenderState` 的 red pre-fill、fake item、
+  white post-fill、result decorations 顺序，native 现在把
+  `ClientboundPlaceGhostRecipePacket` 解成结构化 `RecipeDisplaySummary`，world
+  保存 last ghost display，HUD 对 crafting table 与 local inventory 投影直接
+  item/item-stack ghost fills 和 fake items，并在 container id 过期时隐藏。
+  剩余：furnace-family raw recipe displays、craftability slot sprite selection、
+  craftability retry guard、multi-recipe cycling/right-click overlay、tab
+  notification animation、visible recipe-grid search filtering、search
+  cursor/selection rendering、tag/composite SlotDisplay ghost ingredient cycling、
+  narrow-screen overlap。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

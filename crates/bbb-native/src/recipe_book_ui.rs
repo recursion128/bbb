@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::packets::{CraftingRecipeDisplaySummary, ItemStackSummary, RecipeDisplayEntry};
+use bbb_protocol::packets::{
+    CraftingRecipeDisplaySummary, ItemStackSummary, RecipeDisplayEntry, RecipeDisplaySummary,
+    SlotDisplaySummary,
+};
 use bbb_world::WorldStore;
 
 pub(crate) const RECIPE_BOOK_ITEMS_PER_PAGE: usize = 20;
@@ -30,6 +33,13 @@ pub(crate) struct RecipeBookCraftingGrid {
 #[derive(Debug, Clone)]
 pub(crate) struct RecipeBookUiCollection<'a> {
     entries: Vec<&'a RecipeDisplayEntry>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RecipeBookGhostSlot<'a> {
+    pub(crate) slot_id: i16,
+    pub(crate) stack: &'a ItemStackSummary,
+    pub(crate) is_result: bool,
 }
 
 impl<'a> RecipeBookUiCollection<'a> {
@@ -84,12 +94,127 @@ pub(crate) fn clamped_recipe_book_page(page: usize, collection_count: usize) -> 
     page.min(page_count.saturating_sub(1))
 }
 
+pub(crate) fn crafting_recipe_book_ghost_slots(
+    display: &RecipeDisplaySummary,
+    grid: RecipeBookCraftingGrid,
+) -> Vec<RecipeBookGhostSlot<'_>> {
+    let Some(crafting) = display.crafting.as_ref() else {
+        return Vec::new();
+    };
+    let mut slots = Vec::new();
+    match crafting {
+        CraftingRecipeDisplaySummary::Shapeless {
+            ingredients,
+            result,
+            ..
+        } => {
+            push_recipe_book_ghost_result(result, &mut slots);
+            let slot_count = ingredients
+                .len()
+                .min((grid.width * grid.height).max(0) as usize);
+            for (index, ingredient) in ingredients.iter().take(slot_count).enumerate() {
+                push_recipe_book_ghost_input(ingredient, 1 + index as i32, &mut slots);
+            }
+        }
+        CraftingRecipeDisplaySummary::Shaped {
+            width,
+            height,
+            ingredients,
+            result,
+            ..
+        } => {
+            push_recipe_book_ghost_result(result, &mut slots);
+            place_shaped_recipe_ghost_inputs(grid, *width, *height, ingredients, &mut slots);
+        }
+    }
+    slots
+}
+
 pub(crate) fn recipe_book_crafting_result_stack(
     entry: &RecipeDisplayEntry,
 ) -> Option<&ItemStackSummary> {
     match entry.display.crafting.as_ref()? {
         CraftingRecipeDisplaySummary::Shapeless { result, .. }
         | CraftingRecipeDisplaySummary::Shaped { result, .. } => result.item_stack.as_ref(),
+    }
+}
+
+fn push_recipe_book_ghost_result<'a>(
+    display: &'a SlotDisplaySummary,
+    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
+) {
+    let Some(stack) = display.item_stack.as_ref() else {
+        return;
+    };
+    slots.push(RecipeBookGhostSlot {
+        slot_id: 0,
+        stack,
+        is_result: true,
+    });
+}
+
+fn push_recipe_book_ghost_input<'a>(
+    display: &'a SlotDisplaySummary,
+    slot_id: i32,
+    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
+) {
+    let (Ok(slot_id), Some(stack)) = (i16::try_from(slot_id), display.item_stack.as_ref()) else {
+        return;
+    };
+    slots.push(RecipeBookGhostSlot {
+        slot_id,
+        stack,
+        is_result: false,
+    });
+}
+
+fn place_shaped_recipe_ghost_inputs<'a>(
+    grid: RecipeBookCraftingGrid,
+    recipe_width: i32,
+    recipe_height: i32,
+    ingredients: &'a [SlotDisplaySummary],
+    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
+) {
+    if grid.width <= 0 || grid.height <= 0 || recipe_width <= 0 || recipe_height <= 0 {
+        return;
+    }
+    let mut ingredients = ingredients.iter().peekable();
+    let mut grid_index = 0;
+    let mut grid_y = 0;
+    while grid_y < grid.height {
+        let should_center_y = (recipe_height as f32) < (grid.height as f32 / 2.0);
+        let start_y = (grid.height as f32 / 2.0 - recipe_height as f32 / 2.0).floor() as i32;
+        if should_center_y && start_y > grid_y {
+            grid_index += grid.width;
+            grid_y += 1;
+        }
+
+        let mut grid_x = 0;
+        while grid_x < grid.width {
+            if ingredients.peek().is_none() {
+                return;
+            }
+            let should_center_x = (recipe_width as f32) < (grid.width as f32 / 2.0);
+            let start_x = (grid.width as f32 / 2.0 - recipe_width as f32 / 2.0).floor() as i32;
+            let mut total_recipe_width_in_grid = recipe_width;
+            let mut add_ingredient_to_slot = grid_x < recipe_width;
+            if should_center_x {
+                total_recipe_width_in_grid = start_x + recipe_width;
+                add_ingredient_to_slot = start_x <= grid_x && grid_x < start_x + recipe_width;
+            }
+
+            if add_ingredient_to_slot {
+                let ingredient = ingredients.next().expect("ingredient presence checked");
+                push_recipe_book_ghost_input(ingredient, 1 + grid_index, slots);
+            } else if total_recipe_width_in_grid == grid_x {
+                grid_index += grid.width - grid_x;
+                break;
+            }
+
+            grid_index += 1;
+            grid_x += 1;
+        }
+        grid_y += 1;
     }
 }
 

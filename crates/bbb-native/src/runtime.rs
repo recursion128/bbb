@@ -22,14 +22,15 @@ use bbb_renderer::{
     HudBlockItemModel, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
     HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SignModelAttachment, SignModelWood,
+    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
     DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
     ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -101,8 +102,9 @@ use crate::{
         SMOKE_PARTICLE_TYPE_ID,
     },
     recipe_book_ui::{
-        clamped_recipe_book_page, crafting_recipe_book_collections, recipe_book_page_count,
-        RecipeBookCraftingGrid, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+        clamped_recipe_book_page, crafting_recipe_book_collections,
+        crafting_recipe_book_ghost_slots, recipe_book_page_count, RecipeBookCraftingGrid,
+        RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
     },
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
@@ -332,6 +334,8 @@ const RECIPE_BOOK_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RECIPE_BOOK_RECIPE_ICON_OFFSET: i32 = 4;
 const RECIPE_BOOK_PAGE_TEXT_CENTER_X: i32 = 73;
 const RECIPE_BOOK_PAGE_TEXT_Y: i32 = 141;
+const RECIPE_BOOK_GHOST_PRE_ITEM_TINT: [f32; 4] = [1.0, 0.0, 0.0, 48.0 / 255.0];
+const RECIPE_BOOK_GHOST_POST_ITEM_TINT: [f32; 4] = [1.0, 1.0, 1.0, 48.0 / 255.0];
 const ANVIL_COST_DATA_ID: i16 = 0;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const ANVIL_TOO_EXPENSIVE_LEVEL_COST: i16 = 40;
@@ -2728,6 +2732,14 @@ fn hud_inventory_screen_with_local_state(
         local_state.keybind_context,
         partial_tick,
     ));
+    let (fill_layers, ghost_items) = hud_recipe_book_ghost_layers_and_items(
+        world,
+        item_runtime,
+        layout.background,
+        &layout.slots,
+        local_state.keybind_context,
+        partial_tick,
+    );
     let mut entity_previews = hud_inventory_entity_previews(
         world,
         item_runtime,
@@ -2756,8 +2768,10 @@ fn hud_inventory_screen_with_local_state(
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
         background_layers,
+        fill_layers,
         slots,
         floating_items,
+        ghost_items,
         entity_previews,
         text_labels,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
@@ -3128,6 +3142,98 @@ fn hud_recipe_book_recipe_button_icon_items(
         });
     }
     items
+}
+
+fn hud_recipe_book_ghost_layers_and_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    layout_slots: &[crate::input::InventorySlotLayout],
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> (Vec<HudInventoryFillLayer>, Vec<HudInventoryGhostItem>) {
+    let Some(item_runtime) = item_runtime else {
+        return (Vec::new(), Vec::new());
+    };
+    let Some(ghost_recipe) = world.last_ghost_recipe() else {
+        return (Vec::new(), Vec::new());
+    };
+    if world.open_container_id() != Some(ghost_recipe.container_id) {
+        return (Vec::new(), Vec::new());
+    }
+    let Some(grid) = recipe_book_crafting_grid_for_background(background) else {
+        return (Vec::new(), Vec::new());
+    };
+    let Some(display) = ghost_recipe.recipe_display.as_ref() else {
+        return (Vec::new(), Vec::new());
+    };
+
+    let mut fill_layers = Vec::new();
+    let mut ghost_items = Vec::new();
+    for ghost_slot in crafting_recipe_book_ghost_slots(display, grid) {
+        let Some(layout_slot) = layout_slots
+            .iter()
+            .find(|layout_slot| layout_slot.slot_id == ghost_slot.slot_id)
+        else {
+            continue;
+        };
+        let Some(mut icon) = hud_item_icon_for_stack(
+            world,
+            Some(item_runtime),
+            ghost_slot.stack,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+            partial_tick,
+        ) else {
+            continue;
+        };
+        if !ghost_slot.is_result {
+            icon.count_label = None;
+            icon.durability_bar = None;
+            icon.cooldown_progress = None;
+        }
+
+        let (pre_fill_x, pre_fill_y, pre_fill_width, pre_fill_height) =
+            if ghost_slot.is_result && recipe_book_result_slot_fill_is_big(background) {
+                (layout_slot.x - 4, layout_slot.y - 4, 24, 24)
+            } else {
+                (layout_slot.x, layout_slot.y, 16, 16)
+            };
+        fill_layers.push(HudInventoryFillLayer {
+            x: pre_fill_x,
+            y: pre_fill_y,
+            width: pre_fill_width,
+            height: pre_fill_height,
+            tint: RECIPE_BOOK_GHOST_PRE_ITEM_TINT,
+            stage: HudInventoryFillStage::BeforeGhostItem,
+        });
+        ghost_items.push(HudInventoryGhostItem {
+            x: layout_slot.x,
+            y: layout_slot.y,
+            icon,
+            draw_decorations: ghost_slot.is_result,
+        });
+        fill_layers.push(HudInventoryFillLayer {
+            x: layout_slot.x,
+            y: layout_slot.y,
+            width: 16,
+            height: 16,
+            tint: RECIPE_BOOK_GHOST_POST_ITEM_TINT,
+            stage: HudInventoryFillStage::AfterGhostItem,
+        });
+    }
+
+    (fill_layers, ghost_items)
+}
+
+fn recipe_book_result_slot_fill_is_big(background: InventoryScreenBackground) -> bool {
+    matches!(background, InventoryScreenBackground::CraftingTable)
 }
 
 fn hud_recipe_book_visible_crafting_collections<'a>(
@@ -3786,8 +3892,10 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
         width: 192,
         height: 192,
         background_layers: book_screen_background_layers(book),
+        fill_layers: Vec::new(),
         slots: Vec::new(),
         floating_items: Vec::new(),
+        ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels: book_screen_text_labels(book),
         hovered_slot_id: None,

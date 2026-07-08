@@ -2605,8 +2605,11 @@ fn client_ui_reads_canonical_world_state() {
         });
         store.apply_place_ghost_recipe(PlaceGhostRecipe {
             container_id: 9,
-            recipe_display_type: RecipeDisplayType::Stonecutter,
-            recipe_display_body: vec![1, 2, 3],
+            recipe_display: RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
+                crafting: None,
+            },
         });
         store.apply_show_dialog(ShowDialog {
             dialog: DialogHolder::Reference { registry_id: 7 },
@@ -2645,7 +2648,7 @@ fn client_ui_reads_canonical_world_state() {
         ui["last_ghost_recipe"]["recipe_display_type"],
         "stonecutter"
     );
-    assert_eq!(ui["last_ghost_recipe"]["recipe_display_body_len"], 3);
+    assert_eq!(ui["last_ghost_recipe"]["recipe_display_body_len"], 7);
     assert_eq!(ui["current_dialog"]["holder_kind"], "reference");
     assert_eq!(ui["current_dialog"]["registry_id"], 7);
     assert_eq!(ui["last_pong_response"]["time"], 123456789);
