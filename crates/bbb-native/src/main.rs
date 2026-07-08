@@ -378,6 +378,13 @@ fn main() -> Result<()> {
                         Some(&mut world),
                         Some(&mut terrain_upload),
                     ) {
+                        let reload_requests = input.take_debug_resource_pack_reload_requests();
+                        if reload_requests > 0 {
+                            tracing::info!(
+                                reload_requests,
+                                "resource pack reload requested by debug hotkey"
+                            );
+                        }
                         return;
                     }
                     let container_open = world.open_container_id().is_some();

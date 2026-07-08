@@ -199,6 +199,7 @@ pub(crate) struct ClientInputState {
     debug_chunk_borders_visible: bool,
     debug_advanced_item_tooltips: bool,
     debug_pause_on_lost_focus: bool,
+    debug_resource_pack_reload_requests: u32,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -565,6 +566,10 @@ impl ClientInputState {
         self.debug_pause_on_lost_focus
     }
 
+    pub(crate) fn take_debug_resource_pack_reload_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.debug_resource_pack_reload_requests)
+    }
+
     pub(crate) fn handle_debug_overlay_key(
         &mut self,
         physical_key: PhysicalKey,
@@ -720,6 +725,12 @@ impl ClientInputState {
                 if let Some(world) = world.as_deref_mut() {
                     push_debug_version_chat_messages(world);
                 }
+                true
+            }
+            KeyCode::KeyT => {
+                self.debug_resource_pack_reload_requests =
+                    self.debug_resource_pack_reload_requests.saturating_add(1);
+                push_debug_feedback_chat_message(world.as_deref_mut(), "Reloaded resource packs");
                 true
             }
             _ => false,

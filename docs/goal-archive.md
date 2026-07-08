@@ -5250,6 +5250,16 @@
   chat display 时追加 `[Debug]: Pause on lost focus: enabled/disabled` local
   feedback。剩余：option persistence、单机 pause-loop 行为、其它 F3 modifier
   combos。
+- [x] debug overlay F3+T resource-pack reload request（P2 HUD/input/runtime
+  slice，2026-07-08）：依据 `Options.keyDebugReloadResourcePacks` 绑定 T，
+  以及 `KeyboardHandler.handleDebugKeys` 先发送
+  `debug.reload_resourcepacks.message`、再调用 `Minecraft.reloadResourcePacks()`
+  的行为。`ClientInputState` 现在在 F3 按住期间消费 T，追加
+  `[Debug]: Reloaded resource packs` local client-system feedback，记录一次可
+  drain 的 native reload request，并让主循环 drain 后写日志；使用组合键后同样
+  抑制 F3 release 触发普通 overlay toggle。边界：实际资源包、item/entity/
+  terrain/audio/runtime/renderer 热重载仍未实现，本 slice 只落地输入请求和
+  反馈路径。剩余：热重载执行链、其它 F3 modifier combos。
 - [x] terrain `skipRendering` adjacency culling（P2 world/native/renderer
   slice，2026-07-08）：依据 `ModelBlockRenderer.shouldRenderFace` →
   `Block.shouldRenderFace`，以及 `HalfTransparentBlock.skipRendering` /

@@ -982,6 +982,82 @@ fn f3_v_consumes_without_world_to_suppress_release_toggle() {
 }
 
 #[test]
+fn f3_t_records_resource_pack_reload_request_and_feedback_without_toggling_overlay() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.take_debug_resource_pack_reload_requests(), 1);
+    assert_eq!(input.take_debug_resource_pack_reload_requests(), 0);
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
+    assert_eq!(messages[0].content, "[Debug]: Reloaded resource packs");
+    assert_eq!(world.counters().chat_messages_tracked, 1);
+    assert_eq!(world.counters().player_chat_packets, 0);
+    assert_eq!(world.counters().disguised_chat_packets, 0);
+    assert_eq!(world.counters().system_chat_packets, 0);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn f3_t_consumes_without_world_and_records_reload_request() {
+    let mut input = ClientInputState::new(true);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert_eq!(input.take_debug_resource_pack_reload_requests(), 1);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn f3_game_mode_keys_report_no_permission_without_gameplay_commands() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

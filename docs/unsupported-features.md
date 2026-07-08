@@ -1090,15 +1090,27 @@ When an agent does any of the following, update this file in the same slice:
     basics, F3+1..4 chart/lightmap toggle state, F3+B/G/H
     hitboxes/chunk-borders/advanced-tooltips toggle state, F3+A terrain
     reload request, F3+D clear-chat display action, and F3+P focus-pause
-    option toggle, F3+V version debug chat action, F3+A/B/G/H/N/P/F4 local
-    debug feedback, the F3+F6 debug-options edit help keybind, the default
-    GAME_VERSION entry shape, the default TPS entry shell, and the default
-    FPS entry shell, and actual F3+4 lightmap preview rendering: the complete
+    option toggle, F3+V version debug chat action, F3+T resource-pack reload
+    request, F3+A/B/G/H/N/P/F4/T local debug feedback, the F3+F6
+    debug-options edit help keybind, the default GAME_VERSION entry shape,
+    the default TPS entry shell, and the default FPS entry shell, and actual
+    F3+4 lightmap preview rendering: the complete
     vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
     entity hitbox/chunk-border rendering, advanced tooltip full parity/
     persistence, 3D crosshair, and the other F3 modifier combos remain (large,
     low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+T resource-pack reload request.
+    Vanilla anchors: `Options.keyDebugReloadResourcePacks` binds key code 84
+    (T), and `KeyboardHandler.handleDebugKeys` maps it to
+    `debugFeedbackTranslated("debug.reload_resourcepacks.message")` followed
+    by `Minecraft.reloadResourcePacks()`. bbb now consumes T while F3 is held,
+    appends the local client-system chat feedback `[Debug]: Reloaded resource
+    packs`, records a drainable native reload request counter, and drains that
+    request in the main event loop with a log entry so F3 release does not
+    toggle the debug overlay. Boundary: actual pack/runtime/renderer hot reload
+    is still not implemented; this slice only makes the native debug input and
+    feedback path explicit.
   - Done 2026-07-08 — Debug overlay F3+4 lightmap preview rendering. Vanilla
     anchors: `DebugScreenOverlay.showLightmapTexture` requires the debug
     overlay to be visible and `renderLightmapTexture` enabled; the render path
