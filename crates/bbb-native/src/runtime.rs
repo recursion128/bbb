@@ -16,17 +16,18 @@ use bbb_protocol::{
         AdvancementFrameType, ItemCostSummary, ItemStackSummary, MapPostProcessingSummary,
         SlotDisplaySummary, Vec3d,
     },
+    MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
-    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudHeartKind, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudDebugOverlay, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
+    HudInventoryItemScissor, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
@@ -1842,6 +1843,7 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
+    let hud_debug_overlay = hud_debug_overlay(input, world, camera_pose);
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -2079,6 +2081,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_sign_editor_screen,
             hud_action_bar_text,
             hud_title_text,
+            hud_debug_overlay,
             hud_boss_bars,
             item_entity_billboards,
             block_item_model_meshes: block_item_meshes,
@@ -2742,6 +2745,96 @@ fn advancement_hover_fade_for_hud(
     .is_some();
     input.update_advancement_hover_fade(hovering);
     input.advancement_hover_fade()
+}
+
+fn hud_debug_overlay(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<HudDebugOverlay> {
+    if !input.debug_overlay_visible() {
+        return None;
+    }
+
+    let mut left_lines = vec![format!(
+        "Minecraft {MC_VERSION} (bbb/native; protocol {PROTOCOL_VERSION})"
+    )];
+    if let Some(camera_pose) = camera_pose {
+        left_lines.push("".to_string());
+        left_lines.extend(hud_debug_position_lines(world, camera_pose));
+    }
+    left_lines.push("".to_string());
+    left_lines.push("Debug charts: [F3+1] Profiler hidden; [F3+2] FPS hidden;".to_string());
+    left_lines.push("[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string());
+    left_lines.push("To edit: press [F3+F5]".to_string());
+
+    Some(HudDebugOverlay {
+        left_lines,
+        right_lines: Vec::new(),
+    })
+}
+
+fn hud_debug_position_lines(world: &WorldStore, camera_pose: CameraPose) -> Vec<String> {
+    let x = f64::from(camera_pose.position[0]);
+    let y = f64::from(camera_pose.position[1]);
+    let z = f64::from(camera_pose.position[2]);
+    let block_x = x.floor() as i32;
+    let block_y = y.floor() as i32;
+    let block_z = z.floor() as i32;
+    let chunk_x = block_x.div_euclid(16);
+    let chunk_z = block_z.div_euclid(16);
+    let section_y = block_y.div_euclid(16);
+    let (direction, face_string) = hud_debug_facing(camera_pose.y_rot);
+    let dimension = world
+        .level_info()
+        .map(|level| level.dimension.as_str())
+        .unwrap_or("minecraft:overworld");
+
+    vec![
+        format!("XYZ: {x:.3} / {y:.5} / {z:.3}"),
+        format!("Block: {block_x} {block_y} {block_z}"),
+        format!(
+            "Chunk: {chunk_x} {section_y} {chunk_z} [{} {} in r.{}.{}.mca]",
+            chunk_x.rem_euclid(32),
+            chunk_z.rem_euclid(32),
+            chunk_x.div_euclid(32),
+            chunk_z.div_euclid(32)
+        ),
+        format!(
+            "Facing: {direction} ({face_string}) ({:.1} / {:.1})",
+            hud_debug_wrap_degrees(camera_pose.y_rot),
+            hud_debug_wrap_degrees(camera_pose.x_rot)
+        ),
+        format!("{dimension} FC: 0"),
+        format!(
+            "Section-relative: {:02} {:02} {:02}",
+            block_x & 15,
+            block_y & 15,
+            block_z & 15
+        ),
+    ]
+}
+
+fn hud_debug_facing(y_rot: f32) -> (&'static str, &'static str) {
+    let wrapped = hud_debug_wrap_degrees(y_rot);
+    if (-45.0..45.0).contains(&wrapped) {
+        ("south", "Towards positive Z")
+    } else if (45.0..135.0).contains(&wrapped) {
+        ("west", "Towards negative X")
+    } else if (-135.0..-45.0).contains(&wrapped) {
+        ("east", "Towards positive X")
+    } else {
+        ("north", "Towards negative Z")
+    }
+}
+
+fn hud_debug_wrap_degrees(degrees: f32) -> f32 {
+    let wrapped = (degrees + 180.0).rem_euclid(360.0) - 180.0;
+    if wrapped == -180.0 {
+        180.0
+    } else {
+        wrapped
+    }
 }
 
 fn hud_inventory_screen_with_local_state_for_surface(

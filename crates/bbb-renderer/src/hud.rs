@@ -99,6 +99,16 @@ pub struct HudTitleText {
     pub partial_tick: f32,
 }
 
+/// One frame's F3 debug overlay text columns. Vanilla `DebugScreenOverlay`
+/// resolves enabled entries into left/right line lists, then draws each
+/// non-empty line with a translucent black backdrop at 2px margins and 9px
+/// row stride.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HudDebugOverlay {
+    pub left_lines: Vec<String>,
+    pub right_lines: Vec<String>,
+}
+
 /// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
 /// the starvation-shake gate (`FoodData.getSaturationLevel() <= 0` plus the
 /// client `tickCount` modulo) and the hunger potion swap
@@ -340,6 +350,12 @@ pub struct HudBossBar {
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
+const HUD_DEBUG_OVERLAY_TEXT_TINT: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
+const HUD_DEBUG_OVERLAY_BACKGROUND_TINT: [f32; 4] =
+    [80.0 / 255.0, 80.0 / 255.0, 80.0 / 255.0, 144.0 / 255.0];
+const HUD_DEBUG_OVERLAY_MARGIN_X: i32 = 2;
+const HUD_DEBUG_OVERLAY_MARGIN_Y: i32 = 2;
+const HUD_DEBUG_OVERLAY_LINE_HEIGHT: i32 = 9;
 
 /// Which food icon a draw needs, so `hud_food_variant_sprite` can pick the base
 /// or the Hunger-effect variant of that shape.
@@ -3012,6 +3028,10 @@ impl Renderer {
         self.hud_title_text = title.filter(|state| state.partial_tick.is_finite());
     }
 
+    pub fn set_hud_debug_overlay(&mut self, overlay: Option<HudDebugOverlay>) {
+        self.hud_debug_overlay = overlay.and_then(sanitize_hud_debug_overlay);
+    }
+
     /// Replaces this frame's boss bars (the world's projection of vanilla
     /// `BossHealthOverlay.events`), sanitizing each bar's progress.
     pub fn set_hud_boss_bars(&mut self, bars: Vec<HudBossBar>) {
@@ -3947,6 +3967,20 @@ impl Renderer {
                 screen,
                 !self.hud_entity_preview_pip_targets.is_empty(),
                 &self.hud_hanging_sign_backgrounds,
+            );
+        }
+
+        if let Some(debug_overlay) = &self.hud_debug_overlay {
+            push_hud_debug_overlay(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                debug_overlay,
             );
         }
 
@@ -5916,6 +5950,161 @@ fn push_hud_screen_text_draw<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_overlay<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    overlay: &HudDebugOverlay,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    push_hud_debug_overlay_column_backgrounds(
+        vertices,
+        commands,
+        white_pixel,
+        glyphs,
+        surface_size,
+        &overlay.left_lines,
+        true,
+    );
+    push_hud_debug_overlay_column_backgrounds(
+        vertices,
+        commands,
+        white_pixel,
+        glyphs,
+        surface_size,
+        &overlay.right_lines,
+        false,
+    );
+    push_hud_debug_overlay_column_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &overlay.left_lines,
+        true,
+    );
+    push_hud_debug_overlay_column_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &overlay.right_lines,
+        false,
+    );
+}
+
+fn push_hud_debug_overlay_column_backgrounds<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+    lines: &[String],
+    align_left: bool,
+) {
+    for (line_index, line) in lines.iter().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let width = hud_plain_text_width(line, glyphs);
+        let (left, top) =
+            hud_debug_overlay_line_origin(surface_size, width, line_index, align_left);
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            absolute_hud_rect(
+                (left - 1) as f32,
+                (top - 1) as f32,
+                width.saturating_add(2),
+                HUD_DEBUG_OVERLAY_LINE_HEIGHT as u32,
+            ),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_DEBUG_OVERLAY_BACKGROUND_TINT,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_overlay_column_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    lines: &[String],
+    align_left: bool,
+) {
+    for (line_index, line) in lines.iter().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let width = hud_plain_text_width(line, glyphs);
+        let (left, top) =
+            hud_debug_overlay_line_origin(surface_size, width, line_index, align_left);
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            line,
+            (left as f32, top as f32),
+            HUD_DEBUG_OVERLAY_TEXT_TINT,
+            1.0,
+            false,
+        );
+    }
+}
+
+fn hud_debug_overlay_line_origin(
+    surface_size: PhysicalSize<u32>,
+    width: u32,
+    line_index: usize,
+    align_left: bool,
+) -> (i32, i32) {
+    let left = if align_left {
+        HUD_DEBUG_OVERLAY_MARGIN_X
+    } else {
+        i32::try_from(surface_size.width)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(HUD_DEBUG_OVERLAY_MARGIN_X)
+            .saturating_sub(i32::try_from(width).unwrap_or(i32::MAX))
+    };
+    let top = HUD_DEBUG_OVERLAY_MARGIN_Y.saturating_add(
+        i32::try_from(line_index)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(HUD_DEBUG_OVERLAY_LINE_HEIGHT),
+    );
+    (left, top)
+}
+
 /// Resolved main-pass colour of a styled run: the run's `Style` colour over
 /// the line's base tint (vanilla `StringRenderOutput.getTextColor`), keeping
 /// the base alpha.
@@ -6671,6 +6860,23 @@ fn sanitize_hud_inventory_tooltip_line(
         tint: line.tint.map(|component| component.clamp(0.0, 1.0)),
         runs,
     })
+}
+
+fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverlay> {
+    let left_lines = sanitize_hud_debug_overlay_lines(overlay.left_lines);
+    let right_lines = sanitize_hud_debug_overlay_lines(overlay.right_lines);
+    (!left_lines.is_empty() || !right_lines.is_empty()).then_some(HudDebugOverlay {
+        left_lines,
+        right_lines,
+    })
+}
+
+fn sanitize_hud_debug_overlay_lines(lines: Vec<String>) -> Vec<String> {
+    lines
+        .into_iter()
+        .take(64)
+        .map(|line| sanitize_hud_text_preserving_empty(line, 256))
+        .collect()
 }
 
 fn sanitize_hud_text_line(line: String) -> Option<String> {
@@ -7488,6 +7694,32 @@ mod tests {
             }),
             None
         );
+    }
+
+    #[test]
+    fn hud_debug_overlay_line_origin_matches_vanilla_margins() {
+        assert_eq!(
+            hud_debug_overlay_line_origin(PhysicalSize::new(320, 240), 54, 0, true),
+            (2, 2)
+        );
+        assert_eq!(
+            hud_debug_overlay_line_origin(PhysicalSize::new(320, 240), 54, 1, false),
+            (264, 11)
+        );
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_strips_control_chars_and_drops_empty_overlay() {
+        assert_eq!(sanitize_hud_debug_overlay(HudDebugOverlay::default()), None);
+
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
+            right_lines: vec!["Right".to_string()],
+        })
+        .expect("non-empty debug overlay survives sanitize");
+
+        assert_eq!(overlay.left_lines, vec!["AB".to_string(), "".to_string()]);
+        assert_eq!(overlay.right_lines, vec!["Right".to_string()]);
     }
 
     #[test]

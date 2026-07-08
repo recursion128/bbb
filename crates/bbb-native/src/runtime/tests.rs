@@ -887,6 +887,45 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_version_and_camera_position_lines() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert_eq!(hud_debug_overlay(&input, &world, None), None);
+
+    assert!(input.handle_debug_overlay_key(PhysicalKey::Code(KeyCode::F3), ElementState::Released));
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [10.25, 64.0, -5.75],
+            y_rot: 90.0,
+            x_rot: 15.0,
+            eye_height: 1.62,
+        }),
+    )
+    .expect("debug overlay should project when F3 is visible");
+
+    assert_eq!(
+        overlay.left_lines[0],
+        format!("Minecraft {MC_VERSION} (bbb/native; protocol {PROTOCOL_VERSION})")
+    );
+    assert!(overlay
+        .left_lines
+        .contains(&"XYZ: 10.250 / 64.00000 / -5.750".to_string()));
+    assert!(overlay.left_lines.contains(&"Block: 10 64 -6".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Chunk: 0 4 -1 [0 31 in r.0.-1.mca]".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Facing: west (Towards negative X) (90.0 / 15.0)".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Section-relative: 10 00 10".to_string()));
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());

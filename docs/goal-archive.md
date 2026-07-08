@@ -5062,3 +5062,12 @@
   renderer 增加 advancement hover box sprites 与 foreground layers/items，使
   hover 内容位于 contents fade 遮罩之上且不污染普通 inventory item flow。剩余：
   debug overlay。
+- [x] debug overlay F3 toggle and left-column shell（P2 HUD/input/runtime/
+  renderer slice，2026-07-08）：依据 `KeyboardHandler.keyPress` 的 F3 debug
+  overlay toggle 路径，以及 `DebugScreenOverlay.extractLines` 的 2px margin、
+  9px 行高、`-1873784752` 背景和 `-2039584` 无阴影文字。native 现在维护本地
+  F3 overlay visibility，runtime 生成 `Minecraft 26.1` / protocol line 与
+  `DebugEntryPosition` / `DebugEntrySectionPosition` 风格的 XYZ、Block、Chunk、
+  Facing、dimension/FC、section-relative 左列文本，renderer 以 HUD 顶层
+  debug overlay 绘制背景和文本。剩余：right-column entries、FPS/TPS/network
+  charts、lightmap preview、3D crosshair、F3 modifier combos。

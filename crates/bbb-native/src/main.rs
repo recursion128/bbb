@@ -371,6 +371,9 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    if input.handle_debug_overlay_key(event.physical_key, event.state) {
+                        return;
+                    }
                     let container_open = world.open_container_id().is_some();
                     let dialog_open = world.current_dialog().is_some();
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);

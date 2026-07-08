@@ -291,7 +291,9 @@ Screen Render Surfaces" 条目）：
   tiling、tree connectivity、wheel/drag scroll clamp、widget-frame partial
   scissor、flat/3D fake-item contents scissor、hover title/progress/description
   tooltip rendering 已完成；`ClientAdvancementsState` ready）。
-- debug overlay（F3，低优先）。
+- debug overlay（F3 基础 toggle + 左列 version/position/help shell 已完成；
+  剩余 right-column entries、FPS/TPS/network charts、lightmap preview、3D
+  crosshair 与 F3 组合键，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
 结果尽量用 deterministic screenshot/readback 验证。

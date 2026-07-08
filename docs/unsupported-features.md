@@ -1064,8 +1064,19 @@ When an agent does any of the following, update this file in the same slice:
     shells/contents background tiling/tree connectivity/wheel/drag scroll clamp
     and widget-frame partial scissor: fake-item/full scissor and hover rendering
     are now complete (`ClientAdvancementsState` ready).
-  - Implement the debug overlay (F3; large, low priority).
+  - Continue the debug overlay after the F3 toggle plus left-column
+    version/position/help shell: right-column entries, FPS/TPS/network charts,
+    lightmap preview, 3D crosshair, and F3 modifier combos remain (large, low
+    priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3 toggle and left-column shell. Vanilla
+    anchors: `KeyboardHandler.keyPress` toggles the debug overlay from the F3
+    debug key path, and `DebugScreenOverlay.extractLines` draws each non-empty
+    line at 2px margins with 9px row stride, translucent `-1873784752`
+    backdrops, and `-2039584` text without shadow. bbb now tracks the local
+    F3 overlay visibility in `ClientInputState`, projects version and
+    `DebugEntryPosition` / `DebugEntrySectionPosition`-style camera lines, and
+    renders a HUD-level debug overlay above ordinary screens.
   - Done 2026-07-08 — Advancement hover tooltip rendering. Vanilla anchors:
     `AdvancementsScreen.extractTooltips` shifts mouse coordinates into the
     selected tab contents, `AdvancementTab.extractTooltips` applies the
@@ -1563,9 +1574,10 @@ When an agent does any of the following, update this file in the same slice:
     furnace-family stacked-contents craftability, and multi-recipe cycling,
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
-    retry guard, animated-tab fake-item y-scaling, and advancement hover
-    rendering are live. The remaining open surface in this ledger row is the
-    debug overlay.
+    retry guard, animated-tab fake-item y-scaling, advancement hover
+    rendering, and the debug overlay F3 left-column shell are live. The
+    remaining open surfaces in this ledger row are the debug overlay right
+    column, charts/lightmap/3D crosshair, and F3 modifier combos.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

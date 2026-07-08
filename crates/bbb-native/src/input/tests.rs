@@ -433,6 +433,43 @@ fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
 }
 
 #[test]
+fn f3_release_toggles_debug_overlay_without_gameplay_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    assert!(!input.debug_overlay_visible());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn slash_text_opens_command_entry_and_releases_pressed_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

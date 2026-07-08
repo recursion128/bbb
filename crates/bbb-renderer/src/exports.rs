@@ -80,8 +80,8 @@ pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, Sprit
 pub use crate::hud::{
     HudActionBarText, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
     HudAdvancementLineTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
-    HudAirSupply, HudAsciiGlyph, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudDigitGlyph,
-    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+    HudAirSupply, HudAsciiGlyph, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudDebugOverlay,
+    HudDigitGlyph, HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
     HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphMap, HudFoodEffect, HudHeartKind,
     HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,

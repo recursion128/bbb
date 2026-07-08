@@ -183,6 +183,7 @@ pub(crate) struct ClientInputState {
     advancement_hover_fade: f32,
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
+    debug_overlay_visible: bool,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -508,6 +509,27 @@ impl ClientInputState {
 
     pub(crate) fn advancement_hover_fade(&self) -> f32 {
         self.advancement_hover_fade
+    }
+
+    pub(crate) fn debug_overlay_visible(&self) -> bool {
+        self.debug_overlay_visible
+    }
+
+    pub(crate) fn handle_debug_overlay_key(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) -> bool {
+        if !self.focused {
+            return false;
+        }
+        let PhysicalKey::Code(KeyCode::F3) = physical_key else {
+            return false;
+        };
+        if matches!(state, ElementState::Released) {
+            self.debug_overlay_visible = !self.debug_overlay_visible;
+        }
+        true
     }
 
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
@@ -1102,6 +1124,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
     if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
         input.set_control_key(code, pressed);
+    }
+
+    if input.handle_debug_overlay_key(physical_key, state) {
+        return;
     }
 
     if handle_sign_editor_key(input, counters, world, net_commands, code, pressed) {
