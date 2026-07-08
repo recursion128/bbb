@@ -1059,7 +1059,9 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
-  - Implement the advancement screen (`ClientAdvancementsState` ready).
+  - Continue the advancement screen after the local open/close shell:
+    window/tab/tree rendering and selected-tab `OpenedTab` behavior
+    (`ClientAdvancementsState` ready).
   - Then implement the debug overlay (F3; large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Recipe-book overlay shell for the vanilla
@@ -1389,8 +1391,18 @@ When an agent does any of the following, update this file in the same slice:
     recipe-book x, disables underlying slot hover/click commands while narrow,
     and queues `RecipeBookChangeSettingsCommand { open: false }` on narrow
     Escape or place.
+  - Done 2026-07-08 — Advancement screen local open/close shell. Vanilla
+    anchors: `Minecraft.handleKeybinds` opens `AdvancementsScreen` from the
+    advancements key only when no other screen is active;
+    `AdvancementsScreen.keyPressed` closes on the same key; and
+    `AdvancementsScreen.removed` sends
+    `ServerboundSeenAdvancementsPacket.closedScreen()`. bbb now tracks a
+    canonical local advancement screen bit in `ClientUiState`, opens it from
+    `L` only on the gameplay key path, releases active input on open, treats it
+    as a cursor-owning screen in the runtime/main loop, and closes it with
+    Escape or `L` while queueing `SeenAdvancements::ClosedScreen`.
   - Boundary: recipe-book overlay polish is live, including narrow-screen
-    overlap. The
+    overlap, and the advancement screen local open/close shell is live. The
     filter toggle, search text,
     search cursor/selection projection, selected-tab, first crafting
     recipe-button shell, crafting category/page states, primary recipe
@@ -1406,8 +1418,8 @@ When an agent does any of the following, update this file in the same slice:
     right-click multi-recipe picker baseline, and overlay scaled ingredient
     mini-grid plus composite SlotDisplay ingredient expansion, craftability
     retry guard, and animated-tab fake-item y-scaling are live. The
-    remaining open surfaces in this ledger row are the advancement screen and
-    debug overlay.
+    remaining open surfaces in this ledger row are the advancement screen
+    visual/tab/tree pass and debug overlay.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

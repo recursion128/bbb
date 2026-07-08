@@ -2069,6 +2069,17 @@
   `RecipeBookChangeSettingsCommand { open: false }`。recipe-book overlay
   polish 队列清空；剩余 P2 screen/HUD 队列转入 advancement screen 与 debug
   overlay。
+- [x] advancement screen local open/close shell（P2 HUD/input/runtime slice，
+  2026-07-08）：依据 `Minecraft.handleKeybinds` 仅在无 active screen 时由
+  advancements key 打开 `AdvancementsScreen`、`AdvancementsScreen.keyPressed`
+  用同一 key 关闭、`AdvancementsScreen.removed` 发送
+  `ServerboundSeenAdvancementsPacket.closedScreen()`；world 现在用
+  `ClientUiState.current_advancements_screen` 记录本地 screen，book/container/
+  sign/dialog 会清掉它，native 输入在 gameplay 路径用 `L` 打开、screen 内
+  用 Escape/`L` 关闭并发送 `SeenAdvancements::ClosedScreen`，main/runtime
+  把该 screen 纳入 cursor-owning 与 input-screen-open 判定。剩余：
+  advancement window/tab/tree 渲染与 selected-tab `OpenedTab` 行为，以及 debug
+  overlay。
 
 ## P1-4：GUI Lighting Surface / Entity-In-UI
 

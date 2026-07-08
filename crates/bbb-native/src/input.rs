@@ -5,7 +5,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
     ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
-    SignUpdate,
+    SeenAdvancements, SignUpdate,
 };
 use bbb_world::{BlockPos, LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -635,6 +635,46 @@ fn handle_book_screen_key(world: &mut WorldStore, code: KeyCode, pressed: bool) 
     true
 }
 
+fn handle_advancements_screen_key(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+    pressed: bool,
+) -> bool {
+    if !world.advancements_screen_is_open() {
+        return false;
+    }
+    if pressed && matches!(code, KeyCode::Escape | KeyCode::KeyL) {
+        close_advancements_screen_and_queue(input, counters, world, net_commands);
+    }
+    true
+}
+
+fn open_advancements_screen(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if world.open_advancements_screen() {
+        release_active_input(input, world, counters, net_commands);
+    }
+}
+
+fn close_advancements_screen_and_queue(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if world.close_advancements_screen() {
+        release_active_input(input, world, counters, net_commands);
+        queue_seen_advancements_command(counters, net_commands, SeenAdvancements::ClosedScreen);
+    }
+}
+
 pub(crate) fn handle_book_screen_mouse_input(
     world: &mut WorldStore,
     button: MouseButton,
@@ -767,6 +807,14 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if handle_advancements_screen_key(input, counters, world, net_commands, code, pressed) {
+        return;
+    }
+
+    if world.current_dialog().is_some() {
+        return;
+    }
+
     if world.local_player_is_dead() {
         if pressed && matches!(code, KeyCode::Enter | KeyCode::Space) {
             queue_perform_respawn_command(counters, net_commands);
@@ -868,6 +916,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
                 } else {
                     world.open_local_inventory();
                 }
+                return;
+            }
+            KeyCode::KeyL => {
+                open_advancements_screen(input, counters, world, net_commands);
                 return;
             }
             KeyCode::KeyT => {
@@ -1045,7 +1097,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
-    if world.current_book().is_some() {
+    if world.current_dialog().is_some()
+        || world.current_book().is_some()
+        || world.advancements_screen_is_open()
+    {
         return;
     }
 

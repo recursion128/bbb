@@ -2495,6 +2495,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     world.open_container_id().is_some()
         || world.current_dialog().is_some()
         || world.current_book().is_some()
+        || world.advancements_screen_is_open()
         || input.sign_editor_is_active_or_pending(world)
 }
 

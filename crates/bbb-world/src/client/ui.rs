@@ -18,6 +18,8 @@ pub struct ClientUiState {
     #[serde(default)]
     pub current_book: Option<BookScreenState>,
     #[serde(default)]
+    pub current_advancements_screen: bool,
+    #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
     pub last_mount_screen: Option<MountScreenState>,
@@ -100,6 +102,7 @@ impl WorldStore {
     pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
         self.counters.show_dialog_packets += 1;
         self.client_ui.current_book = None;
+        self.client_ui.current_advancements_screen = false;
         self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
     }
 
@@ -113,6 +116,7 @@ impl WorldStore {
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
         self.client_ui.current_book = None;
+        self.client_ui.current_advancements_screen = false;
         let mount = MountScreenState {
             container_id: packet.container_id,
             inventory_columns: packet.inventory_columns,
@@ -128,6 +132,7 @@ impl WorldStore {
         self.client_ui.last_open_book = Some(OpenBookState { hand: hand.clone() });
         if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
             self.client_ui.current_dialog = None;
+            self.client_ui.current_advancements_screen = false;
             self.client_ui.current_book = Some(BookScreenState {
                 hand,
                 pages,
@@ -139,6 +144,7 @@ impl WorldStore {
     pub fn apply_open_sign_editor(&mut self, packet: ProtocolOpenSignEditor) {
         self.counters.open_sign_editor_packets += 1;
         self.client_ui.current_book = None;
+        self.client_ui.current_advancements_screen = false;
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
             pos: protocol_block_pos(packet.pos),
             is_front_text: packet.is_front_text,
@@ -176,6 +182,24 @@ impl WorldStore {
 
     pub fn current_book(&self) -> Option<&BookScreenState> {
         self.client_ui.current_book.as_ref()
+    }
+
+    pub fn advancements_screen_is_open(&self) -> bool {
+        self.client_ui.current_advancements_screen
+    }
+
+    pub fn open_advancements_screen(&mut self) -> bool {
+        let was_open = self.client_ui.current_advancements_screen;
+        self.client_ui.current_dialog = None;
+        self.client_ui.current_book = None;
+        self.client_ui.current_advancements_screen = true;
+        !was_open
+    }
+
+    pub fn close_advancements_screen(&mut self) -> bool {
+        let was_open = self.client_ui.current_advancements_screen;
+        self.client_ui.current_advancements_screen = false;
+        was_open
     }
 
     pub fn close_current_book(&mut self) -> bool {
@@ -498,6 +522,42 @@ mod tests {
                 current_page: 0,
             })
         );
+    }
+
+    #[test]
+    fn advancements_screen_open_close_tracks_local_screen() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.advancements_screen_is_open());
+        assert!(store.open_advancements_screen());
+        assert!(store.advancements_screen_is_open());
+        assert!(!store.open_advancements_screen());
+        assert!(store.close_advancements_screen());
+        assert!(!store.advancements_screen_is_open());
+        assert!(!store.close_advancements_screen());
+    }
+
+    #[test]
+    fn other_client_screens_replace_advancements_screen() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: written_book_stack(vec!["Page"]),
+        });
+        store.apply_open_book(ProtocolOpenBook {
+            hand: InteractionHand::MainHand,
+        });
+
+        assert!(!store.advancements_screen_is_open());
+        assert!(store.current_book().is_some());
+
+        assert!(store.open_advancements_screen());
+        assert!(store.current_book().is_none());
+        store.open_local_inventory();
+        assert!(!store.advancements_screen_is_open());
+        assert!(store.local_inventory_is_open());
     }
 
     #[test]

@@ -362,14 +362,21 @@ fn main() -> Result<()> {
                         return;
                     }
                     let container_open = world.open_container_id().is_some();
+                    let dialog_open = world.current_dialog().is_some();
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     let book_open = world.current_book().is_some();
+                    let advancements_open = world.advancements_screen_is_open();
+                    if dialog_open {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
                     if matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
                         && !input.command_entry_is_active()
                         && !sign_editor_open
                         && !book_open
+                        && !advancements_open
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
@@ -381,10 +388,15 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if sign_editor_open || book_open {
+                    if sign_editor_open || book_open || advancements_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
-                    if !cursor_captured && !container_open && !sign_editor_open && !book_open {
+                    if !cursor_captured
+                        && !container_open
+                        && !sign_editor_open
+                        && !book_open
+                        && !advancements_open
+                    {
                         return;
                     }
                     handle_key_input_with_item_runtime(
@@ -406,7 +418,8 @@ fn main() -> Result<()> {
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     let container_open = world.open_container_id().is_some();
                     let book_open = world.current_book().is_some();
-                    if world.current_dialog().is_some() || book_open {
+                    let advancements_open = world.advancements_screen_is_open();
+                    if world.current_dialog().is_some() || book_open || advancements_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -819,6 +832,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some()
         || world.current_dialog().is_some()
         || world.current_book().is_some()
+        || world.advancements_screen_is_open()
 }
 
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
@@ -900,6 +914,16 @@ mod tests {
             is_front_text: true,
         });
 
+        assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn runtime_wants_cursor_for_advancements_screen() {
+        let input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+
+        assert!(!runtime_wants_cursor(&input, &world));
+        assert!(world.open_advancements_screen());
         assert!(runtime_wants_cursor(&input, &world));
     }
 

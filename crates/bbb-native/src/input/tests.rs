@@ -4,16 +4,17 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser, CommandNode,
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
-    ContainerSetContent as ProtocolContainerSetContent, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, EquipmentSlot, EquipmentSlotUpdate, FilterMask, FilterMaskKind,
-    GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
+    ContainerSetContent as ProtocolContainerSetContent, DialogHolder,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, EquipmentSlot,
+    EquipmentSlotUpdate, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
+    HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin,
     PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
-    RenameItem, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetEquipment, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
-    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
+    SignedMessageBody, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
@@ -4610,6 +4611,137 @@ fn escape_key_without_open_container_does_not_queue_command() {
 }
 
 #[test]
+fn advancements_key_opens_local_screen_without_seen_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+
+    assert!(world.advancements_screen_is_open());
+    assert_eq!(counters.advancements_seen_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn advancements_key_is_consumed_while_container_is_open() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 9,
+        menu_type_id: 19,
+        title: "Merchant".to_string(),
+        title_styled: Vec::new(),
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.advancements_screen_is_open());
+    assert!(world.inventory().open_container.is_some());
+    assert_eq!(counters.advancements_seen_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn advancements_key_is_consumed_while_dialog_is_open() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.advancements_screen_is_open());
+    assert!(world.current_dialog().is_some());
+    assert_eq!(counters.advancements_seen_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn escape_key_closes_advancements_screen_and_queues_seen_packet() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_advancements_screen());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.advancements_screen_is_open());
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen)
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn advancements_key_closes_advancements_screen_and_queues_seen_packet() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_advancements_screen());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.advancements_screen_is_open());
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen)
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn movement_key_changes_queue_player_input_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
@@ -4772,7 +4904,6 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
         (KeyCode::F2, "key.screenshot"),
         (KeyCode::F5, "key.togglePerspective"),
         (KeyCode::F11, "key.fullscreen"),
-        (KeyCode::KeyL, "key.advancements"),
         (KeyCode::KeyG, "key.quickActions"),
         (KeyCode::F1, "key.toggleGui"),
         (KeyCode::F4, "key.toggleSpectatorShaderEffects"),
@@ -4796,6 +4927,15 @@ fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
         );
         assert!(!input.item_model_keybind_context().keybind_down(keybind));
     }
+
+    input.set_key_down(KeyCode::KeyL, true);
+    assert!(input
+        .item_model_keybind_context()
+        .keybind_down("key.advancements"));
+    input.set_key_down(KeyCode::KeyL, false);
+    assert!(!input
+        .item_model_keybind_context()
+        .keybind_down("key.advancements"));
 
     let mut world = WorldStore::new();
     handle_mouse_input_at_partial_tick(

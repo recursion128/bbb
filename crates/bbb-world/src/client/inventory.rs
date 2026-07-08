@@ -561,6 +561,7 @@ impl InventoryState {
     ) {
         counters.container_open_updates_received += 1;
         ui.current_book = None;
+        ui.current_advancements_screen = false;
         self.local_inventory_open = false;
         self.local_quick_craft.reset();
         let existing = self
@@ -684,6 +685,7 @@ impl InventoryState {
         mount: MountScreenState,
     ) {
         ui.current_book = None;
+        ui.current_advancements_screen = false;
         self.local_inventory_open = false;
         self.local_quick_craft.reset();
         let existing = self
@@ -808,6 +810,7 @@ impl InventoryState {
             return false;
         }
         ui.current_book = None;
+        ui.current_advancements_screen = false;
         self.sync_inventory_menu_slots_from_player_inventory();
         self.ensure_inventory_menu_slot_shape();
         let was_open = self.local_inventory_open;
