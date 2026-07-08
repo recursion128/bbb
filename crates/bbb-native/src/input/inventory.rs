@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    ContainerInput, ItemStackSummary, RecipeBookChangeSettingsCommand, RecipeBookType,
-    RecipeBookTypeSettings, RenameItem, SelectTradeCommand, SetBeacon,
+    ContainerInput, ItemStackSummary, RecipeBookChangeSettingsCommand, RecipeBookType, RenameItem,
+    SelectTradeCommand, SetBeacon,
 };
 #[cfg(test)]
 use bbb_world::ItemEquipmentSlot;
@@ -39,8 +39,10 @@ mod layout;
 pub(crate) use layout::local_inventory_slot_layouts;
 pub(crate) use layout::{
     inventory_screen_layout, inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
-    recipe_book_main_gui_offset, InventoryScreenBackground, InventoryScreenLayout,
-    InventorySlotLayout, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+    recipe_book_main_gui_offset, recipe_book_type_for_background, recipe_book_type_settings,
+    InventoryScreenBackground, InventoryScreenLayout, InventorySlotLayout,
+    RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+    RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
@@ -341,6 +343,21 @@ pub(crate) fn handle_inventory_mouse_input(
         return true;
     }
     if button_num == 0
+        && maybe_queue_recipe_book_filter_click(
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0
         && maybe_queue_recipe_book_toggle_click(
             world,
             counters,
@@ -528,6 +545,33 @@ pub(crate) fn handle_inventory_mouse_input(
         request.input,
     );
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    true
+}
+
+fn maybe_queue_recipe_book_filter_click(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(book_type) =
+        recipe_book_filter_button_at_position(world, cursor_position, surface_size)
+    else {
+        return false;
+    };
+    let mut settings = recipe_book_type_settings(world, book_type);
+    settings.filtering = !settings.filtering;
+    world.set_local_recipe_book_type_settings(book_type, settings);
+    queue_recipe_book_change_settings_command(
+        counters,
+        net_commands,
+        RecipeBookChangeSettingsCommand {
+            book_type,
+            open: settings.open,
+            filtering: settings.filtering,
+        },
+    );
     true
 }
 
@@ -1716,31 +1760,28 @@ fn recipe_book_button_at_position(
     None
 }
 
-fn recipe_book_type_for_background(
-    background: InventoryScreenBackground,
-) -> Option<RecipeBookType> {
-    match background {
-        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
-            Some(RecipeBookType::Crafting)
-        }
-        InventoryScreenBackground::Furnace => Some(RecipeBookType::Furnace),
-        InventoryScreenBackground::BlastFurnace => Some(RecipeBookType::BlastFurnace),
-        InventoryScreenBackground::Smoker => Some(RecipeBookType::Smoker),
-        _ => None,
-    }
-}
-
-fn recipe_book_type_settings(
+fn recipe_book_filter_button_at_position(
     world: &WorldStore,
-    book_type: RecipeBookType,
-) -> RecipeBookTypeSettings {
-    let settings = &world.recipe_book().settings;
-    match book_type {
-        RecipeBookType::Crafting => settings.crafting,
-        RecipeBookType::Furnace => settings.furnace,
-        RecipeBookType::BlastFurnace => settings.blast_furnace,
-        RecipeBookType::Smoker => settings.smoker,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<RecipeBookType> {
+    let layout = inventory_screen_layout(world)?;
+    let book_type = recipe_book_type_for_background(layout.background)?;
+    if recipe_book_main_gui_offset(world, layout.background) == 0 {
+        return None;
     }
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x - f64::from(RECIPE_BOOK_FILTER_BUTTON_X);
+    let y = cursor.y - origin_y - f64::from(RECIPE_BOOK_FILTER_BUTTON_Y);
+    if x >= 0.0
+        && x < f64::from(RECIPE_BOOK_FILTER_BUTTON_WIDTH)
+        && y >= 0.0
+        && y < f64::from(RECIPE_BOOK_FILTER_BUTTON_HEIGHT)
+    {
+        return Some(book_type);
+    }
+    None
 }
 
 fn enchantment_button_at_position(

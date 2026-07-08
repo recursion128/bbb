@@ -102,6 +102,60 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         recipe_book_button_highlighted.height,
         &recipe_book_button_highlighted.rgba,
     )?;
+    let recipe_book_filter_enabled = hud_sprite(&sprites, "recipe_book/filter_enabled")?;
+    renderer.upload_hud_recipe_book_filter_enabled(
+        recipe_book_filter_enabled.width,
+        recipe_book_filter_enabled.height,
+        &recipe_book_filter_enabled.rgba,
+    )?;
+    let recipe_book_filter_disabled = hud_sprite(&sprites, "recipe_book/filter_disabled")?;
+    renderer.upload_hud_recipe_book_filter_disabled(
+        recipe_book_filter_disabled.width,
+        recipe_book_filter_disabled.height,
+        &recipe_book_filter_disabled.rgba,
+    )?;
+    let recipe_book_filter_enabled_highlighted =
+        hud_sprite(&sprites, "recipe_book/filter_enabled_highlighted")?;
+    renderer.upload_hud_recipe_book_filter_enabled_highlighted(
+        recipe_book_filter_enabled_highlighted.width,
+        recipe_book_filter_enabled_highlighted.height,
+        &recipe_book_filter_enabled_highlighted.rgba,
+    )?;
+    let recipe_book_filter_disabled_highlighted =
+        hud_sprite(&sprites, "recipe_book/filter_disabled_highlighted")?;
+    renderer.upload_hud_recipe_book_filter_disabled_highlighted(
+        recipe_book_filter_disabled_highlighted.width,
+        recipe_book_filter_disabled_highlighted.height,
+        &recipe_book_filter_disabled_highlighted.rgba,
+    )?;
+    let recipe_book_furnace_filter_enabled =
+        hud_sprite(&sprites, "recipe_book/furnace_filter_enabled")?;
+    renderer.upload_hud_recipe_book_furnace_filter_enabled(
+        recipe_book_furnace_filter_enabled.width,
+        recipe_book_furnace_filter_enabled.height,
+        &recipe_book_furnace_filter_enabled.rgba,
+    )?;
+    let recipe_book_furnace_filter_disabled =
+        hud_sprite(&sprites, "recipe_book/furnace_filter_disabled")?;
+    renderer.upload_hud_recipe_book_furnace_filter_disabled(
+        recipe_book_furnace_filter_disabled.width,
+        recipe_book_furnace_filter_disabled.height,
+        &recipe_book_furnace_filter_disabled.rgba,
+    )?;
+    let recipe_book_furnace_filter_enabled_highlighted =
+        hud_sprite(&sprites, "recipe_book/furnace_filter_enabled_highlighted")?;
+    renderer.upload_hud_recipe_book_furnace_filter_enabled_highlighted(
+        recipe_book_furnace_filter_enabled_highlighted.width,
+        recipe_book_furnace_filter_enabled_highlighted.height,
+        &recipe_book_furnace_filter_enabled_highlighted.rgba,
+    )?;
+    let recipe_book_furnace_filter_disabled_highlighted =
+        hud_sprite(&sprites, "recipe_book/furnace_filter_disabled_highlighted")?;
+    renderer.upload_hud_recipe_book_furnace_filter_disabled_highlighted(
+        recipe_book_furnace_filter_disabled_highlighted.width,
+        recipe_book_furnace_filter_disabled_highlighted.height,
+        &recipe_book_furnace_filter_disabled_highlighted.rgba,
+    )?;
     let cartography_table = gui_texture(
         roots,
         "textures/gui/container/cartography_table.png",

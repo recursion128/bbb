@@ -3731,6 +3731,76 @@ fn recipe_book_button_click_toggles_local_setting_and_queues_packet() {
 }
 
 #[test]
+fn recipe_book_filter_click_toggles_filtering_and_queues_packet() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CRAFTING_MENU_TYPE_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(591.0, 290.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert!(world.recipe_book().settings.crafting.open);
+    assert!(world.recipe_book().settings.crafting.filtering);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+            book_type: RecipeBookType::Crafting,
+            open: true,
+            filtering: true,
+        })
+    );
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(591.0, 290.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert!(world.recipe_book().settings.crafting.open);
+    assert!(!world.recipe_book().settings.crafting.filtering);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+            book_type: RecipeBookType::Crafting,
+            open: true,
+            filtering: false,
+        })
+    );
+}
+
+#[test]
 fn furnace_mouse_click_queues_pickup() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

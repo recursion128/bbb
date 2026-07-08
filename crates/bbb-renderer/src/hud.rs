@@ -527,6 +527,14 @@ pub enum HudInventoryBackgroundTexture {
     RecipeBook,
     RecipeBookButton,
     RecipeBookButtonHighlighted,
+    RecipeBookFilterEnabled,
+    RecipeBookFilterDisabled,
+    RecipeBookFilterEnabledHighlighted,
+    RecipeBookFilterDisabledHighlighted,
+    RecipeBookFurnaceFilterEnabled,
+    RecipeBookFurnaceFilterDisabled,
+    RecipeBookFurnaceFilterEnabledHighlighted,
+    RecipeBookFurnaceFilterDisabledHighlighted,
     BlastFurnace,
     BlastFurnaceLitProgress,
     BlastFurnaceBurnProgress,
@@ -1515,6 +1523,92 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_book_button_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_filter_enabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_filter_enabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_filter_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_filter_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_filter_enabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_filter_enabled_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_filter_disabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_filter_disabled_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_filter_enabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_filter_enabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_filter_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_filter_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_filter_enabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_filter_enabled_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_recipe_book_furnace_filter_disabled_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_book_furnace_filter_disabled_highlighted =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -3287,6 +3381,30 @@ impl Renderer {
             HudInventoryBackgroundTexture::RecipeBookButtonHighlighted => {
                 self.hud_recipe_book_button_highlighted.as_ref()
             }
+            HudInventoryBackgroundTexture::RecipeBookFilterEnabled => {
+                self.hud_recipe_book_filter_enabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFilterDisabled => {
+                self.hud_recipe_book_filter_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFilterEnabledHighlighted => {
+                self.hud_recipe_book_filter_enabled_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFilterDisabledHighlighted => {
+                self.hud_recipe_book_filter_disabled_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterEnabled => {
+                self.hud_recipe_book_furnace_filter_enabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabled => {
+                self.hud_recipe_book_furnace_filter_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterEnabledHighlighted => self
+                .hud_recipe_book_furnace_filter_enabled_highlighted
+                .as_ref(),
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabledHighlighted => self
+                .hud_recipe_book_furnace_filter_disabled_highlighted
+                .as_ref(),
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()
             }

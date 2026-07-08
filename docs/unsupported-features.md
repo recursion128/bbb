@@ -1060,8 +1060,8 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action (2026-07-05 entry audit; consume in this order):
   - Continue the recipe-book overlay after the completed shell and toggle
-    button: tabs, page recipe buttons, search/filter input, recipe placement,
-    and ghost recipe slots.
+    buttons: tabs, page recipe buttons, search input, recipe placement, and
+    ghost recipe slots.
   - Then implement the advancement screen (`ClientAdvancementsState` ready) and
     debug overlay (F3; large, low priority).
 - Evidence / boundary:
@@ -1093,11 +1093,22 @@ When an agent does any of the following, update this file in the same slice:
     toggles the matching `RecipeBookSettings` type while preserving
     `filtering`, and queues `RecipeBookChangeSettingsCommand` with the same
     values sent by vanilla `ServerboundRecipeBookChangeSettingsPacket`.
-  - Boundary: recipe-book tabs/page buttons, search/filter text input, recipe
+  - Done 2026-07-08 — Recipe-book filter toggle. Vanilla anchors:
+    `RecipeBookComponent.initVisuals` creates the filter `CycleButton` at
+    `(xo + 110, yo + 12)` with size 26x16 and sends updated settings after
+    `toggleFiltering`; `CraftingRecipeBookComponent` uses
+    `recipe_book/filter_{enabled,disabled}` plus highlighted variants, while
+    `FurnaceRecipeBookComponent` uses the `furnace_filter_*` sprites. bbb now
+    renders and highlights those sprites when the recipe book is open, locally
+    flips the matching `RecipeBookSettings.filtering` value while preserving
+    `open`, and queues `RecipeBookChangeSettingsCommand`.
+  - Boundary: recipe-book tabs/page buttons, search text input, recipe
     placement commands from clicks, tab notification animation, and ghost
-    recipe slot rendering remain open. The first shell models the non-narrow
-    layout; vanilla's narrow-screen overlap mode (`width < 379`) remains for
-    the input/render follow-up.
+    recipe slot rendering remain open. The filter toggle state is live, but
+    visible filtered recipe-grid contents wait for the page recipe button
+    implementation. The first shell models the non-narrow layout; vanilla's
+    narrow-screen overlap mode (`width < 379`) remains for the input/render
+    follow-up.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

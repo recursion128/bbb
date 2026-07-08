@@ -56,6 +56,10 @@ pub(crate) const RECIPE_BOOK_MAIN_GUI_X_OFFSET: i32 = 149;
 const RECIPE_BOOK_ORIGIN_WIDTH: i32 = 320;
 pub(crate) const RECIPE_BOOK_BUTTON_WIDTH: i32 = 20;
 pub(crate) const RECIPE_BOOK_BUTTON_HEIGHT: i32 = 18;
+pub(crate) const RECIPE_BOOK_FILTER_BUTTON_X: i32 = 110;
+pub(crate) const RECIPE_BOOK_FILTER_BUTTON_Y: i32 = 12;
+pub(crate) const RECIPE_BOOK_FILTER_BUTTON_WIDTH: i32 = 26;
+pub(crate) const RECIPE_BOOK_FILTER_BUTTON_HEIGHT: i32 = 16;
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
@@ -313,20 +317,41 @@ pub(crate) fn recipe_book_button_position(
     }
 }
 
+pub(crate) fn recipe_book_type_for_background(
+    background: InventoryScreenBackground,
+) -> Option<bbb_protocol::packets::RecipeBookType> {
+    match background {
+        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
+            Some(bbb_protocol::packets::RecipeBookType::Crafting)
+        }
+        InventoryScreenBackground::Furnace => Some(bbb_protocol::packets::RecipeBookType::Furnace),
+        InventoryScreenBackground::BlastFurnace => {
+            Some(bbb_protocol::packets::RecipeBookType::BlastFurnace)
+        }
+        InventoryScreenBackground::Smoker => Some(bbb_protocol::packets::RecipeBookType::Smoker),
+        _ => None,
+    }
+}
+
+pub(crate) fn recipe_book_type_settings(
+    world: &WorldStore,
+    book_type: bbb_protocol::packets::RecipeBookType,
+) -> bbb_protocol::packets::RecipeBookTypeSettings {
+    let settings = &world.recipe_book().settings;
+    match book_type {
+        bbb_protocol::packets::RecipeBookType::Crafting => settings.crafting,
+        bbb_protocol::packets::RecipeBookType::Furnace => settings.furnace,
+        bbb_protocol::packets::RecipeBookType::BlastFurnace => settings.blast_furnace,
+        bbb_protocol::packets::RecipeBookType::Smoker => settings.smoker,
+    }
+}
+
 fn recipe_book_is_open_for_background(
     world: &WorldStore,
     background: InventoryScreenBackground,
 ) -> bool {
-    let settings = &world.recipe_book().settings;
-    match background {
-        InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable => {
-            settings.crafting.open
-        }
-        InventoryScreenBackground::Furnace => settings.furnace.open,
-        InventoryScreenBackground::BlastFurnace => settings.blast_furnace.open,
-        InventoryScreenBackground::Smoker => settings.smoker.open,
-        _ => false,
-    }
+    recipe_book_type_for_background(background)
+        .is_some_and(|book_type| recipe_book_type_settings(world, book_type).open)
 }
 
 fn recipe_book_overlay_layout(

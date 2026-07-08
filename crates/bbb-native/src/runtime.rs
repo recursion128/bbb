@@ -70,9 +70,11 @@ use crate::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout,
         inventory_screen_selected_hotbar_slot_id, recipe_book_button_position,
-        recipe_book_main_gui_offset, release_active_input, sync_beacon_effect_selection_state,
-        sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        InventoryScreenBackground, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+        recipe_book_main_gui_offset, recipe_book_type_for_background, recipe_book_type_settings,
+        release_active_input, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+        sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
+        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
@@ -2639,6 +2641,11 @@ fn hud_inventory_screen_with_local_state(
     ) {
         background_layers.push(layer);
     }
+    if let Some(layer) =
+        hud_recipe_book_filter_button_layer(world, layout.background, local_state.cursor_position)
+    {
+        background_layers.push(layer);
+    }
     let floating_items = hud_inventory_floating_items(
         world,
         item_runtime,
@@ -2715,6 +2722,60 @@ fn hud_recipe_book_button_layer(
         [0.0, 0.0],
         [1.0, 1.0],
     ))
+}
+
+fn hud_recipe_book_filter_button_layer(
+    world: &WorldStore,
+    background: InventoryScreenBackground,
+    cursor_position: Option<(i32, i32)>,
+) -> Option<HudInventoryBackgroundLayer> {
+    let book_type = recipe_book_type_for_background(background)?;
+    if recipe_book_main_gui_offset(world, background) == 0 {
+        return None;
+    }
+    let filtering = recipe_book_type_settings(world, book_type).filtering;
+    let highlighted = cursor_position.is_some_and(|(cursor_x, cursor_y)| {
+        cursor_x >= RECIPE_BOOK_FILTER_BUTTON_X
+            && cursor_x < RECIPE_BOOK_FILTER_BUTTON_X + RECIPE_BOOK_FILTER_BUTTON_WIDTH
+            && cursor_y >= RECIPE_BOOK_FILTER_BUTTON_Y
+            && cursor_y < RECIPE_BOOK_FILTER_BUTTON_Y + RECIPE_BOOK_FILTER_BUTTON_HEIGHT
+    });
+    Some(hud_inventory_background_layer(
+        hud_recipe_book_filter_texture(background, filtering, highlighted),
+        RECIPE_BOOK_FILTER_BUTTON_X,
+        RECIPE_BOOK_FILTER_BUTTON_Y,
+        u32::try_from(RECIPE_BOOK_FILTER_BUTTON_WIDTH).unwrap_or_default(),
+        u32::try_from(RECIPE_BOOK_FILTER_BUTTON_HEIGHT).unwrap_or_default(),
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ))
+}
+
+fn hud_recipe_book_filter_texture(
+    background: InventoryScreenBackground,
+    filtering: bool,
+    highlighted: bool,
+) -> HudInventoryBackgroundTexture {
+    let furnace_filter = matches!(
+        background,
+        InventoryScreenBackground::Furnace
+            | InventoryScreenBackground::BlastFurnace
+            | InventoryScreenBackground::Smoker
+    );
+    match (furnace_filter, filtering, highlighted) {
+        (false, true, false) => HudInventoryBackgroundTexture::RecipeBookFilterEnabled,
+        (false, false, false) => HudInventoryBackgroundTexture::RecipeBookFilterDisabled,
+        (false, true, true) => HudInventoryBackgroundTexture::RecipeBookFilterEnabledHighlighted,
+        (false, false, true) => HudInventoryBackgroundTexture::RecipeBookFilterDisabledHighlighted,
+        (true, true, false) => HudInventoryBackgroundTexture::RecipeBookFurnaceFilterEnabled,
+        (true, false, false) => HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabled,
+        (true, true, true) => {
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterEnabledHighlighted
+        }
+        (true, false, true) => {
+            HudInventoryBackgroundTexture::RecipeBookFurnaceFilterDisabledHighlighted
+        }
+    }
 }
 
 fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) {
