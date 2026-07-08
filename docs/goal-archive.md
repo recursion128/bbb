@@ -5199,6 +5199,16 @@
   vsync 配置。剩余：FPS/TPS/network charts 实际绘制、完整 debug entry
   列表、lightmap preview、entity hitbox/chunk-border rendering、3D
   crosshair、其它 F3 modifier combos。
+- [x] debug overlay F3+4 lightmap preview rendering（P2 HUD/runtime/renderer
+  slice，2026-07-08）：依据 `DebugScreenOverlay.showLightmapTexture` 的
+  overlay-visible gate，以及其右下角 `x = guiWidth - 64 - 2`、
+  `y = guiHeight - 64 - 2`、66x66 黑色 border、64x64
+  `GameRenderer.levelLightmap()` nearest blit 和 `v=1 -> 0` 翻转 UV。native
+  现在把 F3+4 状态投影到 `HudDebugOverlay.show_lightmap_preview`；renderer 在
+  HUD pass 中先画同位置黑边，再用 HUD-layout bind group + nearest sampler
+  blit renderer-owned dynamic lightmap texture。剩余：FPS/TPS/network charts
+  实际绘制、完整 debug entry 列表、entity hitbox/chunk-border rendering、3D
+  crosshair、其它 F3 modifier combos。
 - [x] debug overlay F3+N/F3+F4 no-permission feedback paths（P2
   HUD/input/runtime slice，2026-07-08）：依据
   `KeyboardHandler.handleDebugKeys` 对 `keyDebugSpectate` / `keyDebugSwitchGameMode`

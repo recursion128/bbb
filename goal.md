@@ -294,10 +294,10 @@ Screen Render Surfaces" 条目）：
   option toggle、F3+H advanced tooltip consumption、F3+V version debug chat
   action、F3+A/B/G/H/N/P/F4 local debug feedback、F3+F6 debug-options edit
   help keybind、default GAME_VERSION entry shape、default TPS entry shell、
-  default FPS entry shell 已完成；
-  剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、lightmap
-  preview 实际绘制、entity hitbox/chunk-border 实际绘制、advanced tooltip
-  full parity/持久化、3D crosshair 与其它 F3 组合键，低优先）。
+  default FPS entry shell、F3+4 lightmap preview 实际绘制已完成；
+  剩余完整 debug entry 列表、FPS/TPS/network charts 实际绘制、entity
+  hitbox/chunk-border 实际绘制、advanced tooltip full parity/持久化、3D
+  crosshair 与其它 F3 组合键，低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
 结果尽量用 deterministic screenshot/readback 验证。

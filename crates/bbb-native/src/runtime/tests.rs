@@ -1082,6 +1082,45 @@ fn hud_debug_overlay_help_lines_reflect_chart_toggle_state() {
     assert!(overlay
         .left_lines
         .contains(&"[F3+3] Network hidden; [F3+4] Lightmap hidden".to_string()));
+    assert!(!overlay.show_lightmap_preview);
+}
+
+#[test]
+fn hud_debug_overlay_projects_lightmap_preview_toggle_state() {
+    let world = WorldStore::new();
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Digit4),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        0,
+    )
+    .expect("lightmap toggle should force the debug overlay visible");
+
+    assert!(overlay.show_lightmap_preview);
+    assert!(overlay
+        .left_lines
+        .contains(&"[F3+3] Network hidden; [F3+4] Lightmap visible".to_string()));
 }
 
 #[test]

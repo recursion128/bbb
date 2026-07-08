@@ -2845,6 +2845,7 @@ fn hud_debug_overlay(
     Some(HudDebugOverlay {
         left_lines,
         right_lines: hud_debug_right_lines(surface_size),
+        show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
 }
 

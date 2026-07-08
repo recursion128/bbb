@@ -259,6 +259,8 @@ pub struct Renderer {
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
+    pub(super) lightmap_hud_bind_group: wgpu::BindGroup,
+    pub(super) _lightmap_hud_sampler: wgpu::Sampler,
     pub(super) entity_outline_sobel_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_horizontal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_vertical_pipeline: wgpu::RenderPipeline,
@@ -854,6 +856,30 @@ impl Renderer {
             LightmapEnvironment::default(),
         );
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
+        let lightmap_hud_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("bbb-lightmap-hud-preview-sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        let lightmap_hud_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bbb-lightmap-hud-preview-bind-group"),
+            layout: &hud_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&lightmap.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&lightmap_hud_sampler),
+                },
+            ],
+        });
         let camera_buffer = create_camera_buffer(&device);
         let gui_item_camera_buffer = create_camera_buffer(&device);
         let terrain_atlas = create_terrain_atlas_gpu(&device, &queue, 1, 1, &[255, 255, 255, 255])?;
@@ -1271,6 +1297,8 @@ impl Renderer {
             selection_pipeline,
             lightmap_pipeline,
             lightmap,
+            lightmap_hud_bind_group,
+            _lightmap_hud_sampler: lightmap_hud_sampler,
             entity_outline_sobel_pipeline,
             entity_outline_blur_horizontal_pipeline,
             entity_outline_blur_vertical_pipeline,

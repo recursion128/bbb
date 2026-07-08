@@ -2453,6 +2453,16 @@ impl Renderer {
                     pass.draw(*start..*end, 0..1);
                     draw_calls += 1;
                 }
+                crate::hud::HudDrawCommand::LightmapPreview { start, end } => {
+                    if active_pipeline != Some(HudActivePipeline::Sprite) {
+                        pass.set_pipeline(&self.hud_pipeline);
+                        active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, &self.lightmap_hud_bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
             }
         }
         (draw_calls, pipeline_switches)
@@ -3557,6 +3567,32 @@ mod tests {
             !source[glint_arm..draw].contains("lightmap.sample_bind_group"),
             "vanilla core/glint does not bind LightTexture for GUI item glint"
         );
+    }
+
+    #[test]
+    fn hud_debug_lightmap_preview_draws_renderer_owned_lightmap_texture() {
+        let source = include_str!("render.rs");
+        let helper = source
+            .find("fn draw_hud_commands")
+            .expect("HUD command draw helper exists");
+        let preview_arm = source[helper..]
+            .find("HudDrawCommand::LightmapPreview")
+            .map(|index| helper + index)
+            .expect("debug lightmap preview commands are handled");
+        let pipeline = source[preview_arm..]
+            .find("pass.set_pipeline(&self.hud_pipeline)")
+            .map(|index| preview_arm + index)
+            .expect("lightmap preview uses the HUD sprite pipeline");
+        let bind = source[pipeline..]
+            .find("pass.set_bind_group(0, &self.lightmap_hud_bind_group, &[])")
+            .map(|index| pipeline + index)
+            .expect("lightmap preview binds the renderer-owned lightmap");
+        let draw = source[bind..]
+            .find("pass.draw(*start..*end, 0..1)")
+            .map(|index| bind + index)
+            .expect("lightmap preview draws after binding the lightmap texture");
+
+        assert!(preview_arm < pipeline && pipeline < bind && bind < draw);
     }
 
     #[test]

@@ -1093,12 +1093,24 @@ When an agent does any of the following, update this file in the same slice:
     option toggle, F3+V version debug chat action, F3+A/B/G/H/N/P/F4 local
     debug feedback, the F3+F6 debug-options edit help keybind, the default
     GAME_VERSION entry shape, the default TPS entry shell, and the default
-    FPS entry shell: the complete vanilla debug entry list, actual
-    FPS/TPS/network chart rendering, actual lightmap preview rendering, actual
-    entity hitbox/chunk-border rendering, advanced tooltip full
-    parity/persistence, 3D crosshair, and the other F3 modifier combos remain
-    (large, low priority).
+    FPS entry shell, and actual F3+4 lightmap preview rendering: the complete
+    vanilla debug entry list, actual FPS/TPS/network chart rendering, actual
+    entity hitbox/chunk-border rendering, advanced tooltip full parity/
+    persistence, 3D crosshair, and the other F3 modifier combos remain (large,
+    low priority).
 - Evidence / boundary:
+  - Done 2026-07-08 — Debug overlay F3+4 lightmap preview rendering. Vanilla
+    anchors: `DebugScreenOverlay.showLightmapTexture` requires the debug
+    overlay to be visible and `renderLightmapTexture` enabled; the render path
+    fills a 66x66 black border at the bottom-right corner, then blits the
+    64x64 `GameRenderer.levelLightmap()` texture at `guiWidth - 64 - 2`,
+    `guiHeight - 64 - 2` with clamp-to-edge nearest sampling and flipped
+    vertical UVs (`v=1 -> 0`). bbb now carries the F3+4 state into
+    `HudDebugOverlay`, draws the same border and preview rect in the HUD pass,
+    samples the renderer-owned dynamic lightmap texture through a HUD-layout
+    nearest sampler, and keeps the vanilla mutual exclusion with FPS/network
+    charts from the existing input state. Boundary: FPS/TPS/network chart
+    sample storage/rendering remains open.
   - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
     The local advancement screen now has open/close, empty window, Done button,
     initial root-tab selection, root tab rendering/click selection, selected

@@ -107,6 +107,7 @@ pub struct HudTitleText {
 pub struct HudDebugOverlay {
     pub left_lines: Vec<String>,
     pub right_lines: Vec<String>,
+    pub show_lightmap_preview: bool,
 }
 
 /// One frame's food-bar effect inputs (vanilla `Gui.extractFood`, Gui.java:939-971):
@@ -356,6 +357,9 @@ const HUD_DEBUG_OVERLAY_BACKGROUND_TINT: [f32; 4] =
 const HUD_DEBUG_OVERLAY_MARGIN_X: i32 = 2;
 const HUD_DEBUG_OVERLAY_MARGIN_Y: i32 = 2;
 const HUD_DEBUG_OVERLAY_LINE_HEIGHT: i32 = 9;
+const HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE: u32 = 64;
+const HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN: i32 = 2;
+const HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER: i32 = 1;
 
 /// Which food icon a draw needs, so `hud_food_variant_sprite` can pick the base
 /// or the Hunger-effect variant of that shape.
@@ -1159,6 +1163,9 @@ pub(super) enum HudDrawCommand<'a> {
         start: u32,
         end: u32,
     },
+    /// Vanilla F3+4 lightmap preview: blits the renderer-owned level lightmap
+    /// texture into the bottom-right HUD corner after debug text.
+    LightmapPreview { start: u32, end: u32 },
 }
 
 pub(super) struct HudDraws<'a> {
@@ -3982,6 +3989,14 @@ impl Renderer {
                 surface_size,
                 debug_overlay,
             );
+            if debug_overlay.show_lightmap_preview {
+                push_hud_debug_lightmap_preview(
+                    &mut vertices,
+                    &mut post_gui_item_commands,
+                    &self.hud_black_pixel,
+                    surface_size,
+                );
+            }
         }
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
@@ -6083,6 +6098,27 @@ fn push_hud_debug_overlay_column_text<'a>(
     }
 }
 
+fn push_hud_debug_lightmap_preview<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    black_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+) {
+    let border = hud_debug_lightmap_preview_border_rect(surface_size);
+    push_hud_draw(vertices, commands, black_pixel, surface_size, border);
+
+    let preview = hud_debug_lightmap_preview_rect(surface_size);
+    let start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_quad_vertices(
+        surface_size,
+        preview,
+        hud_debug_lightmap_preview_uv(),
+        HUD_TINT_WHITE,
+    ));
+    let end = vertices.len() as u32;
+    commands.push(HudDrawCommand::LightmapPreview { start, end });
+}
+
 fn hud_debug_overlay_line_origin(
     surface_size: PhysicalSize<u32>,
     width: u32,
@@ -6103,6 +6139,45 @@ fn hud_debug_overlay_line_origin(
             .saturating_mul(HUD_DEBUG_OVERLAY_LINE_HEIGHT),
     );
     (left, top)
+}
+
+fn hud_debug_lightmap_preview_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    let (x, y) = hud_debug_lightmap_preview_origin(surface_size);
+    absolute_hud_rect(
+        x as f32,
+        y as f32,
+        HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE,
+        HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE,
+    )
+}
+
+fn hud_debug_lightmap_preview_border_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    let (x, y) = hud_debug_lightmap_preview_origin(surface_size);
+    absolute_hud_rect(
+        (x - HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER) as f32,
+        (y - HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER) as f32,
+        HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE + (HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER as u32 * 2),
+        HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE + (HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER as u32 * 2),
+    )
+}
+
+fn hud_debug_lightmap_preview_origin(surface_size: PhysicalSize<u32>) -> (i32, i32) {
+    let x = i32::try_from(surface_size.width)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE as i32)
+        .saturating_sub(HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN);
+    let y = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE as i32)
+        .saturating_sub(HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN);
+    (x, y)
+}
+
+fn hud_debug_lightmap_preview_uv() -> HudUvRect {
+    HudUvRect {
+        min: [0.0, 1.0],
+        max: [1.0, 0.0],
+    }
 }
 
 /// Resolved main-pass colour of a styled run: the run's `Style` colour over
@@ -6865,10 +6940,13 @@ fn sanitize_hud_inventory_tooltip_line(
 fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverlay> {
     let left_lines = sanitize_hud_debug_overlay_lines(overlay.left_lines);
     let right_lines = sanitize_hud_debug_overlay_lines(overlay.right_lines);
-    (!left_lines.is_empty() || !right_lines.is_empty()).then_some(HudDebugOverlay {
-        left_lines,
-        right_lines,
-    })
+    (!left_lines.is_empty() || !right_lines.is_empty() || overlay.show_lightmap_preview).then_some(
+        HudDebugOverlay {
+            left_lines,
+            right_lines,
+            show_lightmap_preview: overlay.show_lightmap_preview,
+        },
+    )
 }
 
 fn sanitize_hud_debug_overlay_lines(lines: Vec<String>) -> Vec<String> {
@@ -7715,11 +7793,44 @@ mod tests {
         let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
             left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
             right_lines: vec!["Right".to_string()],
+            show_lightmap_preview: false,
         })
         .expect("non-empty debug overlay survives sanitize");
 
         assert_eq!(overlay.left_lines, vec!["AB".to_string(), "".to_string()]);
         assert_eq!(overlay.right_lines, vec!["Right".to_string()]);
+        assert!(!overlay.show_lightmap_preview);
+
+        let preview_only = sanitize_hud_debug_overlay(HudDebugOverlay {
+            show_lightmap_preview: true,
+            ..HudDebugOverlay::default()
+        })
+        .expect("lightmap preview survives without text lines");
+        assert!(preview_only.show_lightmap_preview);
+    }
+
+    #[test]
+    fn hud_debug_lightmap_preview_rect_matches_vanilla_bottom_right() {
+        let surface = PhysicalSize::new(320, 240);
+        assert_eq!(
+            hud_debug_lightmap_preview_rect(surface),
+            absolute_hud_rect(254.0, 174.0, 64, 64)
+        );
+        assert_eq!(
+            hud_debug_lightmap_preview_border_rect(surface),
+            absolute_hud_rect(253.0, 173.0, 66, 66)
+        );
+    }
+
+    #[test]
+    fn hud_debug_lightmap_preview_uv_matches_vanilla_flipped_blit() {
+        assert_eq!(
+            hud_debug_lightmap_preview_uv(),
+            HudUvRect {
+                min: [0.0, 1.0],
+                max: [1.0, 0.0],
+            }
+        );
     }
 
     #[test]
