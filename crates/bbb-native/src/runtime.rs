@@ -1887,15 +1887,19 @@ pub(crate) fn pump_network_and_terrain(
         water_vision,
         hide_lightning_flash,
     );
-    let fog_environment = fog_environment_for_world_at_camera(
-        world,
-        terrain_textures,
-        camera_pose_from_world(world),
-        render_distance_chunks,
-        water_vision,
-        rain_fog_multiplier,
-        hide_lightning_flash,
-    );
+    let fog_environment = if input.debug_fog_enabled() {
+        fog_environment_for_world_at_camera(
+            world,
+            terrain_textures,
+            camera_pose_from_world(world),
+            render_distance_chunks,
+            water_vision,
+            rain_fog_multiplier,
+            hide_lightning_flash,
+        )
+    } else {
+        FogEnvironment::disabled()
+    };
     let sky_environment = sky_environment_for_world_at_camera(
         world,
         terrain_textures,
@@ -3241,7 +3245,7 @@ fn hud_debug_overlay_at_partial_tick(
         left_lines.push(hud_debug_chunk_render_stats_line(
             renderer_counters,
             render_distance_chunks,
-            false,
+            input.debug_smart_cull_enabled(),
         ));
     }
     if entry_enabled(DebugScreenEntryId::ChunkGenerationStats) {

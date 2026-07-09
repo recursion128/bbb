@@ -706,7 +706,7 @@ fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
         .find("let clear_color = clear_color_for_world_at_camera_with_water_vision(")
         .expect("pump should extract the clear color");
     let fog_extract = source
-        .find("let fog_environment = fog_environment_for_world_at_camera(")
+        .find("let fog_environment = if input.debug_fog_enabled()")
         .expect("pump should extract the fog environment");
     let sky_extract = source
         .find("let sky_environment = sky_environment_for_world_at_camera(")
@@ -1746,7 +1746,7 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
 
     assert_eq!(
         overlay.left_lines,
-        vec!["C: 7/10 D: 12, pC: 003, aB: 00".to_string()]
+        vec!["C: 7/10 (s) D: 12, pC: 003, aB: 00".to_string()]
     );
     assert!(overlay.right_lines.is_empty());
 }

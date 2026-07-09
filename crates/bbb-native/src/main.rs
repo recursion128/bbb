@@ -66,7 +66,8 @@ use input::{
     handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
     handle_text_input_with_item_runtime, queue_debug_recreate_server_query_request,
-    release_active_input, ClientInputState, DebugClipboard, DebugProfilingToggleRequest,
+    release_active_input, ClientInputState, DebugClipboard, DebugFeatureCountRequest,
+    DebugFrustumRequest, DebugProfilingToggleRequest,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -325,6 +326,8 @@ fn main() -> Result<()> {
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );
+    input.set_debug_hotkeys_enabled(args.debug_hotkeys);
+    input.set_debug_feature_count_enabled(args.debug_feature_count);
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 
@@ -534,6 +537,43 @@ fn main() -> Result<()> {
                                 navigation_requests = profiler_chart_navigation_requests.len(),
                                 last_digit,
                                 "profiler chart navigation requested; native profiler results are not implemented"
+                            );
+                        }
+                        let debug_frustum_requests = input.take_debug_frustum_requests();
+                        if !debug_frustum_requests.is_empty() {
+                            let capture_requests = debug_frustum_requests
+                                .iter()
+                                .filter(|request| matches!(request, DebugFrustumRequest::Capture))
+                                .count();
+                            let kill_requests = debug_frustum_requests
+                                .iter()
+                                .filter(|request| matches!(request, DebugFrustumRequest::Kill))
+                                .count();
+                            tracing::info!(
+                                debug_frustum_requests = debug_frustum_requests.len(),
+                                capture_requests,
+                                kill_requests,
+                                "debug frustum hotkey requested; native captured frustum is not implemented"
+                            );
+                        }
+                        let debug_feature_count_requests =
+                            input.take_debug_feature_count_requests();
+                        if !debug_feature_count_requests.is_empty() {
+                            let log_requests = debug_feature_count_requests
+                                .iter()
+                                .filter(|request| matches!(request, DebugFeatureCountRequest::Log))
+                                .count();
+                            let clear_requests = debug_feature_count_requests
+                                .iter()
+                                .filter(|request| {
+                                    matches!(request, DebugFeatureCountRequest::Clear)
+                                })
+                                .count();
+                            tracing::info!(
+                                debug_feature_count_requests = debug_feature_count_requests.len(),
+                                log_requests,
+                                clear_requests,
+                                "feature-count debug hotkey requested; native FeatureCountTracker is not implemented"
                             );
                         }
                         let debug_options_screen_requests =

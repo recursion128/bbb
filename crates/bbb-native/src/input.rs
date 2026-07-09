@@ -168,6 +168,18 @@ pub(crate) struct DebugPauseScreenState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugFrustumRequest {
+    Capture,
+    Kill,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugFeatureCountRequest {
+    Log,
+    Clear,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DebugProfilingToggleRequest {
     Start,
     Stop,
@@ -253,6 +265,13 @@ pub(crate) struct ClientInputState {
     debug_lightmap_texture_visible: bool,
     debug_advanced_item_tooltips: bool,
     debug_show_local_server_entity_hit_boxes: bool,
+    debug_hotkeys_enabled: bool,
+    debug_feature_count_enabled: bool,
+    debug_fog_enabled: bool,
+    debug_smart_cull_enabled: bool,
+    debug_wireframe_enabled: bool,
+    debug_frustum_requests: Vec<DebugFrustumRequest>,
+    debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
     debug_pause_on_lost_focus: bool,
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
@@ -402,6 +421,8 @@ impl ClientInputState {
         Self {
             focused,
             debug_pause_on_lost_focus: true,
+            debug_fog_enabled: true,
+            debug_smart_cull_enabled: true,
             debug_query_transaction_id: -1,
             ..Self::default()
         }
@@ -766,6 +787,22 @@ impl ClientInputState {
         self.debug_show_local_server_entity_hit_boxes = enabled;
     }
 
+    pub(crate) fn set_debug_hotkeys_enabled(&mut self, enabled: bool) {
+        self.debug_hotkeys_enabled = enabled;
+    }
+
+    pub(crate) fn set_debug_feature_count_enabled(&mut self, enabled: bool) {
+        self.debug_feature_count_enabled = enabled;
+    }
+
+    pub(crate) fn debug_fog_enabled(&self) -> bool {
+        self.debug_fog_enabled
+    }
+
+    pub(crate) fn debug_smart_cull_enabled(&self) -> bool {
+        self.debug_smart_cull_enabled
+    }
+
     pub(crate) fn debug_pause_on_lost_focus(&self) -> bool {
         self.debug_pause_on_lost_focus
     }
@@ -794,6 +831,14 @@ impl ClientInputState {
 
     pub(crate) fn take_debug_pause_without_menu_requests(&mut self) -> u32 {
         std::mem::take(&mut self.debug_pause_without_menu_requests)
+    }
+
+    pub(crate) fn take_debug_frustum_requests(&mut self) -> Vec<DebugFrustumRequest> {
+        std::mem::take(&mut self.debug_frustum_requests)
+    }
+
+    pub(crate) fn take_debug_feature_count_requests(&mut self) -> Vec<DebugFeatureCountRequest> {
+        std::mem::take(&mut self.debug_feature_count_requests)
     }
 
     pub(crate) fn open_debug_pause_screen_without_menu(&mut self) {
@@ -1060,6 +1105,13 @@ impl ClientInputState {
         mut clipboard: Option<&mut dyn DebugClipboard>,
         net_context: Option<&mut DebugNetContext<'_>>,
     ) -> bool {
+        if self.debug_hotkeys_enabled && self.handle_shared_debug_hotkey(code, world.as_deref_mut())
+        {
+            return true;
+        }
+        if self.debug_feature_count_enabled && self.handle_debug_feature_count_key(code) {
+            return true;
+        }
         match code {
             KeyCode::Escape => {
                 self.debug_pause_without_menu_requests =
@@ -1286,6 +1338,135 @@ impl ClientInputState {
                 }
                 // Vanilla shares C between copy-location and the manual crash key,
                 // so F3+C still counts as a debug action even when no copy happens.
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn handle_shared_debug_hotkey(
+        &mut self,
+        code: KeyCode,
+        mut world: Option<&mut WorldStore>,
+    ) -> bool {
+        match code {
+            KeyCode::KeyE => {
+                let Some(world) = world.as_deref_mut() else {
+                    return false;
+                };
+                if world.local_player_id().is_none() {
+                    return false;
+                }
+                let enabled =
+                    self.toggle_debug_screen_entry_status(DebugScreenEntryId::ChunkSectionPaths);
+                push_debug_feedback_chat_message(
+                    Some(world),
+                    if enabled {
+                        "SectionPath: shown"
+                    } else {
+                        "SectionPath: hidden"
+                    },
+                );
+                true
+            }
+            KeyCode::KeyF => {
+                self.debug_fog_enabled = !self.debug_fog_enabled;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_fog_enabled {
+                        "Fog: enabled"
+                    } else {
+                        "Fog: disabled"
+                    },
+                );
+                true
+            }
+            KeyCode::KeyL => {
+                self.debug_smart_cull_enabled = !self.debug_smart_cull_enabled;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_smart_cull_enabled {
+                        "SmartCull: enabled"
+                    } else {
+                        "SmartCull: disabled"
+                    },
+                );
+                true
+            }
+            KeyCode::KeyO => {
+                let Some(world) = world.as_deref_mut() else {
+                    return false;
+                };
+                if world.local_player_id().is_none() {
+                    return false;
+                }
+                let enabled =
+                    self.toggle_debug_screen_entry_status(DebugScreenEntryId::ChunkSectionOctree);
+                push_debug_feedback_chat_message(
+                    Some(world),
+                    if enabled {
+                        "Frustum culling Octree: enabled"
+                    } else {
+                        "Frustum culling Octree: disabled"
+                    },
+                );
+                true
+            }
+            KeyCode::KeyU => {
+                let (request, feedback) = if self.shift_down() {
+                    (DebugFrustumRequest::Kill, "Killed frustum")
+                } else {
+                    (DebugFrustumRequest::Capture, "Captured frustum")
+                };
+                self.debug_frustum_requests.push(request);
+                push_debug_feedback_chat_message(world.as_deref_mut(), feedback);
+                true
+            }
+            KeyCode::KeyV => {
+                let Some(world) = world.as_deref_mut() else {
+                    return false;
+                };
+                if world.local_player_id().is_none() {
+                    return false;
+                }
+                let enabled = self
+                    .toggle_debug_screen_entry_status(DebugScreenEntryId::ChunkSectionVisibility);
+                push_debug_feedback_chat_message(
+                    Some(world),
+                    if enabled {
+                        "SectionVisibility: enabled"
+                    } else {
+                        "SectionVisibility: disabled"
+                    },
+                );
+                true
+            }
+            KeyCode::KeyW => {
+                self.debug_wireframe_enabled = !self.debug_wireframe_enabled;
+                push_debug_feedback_chat_message(
+                    world.as_deref_mut(),
+                    if self.debug_wireframe_enabled {
+                        "WireFrame: enabled"
+                    } else {
+                        "WireFrame: disabled"
+                    },
+                );
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn handle_debug_feature_count_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::KeyL => {
+                self.debug_feature_count_requests
+                    .push(DebugFeatureCountRequest::Log);
+                true
+            }
+            KeyCode::KeyR => {
+                self.debug_feature_count_requests
+                    .push(DebugFeatureCountRequest::Clear);
                 true
             }
             _ => false,

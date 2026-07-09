@@ -6176,3 +6176,15 @@
   `L/R`），二者都经 `debugFlag(...)` 系统属性且默认 false。goal/unsupported
   已把模糊的“其它 F3 组合键”改写为这些 gated dev hotkeys，后续需先决定是否
   引入启动期 debug-flag/property 模型。
+- [x] debug overlay SharedConstants gated dev hotkeys（P2 input/runtime/startup
+  slice，2026-07-09）：依据 `SharedConstants.DEBUG_HOTKEYS` /
+  `DEBUG_FEATURE_COUNT` 的 `debugFlag(...)` 默认关闭语义和
+  `KeyboardHandler.handleDebugKeys` 的优先级，native 新增
+  `--debug-hotkeys` / `--debug-feature-count` 启动开关；DEBUG_HOTKEYS
+  `E/O/V` 复用 chunk-section debug entry status，`F` 投影到
+  `FogEnvironment::disabled()`，`L` 更新 chunk render stats 的 smart-cull
+  状态，`U` drain captured/killed frustum request shell，`W` 保留本地
+  wireframe state/feedback shell；DEBUG_FEATURE_COUNT `L/R` drain log/clear
+  request shell 且排在普通 F3 profiling 之前。边界：captured frustum、
+  terrain SOG smart-cull、wireframe terrain pipeline 和集成
+  `FeatureCountTracker` 数据仍是后续 renderer/runtime 工作。

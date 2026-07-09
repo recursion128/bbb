@@ -919,6 +919,243 @@ fn f3_debug_status_keys_toggle_state_without_forcing_overlay_visible() {
 }
 
 #[test]
+fn shared_debug_hotkeys_toggle_dev_state_when_startup_flag_is_enabled() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.set_debug_hotkeys_enabled(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    for code in [
+        KeyCode::KeyE,
+        KeyCode::KeyF,
+        KeyCode::KeyL,
+        KeyCode::KeyO,
+        KeyCode::KeyU,
+        KeyCode::KeyV,
+        KeyCode::KeyW,
+    ] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    input.shift_left_down = true;
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyU),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::ChunkSectionPaths),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::ChunkSectionOctree),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::ChunkSectionVisibility),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    assert!(!input.debug_fog_enabled());
+    assert!(!input.debug_smart_cull_enabled());
+    assert!(input.debug_wireframe_enabled);
+    assert_eq!(
+        input.take_debug_frustum_requests(),
+        vec![DebugFrustumRequest::Capture, DebugFrustumRequest::Kill]
+    );
+    assert!(input.take_debug_feature_count_requests().is_empty());
+    assert!(input.take_debug_profiling_toggle_requests().is_empty());
+    assert!(!input.debug_overlay_visible());
+
+    let feedback: Vec<_> = world
+        .client_chat()
+        .messages
+        .iter()
+        .map(|message| message.content.as_str())
+        .collect();
+    assert_eq!(
+        feedback,
+        vec![
+            "[Debug]: SectionPath: shown",
+            "[Debug]: Fog: disabled",
+            "[Debug]: SmartCull: disabled",
+            "[Debug]: Frustum culling Octree: enabled",
+            "[Debug]: Captured frustum",
+            "[Debug]: SectionVisibility: enabled",
+            "[Debug]: WireFrame: enabled",
+            "[Debug]: Killed frustum",
+        ]
+    );
+}
+
+#[test]
+fn shared_debug_hotkeys_without_player_only_handle_global_dev_toggles() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.set_debug_hotkeys_enabled(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyF),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::ChunkSectionPaths),
+        DebugScreenEntryStatus::Never
+    );
+    assert!(!input.debug_fog_enabled());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn debug_feature_count_hotkeys_are_gated_ahead_of_profiling() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.set_debug_feature_count_enabled(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyR),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert_eq!(
+        input.take_debug_feature_count_requests(),
+        vec![
+            DebugFeatureCountRequest::Log,
+            DebugFeatureCountRequest::Clear
+        ]
+    );
+    assert!(input.take_debug_profiling_toggle_requests().is_empty());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn debug_hotkeys_take_priority_over_feature_count_and_regular_keymap() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.set_debug_hotkeys_enabled(true);
+    input.set_debug_feature_count_enabled(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyL),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(!input.debug_smart_cull_enabled());
+    assert!(input.take_debug_feature_count_requests().is_empty());
+    assert!(input.take_debug_profiling_toggle_requests().is_empty());
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
 fn f3_debug_status_key_uses_in_overlay_status_when_overlay_is_visible() {
     let commands = None;
     let mut input = ClientInputState::new(true);

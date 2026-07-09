@@ -109,6 +109,10 @@ pub(crate) struct Args {
     pub(crate) debug_profile_store: Option<PathBuf>,
     #[arg(long = "debug-show-local-server-entity-hit-boxes")]
     pub(crate) debug_show_local_server_entity_hit_boxes: bool,
+    #[arg(long = "debug-hotkeys")]
+    pub(crate) debug_hotkeys: bool,
+    #[arg(long = "debug-feature-count")]
+    pub(crate) debug_feature_count: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -599,6 +603,18 @@ mod tests {
             Args::try_parse_from(["bbb-native", "--debug-show-local-server-entity-hit-boxes"])
                 .unwrap();
         assert!(args.debug_show_local_server_entity_hit_boxes);
+    }
+
+    #[test]
+    fn args_accept_sharedconstants_debug_flag_startup_options() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!default_args.debug_hotkeys);
+        assert!(!default_args.debug_feature_count);
+
+        let args = Args::try_parse_from(["bbb-native", "--debug-hotkeys", "--debug-feature-count"])
+            .unwrap();
+        assert!(args.debug_hotkeys);
+        assert!(args.debug_feature_count);
     }
 
     #[test]

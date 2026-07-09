@@ -1130,16 +1130,16 @@ When an agent does any of the following, update this file in the same slice:
     hover/first-mouse/cursor capture, F3+F4 GameModeSwitcher screen
     interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
-    PauseScreen(false) input/cursor/render shell, and ordinary F3 keymap audit:
+    PauseScreen(false) input/cursor/render shell, SharedConstants DEBUG_HOTKEYS /
+    DEBUG_FEATURE_COUNT gated dev hotkeys, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause tick-freeze eligibility/full PauseScreen
-    menu, and `SharedConstants.DEBUG_HOTKEYS` /
-    `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
+    DebugOptionsScreen, and native pause tick-freeze eligibility/full
+    PauseScreen menu remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -2157,10 +2157,24 @@ When an agent does any of the following, update this file in the same slice:
     `SharedConstants.DEBUG_FEATURE_COUNT` before feature-count `L/R`; both
     flags are `debugFlag(...)` properties and default false unless
     `DEBUG_ENABLED` and the named system property are active. bbb now keeps the
-    ordinary keymap surface explicit and narrows the remaining combo work to
-    those gated dev-only hotkeys. Boundary: no startup/property model for these
-    vanilla debug flags exists yet, and the gated dev hotkeys are deferred until
-    such a model is intentionally added.
+    ordinary keymap surface explicit; the gated dev-only hotkeys are handled by
+    the 2026-07-09 slice below. Boundary: this audit item is superseded by the
+    2026-07-09 gated-dev-hotkey slice below.
+  - Done 2026-07-09 — Debug overlay SharedConstants gated dev hotkeys.
+    Vanilla anchors: `SharedConstants.DEBUG_HOTKEYS` and
+    `DEBUG_FEATURE_COUNT` are `debugFlag(...)` values, so they default false
+    unless `MC_DEBUG_ENABLED` plus the named property are active; when enabled,
+    `KeyboardHandler.handleDebugKeys` handles DEBUG_HOTKEYS `E/F/L/O/U/V/W`
+    before DEBUG_FEATURE_COUNT `L/R`, and both before ordinary F3 keymap
+    actions. bbb now exposes repo-native startup flags `--debug-hotkeys` and
+    `--debug-feature-count`, preserves that priority order, maps E/O/V to the
+    existing chunk-section-paths/octree/visibility debug entry statuses, maps
+    F to actual fog disable via `FogEnvironment::disabled()`, maps L to the
+    existing smart-cull state shown in chunk render stats, maps U and
+    feature-count L/R to drainable request shells, and maps W to the local
+    wireframe state/feedback shell. Boundary: captured frustum, terrain SOG
+    smart-cull behavior, wireframe terrain pipeline switching, and integrated
+    `FeatureCountTracker` data are still future renderer/runtime work.
   - Done 2026-07-08 — Debug overlay default TPS entry shell. Vanilla anchors:
     `DebugScreenEntries.DEFAULT_PROFILE` includes `DebugScreenEntries.TPS`,
     and `DebugEntryTps.display` formats the non-integrated-server line as
@@ -2816,6 +2830,11 @@ When an agent does any of the following, update this file in the same slice:
     interruption parity, the mouse-release not-needed decision, and item icons.
     F3+Esc now opens the native no-menu `PauseScreen(false)` shell, releases
     cursor capture, consumes gameplay keys, and renders the `Game Paused` title.
+    Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
+    `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
+    statuses, F disables fog, L updates smart-cull HUD state, U and
+    feature-count L/R drain request shells, and W keeps a wireframe
+    state/feedback shell.
     The debug
     entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
@@ -2859,8 +2878,9 @@ When an agent does any of the following, update this file in the same slice:
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The
-    ordinary F3 keymap has been audited against vanilla `Options.debugKeys`;
-    remaining combo work is limited to debug-flag gated dev hotkeys. The
+    ordinary F3 keymap has been audited against vanilla `Options.debugKeys`,
+    and debug-flag gated dev hotkeys now have startup-controlled native shells.
+    The
     remaining open surfaces in
     this ledger row
     are remaining individual non-default debug entry renderers, entity hitbox
@@ -2870,8 +2890,7 @@ When an agent does any of the following, update this file in the same slice:
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, native pause tick-freeze eligibility/full
-    PauseScreen menu, and
-    `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
+    PauseScreen menu.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the
