@@ -462,13 +462,14 @@ pub struct NativeItemTooltipLine {
     pub runs: Vec<HudStyledTextRun>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct NativeItemTooltipOptions<'a> {
     pub advanced: bool,
     pub creative: bool,
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub enchantment_keys: Option<&'a [String]>,
+    pub tooltip_tick_rate: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -481,6 +482,13 @@ impl NativeItemTooltipLine {
     fn plain(text: String, tint: [f32; 4]) -> Self {
         let runs = vec![HudStyledTextRun::plain(text.clone())];
         Self { text, tint, runs }
+    }
+}
+
+fn effective_tooltip_tick_rate(options: NativeItemTooltipOptions<'_>) -> f32 {
+    match options.tooltip_tick_rate {
+        Some(tick_rate) if tick_rate.is_finite() && tick_rate > 0.0 => tick_rate,
+        _ => DEFAULT_TOOLTIP_TICKRATE,
     }
 }
 
@@ -1506,6 +1514,20 @@ mod tests {
         assert_eq!(format_attribute_modifier_amount(40.0), "40");
         assert_eq!(format_attribute_modifier_amount(1.5), "1.5");
         assert_eq!(format_attribute_modifier_amount(1.234), "1.23");
+        assert_eq!(
+            effective_tooltip_tick_rate(NativeItemTooltipOptions {
+                tooltip_tick_rate: Some(10.0),
+                ..NativeItemTooltipOptions::default()
+            }),
+            10.0
+        );
+        assert_eq!(
+            effective_tooltip_tick_rate(NativeItemTooltipOptions {
+                tooltip_tick_rate: Some(0.0),
+                ..NativeItemTooltipOptions::default()
+            }),
+            DEFAULT_TOOLTIP_TICKRATE
+        );
     }
 
     #[test]
@@ -1689,6 +1711,7 @@ fn push_intangible_projectile_tooltip_line(
 fn push_ominous_bottle_tooltip_lines(
     language: &LanguageCatalog,
     amplifier: Option<i32>,
+    tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     let Some(amplifier) = amplifier else {
@@ -1701,6 +1724,7 @@ fn push_ominous_bottle_tooltip_lines(
             "minecraft:bad_omen",
             amplifier,
             OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS,
+            tooltip_tick_rate,
         ),
         TOOLTIP_TEXT_BLUE,
     ));
@@ -1709,6 +1733,7 @@ fn push_ominous_bottle_tooltip_lines(
 fn push_potion_contents_tooltip_lines(
     language: &LanguageCatalog,
     component_patch: &DataComponentPatchSummary,
+    tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     let mut has_effect_entries = false;
@@ -1722,6 +1747,7 @@ fn push_potion_contents_tooltip_lines(
                     effect.effect_id,
                     effect.amplifier,
                     effect.duration,
+                    tooltip_tick_rate,
                     lines,
                 );
                 collect_potion_effect_attribute_modifiers(
@@ -1739,6 +1765,7 @@ fn push_potion_contents_tooltip_lines(
             effect.effect_id,
             effect.amplifier,
             effect.duration,
+            tooltip_tick_rate,
             lines,
         );
         collect_potion_effect_attribute_modifiers(
@@ -1775,13 +1802,14 @@ fn push_potion_effect_tooltip_line(
     effect_id: i32,
     amplifier: i32,
     duration: i32,
+    tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     let Some(effect_key) = vanilla_mob_effect_key(effect_id) else {
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
-        potion_effect_tooltip_text(language, effect_key, amplifier, duration),
+        potion_effect_tooltip_text(language, effect_key, amplifier, duration, tooltip_tick_rate),
         mob_effect_tooltip_tint_for_id(effect_id),
     ));
 }
@@ -1877,6 +1905,7 @@ fn push_suspicious_stew_tooltip_lines(
     language: &LanguageCatalog,
     effects: &[SuspiciousStewEffectSummary],
     creative: bool,
+    tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if !creative {
@@ -1887,7 +1916,7 @@ fn push_suspicious_stew_tooltip_lines(
             continue;
         };
         lines.push(NativeItemTooltipLine::plain(
-            potion_effect_tooltip_text(language, effect_key, 0, effect.duration),
+            potion_effect_tooltip_text(language, effect_key, 0, effect.duration, tooltip_tick_rate),
             mob_effect_tooltip_tint_for_id(effect.effect_id),
         ));
     }
@@ -1898,6 +1927,7 @@ fn potion_effect_tooltip_text(
     effect_key: &str,
     amplifier: i32,
     duration_ticks: i32,
+    tooltip_tick_rate: f32,
 ) -> String {
     let mut effect = language
         .get_or_key(&description_key("effect", effect_key))
@@ -1913,7 +1943,7 @@ fn potion_effect_tooltip_text(
         let duration = if duration_ticks == -1 {
             language.get_or_key("effect.duration.infinite").to_string()
         } else {
-            format_tick_duration(duration_ticks, DEFAULT_TOOLTIP_TICKRATE)
+            format_tick_duration(duration_ticks, tooltip_tick_rate)
         };
         effect = translate_with_two_args(language, "potion.withDuration", &effect, &duration);
     }
@@ -2771,6 +2801,7 @@ impl NativeItemRuntime {
         lines: &mut Vec<NativeItemTooltipLine>,
     ) {
         let shows = |type_id| tooltip_display_shows(component_patch, type_id);
+        let tooltip_tick_rate = effective_tooltip_tick_rate(options);
         push_item_specific_tooltip_lines(&self.language, item_id, component_patch, options, lines);
         if shows(COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
             push_tropical_fish_tooltip_lines(&self.language, component_patch, lines);
@@ -2838,7 +2869,12 @@ impl NativeItemRuntime {
             push_firework_explosion_tooltip_lines(&self.language, component_patch, lines);
         }
         if shows(COMPONENT_POTION_CONTENTS_TYPE_ID) {
-            push_potion_contents_tooltip_lines(&self.language, component_patch, lines);
+            push_potion_contents_tooltip_lines(
+                &self.language,
+                component_patch,
+                tooltip_tick_rate,
+                lines,
+            );
         }
         if shows(COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID) {
             push_jukebox_playable_tooltip_lines(
@@ -2933,6 +2969,7 @@ impl NativeItemRuntime {
             push_ominous_bottle_tooltip_lines(
                 &self.language,
                 component_patch.ominous_bottle_amplifier,
+                tooltip_tick_rate,
                 lines,
             );
         }
@@ -2941,6 +2978,7 @@ impl NativeItemRuntime {
                 &self.language,
                 &component_patch.suspicious_stew_effects,
                 options.creative,
+                tooltip_tick_rate,
                 lines,
             );
         }
@@ -3180,10 +3218,7 @@ impl NativeItemRuntime {
             stack,
             NativeItemTooltipOptions {
                 advanced,
-                creative: false,
-                peaceful: false,
-                map_data: None,
-                enchantment_keys: None,
+                ..NativeItemTooltipOptions::default()
             },
         )
     }

@@ -8181,6 +8181,7 @@ fn hud_inventory_tooltip(
             peaceful,
             map_data,
             enchantment_keys: enchantment_keys.as_deref(),
+            tooltip_tick_rate: Some(world.ticking().tick_rate),
         },
     )?;
     Some(HudInventoryTooltip {

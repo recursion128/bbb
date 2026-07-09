@@ -1133,6 +1133,36 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         ])
     );
     assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    potion_custom_effects: vec![MobEffectInstanceSummary {
+                        effect_id: 18,
+                        amplifier: 1,
+                        duration: 200,
+                        ambient: false,
+                        show_particles: true,
+                        show_icon: true,
+                        hidden_effect: None,
+                    }],
+                    lore: vec!["After slow tick potion".to_string()],
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                tooltip_tick_rate: Some(10.0),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Poison II (00:20)", TOOLTIP_TEXT_RED),
+            lore_line("After slow tick potion"),
+        ])
+    );
+    assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),
             count: 1,
@@ -1301,6 +1331,22 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         ])
     );
     assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &suspicious_stew_stack,
+            NativeItemTooltipOptions {
+                creative: true,
+                tooltip_tick_rate: Some(10.0),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before creative stew details"),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Poison (00:16)", TOOLTIP_TEXT_RED),
+        ])
+    );
+    assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),
             count: 1,
@@ -1350,6 +1396,32 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
             tooltip_line("Bad Omen IV (01:40:00)", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    intangible_projectile: true,
+                    unbreakable: true,
+                    ominous_bottle_amplifier: Some(3),
+                    lore: vec!["Before unit components".to_string()],
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                tooltip_tick_rate: Some(10.0),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before unit components"),
+            tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Bad Omen IV (03:20:00)", TOOLTIP_TEXT_BLUE),
         ])
     );
     assert_eq!(

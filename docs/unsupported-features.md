@@ -1156,9 +1156,9 @@ When an agent does any of the following, update this file in the same slice:
     entity-data peaceful
     warning, adventure-mode can-break/can-place direct block rows and unknown
     row, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line, dynamic non-20-TPS potion durations, custom/datapack
-    potion/effect registry remaps, creative suspicious-stew effect lines, map-id
-    lines, instrument description lines, tropical-fish pattern lines,
+    amplifier line, custom/datapack potion/effect registry remaps, creative
+    suspicious-stew effect lines, map-id lines, instrument description lines,
+    tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
@@ -1392,8 +1392,9 @@ When an agent does any of the following, update this file in the same slice:
     item-model exact predicates and tooltip projection, then emits decoded
     potion custom effects in vanilla provider order. Boundary: base potion
     holder effect lists and potion attribute modifier sub-lines are covered by
-    later entries below; dynamic non-20-TPS duration, `TooltipDisplay` hiding,
-    and remaining component providers remain future work.
+    later entries below; dynamic non-20-TPS duration is covered by the later
+    tick-rate entry below; `TooltipDisplay` hiding and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip base potion holder effect lines. Vanilla
     anchors: `PotionContents.addToTooltip` delegates to
     `PotionContents.addPotionTooltip(this.getAllEffects(), ...)`, and
@@ -1402,8 +1403,8 @@ When an agent does any of the following, update this file in the same slice:
     lists. bbb now resolves built-in `potion_id` values through that order, emits
     base potion effect rows before custom effect rows, and emits gray
     `effect.none` for present empty potion contents. Boundary: potion attribute
-    modifier sub-lines are covered by the later entry below; dynamic non-20-TPS
-    duration and custom/datapack potion registry remaps remain future work.
+    modifier sub-lines and dynamic non-20-TPS duration are covered by later
+    entries below; custom/datapack potion registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip potion attribute modifier sub-lines.
     Vanilla anchors: `PotionContents.addPotionTooltip` calls
     `MobEffect.createModifiers(amplifier, ...)`, `MobEffect.AttributeTemplate`
@@ -1415,8 +1416,20 @@ When an agent does any of the following, update this file in the same slice:
     built-in effects, emits the attribute section after base/custom potion
     effect rows, handles percentage operation templates such as `+%s%% %s`, and
     keeps modifier rows before later component providers such as lore. Boundary:
-    custom/datapack mob-effect modifier definitions, dynamic non-20-TPS duration,
-    and custom/datapack potion/effect registry remaps remain future work.
+    dynamic non-20-TPS duration is covered by the follow-up entry below;
+    custom/datapack mob-effect modifier definitions and custom/datapack
+    potion/effect registry remaps remain future work.
+  - Done 2026-07-09 — Advanced tooltip dynamic potion tick-rate durations.
+    Vanilla anchors: `Item.TooltipContext.EMPTY` uses 20 TPS, level-backed
+    tooltip contexts return `level.tickRateManager().tickrate()`, and
+    `PotionContents`, `OminousBottleAmplifier`, and `SuspiciousStewEffects` pass
+    `context.tickRate()` into `PotionContents.addPotionTooltip`. bbb now carries
+    an optional tooltip tick rate through `NativeItemTooltipOptions`, has native
+    HUD tooltips pass `world.ticking().tick_rate`, and formats potion, ominous
+    bottle, and creative suspicious-stew durations with that rate while falling
+    back to 20 TPS for missing or invalid values. Boundary: custom/datapack
+    potion/effect registry remaps and generic registry display names remain
+    future work.
   - Done 2026-07-09 — Creative tooltip suspicious-stew effect lines. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `DataComponents.SUSPICIOUS_STEW_EFFECTS` after unbreakable/ominous bottle
@@ -1428,8 +1441,9 @@ When an agent does any of the following, update this file in the same slice:
     `NativeItemTooltipOptions { advanced, creative }`, passes creative gameplay
     mode from native HUD extraction, and emits the same effect lines only for
     creative tooltips. Boundary: potion attribute modifier sub-lines are covered
-    by the follow-up entry above; dynamic non-20-TPS duration, `TooltipDisplay`
-    hiding, and remaining component providers remain future work.
+    by the follow-up entry above, and dynamic non-20-TPS duration is covered by
+    the tick-rate entry above; `TooltipDisplay` hiding and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
     Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
     coalesces adjacent equal `FireworkExplosion` values, emits gray
@@ -1600,9 +1614,9 @@ When an agent does any of the following, update this file in the same slice:
     value, no particles/icon, and category formatting (NEUTRAL -> blue).
     bbb now records the decoded amplifier and emits the blue localized
     `Bad Omen <potency> (01:40:00)` line at default 20 TPS. Boundary: dynamic
-    non-20-TPS tooltip duration, generic potion/effect registry names,
-    `TooltipDisplay` hiding, attribute tooltip parity, and remaining component
-    providers remain future work.
+    non-20-TPS tooltip duration is covered by the tick-rate entry above; generic
+    potion/effect registry names, `TooltipDisplay` hiding, attribute tooltip
+    parity, and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component

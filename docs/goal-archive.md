@@ -6552,16 +6552,16 @@
   amplifier potency、`StringUtil.formatTickDuration` duration 和 category formatting，
   native item tooltip 现在共享 vanilla 26.1 mob-effect id/key/category 表并把 decoded
   potion custom effects 投影为红/蓝本地化 effect 行。边界：base potion holder
-  effect lists 与 potion attribute modifier sub-lines 由后续条目覆盖；非 20 TPS
-  动态 tooltip duration、`TooltipDisplay` hidden-components 与其它 component
+  effect lists、potion attribute modifier sub-lines 与非 20 TPS 动态 tooltip
+  duration 由后续条目覆盖；`TooltipDisplay` hidden-components 与其它 component
   provider tooltip 仍未完成。
 - [x] advanced tooltip base potion holder effect lines（P2 item-runtime slice，
   2026-07-09）：依据 `PotionContents.getAllEffects` 先返回 base potion holder
   effects、再返回 custom effects，以及 vanilla `Potions` 注册顺序，native item tooltip
   现在把 built-in `potion_id` 映射为 base effect 列表，在 custom effects 之前输出红/蓝
   本地化 effect 行，并对 present empty potion contents 输出灰色 `effect.none`。边界：
-  potion attribute modifier sub-lines 由后续条目覆盖；非 20 TPS 动态 tooltip
-  duration 与 custom/datapack potion registry remap 仍属后续。
+  potion attribute modifier sub-lines 与非 20 TPS 动态 tooltip duration 由后续条目
+  覆盖；custom/datapack potion registry remap 仍属后续。
 - [x] advanced tooltip potion attribute modifier sub-lines（P2 item-runtime
   slice，2026-07-09）：依据 `PotionContents.addPotionTooltip` 调用
   `MobEffect.createModifiers(amplifier, ...)`、`MobEffect.AttributeTemplate`
@@ -6571,8 +6571,18 @@
   item tooltip 现在保留 vanilla 26.1 `MobEffects` attribute modifier 表，对
   base/custom potion effects 输出 attribute section，处理 `+%s%% %s` 百分比模板，
   并保持 modifier rows 在 lore 等后续 provider 之前。边界：custom/datapack
-  mob-effect modifier definitions、非 20 TPS 动态 duration 和 custom/datapack
-  potion/effect registry remap 仍属后续。
+  mob-effect modifier definitions 和 custom/datapack potion/effect registry remap
+  仍属后续；非 20 TPS 动态 duration 由后续 tick-rate 条目覆盖。
+- [x] advanced tooltip dynamic potion tick-rate durations（P2 item-runtime +
+  native slice，2026-07-09）：依据 `Item.TooltipContext.EMPTY` 使用 20 TPS、
+  level-backed tooltip context 返回 `level.tickRateManager().tickrate()`，以及
+  `PotionContents`、`OminousBottleAmplifier`、`SuspiciousStewEffects` 都把
+  `context.tickRate()` 传入 `PotionContents.addPotionTooltip`，native item tooltip
+  现在通过 `NativeItemTooltipOptions` 携带 optional tooltip tick rate，native HUD
+  从 `world.ticking().tick_rate` 传入该值，并让 potion、ominous bottle、creative
+  suspicious-stew durations 使用该 tick rate；missing/invalid tick rate 仍回退 20
+  TPS。边界：custom/datapack potion/effect registry remap 与 generic registry
+  display names 仍属后续。
 - [x] creative tooltip suspicious-stew effect lines（P2 protocol + item-runtime
   + native slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在
   unbreakable/ominous bottle 之后调用 `DataComponents.SUSPICIOUS_STEW_EFFECTS`
@@ -6582,9 +6592,9 @@
   suspicious-stew entries，native item tooltip 新增
   `NativeItemTooltipOptions { advanced, creative }`，HUD extraction 从 game type 传入
   creative flag，并只在 creative tooltip 中输出 stew effect 行。边界：base potion
-  holder effect lists 与 potion attribute modifier sub-lines 已由后续条目覆盖；非
-  20 TPS 动态 tooltip duration、`TooltipDisplay` hidden-components 与其它
-  component provider tooltip 仍未完成。
+  holder effect lists、potion attribute modifier sub-lines 与非 20 TPS 动态 tooltip
+  duration 已由后续条目覆盖；`TooltipDisplay` hidden-components 与其它 component
+  provider tooltip 仍未完成。
 - [x] advanced tooltip rocket firework explosion grouping（P2 item-runtime
   slice，2026-07-09）：依据 `Fireworks.addToTooltip` 对相邻相同 explosion 分组，
   单个输出 `item.minecraft.firework_rocket.single_star(shape)`，多个输出
@@ -6834,6 +6844,6 @@
   输出 BAD_OMEN 120000 tick、amplifier value、NEUTRAL category 蓝色行，protocol
   summary 现在记录 decoded amplifier，native item tooltip 以默认 20 TPS 投影为
   蓝色 `Bad Omen <potency> (01:40:00)` 行。边界：非 20 TPS 动态 tooltip
-  duration、generic potion/effect registry names、`TooltipDisplay`
-  hidden-components、attribute tooltip parity 与其它 component provider tooltip
-  仍未完成。
+  duration 已由 dynamic tick-rate 条目覆盖；generic potion/effect registry names、
+  `TooltipDisplay` hidden-components、attribute tooltip parity 与其它 component
+  provider tooltip 仍未完成。
