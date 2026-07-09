@@ -128,6 +128,96 @@ const VANILLA_BANNER_PATTERN_TRANSLATION_KEYS: &[&str] = &[
     "block.minecraft.banner.flow",
     "block.minecraft.banner.guster",
 ];
+const VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS: &[(&str, i32)] = &[
+    ("minecraft:protection", 4),
+    ("minecraft:fire_protection", 4),
+    ("minecraft:feather_falling", 4),
+    ("minecraft:blast_protection", 4),
+    ("minecraft:projectile_protection", 4),
+    ("minecraft:respiration", 3),
+    ("minecraft:aqua_affinity", 1),
+    ("minecraft:thorns", 3),
+    ("minecraft:depth_strider", 3),
+    ("minecraft:frost_walker", 2),
+    ("minecraft:binding_curse", 1),
+    ("minecraft:soul_speed", 3),
+    ("minecraft:swift_sneak", 3),
+    ("minecraft:sharpness", 5),
+    ("minecraft:smite", 5),
+    ("minecraft:bane_of_arthropods", 5),
+    ("minecraft:knockback", 2),
+    ("minecraft:fire_aspect", 2),
+    ("minecraft:looting", 3),
+    ("minecraft:sweeping_edge", 3),
+    ("minecraft:efficiency", 5),
+    ("minecraft:silk_touch", 1),
+    ("minecraft:unbreaking", 3),
+    ("minecraft:fortune", 3),
+    ("minecraft:power", 5),
+    ("minecraft:punch", 2),
+    ("minecraft:flame", 1),
+    ("minecraft:infinity", 1),
+    ("minecraft:luck_of_the_sea", 3),
+    ("minecraft:lure", 3),
+    ("minecraft:loyalty", 3),
+    ("minecraft:impaling", 5),
+    ("minecraft:riptide", 3),
+    ("minecraft:channeling", 1),
+    ("minecraft:multishot", 1),
+    ("minecraft:quick_charge", 3),
+    ("minecraft:piercing", 4),
+    ("minecraft:density", 5),
+    ("minecraft:breach", 4),
+    ("minecraft:wind_burst", 3),
+    ("minecraft:lunge", 3),
+    ("minecraft:mending", 1),
+    ("minecraft:vanishing_curse", 1),
+];
+const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
+    "minecraft:binding_curse",
+    "minecraft:vanishing_curse",
+    "minecraft:riptide",
+    "minecraft:channeling",
+    "minecraft:wind_burst",
+    "minecraft:frost_walker",
+    "minecraft:lunge",
+    "minecraft:sharpness",
+    "minecraft:smite",
+    "minecraft:bane_of_arthropods",
+    "minecraft:impaling",
+    "minecraft:power",
+    "minecraft:density",
+    "minecraft:breach",
+    "minecraft:piercing",
+    "minecraft:sweeping_edge",
+    "minecraft:multishot",
+    "minecraft:fire_aspect",
+    "minecraft:flame",
+    "minecraft:knockback",
+    "minecraft:punch",
+    "minecraft:protection",
+    "minecraft:blast_protection",
+    "minecraft:fire_protection",
+    "minecraft:projectile_protection",
+    "minecraft:feather_falling",
+    "minecraft:fortune",
+    "minecraft:looting",
+    "minecraft:silk_touch",
+    "minecraft:luck_of_the_sea",
+    "minecraft:efficiency",
+    "minecraft:quick_charge",
+    "minecraft:lure",
+    "minecraft:respiration",
+    "minecraft:aqua_affinity",
+    "minecraft:soul_speed",
+    "minecraft:swift_sneak",
+    "minecraft:depth_strider",
+    "minecraft:thorns",
+    "minecraft:loyalty",
+    "minecraft:unbreaking",
+    "minecraft:infinity",
+    "minecraft:mending",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
@@ -140,10 +230,11 @@ pub struct NativeItemTooltipLine {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct NativeItemTooltipOptions {
+pub struct NativeItemTooltipOptions<'a> {
     pub advanced: bool,
     pub creative: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
+    pub enchantment_keys: Option<&'a [String]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -666,6 +757,116 @@ mod tests {
         assert_eq!(vanilla_banner_pattern_translation_key(43), None);
         assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
     }
+
+    #[test]
+    fn vanilla_enchantment_tables_follow_26_1_registry_and_tooltip_order() {
+        assert_eq!(
+            VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS,
+            &[
+                ("minecraft:protection", 4),
+                ("minecraft:fire_protection", 4),
+                ("minecraft:feather_falling", 4),
+                ("minecraft:blast_protection", 4),
+                ("minecraft:projectile_protection", 4),
+                ("minecraft:respiration", 3),
+                ("minecraft:aqua_affinity", 1),
+                ("minecraft:thorns", 3),
+                ("minecraft:depth_strider", 3),
+                ("minecraft:frost_walker", 2),
+                ("minecraft:binding_curse", 1),
+                ("minecraft:soul_speed", 3),
+                ("minecraft:swift_sneak", 3),
+                ("minecraft:sharpness", 5),
+                ("minecraft:smite", 5),
+                ("minecraft:bane_of_arthropods", 5),
+                ("minecraft:knockback", 2),
+                ("minecraft:fire_aspect", 2),
+                ("minecraft:looting", 3),
+                ("minecraft:sweeping_edge", 3),
+                ("minecraft:efficiency", 5),
+                ("minecraft:silk_touch", 1),
+                ("minecraft:unbreaking", 3),
+                ("minecraft:fortune", 3),
+                ("minecraft:power", 5),
+                ("minecraft:punch", 2),
+                ("minecraft:flame", 1),
+                ("minecraft:infinity", 1),
+                ("minecraft:luck_of_the_sea", 3),
+                ("minecraft:lure", 3),
+                ("minecraft:loyalty", 3),
+                ("minecraft:impaling", 5),
+                ("minecraft:riptide", 3),
+                ("minecraft:channeling", 1),
+                ("minecraft:multishot", 1),
+                ("minecraft:quick_charge", 3),
+                ("minecraft:piercing", 4),
+                ("minecraft:density", 5),
+                ("minecraft:breach", 4),
+                ("minecraft:wind_burst", 3),
+                ("minecraft:lunge", 3),
+                ("minecraft:mending", 1),
+                ("minecraft:vanishing_curse", 1),
+            ]
+        );
+        assert_eq!(
+            VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+            &[
+                "minecraft:binding_curse",
+                "minecraft:vanishing_curse",
+                "minecraft:riptide",
+                "minecraft:channeling",
+                "minecraft:wind_burst",
+                "minecraft:frost_walker",
+                "minecraft:lunge",
+                "minecraft:sharpness",
+                "minecraft:smite",
+                "minecraft:bane_of_arthropods",
+                "minecraft:impaling",
+                "minecraft:power",
+                "minecraft:density",
+                "minecraft:breach",
+                "minecraft:piercing",
+                "minecraft:sweeping_edge",
+                "minecraft:multishot",
+                "minecraft:fire_aspect",
+                "minecraft:flame",
+                "minecraft:knockback",
+                "minecraft:punch",
+                "minecraft:protection",
+                "minecraft:blast_protection",
+                "minecraft:fire_protection",
+                "minecraft:projectile_protection",
+                "minecraft:feather_falling",
+                "minecraft:fortune",
+                "minecraft:looting",
+                "minecraft:silk_touch",
+                "minecraft:luck_of_the_sea",
+                "minecraft:efficiency",
+                "minecraft:quick_charge",
+                "minecraft:lure",
+                "minecraft:respiration",
+                "minecraft:aqua_affinity",
+                "minecraft:soul_speed",
+                "minecraft:swift_sneak",
+                "minecraft:depth_strider",
+                "minecraft:thorns",
+                "minecraft:loyalty",
+                "minecraft:unbreaking",
+                "minecraft:infinity",
+                "minecraft:mending",
+            ]
+        );
+        assert_eq!(
+            enchantment_key_for_holder(13, None),
+            Some("minecraft:sharpness")
+        );
+        assert_eq!(
+            vanilla_enchantment_max_level("minecraft:sharpness"),
+            Some(5)
+        );
+        assert!(enchantment_is_curse("minecraft:binding_curse", None));
+        assert!(!enchantment_is_curse("minecraft:sharpness", None));
+    }
 }
 
 fn push_container_loot_tooltip_lines(
@@ -1060,6 +1261,146 @@ fn push_armor_trim_tooltip_lines(
     ));
 }
 
+fn push_enchantments_tooltip_lines(
+    language: &LanguageCatalog,
+    enchantments: &[ItemEnchantmentSummary],
+    enchantment_keys: Option<&[String]>,
+    tooltip_order: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if enchantments.is_empty() {
+        return;
+    }
+
+    let resolved = enchantments
+        .iter()
+        .enumerate()
+        .filter_map(|(index, enchantment)| {
+            enchantment_key_for_holder(enchantment.holder_id, enchantment_keys)
+                .map(|key| (index, enchantment, key))
+        })
+        .collect::<Vec<_>>();
+    let mut emitted = vec![false; enchantments.len()];
+    if let Some(tooltip_order) = tooltip_order {
+        for order_key in tooltip_order {
+            push_matching_ordered_enchantments(
+                language,
+                &resolved,
+                &mut emitted,
+                order_key,
+                enchantment_tags,
+                lines,
+            );
+        }
+    } else {
+        for order_key in VANILLA_ENCHANTMENT_TOOLTIP_ORDER {
+            push_matching_ordered_enchantments(
+                language,
+                &resolved,
+                &mut emitted,
+                order_key,
+                enchantment_tags,
+                lines,
+            );
+        }
+    }
+
+    for (index, enchantment, key) in resolved {
+        if !emitted[index] {
+            push_enchantment_tooltip_line(
+                language,
+                key,
+                enchantment.level,
+                enchantment_tags,
+                lines,
+            );
+        }
+    }
+}
+
+fn push_matching_ordered_enchantments(
+    language: &LanguageCatalog,
+    resolved: &[(usize, &ItemEnchantmentSummary, &str)],
+    emitted: &mut [bool],
+    order_key: &str,
+    enchantment_tags: Option<&TagCatalog>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    for (index, enchantment, key) in resolved {
+        if !emitted[*index] && *key == order_key && enchantment.level > 0 {
+            push_enchantment_tooltip_line(
+                language,
+                key,
+                enchantment.level,
+                enchantment_tags,
+                lines,
+            );
+            emitted[*index] = true;
+        }
+    }
+}
+
+fn push_enchantment_tooltip_line(
+    language: &LanguageCatalog,
+    enchantment_key: &str,
+    level: i32,
+    enchantment_tags: Option<&TagCatalog>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let text = enchantment_tooltip_text(language, enchantment_key, level);
+    let tint = if enchantment_is_curse(enchantment_key, enchantment_tags) {
+        TOOLTIP_TEXT_RED
+    } else {
+        TOOLTIP_TEXT_GRAY
+    };
+    lines.push(NativeItemTooltipLine::plain(text, tint));
+}
+
+fn enchantment_tooltip_text(
+    language: &LanguageCatalog,
+    enchantment_key: &str,
+    level: i32,
+) -> String {
+    let mut text = language
+        .get_or_key(&description_key("enchantment", enchantment_key))
+        .to_string();
+    let max_level = vanilla_enchantment_max_level(enchantment_key).unwrap_or(1);
+    if level != 1 || max_level != 1 {
+        text.push(' ');
+        text.push_str(language.get_or_key(&format!("enchantment.level.{level}")));
+    }
+    text
+}
+
+fn enchantment_key_for_holder<'a>(
+    holder_id: i32,
+    enchantment_keys: Option<&'a [String]>,
+) -> Option<&'a str> {
+    let index = usize::try_from(holder_id).ok()?;
+    if let Some(enchantment_keys) = enchantment_keys {
+        return enchantment_keys.get(index).map(String::as_str);
+    }
+    VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS
+        .get(index)
+        .map(|(key, _)| *key)
+}
+
+fn vanilla_enchantment_max_level(enchantment_key: &str) -> Option<i32> {
+    VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS
+        .iter()
+        .find(|(key, _)| *key == enchantment_key)
+        .map(|(_, max_level)| *max_level)
+}
+
+fn enchantment_is_curse(enchantment_key: &str, enchantment_tags: Option<&TagCatalog>) -> bool {
+    enchantment_tags.is_some_and(|tags| tags.contains("minecraft:curse", enchantment_key))
+        || matches!(
+            enchantment_key,
+            "minecraft:binding_curse" | "minecraft:vanishing_curse"
+        )
+}
+
 fn push_profile_tooltip_lines(
     language: &LanguageCatalog,
     profile: Option<&ResolvableProfileSummary>,
@@ -1434,6 +1775,7 @@ impl NativeItemRuntime {
                 advanced,
                 creative: false,
                 map_data: None,
+                enchantment_keys: None,
             },
         )
     }
@@ -1441,7 +1783,7 @@ impl NativeItemRuntime {
     pub fn tooltip_lines_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
-        options: NativeItemTooltipOptions,
+        options: NativeItemTooltipOptions<'_>,
     ) -> Option<Vec<NativeItemTooltipLine>> {
         if item_stack_is_empty(stack) {
             return None;
@@ -1509,6 +1851,25 @@ impl NativeItemRuntime {
             &self.language,
             stack.component_patch.armor_trim_material_direct.as_ref(),
             stack.component_patch.armor_trim_pattern_direct.as_ref(),
+            &mut lines,
+        );
+        let enchantment_tags = self.enchantment_tags.as_ref();
+        let tooltip_order =
+            enchantment_tags.and_then(|tags| tags.values("minecraft:tooltip_order"));
+        push_enchantments_tooltip_lines(
+            &self.language,
+            &stack.component_patch.stored_enchantments,
+            options.enchantment_keys,
+            tooltip_order,
+            enchantment_tags,
+            &mut lines,
+        );
+        push_enchantments_tooltip_lines(
+            &self.language,
+            &stack.component_patch.enchantments,
+            options.enchantment_keys,
+            tooltip_order,
+            enchantment_tags,
             &mut lines,
         );
         push_dyed_color_tooltip_lines(

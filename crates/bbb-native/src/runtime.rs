@@ -8171,12 +8171,14 @@ fn hud_inventory_tooltip(
             scale: map.scale,
             locked: map.locked,
         });
+    let enchantment_keys = world_enchantment_keys(world);
     let lines = item_runtime?.tooltip_lines_for_stack_with_context(
         &slot.item,
         NativeItemTooltipOptions {
             advanced,
             creative,
             map_data,
+            enchantment_keys: enchantment_keys.as_deref(),
         },
     )?;
     Some(HudInventoryTooltip {

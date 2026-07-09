@@ -6603,6 +6603,17 @@
   dyed-color 之前。边界：holder-id material/pattern registry resolution、material style
   transfer 精确还原、`TooltipDisplay` hidden-components 与其它 component provider
   tooltip 仍未完成。
+- [x] advanced tooltip stored/enchantment rows（P2 item-runtime + native
+  slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 trim 之后调用
+  `DataComponents.STORED_ENCHANTMENTS`，再调用 `DataComponents.ENCHANTMENTS`，
+  以及 `ItemEnchantments.addToTooltip` 先按 `#minecraft:tooltip_order` 输出匹配项、
+  再追加未排序项；`Enchantment.getFullname` 对 curse 使用红色，其它附魔灰色，并在
+  `level != 1 || maxLevel != 1` 时追加 `enchantment.level.<n>`。native item
+  tooltip 现在接收 world-synced enchantment registry keys，按 loaded enchantment
+  tags 或 vanilla 26.1 fallback tooltip order/curses 投影 stored + regular
+  enchantment 行，并用 vanilla max-level 表保留 `Sharpness I` / `Mending` 这类等级后缀差异。
+  边界：custom/datapack enchantment max-level、synced dynamic tooltip-order tag
+  投影、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

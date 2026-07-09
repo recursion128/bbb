@@ -252,6 +252,13 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "block.minecraft.banner.stripe_bottom.red": "Red Base",
                 "block.test.banner.custom.blue": "Custom Blue",
                 "block.minecraft.banner.guster.black": "Black Guster",
+                "enchantment.custom.glow": "Custom Glow",
+                "enchantment.minecraft.binding_curse": "Curse of Binding",
+                "enchantment.minecraft.mending": "Mending",
+                "enchantment.minecraft.sharpness": "Sharpness",
+                "enchantment.minecraft.thorns": "Thorns",
+                "enchantment.level.1": "I",
+                "enchantment.level.2": "II",
                 "filled_map.id": "Id #%s",
                 "filled_map.level": "(Level %s/%s)",
                 "filled_map.locked": "Locked",
@@ -956,6 +963,54 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             lore_line("After pot decorations"),
         ])
     );
+    let enchantment_keys = vec![
+        "custom:glow".to_string(),
+        "minecraft:sharpness".to_string(),
+        "minecraft:binding_curse".to_string(),
+        "minecraft:mending".to_string(),
+    ];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 3,
+                        level: 1,
+                    }],
+                    enchantments: vec![
+                        bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 1,
+                            level: 1,
+                        },
+                        bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 2,
+                            level: 1,
+                        },
+                        bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 0,
+                            level: 2,
+                        },
+                    ],
+                    lore: vec!["After enchantments".to_string()],
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                enchantment_keys: Some(&enchantment_keys),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
+            tooltip_line("Mending", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Curse of Binding", TOOLTIP_TEXT_RED),
+            tooltip_line("Sharpness I", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Custom Glow II", TOOLTIP_TEXT_GRAY),
+            lore_line("After enchantments"),
+        ])
+    );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),
@@ -1192,12 +1247,10 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..DataComponentPatchSummary::default()
             },
         }),
-        Some(vec![name_line(
-            "Enchanted Item",
-            TOOLTIP_TEXT_AQUA,
-            0x55_FF_FF,
-            false
-        )])
+        Some(vec![
+            name_line("Enchanted Item", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
+            tooltip_line("Thorns I", TOOLTIP_TEXT_GRAY),
+        ])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
@@ -1213,12 +1266,15 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..DataComponentPatchSummary::default()
             },
         }),
-        Some(vec![name_line(
-            "Rare Enchanted Item",
-            TOOLTIP_TEXT_LIGHT_PURPLE,
-            0xFF_55_FF,
-            false
-        )])
+        Some(vec![
+            name_line(
+                "Rare Enchanted Item",
+                TOOLTIP_TEXT_LIGHT_PURPLE,
+                0xFF_55_FF,
+                false,
+            ),
+            tooltip_line("Thorns I", TOOLTIP_TEXT_GRAY),
+        ])
     );
     // Styled component runs flow through: the custom name keeps its own keys
     // over the rarity wrapper (colour) while inheriting the custom-name

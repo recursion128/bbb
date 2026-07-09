@@ -1149,8 +1149,8 @@ When an agent does any of the following, update this file in the same slice:
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, potion custom-effect lines, creative
+    armor trim rows, stored/enchantment rows, dynamic profile line,
+    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
@@ -1227,6 +1227,20 @@ When an agent does any of the following, update this file in the same slice:
     direct translation keys, applies `DyeColor` id fallback to white, and keeps
     the six-row cap. Boundary: dynamic/custom registry-key resolution beyond
     direct holders and `TooltipDisplay` hidden-components remain future work.
+  - Done 2026-07-09 — Advanced tooltip stored/enchantment rows. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `DataComponents.STORED_ENCHANTMENTS` after trim and
+    `DataComponents.ENCHANTMENTS` before dyed color; `ItemEnchantments`
+    emits entries in `#minecraft:tooltip_order` first, then unordered entries,
+    using `Enchantment.getFullname` for gray normal enchantments, red curses,
+    and level suffixes when `level != 1` or the enchantment max level is not
+    one. bbb now projects decoded stored and regular enchantment maps through
+    the synced enchantment registry keys when available, falls back to vanilla
+    26.1 registry ids, uses loaded enchantment tags when present for
+    tooltip-order and curse classification, and keeps vanilla max-level suffix
+    behavior for built-in enchantments. Boundary: custom/datapack enchantment
+    max-level and synced dynamic tooltip-order tag projection remain future
+    work; `TooltipDisplay` hidden-components also remains future work.
   - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
@@ -2530,7 +2544,7 @@ When an agent does any of the following, update this file in the same slice:
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, container
     item-count/more rows, direct jukebox song descriptions, direct armor trim
-    rows, dynamic profile line, intangible projectile line, and ominous bottle
+    rows, stored/enchantment rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
     effect lines, map-id lines, instrument description lines, tropical-fish
     pattern lines, banner-pattern rows, and pot-decoration rows.
@@ -2800,8 +2814,8 @@ When an agent does any of the following, update this file in the same slice:
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, potion custom-effect lines, and creative
+    armor trim rows, stored/enchantment rows, dynamic profile line,
+    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, and pot-decoration rows
     are covered by later entries.
@@ -3484,8 +3498,8 @@ When an agent does any of the following, update this file in the same slice:
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, potion custom-effect lines, and creative
+    armor trim rows, stored/enchantment rows, dynamic profile line,
+    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
     rows, F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
