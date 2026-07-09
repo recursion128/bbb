@@ -6279,6 +6279,13 @@
   边界：更广泛的 base entity non-default fields、passengers 以及其他
   entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local endermite save field（P2 native slice，
+  2026-07-09）：依据 `Endermite.addAdditionalSaveData` 调用 Mob 保存链后从
+  private `life` counter 写 `Lifetime`，默认值与 NBT 读取 fallback 均为 0。
+  native 现在对授权 Shift+F3+I 本地 endermite recreate command 追加 Mob 字段和
+  默认 `Lifetime: 0`。边界：non-default lifetime、更广泛的 Mob save data、
+  passengers 以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state owner
+  后才能关闭完整 `saveWithoutId` parity。
 - [x] debug overlay F3+I local ghast save field（P2 native slice，
   2026-07-09）：依据 `Ghast.addAdditionalSaveData` 先调用 `Mob` 保存链，再写
   `ExplosionPower` byte；vanilla 初始化 `explosionPower` 为 1，NBT 读取也使用

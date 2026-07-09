@@ -10,11 +10,11 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -215,6 +215,7 @@ const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 const BOGGED_DEFAULT_SHEARED: bool = false;
+const ENDERMITE_DEFAULT_LIFETIME: i32 = 0;
 const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
@@ -3559,6 +3560,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bogged_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_endermite_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => {
             debug_push_end_crystal_additional_save_data(entity, fields);
         }
@@ -3650,6 +3655,10 @@ fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec
     let sheared = debug_entity_data_bool_present(entity, BOGGED_SHEARED_DATA_ID)
         .unwrap_or(BOGGED_DEFAULT_SHEARED);
     fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
+}
+
+fn debug_push_endermite_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("Lifetime: {ENDERMITE_DEFAULT_LIFETIME}"));
 }
 
 fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
