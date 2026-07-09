@@ -196,7 +196,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `TooltipDisplay` hide/hidden-component gating and options persistence.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families and saved state that needs local
-  owners before it can be emitted.
+  owners or codec-backed SNBT projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.
