@@ -3442,10 +3442,35 @@ fn escape_opens_pause_screen_with_menu() {
     assert_eq!(
         input.debug_pause_screen(),
         Some(DebugPauseScreenState {
-            show_pause_menu: true
+            show_pause_menu: true,
+            cursor_position: None
         })
     );
     assert!(!input.pressed_keys.contains(&KeyCode::Escape));
+}
+
+#[test]
+fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
+    let mut input = ClientInputState::new(true);
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(input.handle_debug_pause_screen_cursor_moved(Some(PhysicalPosition::new(68.0, 78.0))));
+    assert_eq!(
+        input.debug_pause_screen(),
+        Some(DebugPauseScreenState {
+            show_pause_menu: true,
+            cursor_position: Some((68, 78))
+        })
+    );
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(68.0, 78.0)),
+        surface,
+    ));
+
+    assert!(!input.debug_pause_screen_is_open());
 }
 
 #[test]

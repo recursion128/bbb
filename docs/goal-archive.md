@@ -5372,8 +5372,18 @@
   runtime 入口释放 cursor capture / active input，runtime 投影 `Game Menu`，
   renderer 复用已有 y=40 title projection。F3+Esc 仍走 `PauseScreen(false)`
   no-menu 路径。边界：tick freeze、singleplayer-vs-server eligibility、dim
-  background、buttons/actions、music toast、disconnect/report/options sub-screens、
-  以及 close/recapture policy 仍未实现。
+  background、remaining buttons/actions、music toast、disconnect/report/options
+  sub-screens 仍未实现。
+- [x] native PauseScreen(true) Return to Game button（P2 input/runtime/renderer
+  slice，2026-07-09）：依据 `PauseScreen.createPauseMenu` 首个 full-width
+  `menu.returnToGame` button 宽 204、top padding 50、grid `(0.5, 0.25)`
+  alignment 后位于 `(width / 2 - 102, height / 4 + 8, 204, 20)`，并在点击时
+  `setScreen(null)` / `grabMouse()` 的行为。`ClientInputState` 现在跟踪 pause
+  screen cursor，menu pause screen 左键点击 Return to Game rect 会关闭 screen；
+  runtime 投影 hover，renderer 绘制 native Return to Game button，main 在
+  pause-screen close 后恢复 cursor capture。边界：dim background、Advancements、
+  Stats、feedback/custom-dialog、Options、Share to LAN / Player Reporting、
+  Disconnect、draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

@@ -434,6 +434,9 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
+                    if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
+                        return;
+                    }
                     if world.advancements_screen_is_open() {
                         handle_advancements_screen_cursor_moved(
                             &mut input,
@@ -468,9 +471,12 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    let pause_was_open = input.debug_pause_screen_is_open();
                     if input.handle_debug_pause_screen_key(event.physical_key, event.state) {
                         if runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
+                        } else if pause_was_open {
+                            set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
@@ -791,6 +797,19 @@ fn main() -> Result<()> {
                             window.inner_size(),
                             world.local_player_has_reduced_debug_info(),
                         );
+                        return;
+                    }
+                    if input.debug_pause_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_debug_pause_screen_mouse_input(
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
+                        if !runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, true);
+                        }
                         return;
                     }
                     if input.sign_editor_is_active_or_pending(&world) {

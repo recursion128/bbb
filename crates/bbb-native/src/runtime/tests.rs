@@ -5824,23 +5824,44 @@ fn hud_sign_editor_screen_projects_hanging_sign_background_state() {
 #[test]
 fn hud_pause_screen_projects_no_menu_title() {
     let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
 
-    assert!(hud_pause_screen(&input).is_none());
+    assert!(hud_pause_screen(&input, surface).is_none());
     input.open_debug_pause_screen_without_menu();
 
-    let screen = hud_pause_screen(&input).expect("pause screen");
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Paused");
     assert!(!screen.show_pause_menu);
+    assert!(!screen.return_to_game_hovered);
 }
 
 #[test]
 fn hud_pause_screen_projects_menu_title() {
     let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
     input.open_debug_pause_screen_with_menu();
 
-    let screen = hud_pause_screen(&input).expect("pause screen");
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Menu");
     assert!(screen.show_pause_menu);
+    assert!(!screen.return_to_game_hovered);
+}
+
+#[test]
+fn hud_pause_screen_projects_return_to_game_hover() {
+    let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            68.0, 78.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(screen.show_pause_menu);
+    assert!(screen.return_to_game_hovered);
 }
 
 #[test]
@@ -5854,7 +5875,7 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    assert!(hud_pause_screen(&input).is_none());
+    assert!(hud_pause_screen(&input, winit::dpi::PhysicalSize::new(420, 240)).is_none());
     let screen = hud_debug_options_screen(&input, &world, winit::dpi::PhysicalSize::new(420, 240))
         .expect("debug options screen");
 

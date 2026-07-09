@@ -1132,8 +1132,9 @@ When an agent does any of the following, update this file in the same slice:
     interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
     PauseScreen(false) input/cursor/render shell, ordinary-Escape
-    PauseScreen(true) title/menu-state shell, SharedConstants DEBUG_HOTKEYS /
-    DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
+    PauseScreen(true) title/menu-state shell, PauseScreen Return to Game button
+    render/input/action, SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT
+    gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
@@ -1144,8 +1145,8 @@ When an agent does any of the following, update this file in the same slice:
     ProfileResults tree navigation, profiling metrics recorder/output,
     DebugOptionsScreen narration/EditBox mouse selection/full widget styling
     polish, and native pause
-    tick-freeze eligibility/full PauseScreen menu buttons/actions remain (large,
-    low priority).
+    tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
+    (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -1872,8 +1873,20 @@ When an agent does any of the following, update this file in the same slice:
     input through the runtime entry path, releases Escape from pressed state,
     and projects the `Game Menu` title through the existing y=40 HUD path.
     Boundary: tick freezing, singleplayer-vs-server eligibility, dim
-    background, buttons/actions, music toast, disconnect/report/options
-    sub-screens, and close/recapture policy remain future work.
+    background, remaining buttons/actions, music toast, and
+    disconnect/report/options sub-screens remain future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` Return to Game button.
+    Vanilla anchors: `PauseScreen.createPauseMenu` first adds a full-width
+    `menu.returnToGame` button (`Return to Game`) with width 204 and top
+    padding 50, then aligns the grid at `(0.5, 0.25)`; the button closes the
+    screen and grabs the mouse. bbb now tracks pause-screen cursor position,
+    projects hover for the vanilla `(width / 2 - 102, height / 4 + 8, 204, 20)`
+    button rect, renders the native Return to Game button in menu pause
+    screens, closes the pause screen on left click, and restores cursor capture
+    on pause-screen close. Boundary: dim background, Advancements, Stats,
+    feedback/custom-dialog, Options, Share to LAN / Player Reporting,
+    Disconnect, draft-report icon, music toast, and pause tick-freeze
+    eligibility remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -2968,6 +2981,8 @@ When an agent does any of the following, update this file in the same slice:
     Ordinary Escape now releases cursor capture, opens the native
     `PauseScreen(true)` title/menu-state shell, and renders the `Game Menu`
     title after active screens/containers decline the key.
+    Menu pause screens now render the native Return to Game button, hover it
+    from cursor position, close on left click, and recapture cursor after close.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and
@@ -3034,7 +3049,7 @@ When an agent does any of the following, update this file in the same slice:
     DebugOptionsScreen narration/EditBox mouse selection/full widget styling
     polish, native pause
     tick-freeze eligibility/full
-    PauseScreen menu buttons/actions.
+    PauseScreen remaining menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

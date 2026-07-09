@@ -336,6 +336,7 @@ Screen Render Surfaces" 条目）：
   mouse-release not-needed decision、F3+F4 GameModeSwitcher item icon parity、
   no-menu PauseScreen(false) input/cursor/render shell、
   ordinary Escape PauseScreen(true) title/menu-state shell、
+  PauseScreen Return to Game button render/input/action、
   SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys、
   DebugOptionsScreen input/search/list/profile/status/done screen shell、
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、
@@ -350,7 +351,7 @@ Screen Render Surfaces" 条目）：
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、DebugOptionsScreen narration/EditBox
-  variable-width mouse hit-testing/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen menu buttons/actions，
+  variable-width mouse hit-testing/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen remaining buttons/actions，
   低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
