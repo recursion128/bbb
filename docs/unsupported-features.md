@@ -1148,8 +1148,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, jukebox song descriptions, direct armor
-    trim rows, stored/enchantment rows, TooltipDisplay
+    container item-count/more rows, jukebox song descriptions, armor trim rows,
+    stored/enchantment rows, TooltipDisplay
     hide/hidden-components gating, map_id component type-id 46, disc fragment
     item-specific description line, smithing template item-specific rows, direct
     painting variant rows, spawner block-entity rows, entity-data peaceful
@@ -1449,9 +1449,21 @@ When an agent does any of the following, update this file in the same slice:
     then a leading-space pattern description styled by the material, then a
     leading-space material description. bbb now projects decoded direct trim
     material + direct trim pattern payloads into those three rows after jukebox
-    playable and before dyed-color. Boundary: holder-id material/pattern
-    registry resolution, exact material style transfer, hidden-components
-    filtering, and remaining component providers remain future work.
+    playable and before dyed-color. Boundary: holder-id material/pattern text is
+    covered by the later entry below; exact material style transfer,
+    hidden-components filtering, and remaining component providers remain future
+    work.
+  - Done 2026-07-09 — Advanced tooltip holder-id armor trim rows. Vanilla
+    anchors: `ArmorTrim.addToTooltip` emits the upgrade title, then the resolved
+    pattern holder description styled by the resolved material holder, then the
+    resolved material description. `TrimMaterials.bootstrap` and
+    `TrimPatterns.bootstrap` define the vanilla 26.1 holder id order. bbb now
+    resolves built-in trim material and pattern holder ids to
+    `trim_material.<namespace>.<path>` and `trim_pattern.<namespace>.<path>`,
+    localizes those descriptions, emits the same three rows when direct payloads
+    are absent, and honors hidden component type id 56. Boundary:
+    custom/datapack trim registry remaps and exact material style transfer remain
+    future work.
   - Done 2026-07-09 — Advanced tooltip dynamic profile line. Vanilla anchors:
     `ItemStack.addDetailsToTooltip` calls `DataComponents.PROFILE` after
     dyed-color and before lore; `ResolvableProfile.Dynamic.addToTooltip`
@@ -2660,7 +2672,7 @@ When an agent does any of the following, update this file in the same slice:
     tooltip parity remains open except for the later beehive bees/honey,
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, container
-    item-count/more rows, jukebox song descriptions, direct armor trim rows,
+    item-count/more rows, jukebox song descriptions, armor trim rows,
     stored/enchantment rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
     effect lines, map-id lines, instrument description lines, tropical-fish
@@ -2930,8 +2942,8 @@ When an agent does any of the following, update this file in the same slice:
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, jukebox song descriptions, direct armor trim
-    rows, stored/enchantment rows, dynamic profile line,
+    container item-count/more rows, jukebox song descriptions, armor trim rows,
+    stored/enchantment rows, dynamic profile line,
     intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, and pot-decoration rows
@@ -3614,8 +3626,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, jukebox song descriptions, direct armor trim
-    rows, stored/enchantment rows, dynamic profile line,
+    container item-count/more rows, jukebox song descriptions, armor trim rows,
+    stored/enchantment rows, dynamic profile line,
     intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration

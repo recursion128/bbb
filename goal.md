@@ -364,7 +364,7 @@ Screen Render Surfaces" 条目）：
   parity/persistence beyond beehive bees/honey, dyed-color lines, and firework
   flight/direct/grouped explosion lines, charged-projectiles headers, and
   container-loot unknown-content line, container item-count/more rows,
-  jukebox song descriptions, direct armor trim rows, stored/enchantment rows,
+  jukebox song descriptions, armor trim rows, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific
   rows, direct painting variant rows, spawner block-entity rows,

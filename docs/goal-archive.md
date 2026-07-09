@@ -6612,6 +6612,14 @@
   dyed-color 之前。边界：holder-id material/pattern registry resolution、material style
   transfer 精确还原、`TooltipDisplay` hidden-components 与其它 component provider
   tooltip 仍未完成。
+- [x] advanced tooltip holder-id armor trim rows（P2 item-runtime slice，
+  2026-07-09）：依据 `ArmorTrim.addToTooltip` 使用 resolved trim material/pattern
+  holders 输出三行，以及 `TrimMaterials.bootstrap` / `TrimPatterns.bootstrap` 的
+  vanilla 26.1 holder 顺序，native item tooltip 现在把 built-in holder ids 映射为
+  `trim_material.<namespace>.<path>` / `trim_pattern.<namespace>.<path>` 本地化文本，
+  在 direct payload 缺席时输出 upgrade、pattern、material 三行，并应用 hidden
+  component type id 56。边界：custom/datapack trim registry remap 与 exact material
+  style transfer 仍属后续。
 - [x] advanced tooltip stored/enchantment rows（P2 item-runtime + native
   slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 trim 之后调用
   `DataComponents.STORED_ENCHANTMENTS`，再调用 `DataComponents.ENCHANTMENTS`，

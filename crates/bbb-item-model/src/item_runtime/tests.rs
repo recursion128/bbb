@@ -284,6 +284,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.smithing_template.upgrade": "Upgrade: ",
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
+                "trim_material.minecraft.iron": "Iron Material",
+                "trim_pattern.minecraft.sentry": "Sentry Armor Trim",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "item.minecraft.firework_rocket.single_star": "%s",
                 "item.minecraft.firework_rocket.multiple_stars": "%s x %s",
@@ -1309,6 +1311,42 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line(" Test material", TOOLTIP_TEXT_WHITE),
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After trim"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                armor_trim_material_id: Some(1),
+                armor_trim_pattern_id: Some(0),
+                lore: vec!["After trim holder".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Sentry Armor Trim", TOOLTIP_TEXT_WHITE),
+            tooltip_line(" Iron Material", TOOLTIP_TEXT_WHITE),
+            lore_line("After trim holder"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                armor_trim_material_id: Some(1),
+                armor_trim_pattern_id: Some(0),
+                tooltip_hidden_component_type_ids: vec![56],
+                lore: vec!["After hidden trim".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("After hidden trim"),
         ])
     );
     assert_eq!(

@@ -58,7 +58,20 @@ const FIREWORKS_COMPONENT_ID: i32 = 69;
 const CONTAINER_COMPONENT_ID: i32 = 75;
 const VILLAGER_VARIANT_COMPONENT_ID: i32 = 83;
 
-const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
+pub(super) const VANILLA_TRIM_MATERIAL_KEYS: &[&str] = &[
+    "minecraft:quartz",
+    "minecraft:iron",
+    "minecraft:netherite",
+    "minecraft:redstone",
+    "minecraft:copper",
+    "minecraft:gold",
+    "minecraft:emerald",
+    "minecraft:diamond",
+    "minecraft:lapis",
+    "minecraft:amethyst",
+    "minecraft:resin",
+];
+pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:sentry",
     "minecraft:dune",
     "minecraft:coast",

@@ -8,6 +8,7 @@ use bbb_protocol::{
 };
 use bbb_world::RegistrySet;
 
+use super::icon_model::{VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS};
 use super::mob_effects::{
     vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
 };
@@ -1061,6 +1062,57 @@ mod tests {
     }
 
     #[test]
+    fn vanilla_trim_keys_follow_26_1_bootstrap_order() {
+        assert_eq!(
+            VANILLA_TRIM_MATERIAL_KEYS,
+            &[
+                "minecraft:quartz",
+                "minecraft:iron",
+                "minecraft:netherite",
+                "minecraft:redstone",
+                "minecraft:copper",
+                "minecraft:gold",
+                "minecraft:emerald",
+                "minecraft:diamond",
+                "minecraft:lapis",
+                "minecraft:amethyst",
+                "minecraft:resin",
+            ]
+        );
+        assert_eq!(
+            VANILLA_TRIM_PATTERN_KEYS,
+            &[
+                "minecraft:sentry",
+                "minecraft:dune",
+                "minecraft:coast",
+                "minecraft:wild",
+                "minecraft:ward",
+                "minecraft:eye",
+                "minecraft:vex",
+                "minecraft:tide",
+                "minecraft:snout",
+                "minecraft:rib",
+                "minecraft:spire",
+                "minecraft:wayfinder",
+                "minecraft:shaper",
+                "minecraft:silence",
+                "minecraft:raiser",
+                "minecraft:host",
+                "minecraft:flow",
+                "minecraft:bolt",
+            ]
+        );
+        assert_eq!(vanilla_trim_material_key(1), Some("minecraft:iron"));
+        assert_eq!(vanilla_trim_material_key(10), Some("minecraft:resin"));
+        assert_eq!(vanilla_trim_material_key(11), None);
+        assert_eq!(vanilla_trim_material_key(-1), None);
+        assert_eq!(vanilla_trim_pattern_key(0), Some("minecraft:sentry"));
+        assert_eq!(vanilla_trim_pattern_key(17), Some("minecraft:bolt"));
+        assert_eq!(vanilla_trim_pattern_key(18), None);
+        assert_eq!(vanilla_trim_pattern_key(-1), None);
+    }
+
+    #[test]
     fn vanilla_enchantment_tables_follow_26_1_registry_and_tooltip_order() {
         assert_eq!(
             VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS,
@@ -1550,11 +1602,19 @@ fn push_jukebox_playable_tooltip_lines(
 
 fn push_armor_trim_tooltip_lines(
     language: &LanguageCatalog,
+    material_id: Option<i32>,
     material: Option<&TrimMaterialSummary>,
+    pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let (Some(material), Some(pattern)) = (material, pattern) else {
+    let Some(material_description) =
+        armor_trim_material_description(language, material_id, material)
+    else {
+        return;
+    };
+    let Some(pattern_description) = armor_trim_pattern_description(language, pattern_id, pattern)
+    else {
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
@@ -1564,13 +1624,57 @@ fn push_armor_trim_tooltip_lines(
         TOOLTIP_TEXT_GRAY,
     ));
     lines.push(NativeItemTooltipLine::plain(
-        format!(" {}", pattern.description),
+        format!(" {pattern_description}"),
         TOOLTIP_TEXT_WHITE,
     ));
     lines.push(NativeItemTooltipLine::plain(
-        format!(" {}", material.description),
+        format!(" {material_description}"),
         TOOLTIP_TEXT_WHITE,
     ));
+}
+
+fn armor_trim_material_description(
+    language: &LanguageCatalog,
+    material_id: Option<i32>,
+    material: Option<&TrimMaterialSummary>,
+) -> Option<String> {
+    if let Some(material) = material {
+        return Some(material.description.clone());
+    }
+    let key = vanilla_trim_material_key(material_id?)?;
+    Some(
+        language
+            .get_or_key(&description_key("trim_material", key))
+            .to_string(),
+    )
+}
+
+fn armor_trim_pattern_description(
+    language: &LanguageCatalog,
+    pattern_id: Option<i32>,
+    pattern: Option<&TrimPatternSummary>,
+) -> Option<String> {
+    if let Some(pattern) = pattern {
+        return Some(pattern.description.clone());
+    }
+    let key = vanilla_trim_pattern_key(pattern_id?)?;
+    Some(
+        language
+            .get_or_key(&description_key("trim_pattern", key))
+            .to_string(),
+    )
+}
+
+fn vanilla_trim_material_key(id: i32) -> Option<&'static str> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| VANILLA_TRIM_MATERIAL_KEYS.get(index).copied())
+}
+
+fn vanilla_trim_pattern_key(id: i32) -> Option<&'static str> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index).copied())
 }
 
 fn push_enchantments_tooltip_lines(
@@ -2218,7 +2322,9 @@ impl NativeItemRuntime {
         if shows(COMPONENT_TRIM_TYPE_ID) {
             push_armor_trim_tooltip_lines(
                 &self.language,
+                stack.component_patch.armor_trim_material_id,
                 stack.component_patch.armor_trim_material_direct.as_ref(),
+                stack.component_patch.armor_trim_pattern_id,
                 stack.component_patch.armor_trim_pattern_direct.as_ref(),
                 &mut lines,
             );
