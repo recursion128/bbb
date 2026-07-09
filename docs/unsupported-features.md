@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/blaze/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -3922,7 +3922,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/blaze/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

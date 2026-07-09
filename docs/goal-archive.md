@@ -6993,3 +6993,11 @@
   player-aware base attack damage/speed `equals` rows、decoded stack component 之外的
   default item/enchantment attribute sources、styled override components 与
   custom/datapack attribute registry remap 仍属后续。
+- [x] Debug overlay F3+I local blaze save fields（P2 native input slice，
+  2026-07-09）：依据 vanilla 26.1 `Blaze` 只定义客户端 `DATA_FLAGS_ID`
+  且不覆写 `addAdditionalSaveData`，保存链落在 `Mob.addAdditionalSaveData`
+  的 mob 字段；native F3+I 本地实体复制现在对 blaze 输出可本地还原的
+  `CanPickUpLoot`、`PersistenceRequired`、`LeftHanded` 与 `NoAI`，metadata id 15
+  仍按 `Mob.DATA_MOB_FLAGS_ID` 解读。边界：`LivingEntity` 的 health/attributes/brain/
+  equipment 等复杂 state 仍不在本地轻量 F3+I 覆盖内，未引入 blaze 客户端燃烧状态
+  到 save NBT。
