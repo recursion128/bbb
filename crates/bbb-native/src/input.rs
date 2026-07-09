@@ -19,12 +19,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -268,6 +269,9 @@ const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
+const RABBIT_TYPE_DATA_ID: u8 = 18;
+const RABBIT_DEFAULT_TYPE: i32 = 0;
+const RABBIT_DEFAULT_MORE_CARROT_TICKS: i32 = 0;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
 const SALMON_DEFAULT_VARIANT: i32 = 1;
 const TADPOLE_AGE_LOCKED_DATA_ID: u8 = 17;
@@ -3693,6 +3697,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_pufferfish_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_RABBIT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_rabbit_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SALMON_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
@@ -3939,6 +3949,23 @@ fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut
     let puff_state = debug_entity_data_int_present(entity, PUFFERFISH_PUFF_STATE_DATA_ID)
         .unwrap_or(PUFFERFISH_DEFAULT_PUFF_STATE);
     fields.push(format!("PuffState: {puff_state}"));
+}
+
+fn debug_push_rabbit_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let rabbit_type = debug_entity_data_int_present(entity, RABBIT_TYPE_DATA_ID)
+        .map(debug_rabbit_type_save_id)
+        .unwrap_or(RABBIT_DEFAULT_TYPE);
+    fields.push(format!("RabbitType: {rabbit_type}"));
+    fields.push(format!(
+        "MoreCarrotTicks: {RABBIT_DEFAULT_MORE_CARROT_TICKS}"
+    ));
+}
+
+fn debug_rabbit_type_save_id(rabbit_type: i32) -> i32 {
+    match rabbit_type {
+        0..=5 | 99 => rabbit_type,
+        _ => RABBIT_DEFAULT_TYPE,
+    }
 }
 
 fn debug_push_salmon_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
