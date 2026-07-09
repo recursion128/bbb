@@ -1122,7 +1122,7 @@ When an agent does any of the following, update this file in the same slice:
     chunk-generation-stats debug entry client-only shell,
     debug-profile.json persistence, F3+I local block-entity NBT capture,
     advanced tooltip component-count display, F3+I local entity transform NBT capture,
-    F3+I local entity metadata/base-default NBT capture, debug
+    F3+I local entity metadata/base-default/custom-name NBT capture, debug
     feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
     feedback payload, profiler chart numeric-key routing shell, and F3+N spectator
     change-game-mode request routing, F3+F4 GameModeSwitcher input/command
@@ -1941,9 +1941,10 @@ When an agent does any of the following, update this file in the same slice:
     metadata-derived fields: synced `Air`, true `CustomNameVisible`, true
     `Silent`, true `NoGravity`, shared glowing flag, and positive
     `TicksFrozen`, preserving vanilla field order. Boundary: `fall_distance`,
-    `Fire`, `Invulnerable`, `PortalCooldown`, `CustomName`, `HasVisualFire`,
-    `Tags`, `data`, passengers, and entity-specific `addAdditionalSaveData`
-    fields remain future work until those states are owned locally.
+    `Fire`, `Invulnerable`, `PortalCooldown`, `HasVisualFire`, `Tags`, `data`,
+    passengers, and entity-specific `addAdditionalSaveData` fields remain
+    future work until those states are owned locally; plain `CustomName` is
+    covered by the subsequent local entity custom-name field slice.
   - Done 2026-07-09 — Debug overlay F3+I local entity base default fields.
     Vanilla anchors: `Entity.saveWithoutId` always writes `Motion`,
     `Rotation`, `fall_distance`, `Fire`, `Air`, `OnGround`, `Invulnerable`,
@@ -1955,9 +1956,22 @@ When an agent does any of the following, update this file in the same slice:
     synced-or-default `Air: 300s`, current-or-default `OnGround`, default
     `Invulnerable: 0b`, and default `PortalCooldown: 0`, followed by the
     previously covered metadata-derived fields. Boundary: non-default
-    fall/fire/invulnerable/portal state, `CustomName`, `HasVisualFire`,
-    `Tags`, `data`, passengers, and entity-specific `addAdditionalSaveData`
-    still need local state ownership before full `saveWithoutId` parity.
+    fall/fire/invulnerable/portal state, `HasVisualFire`, `Tags`, `data`,
+    passengers, and entity-specific `addAdditionalSaveData` still need local
+    state ownership before full `saveWithoutId` parity; plain `CustomName` is
+    covered by the subsequent local entity custom-name field slice.
+  - Done 2026-07-09 — Debug overlay F3+I local entity custom-name field.
+    Vanilla anchors: `Entity.DATA_CUSTOM_NAME` is data id `2`, serializer
+    optional component, `Entity.saveWithoutId` stores nullable `CustomName`
+    with `ComponentSerialization.CODEC` immediately after root `UUID`, and
+    `ComponentSerialization` collapses a plain literal component to a string.
+    bbb now emits `CustomName` between `PortalCooldown` and
+    `CustomNameVisible` for authorized Shift+F3+I entity recreate commands
+    when metadata id 2 carries an `OptionalComponent(Some(...))`, using SNBT
+    string quoting rules that preserve quotes, backslashes, and control
+    escapes. Boundary: protocol currently stores only the component summary
+    text for entity metadata, so styled/compound component NBT fidelity remains
+    future work with the broader component owner.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and

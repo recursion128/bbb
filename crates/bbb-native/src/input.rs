@@ -110,6 +110,7 @@ const DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
 const DEBUG_OPTIONS_SEARCH_MAX_CHARS: usize = 64;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
 const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
@@ -2445,6 +2446,11 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
         if ENTITY_DEFAULT_INVULNERABLE { 1 } else { 0 }
     ));
     fields.push(format!("PortalCooldown: {ENTITY_DEFAULT_PORTAL_COOLDOWN}"));
+    if let Some(custom_name) =
+        debug_entity_data_optional_component_present(entity, ENTITY_CUSTOM_NAME_DATA_ID)
+    {
+        fields.push(format!("CustomName: {}", debug_snbt_string(custom_name)));
+    }
     if debug_entity_data_bool_present(entity, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
         .is_some_and(|visible| visible)
     {
@@ -2504,6 +2510,17 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         })
 }
 
+fn debug_entity_data_optional_component_present(entity: &EntityState, data_id: u8) -> Option<&str> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalComponent(Some(value)) => Some(value.as_str()),
+            _ => None,
+        })
+}
+
 fn debug_snbt_vec3d(name: &str, value: EntityVec3) -> Option<String> {
     Some(format!(
         "{}: [{}, {}, {}]",
@@ -2536,6 +2553,38 @@ fn debug_snbt_float(value: f32) -> Option<String> {
     }
     let value = if value == 0.0 { 0.0 } else { value };
     Some(debug_snbt_number_text(value.to_string(), 'f'))
+}
+
+fn debug_snbt_string(value: &str) -> String {
+    let mut out = String::new();
+    let mut quote = None;
+    let mut body = String::new();
+    for c in value.chars() {
+        match c {
+            '\\' => body.push_str("\\\\"),
+            '"' | '\'' => {
+                if quote.is_none() {
+                    quote = Some(if c == '"' { '\'' } else { '"' });
+                }
+                if quote == Some(c) {
+                    body.push('\\');
+                }
+                body.push(c);
+            }
+            '\u{0008}' => body.push_str("\\b"),
+            '\t' => body.push_str("\\t"),
+            '\n' => body.push_str("\\n"),
+            '\u{000c}' => body.push_str("\\f"),
+            '\r' => body.push_str("\\r"),
+            c if c < ' ' => body.push_str(&format!("\\x{:02x}", c as u8)),
+            _ => body.push(c),
+        }
+    }
+    let quote = quote.unwrap_or('"');
+    out.push(quote);
+    out.push_str(&body);
+    out.push(quote);
+    out
 }
 
 fn debug_snbt_number_text(mut text: String, suffix: char) -> String {

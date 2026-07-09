@@ -6059,8 +6059,9 @@
   base 子集：已同步的 `Air`、true `CustomNameVisible`、true `Silent`、true
   `NoGravity`、shared glowing flag、positive `TicksFrozen`，并保持 vanilla
   relative order。边界：`fall_distance`、`Fire`、`Invulnerable`、
-  `PortalCooldown`、`CustomName`、`HasVisualFire`、`Tags`、`data`、
-  passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态 owner。
+  `PortalCooldown`、`HasVisualFire`、`Tags`、`data`、passengers 和
+  entity-specific `addAdditionalSaveData` 仍需本地状态 owner；plain
+  `CustomName` 已由后续 local entity custom-name field slice 覆盖。
 - [x] debug overlay F3+I local entity base default fields（P2 native
   slice，2026-07-09）：依据 `Entity.saveWithoutId` 总是写入 `Motion`、
   `Rotation`、`fall_distance`、`Fire`、`Air`、`OnGround`、`Invulnerable`、
@@ -6070,9 +6071,19 @@
   `Motion`/`Rotation`、默认 `fall_distance: 0.0d`、`Fire: 0s`、同步或默认
   `Air: 300s`、当前或默认 `OnGround`、默认 `Invulnerable: 0b` 和
   `PortalCooldown: 0`，再追加既有 metadata-derived 字段。边界：非默认
-  fall/fire/invulnerable/portal 状态、`CustomName`、`HasVisualFire`、`Tags`、
-  `data`、passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态
-  owner 后才能关闭完整 `saveWithoutId` parity。
+  fall/fire/invulnerable/portal 状态、`HasVisualFire`、`Tags`、`data`、
+  passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态 owner
+  后才能关闭完整 `saveWithoutId` parity；plain `CustomName` 已由后续
+  local entity custom-name field slice 覆盖。
+- [x] debug overlay F3+I local entity custom-name field（P2 native
+  slice，2026-07-09）：依据 `Entity.DATA_CUSTOM_NAME` 的 data id 2 /
+  optional component serializer、`Entity.saveWithoutId` 在 root `UUID` 后用
+  `ComponentSerialization.CODEC` 写入 nullable `CustomName`、以及 plain
+  literal component 会 collapse 为 string。native 现在从 entity metadata id
+  2 的 `OptionalComponent(Some(...))` 合成 `CustomName` SNBT，字段顺序位于
+  `PortalCooldown` 后、`CustomNameVisible` 前，并使用与 tag-query SNBT 一致的
+  string quote/escape 规则。边界：协议当前只保存 entity metadata component 的
+  summary text；styled/compound component NBT 保真仍归后续 component owner。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

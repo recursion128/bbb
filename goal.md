@@ -324,7 +324,7 @@ Screen Render Surfaces" 条目）：
   debug-profile.json persistence、
   F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
-  capture、F3+I local entity metadata/base-default NBT capture、
+  capture、F3+I local entity metadata/base-default/custom-name NBT capture、
   debug feedback styled prefix baseline、
   F3+S dynamic texture dump clickable/open-file feedback payload、
   profiler chart numeric-key routing shell、F3+N spectator change-game-mode

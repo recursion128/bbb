@@ -2574,6 +2574,11 @@ fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
                 value: EntityDataValueKind::Int(123),
             },
             ProtocolEntityDataValue {
+                data_id: ENTITY_CUSTOM_NAME_DATA_ID,
+                serializer_id: 6,
+                value: EntityDataValueKind::OptionalComponent(Some("Bob \"Prime\"".to_string())),
+            },
+            ProtocolEntityDataValue {
                 data_id: ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
                 serializer_id: 8,
                 value: EntityDataValueKind::Boolean(true),
@@ -2629,8 +2634,8 @@ fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
             "/summon minecraft:creeper 0.00 0.00 3.00 \
              {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 123s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CustomNameVisible: 1b, Silent: 1b, \
-             NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
+             Invulnerable: 0b, PortalCooldown: 0, CustomName: 'Bob \"Prime\"', \
+             CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -2639,6 +2644,15 @@ fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
     assert_eq!(
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn debug_snbt_string_quotes_and_escapes_custom_names() {
+    assert_eq!(debug_snbt_string("Bob \"Prime\""), "'Bob \"Prime\"'");
+    assert_eq!(
+        debug_snbt_string("Bob's \\ line\n"),
+        "\"Bob's \\\\ line\\n\""
     );
 }
 
