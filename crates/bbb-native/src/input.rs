@@ -11,6 +11,7 @@ use bbb_protocol::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
         VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
@@ -245,6 +246,8 @@ const HORSE_VARIANT_DATA_ID: u8 = 19;
 const HORSE_DEFAULT_VARIANT: i32 = 0;
 const SKELETON_HORSE_DEFAULT_TRAP: bool = false;
 const SKELETON_HORSE_DEFAULT_TRAP_TIME: i32 = 0;
+const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+const CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 = 0;
 const ARMADILLO_STATE_DATA_ID: u8 = 18;
 const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
@@ -3753,6 +3756,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_BREEZE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_camel_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4137,6 +4147,13 @@ fn debug_push_skeleton_horse_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "SkeletonTrapTime: {SKELETON_HORSE_DEFAULT_TRAP_TIME}"
     ));
+}
+
+fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let last_pose_tick =
+        debug_entity_data_long_present(entity, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID)
+            .unwrap_or(CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK);
+    fields.push(format!("LastPoseTick: {last_pose_tick}L"));
 }
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
