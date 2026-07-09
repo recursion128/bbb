@@ -56,6 +56,25 @@ fn charged_projectile_detail_line(text: &str, child_color: u32) -> NativeItemToo
     }
 }
 
+fn charged_projectile_header_line(
+    text: &str,
+    runs: Vec<HudStyledTextRun>,
+) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs,
+    }
+}
+
+fn display_name_bracket_run(text: &str) -> HudStyledTextRun {
+    HudStyledTextRun {
+        text: text.to_string(),
+        style: HudTextStyle::default(),
+        color: Some(0xFF_FF_FF),
+    }
+}
+
 fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.to_string(),
@@ -929,7 +948,20 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         item_id: 0,
                         count: 1,
                         component_patch: DataComponentPatchSummary {
-                            item_name: Some("Charged Custom".to_string()),
+                            custom_name: Some("Charged Custom".to_string()),
+                            custom_name_styled: Some(vec![
+                                bbb_protocol::StyledTextRun {
+                                    text: "Charged".to_string(),
+                                    style: bbb_protocol::ComponentStyle {
+                                        color: Some(0xFF_AA_00),
+                                        ..bbb_protocol::ComponentStyle::default()
+                                    },
+                                },
+                                bbb_protocol::StyledTextRun {
+                                    text: " Custom".to_string(),
+                                    style: bbb_protocol::ComponentStyle::default(),
+                                },
+                            ]),
                             container_loot: true,
                             potion_custom_effects: vec![MobEffectInstanceSummary {
                                 effect_id: 18,
@@ -952,8 +984,41 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         }),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
-            tooltip_line("Projectile: 2 x Test Combo", TOOLTIP_TEXT_WHITE),
-            tooltip_line("Projectile: Charged Custom", TOOLTIP_TEXT_WHITE),
+            charged_projectile_header_line(
+                "Projectile: 2 x [Test Combo]",
+                vec![
+                    HudStyledTextRun::plain("Projectile: "),
+                    HudStyledTextRun::plain("2"),
+                    HudStyledTextRun::plain(" x "),
+                    display_name_bracket_run("["),
+                    display_name_bracket_run("Test Combo"),
+                    display_name_bracket_run("]"),
+                ],
+            ),
+            charged_projectile_header_line(
+                "Projectile: [Charged Custom]",
+                vec![
+                    HudStyledTextRun::plain("Projectile: "),
+                    display_name_bracket_run("["),
+                    HudStyledTextRun {
+                        text: "Charged".to_string(),
+                        style: HudTextStyle {
+                            italic: true,
+                            ..HudTextStyle::default()
+                        },
+                        color: Some(0xFF_AA_00),
+                    },
+                    HudStyledTextRun {
+                        text: " Custom".to_string(),
+                        style: HudTextStyle {
+                            italic: true,
+                            ..HudTextStyle::default()
+                        },
+                        color: Some(0xFF_FF_FF),
+                    },
+                    display_name_bracket_run("]"),
+                ],
+            ),
             charged_projectile_detail_line("Unknown contents", 0xAA_AA_AA),
             charged_projectile_detail_line("Poison II (00:10)", 0xFF_55_55),
             charged_projectile_detail_line("Unbreakable", 0x55_55_FF),

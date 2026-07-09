@@ -1409,9 +1409,9 @@ When an agent does any of the following, update this file in the same slice:
     `item.minecraft.crossbow.projectile.multiple(count, display_name)`. bbb
     now projects decoded `minecraft:charged_projectiles` templates into those
     localized header rows using the nested stack hover-name precedence.
-    Boundary: recursive projectile detail rows are covered by the later
-    2026-07-09 item below; exact nested display-name run styling remains future
-    work, along with remaining component providers and options persistence.
+    Boundary: recursive projectile detail rows and nested display-name run
+    styling are covered by later 2026-07-09 items below; remaining component
+    providers and options persistence remain future work.
   - Done 2026-07-09 — Advanced tooltip charged-projectiles recursive detail
     rows. Vanilla anchor: `ChargedProjectiles.addProjectileTooltip` calls
     `projectile.addDetailsToTooltip(context, projectileDisplay, null,
@@ -1421,10 +1421,21 @@ When an agent does any of the following, update this file in the same slice:
     provider-order helper, emits projectile detail rows after each grouped
     header with the two-space gray prefix, keeps colored child effect/unit
     lines, and uses normal tooltip flags for nested projectile details.
-    Boundary: nested header display-name run styling is still flattened,
-    stack-specific map tooltip context is only available for the hovered stack,
-    potion attribute modifier rows remain unimplemented, and broader
-    provider/options persistence parity stays future work.
+    Boundary: nested header display-name run styling is covered by the later
+    2026-07-09 item below, stack-specific map tooltip context is only available
+    for the hovered stack, potion attribute modifier rows remain unimplemented,
+    and broader provider/options persistence parity stays future work.
+  - Done 2026-07-09 — Advanced tooltip charged-projectiles display-name header
+    styling. Vanilla anchors: `ChargedProjectiles.addProjectileTooltip` passes
+    `projectile.getDisplayName()` into the single/multiple projectile
+    translatable header, while `ItemStack.getDisplayName` wraps the hover name
+    in square brackets, applies the item rarity color to the wrapper, and
+    italicizes only the hover-name child when the projectile has a custom name.
+    bbb now builds charged projectile headers as styled runs, preserving
+    localized placeholder order, square brackets, rarity color, custom-name
+    italic inheritance, and explicit custom-name run colors. Boundary: hover
+    events, click events, insertion text, and full rich component events remain
+    outside the tooltip text-run projection.
   - Done 2026-07-09 — Advanced tooltip container-loot unknown-content line.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.CONTAINER_LOOT, ...)` after bees and before

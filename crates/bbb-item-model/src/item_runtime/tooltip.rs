@@ -350,6 +350,21 @@ const fn potion_effect(effect_id: i32, duration: i32, amplifier: i32) -> Vanilla
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TooltipTextArg {
+    text: String,
+    runs: Vec<HudStyledTextRun>,
+}
+
+impl TooltipTextArg {
+    fn plain(text: String) -> Self {
+        Self {
+            runs: vec![HudStyledTextRun::plain(text.clone())],
+            text,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
     pub text: String,
@@ -509,7 +524,14 @@ fn hover_name_source_runs(
     resource_id: &str,
     stack: &ItemStackSummary,
 ) -> (Vec<StyledTextRun>, bool) {
-    let patch = &stack.component_patch;
+    hover_name_source_runs_for_component_patch(language, resource_id, &stack.component_patch)
+}
+
+fn hover_name_source_runs_for_component_patch(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    patch: &DataComponentPatchSummary,
+) -> (Vec<StyledTextRun>, bool) {
     if let Some(name) = &patch.custom_name {
         let runs = match &patch.custom_name_styled {
             Some(runs) if !runs.is_empty() => runs.clone(),
@@ -542,6 +564,41 @@ fn hover_name_source_runs(
         return (runs, false);
     }
     (plain(localized_item_name(language, resource_id)), false)
+}
+
+fn display_name_arg_for_component_patch(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> TooltipTextArg {
+    let (name_runs, name_is_custom) =
+        hover_name_source_runs_for_component_patch(language, resource_id, component_patch);
+    let rarity_color = item_rarity_color(item_rarity_for_stack(component_patch));
+    let bracket_run = |text: &str| HudStyledTextRun {
+        text: text.to_string(),
+        style: HudTextStyle::default(),
+        color: Some(rarity_color),
+    };
+    let name_wrapper = ComponentStyle {
+        italic: name_is_custom.then_some(true),
+        color: Some(rarity_color),
+        ..ComponentStyle::default()
+    };
+    let mut runs = Vec::with_capacity(name_runs.len() + 2);
+    runs.push(bracket_run("["));
+    runs.extend(
+        name_runs
+            .iter()
+            .map(|run| hud_run_from_component(run, &name_wrapper)),
+    );
+    runs.push(bracket_run("]"));
+    TooltipTextArg {
+        text: format!(
+            "[{}]",
+            hover_name_for_component_patch(language, resource_id, component_patch)
+        ),
+        runs,
+    }
 }
 
 pub(super) fn push_written_book_tooltip_lines(
@@ -1379,23 +1436,24 @@ fn push_container_loot_tooltip_lines(
     ));
 }
 
-fn charged_projectile_group_tooltip_text(
+fn charged_projectile_group_tooltip_line(
     language: &LanguageCatalog,
-    projectile_name: &str,
+    projectile_name: TooltipTextArg,
     count: usize,
-) -> String {
+) -> NativeItemTooltipLine {
     if count == 1 {
-        translate_with_first_arg(
+        translated_tooltip_line_with_args(
             language,
             "item.minecraft.crossbow.projectile.single",
-            projectile_name,
+            &[projectile_name],
+            TOOLTIP_TEXT_WHITE,
         )
     } else {
-        translate_with_two_args(
+        translated_tooltip_line_with_args(
             language,
             "item.minecraft.crossbow.projectile.multiple",
-            &count.to_string(),
-            projectile_name,
+            &[TooltipTextArg::plain(count.to_string()), projectile_name],
+            TOOLTIP_TEXT_WHITE,
         )
     }
 }
@@ -2156,6 +2214,83 @@ pub(super) fn translate_with_two_args(
     translated.replacen("%s", second, 1)
 }
 
+fn translated_tooltip_line_with_args(
+    language: &LanguageCatalog,
+    key: &str,
+    args: &[TooltipTextArg],
+    tint: [f32; 4],
+) -> NativeItemTooltipLine {
+    let template = language.get_or_key(key);
+    let mut text = String::new();
+    let mut runs = Vec::new();
+    let mut implicit_arg_index = 0usize;
+    let mut index = 0usize;
+    let bytes = template.as_bytes();
+
+    while let Some(relative_percent) = template[index..].find('%') {
+        let percent = index + relative_percent;
+        push_plain_tooltip_template_segment(&mut text, &mut runs, &template[index..percent]);
+        let mut cursor = percent + 1;
+        if bytes.get(cursor) == Some(&b'%') {
+            push_plain_tooltip_template_segment(&mut text, &mut runs, "%");
+            index = cursor + 1;
+            continue;
+        }
+
+        let digits_start = cursor;
+        while bytes.get(cursor).is_some_and(|byte| byte.is_ascii_digit()) {
+            cursor += 1;
+        }
+        let explicit_arg_index = if cursor > digits_start && bytes.get(cursor) == Some(&b'$') {
+            let index_text = &template[digits_start..cursor];
+            cursor += 1;
+            index_text
+                .parse::<usize>()
+                .ok()
+                .and_then(|value| value.checked_sub(1))
+        } else {
+            None
+        };
+
+        if bytes.get(cursor) == Some(&b's') {
+            let arg_index = explicit_arg_index.unwrap_or_else(|| {
+                let current = implicit_arg_index;
+                implicit_arg_index += 1;
+                current
+            });
+            if let Some(arg) = args.get(arg_index) {
+                text.push_str(&arg.text);
+                runs.extend(arg.runs.iter().cloned());
+            } else {
+                push_plain_tooltip_template_segment(
+                    &mut text,
+                    &mut runs,
+                    &template[percent..=cursor],
+                );
+            }
+            index = cursor + 1;
+        } else {
+            push_plain_tooltip_template_segment(&mut text, &mut runs, "%");
+            index = percent + 1;
+        }
+    }
+    push_plain_tooltip_template_segment(&mut text, &mut runs, &template[index..]);
+
+    NativeItemTooltipLine { text, tint, runs }
+}
+
+fn push_plain_tooltip_template_segment(
+    text: &mut String,
+    runs: &mut Vec<HudStyledTextRun>,
+    segment: &str,
+) {
+    if segment.is_empty() {
+        return;
+    }
+    text.push_str(segment);
+    runs.push(HudStyledTextRun::plain(segment));
+}
+
 pub(super) fn item_rarity_for_stack(
     component_patch: &DataComponentPatchSummary,
 ) -> ItemRaritySummary {
@@ -2525,14 +2660,15 @@ impl NativeItemRuntime {
         let Some(resource_id) = registry.resource_id(projectile.item_id) else {
             return;
         };
-        let projectile_name = hover_name_for_component_patch(
+        let projectile_name = display_name_arg_for_component_patch(
             &self.language,
             resource_id,
             &projectile.component_patch,
         );
-        lines.push(NativeItemTooltipLine::plain(
-            charged_projectile_group_tooltip_text(&self.language, &projectile_name, count),
-            TOOLTIP_TEXT_WHITE,
+        lines.push(charged_projectile_group_tooltip_line(
+            &self.language,
+            projectile_name,
+            count,
         ));
         let mut detail_lines = Vec::new();
         self.push_stack_detail_tooltip_lines(

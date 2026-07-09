@@ -362,8 +362,8 @@ Screen Render Surfaces" 条目）：
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence beyond beehive bees/honey, dyed-color lines, and firework
-  flight/direct/grouped explosion lines, charged-projectiles headers/detail rows, and
-  container-loot unknown-content line, container item-count/more rows,
+  flight/direct/grouped explosion lines, charged-projectiles display-name
+  headers/detail rows, and container-loot unknown-content line, container item-count/more rows,
   jukebox song descriptions, armor trim rows, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific

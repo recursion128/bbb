@@ -6575,8 +6575,8 @@
   `item.minecraft.crossbow.projectile.multiple(count, display_name)`，native item
   tooltip 现在把 decoded `minecraft:charged_projectiles` templates 投影为本地化
   projectile header 行，并复用 nested stack hover-name precedence。边界：
-  projectile 自身 detail rows 已由后续条目覆盖；nested display-name run styling
-  精确还原、其它 component provider tooltip 与 options 持久化仍未完成。
+  projectile 自身 detail rows 与 nested display-name run styling 已由后续条目覆盖；
+  其它 component provider tooltip 与 options 持久化仍未完成。
 - [x] advanced tooltip charged-projectiles recursive detail rows（P2
   item-runtime slice，2026-07-09）：依据
   `ChargedProjectiles.addProjectileTooltip` 在每个 projectile header 后调用
@@ -6586,8 +6586,19 @@
   现在复用同一 provider-order helper 输出 top-level 和 nested detail，递归输出
   projectile 自身详情行并带两空格灰色前缀，同时保留 potion/effect 与 unit 行的
   子文本颜色。边界：nested header display-name run styling 仍为 flattened，
-  stack-specific map tooltip context 目前只覆盖 hovered stack，potion attribute
-  modifier rows 和更广的 options persistence 仍属后续。
+  nested header display-name run styling 已由后续条目覆盖，stack-specific map
+  tooltip context 目前只覆盖 hovered stack，potion attribute modifier rows 和更广的
+  options persistence 仍属后续。
+- [x] advanced tooltip charged-projectiles display-name header styling（P2
+  item-runtime slice，2026-07-09）：依据
+  `ChargedProjectiles.addProjectileTooltip` 把 `projectile.getDisplayName()`
+  作为 projectile single/multiple translatable header 的参数，以及
+  `ItemStack.getDisplayName` 将 hover name 包在方括号中、对 wrapper 应用 rarity
+  color、只在 custom name 时让 hover-name child 继承 italic，native item tooltip
+  现在把 charged projectile header 生成为 styled runs，保留本地化 placeholder 顺序、
+  方括号、rarity 颜色、自定义名 italic 继承和显式 custom-name run 颜色。边界：
+  hover event、click event、insertion text 以及完整 rich component event 仍不在当前
+  tooltip text-run 投影内。
 - [x] advanced tooltip container-loot unknown-content line（P2 protocol +
   item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 bees
   之后、container contents 之前调用 `DataComponents.CONTAINER_LOOT` provider，
