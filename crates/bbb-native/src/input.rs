@@ -20,10 +20,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
@@ -287,6 +288,14 @@ const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 const CAT_DEFAULT_VARIANT_ID: i32 = 1;
 const CAT_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+const FOX_TYPE_DATA_ID: u8 = 18;
+const FOX_FLAGS_DATA_ID: u8 = 19;
+const FOX_TRUSTED_DATA_ID_0: u8 = 20;
+const FOX_TRUSTED_DATA_ID_1: u8 = 21;
+const FOX_FLAG_SITTING: i8 = 1;
+const FOX_FLAG_CROUCHING: i8 = 4;
+const FOX_FLAG_SLEEPING: i8 = 32;
+const FOX_DEFAULT_VARIANT_ID: i32 = 0;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_VARIANT_DATA_ID: u8 = 23;
@@ -3824,6 +3833,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_FOX_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_fox_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_FROG_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4146,6 +4161,7 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
+        VANILLA_ENTITY_TYPE_FOX_ID => true,
         VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
             ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT
         }
@@ -4305,6 +4321,42 @@ fn debug_cat_sound_variant_resource_id(variant: i32) -> &'static str {
     match variant {
         1 => "minecraft:royal",
         _ => "minecraft:classic",
+    }
+}
+
+fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, FOX_FLAGS_DATA_ID).unwrap_or(0);
+    let trusted = [FOX_TRUSTED_DATA_ID_0, FOX_TRUSTED_DATA_ID_1]
+        .into_iter()
+        .filter_map(|data_id| debug_entity_data_optional_living_reference_present(entity, data_id))
+        .map(debug_snbt_uuid_int_array)
+        .collect::<Vec<_>>()
+        .join(", ");
+    let variant =
+        debug_entity_data_int_present(entity, FOX_TYPE_DATA_ID).unwrap_or(FOX_DEFAULT_VARIANT_ID);
+    fields.push(format!("Trusted: [{trusted}]"));
+    fields.push(format!(
+        "Sleeping: {}",
+        debug_snbt_bool(flags & FOX_FLAG_SLEEPING != 0)
+    ));
+    fields.push(format!(
+        "Type: {}",
+        debug_snbt_string(debug_fox_variant_name(variant))
+    ));
+    fields.push(format!(
+        "Sitting: {}",
+        debug_snbt_bool(flags & FOX_FLAG_SITTING != 0)
+    ));
+    fields.push(format!(
+        "Crouching: {}",
+        debug_snbt_bool(flags & FOX_FLAG_CROUCHING != 0)
+    ));
+}
+
+fn debug_fox_variant_name(variant: i32) -> &'static str {
+    match variant {
+        1 => "snow",
+        _ => "red",
     }
 }
 
@@ -5170,6 +5222,20 @@ fn debug_entity_data_optional_component_present(entity: &EntityState, data_id: u
         })
 }
 
+fn debug_entity_data_optional_living_reference_present(
+    entity: &EntityState,
+    data_id: u8,
+) -> Option<uuid::Uuid> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalLivingEntityReference(Some(value)) => Some(*value),
+            _ => None,
+        })
+}
+
 fn debug_snbt_vec3d(name: &str, value: EntityVec3) -> Option<String> {
     Some(format!(
         "{}: [{}, {}, {}]",
@@ -5234,6 +5300,17 @@ fn debug_snbt_string(value: &str) -> String {
     out.push_str(&body);
     out.push(quote);
     out
+}
+
+fn debug_snbt_uuid_int_array(uuid: uuid::Uuid) -> String {
+    let (most, least) = uuid.as_u64_pair();
+    let ints = [
+        (most >> 32) as i32,
+        most as i32,
+        (least >> 32) as i32,
+        least as i32,
+    ];
+    format!("[I; {}, {}, {}, {}]", ints[0], ints[1], ints[2], ints[3])
 }
 
 fn debug_snbt_number_text(mut text: String, suffix: char) -> String {
