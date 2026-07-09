@@ -200,6 +200,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.unbreakable": "Unbreakable",
                 "item.durability": "Durability: %s / %s",
                 "item.components": "%s component(s)",
+                "container.beehive.bees": "Bees: %s / %s",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -492,6 +493,22 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Durable Item", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bees_count: 2,
+                lore: vec!["After bees".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Bees: 2 / 3", TOOLTIP_TEXT_GRAY),
+            lore_line("After bees"),
         ])
     );
     assert_eq!(

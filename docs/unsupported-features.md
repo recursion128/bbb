@@ -1145,7 +1145,8 @@ When an agent does any of the following, update this file in the same slice:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
-    advanced tooltip component-specific full parity/persistence,
+    advanced tooltip component-specific full parity/persistence beyond occupied
+    beehive bees,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1161,10 +1162,24 @@ When an agent does any of the following, update this file in the same slice:
     stack patches apply. bbb now stores parsed default component type-id sets
     in `ItemRegistryCatalog`, applies stack patch added/removed ids, and renders
     the localized dark-gray component-count line after the registry id.
-    Boundary: component-provider-specific tooltip lines, hidden component
-    filtering from `TooltipDisplay`, exact bespoke default-component behavior
-    beyond parsed vanilla `Items.java` declarations, and options persistence
-    remain future work.
+    Boundary at the time: component-provider-specific tooltip lines, hidden
+    component filtering from `TooltipDisplay`, exact bespoke default-component
+    behavior beyond parsed vanilla `Items.java` declarations, and options
+    persistence remained future work; occupied beehive `minecraft:bees`
+    tooltip lines are covered by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
+    projectile, potion, trim, enchantment, dyed-color, profile, lore, and
+    advanced id/component-count lines; `Bees.addToTooltip` emits
+    `container.beehive.bees` with the current occupant count and capacity `3`
+    in gray. bbb now projects non-empty decoded `minecraft:bees` component
+    summaries as the localized gray `Bees: n / 3` tooltip line before lore and
+    written-book details. Boundary: the protocol summary currently tracks the
+    occupant count but not empty-component presence, so an explicitly empty
+    bees component cannot yet render `Bees: 0 / 3`; remaining component
+    providers, `TooltipDisplay` hiding, and option persistence remain future
+    work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,
@@ -2284,8 +2299,8 @@ When an agent does any of the following, update this file in the same slice:
     `--advanced-item-tooltips` now initializes the native debug tooltip state
     before the event loop; F3+H still toggles that runtime state and emits the
     same local debug feedback. Boundary: bbb does not add an in-game
-    configuration UI or vanilla options-file persistence; advanced tooltip
-    content parity remains open.
+    configuration UI or vanilla options-file persistence; component-provider
+    tooltip parity remains open except for the later occupied beehive bees line.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2545,9 +2560,11 @@ When an agent does any of the following, update this file in the same slice:
     inventory-screen hovered item tooltips, keeps anvil hover-name lookup and
     recipe-book search indexing on normal tooltip lines, and appends the
     supported advanced durability/id lines from repo-native item stack state.
-    Boundary: effective component-count display and other component-specific
-    advanced tooltip additions are not modeled yet; startup configuration is
-    tracked separately because bbb does not expose vanilla's in-game options UI.
+    Boundary at the time: effective component-count display and other
+    component-specific advanced tooltip additions were not modeled yet; startup
+    configuration is tracked separately because bbb does not expose vanilla's
+    in-game options UI. Effective component-count display and occupied beehive
+    bees lines are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3223,7 +3240,8 @@ When an agent does any of the following, update this file in the same slice:
     are remaining individual non-default debug entry renderers, entity hitbox
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
-    advanced tooltip component-specific full parity/persistence, F3+I full
+    advanced tooltip component-specific full parity/persistence beyond occupied
+    beehive bees, F3+I full
     local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

@@ -169,6 +169,25 @@ pub(super) fn push_written_book_tooltip_lines(
     ));
 }
 
+fn push_bees_tooltip_lines(
+    language: &LanguageCatalog,
+    bees_count: usize,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if bees_count == 0 {
+        return;
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(
+            language,
+            "container.beehive.bees",
+            &bees_count.to_string(),
+            "3",
+        ),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
 pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
     let template = language.get_or_key(key);
     if template.contains("%1$s") {
@@ -332,6 +351,7 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
+        push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }

@@ -6436,3 +6436,11 @@
   `HudDebugProfilerChart`，普通数字键请求会实际改变 tree path 而不是仅日志记录。
   边界：这是当前帧 native profiler，不是完整 vanilla `ActiveProfiler` section graph；
   `ActiveMetricsRecorder`、自动/手动 stop timing 与 zipped `debug/profiling` 输出仍待后续。
+- [x] advanced tooltip occupied beehive bees line（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 written-book、lore 和
+  advanced id/component-count 前调用 `DataComponents.BEES` provider，以及
+  `Bees.addToTooltip` 输出灰色 `container.beehive.bees(count, 3)`，native item
+  tooltip 现在把非空 decoded `minecraft:bees` component summary 投影为本地化
+  `Bees: n / 3` 行，并保持在 lore 之前。边界：协议摘要当前只有 occupant count，
+  不能区分“存在但为空”的 bees component，所以 `Bees: 0 / 3` 仍待后续；其它
+  component provider tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
