@@ -201,11 +201,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   private `hasBeenShot` projection, non-default private projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   scalar/timer/counter projection (including `PrimedTnt.explosionPower` and
-  non-default `SpectralArrow.duration`),
+  non-default `SpectralArrow.duration`, plus non-default
+  `FallingBlockEntity` time/drop/hurt/cancel-drop fields),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
-  `inBlockState`, `item`, and `weapon`), remaining entity-specific
+  `inBlockState`, `item`, and `weapon`, plus falling-block `TileEntityData`),
+  remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection, or
   entity-specific age and equipment projection before it can be emitted.

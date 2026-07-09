@@ -23,11 +23,12 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
         VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
@@ -240,6 +241,12 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const FALLING_BLOCK_DEFAULT_TIME: i32 = 0;
+const FALLING_BLOCK_DEFAULT_DROP_ITEM: bool = true;
+const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
+const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
+const FALLING_BLOCK_DEFAULT_FALL_HURT_MAX: i32 = 40;
+const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
@@ -4036,6 +4043,9 @@ fn debug_push_entity_additional_save_data(
             debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_fireball_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
+            debug_push_falling_block_additional_save_data(world, entity, fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
         }
@@ -4323,6 +4333,40 @@ fn debug_push_abstract_hurting_projectile_additional_save_data(
 fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
+    ));
+}
+
+fn debug_push_falling_block_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    if let Some(block_state) = world.falling_block_state(entity.id) {
+        fields.push(format!(
+            "BlockState: {}",
+            debug_snbt_block_state(&block_state.block.name, &block_state.block.properties)
+        ));
+    }
+    fields.push(format!("Time: {FALLING_BLOCK_DEFAULT_TIME}"));
+    fields.push(format!(
+        "DropItem: {}",
+        debug_snbt_bool(FALLING_BLOCK_DEFAULT_DROP_ITEM)
+    ));
+    fields.push(format!(
+        "HurtEntities: {}",
+        debug_snbt_bool(FALLING_BLOCK_DEFAULT_HURT_ENTITIES)
+    ));
+    fields.push(format!(
+        "FallHurtAmount: {}",
+        debug_snbt_float(FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT)
+            .expect("finite falling-block default hurt amount")
+    ));
+    fields.push(format!(
+        "FallHurtMax: {FALLING_BLOCK_DEFAULT_FALL_HURT_MAX}"
+    ));
+    fields.push(format!(
+        "CancelDrop: {}",
+        debug_snbt_bool(FALLING_BLOCK_DEFAULT_CANCEL_DROP)
     ));
 }
 
