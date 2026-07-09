@@ -1411,8 +1411,8 @@ When an agent does any of the following, update this file in the same slice:
     writes `/summon ...` using the entity position with two decimals plus
     client-side entity feedback. Boundary: Shift+F3+I local block/entity NBT
     capture is now covered below; exact `StateDefinition` property iteration
-    order, full local entity `saveWithoutId` field parity, and profiler result
-    clickable feedback remain future parity work.
+    order and full local entity `saveWithoutId` field parity remain future
+    parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side tag-query request.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` is invoked with `pullFromServer = !event.hasShiftDown()`;
@@ -1426,8 +1426,8 @@ When an agent does any of the following, update this file in the same slice:
     request, and the main event loop drains that request into the existing
     block/entity tag-query net commands. Follow-up response/callback handling
     is now covered below. Boundary: local block/entity NBT capture is now
-    covered below; full local entity `saveWithoutId` field parity and profiler
-    result clickable feedback remain future parity work.
+    covered below; full local entity `saveWithoutId` field parity remains
+    future parity work.
   - Done 2026-07-08 — Debug overlay F3+I server-side NBT response callback.
     Vanilla anchors: `ClientPacketListener.handleTagQueryPacket` forwards
     `ClientboundTagQueryPacket` to `DebugQueryHandler.handleResponse`, which
@@ -1444,8 +1444,8 @@ When an agent does any of the following, update this file in the same slice:
     transaction ids while preserving the pending callback. Tests cover block,
     entity, null-tag, mismatched-id, and captured-at-query-time block state
     behavior. Boundary: Shift+F3+I local block/entity NBT capture is now
-    covered below; full local entity `saveWithoutId` field parity and profiler
-    result clickable feedback remain future work.
+    covered below; full local entity `saveWithoutId` field parity remains
+    future work.
   - Done 2026-07-08 — Debug overlay F3+I gamemaster permission gate.
     Vanilla anchors: `PlayerList.sendPlayerPermissionLevel` sends
     `ClientboundEntityEventPacket(player, eventId)` with event ids 24..28 for
@@ -1460,8 +1460,7 @@ When an agent does any of the following, update this file in the same slice:
     the client-side no-NBT recreate command. Tests cover local and remote
     permission entity events plus authorized/unprivileged F3+I routing.
     Boundary: Shift+F3+I local block/entity NBT capture is now covered below;
-    full local entity `saveWithoutId` field parity and profiler result
-    clickable feedback remain future work.
+    full local entity `saveWithoutId` field parity remains future work.
   - Done 2026-07-08 — Debug overlay F3+I local block-entity NBT capture.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` uses `BlockEntity.saveWithoutMetadata` when `addNbt` is
@@ -1474,8 +1473,7 @@ When an agent does any of the following, update this file in the same slice:
     compact SNBT payload to Shift+F3+I local block recreate copies when the local
     player has gamemaster permission. Boundary: this uses client-owned network
     block-entity NBT; local entity transform NBT capture is covered below, and
-    full local entity `saveWithoutId` field parity plus profiler result
-    clickable feedback remain future work.
+    full local entity `saveWithoutId` field parity remains future work.
   - Done 2026-07-08 — Debug overlay F3+I local entity transform NBT capture.
     Vanilla anchors: `KeyboardHandler.copyRecreateCommand(addNbt,
     pullFromServer)` uses `TagValueOutput` plus `Entity.saveWithoutId` for an
@@ -1492,6 +1490,19 @@ When an agent does any of the following, update this file in the same slice:
     `saveWithoutId` field parity (base save fields, metadata-derived flags,
     custom data, passengers, and entity-specific save data) remains future
     work.
+  - Done 2026-07-08 — Debug overlay F3+I local entity metadata save fields.
+    Vanilla anchors: `Entity.saveWithoutId` writes the base entity fields in
+    order (`Motion`, `Rotation`, `Air`, `OnGround`, optional
+    `CustomNameVisible`, `Silent`, `NoGravity`, `Glowing`, and `TicksFrozen`)
+    before entity-specific save data, and `KeyboardHandler.copyCreateEntityCommand`
+    strips root `UUID`/`Pos` before formatting `/summon`. bbb now extends the
+    Shift+F3+I local entity SNBT from transform-only data with client-owned
+    metadata-derived fields: synced `Air`, true `CustomNameVisible`, true
+    `Silent`, true `NoGravity`, shared glowing flag, and positive
+    `TicksFrozen`, preserving vanilla field order. Boundary: `fall_distance`,
+    `Fire`, `Invulnerable`, `PortalCooldown`, `CustomName`, `HasVisualFire`,
+    `Tags`, `data`, passengers, and entity-specific `addAdditionalSaveData`
+    fields remain future work until those states are owned locally.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -2318,8 +2329,9 @@ When an agent does any of the following, update this file in the same slice:
     frozen-status text shell, and the F3+1 profiler pie chart renderer can
     draw `ProfileResults`-shaped data. Advanced tooltip component counts now
     use parsed default item components plus stack patch ids. Shift+F3+I local
-    entity recreate copies now include client-owned transform SNBT for
-    `Motion`, `Rotation`, and known `OnGround`. Debug feedback messages now
+    entity recreate copies now include client-owned transform SNBT plus
+    metadata-derived `Air`, visibility/silent/gravity/glowing flags, and
+    `TicksFrozen`. Debug feedback messages now
     carry a yellow/bold `[Debug]:` styled prefix while preserving plain
     `content`, F3+S dynamic texture dump feedback now underlines the path
     run with an `open_file` click payload, and F3+L profiler stop feedback

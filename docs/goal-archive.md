@@ -5672,7 +5672,16 @@
   `EntityState` 的 `Motion`、`Rotation` 和已知 `OnGround` 合成 pretty SNBT
   追加到 summon 命令。边界：这里只使用 bbb 已拥有的 canonical transform
   state；完整 local entity `saveWithoutId` base fields、metadata/custom data、
-  passenger/entity-specific save data，以及 styled/clickable feedback 仍待后续。
+  passenger/entity-specific save data 仍待后续。
+- [x] debug overlay F3+I local entity metadata save fields（P2 native
+  slice，2026-07-08）：依据 `Entity.saveWithoutId` 的 base field 写入顺序，以及
+  `KeyboardHandler.copyCreateEntityCommand` 会移除 root `UUID` / `Pos`。native
+  现在把 Shift+F3+I 本地 entity SNBT 从 transform-only 扩展为 metadata-derived
+  base 子集：已同步的 `Air`、true `CustomNameVisible`、true `Silent`、true
+  `NoGravity`、shared glowing flag、positive `TicksFrozen`，并保持 vanilla
+  relative order。边界：`fall_distance`、`Fire`、`Invulnerable`、
+  `PortalCooldown`、`CustomName`、`HasVisualFire`、`Tags`、`data`、
+  passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态 owner。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

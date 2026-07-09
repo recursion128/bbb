@@ -9,9 +9,9 @@ use bbb_protocol::{
     entity_types::vanilla_entity_resource_id_for_type_id,
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
-        Direction as ProtocolDirection, EntityTagQuery, GameType, InteractionHand,
-        ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
-        SeenAdvancements, SignUpdate,
+        Direction as ProtocolDirection, EntityDataValueKind, EntityTagQuery, GameType,
+        InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput,
+        RecipeBookType, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -94,6 +94,13 @@ const CHAT_ENTRY_MAX_LENGTH: usize = 256;
 pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
 pub(crate) const DEBUG_PROFILING_RESULTS_RELATIVE_DIR: &str = "debug/profiling";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
+const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
+const ENTITY_SILENT_DATA_ID: u8 = 4;
+const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
+const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -1579,10 +1586,69 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
     if let Some(rotation) = debug_snbt_rotation(entity.y_rot, entity.x_rot) {
         fields.push(rotation);
     }
+    if let Some(air) = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID) {
+        fields.push(format!("Air: {}s", air as i16));
+    }
     if let Some(on_ground) = entity.on_ground {
         fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
     }
+    if debug_entity_data_bool_present(entity, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
+        .is_some_and(|visible| visible)
+    {
+        fields.push("CustomNameVisible: 1b".to_string());
+    }
+    if debug_entity_data_bool_present(entity, ENTITY_SILENT_DATA_ID).is_some_and(|silent| silent) {
+        fields.push("Silent: 1b".to_string());
+    }
+    if debug_entity_data_bool_present(entity, ENTITY_NO_GRAVITY_DATA_ID)
+        .is_some_and(|no_gravity| no_gravity)
+    {
+        fields.push("NoGravity: 1b".to_string());
+    }
+    if debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
+        .is_some_and(|flags| flags & ENTITY_SHARED_FLAG_GLOWING != 0)
+    {
+        fields.push("Glowing: 1b".to_string());
+    }
+    if let Some(ticks_frozen) = debug_entity_data_int_present(entity, ENTITY_TICKS_FROZEN_DATA_ID) {
+        if ticks_frozen > 0 {
+            fields.push(format!("TicksFrozen: {ticks_frozen}"));
+        }
+    }
     (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Byte(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_int_present(entity: &EntityState, data_id: u8) -> Option<i32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<bool> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
 }
 
 fn debug_snbt_vec3d(name: &str, value: EntityVec3) -> Option<String> {

@@ -2181,6 +2181,41 @@ fn shift_f3_i_with_permission_copies_local_entity_transform_nbt_to_clipboard() {
         y_head_rot: 45.0,
         data: 0,
     });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: ENTITY_SHARED_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_GLOWING),
+            },
+            ProtocolEntityDataValue {
+                data_id: ENTITY_AIR_SUPPLY_DATA_ID,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(123),
+            },
+            ProtocolEntityDataValue {
+                data_id: ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: ENTITY_SILENT_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: ENTITY_NO_GRAVITY_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: ENTITY_TICKS_FROZEN_DATA_ID,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(42),
+            },
+        ],
+    }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
             x: 0.0,
@@ -2213,7 +2248,8 @@ fn shift_f3_i_with_permission_copies_local_entity_transform_nbt_to_clipboard() {
         clipboard.text.as_deref(),
         Some(
             "/summon minecraft:creeper 0.00 0.00 3.00 \
-             {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f]}"
+             {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], Air: 123s, \
+             CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
