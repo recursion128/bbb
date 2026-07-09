@@ -437,6 +437,9 @@ fn main() -> Result<()> {
                     if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
                         return;
                     }
+                    if input.handle_stats_screen_cursor_moved(&world, cursor_position) {
+                        return;
+                    }
                     if world.advancements_screen_is_open() {
                         handle_advancements_screen_cursor_moved(
                             &mut input,
@@ -678,6 +681,7 @@ fn main() -> Result<()> {
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     let book_open = world.current_book().is_some();
                     let advancements_open = world.advancements_screen_is_open();
+                    let stats_open = world.stats_screen_is_open();
                     let debug_options_open = input.debug_options_screen_is_open();
                     let pause_open = input.debug_pause_screen_is_open();
                     if dialog_open {
@@ -690,6 +694,7 @@ fn main() -> Result<()> {
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
+                        && !stats_open
                         && !debug_options_open
                         && !pause_open
                         && !world_wants_cursor(&world);
@@ -705,6 +710,7 @@ fn main() -> Result<()> {
                     if sign_editor_open
                         || book_open
                         || advancements_open
+                        || stats_open
                         || debug_options_open
                         || pause_open
                     {
@@ -715,6 +721,7 @@ fn main() -> Result<()> {
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
+                        && !stats_open
                         && !debug_options_open
                         && !pause_open
                         && !ordinary_pause_escape
@@ -741,12 +748,17 @@ fn main() -> Result<()> {
                     let container_open = world.open_container_id().is_some();
                     let book_open = world.current_book().is_some();
                     let advancements_open = world.advancements_screen_is_open();
+                    let stats_open = world.stats_screen_is_open();
                     if input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         input.handle_debug_options_screen_text_input(&text);
                         return;
                     }
-                    if world.current_dialog().is_some() || book_open || advancements_open {
+                    if world.current_dialog().is_some()
+                        || book_open
+                        || advancements_open
+                        || stats_open
+                    {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -802,6 +814,22 @@ fn main() -> Result<()> {
                     if input.debug_pause_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         input.handle_debug_pause_screen_mouse_input(
+                            &mut net_counters,
+                            &mut world,
+                            &net_commands,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
+                        if !runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, true);
+                        }
+                        return;
+                    }
+                    if world.stats_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_stats_screen_mouse_input(
                             &mut net_counters,
                             &mut world,
                             &net_commands,
@@ -891,6 +919,10 @@ fn main() -> Result<()> {
                         return;
                     }
                     if input.sign_editor_is_active_or_pending(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -1240,6 +1272,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_dialog().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || world.stats_screen_is_open()
 }
 
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
@@ -1338,6 +1371,16 @@ mod tests {
 
         assert!(!runtime_wants_cursor(&input, &world));
         assert!(world.open_advancements_screen());
+        assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn runtime_wants_cursor_for_stats_screen() {
+        let input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+
+        assert!(!runtime_wants_cursor(&input, &world));
+        assert!(world.open_stats_screen());
         assert!(runtime_wants_cursor(&input, &world));
     }
 

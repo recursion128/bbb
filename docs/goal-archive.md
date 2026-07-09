@@ -5381,7 +5381,7 @@
   `setScreen(null)` / `grabMouse()` 的行为。`ClientInputState` 现在跟踪 pause
   screen cursor，menu pause screen 左键点击 Return to Game rect 会关闭 screen；
   runtime 投影 hover，renderer 绘制 native Return to Game button，main 在
-  pause-screen close 后恢复 cursor capture。边界：dim background、Stats、
+  pause-screen close 后恢复 cursor capture。边界：dim background、
   feedback/custom-dialog、Options、Share to LAN / Player Reporting、
   Disconnect、draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Advancements button（P2 input/runtime/renderer
@@ -5391,9 +5391,22 @@
   `AdvancementsScreen` 的行为。native pause screen 现在投影 Advancements hover，
   renderer 绘制该按钮，左键点击会关闭 pause shell、打开现有 native advancements
   screen，并在有 visible root tab 时沿用既有 `SeenAdvancements::OpenedTab`
-  packet 语义。边界：parent-return behavior、Stats、feedback/custom-dialog、
+  packet 语义。边界：parent-return behavior、feedback/custom-dialog、
   Options、Share to LAN / Player Reporting、Disconnect、draft-report icon、dim
   background、music toast、以及 tick-freeze eligibility 仍未实现。
+- [x] native PauseScreen(true) Stats button loading screen shell（P2
+  input/runtime/renderer slice，2026-07-09）：依据 `PauseScreen.createPauseMenu`
+  添加 half-width `gui.stats` button，并在 grid `(0.5, 0.25)` alignment 下位于
+  `(width / 2 + 4, height / 4 + 32, 98, 20)`、点击后打开
+  `StatsScreen(this, player.getStats())` 的行为；依据 `StatsScreen.init`
+  创建 loading tabs、footer Done button 宽 200，并发送
+  `ServerboundClientCommandPacket(Action.REQUEST_STATS)`。native pause screen
+  现在投影 Stats hover，renderer 绘制该按钮，左键点击会关闭 pause shell、打开
+  native Stats loading shell 并排队 `RequestStats`；Stats shell 渲染 `Stats` 与
+  `Downloading statistics...`，Done/Escape 关闭。边界：General/Items/Mobs 统计
+  列表、排序/icons、server `onStatsUpdated` populated view、parent-return behavior、
+  feedback/custom-dialog、Options、Share to LAN / Player Reporting、Disconnect、
+  draft-report icon、dim background、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

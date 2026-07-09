@@ -774,8 +774,11 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let pause_screen_extract = source
         .find("let hud_pause_screen = if hud_debug_options_screen.is_some()")
         .expect("pump should extract pause screen HUD state");
+    let stats_screen_extract = source
+        .find("let hud_stats_screen = if hud_debug_options_screen.is_some()")
+        .expect("pump should extract stats screen HUD state");
     let sign_editor_extract = source
-        .find("let hud_sign_editor_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()")
+        .find("let hud_sign_editor_screen = if hud_debug_options_screen.is_some()")
         .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
         .find("hud_inventory_screen_with_local_state(")
@@ -792,6 +795,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         hotbar_icons_extract,
         debug_options_screen_extract,
         pause_screen_extract,
+        stats_screen_extract,
         sign_editor_extract,
         inventory_screen_extract,
     ] {
@@ -5834,6 +5838,7 @@ fn hud_pause_screen_projects_no_menu_title() {
     assert!(!screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
+    assert!(!screen.stats_hovered);
 }
 
 #[test]
@@ -5847,6 +5852,7 @@ fn hud_pause_screen_projects_menu_title() {
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
+    assert!(!screen.stats_hovered);
 }
 
 #[test]
@@ -5865,6 +5871,7 @@ fn hud_pause_screen_projects_return_to_game_hover() {
     assert!(screen.show_pause_menu);
     assert!(screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
+    assert!(!screen.stats_hovered);
 }
 
 #[test]
@@ -5883,6 +5890,45 @@ fn hud_pause_screen_projects_advancements_hover() {
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(screen.advancements_hovered);
+    assert!(!screen.stats_hovered);
+}
+
+#[test]
+fn hud_pause_screen_projects_stats_hover() {
+    let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            170.0, 102.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(screen.show_pause_menu);
+    assert!(!screen.return_to_game_hovered);
+    assert!(!screen.advancements_hovered);
+    assert!(screen.stats_hovered);
+}
+
+#[test]
+fn hud_stats_screen_projects_loading_shell_and_done_hover() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+
+    assert!(hud_stats_screen(&input, &world, surface).is_none());
+    assert!(world.open_stats_screen());
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(winit::dpi::PhysicalPosition::new(70.0, 223.0))
+    ));
+
+    let screen = hud_stats_screen(&input, &world, surface).expect("stats screen");
+    assert_eq!(screen.title, "Stats");
+    assert_eq!(screen.loading_text, "Downloading statistics...");
+    assert!(screen.done_hovered);
 }
 
 #[test]

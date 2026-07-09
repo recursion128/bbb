@@ -10,10 +10,11 @@ use bbb_renderer::{
     FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
     HudBlockItemModel, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudDebugOptionsScreen,
     HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudSignEditorScreen, HudStyledTextRun, HudTitleText, HudVehicleHealth,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudPlayerHealth, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudTitleText,
+    HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, SignTextSurface,
+    WorldBorderRenderState,
 };
 
 use super::*;
@@ -792,6 +793,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
+    pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
@@ -866,6 +868,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
+    renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);

@@ -35,8 +35,8 @@ use bbb_renderer::{
     HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting,
-    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    HudSignEditorKind, HudSignEditorScreen, HudStatsScreen, HudUvRect, HudVehicleHealth,
+    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
     ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
     ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
     Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
@@ -87,10 +87,11 @@ use crate::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
         inventory_screen_selected_hotbar_slot_id, pause_screen_advancements_button_contains,
-        pause_screen_return_to_game_button_contains, recipe_book_button_position,
-        recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
-        recipe_book_type_for_background, recipe_book_type_settings,
-        recipe_book_visible_tab_indices, release_active_input, sync_beacon_effect_selection_state,
+        pause_screen_return_to_game_button_contains, pause_screen_stats_button_contains,
+        recipe_book_button_position, recipe_book_main_gui_offset,
+        recipe_book_tab_count_for_background, recipe_book_type_for_background,
+        recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
+        stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
         DebugOptionsScreenHudRow, InventoryScreenBackground, RecipeBookOverlayHudState,
         RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
@@ -2098,7 +2099,14 @@ pub(crate) fn pump_network_and_terrain(
     } else {
         hud_pause_screen(input, surface_size)
     };
-    let hud_sign_editor_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()
+    let hud_stats_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some() {
+        None
+    } else {
+        hud_stats_screen(input, world, surface_size)
+    };
+    let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
     {
         None
     } else {
@@ -2106,6 +2114,7 @@ pub(crate) fn pump_network_and_terrain(
     };
     let hud_inventory_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
+        || hud_stats_screen.is_some()
         || hud_sign_editor_screen.is_some()
     {
         None
@@ -2415,6 +2424,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_inventory_screen,
             hud_sign_editor_screen,
             hud_pause_screen,
+            hud_stats_screen,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
@@ -2917,6 +2927,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_dialog().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || world.stats_screen_is_open()
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
         || input.sign_editor_is_active_or_pending(world)
@@ -2931,6 +2942,8 @@ fn hud_pause_screen(
         && pause_screen_return_to_game_button_contains(state.cursor_position, surface_size);
     let advancements_hovered = state.show_pause_menu
         && pause_screen_advancements_button_contains(state.cursor_position, surface_size);
+    let stats_hovered = state.show_pause_menu
+        && pause_screen_stats_button_contains(state.cursor_position, surface_size);
     Some(HudPauseScreen {
         title: if state.show_pause_menu {
             "Game Menu"
@@ -2941,6 +2954,22 @@ fn hud_pause_screen(
         show_pause_menu: state.show_pause_menu,
         return_to_game_hovered,
         advancements_hovered,
+        stats_hovered,
+    })
+}
+
+fn hud_stats_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudStatsScreen> {
+    world.stats_screen_is_open().then(|| HudStatsScreen {
+        title: "Stats".to_string(),
+        loading_text: "Downloading statistics...".to_string(),
+        done_hovered: stats_screen_done_button_contains(
+            input.stats_screen_cursor_position(),
+            surface_size,
+        ),
     })
 }
 
@@ -4469,6 +4498,10 @@ fn hud_inventory_screen_with_local_state_for_surface(
             local_state.keybind_context,
             partial_tick,
         ));
+    }
+
+    if world.stats_screen_is_open() {
+        return None;
     }
 
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;

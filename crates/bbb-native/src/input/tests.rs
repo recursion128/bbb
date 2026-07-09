@@ -3522,6 +3522,33 @@ fn debug_pause_screen_advancements_button_opens_advancements_screen() {
 }
 
 #[test]
+fn debug_pause_screen_stats_button_opens_stats_screen_and_requests_stats() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(170.0, 102.0)),
+        surface,
+    ));
+
+    assert!(!input.debug_pause_screen_is_open());
+    assert!(world.stats_screen_is_open());
+    assert_eq!(counters.request_stats_commands_queued, 1);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
@@ -8640,6 +8667,55 @@ fn advancements_key_closes_advancements_screen_and_queues_seen_packet() {
         rx.try_recv().unwrap(),
         NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen)
     );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn stats_screen_done_button_closes_stats_screen() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    assert!(world.open_stats_screen());
+
+    assert!(
+        input.handle_stats_screen_cursor_moved(&world, Some(PhysicalPosition::new(70.0, 223.0)))
+    );
+    assert_eq!(input.stats_screen_cursor_position(), Some((70, 223)));
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(70.0, 223.0)),
+        surface,
+    ));
+
+    assert!(!world.stats_screen_is_open());
+    assert_eq!(input.stats_screen_cursor_position(), None);
+}
+
+#[test]
+fn escape_key_closes_stats_screen_without_requesting_stats_again() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_stats_screen());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.stats_screen_is_open());
+    assert_eq!(counters.request_stats_commands_queued, 0);
     assert!(rx.try_recv().is_err());
 }
 

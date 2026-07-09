@@ -1134,6 +1134,7 @@ When an agent does any of the following, update this file in the same slice:
     PauseScreen(false) input/cursor/render shell, ordinary-Escape
     PauseScreen(true) title/menu-state shell, PauseScreen Return to Game button
     render/input/action, PauseScreen Advancements button render/input/action,
+    PauseScreen Stats button loading screen shell,
     SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
@@ -1883,7 +1884,7 @@ When an agent does any of the following, update this file in the same slice:
     projects hover for the vanilla `(width / 2 - 102, height / 4 + 8, 204, 20)`
     button rect, renders the native Return to Game button in menu pause
     screens, closes the pause screen on left click, and restores cursor capture
-    on pause-screen close. Boundary: dim background, Stats, feedback/custom-dialog,
+    on pause-screen close. Boundary: dim background, feedback/custom-dialog,
     Options, Share to LAN / Player Reporting, Disconnect, draft-report icon,
     music toast, and pause tick-freeze eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Advancements button.
@@ -1894,10 +1895,23 @@ When an agent does any of the following, update this file in the same slice:
     bbb now tracks hover for that rect, renders the native Advancements button,
     and left click closes the pause shell while opening the existing native
     advancements screen and queuing the vanilla `SeenAdvancements::OpenedTab`
-    when a visible root is selected. Boundary: parent-return behavior, Stats,
+    when a visible root is selected. Boundary: parent-return behavior,
     feedback/custom-dialog, Options, Share to LAN / Player Reporting,
     Disconnect, draft-report icon, dim background, music toast, and pause
     tick-freeze eligibility remain future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` Stats button loading screen shell.
+    Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
+    `gui.stats` button next to Advancements and opens `new StatsScreen(this,
+    minecraft.player.getStats())`; `StatsScreen.init` creates loading tabs,
+    places a 200-wide footer Done button, and sends
+    `ServerboundClientCommandPacket(Action.REQUEST_STATS)`. bbb now tracks hover
+    for the right-half `(width / 2 + 4, height / 4 + 32, 98, 20)` pause button,
+    opens a native Stats loading shell, queues `RequestStats`, renders
+    `gui.stats` / `multiplayer.downloadingStats`, and closes it from Done or
+    Escape. Boundary: populated General/Items/Mobs stats tabs, sorting/icons,
+    server-driven `onStatsUpdated`, parent-return behavior, feedback/custom-dialog,
+    Options, Share to LAN / Player Reporting, Disconnect, draft-report icon, dim
+    background, music toast, and pause tick-freeze eligibility remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -2992,9 +3006,11 @@ When an agent does any of the following, update this file in the same slice:
     Ordinary Escape now releases cursor capture, opens the native
     `PauseScreen(true)` title/menu-state shell, and renders the `Game Menu`
     title after active screens/containers decline the key.
-    Menu pause screens now render the native Return to Game and Advancements
-    buttons, hover them from cursor position, close on Return click with cursor
-    recapture, and open the native advancements screen from Advancements click.
+    Menu pause screens now render the native Return to Game, Advancements, and
+    Stats buttons, hover them from cursor position, close on Return click with
+    cursor recapture, open the native advancements screen from Advancements click,
+    and open a native Stats loading shell that requests stats and closes from
+    Done/Escape.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and

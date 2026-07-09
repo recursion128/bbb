@@ -338,6 +338,7 @@ Screen Render Surfaces" 条目）：
   ordinary Escape PauseScreen(true) title/menu-state shell、
   PauseScreen Return to Game button render/input/action、
   PauseScreen Advancements button render/input/action、
+  PauseScreen Stats button loading screen shell、
   SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys、
   DebugOptionsScreen input/search/list/profile/status/done screen shell、
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、

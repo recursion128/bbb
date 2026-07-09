@@ -20,6 +20,8 @@ pub struct ClientUiState {
     #[serde(default)]
     pub current_advancements_screen: bool,
     #[serde(default)]
+    pub current_stats_screen: bool,
+    #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
     pub last_mount_screen: Option<MountScreenState>,
@@ -103,6 +105,7 @@ impl WorldStore {
         self.counters.show_dialog_packets += 1;
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
+        self.client_ui.current_stats_screen = false;
         self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
     }
 
@@ -133,6 +136,7 @@ impl WorldStore {
         if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
             self.client_ui.current_dialog = None;
             self.client_ui.current_advancements_screen = false;
+            self.client_ui.current_stats_screen = false;
             self.client_ui.current_book = Some(BookScreenState {
                 hand,
                 pages,
@@ -145,6 +149,7 @@ impl WorldStore {
         self.counters.open_sign_editor_packets += 1;
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
+        self.client_ui.current_stats_screen = false;
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
             pos: protocol_block_pos(packet.pos),
             is_front_text: packet.is_front_text,
@@ -192,6 +197,7 @@ impl WorldStore {
         let was_open = self.client_ui.current_advancements_screen;
         self.client_ui.current_dialog = None;
         self.client_ui.current_book = None;
+        self.client_ui.current_stats_screen = false;
         self.client_ui.current_advancements_screen = true;
         !was_open
     }
@@ -199,6 +205,25 @@ impl WorldStore {
     pub fn close_advancements_screen(&mut self) -> bool {
         let was_open = self.client_ui.current_advancements_screen;
         self.client_ui.current_advancements_screen = false;
+        was_open
+    }
+
+    pub fn stats_screen_is_open(&self) -> bool {
+        self.client_ui.current_stats_screen
+    }
+
+    pub fn open_stats_screen(&mut self) -> bool {
+        let was_open = self.client_ui.current_stats_screen;
+        self.client_ui.current_dialog = None;
+        self.client_ui.current_book = None;
+        self.client_ui.current_advancements_screen = false;
+        self.client_ui.current_stats_screen = true;
+        !was_open
+    }
+
+    pub fn close_stats_screen(&mut self) -> bool {
+        let was_open = self.client_ui.current_stats_screen;
+        self.client_ui.current_stats_screen = false;
         was_open
     }
 
@@ -538,6 +563,19 @@ mod tests {
     }
 
     #[test]
+    fn stats_screen_open_close_tracks_local_screen() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.stats_screen_is_open());
+        assert!(store.open_stats_screen());
+        assert!(store.stats_screen_is_open());
+        assert!(!store.open_stats_screen());
+        assert!(store.close_stats_screen());
+        assert!(!store.stats_screen_is_open());
+        assert!(!store.close_stats_screen());
+    }
+
+    #[test]
     fn other_client_screens_replace_advancements_screen() {
         let mut store = WorldStore::new();
         assert!(store.open_advancements_screen());
@@ -558,6 +596,12 @@ mod tests {
         store.open_local_inventory();
         assert!(!store.advancements_screen_is_open());
         assert!(store.local_inventory_is_open());
+
+        assert!(store.open_stats_screen());
+        assert!(store.stats_screen_is_open());
+        assert!(store.open_advancements_screen());
+        assert!(!store.stats_screen_is_open());
+        assert!(store.advancements_screen_is_open());
     }
 
     #[test]

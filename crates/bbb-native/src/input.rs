@@ -118,6 +118,9 @@ const PAUSE_SCREEN_HALF_BUTTON_WIDTH: i32 = 98;
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET: i32 = 32;
+const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
+const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
+const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -335,6 +338,7 @@ pub(crate) struct ClientInputState {
     advancement_hover_fade: f32,
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
+    stats_screen_cursor_position: Option<(i32, i32)>,
     debug_entries: DebugScreenEntryList,
     debug_profile_store_path: Option<PathBuf>,
     debug_modifier_down: bool,
@@ -1374,7 +1378,48 @@ impl ClientInputState {
             } else if pause_screen_advancements_button_contains(cursor_position, surface_size) {
                 self.close_debug_pause_screen();
                 open_advancements_screen(self, counters, world, net_commands);
+            } else if pause_screen_stats_button_contains(cursor_position, surface_size) {
+                self.close_debug_pause_screen();
+                open_stats_screen(self, counters, world, net_commands);
             }
+        }
+        true
+    }
+
+    pub(crate) fn stats_screen_cursor_position(&self) -> Option<(i32, i32)> {
+        self.stats_screen_cursor_position
+    }
+
+    pub(crate) fn handle_stats_screen_cursor_moved(
+        &mut self,
+        world: &WorldStore,
+        cursor_position: Option<PhysicalPosition<f64>>,
+    ) -> bool {
+        if !world.stats_screen_is_open() {
+            return false;
+        }
+        self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        true
+    }
+
+    pub(crate) fn handle_stats_screen_mouse_input(
+        &mut self,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        if !world.stats_screen_is_open() {
+            return false;
+        }
+        self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        if matches!((button, state), (MouseButton::Left, ElementState::Pressed))
+            && stats_screen_done_button_contains(self.stats_screen_cursor_position, surface_size)
+        {
+            close_stats_screen(self, counters, world, net_commands);
         }
         true
     }
@@ -2061,6 +2106,7 @@ impl ClientInputState {
             || world.current_dialog().is_some()
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
+            || world.stats_screen_is_open()
     }
 
     fn next_debug_query_transaction_id(&mut self) -> i32 {
@@ -2438,6 +2484,28 @@ pub(crate) fn pause_screen_advancements_button_contains(
     mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
 }
 
+pub(crate) fn pause_screen_stats_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_stats_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
+pub(crate) fn stats_screen_done_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = stats_screen_done_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
 fn pause_screen_return_to_game_button_rect(
     surface_size: PhysicalSize<u32>,
 ) -> (i32, i32, i32, i32) {
@@ -2459,6 +2527,29 @@ fn pause_screen_advancements_button_rect(surface_size: PhysicalSize<u32>) -> (i3
         height / 4 + PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET,
         PAUSE_SCREEN_HALF_BUTTON_WIDTH,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_stats_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 + 4,
+        height / 4 + PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn stats_screen_done_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - STATS_SCREEN_DONE_BUTTON_WIDTH / 2,
+        height - STATS_SCREEN_FOOTER_HEIGHT
+            + (STATS_SCREEN_FOOTER_HEIGHT - STATS_SCREEN_DONE_BUTTON_HEIGHT) / 2,
+        STATS_SCREEN_DONE_BUTTON_WIDTH,
+        STATS_SCREEN_DONE_BUTTON_HEIGHT,
     )
 }
 
@@ -3247,6 +3338,23 @@ fn handle_advancements_screen_key(
     true
 }
 
+fn handle_stats_screen_key(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+    pressed: bool,
+) -> bool {
+    if !world.stats_screen_is_open() {
+        return false;
+    }
+    if pressed && matches!(code, KeyCode::Escape) {
+        close_stats_screen(input, counters, world, net_commands);
+    }
+    true
+}
+
 fn open_advancements_screen(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -3262,6 +3370,31 @@ fn open_advancements_screen(
                 SeenAdvancements::OpenedTab { tab },
             );
         }
+    }
+}
+
+fn open_stats_screen(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if world.open_stats_screen() {
+        release_active_input(input, world, counters, net_commands);
+        input.stats_screen_cursor_position = None;
+        queue_request_stats_command(counters, net_commands);
+    }
+}
+
+fn close_stats_screen(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if world.close_stats_screen() {
+        release_active_input(input, world, counters, net_commands);
+        input.stats_screen_cursor_position = None;
     }
 }
 
@@ -3686,6 +3819,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if handle_stats_screen_key(input, counters, world, net_commands, code, pressed) {
+        return;
+    }
+
     if world.current_dialog().is_some() {
         return;
     }
@@ -3981,6 +4118,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
     if world.current_dialog().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || world.stats_screen_is_open()
     {
         return;
     }
