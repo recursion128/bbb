@@ -1,5 +1,5 @@
 use bbb_protocol::{
-    packets::{MobEffectInstanceSummary, SuspiciousStewEffectSummary},
+    packets::{MobEffectInstanceSummary, PaintingVariantSummary, SuspiciousStewEffectSummary},
     ComponentStyle, StyledTextRun,
 };
 
@@ -28,6 +28,9 @@ const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
 const TOOLTIP_GRAY_TEXT_COLOR: u32 = 0xAA_AA_AA;
 const DISC_FRAGMENT_5_RESOURCE_ID: &str = "minecraft:disc_fragment_5";
 const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.desc";
+const PAINTING_RESOURCE_ID: &str = "minecraft:painting";
+const PAINTING_DIMENSIONS_KEY: &str = "painting.dimensions";
+const PAINTING_RANDOM_KEY: &str = "painting.random";
 const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
     "minecraft:netherite_upgrade_smithing_template";
 const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
@@ -69,6 +72,7 @@ const COMPONENT_BLOCK_STATE_TYPE_ID: i32 = 76;
 const COMPONENT_BEES_TYPE_ID: i32 = 77;
 const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
 const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
+const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
 const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     bold: None,
     italic: None,
@@ -693,6 +697,8 @@ fn tooltip_display_shows(component_patch: &DataComponentPatchSummary, type_id: i
 fn push_item_specific_tooltip_lines(
     language: &LanguageCatalog,
     item_id: &str,
+    component_patch: &DataComponentPatchSummary,
+    options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if item_id == DISC_FRAGMENT_5_RESOURCE_ID {
@@ -705,6 +711,67 @@ fn push_item_specific_tooltip_lines(
     }
     if let Some((applies_to_key, ingredients_key)) = smithing_template_tooltip_keys(item_id) {
         push_smithing_template_tooltip_lines(language, applies_to_key, ingredients_key, lines);
+    }
+    if item_id == PAINTING_RESOURCE_ID
+        && tooltip_display_shows(component_patch, COMPONENT_PAINTING_VARIANT_TYPE_ID)
+    {
+        push_painting_tooltip_lines(language, component_patch, options.creative, lines);
+    }
+}
+
+fn push_painting_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    creative: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(variant) = component_patch.painting_variant_direct.as_ref() {
+        push_painting_variant_tooltip_lines(language, variant, lines);
+    } else if creative && component_patch.painting_variant_id.is_none() {
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key(PAINTING_RANDOM_KEY).to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+}
+
+fn push_painting_variant_tooltip_lines(
+    language: &LanguageCatalog,
+    variant: &PaintingVariantSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    push_optional_component_tooltip_line(
+        variant.title.as_deref(),
+        variant.title_styled.as_deref(),
+        lines,
+    );
+    push_optional_component_tooltip_line(
+        variant.author.as_deref(),
+        variant.author_styled.as_deref(),
+        lines,
+    );
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(
+            language,
+            PAINTING_DIMENSIONS_KEY,
+            &variant.width.to_string(),
+            &variant.height.to_string(),
+        ),
+        TOOLTIP_TEXT_WHITE,
+    ));
+}
+
+fn push_optional_component_tooltip_line(
+    text: Option<&str>,
+    runs: Option<&[StyledTextRun]>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(text) = text {
+        lines.push(NativeItemTooltipLine {
+            text: text.to_string(),
+            tint: TOOLTIP_TEXT_WHITE,
+            runs: hud_runs_from_component(runs.unwrap_or(&[]), text, &ComponentStyle::default()),
+        });
     }
 }
 
@@ -1940,7 +2007,13 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
-        push_item_specific_tooltip_lines(&self.language, item_id, &mut lines);
+        push_item_specific_tooltip_lines(
+            &self.language,
+            item_id,
+            &stack.component_patch,
+            options,
+            &mut lines,
+        );
         if shows(COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
             push_tropical_fish_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         }

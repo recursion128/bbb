@@ -201,6 +201,10 @@ pub struct DataComponentPatchSummary {
     pub lodestone_target: Option<LodestoneTargetSummary>,
     #[serde(default)]
     pub lodestone_tracked: Option<bool>,
+    #[serde(default)]
+    pub painting_variant_id: Option<i32>,
+    #[serde(default)]
+    pub painting_variant_direct: Option<PaintingVariantSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -259,6 +263,21 @@ pub struct TrimPatternSummary {
     pub asset_id: String,
     pub description: String,
     pub decal: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PaintingVariantSummary {
+    pub width: i32,
+    pub height: i32,
+    pub asset_id: String,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub title_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub author_styled: Option<Vec<StyledTextRun>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -821,6 +840,11 @@ fn decode_typed_data_component_patch_summary(
             }
             83 => {
                 summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
+            }
+            102 => {
+                let painting = decode_painting_variant_holder_summary(decoder)?;
+                summary.painting_variant_id = painting.registry_id;
+                summary.painting_variant_direct = painting.direct;
             }
             _ => decode_data_component_value(decoder, type_id)?,
         }
@@ -2162,16 +2186,56 @@ fn decode_bees(decoder: &mut Decoder<'_>) -> Result<usize> {
 }
 
 fn decode_painting_variant_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_painting_variant)
+    let _ = decode_painting_variant_holder_summary(decoder)?;
+    Ok(())
 }
 
-fn decode_direct_painting_variant(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_var_i32()?;
-    decode_identifier(decoder)?;
-    decode_optional_component(decoder)?;
-    decode_optional_component(decoder)?;
-    Ok(())
+struct PaintingVariantHolderSummary {
+    registry_id: Option<i32>,
+    direct: Option<PaintingVariantSummary>,
+}
+
+fn decode_painting_variant_holder_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<PaintingVariantHolderSummary> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        Ok(PaintingVariantHolderSummary {
+            registry_id: None,
+            direct: Some(decode_direct_painting_variant_summary(decoder)?),
+        })
+    } else {
+        Ok(PaintingVariantHolderSummary {
+            registry_id: Some(id - 1),
+            direct: None,
+        })
+    }
+}
+
+fn decode_direct_painting_variant_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<PaintingVariantSummary> {
+    let width = decoder.read_var_i32()?;
+    let height = decoder.read_var_i32()?;
+    let asset_id = read_resource_location(decoder)?;
+    let title_styled = decode_optional_component_summary(decoder)?;
+    let author_styled = decode_optional_component_summary(decoder)?;
+    Ok(PaintingVariantSummary {
+        width,
+        height,
+        asset_id,
+        title: title_styled
+            .as_ref()
+            .map(|runs| styled_runs_summary_text(runs)),
+        title_styled,
+        author: author_styled
+            .as_ref()
+            .map(|runs| styled_runs_summary_text(runs)),
+        author_styled,
+    })
 }
 
 fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSummary> {
@@ -2340,11 +2404,13 @@ fn decode_filterable_component_summary(
     Ok(FilterableStringSummary { raw, filtered })
 }
 
-fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_component_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<Vec<StyledTextRun>>> {
     if decoder.read_bool()? {
-        decode_component_summary_from_decoder(decoder)?;
+        return decode_styled_component_summary_from_decoder(decoder).map(Some);
     }
-    Ok(())
+    Ok(None)
 }
 
 struct FireworksComponentSummary {
@@ -4142,6 +4208,15 @@ mod tests {
                     ("facing".to_string(), "north".to_string()),
                     ("lit".to_string(), "true".to_string()),
                 ]),
+                painting_variant_direct: Some(PaintingVariantSummary {
+                    width: 16,
+                    height: 16,
+                    asset_id: "minecraft:kebab".to_string(),
+                    title: None,
+                    title_styled: None,
+                    author: Some("Painter".to_string()),
+                    author_styled: Some(plain_runs("Painter")),
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );

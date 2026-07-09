@@ -25,6 +25,18 @@ fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
     }
 }
 
+fn colored_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle::default(),
+            color: Some(color),
+        }],
+    }
+}
+
 fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.to_string(),
@@ -229,6 +241,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.test_combo": "Test Combo",
                 "item.minecraft.disc_fragment_5": "Disc Fragment",
                 "item.minecraft.disc_fragment_5.desc": "Music Disc - 5",
+                "item.minecraft.painting": "Painting",
+                "painting.dimensions": "%sx%s",
+                "painting.random": "Random variant",
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
                 "effect.minecraft.bad_omen": "Bad Omen",
@@ -343,7 +358,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
 
     assert_eq!(runtime.item_definition_count(), 1);
-    assert_eq!(runtime.item_registry_count(), 2);
+    assert_eq!(runtime.item_registry_count(), 3);
     assert_eq!(runtime.item_equipment_slot_count(), 1);
     assert_eq!(runtime.item_mining_profile_count(), 0);
     assert_eq!(
@@ -383,6 +398,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ],
             ),
             (1, vec![MISSING_TEXTURE_ID.to_string()]),
+            (2, vec![MISSING_TEXTURE_ID.to_string()]),
         ])
     );
     assert_eq!(
@@ -461,6 +477,99 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Disc Fragment", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Music Disc - 5", TOOLTIP_TEXT_GRAY),
         ])
+    );
+    let painting_variant = bbb_protocol::packets::PaintingVariantSummary {
+        width: 2,
+        height: 1,
+        asset_id: "minecraft:sunset".to_string(),
+        title: Some("Sunset".to_string()),
+        title_styled: Some(vec![bbb_protocol::StyledTextRun {
+            text: "Sunset".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                color: Some(0xFF_FF_55),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }]),
+        author: Some("Artist".to_string()),
+        author_styled: Some(vec![bbb_protocol::StyledTextRun {
+            text: "Artist".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                color: Some(0xAA_AA_AA),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }]),
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(2),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                painting_variant_direct: Some(painting_variant.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Painting", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            colored_tooltip_line("Sunset", TOOLTIP_TEXT_WHITE, 0xFF_FF_55),
+            colored_tooltip_line("Artist", TOOLTIP_TEXT_WHITE, 0xAA_AA_AA),
+            tooltip_line("2x1", TOOLTIP_TEXT_WHITE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(2),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                painting_variant_direct: Some(painting_variant),
+                tooltip_hidden_component_type_ids: vec![102],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![name_line(
+            "Painting",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(2),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Painting", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Random variant", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(2),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    painting_variant_id: Some(5),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![name_line(
+            "Painting",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack_with_context(
@@ -14909,6 +15018,7 @@ fn write_item_registry_sources(root: &Path) {
         r#"public class Items {
                 public static final Item TEST_COMBO = registerItem("test_combo", new Item.Properties().equippable(EquipmentSlot.CHEST));
                 public static final Item DISC_FRAGMENT_5 = registerItem("disc_fragment_5");
+                public static final Item PAINTING = registerItem("painting");
             }"#,
     );
 }

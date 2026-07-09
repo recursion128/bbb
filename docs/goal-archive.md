@@ -6643,7 +6643,20 @@
   title、blue 前导空格 ingredients，native item tooltip 现在对
   `minecraft:netherite_upgrade_smithing_template` 和
   `minecraft:*_armor_trim_smithing_template` 输出对应 netherite/armor-trim
-  applies/ingredients 文案。边界：painting variants 等仍需额外 component summary。
+  applies/ingredients 文案。边界：其它 item-specific hook 与 painting registry-holder
+  title/author resolution 仍未完成。
+- [x] advanced tooltip direct painting variant rows（P2 protocol + item-runtime
+  slice，2026-07-09）：依据 `HangingEntityItem.appendHoverText` 只在
+  `EntityType.PAINTING` 且 `TooltipDisplay.shows(DataComponents.PAINTING_VARIANT)`
+  时输出 painting variant rows，先追加 optional title/author components，再输出
+  `painting.dimensions(width, height)`，creative 且无 variant component 时输出灰色
+  `painting.random`；`PaintingVariant.STREAM_CODEC` direct holder 线序为 width、
+  height、asset_id、optional title、optional author。protocol summary 现在保留
+  decoded `minecraft:painting/variant` holder id 和 direct payload，native item
+  tooltip 对 `minecraft:painting` direct variant 输出 styled title/author、dimensions
+  行，应用 hidden component type id 102，并覆盖 creative random-variant fallback。
+  边界：registry-holder ids 已保存但尚未通过 painting variant registry catalog 解析
+  title/author/size，非 direct holder tooltip rows 仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`
