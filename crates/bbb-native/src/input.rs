@@ -18,14 +18,14 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -263,6 +263,8 @@ const IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 const IRON_GOLEM_PLAYER_CREATED_FLAG: i8 = 1;
 const IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
 const NEUTRAL_MOB_DEFAULT_ANGER_END_TIME: i64 = 0;
+const OCELOT_TRUSTING_DATA_ID: u8 = 18;
+const OCELOT_DEFAULT_TRUSTING: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
@@ -3688,6 +3690,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_iron_golem_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_OCELOT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_ocelot_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_PHANTOM_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
@@ -3926,6 +3934,12 @@ fn debug_push_neutral_mob_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "anger_end_time: {NEUTRAL_MOB_DEFAULT_ANGER_END_TIME}L"
     ));
+}
+
+fn debug_push_ocelot_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let trusting = debug_entity_data_bool_present(entity, OCELOT_TRUSTING_DATA_ID)
+        .unwrap_or(OCELOT_DEFAULT_TRUSTING);
+    fields.push(format!("Trusting: {}", debug_snbt_bool(trusting)));
 }
 
 fn debug_push_patrolling_monster_additional_save_data(fields: &mut Vec<String>) {
