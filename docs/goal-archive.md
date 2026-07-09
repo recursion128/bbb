@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  tags/fluid/entity/chunk stats 等 individual non-default entry
+  fluid/entity/chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5525,7 +5525,23 @@
   与属性投影为左列纯文本。边界：当前 debug text model 不承载 vanilla 的
   underline / boolean green-red styling；server debug values、完整 group
   layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及
-  block-tags/fluid/entity looking-at entries 仍待后续。
+  fluid/entity looking-at entries 仍待后续。
+- [x] debug overlay looking-at block-tags entry shell（P2 native/runtime
+  slice，2026-07-09）：依据
+  `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` 注册
+  `DebugEntryLookingAt.BlockTagInfo`；该 entry 与 block-state info 使用同一条
+  `cameraEntity.pick(20.0, 0.0F, false)` block hit 路径，读取
+  `level.getBlockState(pos)`，并由 `DebugEntryLookingAt.addTagEntries` 把 holder
+  tags 逐项格式化为 `#<tag id>`，加入 `minecraft:looking_at_block` group。
+  native 现在有非 profile 默认项 `LookingAtBlockTags` entry id，default /
+  performance profiles 中保持 `Never`，reduced-debug 下按默认
+  `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，复用 vanilla
+  20-block debug raycast，通过已跟踪的 `minecraft:block` registry content 与
+  `UpdateTags` 把命中 block name 映射到 tag raw id，并投影匹配的 `#tag`
+  左列纯文本。边界：该 entry 需要 block registry content 与 block tag packets
+  才能解析；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
+  order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，
+  以及 fluid/entity looking-at entries 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

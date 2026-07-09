@@ -3111,6 +3111,11 @@ fn hud_debug_overlay(
             left_lines.extend(looking_at_lines);
         }
     }
+    if entry_enabled(DebugScreenEntryId::LookingAtBlockTags) {
+        if let Some(looking_at_lines) = hud_debug_looking_at_block_tag_lines(world, camera_pose) {
+            left_lines.extend(looking_at_lines);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3521,6 +3526,28 @@ fn hud_debug_looking_at_block_state_lines(
             .map(|(name, value)| format!("{name}: {value}")),
     );
     Some(lines)
+}
+
+fn hud_debug_looking_at_block_tag_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<Vec<String>> {
+    let hit = debug_looking_at_block_hit_from_camera(world, camera_pose)?;
+    let block_name = world.probe_block(hit.pos)?.block_name?;
+    let block_id = world
+        .registry_content("minecraft:block")?
+        .entries
+        .iter()
+        .position(|entry| entry.id == block_name)?;
+    let block_id = i32::try_from(block_id).ok()?;
+    let tags = world.registry_tags("minecraft:block")?;
+    Some(
+        tags.tags
+            .iter()
+            .filter(|(_, entries)| entries.contains(&block_id))
+            .map(|(tag, _)| format!("#{tag}"))
+            .collect(),
+    )
 }
 
 fn camera_feet_block_position(camera: CameraPose) -> Option<BlockPos> {

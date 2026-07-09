@@ -1315,6 +1315,72 @@ fn hud_debug_overlay_projects_custom_looking_at_block_state() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_looking_at_block_tags() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.record_registry_entries(
+        "minecraft:block",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:stone"),
+            RegistryPacketEntry::stub("minecraft:barrel"),
+            RegistryPacketEntry::stub("minecraft:chest"),
+        ],
+    );
+    apply_block_tags(
+        &mut world,
+        vec![
+            ("minecraft:guarded_by_piglins", vec![1]),
+            ("minecraft:mineable/axe", vec![1, 2]),
+            ("minecraft:mineable/pickaxe", vec![0]),
+        ],
+    );
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let target = BlockPos { x: 0, y: 1, z: 0 };
+    let properties = BTreeMap::from([
+        ("facing".to_string(), "north".to_string()),
+        ("open".to_string(), "false".to_string()),
+    ]);
+    let block_state_id = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:barrel", &properties)
+        .expect("vanilla barrel block state");
+    set_lightmap_test_block(&mut world, target, block_state_id);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LookingAtBlockTags,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom looking-at block-tags entry should show target tags");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "#minecraft:guarded_by_piglins".to_string(),
+            "#minecraft:mineable/axe".to_string(),
+        ]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
@@ -13699,6 +13765,21 @@ fn apply_item_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
     world.apply_update_tags(bbb_protocol::packets::UpdateTags {
         registries: vec![bbb_protocol::packets::RegistryTags {
             registry: "minecraft:item".to_string(),
+            tags: tags
+                .into_iter()
+                .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {
+                    tag: tag.to_string(),
+                    entries,
+                })
+                .collect(),
+        }],
+    });
+}
+
+fn apply_block_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:block".to_string(),
             tags: tags
                 .into_iter()
                 .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {

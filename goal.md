@@ -310,7 +310,8 @@ Screen Render Surfaces" 条目）：
   default-profile debug entry coverage、performance-profile GPU utilization
   entry shell、day-count debug entry shell、detailed-memory debug entry
   shell、light-levels debug entry shell、biome debug entry shell、
-  looking-at block-state debug entry shell、
+  looking-at block-state debug entry shell、looking-at block-tags debug entry
+  shell、
   F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、
