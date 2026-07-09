@@ -1151,8 +1151,9 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, creative
-    suspicious-stew effect lines, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage, profiling metrics recorder/output,
+    suspicious-stew effect lines, map-id lines, F3+I full local entity
+    saveWithoutId parity, full vanilla profiler section coverage,
+    profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
@@ -1171,6 +1172,17 @@ When an agent does any of the following, update this file in the same slice:
     behavior beyond parsed vanilla `Items.java` declarations, and options
     persistence remained future work; occupied beehive `minecraft:bees`
     tooltip lines are covered by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Advanced tooltip map-id lines. Vanilla anchors:
+    `ItemStack.addDetailsToTooltip` calls `DataComponents.MAP_ID` after
+    instrument and before bees; `MapId.addToTooltip` emits gray
+    `filled_map.unknown` when `Item.TooltipContext.mapData(id)` is absent, else
+    emits `filled_map.id` when the stack has no custom name or map
+    post-processing, `filled_map.locked` when saved data or post-processing is
+    locked, and advanced `filled_map.scale` / `filled_map.level` with scale
+    post-processing folded in. bbb now passes the hovered stack's map state from
+    native HUD extraction into item-runtime tooltip options and projects the
+    same map-id rows. Boundary: `TooltipDisplay` hiding and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
@@ -2476,7 +2488,7 @@ When an agent does any of the following, update this file in the same slice:
     item-count/more rows, direct jukebox song descriptions, direct armor trim
     rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
-    effect lines.
+    effect lines, and map-id lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2745,7 +2757,7 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
-    suspicious-stew effect lines are covered by later entries.
+    suspicious-stew effect lines, and map-id lines are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3427,8 +3439,9 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
-    suspicious-stew effect lines, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage, profiling metrics recorder/output,
+    suspicious-stew effect lines, and map-id lines, F3+I full local entity
+    saveWithoutId parity, full vanilla profiler section coverage,
+    profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining actions/subscreens.

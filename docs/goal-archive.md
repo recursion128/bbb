@@ -6127,6 +6127,14 @@
   默认 component type-id 集合，item runtime 按 patch added/removed ids 计算并
   渲染本地化暗灰组件计数。边界：component-specific tooltip provider parity、
   `TooltipDisplay` hidden-components 过滤和 options persistence 仍待后续。
+- [x] advanced tooltip map-id lines（P2 native + item-runtime slice，2026-07-09）：
+  依据 `ItemStack.addDetailsToTooltip` 在 instrument 之后、bees 之前调用
+  `DataComponents.MAP_ID` provider，以及 `MapId.addToTooltip` 对 missing map data、
+  known id、locked state、advanced scale/level 的输出规则，native HUD extraction 现在把
+  hovered stack 的 map state 传入 item-runtime tooltip options，并投影灰色
+  `filled_map.unknown` / `filled_map.id` / `filled_map.locked` /
+  `filled_map.scale` / `filled_map.level` 行。边界：`TooltipDisplay`
+  hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

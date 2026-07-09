@@ -244,6 +244,11 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.container.loot_table.unknown": "Unknown contents",
                 "item.container.item_count": "%s x%s",
                 "item.container.more_items": "and %s more...",
+                "filled_map.id": "Id #%s",
+                "filled_map.level": "(Level %s/%s)",
+                "filled_map.locked": "Locked",
+                "filled_map.scale": "Scaling at 1:%s",
+                "filled_map.unknown": "Unknown Map",
                 "item.minecraft.smithing_template.upgrade": "Upgrade: ",
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
@@ -421,6 +426,65 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    let map_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            map_id: Some(7),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&map_stack),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Unknown Map", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &map_stack,
+            NativeItemTooltipOptions {
+                map_data: Some(NativeItemMapTooltipData {
+                    scale: 2,
+                    locked: false,
+                }),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Id #7", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![41, 48],
+                    map_id: Some(7),
+                    map_post_processing: Some(MapPostProcessingSummary::Scale),
+                    ..DataComponentPatchSummary::default()
+                },
+                ..map_stack.clone()
+            },
+            NativeItemTooltipOptions {
+                advanced: true,
+                map_data: Some(NativeItemMapTooltipData {
+                    scale: 2,
+                    locked: false,
+                }),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Scaling at 1:8", TOOLTIP_TEXT_GRAY),
+            tooltip_line("(Level 3/4)", TOOLTIP_TEXT_GRAY),
+            tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("15 component(s)", TOOLTIP_TEXT_DARK_GRAY),
         ])
     );
     let damaged_stack = ItemStackSummary {

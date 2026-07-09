@@ -24,8 +24,8 @@ use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
     ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
-    ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
-    TrimMaterialSummary, TrimPatternSummary,
+    MapPostProcessingSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    ResourceTextureSummary, TrimMaterialSummary, TrimPatternSummary,
 };
 // These summary types are referenced only by this crate's tests; keep them out
 // of the non-test import set so the standalone library build stays warning-free.
@@ -87,7 +87,7 @@ pub use profiles::{NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDo
 use tables::*;
 #[cfg(test)]
 use tooltip::*;
-pub use tooltip::{NativeItemTooltipLine, NativeItemTooltipOptions};
+pub use tooltip::{NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions};
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 

@@ -9,7 +9,9 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{
     AudioCounters, NetCounters, RendererCounters, SharedControlRequests, SharedSnapshot,
 };
-use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime, NativeItemTooltipOptions};
+use bbb_item_model::{
+    ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
+};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
@@ -4802,6 +4804,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
         text_labels,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(
+            world,
             item_runtime,
             hovered_slot_id,
             &layout.slots,
@@ -8146,6 +8149,7 @@ fn hud_ascii_approx_char_width(ch: char) -> u32 {
 }
 
 fn hud_inventory_tooltip(
+    world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     hovered_slot_id: Option<i16>,
     layout_slots: &[crate::input::InventorySlotLayout],
@@ -8158,9 +8162,22 @@ fn hud_inventory_tooltip(
         .iter()
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
+    let map_data = slot
+        .item
+        .component_patch
+        .map_id
+        .and_then(|map_id| world.map_item(map_id))
+        .map(|map| NativeItemMapTooltipData {
+            scale: map.scale,
+            locked: map.locked,
+        });
     let lines = item_runtime?.tooltip_lines_for_stack_with_context(
         &slot.item,
-        NativeItemTooltipOptions { advanced, creative },
+        NativeItemTooltipOptions {
+            advanced,
+            creative,
+            map_data,
+        },
     )?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(slot_id).ok()?,

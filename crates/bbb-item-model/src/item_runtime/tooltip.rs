@@ -40,6 +40,13 @@ pub struct NativeItemTooltipLine {
 pub struct NativeItemTooltipOptions {
     pub advanced: bool,
     pub creative: bool,
+    pub map_data: Option<NativeItemMapTooltipData>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NativeItemMapTooltipData {
+    pub scale: i8,
+    pub locked: bool,
 }
 
 impl NativeItemTooltipLine {
@@ -207,6 +214,56 @@ fn push_bees_tooltip_lines(
         ),
         TOOLTIP_TEXT_GRAY,
     ));
+}
+
+fn push_map_id_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    options: NativeItemTooltipOptions,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(map_id) = component_patch.map_id else {
+        return;
+    };
+
+    let Some(map_data) = options.map_data else {
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key("filled_map.unknown").to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+        return;
+    };
+
+    if component_patch.custom_name.is_none() && component_patch.map_post_processing.is_none() {
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_first_arg(language, "filled_map.id", &map_id.to_string()),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+
+    if map_data.locked
+        || component_patch.map_post_processing == Some(MapPostProcessingSummary::Lock)
+    {
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key("filled_map.locked").to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+
+    if options.advanced {
+        let scale_to_add =
+            i8::from(component_patch.map_post_processing == Some(MapPostProcessingSummary::Scale));
+        let scale = (map_data.scale + scale_to_add).clamp(0, 4);
+        let map_scale = 1_i32 << u32::from(scale as u8);
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_first_arg(language, "filled_map.scale", &map_scale.to_string()),
+            TOOLTIP_TEXT_GRAY,
+        ));
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_two_args(language, "filled_map.level", &scale.to_string(), "4"),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
 }
 
 fn push_container_loot_tooltip_lines(
@@ -932,6 +989,7 @@ impl NativeItemRuntime {
             NativeItemTooltipOptions {
                 advanced,
                 creative: false,
+                map_data: None,
             },
         )
     }
@@ -965,6 +1023,7 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
+        push_map_id_tooltip_lines(&self.language, &stack.component_patch, options, &mut lines);
         push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
         push_container_loot_tooltip_lines(
             &self.language,
