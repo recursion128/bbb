@@ -201,10 +201,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   private `hasBeenShot` projection, non-default private or otherwise unobserved
   timer/counter projection, remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
-  projection, codec-backed SNBT projection, entity-specific constructor/default
-  save values not yet covered by existing local helper chains, observable
-  non-empty entity inventory/container projection, or entity-specific age and
-  equipment projection before it can be emitted.
+  projection, remaining codec-backed SNBT projection, remaining entity-specific
+  constructor/default save values, LivingEntity parent health/equipment/effect/attribute
+  projection, observable non-empty entity inventory/container projection, or
+  entity-specific age and equipment projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.

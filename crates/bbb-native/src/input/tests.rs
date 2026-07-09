@@ -1,11 +1,12 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_ARMADILLO_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID,
-    VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
-    VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-    VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+    VANILLA_ENTITY_TYPE_ARMADILLO_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
+    VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+    VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
+    VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
     VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
     VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
     VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -8493,6 +8494,111 @@ fn shift_f3_i_with_permission_copies_local_shulker_bullet_save_nbt_to_clipboard(
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
              Steps: 0, TXD: 0.0d, TYD: 0.0d, TZD: 0.0d}"
+        )
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    world.apply_add_entity(AddEntity {
+        id: 58,
+        uuid: Uuid::from_u128(58),
+        entity_type_id: VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 1.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 58,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: ENTITY_SHARED_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
+            },
+            ProtocolEntityDataValue {
+                data_id: ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(
+                    ARMOR_STAND_CLIENT_FLAG_SMALL
+                        | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
+                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                ),
+            },
+            ProtocolEntityDataValue {
+                data_id: ARMOR_STAND_BODY_POSE_DATA_ID,
+                serializer_id: 9,
+                value: EntityDataValueKind::Rotations {
+                    x: 0.0,
+                    y: 15.0,
+                    z: 0.0,
+                },
+            },
+            ProtocolEntityDataValue {
+                data_id: ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
+                serializer_id: 9,
+                value: EntityDataValueKind::Rotations {
+                    x: -30.0,
+                    y: 0.0,
+                    z: -20.0,
+                },
+            },
+        ],
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some(
+            "/summon minecraft:armor_stand 0.00 1.00 3.00 \
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, Invisible: 1b, Small: 1b, \
+             ShowArms: 1b, DisabledSlots: 0, NoBasePlate: 1b, \
+             Pose: {Body: [0.0f, 15.0f, 0.0f], LeftArm: [-30.0f, 0.0f, -20.0f]}}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());

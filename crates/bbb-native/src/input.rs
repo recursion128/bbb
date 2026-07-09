@@ -9,8 +9,9 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
-        VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
-        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+        VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
@@ -227,6 +228,7 @@ const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
 const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
 const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 const ENTITY_DEFAULT_AIR_SUPPLY: i32 = 300;
 const AXOLOTL_TOTAL_AIR_SUPPLY: i32 = 6000;
@@ -237,6 +239,24 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
+const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
+const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
+const ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 18;
+const ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 19;
+const ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 20;
+const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
+const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
+const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
+const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
+const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
+const ARMOR_STAND_DEFAULT_DISABLED_SLOTS: i32 = 0;
+const ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
+const ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
+const ARMOR_STAND_DEFAULT_LEFT_ARM_POSE: [f32; 3] = [-10.0, 0.0, -10.0];
+const ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE: [f32; 3] = [-15.0, 0.0, 10.0];
+const ARMOR_STAND_DEFAULT_LEFT_LEG_POSE: [f32; 3] = [-1.0, 0.0, -1.0];
+const ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE: [f32; 3] = [1.0, 0.0, 1.0];
 const MOB_FLAGS_DATA_ID: u8 = 15;
 const MOB_FLAG_NO_AI: i8 = 1;
 const MOB_FLAG_LEFT_HANDED: i8 = 2;
@@ -4000,6 +4020,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
             debug_push_experience_orb_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => {
+            debug_push_armor_stand_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
             debug_push_projectile_additional_save_data(fields);
         }
@@ -4236,6 +4259,86 @@ fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: 
     fields.push("Age: 0s".to_string());
     fields.push(format!("Value: {value}s"));
     fields.push("Count: 1".to_string());
+}
+
+fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let shared_flags =
+        debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID).unwrap_or_default();
+    let client_flags = debug_entity_data_byte_present(entity, ARMOR_STAND_CLIENT_FLAGS_DATA_ID)
+        .unwrap_or_default();
+    fields.push(format!(
+        "Invisible: {}",
+        debug_snbt_bool(shared_flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+    ));
+    fields.push(format!(
+        "Small: {}",
+        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0)
+    ));
+    fields.push(format!(
+        "ShowArms: {}",
+        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0)
+    ));
+    fields.push(format!(
+        "DisabledSlots: {ARMOR_STAND_DEFAULT_DISABLED_SLOTS}"
+    ));
+    fields.push(format!(
+        "NoBasePlate: {}",
+        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE != 0)
+    ));
+    if client_flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+        fields.push("Marker: 1b".to_string());
+    }
+    if let Some(pose) = debug_armor_stand_pose_snbt(entity) {
+        fields.push(format!("Pose: {pose}"));
+    }
+}
+
+fn debug_armor_stand_pose_snbt(entity: &EntityState) -> Option<String> {
+    let pose_fields = [
+        (
+            "Head",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_HEAD_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_HEAD_POSE),
+            ARMOR_STAND_DEFAULT_HEAD_POSE,
+        ),
+        (
+            "Body",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_BODY_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_BODY_POSE),
+            ARMOR_STAND_DEFAULT_BODY_POSE,
+        ),
+        (
+            "LeftArm",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_LEFT_ARM_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_LEFT_ARM_POSE),
+            ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
+        ),
+        (
+            "RightArm",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE),
+            ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE,
+        ),
+        (
+            "LeftLeg",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_LEFT_LEG_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_LEFT_LEG_POSE),
+            ARMOR_STAND_DEFAULT_LEFT_LEG_POSE,
+        ),
+        (
+            "RightLeg",
+            debug_entity_data_rotations_present(entity, ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID)
+                .unwrap_or(ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE),
+            ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE,
+        ),
+    ];
+    let mut fields = Vec::new();
+    for (name, value, default) in pose_fields {
+        if value != default {
+            fields.push(format!("{name}: {}", debug_snbt_rotations(value)?));
+        }
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -5308,6 +5411,17 @@ fn debug_entity_data_float_present(entity: &EntityState, data_id: u8) -> Option<
         })
 }
 
+fn debug_entity_data_rotations_present(entity: &EntityState, data_id: u8) -> Option<[f32; 3]> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Rotations { x, y, z } => Some([*x, *y, *z]),
+            _ => None,
+        })
+}
+
 fn debug_entity_data_direction_present(entity: &EntityState, data_id: u8) -> Option<i8> {
     entity
         .data_values
@@ -5373,6 +5487,15 @@ fn debug_snbt_rotation(y_rot: f32, x_rot: f32) -> Option<String> {
         "Rotation: [{}, {}]",
         debug_snbt_float(y_rot)?,
         debug_snbt_float(x_rot)?
+    ))
+}
+
+fn debug_snbt_rotations(value: [f32; 3]) -> Option<String> {
+    Some(format!(
+        "[{}, {}, {}]",
+        debug_snbt_float(value[0])?,
+        debug_snbt_float(value[1])?,
+        debug_snbt_float(value[2])?
     ))
 }
 
