@@ -44,8 +44,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -286,6 +287,14 @@ const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 const CAT_DEFAULT_VARIANT_ID: i32 = 1;
 const CAT_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
+const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
+const WOLF_VARIANT_DATA_ID: u8 = 23;
+const WOLF_SOUND_VARIANT_DATA_ID: u8 = 24;
+const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+const WOLF_DEFAULT_ANGER_END_TIME: i64 = -1;
+const WOLF_DEFAULT_VARIANT_ID: i32 = 0;
+const WOLF_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 const AXOLOTL_DEFAULT_VARIANT: i32 = 0;
 const AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
@@ -4070,6 +4079,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_WOLF_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_tamable_animal_additional_save_data(entity, fields);
+            debug_push_wolf_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_WITHER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_wither_additional_save_data(entity, fields);
@@ -4288,6 +4304,62 @@ fn debug_cat_variant_resource_id(variant: i32) -> &'static str {
 fn debug_cat_sound_variant_resource_id(variant: i32) -> &'static str {
     match variant {
         1 => "minecraft:royal",
+        _ => "minecraft:classic",
+    }
+}
+
+fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let collar_color = debug_entity_data_int_present(entity, WOLF_COLLAR_COLOR_DATA_ID)
+        .map(debug_dye_color_legacy_save_id)
+        .unwrap_or(WOLF_DEFAULT_COLLAR_COLOR_ID);
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        WOLF_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::WolfVariant,
+    )
+    .unwrap_or(WOLF_DEFAULT_VARIANT_ID);
+    let anger_end_time = debug_entity_data_long_present(entity, WOLF_ANGER_END_TIME_DATA_ID)
+        .unwrap_or(WOLF_DEFAULT_ANGER_END_TIME);
+    let sound_variant = debug_entity_data_registry_id_present(
+        entity,
+        WOLF_SOUND_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::WolfSoundVariant,
+    )
+    .unwrap_or(WOLF_DEFAULT_SOUND_VARIANT_ID);
+    fields.push(format!("CollarColor: {collar_color}b"));
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_wolf_variant_resource_id(variant))
+    ));
+    fields.push(format!("anger_end_time: {anger_end_time}L"));
+    fields.push(format!(
+        "sound_variant: {}",
+        debug_snbt_string(debug_wolf_sound_variant_resource_id(sound_variant))
+    ));
+}
+
+fn debug_wolf_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:spotted",
+        2 => "minecraft:snowy",
+        3 => "minecraft:black",
+        4 => "minecraft:ashen",
+        5 => "minecraft:rusty",
+        6 => "minecraft:woods",
+        7 => "minecraft:chestnut",
+        8 => "minecraft:striped",
+        _ => "minecraft:pale",
+    }
+}
+
+fn debug_wolf_sound_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:puglin",
+        2 => "minecraft:sad",
+        3 => "minecraft:angry",
+        4 => "minecraft:grumpy",
+        5 => "minecraft:big",
+        6 => "minecraft:cute",
         _ => "minecraft:classic",
     }
 }
