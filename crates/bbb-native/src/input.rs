@@ -21,7 +21,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
@@ -235,6 +235,13 @@ const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
 const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
+const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
+const ABSTRACT_HORSE_FLAG_TAME: i8 = 2;
+const ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
+const ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
+const ABSTRACT_HORSE_DEFAULT_TEMPER: i32 = 0;
+const HORSE_VARIANT_DATA_ID: u8 = 19;
+const HORSE_DEFAULT_VARIANT: i32 = 0;
 const ARMADILLO_STATE_DATA_ID: u8 = 18;
 const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
@@ -3809,6 +3816,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_hoglin_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_HORSE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_horse_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_HUSK_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
@@ -4074,6 +4088,29 @@ fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mu
 
 fn debug_push_animal_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("InLove: {ANIMAL_DEFAULT_IN_LOVE}"));
+}
+
+fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID).unwrap_or(0);
+    fields.push(format!(
+        "EatingHaystack: {}",
+        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)
+    ));
+    fields.push(format!(
+        "Bred: {}",
+        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_BRED != 0)
+    ));
+    fields.push(format!("Temper: {ABSTRACT_HORSE_DEFAULT_TEMPER}"));
+    fields.push(format!(
+        "Tame: {}",
+        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_TAME != 0)
+    ));
+}
+
+fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_int_present(entity, HORSE_VARIANT_DATA_ID)
+        .unwrap_or(HORSE_DEFAULT_VARIANT);
+    fields.push(format!("Variant: {variant}"));
 }
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

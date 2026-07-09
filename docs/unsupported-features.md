@@ -198,10 +198,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `addAdditionalSaveData` entity families whose saved state still needs
   remaining parent-chain classification, additional local owners, remaining
   private/reference or otherwise unobserved timer/counter projection,
-  registry-backed variant projection, codec-backed SNBT projection, entity-specific
-  constructor/default save values, observable non-empty entity inventory/container
-  projection, or entity-specific age and equipment projection before it can be
-  emitted.
+  registry-backed or remaining packed variant projection, codec-backed SNBT
+  projection, entity-specific constructor/default save values, observable
+  non-empty entity inventory/container projection, or entity-specific age and
+  equipment projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.
