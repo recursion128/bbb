@@ -132,6 +132,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub container_item_count: Option<usize>,
     #[serde(default)]
+    pub container_loot: bool,
+    #[serde(default)]
     pub bees_count: usize,
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
@@ -734,6 +736,10 @@ fn decode_typed_data_component_patch_summary(
             75 => {
                 summary.container_items = decode_item_container_contents(decoder)?;
                 summary.container_item_count = Some(summary.container_items.len());
+            }
+            79 => {
+                summary.container_loot = true;
+                skip_nbt_tag_from_decoder(decoder)?;
             }
             77 => {
                 summary.bees_count = decode_bees(decoder)?;
@@ -2293,7 +2299,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(8);
+        payload.write_var_i32(9);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -2312,6 +2318,8 @@ mod tests {
         payload.write_f32(1.5);
         payload.write_bool(true);
         payload.write_string("minecraft:ender_pearl");
+        payload.write_var_i32(79);
+        payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(3);
         payload.write_var_i32(12);
 
@@ -2321,8 +2329,8 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 8,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 26],
+                added: 9,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 26, 79],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
@@ -2334,6 +2342,7 @@ mod tests {
                 enchantment_glint_override: Some(true),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                container_loot: true,
                 ..DataComponentPatchSummary::default()
             }
         );

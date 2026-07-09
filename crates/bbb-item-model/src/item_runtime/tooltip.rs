@@ -195,6 +195,22 @@ fn push_bees_tooltip_lines(
     ));
 }
 
+fn push_container_loot_tooltip_lines(
+    language: &LanguageCatalog,
+    container_loot: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !container_loot {
+        return;
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key("item.container.loot_table.unknown")
+            .to_string(),
+        TOOLTIP_TEXT_WHITE,
+    ));
+}
+
 fn charged_projectile_group_tooltip_text(
     language: &LanguageCatalog,
     projectile_name: &str,
@@ -688,6 +704,11 @@ impl NativeItemRuntime {
                 .collect(),
         }];
         push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
+        push_container_loot_tooltip_lines(
+            &self.language,
+            stack.component_patch.container_loot,
+            &mut lines,
+        );
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }

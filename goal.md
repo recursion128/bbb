@@ -362,8 +362,8 @@ Screen Render Surfaces" 条目）：
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence beyond beehive bees/honey, dyed-color lines, and firework
-  flight/direct/grouped explosion lines, and charged-projectiles headers、F3+I
-  full local entity saveWithoutId parity、
+  flight/direct/grouped explosion lines, charged-projectiles headers, and
+  container-loot unknown-content line、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，

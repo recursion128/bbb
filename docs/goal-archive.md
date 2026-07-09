@@ -6500,3 +6500,12 @@
   projectile 自身 detail rows 的两空格灰色缩进递归输出、nested display-name run
   styling 精确还原、其它 component provider tooltip、`TooltipDisplay`
   hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip container-loot unknown-content line（P2 protocol +
+  item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 bees
+  之后、container contents 之前调用 `DataComponents.CONTAINER_LOOT` provider，
+  以及 `SeededContainerLoot.addToTooltip` 输出
+  `item.container.loot_table.unknown`，protocol summary 现在记录 decoded
+  `minecraft:container_loot` presence，native item tooltip 按 provider 顺序投影
+  unknown-content 行。边界：summary 仍跳过 loot-table/seed NBT payload，因为 vanilla
+  tooltip 只依赖 presence；其它 component provider tooltip、`TooltipDisplay`
+  hidden-components 与 options 持久化仍未完成。

@@ -218,6 +218,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "container.beehive.bees": "Bees: %s / %s",
                 "item.dyed": "Dyed",
                 "item.color": "Color: %s",
+                "item.container.loot_table.unknown": "Unknown contents",
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
@@ -581,6 +582,24 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Bees: 2 / 3", TOOLTIP_TEXT_GRAY),
             lore_line("After bees"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bees_count: 1,
+                container_loot: true,
+                lore: vec!["After container loot".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Bees: 1 / 3", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Unknown contents", TOOLTIP_TEXT_WHITE),
+            lore_line("After container loot"),
         ])
     );
     assert_eq!(

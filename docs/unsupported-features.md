@@ -1147,7 +1147,7 @@ When an agent does any of the following, update this file in the same slice:
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
-    lines, and charged-projectiles headers,
+    lines, charged-projectiles headers, and container-loot unknown-content line,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1242,6 +1242,16 @@ When an agent does any of the following, update this file in the same slice:
     prefix and exact nested display-name run styling remain future work, along
     with remaining component providers, `TooltipDisplay` hiding, and options
     persistence.
+  - Done 2026-07-09 — Advanced tooltip container-loot unknown-content line.
+    Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.CONTAINER_LOOT, ...)` after bees and before
+    container contents; `SeededContainerLoot.addToTooltip` emits
+    `item.container.loot_table.unknown`. bbb now records decoded
+    `minecraft:container_loot` presence and projects the unknown-content
+    tooltip row in the same provider order. Boundary: the protocol summary
+    still skips the loot-table/seed NBT payload because vanilla tooltip output
+    only depends on presence; remaining component providers, `TooltipDisplay`
+    hiding, and options persistence remain future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2376,7 +2386,7 @@ When an agent does any of the following, update this file in the same slice:
     configuration UI or vanilla options-file persistence; component-provider
     tooltip parity remains open except for the later beehive bees/honey,
     dyed-color, firework flight/direct/grouped explosion lines, and
-    charged-projectiles headers.
+    charged-projectiles headers, and container-loot unknown-content line.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2641,7 +2651,8 @@ When an agent does any of the following, update this file in the same slice:
     configuration is tracked separately because bbb does not expose vanilla's
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
-    plus charged-projectiles headers are covered by later entries.
+    plus charged-projectiles headers and container-loot unknown-content line are
+    covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3319,8 +3330,8 @@ When an agent does any of the following, update this file in the same slice:
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
-    lines, and charged-projectiles headers, F3+I full local entity
-    saveWithoutId parity, full vanilla profiler section coverage,
+    lines, charged-projectiles headers, and container-loot unknown-content line,
+    F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
