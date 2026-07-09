@@ -133,6 +133,9 @@ pub struct HudDebugOptionsScreen {
     pub title: String,
     pub warning: String,
     pub search_text: String,
+    pub search_cursor: usize,
+    pub search_selection: usize,
+    pub search_cursor_visible: bool,
     pub rows: Vec<HudDebugOptionsRow>,
     pub tooltip: Option<HudDebugOptionsTooltip>,
     pub scroll_row: usize,
@@ -555,6 +558,7 @@ const HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
 const HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
 const HUD_DEBUG_OPTIONS_SEARCH_WIDTH: i32 = HUD_DEBUG_OPTIONS_ROW_WIDTH / 3;
 const HUD_DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
+const HUD_DEBUG_OPTIONS_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH: i32 = 6;
 const HUD_DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT: i32 = 32;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
@@ -5835,6 +5839,9 @@ fn push_hud_debug_options_screen<'a>(
         frame_index,
         surface_size,
         &screen.search_text,
+        screen.search_cursor,
+        screen.search_selection,
+        screen.search_cursor_visible,
     );
 
     let content_x = hud_debug_options_content_x(surface_size);
@@ -6258,6 +6265,9 @@ fn push_hud_debug_options_search_box<'a>(
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     search_text: &str,
+    search_cursor: usize,
+    search_selection: usize,
+    search_cursor_visible: bool,
 ) {
     let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
         - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
@@ -6273,12 +6283,31 @@ fn push_hud_debug_options_search_box<'a>(
         HUD_DEBUG_OPTIONS_SEARCH_HEIGHT as u32,
         [0.0, 0.0, 0.0, 0.75],
     );
-    let (text, tint) = if search_text.is_empty() {
-        ("Search...", hud_argb_to_tint(0xFFA0A0A0))
-    } else {
-        (search_text, HUD_TINT_WHITE)
+    let input = HudInventoryTextInputDecoration {
+        cursor: search_cursor,
+        selection: search_selection,
+        scroll_to: if search_selection != search_cursor {
+            search_selection
+        } else {
+            search_cursor
+        },
+        max_length: 32,
+        cursor_visible: search_cursor_visible,
+        cursor_tint: HUD_TINT_WHITE,
+        selection_tint: HUD_DEBUG_OPTIONS_SEARCH_SELECTION_TINT,
     };
-    push_hud_debug_options_text(
+    let label = HudInventoryTextLabel {
+        x: 0,
+        y: 0,
+        width: u32::try_from(HUD_DEBUG_OPTIONS_SEARCH_WIDTH - 8).unwrap_or_default(),
+        text: search_text.to_string(),
+        tint: HUD_TINT_WHITE,
+        background: None,
+        input: Some(input),
+        shadow: true,
+        runs: Vec::new(),
+    };
+    push_hud_inventory_text_input_label(
         vertices,
         commands,
         white_pixel,
@@ -6287,9 +6316,9 @@ fn push_hud_debug_options_search_box<'a>(
         obfuscated_pool,
         frame_index,
         surface_size,
-        text,
+        &label,
+        input,
         ((x + 4) as f32, (y + 6) as f32),
-        tint,
     );
 }
 
@@ -10160,7 +10189,8 @@ fn sanitize_hud_debug_options_screen(
 ) -> Option<HudDebugOptionsScreen> {
     let title = sanitize_hud_text_line(screen.title)?;
     let warning = sanitize_hud_text_line(screen.warning)?;
-    let search_text = sanitize_hud_text_preserving_empty(screen.search_text, 64);
+    let search_text = sanitize_hud_text_preserving_empty_utf16(screen.search_text, 32);
+    let search_len = search_text.chars().count();
     let visible_rows = screen.visible_rows.min(64);
     let rows = screen
         .rows
@@ -10172,6 +10202,9 @@ fn sanitize_hud_debug_options_screen(
     (!title.is_empty()).then_some(HudDebugOptionsScreen {
         title,
         warning,
+        search_cursor: screen.search_cursor.min(search_len),
+        search_selection: screen.search_selection.min(search_len),
+        search_cursor_visible: screen.search_cursor_visible,
         search_text,
         rows,
         tooltip,
@@ -10322,6 +10355,20 @@ fn sanitize_hud_text_preserving_empty(line: String, limit: usize) -> String {
         .filter(|ch| !ch.is_control())
         .take(limit)
         .collect()
+}
+
+fn sanitize_hud_text_preserving_empty_utf16(line: String, limit: usize) -> String {
+    let mut sanitized = String::new();
+    let mut used = 0usize;
+    for ch in line.chars().filter(|ch| !ch.is_control()) {
+        let len = ch.len_utf16();
+        if used.saturating_add(len) > limit {
+            break;
+        }
+        sanitized.push(ch);
+        used += len;
+    }
+    sanitized
 }
 
 /// Sanitizes a line's styled runs under the same rules as
@@ -14478,7 +14525,10 @@ mod tests {
         let screen = sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
             title: "Debug\nOptions".to_string(),
             warning: "Warning".to_string(),
-            search_text: String::new(),
+            search_text: "abc".to_string(),
+            search_cursor: 99,
+            search_selection: 1,
+            search_cursor_visible: true,
             tooltip: Some(HudDebugOptionsTooltip {
                 text: "No\nReduced".to_string(),
                 x: 12,
@@ -14508,7 +14558,10 @@ mod tests {
         .expect("debug options screen");
 
         assert_eq!(screen.title, "DebugOptions");
-        assert_eq!(screen.search_text, "");
+        assert_eq!(screen.search_text, "abc");
+        assert_eq!(screen.search_cursor, 3);
+        assert_eq!(screen.search_selection, 1);
+        assert!(screen.search_cursor_visible);
         assert_eq!(screen.rows.len(), 2);
         assert_eq!(screen.scroll_row, 3);
         assert_eq!(
@@ -14517,10 +14570,36 @@ mod tests {
         );
         assert!(!screen.default_profile_active);
         assert!(screen.performance_profile_active);
+
+        let wide_search = format!("{}a", "\u{1f600}".repeat(16));
+        let wide = sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
+            title: "Debug Options".to_string(),
+            warning: "Warning".to_string(),
+            search_text: wide_search,
+            search_cursor: 99,
+            search_selection: 99,
+            search_cursor_visible: true,
+            tooltip: None,
+            rows: Vec::new(),
+            scroll_row: 0,
+            total_rows: 0,
+            visible_rows: 0,
+            default_profile_active: true,
+            performance_profile_active: true,
+        })
+        .expect("wide debug options screen");
+        assert_eq!(wide.search_text, "\u{1f600}".repeat(16));
+        assert_eq!(wide.search_text.encode_utf16().count(), 32);
+        assert_eq!(wide.search_cursor, 16);
+        assert_eq!(wide.search_selection, 16);
+
         assert!(sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
             title: "\n".to_string(),
             warning: "Warning".to_string(),
             search_text: String::new(),
+            search_cursor: 0,
+            search_selection: 0,
+            search_cursor_visible: false,
             tooltip: None,
             rows: Vec::new(),
             scroll_row: 0,

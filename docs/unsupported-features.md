@@ -1141,7 +1141,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/exact EditBox cursor-selection/full widget
+    DebugOptionsScreen narration/EditBox clipboard actions/full widget
     styling polish, and native pause
     tick-freeze eligibility/full PauseScreen menu remain (large, low priority).
 - Evidence / boundary:
@@ -1210,8 +1210,9 @@ When an agent does any of the following, update this file in the same slice:
     search text, row scrolling, status/profile/done mouse actions, persists
     status/profile changes through the existing debug-profile store, projects a
     renderer HUD screen, and draws the existing debug overlay behind it.
-    Boundary: narration, exact EditBox cursor/selection behavior, and full vanilla widget styling remain future
-    polish.
+    Boundary at the time: narration, exact EditBox cursor/selection behavior,
+    and full vanilla widget styling remained future polish; EditBox
+    cursor/selection is covered by the later 2026-07-09 polish item below.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen scrollbar and
     not-allowed tooltip polish. Vanilla anchors:
     `AbstractSelectionList.scrollBarX` places the list scrollbar at
@@ -1228,9 +1229,25 @@ When an agent does any of the following, update this file in the same slice:
     same reduced-debug/name-area condition, renders that tooltip using the
     existing HUD tooltip background/frame path, and draws a vanilla-metric
     scrollbar from `scroll_row`, `total_rows`, and the 61px/33px screen
-    content band. Boundary: narration, exact EditBox cursor/selection behavior,
-    scrollbar dragging, and full vanilla widget sprite styling remain future
-    polish.
+    content band. Boundary: narration, scrollbar dragging, and full vanilla
+    widget sprite styling remain future polish.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen EditBox cursor and
+    selection polish. Vanilla anchors: `DebugOptionsScreen` constructs a
+    focused `EditBox` for search, `EditBox.charTyped` accepts
+    `StringUtil.isAllowedChatCharacter`, the default `EditBox` max length is
+    32 Java chars, `EditBox.keyPressed` handles Ctrl+A, left/right with
+    optional Ctrl word steps and Shift selection, Home/End, Backspace/Delete,
+    and `EditBox.extractWidgetRenderState` draws the focused cursor/selection
+    while only showing the hint when the box is not focused. bbb now stores search
+    cursor/selection state, inserts allowed text at the cursor, replaces
+    selections, enforces the 32 UTF-16-unit default max length, supports
+    Ctrl+A, character/word movement, Shift selection, Home/End, Backspace and
+    Delete, resets filtered-list scroll on text changes, projects the cursor
+    and selection through HUD state, and renders the focused search box with a
+    blinking cursor/blue selection instead of showing the hint while focused.
+    Boundary: Ctrl+C/Ctrl+V/Ctrl+X clipboard actions, mouse click/drag
+    selection, narration, scrollbar dragging, and full vanilla widget sprite
+    styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -2957,7 +2974,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/exact EditBox cursor-selection/full widget
+    DebugOptionsScreen narration/EditBox clipboard actions/full widget
     styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen menu.

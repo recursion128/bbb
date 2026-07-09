@@ -2873,6 +2873,129 @@ fn debug_options_screen_projects_vanilla_order_and_search_filter() {
 }
 
 #[test]
+fn debug_options_screen_search_tracks_editbox_cursor_selection_and_word_keys() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+
+    assert!(input.handle_debug_options_screen_text_input("chunk stats"));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_text_input("_"));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "chunk stat_s");
+        assert_eq!(screen.search_cursor, 11);
+        assert_eq!(screen.search_selection, 11);
+    }
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "chunk stat_s");
+        assert_eq!(screen.search_cursor, 9);
+        assert_eq!(screen.search_selection, 11);
+    }
+
+    assert!(input.handle_debug_options_screen_text_input("X"));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "chunk staXs");
+        assert_eq!(screen.search_cursor, 10);
+        assert_eq!(screen.search_selection, 10);
+    }
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::KeyA), ElementState::Pressed,));
+    assert!(input.handle_debug_options_screen_text_input("alpha beta gamma"));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "alpha beta ");
+        assert_eq!(screen.search_cursor, 11);
+        assert_eq!(screen.search_selection, 11);
+    }
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    ));
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::Home), ElementState::Pressed,));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    ));
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::End), ElementState::Pressed,));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(winit::dpi::PhysicalSize::new(420, 240), false)
+        .unwrap();
+    assert_eq!(state.search_text, "lpha");
+    assert_eq!(state.search_cursor, 4);
+    assert_eq!(state.search_selection, 4);
+}
+
+#[test]
+fn debug_options_screen_search_uses_editbox_filter_and_default_max_length() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+
+    assert!(input.handle_debug_options_screen_text_input(
+        "abc\u{a7}\ndefghijklmnopqrstuvwxyz0123456789more"
+    ));
+
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_text, "abcdefghijklmnopqrstuvwxyz012345");
+    assert_eq!(debug_options_search_len(&screen.search_text), 32);
+    assert_eq!(screen.search_cursor, 32);
+    assert_eq!(screen.search_selection, 32);
+}
+
+#[test]
 fn debug_options_screen_buttons_update_status_and_profiles() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

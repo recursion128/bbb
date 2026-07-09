@@ -2964,6 +2964,9 @@ fn hud_debug_options_screen(
         title: "Debug Options".to_string(),
         warning: "These options are for testing purposes only. They may slow down your computer, crash the game, or eat your pet rock.".to_string(),
         search_text: state.search_text,
+        search_cursor: state.search_cursor,
+        search_selection: state.search_selection,
+        search_cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
         rows,
         tooltip: state.tooltip.map(|tooltip| HudDebugOptionsTooltip {
             text: tooltip.text,

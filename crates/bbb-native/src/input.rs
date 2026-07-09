@@ -107,7 +107,7 @@ const DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
 const DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
-const DEBUG_OPTIONS_SEARCH_MAX_CHARS: usize = 64;
+const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -185,6 +185,8 @@ pub(crate) struct DebugPauseScreenState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DebugOptionsScreenState {
     search_text: String,
+    search_cursor: usize,
+    search_selection: usize,
     scroll_row: usize,
     cursor_position: Option<(i32, i32)>,
 }
@@ -192,6 +194,8 @@ struct DebugOptionsScreenState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DebugOptionsScreenHudState {
     pub(crate) search_text: String,
+    pub(crate) search_cursor: usize,
+    pub(crate) search_selection: usize,
     pub(crate) rows: Vec<DebugOptionsScreenHudRow>,
     pub(crate) tooltip: Option<DebugOptionsScreenTooltip>,
     pub(crate) scroll_row: usize,
@@ -962,6 +966,12 @@ impl ClientInputState {
             });
         Some(DebugOptionsScreenHudState {
             search_text: screen.search_text.clone(),
+            search_cursor: screen
+                .search_cursor
+                .min(text_edit::char_len(&screen.search_text)),
+            search_selection: screen
+                .search_selection
+                .min(text_edit::char_len(&screen.search_text)),
             rows,
             tooltip,
             scroll_row,
@@ -1005,10 +1015,92 @@ impl ClientInputState {
                 self.set_key_down(code, false);
                 self.close_debug_options_screen();
             }
-            KeyCode::Backspace => {
+            KeyCode::KeyA if self.control_down() && !self.shift_down() => {
                 if let Some(screen) = self.debug_options_screen.as_mut() {
-                    screen.search_text.pop();
-                    screen.scroll_row = 0;
+                    select_debug_options_search_text(screen);
+                }
+            }
+            KeyCode::ArrowLeft => {
+                let control_down = self.control_down();
+                let shift_down = self.shift_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    let cursor = if control_down {
+                        text_edit::word_position(&screen.search_text, screen.search_cursor, -1)
+                    } else {
+                        screen.search_cursor.saturating_sub(1)
+                    };
+                    move_debug_options_search_cursor(screen, cursor, shift_down);
+                }
+            }
+            KeyCode::ArrowRight => {
+                let control_down = self.control_down();
+                let shift_down = self.shift_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    let cursor = if control_down {
+                        text_edit::word_position(&screen.search_text, screen.search_cursor, 1)
+                    } else {
+                        (screen.search_cursor + 1).min(text_edit::char_len(&screen.search_text))
+                    };
+                    move_debug_options_search_cursor(screen, cursor, shift_down);
+                }
+            }
+            KeyCode::Home => {
+                let shift_down = self.shift_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    move_debug_options_search_cursor(screen, 0, shift_down);
+                }
+            }
+            KeyCode::End => {
+                let shift_down = self.shift_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    let cursor = text_edit::char_len(&screen.search_text);
+                    move_debug_options_search_cursor(screen, cursor, shift_down);
+                }
+            }
+            KeyCode::Backspace => {
+                let control_down = self.control_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    let before = screen.search_text.clone();
+                    let deleted_selection = delete_debug_options_search_selection(screen);
+                    if !deleted_selection && control_down {
+                        text_edit::remove_word_before_cursor(
+                            &mut screen.search_text,
+                            &mut screen.search_cursor,
+                        );
+                        screen.search_selection = screen.search_cursor;
+                    } else if !deleted_selection {
+                        remove_debug_options_search_char_before_cursor(
+                            &mut screen.search_text,
+                            &mut screen.search_cursor,
+                        );
+                        screen.search_selection = screen.search_cursor;
+                    }
+                    if screen.search_text != before {
+                        screen.scroll_row = 0;
+                    }
+                }
+            }
+            KeyCode::Delete => {
+                let control_down = self.control_down();
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    let before = screen.search_text.clone();
+                    let deleted_selection = delete_debug_options_search_selection(screen);
+                    if !deleted_selection && control_down {
+                        text_edit::remove_word_at_cursor(
+                            &mut screen.search_text,
+                            screen.search_cursor,
+                        );
+                        screen.search_selection = screen.search_cursor;
+                    } else if !deleted_selection {
+                        remove_debug_options_search_char_at_cursor(
+                            &mut screen.search_text,
+                            screen.search_cursor,
+                        );
+                        screen.search_selection = screen.search_cursor;
+                    }
+                    if screen.search_text != before {
+                        screen.scroll_row = 0;
+                    }
                 }
             }
             _ => {}
@@ -1020,11 +1112,7 @@ impl ClientInputState {
         let Some(screen) = self.debug_options_screen.as_mut() else {
             return false;
         };
-        let remaining = DEBUG_OPTIONS_SEARCH_MAX_CHARS.saturating_sub(screen.search_text.len());
-        screen
-            .search_text
-            .extend(text.chars().filter(|c| !c.is_control()).take(remaining));
-        screen.scroll_row = 0;
+        insert_debug_options_search_text(screen, text);
         true
     }
 
@@ -1933,6 +2021,83 @@ fn debug_options_screen_rows(search: &str) -> Vec<DebugOptionsScreenRow> {
         rows.push(DebugOptionsScreenRow::Entry(entry));
     }
     rows
+}
+
+fn insert_debug_options_search_text(screen: &mut DebugOptionsScreenState, text: &str) {
+    let before = screen.search_text.clone();
+    delete_debug_options_search_selection(screen);
+    screen.search_cursor = screen
+        .search_cursor
+        .min(text_edit::char_len(&screen.search_text));
+    let mut remaining = DEBUG_OPTIONS_SEARCH_MAX_LENGTH
+        .saturating_sub(debug_options_search_len(&screen.search_text));
+    for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
+        let len = ch.len_utf16();
+        if len > remaining {
+            break;
+        }
+        let insert_at = text_edit::byte_index(&screen.search_text, screen.search_cursor);
+        screen.search_text.insert(insert_at, ch);
+        screen.search_cursor += 1;
+        remaining -= len;
+    }
+    screen.search_selection = screen.search_cursor;
+    if screen.search_text != before {
+        screen.scroll_row = 0;
+    }
+}
+
+fn move_debug_options_search_cursor(
+    screen: &mut DebugOptionsScreenState,
+    cursor: usize,
+    keep_selection: bool,
+) {
+    screen.search_cursor = cursor.min(text_edit::char_len(&screen.search_text));
+    if !keep_selection {
+        screen.search_selection = screen.search_cursor;
+    }
+}
+
+fn select_debug_options_search_text(screen: &mut DebugOptionsScreenState) {
+    screen.search_selection = 0;
+    screen.search_cursor = text_edit::char_len(&screen.search_text);
+}
+
+fn delete_debug_options_search_selection(screen: &mut DebugOptionsScreenState) -> bool {
+    if screen.search_selection == screen.search_cursor {
+        return false;
+    }
+    let start = screen.search_selection.min(screen.search_cursor);
+    let end = screen.search_selection.max(screen.search_cursor);
+    let start_byte = text_edit::byte_index(&screen.search_text, start);
+    let end_byte = text_edit::byte_index(&screen.search_text, end);
+    screen.search_text.replace_range(start_byte..end_byte, "");
+    screen.search_cursor = start;
+    screen.search_selection = start;
+    true
+}
+
+fn remove_debug_options_search_char_before_cursor(current: &mut String, cursor: &mut usize) {
+    if *cursor == 0 {
+        return;
+    }
+    let start = text_edit::byte_index(current, *cursor - 1);
+    let end = text_edit::byte_index(current, *cursor);
+    current.replace_range(start..end, "");
+    *cursor -= 1;
+}
+
+fn remove_debug_options_search_char_at_cursor(current: &mut String, cursor: usize) {
+    if cursor >= text_edit::char_len(current) {
+        return;
+    }
+    let start = text_edit::byte_index(current, cursor);
+    let end = text_edit::byte_index(current, cursor + 1);
+    current.replace_range(start..end, "");
+}
+
+fn debug_options_search_len(text: &str) -> usize {
+    text.encode_utf16().count()
 }
 
 fn debug_options_visible_row_count(surface_size: PhysicalSize<u32>) -> usize {

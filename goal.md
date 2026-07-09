@@ -338,14 +338,15 @@ Screen Render Surfaces" 条目）：
   SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys、
   DebugOptionsScreen input/search/list/profile/status/done screen shell、
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、
+  DebugOptionsScreen EditBox cursor/selection polish、
   ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
-  profiling metrics recorder/output、DebugOptionsScreen narration/exact EditBox
-  cursor-selection/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen menu，
+  profiling metrics recorder/output、DebugOptionsScreen narration/EditBox
+  clipboard actions/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen menu，
   低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
