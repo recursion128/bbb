@@ -6270,6 +6270,15 @@
   字段和 metadata-derived `sheared`。边界：更广泛的 Mob save data、passengers
   以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local end-crystal save fields（P2 native slice，
+  2026-07-09）：依据 `EndCrystal.addAdditionalSaveData` 用
+  `BlockPos.CODEC` 保存 nullable `beam_target`（`DATA_BEAM_TARGET` 8），再写
+  `ShowBottom`（`DATA_SHOW_BOTTOM` 9，vanilla 默认 true）。native 现在对授权
+  Shift+F3+I 本地 end-crystal recreate command 在有本地 metadata 时追加
+  `beam_target: [I; x, y, z]`，并追加 metadata-derived/default `ShowBottom`。
+  边界：更广泛的 base entity non-default fields、passengers 以及其他
+  entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local ghast save field（P2 native slice，
   2026-07-09）：依据 `Ghast.addAdditionalSaveData` 先调用 `Mob` 保存链，再写
   `ExplosionPower` byte；vanilla 初始化 `explosionPower` 为 1，NBT 读取也使用

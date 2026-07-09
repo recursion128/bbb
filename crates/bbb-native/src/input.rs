@@ -10,10 +10,10 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -214,6 +214,9 @@ const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 const BOGGED_DEFAULT_SHEARED: bool = false;
+const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
+const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
+const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 const IRON_GOLEM_PLAYER_CREATED_FLAG: i8 = 1;
@@ -3553,6 +3556,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bogged_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => {
+            debug_push_end_crystal_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_GHAST_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
@@ -3637,6 +3643,20 @@ fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec
     let sheared = debug_entity_data_bool_present(entity, BOGGED_SHEARED_DATA_ID)
         .unwrap_or(BOGGED_DEFAULT_SHEARED);
     fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
+}
+
+fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    if let Some(beam_target) =
+        debug_entity_data_optional_block_pos_present(entity, END_CRYSTAL_BEAM_TARGET_DATA_ID)
+    {
+        fields.push(format!(
+            "beam_target: [I; {}, {}, {}]",
+            beam_target.x, beam_target.y, beam_target.z
+        ));
+    }
+    let show_bottom = debug_entity_data_bool_present(entity, END_CRYSTAL_SHOW_BOTTOM_DATA_ID)
+        .unwrap_or(END_CRYSTAL_DEFAULT_SHOW_BOTTOM);
+    fields.push(format!("ShowBottom: {}", debug_snbt_bool(show_bottom)));
 }
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
@@ -3725,6 +3745,20 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_optional_block_pos_present(
+    entity: &EntityState,
+    data_id: u8,
+) -> Option<ProtocolBlockPos> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(*pos),
             _ => None,
         })
 }
