@@ -21,11 +21,12 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -234,6 +235,10 @@ const SHULKER_COLOR_DATA_ID: u8 = 18;
 const SHULKER_DEFAULT_ATTACH_FACE: i8 = 0;
 const SHULKER_DEFAULT_PEEK: i8 = 0;
 const SHULKER_DEFAULT_COLOR: i8 = 16;
+const SHEEP_WOOL_DATA_ID: u8 = 18;
+const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
+const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
+const SHEEP_DEFAULT_WOOL_DATA: u8 = 0;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -3716,6 +3721,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_salmon_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_SHEEP_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_sheep_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
@@ -3836,6 +3847,17 @@ fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Ve
     fields.push(format!("AttachFace: {attach_face}b"));
     fields.push(format!("Peek: {peek}b"));
     fields.push(format!("Color: {color}b"));
+}
+
+fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let wool = debug_entity_data_byte_present(entity, SHEEP_WOOL_DATA_ID)
+        .map(|value| value as u8)
+        .unwrap_or(SHEEP_DEFAULT_WOOL_DATA);
+    fields.push(format!(
+        "Sheared: {}",
+        debug_snbt_bool(wool & SHEEP_WOOL_SHEARED_FLAG != 0)
+    ));
+    fields.push(format!("Color: {}b", wool & SHEEP_WOOL_COLOR_MASK));
 }
 
 fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
