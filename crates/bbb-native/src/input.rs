@@ -16,20 +16,21 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -38,13 +39,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -242,12 +243,20 @@ const ABSTRACT_HORSE_FLAG_TAME: i8 = 2;
 const ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
 const ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
 const ABSTRACT_HORSE_DEFAULT_TEMPER: i32 = 0;
+const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
+const ABSTRACT_CHESTED_HORSE_DEFAULT_HAS_CHEST: bool = false;
 const HORSE_VARIANT_DATA_ID: u8 = 19;
 const HORSE_DEFAULT_VARIANT: i32 = 0;
 const SKELETON_HORSE_DEFAULT_TRAP: bool = false;
 const SKELETON_HORSE_DEFAULT_TRAP_TIME: i32 = 0;
 const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
 const CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 = 0;
+const LLAMA_STRENGTH_DATA_ID: u8 = 20;
+const LLAMA_VARIANT_DATA_ID: u8 = 21;
+const LLAMA_DEFAULT_STRENGTH: i32 = 0;
+const LLAMA_DEFAULT_VARIANT: i32 = 0;
+const LLAMA_MAX_VARIANT: i32 = 3;
+const TRADER_LLAMA_DEFAULT_DESPAWN_DELAY: i32 = 47999;
 const ARMADILLO_STATE_DATA_ID: u8 = 18;
 const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
@@ -3782,6 +3791,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_dolphin_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_DROWNED_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
@@ -3846,6 +3862,23 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_HUSK_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_LLAMA_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
+            debug_push_llama_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
+            debug_push_llama_additional_save_data(entity, fields);
+            debug_push_trader_llama_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -4133,6 +4166,18 @@ fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: 
     ));
 }
 
+fn debug_push_abstract_chested_horse_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let has_chest = debug_entity_data_bool_present(entity, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID)
+        .unwrap_or(ABSTRACT_CHESTED_HORSE_DEFAULT_HAS_CHEST);
+    fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
+    if has_chest {
+        fields.push("Items: []".to_string());
+    }
+}
+
 fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let variant = debug_entity_data_int_present(entity, HORSE_VARIANT_DATA_ID)
         .unwrap_or(HORSE_DEFAULT_VARIANT);
@@ -4154,6 +4199,26 @@ fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<
         debug_entity_data_long_present(entity, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID)
             .unwrap_or(CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK);
     fields.push(format!("LastPoseTick: {last_pose_tick}L"));
+}
+
+fn debug_push_llama_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_int_present(entity, LLAMA_VARIANT_DATA_ID)
+        .map(debug_llama_variant_save_id)
+        .unwrap_or(LLAMA_DEFAULT_VARIANT);
+    let strength = debug_entity_data_int_present(entity, LLAMA_STRENGTH_DATA_ID)
+        .unwrap_or(LLAMA_DEFAULT_STRENGTH);
+    fields.push(format!("Variant: {variant}"));
+    fields.push(format!("Strength: {strength}"));
+}
+
+fn debug_llama_variant_save_id(variant: i32) -> i32 {
+    variant.clamp(LLAMA_DEFAULT_VARIANT, LLAMA_MAX_VARIANT)
+}
+
+fn debug_push_trader_llama_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "DespawnDelay: {TRADER_LLAMA_DEFAULT_DESPAWN_DELAY}"
+    ));
 }
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
