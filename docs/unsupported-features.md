@@ -202,15 +202,17 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   scalar/timer/counter projection (including `PrimedTnt.explosionPower` and
   non-default `SpectralArrow.duration`, plus non-default
-  `FallingBlockEntity` time/drop/hurt/cancel-drop fields),
+  `FallingBlockEntity` time/drop/hurt/cancel-drop fields and minecart
+  flipped/has-ticked state),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, plus falling-block `TileEntityData`),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
-  projection, observable non-empty entity inventory/container projection, or
-  entity-specific age and equipment projection before it can be emitted.
+  projection, observable non-empty entity inventory/container projection,
+  minecart subclass fuel/fuse/spawner/command fields, or entity-specific age
+  and equipment projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.

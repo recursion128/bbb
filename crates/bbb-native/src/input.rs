@@ -32,12 +32,12 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -247,6 +247,10 @@ const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_MAX: i32 = 40;
 const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
+const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
+const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
+const MINECART_DEFAULT_HAS_TICKED: bool = false;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
@@ -4046,6 +4050,9 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
         }
+        VANILLA_ENTITY_TYPE_MINECART_ID => {
+            debug_push_minecart_additional_save_data(world, entity, fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
         }
@@ -4367,6 +4374,32 @@ fn debug_push_falling_block_additional_save_data(
     fields.push(format!(
         "CancelDrop: {}",
         debug_snbt_bool(FALLING_BLOCK_DEFAULT_CANCEL_DROP)
+    ));
+}
+
+fn debug_push_minecart_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    if let Some(display) = world.minecart_display_block_state(entity.id) {
+        fields.push(format!(
+            "DisplayState: {}",
+            debug_snbt_block_state(&display.block.name, &display.block.properties)
+        ));
+    }
+    let display_offset = debug_entity_data_int_present(entity, MINECART_DISPLAY_OFFSET_DATA_ID)
+        .unwrap_or(MINECART_DEFAULT_DISPLAY_OFFSET);
+    if display_offset != MINECART_DEFAULT_DISPLAY_OFFSET {
+        fields.push(format!("DisplayOffset: {display_offset}"));
+    }
+    fields.push(format!(
+        "FlippedRotation: {}",
+        debug_snbt_bool(MINECART_DEFAULT_FLIPPED_ROTATION)
+    ));
+    fields.push(format!(
+        "HasTicked: {}",
+        debug_snbt_bool(MINECART_DEFAULT_HAS_TICKED)
     ));
 }
 
