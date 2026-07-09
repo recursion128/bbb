@@ -12,6 +12,24 @@ fn loads_vanilla_block_state_registry() {
     let grass = registries.block_state(9).unwrap();
     assert_eq!(grass.name, "minecraft:grass_block");
     assert_eq!(grass.properties.get("snowy").unwrap(), "false");
+
+    assert_eq!(registries.block_registry_count(), 1168);
+    assert_eq!(
+        registries.block_name_by_registry_id(0),
+        Some("minecraft:air")
+    );
+    assert_eq!(
+        registries.block_name_by_registry_id(1),
+        Some("minecraft:stone")
+    );
+    assert_eq!(
+        registries.block_name_by_registry_id(8),
+        Some("minecraft:grass_block")
+    );
+    assert_eq!(
+        registries.block_name_by_registry_id(193),
+        Some("minecraft:obsidian")
+    );
 }
 
 #[test]

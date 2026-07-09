@@ -207,6 +207,10 @@ pub struct DataComponentPatchSummary {
     pub painting_variant_direct: Option<PaintingVariantSummary>,
     #[serde(default)]
     pub block_entity_spawn_entity_type: Option<String>,
+    #[serde(default)]
+    pub can_place_on: Option<AdventureModePredicateSummary>,
+    #[serde(default)]
+    pub can_break: Option<AdventureModePredicateSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -280,6 +284,15 @@ pub struct PaintingVariantSummary {
     pub author: Option<String>,
     #[serde(default)]
     pub author_styled: Option<Vec<StyledTextRun>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdventureModePredicateSummary {
+    pub unknown: bool,
+    #[serde(default)]
+    pub block_registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub unresolved_block_tag_count: usize,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -791,6 +804,12 @@ fn decode_typed_data_component_patch_summary(
             13 => {
                 summary.enchantments = decode_varint_map(decoder)?;
             }
+            14 => {
+                summary.can_place_on = Some(decode_adventure_mode_predicate_summary(decoder)?);
+            }
+            15 => {
+                summary.can_break = Some(decode_adventure_mode_predicate_summary(decoder)?);
+            }
             42 => {
                 summary.stored_enchantments = decode_varint_map(decoder)?;
             }
@@ -1212,13 +1231,21 @@ fn decode_holder_with_direct(
 }
 
 fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
+    let _ = decode_holder_set_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSummary> {
     let encoded_count = decoder.read_var_i32()?;
     if encoded_count < 0 {
         return Err(ProtocolError::NegativeLength(encoded_count));
     }
     if encoded_count == 0 {
         decode_identifier(decoder)?;
-        return Ok(());
+        return Ok(HolderSetSummary {
+            registry_ids: Vec::new(),
+            unresolved_tag_count: 1,
+        });
     }
 
     let count = (encoded_count - 1) as usize;
@@ -1228,10 +1255,14 @@ fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
             MAX_DATA_COMPONENT_LIST_ITEMS,
         ));
     }
+    let mut registry_ids = Vec::with_capacity(count);
     for _ in 0..count {
-        decode_holder_registry(decoder)?;
+        registry_ids.push(decode_holder_registry_id(decoder)?);
     }
-    Ok(())
+    Ok(HolderSetSummary {
+        registry_ids,
+        unresolved_tag_count: 0,
+    })
 }
 
 fn decode_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1340,24 +1371,55 @@ fn decode_map_post_processing(decoder: &mut Decoder<'_>) -> Result<MapPostProces
 }
 
 fn decode_adventure_mode_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
-    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..count {
-        decode_block_predicate(decoder)?;
-    }
+    let _ = decode_adventure_mode_predicate_summary(decoder)?;
     Ok(())
 }
 
-fn decode_block_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_holder_set(decoder)?;
+fn decode_adventure_mode_predicate_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<AdventureModePredicateSummary> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut summary = AdventureModePredicateSummary::default();
+    for _ in 0..count {
+        let predicate = decode_block_predicate_summary(decoder)?;
+        let Some(blocks) = predicate.blocks else {
+            summary.unknown = true;
+            continue;
+        };
+        summary.unresolved_block_tag_count += blocks.unresolved_tag_count;
+        for registry_id in blocks.registry_ids {
+            if !summary.block_registry_ids.contains(&registry_id) {
+                summary.block_registry_ids.push(registry_id);
+            }
+        }
     }
+    Ok(summary)
+}
+
+struct BlockPredicateSummary {
+    blocks: Option<HolderSetSummary>,
+}
+
+#[derive(Default)]
+struct HolderSetSummary {
+    registry_ids: Vec<i32>,
+    unresolved_tag_count: usize,
+}
+
+fn decode_block_predicate_summary(decoder: &mut Decoder<'_>) -> Result<BlockPredicateSummary> {
+    let blocks = if decoder.read_bool()? {
+        Some(decode_holder_set_summary(decoder)?)
+    } else {
+        None
+    };
     if decoder.read_bool()? {
         decode_state_properties_predicate(decoder)?;
     }
     if decoder.read_bool()? {
         skip_nbt_tag_from_decoder(decoder)?;
     }
-    decode_data_component_matchers(decoder)
+    decode_data_component_matchers(decoder)?;
+    Ok(BlockPredicateSummary { blocks })
 }
 
 fn decode_state_properties_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -3562,6 +3624,16 @@ mod tests {
                 added: 3,
                 added_type_ids: vec![14, 15, 16],
                 removed_type_ids: Vec::new(),
+                can_place_on: Some(AdventureModePredicateSummary {
+                    unknown: false,
+                    block_registry_ids: vec![1],
+                    unresolved_block_tag_count: 0,
+                }),
+                can_break: Some(AdventureModePredicateSummary {
+                    unknown: true,
+                    block_registry_ids: Vec::new(),
+                    unresolved_block_tag_count: 0,
+                }),
                 attribute_modifiers: vec![
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -3593,6 +3665,53 @@ mod tests {
                 ],
                 ..DataComponentPatchSummary::default()
             }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_adventure_mode_predicate_tooltip_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(14);
+        payload.write_var_i32(3);
+        write_block_predicate_with_holder_set(&mut payload, |payload| {
+            write_holder_set_ids(payload, &[1, 193]);
+        });
+        write_empty_block_predicate(&mut payload);
+        write_block_predicate_with_holder_set(&mut payload, |payload| {
+            write_holder_set_ids(payload, &[1, 8]);
+        });
+
+        payload.write_var_i32(15);
+        payload.write_var_i32(2);
+        write_block_predicate_with_holder_set(&mut payload, |payload| {
+            write_holder_set_tag(payload, "minecraft:mineable/pickaxe");
+        });
+        write_block_predicate_with_holder_set(&mut payload, |payload| {
+            write_holder_set_ids(payload, &[9]);
+        });
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch.can_place_on,
+            Some(AdventureModePredicateSummary {
+                unknown: true,
+                block_registry_ids: vec![1, 193, 8],
+                unresolved_block_tag_count: 0,
+            })
+        );
+        assert_eq!(
+            patch.can_break,
+            Some(AdventureModePredicateSummary {
+                unknown: false,
+                block_registry_ids: vec![9],
+                unresolved_block_tag_count: 1,
+            })
         );
         assert!(decoder.is_empty());
     }
@@ -4591,6 +4710,18 @@ mod tests {
 
     fn write_empty_block_predicate(payload: &mut Encoder) {
         payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+    }
+
+    fn write_block_predicate_with_holder_set(
+        payload: &mut Encoder,
+        write_holder_set: impl FnOnce(&mut Encoder),
+    ) {
+        payload.write_bool(true);
+        write_holder_set(payload);
         payload.write_bool(false);
         payload.write_bool(false);
         payload.write_var_i32(0);

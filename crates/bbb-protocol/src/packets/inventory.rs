@@ -11,17 +11,18 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    decode_profile_textures_from_properties, AttackRangeSummary, AttributeModifierSummary,
-    BannerPatternLayerSummary, ConsumableSummary, CustomModelDataFloats, DataComponentPatchSummary,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, GameProfilePropertySummary,
-    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, ItemUseAnimationSummary,
-    JukeboxSongSummary, LodestoneTargetSummary, MapPostProcessingSummary, MobEffectDetailsSummary,
-    MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, PaintingVariantSummary,
-    PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
-    ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
-    ResolvableProfileSummary, ResourceTextureSummary, SoundEventSummary,
-    SuspiciousStewEffectSummary, SwingAnimationSummary, SwingAnimationTypeSummary,
-    TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+    decode_profile_textures_from_properties, AdventureModePredicateSummary, AttackRangeSummary,
+    AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary, CustomModelDataFloats,
+    DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    GameProfilePropertySummary, ItemEnchantmentSummary, ItemRaritySummary,
+    ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary, LodestoneTargetSummary,
+    MapPostProcessingSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, PaintingVariantSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
+    ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
+    ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
+    SwingAnimationTypeSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

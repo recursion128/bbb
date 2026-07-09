@@ -1149,11 +1149,13 @@ When an agent does any of the following, update this file in the same slice:
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, stored/enchantment rows, dynamic profile line,
-    TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
-    disc fragment item-specific description line, smithing template
-    item-specific rows, intangible projectile line, and ominous bottle amplifier
-    line, potion custom-effect lines, creative suspicious-stew effect lines,
+    armor trim rows, stored/enchantment rows, TooltipDisplay
+    hide/hidden-components gating, map_id component type-id 46, disc fragment
+    item-specific description line, smithing template item-specific rows, direct
+    painting variant rows, spawner block-entity rows, adventure-mode
+    can-break/can-place direct block rows and unknown row, dynamic profile line,
+    intangible projectile line, and ominous bottle amplifier line, potion
+    custom-effect lines, creative suspicious-stew effect lines,
     map-id lines, instrument description lines, tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
@@ -1495,6 +1497,23 @@ When an agent does any of the following, update this file in the same slice:
     tooltip extraction, not a general `TypedEntityData`/block-entity NBT summary
     model; `ENTITY_DATA` peaceful-mode warnings and broader block-entity exact
     predicates remain future work.
+  - Done 2026-07-09 — Advanced tooltip adventure-mode can-break/can-place rows.
+    Vanilla anchors: after the spawner block-entity provider and before advanced
+    id/component-count lines, `ItemStack.addDetailsToTooltip` appends
+    `CommonComponents.EMPTY`, the gray `AdventureModePredicate.CAN_BREAK_HEADER`,
+    and `CAN_BREAK.addToTooltip`, then repeats the same shape for
+    `CAN_PLACE_ON`; `AdventureModePredicate.computeTooltip` emits gray
+    `item.canUse.unknown` when any predicate lacks `blocks`, otherwise flattens
+    the block holder sets in encounter order, `distinct`s them, and emits each
+    block display name in dark gray. bbb now decodes `minecraft:can_break` and
+    `minecraft:can_place_on` into direct block registry ids plus an unknown flag
+    and unresolved named-holder-set tag count, derives the vanilla built-in block
+    registry id -> resource id map from the embedded 26.1 block-state registry,
+    and native item tooltips emit direct block rows or the unknown row while
+    honoring hidden component type ids 15 and 14. Boundary: named holder-set tags
+    are counted but not expanded into their block entries yet, and state/NBT/data
+    component predicate details are only skipped for wire correctness; gameplay
+    can-use/can-destroy evaluation remains separate follow-up work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,

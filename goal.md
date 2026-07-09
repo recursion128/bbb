@@ -367,8 +367,9 @@ Screen Render Surfaces" 条目）：
   jukebox song descriptions, direct armor trim rows, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific
-  rows, direct painting variant rows, spawner block-entity rows, dynamic profile
-  line, and intangible projectile line, ominous bottle amplifier line, potion
+	  rows, direct painting variant rows, spawner block-entity rows, adventure-mode
+	  can-break/can-place direct block rows and unknown row, dynamic profile line,
+	  and intangible projectile line, ominous bottle amplifier line, potion
   custom-effect lines, creative suspicious-stew effect lines, map-id lines,
   instrument description lines, tropical-fish pattern lines, banner-pattern rows,
   pot-decoration rows、F3+I full local entity saveWithoutId parity、

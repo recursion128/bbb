@@ -1,7 +1,11 @@
 use bbb_protocol::{
-    packets::{MobEffectInstanceSummary, PaintingVariantSummary, SuspiciousStewEffectSummary},
+    packets::{
+        AdventureModePredicateSummary, MobEffectInstanceSummary, PaintingVariantSummary,
+        SuspiciousStewEffectSummary,
+    },
     ComponentStyle, StyledTextRun,
 };
+use bbb_world::RegistrySet;
 
 use super::mob_effects::{
     vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
@@ -35,6 +39,9 @@ const SPAWNER_RESOURCE_ID: &str = "minecraft:spawner";
 const TRIAL_SPAWNER_RESOURCE_ID: &str = "minecraft:trial_spawner";
 const SPAWNER_DESC1_KEY: &str = "block.minecraft.spawner.desc1";
 const SPAWNER_DESC2_KEY: &str = "block.minecraft.spawner.desc2";
+const CAN_BREAK_HEADER_KEY: &str = "item.canBreak";
+const CAN_PLACE_HEADER_KEY: &str = "item.canPlace";
+const CAN_USE_UNKNOWN_KEY: &str = "item.canUse.unknown";
 const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
     "minecraft:netherite_upgrade_smithing_template";
 const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
@@ -54,6 +61,8 @@ const COMPONENT_DAMAGE_TYPE_ID: i32 = 3;
 const COMPONENT_UNBREAKABLE_TYPE_ID: i32 = 4;
 const COMPONENT_LORE_TYPE_ID: i32 = 11;
 const COMPONENT_ENCHANTMENTS_TYPE_ID: i32 = 13;
+const COMPONENT_CAN_PLACE_ON_TYPE_ID: i32 = 14;
+const COMPONENT_CAN_BREAK_TYPE_ID: i32 = 15;
 const COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID: i32 = 22;
 const COMPONENT_MAP_ID_TYPE_ID: i32 = 46;
 const COMPONENT_STORED_ENCHANTMENTS_TYPE_ID: i32 = 42;
@@ -814,6 +823,46 @@ fn localized_entity_name(language: &LanguageCatalog, resource_id: &str) -> Strin
 
 fn item_is_spawner(resource_id: &str) -> bool {
     matches!(resource_id, SPAWNER_RESOURCE_ID | TRIAL_SPAWNER_RESOURCE_ID)
+}
+
+fn push_adventure_mode_predicate_tooltip_lines(
+    language: &LanguageCatalog,
+    registries: &RegistrySet,
+    header_key: &str,
+    predicate: &AdventureModePredicateSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    lines.push(NativeItemTooltipLine::plain(
+        String::new(),
+        TOOLTIP_TEXT_WHITE,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        language.get_or_key(header_key).to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    if predicate.unknown {
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key(CAN_USE_UNKNOWN_KEY).to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+        return;
+    }
+
+    for block_id in &predicate.block_registry_ids {
+        let Some(block_name) = registries.block_name_by_registry_id(*block_id) else {
+            continue;
+        };
+        lines.push(NativeItemTooltipLine::plain(
+            localized_block_name(language, block_name),
+            TOOLTIP_TEXT_DARK_GRAY,
+        ));
+    }
+}
+
+fn localized_block_name(language: &LanguageCatalog, resource_id: &str) -> String {
+    language
+        .get_or_key(&description_key("block", resource_id))
+        .to_string()
 }
 
 fn smithing_template_tooltip_keys(item_id: &str) -> Option<(&'static str, &'static str)> {
@@ -2243,6 +2292,40 @@ impl NativeItemRuntime {
                 &stack.component_patch,
                 &mut lines,
             );
+        }
+        if (shows(COMPONENT_CAN_BREAK_TYPE_ID) && stack.component_patch.can_break.is_some())
+            || (shows(COMPONENT_CAN_PLACE_ON_TYPE_ID)
+                && stack.component_patch.can_place_on.is_some())
+        {
+            let block_registries = RegistrySet::vanilla_26_1();
+            if let Some(predicate) = stack
+                .component_patch
+                .can_break
+                .as_ref()
+                .filter(|_| shows(COMPONENT_CAN_BREAK_TYPE_ID))
+            {
+                push_adventure_mode_predicate_tooltip_lines(
+                    &self.language,
+                    &block_registries,
+                    CAN_BREAK_HEADER_KEY,
+                    predicate,
+                    &mut lines,
+                );
+            }
+            if let Some(predicate) = stack
+                .component_patch
+                .can_place_on
+                .as_ref()
+                .filter(|_| shows(COMPONENT_CAN_PLACE_ON_TYPE_ID))
+            {
+                push_adventure_mode_predicate_tooltip_lines(
+                    &self.language,
+                    &block_registries,
+                    CAN_PLACE_HEADER_KEY,
+                    predicate,
+                    &mut lines,
+                );
+            }
         }
         if options.advanced {
             push_advanced_tooltip_lines(

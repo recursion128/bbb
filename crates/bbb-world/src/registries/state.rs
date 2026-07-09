@@ -69,6 +69,10 @@ impl RegistrySet {
         self.block_states.by_id(id)
     }
 
+    pub fn block_name_by_registry_id(&self, id: i32) -> Option<&str> {
+        self.block_states.block_name_by_registry_id(id)
+    }
+
     pub fn block_state_id_by_name_and_properties(
         &self,
         name: &str,
@@ -81,6 +85,10 @@ impl RegistrySet {
 
     pub fn block_state_count(&self) -> usize {
         self.block_states.len()
+    }
+
+    pub fn block_registry_count(&self) -> usize {
+        self.block_states.block_registry_len()
     }
 }
 

@@ -7,10 +7,12 @@ use serde::{Deserialize, Serialize};
 
 const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../../data/block_states_26_1.json");
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
+static VANILLA_BLOCK_REGISTRY_NAMES: OnceLock<Arc<Vec<String>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct BlockStateRegistry {
     states: Arc<Vec<Option<BlockStateInfo>>>,
+    block_registry_names: Arc<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,7 +34,13 @@ impl BlockStateRegistry {
         let states = VANILLA_BLOCK_STATES
             .get_or_init(|| Arc::new(load_vanilla_block_states()))
             .clone();
-        Self { states }
+        let block_registry_names = VANILLA_BLOCK_REGISTRY_NAMES
+            .get_or_init(|| Arc::new(load_vanilla_block_registry_names(&states)))
+            .clone();
+        Self {
+            states,
+            block_registry_names,
+        }
     }
 
     pub fn by_id(&self, id: i32) -> Option<&BlockStateInfo> {
@@ -53,6 +61,15 @@ impl BlockStateRegistry {
 
     pub fn iter(&self) -> impl Iterator<Item = &BlockStateInfo> {
         self.states.iter().flatten()
+    }
+
+    pub fn block_name_by_registry_id(&self, id: i32) -> Option<&str> {
+        let id = usize::try_from(id).ok()?;
+        self.block_registry_names.get(id).map(String::as_str)
+    }
+
+    pub fn block_registry_len(&self) -> usize {
+        self.block_registry_names.len()
     }
 
     pub fn len(&self) -> usize {
@@ -95,4 +112,14 @@ fn load_vanilla_block_states() -> Vec<Option<BlockStateInfo>> {
         states[index] = Some(state);
     }
     states
+}
+
+fn load_vanilla_block_registry_names(states: &[Option<BlockStateInfo>]) -> Vec<String> {
+    let mut names = Vec::new();
+    for state in states.iter().flatten() {
+        if names.last() != Some(&state.name) {
+            names.push(state.name.clone());
+        }
+    }
+    names
 }

@@ -6670,6 +6670,22 @@
   component type id 60。边界：这是 targeted tooltip extraction，不是通用
   `TypedEntityData`/block-entity NBT 模型；`ENTITY_DATA` peaceful warning 和 broader
   block-entity exact predicates 仍未完成。
+- [x] advanced tooltip adventure-mode can-break/can-place rows（P2 protocol +
+  world + item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip`
+  在 spawner block-entity provider 之后、advanced tooltip 之前按
+  `CAN_BREAK` 再 `CAN_PLACE_ON` 顺序追加空行、灰色 header 与
+  `AdventureModePredicate.addToTooltip` rows；`AdventureModePredicate.computeTooltip`
+  在任意 `BlockPredicate.blocks()` 缺失时输出灰色 `item.canUse.unknown`，否则按
+  predicate encounter order flatten blocks、distinct 后输出 dark-gray block display
+  names。protocol summary 现在保留 decoded `minecraft:can_break` /
+  `minecraft:can_place_on` direct block registry ids、missing-blocks unknown 标记与
+  unresolved named holder-set tag 计数；`bbb-world` 从 vanilla 26.1
+  block-state registry 首次出现顺序导出 built-in block registry id -> resource id 映射
+  （matching `Blocks` static init over `BuiltInRegistries.BLOCK`）；native item tooltip
+  输出 direct block rows、unknown row，并应用 hidden component type ids 15/14。边界：
+  named holder-set tags（例如 block tags）目前只计数不展开，state/NBT/component
+  predicate details 只参与 wire skip，不影响 tooltip body；实际 adventure-mode
+  can-use/can-destroy checks 仍是 gameplay follow-up。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

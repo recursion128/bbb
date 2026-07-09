@@ -1704,6 +1704,79 @@ fn native_item_runtime_shows_spawner_block_entity_tooltips() {
 }
 
 #[test]
+fn native_item_runtime_shows_adventure_mode_predicate_tooltips() {
+    let root = unique_temp_dir("item-runtime-adventure-mode-tooltip");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_source(&root, &["diamond_pickaxe"]);
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "item.minecraft.diamond_pickaxe": "Diamond Pickaxe",
+                "item.canBreak": "Can break:",
+                "item.canPlace": "Can be placed on:",
+                "item.canUse.unknown": "Unknown",
+                "block.minecraft.stone": "Stone",
+                "block.minecraft.obsidian": "Obsidian"
+            }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let can_break = bbb_protocol::packets::AdventureModePredicateSummary {
+        unknown: false,
+        block_registry_ids: vec![1, 193, 9999],
+        unresolved_block_tag_count: 1,
+    };
+    let can_place_on = bbb_protocol::packets::AdventureModePredicateSummary {
+        unknown: true,
+        block_registry_ids: vec![8],
+        unresolved_block_tag_count: 0,
+    };
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                can_break: Some(can_break.clone()),
+                can_place_on: Some(can_place_on.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Diamond Pickaxe", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Can break:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Stone", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("Obsidian", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Can be placed on:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Unknown", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                can_break: Some(can_break),
+                can_place_on: Some(can_place_on),
+                tooltip_hidden_component_type_ids: vec![15],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Diamond Pickaxe", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Can be placed on:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Unknown", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn special_foil_texture_detection_follows_clock_and_compasses_tag() {
     let root = unique_temp_dir("item-runtime-special-foil");
     let assets = assets_dir(&root);
