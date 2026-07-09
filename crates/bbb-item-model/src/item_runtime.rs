@@ -21,11 +21,11 @@ use bbb_pack::{
     TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
-    MapPostProcessingSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-    ResourceTextureSummary, TrimMaterialSummary, TrimPatternSummary,
+    AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary,
+    DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary, ItemUseAnimationSummary,
+    JukeboxSongSummary, MapPostProcessingSummary, ResolvableProfileKindSummary,
+    ResolvableProfileSummary, ResourceTextureSummary, TrimMaterialSummary, TrimPatternSummary,
 };
 // These summary types are referenced only by this crate's tests; keep them out
 // of the non-test import set so the standalone library build stays warning-free.

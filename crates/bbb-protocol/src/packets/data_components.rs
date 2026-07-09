@@ -140,6 +140,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub container_loot: bool,
     #[serde(default)]
+    pub banner_pattern_layers: Vec<BannerPatternLayerSummary>,
+    #[serde(default)]
     pub pot_decorations_item_ids: Vec<i32>,
     #[serde(default)]
     pub bees_count: usize,
@@ -253,6 +255,13 @@ pub struct TrimPatternSummary {
     pub asset_id: String,
     pub description: String,
     pub decal: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BannerPatternLayerSummary {
+    pub registry_id: Option<i32>,
+    pub translation_key: Option<String>,
+    pub color_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -787,6 +796,9 @@ fn decode_typed_data_component_patch_summary(
             75 => {
                 summary.container_items = decode_item_container_contents(decoder)?;
                 summary.container_item_count = Some(summary.container_items.len());
+            }
+            72 => {
+                summary.banner_pattern_layers = decode_banner_pattern_layers_summary(decoder)?;
             }
             74 => {
                 summary.pot_decorations_item_ids = decode_pot_decorations_item_ids(decoder)?;
@@ -2072,22 +2084,47 @@ fn decode_direct_sound_event_summary(decoder: &mut Decoder<'_>) -> Result<SoundE
 }
 
 fn decode_banner_pattern_layers(decoder: &mut Decoder<'_>) -> Result<()> {
+    let _ = decode_banner_pattern_layers_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_banner_pattern_layers_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<BannerPatternLayerSummary>> {
     let layer_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut layers = Vec::with_capacity(layer_count);
     for _ in 0..layer_count {
-        decode_banner_pattern_holder(decoder)?;
-        decoder.read_var_i32()?;
+        let pattern = decode_banner_pattern_holder(decoder)?;
+        let color_id = decoder.read_var_i32()?;
+        layers.push(BannerPatternLayerSummary {
+            registry_id: pattern.registry_id,
+            translation_key: pattern.translation_key,
+            color_id,
+        });
     }
-    Ok(())
+    Ok(layers)
 }
 
-fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_banner_pattern)
+struct BannerPatternHolderSummary {
+    registry_id: Option<i32>,
+    translation_key: Option<String>,
 }
 
-fn decode_direct_banner_pattern(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_identifier(decoder)?;
-    decoder.read_string(MAX_STRING_CHARS)?;
-    Ok(())
+fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<BannerPatternHolderSummary> {
+    let holder_id = decoder.read_var_i32()?;
+    if holder_id == 0 {
+        let _asset_id = decode_identifier(decoder)?;
+        let translation_key = decoder.read_string(MAX_STRING_CHARS)?;
+        Ok(BannerPatternHolderSummary {
+            registry_id: None,
+            translation_key: Some(translation_key),
+        })
+    } else {
+        Ok(BannerPatternHolderSummary {
+            registry_id: Some(holder_id - 1),
+            translation_key: None,
+        })
+    }
 }
 
 fn decode_pot_decorations(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -3527,6 +3564,48 @@ mod tests {
     }
 
     #[test]
+    fn decodes_banner_pattern_layers_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(72);
+        payload.write_var_i32(2);
+        payload.write_var_i32(6);
+        payload.write_var_i32(14);
+        payload.write_var_i32(0);
+        payload.write_string("example:custom_banner/pattern");
+        payload.write_string("block.example.banner.custom");
+        payload.write_var_i32(999);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![72],
+                removed_type_ids: Vec::new(),
+                banner_pattern_layers: vec![
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: None,
+                        translation_key: Some("block.example.banner.custom".to_string()),
+                        color_id: 999,
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_profile_and_decorative_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [65, 67, 70, 72, 74, 77];
@@ -3592,6 +3671,18 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                banner_pattern_layers: vec![
+                    BannerPatternLayerSummary {
+                        registry_id: Some(4),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: None,
+                        translation_key: Some("block.minecraft.banner.stripe_bottom".to_string()),
+                        color_id: 11,
+                    },
+                ],
                 pot_decorations_item_ids: vec![1, 2, 3, 4],
                 bees_count: 1,
                 lodestone_target: Some(LodestoneTargetSummary {

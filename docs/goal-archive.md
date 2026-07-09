@@ -6156,6 +6156,18 @@
   tooltip 按 vanilla `ByIdMap` 语义把未知 pattern/color 回退 KOB/white，并投影
   本地化 predefined/type/color 行。边界：`TooltipDisplay` hidden-components 与其它
   component provider tooltip 仍未完成。
+- [x] advanced tooltip banner-pattern rows（P2 protocol + item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 container rows 之后、
+  pot decorations 之前调用 `DataComponents.BANNER_PATTERNS`，以及
+  `BannerPatternLayers.addToTooltip` 只输出前六层，每层为灰色
+  `<pattern.translationKey>.<DyeColor.getName()>`。`BannerPattern.STREAM_CODEC`
+  使用 `ByteBufCodecs.holder`，所以非零 holder id 保留为 `holder_id - 1`，
+  direct holder 保留 `translation_key`。protocol summary 现在记录 decoded
+  banner pattern registry/direct layers 和 dye color ids；native item tooltip 按
+  vanilla 26.1 `BannerPatterns.bootstrap` 注册顺序映射内置 pattern 翻译键，并
+  支持 direct translation key、本地化 dye suffix、未知 dye id 回退 white 和六行截断。
+  边界：datapack registry-key holder 的动态 key resolution 以及
+  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip pot-decoration rows（P2 protocol + item-runtime slice，
   2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 banner patterns 之后、
   written-book 之前调用 `DataComponents.POT_DECORATIONS`，以及
@@ -6163,8 +6175,8 @@
   front/left/right/back 输出每侧 item hover name 的灰色行。protocol summary
   现在记录 decoded `minecraft:pot_decorations` item ids；native item tooltip 用
   item registry 和 language catalog 投影 side item names，并保持在 container rows
-  之后。边界：全 brick elision 依赖 `minecraft:brick` registry id，banner pattern
-  rows、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+  之后。边界：全 brick elision 依赖 `minecraft:brick` registry id，
+  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

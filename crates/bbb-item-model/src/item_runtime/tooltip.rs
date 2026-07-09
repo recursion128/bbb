@@ -83,6 +83,51 @@ const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:yearn_goat_horn",
     "minecraft:dream_goat_horn",
 ];
+const VANILLA_BANNER_PATTERN_TRANSLATION_KEYS: &[&str] = &[
+    "block.minecraft.banner.base",
+    "block.minecraft.banner.square_bottom_left",
+    "block.minecraft.banner.square_bottom_right",
+    "block.minecraft.banner.square_top_left",
+    "block.minecraft.banner.square_top_right",
+    "block.minecraft.banner.stripe_bottom",
+    "block.minecraft.banner.stripe_top",
+    "block.minecraft.banner.stripe_left",
+    "block.minecraft.banner.stripe_right",
+    "block.minecraft.banner.stripe_center",
+    "block.minecraft.banner.stripe_middle",
+    "block.minecraft.banner.stripe_downright",
+    "block.minecraft.banner.stripe_downleft",
+    "block.minecraft.banner.small_stripes",
+    "block.minecraft.banner.cross",
+    "block.minecraft.banner.straight_cross",
+    "block.minecraft.banner.triangle_bottom",
+    "block.minecraft.banner.triangle_top",
+    "block.minecraft.banner.triangles_bottom",
+    "block.minecraft.banner.triangles_top",
+    "block.minecraft.banner.diagonal_left",
+    "block.minecraft.banner.diagonal_up_right",
+    "block.minecraft.banner.diagonal_up_left",
+    "block.minecraft.banner.diagonal_right",
+    "block.minecraft.banner.circle",
+    "block.minecraft.banner.rhombus",
+    "block.minecraft.banner.half_vertical",
+    "block.minecraft.banner.half_horizontal",
+    "block.minecraft.banner.half_vertical_right",
+    "block.minecraft.banner.half_horizontal_bottom",
+    "block.minecraft.banner.border",
+    "block.minecraft.banner.gradient",
+    "block.minecraft.banner.gradient_up",
+    "block.minecraft.banner.bricks",
+    "block.minecraft.banner.curly_border",
+    "block.minecraft.banner.globe",
+    "block.minecraft.banner.creeper",
+    "block.minecraft.banner.skull",
+    "block.minecraft.banner.flower",
+    "block.minecraft.banner.mojang",
+    "block.minecraft.banner.piglin",
+    "block.minecraft.banner.flow",
+    "block.minecraft.banner.guster",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
@@ -418,6 +463,34 @@ fn push_tropical_fish_tooltip_lines(
     lines.push(italic_gray_tooltip_line(color_text));
 }
 
+fn push_banner_pattern_tooltip_lines(
+    language: &LanguageCatalog,
+    layers: &[BannerPatternLayerSummary],
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    for layer in layers.iter().take(6) {
+        let Some(translation_key) = layer.translation_key.as_deref().or_else(|| {
+            layer
+                .registry_id
+                .and_then(vanilla_banner_pattern_translation_key)
+        }) else {
+            continue;
+        };
+        let color_name = dye_color_name(dye_color_id_or_white(Some(layer.color_id)));
+        lines.push(NativeItemTooltipLine::plain(
+            language
+                .get_or_key(&format!("{translation_key}.{color_name}"))
+                .to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+}
+
+fn vanilla_banner_pattern_translation_key(registry_id: i32) -> Option<&'static str> {
+    let index = usize::try_from(registry_id).ok()?;
+    VANILLA_BANNER_PATTERN_TRANSLATION_KEYS.get(index).copied()
+}
+
 fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.clone(),
@@ -530,6 +603,68 @@ mod tests {
         assert_eq!(tropical_fish_common_variant_index(0, 0, 14), None);
         assert_eq!(dye_color_id_or_white(Some(15)), 15);
         assert_eq!(dye_color_id_or_white(Some(16)), 0);
+    }
+
+    #[test]
+    fn vanilla_banner_pattern_translation_keys_follow_26_1_bootstrap_order() {
+        assert_eq!(
+            VANILLA_BANNER_PATTERN_TRANSLATION_KEYS,
+            &[
+                "block.minecraft.banner.base",
+                "block.minecraft.banner.square_bottom_left",
+                "block.minecraft.banner.square_bottom_right",
+                "block.minecraft.banner.square_top_left",
+                "block.minecraft.banner.square_top_right",
+                "block.minecraft.banner.stripe_bottom",
+                "block.minecraft.banner.stripe_top",
+                "block.minecraft.banner.stripe_left",
+                "block.minecraft.banner.stripe_right",
+                "block.minecraft.banner.stripe_center",
+                "block.minecraft.banner.stripe_middle",
+                "block.minecraft.banner.stripe_downright",
+                "block.minecraft.banner.stripe_downleft",
+                "block.minecraft.banner.small_stripes",
+                "block.minecraft.banner.cross",
+                "block.minecraft.banner.straight_cross",
+                "block.minecraft.banner.triangle_bottom",
+                "block.minecraft.banner.triangle_top",
+                "block.minecraft.banner.triangles_bottom",
+                "block.minecraft.banner.triangles_top",
+                "block.minecraft.banner.diagonal_left",
+                "block.minecraft.banner.diagonal_up_right",
+                "block.minecraft.banner.diagonal_up_left",
+                "block.minecraft.banner.diagonal_right",
+                "block.minecraft.banner.circle",
+                "block.minecraft.banner.rhombus",
+                "block.minecraft.banner.half_vertical",
+                "block.minecraft.banner.half_horizontal",
+                "block.minecraft.banner.half_vertical_right",
+                "block.minecraft.banner.half_horizontal_bottom",
+                "block.minecraft.banner.border",
+                "block.minecraft.banner.gradient",
+                "block.minecraft.banner.gradient_up",
+                "block.minecraft.banner.bricks",
+                "block.minecraft.banner.curly_border",
+                "block.minecraft.banner.globe",
+                "block.minecraft.banner.creeper",
+                "block.minecraft.banner.skull",
+                "block.minecraft.banner.flower",
+                "block.minecraft.banner.mojang",
+                "block.minecraft.banner.piglin",
+                "block.minecraft.banner.flow",
+                "block.minecraft.banner.guster",
+            ]
+        );
+        assert_eq!(
+            vanilla_banner_pattern_translation_key(5),
+            Some("block.minecraft.banner.stripe_bottom")
+        );
+        assert_eq!(
+            vanilla_banner_pattern_translation_key(42),
+            Some("block.minecraft.banner.guster")
+        );
+        assert_eq!(vanilla_banner_pattern_translation_key(43), None);
+        assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
     }
 }
 
@@ -1342,6 +1477,11 @@ impl NativeItemRuntime {
             &mut lines,
         );
         self.push_container_items_tooltip_lines(&stack.component_patch.container_items, &mut lines);
+        push_banner_pattern_tooltip_lines(
+            &self.language,
+            &stack.component_patch.banner_pattern_layers,
+            &mut lines,
+        );
         self.push_pot_decorations_tooltip_lines(
             &stack.component_patch.pot_decorations_item_ids,
             &mut lines,

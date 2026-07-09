@@ -249,6 +249,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "color.minecraft.white": "White",
                 "color.minecraft.red": "Red",
                 "instrument.minecraft.ponder_goat_horn": "Ponder",
+                "block.minecraft.banner.stripe_bottom.red": "Red Base",
+                "block.test.banner.custom.blue": "Custom Blue",
+                "block.minecraft.banner.guster.black": "Black Guster",
                 "filled_map.id": "Id #%s",
                 "filled_map.level": "(Level %s/%s)",
                 "filled_map.locked": "Locked",
@@ -874,6 +877,63 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Test Combo x5", TOOLTIP_TEXT_WHITE),
             italic_plain_tooltip_line("and 1 more...", TOOLTIP_TEXT_WHITE),
             lore_line("After container items"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                banner_pattern_layers: vec![
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: None,
+                        translation_key: Some("block.test.banner.custom".to_string()),
+                        color_id: 11,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: Some(5),
+                        translation_key: None,
+                        color_id: 14,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: Some(42),
+                        translation_key: None,
+                        color_id: 15,
+                    },
+                ],
+                lore: vec!["After banner patterns".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Custom Blue", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
+            lore_line("After banner patterns"),
         ])
     );
     assert_eq!(

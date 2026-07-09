@@ -367,8 +367,8 @@ Screen Render Surfaces" 条目）：
   jukebox song descriptions, direct armor trim rows, dynamic profile line, and
   intangible projectile line, ominous bottle amplifier line, potion custom-effect
   lines, creative suspicious-stew effect lines, map-id lines, instrument
-  description lines, tropical-fish pattern lines, pot-decoration rows、F3+I
-  full local entity saveWithoutId parity、
+  description lines, tropical-fish pattern lines, banner-pattern rows,
+  pot-decoration rows、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，
