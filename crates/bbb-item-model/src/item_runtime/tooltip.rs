@@ -28,6 +28,21 @@ const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
 const TOOLTIP_GRAY_TEXT_COLOR: u32 = 0xAA_AA_AA;
 const DISC_FRAGMENT_5_RESOURCE_ID: &str = "minecraft:disc_fragment_5";
 const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.desc";
+const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
+    "minecraft:netherite_upgrade_smithing_template";
+const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
+const SMITHING_TEMPLATE_SUFFIX_KEY: &str = "item.minecraft.smithing_template";
+const SMITHING_TEMPLATE_APPLIES_TO_TITLE_KEY: &str = "item.minecraft.smithing_template.applies_to";
+const SMITHING_TEMPLATE_INGREDIENTS_TITLE_KEY: &str =
+    "item.minecraft.smithing_template.ingredients";
+const SMITHING_TEMPLATE_ARMOR_TRIM_APPLIES_TO_KEY: &str =
+    "item.minecraft.smithing_template.armor_trim.applies_to";
+const SMITHING_TEMPLATE_ARMOR_TRIM_INGREDIENTS_KEY: &str =
+    "item.minecraft.smithing_template.armor_trim.ingredients";
+const SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY: &str =
+    "item.minecraft.smithing_template.netherite_upgrade.applies_to";
+const SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY: &str =
+    "item.minecraft.smithing_template.netherite_upgrade.ingredients";
 const COMPONENT_DAMAGE_TYPE_ID: i32 = 3;
 const COMPONENT_UNBREAKABLE_TYPE_ID: i32 = 4;
 const COMPONENT_LORE_TYPE_ID: i32 = 11;
@@ -688,6 +703,65 @@ fn push_item_specific_tooltip_lines(
             TOOLTIP_TEXT_GRAY,
         ));
     }
+    if let Some((applies_to_key, ingredients_key)) = smithing_template_tooltip_keys(item_id) {
+        push_smithing_template_tooltip_lines(language, applies_to_key, ingredients_key, lines);
+    }
+}
+
+fn smithing_template_tooltip_keys(item_id: &str) -> Option<(&'static str, &'static str)> {
+    if item_id == NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID {
+        return Some((
+            SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY,
+            SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY,
+        ));
+    }
+    item_id
+        .strip_prefix("minecraft:")
+        .filter(|path| path.ends_with(ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX))
+        .map(|_| {
+            (
+                SMITHING_TEMPLATE_ARMOR_TRIM_APPLIES_TO_KEY,
+                SMITHING_TEMPLATE_ARMOR_TRIM_INGREDIENTS_KEY,
+            )
+        })
+}
+
+fn push_smithing_template_tooltip_lines(
+    language: &LanguageCatalog,
+    applies_to_key: &str,
+    ingredients_key: &str,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key(SMITHING_TEMPLATE_SUFFIX_KEY)
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        String::new(),
+        TOOLTIP_TEXT_WHITE,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key(SMITHING_TEMPLATE_APPLIES_TO_TITLE_KEY)
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        format!(" {}", language.get_or_key(applies_to_key)),
+        TOOLTIP_TEXT_BLUE,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key(SMITHING_TEMPLATE_INGREDIENTS_TITLE_KEY)
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        format!(" {}", language.get_or_key(ingredients_key)),
+        TOOLTIP_TEXT_BLUE,
+    ));
 }
 
 #[cfg(test)]

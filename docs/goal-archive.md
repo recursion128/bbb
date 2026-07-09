@@ -6637,6 +6637,13 @@
   `minecraft:disc_fragment_5` 输出本地化灰色 `item.minecraft.disc_fragment_5.desc`
   行，并覆盖 creative `hide_tooltip` 时仍输出的行为。边界：painting variants、
   smithing templates 等其它 item-specific `appendHoverText` 仍未完成。
+- [x] advanced tooltip smithing template rows（P2 item-runtime slice，2026-07-09）：
+  依据 `SmithingTemplateItem.appendHoverText` 在 normal component provider 之前追加
+  gray suffix、空行、gray applies-to title、blue 前导空格 applies-to、gray ingredients
+  title、blue 前导空格 ingredients，native item tooltip 现在对
+  `minecraft:netherite_upgrade_smithing_template` 和
+  `minecraft:*_armor_trim_smithing_template` 输出对应 netherite/armor-trim
+  applies/ingredients 文案。边界：painting variants 等仍需额外 component summary。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

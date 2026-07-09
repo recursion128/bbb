@@ -1151,10 +1151,11 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, stored/enchantment rows, dynamic profile line,
     TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
-    disc fragment item-specific description line, intangible projectile line,
-    and ominous bottle amplifier line, potion custom-effect lines, creative
-    suspicious-stew effect lines, map-id lines, instrument description lines,
-    tropical-fish pattern lines, banner-pattern rows, pot-decoration rows,
+    disc fragment item-specific description line, smithing template
+    item-specific rows, intangible projectile line, and ominous bottle amplifier
+    line, potion custom-effect lines, creative suspicious-stew effect lines,
+    map-id lines, instrument description lines, tropical-fish pattern lines,
+    banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1204,6 +1205,17 @@ When an agent does any of the following, update this file in the same slice:
     `hide_tooltip` is set. Boundary: remaining item-specific `appendHoverText`
     implementations such as painting variants and smithing templates remain
     future work.
+  - Done 2026-07-09 — Advanced tooltip smithing template rows. Vanilla anchor:
+    `SmithingTemplateItem.appendHoverText` appends gray
+    `item.minecraft.smithing_template`, an empty separator, gray
+    `item.minecraft.smithing_template.applies_to`, blue space-prefixed applies
+    text, gray `item.minecraft.smithing_template.ingredients`, and blue
+    space-prefixed ingredients text before normal component providers. bbb now
+    emits those rows for `minecraft:netherite_upgrade_smithing_template` and
+    `minecraft:*_armor_trim_smithing_template`, including the netherite-upgrade
+    versus armor-trim applies/ingredients variants. Boundary: remaining
+    item-specific hooks such as painting variants still require their own
+    component summaries.
   - Done 2026-07-09 — Advanced tooltip instrument description line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls `DataComponents.INSTRUMENT`
     after tropical-fish pattern and before `DataComponents.MAP_ID`, and

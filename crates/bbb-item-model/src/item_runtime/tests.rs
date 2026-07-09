@@ -1451,6 +1451,71 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
 }
 
 #[test]
+fn native_item_runtime_shows_smithing_template_append_tooltips() {
+    let root = unique_temp_dir("item-runtime-smithing-template-tooltip");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_source(
+        &root,
+        &[
+            "netherite_upgrade_smithing_template",
+            "sentry_armor_trim_smithing_template",
+        ],
+    );
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "item.minecraft.netherite_upgrade_smithing_template": "Smithing Template",
+                "item.minecraft.sentry_armor_trim_smithing_template": "Smithing Template",
+                "item.minecraft.smithing_template": "Smithing Template",
+                "item.minecraft.smithing_template.applies_to": "Applies to:",
+                "item.minecraft.smithing_template.ingredients": "Ingredients:",
+                "item.minecraft.smithing_template.netherite_upgrade.applies_to": "Diamond Equipment",
+                "item.minecraft.smithing_template.netherite_upgrade.ingredients": "Netherite Ingot",
+                "item.minecraft.smithing_template.armor_trim.applies_to": "Armor",
+                "item.minecraft.smithing_template.armor_trim.ingredients": "Ingots & Crystals"
+            }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+        Some(vec![
+            name_line("Smithing Template", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Smithing Template", TOOLTIP_TEXT_GRAY),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Applies to:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Diamond Equipment", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Ingredients:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Netherite Ingot", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+        Some(vec![
+            name_line("Smithing Template", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Smithing Template", TOOLTIP_TEXT_GRAY),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Applies to:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Armor", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Ingredients:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Ingots & Crystals", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn special_foil_texture_detection_follows_clock_and_compasses_tag() {
     let root = unique_temp_dir("item-runtime-special-foil");
     let assets = assets_dir(&root);
