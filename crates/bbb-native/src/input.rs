@@ -22,16 +22,17 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
         VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
+        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -314,6 +315,10 @@ const OCELOT_TRUSTING_DATA_ID: u8 = 18;
 const OCELOT_DEFAULT_TRUSTING: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
+const ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
+const ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
+const ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT: bool = true;
+const ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD: i32 = 0;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const PIG_VARIANT_DATA_ID: u8 = 19;
@@ -3811,6 +3816,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_pig_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_abstract_piglin_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -3906,6 +3915,7 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT,
         _ => MOB_DEFAULT_CAN_PICK_UP_LOOT,
     }
 }
@@ -4261,6 +4271,19 @@ fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!(
         "CannotBeHunted: {}",
         debug_snbt_bool(HOGLIN_DEFAULT_CANNOT_BE_HUNTED)
+    ));
+}
+
+fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let immune_to_zombification =
+        debug_entity_data_bool_present(entity, ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID)
+            .unwrap_or(ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+    fields.push(format!(
+        "IsImmuneToZombification: {}",
+        debug_snbt_bool(immune_to_zombification)
+    ));
+    fields.push(format!(
+        "TimeInOverworld: {ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD}"
     ));
 }
 
