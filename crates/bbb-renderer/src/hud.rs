@@ -1491,6 +1491,24 @@ impl Renderer {
         hud_plain_text_cursor_for_width(text, width, &self.hud_font_glyphs)
     }
 
+    pub fn hud_plain_text_cursor_for_width_from(
+        &self,
+        text: &str,
+        display_start: usize,
+        width: u32,
+    ) -> Option<usize> {
+        hud_plain_text_cursor_for_width_from(text, display_start, width, &self.hud_font_glyphs)
+    }
+
+    pub fn hud_plain_text_display_start_for_width(
+        &self,
+        text: &str,
+        scroll_to: usize,
+        width: u32,
+    ) -> Option<usize> {
+        hud_plain_text_display_start_for_width(text, scroll_to, width, &self.hud_font_glyphs)
+    }
+
     pub fn upload_hud_inventory_background(
         &mut self,
         width: u32,
@@ -10159,23 +10177,37 @@ fn hud_plain_text_cursor_for_width(
     width: u32,
     glyphs: &HudFontGlyphMap,
 ) -> Option<usize> {
+    hud_plain_text_cursor_for_width_from(text, 0, width, glyphs)
+}
+
+fn hud_plain_text_cursor_for_width_from(
+    text: &str,
+    display_start: usize,
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Option<usize> {
     if glyphs.len() == 0 {
         return None;
     }
-    let mut used = 0u32;
-    let mut cursor = 0usize;
-    for ch in text.chars() {
-        let advance = hud_font_glyph(ch, glyphs).styled_advance(HudTextStyle::default());
-        let Some(next) = used.checked_add(advance) else {
-            break;
-        };
-        if next > width {
-            break;
-        }
-        used = next;
-        cursor += 1;
-    }
-    Some(cursor)
+    let text_len = text.chars().count();
+    let display_start = display_start.min(text_len);
+    let display_len = hud_plain_head_char_len_by_width(
+        text,
+        display_start,
+        text_len.saturating_sub(display_start),
+        width,
+        glyphs,
+    );
+    Some(display_start.saturating_add(display_len))
+}
+
+fn hud_plain_text_display_start_for_width(
+    text: &str,
+    scroll_to: usize,
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Option<usize> {
+    (glyphs.len() > 0).then(|| hud_text_input_display_start(text, scroll_to, width, glyphs))
 }
 
 /// Vanilla `Font.width` across a line's styled runs: sum of per-glyph
@@ -12861,7 +12893,29 @@ mod tests {
         assert_eq!(hud_plain_text_cursor_for_width("iwx", 9, &glyphs), Some(2));
         assert_eq!(hud_plain_text_cursor_for_width("iwx", 15, &glyphs), Some(3));
         assert_eq!(
+            hud_plain_text_cursor_for_width_from("iwx", 1, 7, &glyphs),
+            Some(2)
+        );
+        assert_eq!(
             hud_plain_text_cursor_for_width("iwx", 15, &HudFontGlyphMap::new()),
+            None
+        );
+    }
+
+    #[test]
+    fn plain_text_display_start_for_width_matches_text_input_layout() {
+        let glyphs = styled_test_glyphs();
+
+        assert_eq!(
+            hud_plain_text_display_start_for_width("aaaaa", 5, 12, &glyphs),
+            Some(3)
+        );
+        assert_eq!(
+            hud_plain_text_cursor_for_width_from("aaaaa", 3, 12, &glyphs),
+            Some(5)
+        );
+        assert_eq!(
+            hud_plain_text_display_start_for_width("aaaaa", 5, 12, &HudFontGlyphMap::new()),
             None
         );
     }

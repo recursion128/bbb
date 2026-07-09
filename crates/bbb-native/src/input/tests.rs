@@ -196,24 +196,72 @@ impl DebugClipboard for MockDebugClipboard {
 struct VariableDebugOptionsSearchTextMeasurer;
 
 impl DebugOptionsSearchTextMeasurer for VariableDebugOptionsSearchTextMeasurer {
-    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize {
-        let mut width = 0;
-        let mut cursor = 0;
-        for ch in search_text.chars() {
-            let advance = match ch {
-                'i' => 2,
-                'w' => 7,
-                ' ' => 4,
-                _ => DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE,
-            };
-            if width + advance > offset {
+    fn debug_options_search_display_start_for_width(
+        &self,
+        search_text: &str,
+        scroll_to: usize,
+        width: i32,
+    ) -> usize {
+        let scroll_to = scroll_to.min(search_text.chars().count());
+        if variable_debug_options_search_prefix_width(search_text, scroll_to) <= width {
+            return 0;
+        }
+
+        let chars = search_text.chars().take(scroll_to).collect::<Vec<_>>();
+        let mut start = chars.len();
+        let mut used_width = 0;
+        while start > 0 {
+            let advance = variable_debug_options_search_char_advance(chars[start - 1]);
+            if used_width + advance > width {
                 break;
             }
-            width += advance;
-            cursor += 1;
+            used_width += advance;
+            start -= 1;
         }
-        cursor
+        start
     }
+
+    fn debug_options_search_cursor_for_text_offset_from_display_start(
+        &self,
+        search_text: &str,
+        display_start: usize,
+        offset: i32,
+    ) -> usize {
+        let display_start = display_start.min(search_text.chars().count());
+        let tail = search_text.chars().skip(display_start).collect::<String>();
+        display_start + variable_debug_options_search_cursor_for_text_offset(&tail, offset)
+    }
+}
+
+fn variable_debug_options_search_cursor_for_text_offset(search_text: &str, offset: i32) -> usize {
+    let mut width = 0;
+    let mut cursor = 0;
+    for ch in search_text.chars() {
+        let advance = variable_debug_options_search_char_advance(ch);
+        if width + advance > offset {
+            break;
+        }
+        width += advance;
+        cursor += 1;
+    }
+    cursor
+}
+
+fn variable_debug_options_search_char_advance(ch: char) -> i32 {
+    match ch {
+        'i' => 2,
+        'w' => 7,
+        ' ' => 4,
+        _ => DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE,
+    }
+}
+
+fn variable_debug_options_search_prefix_width(search_text: &str, char_count: usize) -> i32 {
+    search_text
+        .chars()
+        .take(char_count)
+        .map(variable_debug_options_search_char_advance)
+        .sum()
 }
 
 fn world_with_local_boat(player_id: i32) -> WorldStore {
@@ -3238,6 +3286,34 @@ fn debug_options_screen_search_mouse_hit_testing_uses_variable_text_measurer() {
     let screen = input.debug_options_screen.as_ref().unwrap();
     assert_eq!(screen.search_cursor, 2);
     assert_eq!(screen.search_selection, 1);
+}
+
+#[test]
+fn debug_options_screen_search_mouse_hit_testing_uses_display_start() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("aaaaaaaaaaaaaaaaaaaa"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+    let measurer = VariableDebugOptionsSearchTextMeasurer;
+
+    assert!(
+        input.handle_debug_options_screen_mouse_input_with_text_measurer(
+            winit::event::MouseButton::Left,
+            ElementState::Pressed,
+            Some(winit::dpi::PhysicalPosition::new(
+                f64::from(text_x),
+                f64::from(search_y + 2)
+            )),
+            surface,
+            false,
+            &measurer,
+        )
+    );
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_cursor, 2);
+    assert_eq!(screen.search_selection, 2);
 }
 
 #[test]

@@ -6362,6 +6362,15 @@
   DebugOptionsScreen search click/drag hit-testing 路由到 text measurer；主循环传入
   renderer 已加载的 `HudFontGlyphMap`，通过
   `Renderer::hud_plain_text_cursor_for_width` 使用实际 glyph advance，测试/未加载字体
-  场景保留旧 ASCII advance fallback。边界：horizontal display scrolling、
-  double-click word selection、narration、scrollbar dragging、精确 text-field
-  sprite/nine-slice 与完整 widget sprite styling 仍待后续 polish。
+  场景保留旧 ASCII advance fallback。边界：horizontal display-start hit-testing
+  由后续 2026-07-09 条目补齐；double-click word selection、narration、scrollbar
+  dragging、精确 text-field sprite/nine-slice 与完整 widget sprite styling 仍待后续
+  polish。
+- [x] debug overlay DebugOptionsScreen horizontal search display hit-testing（P2
+  input/renderer/main slice，2026-07-09）：依据 `EditBox.setCursorPosition`
+  调用 `scrollTo(cursorPos)`，且 `findClickedPositionInText` 通过
+  `value.substring(displayPos)` 从当前可见文本起点映射点击位置，renderer 现在公开
+  text-input display-start 计算与 from-display-start cursor 映射，native
+  DebugOptionsScreen search click/drag hit-testing 使用与已渲染文本相同的可见 substring
+  起点。边界：double-click word selection、narration、scrollbar dragging、精确
+  text-field sprite/nine-slice 与完整 widget sprite styling 仍待后续 polish。

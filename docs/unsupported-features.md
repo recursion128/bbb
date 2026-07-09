@@ -1147,8 +1147,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox horizontal scrolling/double-click
-    selection/full widget styling polish, and native pause
+    DebugOptionsScreen narration/EditBox double-click selection/full widget
+    styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
     (large, low priority).
 - Evidence / boundary:
@@ -1301,9 +1301,20 @@ When an agent does any of the following, update this file in the same slice:
     supplies the renderer's loaded `HudFontGlyphMap` via
     `Renderer::hud_plain_text_cursor_for_width`, with the previous ASCII
     advance model retained for tests and no-font fallback. Boundary:
-    horizontal display scrolling, double-click word selection, narration,
-    scrollbar dragging, exact text-field sprites/nine-slice texture, and full
-    widget sprite styling remain future polish.
+    horizontal display-start hit-testing is covered by the later 2026-07-09
+    item below; double-click word selection, narration, scrollbar dragging,
+    exact text-field sprites/nine-slice texture, and full widget sprite styling
+    remain future polish.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen horizontal search
+    display hit-testing. Vanilla anchors: `EditBox.setCursorPosition` calls
+    `scrollTo(cursorPos)`, and `findClickedPositionInText` maps the click
+    through `value.substring(displayPos)`. bbb now exposes the renderer's
+    text-input display-start calculation and from-display-start cursor mapping,
+    so DebugOptionsScreen search click and drag hit-testing use the same
+    visible substring origin as the rendered text. Boundary: double-click word
+    selection, narration, scrollbar dragging, exact text-field
+    sprites/nine-slice texture, and full widget sprite styling remain future
+    polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -3126,8 +3137,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox horizontal scrolling/double-click
-    selection/full widget styling polish, native pause
+    DebugOptionsScreen narration/EditBox double-click selection/full widget
+    styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

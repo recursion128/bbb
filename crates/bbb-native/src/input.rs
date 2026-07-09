@@ -115,7 +115,28 @@ const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 
 pub(crate) trait DebugOptionsSearchTextMeasurer {
-    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize;
+    fn debug_options_search_display_start_for_width(
+        &self,
+        search_text: &str,
+        scroll_to: usize,
+        width: i32,
+    ) -> usize {
+        let _ = (search_text, scroll_to, width);
+        0
+    }
+
+    fn debug_options_search_cursor_for_text_offset_from_display_start(
+        &self,
+        search_text: &str,
+        display_start: usize,
+        offset: i32,
+    ) -> usize {
+        debug_options_search_cursor_for_text_offset_from_display_start_fallback(
+            search_text,
+            display_start,
+            offset,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -123,8 +144,13 @@ pub(crate) struct DebugOptionsFallbackSearchTextMeasurer;
 
 #[cfg(test)]
 impl DebugOptionsSearchTextMeasurer for DebugOptionsFallbackSearchTextMeasurer {
-    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize {
-        debug_options_search_cursor_for_text_offset_fallback(search_text, offset)
+    fn debug_options_search_display_start_for_width(
+        &self,
+        search_text: &str,
+        scroll_to: usize,
+        width: i32,
+    ) -> usize {
+        debug_options_search_display_start_for_width_fallback(search_text, scroll_to, width)
     }
 }
 
@@ -1231,7 +1257,7 @@ impl ClientInputState {
         screen.cursor_position = position;
         if let (true, Some((mouse_x, _))) = (screen.search_selecting, position) {
             let cursor = debug_options_search_cursor_for_mouse_x_with_text_measurer(
-                &screen.search_text,
+                screen,
                 mouse_x,
                 surface_size,
                 text_measurer,
@@ -1292,7 +1318,7 @@ impl ClientInputState {
         };
         let search_cursor = self.debug_options_screen.as_ref().and_then(|screen| {
             debug_options_search_cursor_at_with_text_measurer(
-                &screen.search_text,
+                screen,
                 mouse_x,
                 mouse_y,
                 surface_size,
@@ -2420,7 +2446,7 @@ fn debug_options_search_box_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, 
 }
 
 fn debug_options_search_cursor_at_with_text_measurer(
-    search_text: &str,
+    screen: &DebugOptionsScreenState,
     mouse_x: i32,
     mouse_y: i32,
     surface_size: PhysicalSize<u32>,
@@ -2431,7 +2457,7 @@ fn debug_options_search_cursor_at_with_text_measurer(
         return None;
     }
     Some(debug_options_search_cursor_for_mouse_x_with_text_measurer(
-        search_text,
+        screen,
         mouse_x,
         surface_size,
         text_measurer,
@@ -2439,7 +2465,7 @@ fn debug_options_search_cursor_at_with_text_measurer(
 }
 
 fn debug_options_search_cursor_for_mouse_x_with_text_measurer(
-    search_text: &str,
+    screen: &DebugOptionsScreenState,
     mouse_x: i32,
     surface_size: PhysicalSize<u32>,
     text_measurer: &dyn DebugOptionsSearchTextMeasurer,
@@ -2447,7 +2473,28 @@ fn debug_options_search_cursor_for_mouse_x_with_text_measurer(
     let (x, _, _, _) = debug_options_search_box_rect(surface_size);
     let position_in_text = (mouse_x - x - DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET)
         .clamp(0, DEBUG_OPTIONS_SEARCH_INNER_WIDTH);
-    text_measurer.debug_options_search_cursor_for_text_offset(search_text, position_in_text)
+    let display_start = debug_options_search_display_start(screen, text_measurer);
+    text_measurer.debug_options_search_cursor_for_text_offset_from_display_start(
+        &screen.search_text,
+        display_start,
+        position_in_text,
+    )
+}
+
+fn debug_options_search_display_start(
+    screen: &DebugOptionsScreenState,
+    text_measurer: &dyn DebugOptionsSearchTextMeasurer,
+) -> usize {
+    let scroll_to = if screen.search_selection != screen.search_cursor {
+        screen.search_selection
+    } else {
+        screen.search_cursor
+    };
+    text_measurer.debug_options_search_display_start_for_width(
+        &screen.search_text,
+        scroll_to,
+        DEBUG_OPTIONS_SEARCH_INNER_WIDTH,
+    )
 }
 
 pub(crate) fn debug_options_search_cursor_for_text_offset_fallback(
@@ -2465,6 +2512,49 @@ pub(crate) fn debug_options_search_cursor_for_text_offset_fallback(
         cursor += 1;
     }
     cursor
+}
+
+pub(crate) fn debug_options_search_cursor_for_text_offset_from_display_start_fallback(
+    search_text: &str,
+    display_start: usize,
+    offset: i32,
+) -> usize {
+    let display_start = display_start.min(text_edit::char_len(search_text));
+    let start = text_edit::byte_index(search_text, display_start);
+    display_start
+        + debug_options_search_cursor_for_text_offset_fallback(&search_text[start..], offset)
+}
+
+pub(crate) fn debug_options_search_display_start_for_width_fallback(
+    search_text: &str,
+    scroll_to: usize,
+    width: i32,
+) -> usize {
+    let scroll_to = scroll_to.min(text_edit::char_len(search_text));
+    if debug_options_search_prefix_width(search_text, scroll_to) <= width {
+        return 0;
+    }
+
+    let chars = search_text.chars().take(scroll_to).collect::<Vec<_>>();
+    let mut start = chars.len();
+    let mut used_width = 0;
+    while start > 0 {
+        let advance = debug_options_search_char_advance(chars[start - 1]);
+        if used_width + advance > width {
+            break;
+        }
+        used_width += advance;
+        start -= 1;
+    }
+    start
+}
+
+fn debug_options_search_prefix_width(search_text: &str, char_count: usize) -> i32 {
+    search_text
+        .chars()
+        .take(char_count)
+        .map(debug_options_search_char_advance)
+        .sum()
 }
 
 fn debug_options_search_char_advance(ch: char) -> i32 {
