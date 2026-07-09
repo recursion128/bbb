@@ -1147,7 +1147,7 @@ When an agent does any of the following, update this file in the same slice:
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
-    lines,
+    lines, and charged-projectiles headers,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1229,6 +1229,19 @@ When an agent does any of the following, update this file in the same slice:
     direct `minecraft:firework_explosion` provider. Boundary: remaining
     component providers, `TooltipDisplay` hiding, and options persistence
     remain future work.
+  - Done 2026-07-09 — Advanced tooltip charged-projectiles headers. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.CHARGED_PROJECTILES, ...)` after written-book
+    and before fireworks; `ChargedProjectiles.addToTooltip` coalesces adjacent
+    `ItemStack.matches` projectile stacks and emits
+    `item.minecraft.crossbow.projectile.single(display_name)` or
+    `item.minecraft.crossbow.projectile.multiple(count, display_name)`. bbb
+    now projects decoded `minecraft:charged_projectiles` templates into those
+    localized header rows using the nested stack hover-name precedence.
+    Boundary: recursive projectile detail rows with vanilla's gray two-space
+    prefix and exact nested display-name run styling remain future work, along
+    with remaining component providers, `TooltipDisplay` hiding, and options
+    persistence.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2362,7 +2375,8 @@ When an agent does any of the following, update this file in the same slice:
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; component-provider
     tooltip parity remains open except for the later beehive bees/honey,
-    dyed-color, and firework flight/direct/grouped explosion lines.
+    dyed-color, firework flight/direct/grouped explosion lines, and
+    charged-projectiles headers.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2627,7 +2641,7 @@ When an agent does any of the following, update this file in the same slice:
     configuration is tracked separately because bbb does not expose vanilla's
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
-    are covered by later entries.
+    plus charged-projectiles headers are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3305,7 +3319,8 @@ When an agent does any of the following, update this file in the same slice:
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
-    lines, F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
+    lines, and charged-projectiles headers, F3+I full local entity
+    saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full

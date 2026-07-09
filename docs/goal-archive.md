@@ -6489,3 +6489,14 @@
   投影为本地化 grouped star 行，并复用 firework color exact match/Custom 逻辑。
   边界：其它 component provider tooltip、`TooltipDisplay` hidden-components 与
   options 持久化仍未完成。
+- [x] advanced tooltip charged-projectiles headers（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 written-book 之后、
+  fireworks 之前调用 `DataComponents.CHARGED_PROJECTILES` provider，以及
+  `ChargedProjectiles.addToTooltip` 按相邻 `ItemStack.matches` projectile 分组并输出
+  `item.minecraft.crossbow.projectile.single(display_name)` 或
+  `item.minecraft.crossbow.projectile.multiple(count, display_name)`，native item
+  tooltip 现在把 decoded `minecraft:charged_projectiles` templates 投影为本地化
+  projectile header 行，并复用 nested stack hover-name precedence。边界：
+  projectile 自身 detail rows 的两空格灰色缩进递归输出、nested display-name run
+  styling 精确还原、其它 component provider tooltip、`TooltipDisplay`
+  hidden-components 与 options 持久化仍未完成。

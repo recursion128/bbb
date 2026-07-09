@@ -89,11 +89,18 @@ pub(super) fn hover_name_for_stack(
     resource_id: &str,
     stack: &ItemStackSummary,
 ) -> String {
-    if let Some(name) = &stack.component_patch.custom_name {
+    hover_name_for_component_patch(language, resource_id, &stack.component_patch)
+}
+
+fn hover_name_for_component_patch(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> String {
+    if let Some(name) = &component_patch.custom_name {
         return name.clone();
     }
-    if let Some(title) = stack
-        .component_patch
+    if let Some(title) = component_patch
         .written_book
         .as_ref()
         .map(|book| book.title.as_str())
@@ -101,7 +108,7 @@ pub(super) fn hover_name_for_stack(
     {
         return title.to_string();
     }
-    if let Some(name) = &stack.component_patch.item_name {
+    if let Some(name) = &component_patch.item_name {
         return name.clone();
     }
     localized_item_name(language, resource_id)
@@ -186,6 +193,27 @@ fn push_bees_tooltip_lines(
         ),
         TOOLTIP_TEXT_GRAY,
     ));
+}
+
+fn charged_projectile_group_tooltip_text(
+    language: &LanguageCatalog,
+    projectile_name: &str,
+    count: usize,
+) -> String {
+    if count == 1 {
+        translate_with_first_arg(
+            language,
+            "item.minecraft.crossbow.projectile.single",
+            projectile_name,
+        )
+    } else {
+        translate_with_two_args(
+            language,
+            "item.minecraft.crossbow.projectile.multiple",
+            &count.to_string(),
+            projectile_name,
+        )
+    }
 }
 
 fn push_dyed_color_tooltip_lines(
@@ -571,6 +599,58 @@ pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
 }
 
 impl NativeItemRuntime {
+    fn projectile_hover_name(&self, projectile: &ItemStackTemplateSummary) -> Option<String> {
+        let resource_id = self.registry.as_ref()?.resource_id(projectile.item_id)?;
+        Some(hover_name_for_component_patch(
+            &self.language,
+            resource_id,
+            &projectile.component_patch,
+        ))
+    }
+
+    fn push_charged_projectile_group_tooltip_line(
+        &self,
+        projectile: &ItemStackTemplateSummary,
+        count: usize,
+        lines: &mut Vec<NativeItemTooltipLine>,
+    ) {
+        let Some(projectile_name) = self.projectile_hover_name(projectile) else {
+            return;
+        };
+        lines.push(NativeItemTooltipLine::plain(
+            charged_projectile_group_tooltip_text(&self.language, &projectile_name, count),
+            TOOLTIP_TEXT_WHITE,
+        ));
+    }
+
+    fn push_charged_projectiles_tooltip_lines(
+        &self,
+        projectiles: &[ItemStackTemplateSummary],
+        lines: &mut Vec<NativeItemTooltipLine>,
+    ) {
+        let mut current = None;
+        let mut count = 0;
+        for projectile in projectiles {
+            match current {
+                None => {
+                    current = Some(projectile);
+                    count = 1;
+                }
+                Some(previous) if previous == projectile => {
+                    count += 1;
+                }
+                Some(previous) => {
+                    self.push_charged_projectile_group_tooltip_line(previous, count, lines);
+                    current = Some(projectile);
+                    count = 1;
+                }
+            }
+        }
+        if let Some(projectile) = current {
+            self.push_charged_projectile_group_tooltip_line(projectile, count, lines);
+        }
+    }
+
     pub fn tooltip_lines_for_stack(
         &self,
         stack: &ItemStackSummary,
@@ -611,6 +691,10 @@ impl NativeItemRuntime {
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
+        self.push_charged_projectiles_tooltip_lines(
+            &stack.component_patch.charged_projectiles_items,
+            &mut lines,
+        );
         push_fireworks_tooltip_lines(
             &self.language,
             stack.component_patch.fireworks_flight_duration,

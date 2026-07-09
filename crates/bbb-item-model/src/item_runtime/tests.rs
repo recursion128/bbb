@@ -218,6 +218,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "container.beehive.bees": "Bees: %s / %s",
                 "item.dyed": "Dyed",
                 "item.color": "Color: %s",
+                "item.minecraft.crossbow.projectile.single": "Projectile: %s",
+                "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "item.minecraft.firework_rocket.single_star": "%s",
                 "item.minecraft.firework_rocket.multiple_stars": "%s x %s",
@@ -493,6 +495,44 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Copy", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Copy of a copy", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                charged_projectiles_items: vec![
+                    ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                    ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                    ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            item_name: Some("Charged Custom".to_string()),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    },
+                ],
+                fireworks_flight_duration: Some(1),
+                lore: vec!["After charged projectiles".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Projectile: 2 x Test Combo", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Projectile: Charged Custom", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Flight Duration: 1", TOOLTIP_TEXT_GRAY),
+            lore_line("After charged projectiles"),
         ])
     );
     assert_eq!(
