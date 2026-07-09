@@ -33,15 +33,16 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
@@ -242,6 +243,8 @@ const ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
 const ABSTRACT_HORSE_DEFAULT_TEMPER: i32 = 0;
 const HORSE_VARIANT_DATA_ID: u8 = 19;
 const HORSE_DEFAULT_VARIANT: i32 = 0;
+const SKELETON_HORSE_DEFAULT_TRAP: bool = false;
+const SKELETON_HORSE_DEFAULT_TRAP_TIME: i32 = 0;
 const ARMADILLO_STATE_DATA_ID: u8 = 18;
 const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
@@ -3801,6 +3804,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_skeleton_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+            debug_push_skeleton_horse_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
@@ -4012,6 +4022,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_abstract_horse_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
@@ -4111,6 +4127,16 @@ fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<
     let variant = debug_entity_data_int_present(entity, HORSE_VARIANT_DATA_ID)
         .unwrap_or(HORSE_DEFAULT_VARIANT);
     fields.push(format!("Variant: {variant}"));
+}
+
+fn debug_push_skeleton_horse_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "SkeletonTrap: {}",
+        debug_snbt_bool(SKELETON_HORSE_DEFAULT_TRAP)
+    ));
+    fields.push(format!(
+        "SkeletonTrapTime: {SKELETON_HORSE_DEFAULT_TRAP_TIME}"
+    ));
 }
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
