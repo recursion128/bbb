@@ -307,7 +307,8 @@ Screen Render Surfaces" 条目）：
   F3+2 FPS/TPS chart rendering、F3+3 network ping/bandwidth chart
   rendering、configured-framerate FPS guide、vsync FPS debug text/config、
   3D crosshair rendering、
-  default-profile debug entry coverage、F3+I local block-entity NBT capture、
+  default-profile debug entry coverage、performance-profile GPU utilization
+  entry shell、F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、
   F3+S dynamic texture dump clickable/open-file feedback payload、

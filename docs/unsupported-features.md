@@ -1108,7 +1108,8 @@ When an agent does any of the following, update this file in the same slice:
     render-state/rendering, F3+2 FPS/TPS chart
     rendering, F3+3 network ping/bandwidth chart
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
-    3D crosshair rendering, default-profile debug entry coverage, F3+I
+    3D crosshair rendering, default-profile debug entry coverage,
+    performance-profile GPU utilization entry shell, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
@@ -1163,9 +1164,20 @@ When an agent does any of the following, update this file in the same slice:
     filtering for position/3D-crosshair/renderer entries, and HUD projection of
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
-    `debug-profile.json`, and individual non-default entry renderers such as GPU
-    utilization/detailed memory/look-at/light/biome/chunk stats remain future
-    work.
+    `debug-profile.json`, and individual non-default entry renderers such as
+    detailed memory/look-at/light/biome/chunk stats remain future work.
+  - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
+    shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
+    `DebugEntryGpuUtilization`, the performance profile enables it
+    `IN_OVERLAY`, `Minecraft.renderFrame` only starts `TimerQuery` when this
+    entry is enabled or metrics recording is active and otherwise resets
+    `gpuUtilization` to `0.0`, and `DebugEntryGpuUtilization.display` emits
+    `GPU: <rounded>%` clamped to visible `100%` when over range. bbb now
+    projects the `GpuUtilization` entry as `GPU: 0%` when enabled by the
+    performance profile or a custom status, while hidden performance profile
+    mode still only shows the always-on FPS line. Boundary: actual GPU timer
+    query utilization sampling and red over-100 styling remain future
+    profiler/metrics work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2374,7 +2386,9 @@ When an agent does any of the following, update this file in the same slice:
     request. F3+F4 now has a native GameModeSwitcher input/command shell. The
     debug entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
-    `toggleStatus` semantics, and reduced-debug filtering. F3+B local-server
+    `toggleStatus` semantics, and reduced-debug filtering. The performance
+    profile now projects the `GPU: 0%` utilization entry shell when the overlay
+    is visible. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The

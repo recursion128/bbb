@@ -5448,9 +5448,20 @@
   profile，默认 profile 继续驱动已有 overlay entry，performance profile 的 FPS
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
-  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 GPU utilization /
-  detailed memory / look-at / light / biome / chunk stats 等 individual
-  non-default entry renderers 仍待后续。
+  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 detailed memory /
+  look-at / light / biome / chunk stats 等 individual non-default entry
+  renderers 仍待后续。
+- [x] debug overlay performance-profile GPU utilization entry shell（P2
+  native/runtime slice，2026-07-09）：依据
+  `DebugScreenEntries.GPU_UTILIZATION`、performance profile 中该 entry 的
+  `IN_OVERLAY` 状态、`Minecraft.renderFrame` 仅在 GPU utilization entry 可见或
+  metrics recorder 正在录制时启动 `TimerQuery`（否则把 `gpuUtilization` 置为
+  `0.0`），以及 `DebugEntryGpuUtilization.display` 输出
+  `GPU: <rounded>%`。native 现在在 `GpuUtilization` entry 启用时投影
+  `GPU: 0%` 右列行，performance profile overlay hidden 时仍只显示 always-on
+  FPS，overlay visible 时显示 GPU entry shell。边界：真实 GPU timer-query
+  utilization sampling、超过 100% 时的红色 styling、以及 metrics recorder 输出
+  仍待后续 profiler/metrics slice。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

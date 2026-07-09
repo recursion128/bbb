@@ -1101,6 +1101,44 @@ fn hud_debug_overlay_projects_performance_profile_fps_when_overlay_hidden() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_performance_profile_gpu_utilization_when_overlay_visible() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    input.load_debug_screen_profile(crate::debug_entries::DebugScreenProfile::Performance);
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(144);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        Some(&mut world),
+        None
+    ));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        false,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("performance profile overlay should include enabled entries");
+
+    assert!(overlay.left_lines.contains(&"144 fps T: inf".to_string()));
+    assert!(overlay.right_lines.contains(&"GPU: 0%".to_string()));
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

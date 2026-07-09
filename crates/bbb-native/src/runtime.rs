@@ -3139,6 +3139,12 @@ fn hud_debug_overlay(
         }
         right_lines.extend(hud_debug_system_lines(surface_size));
     }
+    if entry_enabled(DebugScreenEntryId::GpuUtilization) {
+        if !right_lines.is_empty() {
+            right_lines.push("".to_string());
+        }
+        right_lines.push(hud_debug_gpu_utilization_line(0.0));
+    }
     if entry_enabled(DebugScreenEntryId::SimplePerformanceImpactors) {
         if !right_lines.is_empty() {
             right_lines.push("".to_string());
@@ -3509,6 +3515,15 @@ fn hud_debug_system_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<St
         "bbb renderer".to_string(),
         "wgpu native".to_string(),
     ]
+}
+
+fn hud_debug_gpu_utilization_line(gpu_utilization: f64) -> String {
+    let utilization = if gpu_utilization.is_finite() {
+        gpu_utilization.clamp(0.0, 100.0).round()
+    } else {
+        0.0
+    };
+    format!("GPU: {utilization:.0}%")
 }
 
 fn hud_debug_simple_performance_impactor_lines() -> Vec<String> {
