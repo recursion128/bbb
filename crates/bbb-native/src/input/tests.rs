@@ -3070,6 +3070,151 @@ fn f3_f4_game_mode_switcher_cycles_with_additional_f4_presses() {
 }
 
 #[test]
+fn f3_f4_game_mode_switcher_hover_uses_first_mouse_suppression() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let surface_size = PhysicalSize::new(320, 240);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Creative)
+    );
+
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(176.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Creative),
+        "first mouse position only arms hover detection"
+    );
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(176.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Creative),
+        "same as first mouse position stays suppressed"
+    );
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(207.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Spectator)
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert_eq!(counters.change_game_mode_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChangeGameMode(bbb_protocol::packets::ChangeGameModeCommand {
+            game_mode: bbb_protocol::packets::GameType::Spectator,
+        })
+    );
+}
+
+#[test]
+fn f3_f4_game_mode_switcher_f4_cycle_resets_first_mouse_suppression() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    let surface_size = PhysicalSize::new(320, 240);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(145.0, 102.0)),
+        surface_size
+    ));
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(176.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Adventure)
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Spectator)
+    );
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(114.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Spectator),
+        "cursor hover is suppressed again after F4 cycling"
+    );
+    assert!(input.handle_debug_game_mode_switcher_cursor_moved(
+        Some(PhysicalPosition::new(145.0, 102.0)),
+        surface_size
+    ));
+    assert_eq!(
+        input.debug_game_mode_switcher_selected(),
+        Some(bbb_protocol::packets::GameType::Survival)
+    );
+}
+
+#[test]
 fn slash_text_opens_command_entry_and_releases_pressed_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

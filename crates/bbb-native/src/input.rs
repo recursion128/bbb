@@ -118,6 +118,10 @@ const BOOK_MENU_BUTTON_Y: i32 = 194;
 const BOOK_MENU_DONE_BUTTON_X: i32 = -4;
 const BOOK_MENU_BUTTON_WIDTH: i32 = 200;
 const BOOK_MENU_BUTTON_HEIGHT: i32 = 20;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_AREA: i32 = 26;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED: i32 = 31;
+const DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH: i32 = 4 * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED - 5;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET: i32 = 31;
 const ADVANCEMENTS_FOOTER_HEIGHT: i32 = 33;
 const ADVANCEMENTS_WINDOW_WIDTH: i32 = 252;
 const ADVANCEMENTS_WINDOW_HEIGHT: i32 = 140;
@@ -155,6 +159,7 @@ struct DebugNetContext<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DebugGameModeSwitcherState {
     selected: GameType,
+    first_mouse_position: Option<(i32, i32)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -787,6 +792,36 @@ impl ClientInputState {
             .map(|switcher| switcher.selected)
     }
 
+    pub(crate) fn debug_game_mode_switcher_is_open(&self) -> bool {
+        self.debug_game_mode_switcher.is_some()
+    }
+
+    pub(crate) fn handle_debug_game_mode_switcher_cursor_moved(
+        &mut self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        let Some(switcher) = self.debug_game_mode_switcher.as_mut() else {
+            return false;
+        };
+        let Some((mouse_x, mouse_y)) = cursor_position.and_then(debug_game_mode_switcher_mouse_pos)
+        else {
+            return true;
+        };
+        let mouse_pos = (mouse_x, mouse_y);
+        let Some(first_mouse_position) = switcher.first_mouse_position else {
+            switcher.first_mouse_position = Some(mouse_pos);
+            return true;
+        };
+        if first_mouse_position == mouse_pos {
+            return true;
+        }
+        if let Some(hovered) = debug_game_mode_switcher_hovered_game_type(mouse_pos, surface_size) {
+            switcher.selected = hovered;
+        }
+        true
+    }
+
     pub(crate) fn take_debug_recreate_server_query_requests(
         &mut self,
     ) -> Vec<DebugRecreateServerQueryRequest> {
@@ -1083,6 +1118,7 @@ impl ClientInputState {
             KeyCode::F4 => {
                 if let Some(switcher) = self.debug_game_mode_switcher.as_mut() {
                     switcher.selected = next_debug_game_mode_icon(switcher.selected);
+                    switcher.first_mouse_position = None;
                     return true;
                 }
                 let Some(world) = world.as_deref_mut() else {
@@ -1099,6 +1135,7 @@ impl ClientInputState {
                 } else {
                     self.debug_game_mode_switcher = Some(DebugGameModeSwitcherState {
                         selected: default_debug_game_mode_switcher_selection(world),
+                        first_mouse_position: None,
                     });
                 }
                 true
@@ -1350,6 +1387,38 @@ fn next_debug_game_mode_icon(game_type: GameType) -> GameType {
         GameType::Adventure => GameType::Spectator,
         GameType::Spectator => GameType::Creative,
     }
+}
+
+fn debug_game_mode_switcher_mouse_pos(position: PhysicalPosition<f64>) -> Option<(i32, i32)> {
+    (position.x.is_finite() && position.y.is_finite())
+        .then(|| (position.x.floor() as i32, position.y.floor() as i32))
+}
+
+fn debug_game_mode_switcher_hovered_game_type(
+    mouse_pos: (i32, i32),
+    surface_size: PhysicalSize<u32>,
+) -> Option<GameType> {
+    const MODES: [GameType; 4] = [
+        GameType::Creative,
+        GameType::Survival,
+        GameType::Adventure,
+        GameType::Spectator,
+    ];
+
+    let center_x = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
+    let center_y = i32::try_from(surface_size.height / 2).unwrap_or(i32::MAX);
+    let slot_start_x = center_x - DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH / 2;
+    let slot_y = center_y - DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET;
+    let (mouse_x, mouse_y) = mouse_pos;
+    MODES.iter().enumerate().find_map(|(index, mode)| {
+        let slot_x = slot_start_x.saturating_add(
+            i32::try_from(index).unwrap_or(i32::MAX) * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED,
+        );
+        let slot_right = slot_x.saturating_add(DEBUG_GAME_MODE_SWITCHER_SLOT_AREA);
+        let slot_bottom = slot_y.saturating_add(DEBUG_GAME_MODE_SWITCHER_SLOT_AREA);
+        (mouse_x >= slot_x && mouse_x < slot_right && mouse_y >= slot_y && mouse_y < slot_bottom)
+            .then_some(*mode)
+    })
 }
 
 fn queue_debug_game_mode_switcher_selection(

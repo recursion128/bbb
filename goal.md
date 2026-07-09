@@ -329,7 +329,8 @@ Screen Render Surfaces" 条目）：
   profiler chart numeric-key routing shell、F3+N spectator change-game-mode
   request routing、F3+F4 GameModeSwitcher input/command shell、
   F3+F4 GameModeSwitcher render-state shell、
-  F3+F4 GameModeSwitcher background/slot/text rendering、ordinary F3
+  F3+F4 GameModeSwitcher background/slot/text rendering、
+  F3+F4 GameModeSwitcher hover/first-mouse/cursor capture、ordinary F3
   keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
@@ -337,7 +338,8 @@ Screen Render Surfaces" 条目）：
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、actual DebugOptionsScreen、F3+F4
-  GameModeSwitcher item icon/mouse polish、native pause loop/PauseScreen、
+  GameModeSwitcher item icon/mouse-release/screen interruption parity、native pause
+  loop/PauseScreen、
   `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys，
   低优先）。
 

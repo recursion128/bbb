@@ -402,6 +402,12 @@ fn main() -> Result<()> {
                 WindowEvent::CursorMoved { position, .. } => {
                     let previous_cursor_position = cursor_position;
                     cursor_position = Some(position);
+                    if input.handle_debug_game_mode_switcher_cursor_moved(
+                        cursor_position,
+                        window.inner_size(),
+                    ) {
+                        return;
+                    }
                     if world.advancements_screen_is_open() {
                         handle_advancements_screen_cursor_moved(
                             &mut input,
@@ -445,6 +451,9 @@ fn main() -> Result<()> {
                         &mut net_counters,
                         &net_commands,
                     ) {
+                        if runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, false);
+                        }
                         let reload_requests = input.take_debug_resource_pack_reload_requests();
                         if reload_requests > 0 {
                             tracing::info!(
@@ -649,6 +658,10 @@ fn main() -> Result<()> {
                                 code_of_conduct_acceptance.current_world_acceptance_matches(&world),
                             );
                         }
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if input.debug_game_mode_switcher_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -1075,7 +1088,9 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
 }
 
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
-    world_wants_cursor(world) || input.sign_editor_is_active_or_pending(world)
+    world_wants_cursor(world)
+        || input.sign_editor_is_active_or_pending(world)
+        || input.debug_game_mode_switcher_is_open()
 }
 
 fn drain_dynamic_player_skin_downloads(
@@ -1139,7 +1154,10 @@ fn drain_dynamic_player_skin_downloads(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, OpenSignEditor};
+    use bbb_protocol::packets::{
+        BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent,
+        OpenSignEditor, PlayLogin,
+    };
 
     #[test]
     fn runtime_wants_cursor_for_pending_sign_editor() {
@@ -1163,6 +1181,55 @@ mod tests {
 
         assert!(!runtime_wants_cursor(&input, &world));
         assert!(world.open_advancements_screen());
+        assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn runtime_wants_cursor_for_debug_game_mode_switcher() {
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 12345,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        assert!(world.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 42,
+            event_id: 26,
+        }));
+
+        assert!(!runtime_wants_cursor(&input, &world));
+        assert!(input.handle_debug_overlay_key(
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Pressed,
+            Some(&mut world),
+            None
+        ));
+        assert!(input.handle_debug_overlay_key(
+            PhysicalKey::Code(KeyCode::F4),
+            ElementState::Pressed,
+            Some(&mut world),
+            None
+        ));
         assert!(runtime_wants_cursor(&input, &world));
     }
 

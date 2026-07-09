@@ -6123,6 +6123,15 @@
   offscreen pixel-readback 测试覆盖 layer order。边界：item icon、
   first-mouse suppression、hover/mouse release、cursor capture 与 exact screen
   interruption policy 仍待后续。
+- [x] debug overlay F3+F4 GameModeSwitcher hover/first-mouse/cursor capture（P2
+  native/platform slice，2026-07-09）：依据 `GameModeSwitcherScreen.extractRenderState`
+  的 first mouse latch 与 slot hover 规则，native switcher state 现在记录首次鼠标坐标、
+  在当前位置仍等于 first mouse 时抑制 hover，鼠标移动到 creative / survival /
+  adventure / spectator slot 后更新 selected mode，并在额外 F4 循环时重置 latch。
+  main event loop 在 switcher 打开时通过 `runtime_wants_cursor` 释放/显示 cursor，
+  `CursorMoved` 送入 switcher hit-test，普通 mouse input 不再重新捕获第一人称输入。
+  边界：item icon、mouse-release selection for non-key debug modifier binding 与
+  exact screen interruption policy 仍待后续。
 - [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
   `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
   `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；
