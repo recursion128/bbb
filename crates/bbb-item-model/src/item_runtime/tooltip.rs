@@ -26,6 +26,32 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
 const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
 const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
 const TOOLTIP_GRAY_TEXT_COLOR: u32 = 0xAA_AA_AA;
+const COMPONENT_DAMAGE_TYPE_ID: i32 = 3;
+const COMPONENT_UNBREAKABLE_TYPE_ID: i32 = 4;
+const COMPONENT_LORE_TYPE_ID: i32 = 11;
+const COMPONENT_ENCHANTMENTS_TYPE_ID: i32 = 13;
+const COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID: i32 = 22;
+const COMPONENT_MAP_ID_TYPE_ID: i32 = 46;
+const COMPONENT_STORED_ENCHANTMENTS_TYPE_ID: i32 = 42;
+const COMPONENT_DYED_COLOR_TYPE_ID: i32 = 44;
+const COMPONENT_CHARGED_PROJECTILES_TYPE_ID: i32 = 49;
+const COMPONENT_POTION_CONTENTS_TYPE_ID: i32 = 51;
+const COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID: i32 = 53;
+const COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID: i32 = 55;
+const COMPONENT_TRIM_TYPE_ID: i32 = 56;
+const COMPONENT_INSTRUMENT_TYPE_ID: i32 = 61;
+const COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID: i32 = 63;
+const COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID: i32 = 64;
+const COMPONENT_FIREWORK_EXPLOSION_TYPE_ID: i32 = 68;
+const COMPONENT_FIREWORKS_TYPE_ID: i32 = 69;
+const COMPONENT_PROFILE_TYPE_ID: i32 = 70;
+const COMPONENT_BANNER_PATTERNS_TYPE_ID: i32 = 72;
+const COMPONENT_POT_DECORATIONS_TYPE_ID: i32 = 74;
+const COMPONENT_CONTAINER_TYPE_ID: i32 = 75;
+const COMPONENT_BLOCK_STATE_TYPE_ID: i32 = 76;
+const COMPONENT_BEES_TYPE_ID: i32 = 77;
+const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
+const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
 const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     bold: None,
     italic: None,
@@ -638,6 +664,13 @@ fn dye_color_name(color_id: i32) -> &'static str {
         15 => "black",
         _ => "white",
     }
+}
+
+fn tooltip_display_shows(component_patch: &DataComponentPatchSummary, type_id: i32) -> bool {
+    !component_patch.tooltip_hide_tooltip
+        && !component_patch
+            .tooltip_hidden_component_type_ids
+            .contains(&type_id)
 }
 
 #[cfg(test)]
@@ -1588,9 +1621,12 @@ fn push_advanced_tooltip_lines(
     component_patch: &DataComponentPatchSummary,
     default_max_damage: Option<i32>,
     default_component_type_ids: Option<&BTreeSet<i32>>,
+    show_damage: bool,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    if let Some((damage, max_damage)) = effective_damage_state(component_patch, default_max_damage)
+    if let Some((damage, max_damage)) = show_damage
+        .then(|| effective_damage_state(component_patch, default_max_damage))
+        .flatten()
         .filter(|(damage, _)| *damage > 0)
     {
         lines.push(NativeItemTooltipLine::plain(
@@ -1790,6 +1826,10 @@ impl NativeItemRuntime {
         }
         let protocol_id = stack.item_id?;
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
+        if stack.component_patch.tooltip_hide_tooltip && !options.creative {
+            return None;
+        }
+        let shows = |type_id| tooltip_display_shows(&stack.component_patch, type_id);
 
         // Vanilla `ItemStack.getStyledHoverName`: the hover name is wrapped in
         // the rarity colour, plus ITALIC when the stack carries a custom name;
@@ -1809,130 +1849,188 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
-        push_tropical_fish_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
-        push_instrument_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
-        push_map_id_tooltip_lines(&self.language, &stack.component_patch, options, &mut lines);
-        push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
-        push_container_loot_tooltip_lines(
-            &self.language,
-            stack.component_patch.container_loot,
-            &mut lines,
-        );
-        self.push_container_items_tooltip_lines(&stack.component_patch.container_items, &mut lines);
-        push_banner_pattern_tooltip_lines(
-            &self.language,
-            &stack.component_patch.banner_pattern_layers,
-            &mut lines,
-        );
-        self.push_pot_decorations_tooltip_lines(
-            &stack.component_patch.pot_decorations_item_ids,
-            &mut lines,
-        );
-        if let Some(book) = &stack.component_patch.written_book {
+        if shows(COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
+            push_tropical_fish_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
+        }
+        if shows(COMPONENT_INSTRUMENT_TYPE_ID) {
+            push_instrument_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
+        }
+        if shows(COMPONENT_MAP_ID_TYPE_ID) {
+            push_map_id_tooltip_lines(&self.language, &stack.component_patch, options, &mut lines);
+        }
+        if shows(COMPONENT_BEES_TYPE_ID) {
+            push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
+        }
+        if shows(COMPONENT_CONTAINER_LOOT_TYPE_ID) {
+            push_container_loot_tooltip_lines(
+                &self.language,
+                stack.component_patch.container_loot,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_CONTAINER_TYPE_ID) {
+            self.push_container_items_tooltip_lines(
+                &stack.component_patch.container_items,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_BANNER_PATTERNS_TYPE_ID) {
+            push_banner_pattern_tooltip_lines(
+                &self.language,
+                &stack.component_patch.banner_pattern_layers,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_POT_DECORATIONS_TYPE_ID) {
+            self.push_pot_decorations_tooltip_lines(
+                &stack.component_patch.pot_decorations_item_ids,
+                &mut lines,
+            );
+        }
+        if let Some(book) = stack
+            .component_patch
+            .written_book
+            .as_ref()
+            .filter(|_| shows(COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID))
+        {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
-        self.push_charged_projectiles_tooltip_lines(
-            &stack.component_patch.charged_projectiles_items,
-            &mut lines,
-        );
-        push_fireworks_tooltip_lines(
-            &self.language,
-            stack.component_patch.fireworks_flight_duration,
-            &stack.component_patch.fireworks_explosions,
-            &mut lines,
-        );
-        push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
-        push_potion_contents_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
-        push_jukebox_playable_tooltip_lines(
-            stack.component_patch.jukebox_direct_song.as_ref(),
-            &mut lines,
-        );
-        push_armor_trim_tooltip_lines(
-            &self.language,
-            stack.component_patch.armor_trim_material_direct.as_ref(),
-            stack.component_patch.armor_trim_pattern_direct.as_ref(),
-            &mut lines,
-        );
+        if shows(COMPONENT_CHARGED_PROJECTILES_TYPE_ID) {
+            self.push_charged_projectiles_tooltip_lines(
+                &stack.component_patch.charged_projectiles_items,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_FIREWORKS_TYPE_ID) {
+            push_fireworks_tooltip_lines(
+                &self.language,
+                stack.component_patch.fireworks_flight_duration,
+                &stack.component_patch.fireworks_explosions,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_FIREWORK_EXPLOSION_TYPE_ID) {
+            push_firework_explosion_tooltip_lines(
+                &self.language,
+                &stack.component_patch,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_POTION_CONTENTS_TYPE_ID) {
+            push_potion_contents_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
+        }
+        if shows(COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID) {
+            push_jukebox_playable_tooltip_lines(
+                stack.component_patch.jukebox_direct_song.as_ref(),
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_TRIM_TYPE_ID) {
+            push_armor_trim_tooltip_lines(
+                &self.language,
+                stack.component_patch.armor_trim_material_direct.as_ref(),
+                stack.component_patch.armor_trim_pattern_direct.as_ref(),
+                &mut lines,
+            );
+        }
         let enchantment_tags = self.enchantment_tags.as_ref();
         let tooltip_order =
             enchantment_tags.and_then(|tags| tags.values("minecraft:tooltip_order"));
-        push_enchantments_tooltip_lines(
-            &self.language,
-            &stack.component_patch.stored_enchantments,
-            options.enchantment_keys,
-            tooltip_order,
-            enchantment_tags,
-            &mut lines,
-        );
-        push_enchantments_tooltip_lines(
-            &self.language,
-            &stack.component_patch.enchantments,
-            options.enchantment_keys,
-            tooltip_order,
-            enchantment_tags,
-            &mut lines,
-        );
-        push_dyed_color_tooltip_lines(
-            &self.language,
-            stack.component_patch.dyed_color,
-            options.advanced,
-            &mut lines,
-        );
-        push_profile_tooltip_lines(
-            &self.language,
-            stack.component_patch.profile.as_ref(),
-            &mut lines,
-        );
+        if shows(COMPONENT_STORED_ENCHANTMENTS_TYPE_ID) {
+            push_enchantments_tooltip_lines(
+                &self.language,
+                &stack.component_patch.stored_enchantments,
+                options.enchantment_keys,
+                tooltip_order,
+                enchantment_tags,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_ENCHANTMENTS_TYPE_ID) {
+            push_enchantments_tooltip_lines(
+                &self.language,
+                &stack.component_patch.enchantments,
+                options.enchantment_keys,
+                tooltip_order,
+                enchantment_tags,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_DYED_COLOR_TYPE_ID) {
+            push_dyed_color_tooltip_lines(
+                &self.language,
+                stack.component_patch.dyed_color,
+                options.advanced,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_PROFILE_TYPE_ID) {
+            push_profile_tooltip_lines(
+                &self.language,
+                stack.component_patch.profile.as_ref(),
+                &mut lines,
+            );
+        }
         // Vanilla `ItemLore.styledLines`: every lore line gets `LORE_STYLE`
         // (DARK_PURPLE + italic) merged under its own style keys.
-        lines.extend(
-            stack
-                .component_patch
-                .lore
-                .iter()
-                .enumerate()
-                .map(|(index, text)| NativeItemTooltipLine {
-                    text: text.clone(),
-                    tint: TOOLTIP_TEXT_DARK_PURPLE,
-                    runs: hud_runs_from_component(
-                        stack
-                            .component_patch
-                            .lore_styled
-                            .get(index)
-                            .map(Vec::as_slice)
-                            .unwrap_or(&[]),
-                        text,
-                        &LORE_STYLE,
-                    ),
-                }),
-        );
-        push_intangible_projectile_tooltip_line(
-            &self.language,
-            stack.component_patch.intangible_projectile,
-            &mut lines,
-        );
-        if stack.component_patch.unbreakable {
+        if shows(COMPONENT_LORE_TYPE_ID) {
+            lines.extend(
+                stack
+                    .component_patch
+                    .lore
+                    .iter()
+                    .enumerate()
+                    .map(|(index, text)| NativeItemTooltipLine {
+                        text: text.clone(),
+                        tint: TOOLTIP_TEXT_DARK_PURPLE,
+                        runs: hud_runs_from_component(
+                            stack
+                                .component_patch
+                                .lore_styled
+                                .get(index)
+                                .map(Vec::as_slice)
+                                .unwrap_or(&[]),
+                            text,
+                            &LORE_STYLE,
+                        ),
+                    }),
+            );
+        }
+        if shows(COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {
+            push_intangible_projectile_tooltip_line(
+                &self.language,
+                stack.component_patch.intangible_projectile,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_UNBREAKABLE_TYPE_ID) && stack.component_patch.unbreakable {
             lines.push(NativeItemTooltipLine::plain(
                 self.language.get_or_key("item.unbreakable").to_string(),
                 TOOLTIP_TEXT_BLUE,
             ));
         }
-        push_ominous_bottle_tooltip_lines(
-            &self.language,
-            stack.component_patch.ominous_bottle_amplifier,
-            &mut lines,
-        );
-        push_suspicious_stew_tooltip_lines(
-            &self.language,
-            &stack.component_patch.suspicious_stew_effects,
-            options.creative,
-            &mut lines,
-        );
-        push_block_state_tooltip_lines(
-            &self.language,
-            &stack.component_patch.block_state_properties,
-            &mut lines,
-        );
+        if shows(COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID) {
+            push_ominous_bottle_tooltip_lines(
+                &self.language,
+                stack.component_patch.ominous_bottle_amplifier,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID) {
+            push_suspicious_stew_tooltip_lines(
+                &self.language,
+                &stack.component_patch.suspicious_stew_effects,
+                options.creative,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_BLOCK_STATE_TYPE_ID) {
+            push_block_state_tooltip_lines(
+                &self.language,
+                &stack.component_patch.block_state_properties,
+                &mut lines,
+            );
+        }
         if options.advanced {
             push_advanced_tooltip_lines(
                 &self.language,
@@ -1940,6 +2038,7 @@ impl NativeItemRuntime {
                 &stack.component_patch,
                 self.default_max_damage_for_protocol_id(protocol_id),
                 self.default_component_type_ids_for_resource_id(item_id),
+                shows(COMPONENT_DAMAGE_TYPE_ID),
                 &mut lines,
             );
         }

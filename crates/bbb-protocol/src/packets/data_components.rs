@@ -96,6 +96,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
+    pub tooltip_hide_tooltip: bool,
+    #[serde(default)]
+    pub tooltip_hidden_component_type_ids: Vec<i32>,
+    #[serde(default)]
     pub dyed_color: Option<i32>,
     #[serde(default)]
     pub map_color: Option<i32>,
@@ -687,6 +691,11 @@ fn decode_typed_data_component_patch_summary(
                 summary.custom_model_data_flags = flags;
                 summary.custom_model_data_strings = strings;
                 summary.custom_model_data_colors = colors;
+            }
+            18 => {
+                let (hide_tooltip, hidden_components) = decode_tooltip_display_summary(decoder)?;
+                summary.tooltip_hide_tooltip = hide_tooltip;
+                summary.tooltip_hidden_component_type_ids = hidden_components;
             }
             44 => {
                 summary.dyed_color = Some(decoder.read_i32()?);
@@ -2407,12 +2416,18 @@ fn decode_optional_string_value(
 }
 
 fn decode_tooltip_display(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_bool()?;
-    let hidden_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..hidden_count {
-        decoder.read_var_i32()?;
-    }
+    let _ = decode_tooltip_display_summary(decoder)?;
     Ok(())
+}
+
+fn decode_tooltip_display_summary(decoder: &mut Decoder<'_>) -> Result<(bool, Vec<i32>)> {
+    let hide_tooltip = decoder.read_bool()?;
+    let hidden_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut hidden_components = Vec::with_capacity(hidden_count);
+    for _ in 0..hidden_count {
+        hidden_components.push(decoder.read_var_i32()?);
+    }
+    Ok((hide_tooltip, hidden_components))
 }
 
 fn read_bounded_len(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
@@ -3373,6 +3388,8 @@ mod tests {
                 custom_model_data_flags: vec![true, false],
                 custom_model_data_strings: vec!["variant".to_string()],
                 custom_model_data_colors: vec![0x112233, 0x445566],
+                tooltip_hide_tooltip: true,
+                tooltip_hidden_component_type_ids: vec![11, 13],
                 lore: vec!["Line one".to_string(), "Line two".to_string()],
                 lore_styled: vec![plain_runs("Line one"), plain_runs("Line two")],
                 ..DataComponentPatchSummary::default()

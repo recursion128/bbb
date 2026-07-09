@@ -6613,7 +6613,15 @@
   tags 或 vanilla 26.1 fallback tooltip order/curses 投影 stored + regular
   enchantment 行，并用 vanilla max-level 表保留 `Sharpness I` / `Mending` 这类等级后缀差异。
   边界：custom/datapack enchantment max-level、synced dynamic tooltip-order tag
-  投影、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+  投影与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip TooltipDisplay gating（P2 protocol + item-runtime
+  slice，2026-07-09）：依据 `TooltipDisplay.STREAM_CODEC` 的 `hideTooltip` bool +
+  hidden component type id collection，以及 `ItemStack.getTooltipLines` 对非 creative
+  `hideTooltip` 返回空列表、creative 只让 provider 经 `display.shows(type)` 输出，
+  protocol summary 现在保留 decoded `minecraft:tooltip_display` hide flag 与 hidden
+  type ids；native item tooltip 对已覆盖的 top-level provider 全部应用 hidden-components
+  gate，并在非 creative hide-tooltip 时不显示 tooltip。边界：options persistence、
+  未实现 provider、nested recursive item detail provider 与 op-warning tooltip 行仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

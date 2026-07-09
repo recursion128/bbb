@@ -443,6 +443,53 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
         ])
     );
+    let hidden_tooltip_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            tooltip_hide_tooltip: true,
+            lore: vec!["Hidden lore".to_string()],
+            unbreakable: true,
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(runtime.tooltip_lines_for_stack(&hidden_tooltip_stack), None);
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &hidden_tooltip_stack,
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![name_line(
+            "Test Combo",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                tooltip_hidden_component_type_ids: vec![11, 13, 44],
+                enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                    holder_id: 13,
+                    level: 1,
+                }],
+                dyed_color: Some(0x11_22_33),
+                lore: vec!["Hidden lore".to_string()],
+                unbreakable: true,
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+        ])
+    );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),
@@ -528,6 +575,22 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Unknown Map", TOOLTIP_TEXT_GRAY),
         ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                map_id: Some(7),
+                tooltip_hidden_component_type_ids: vec![46],
+                ..DataComponentPatchSummary::default()
+            },
+            ..map_stack.clone()
+        }),
+        Some(vec![name_line(
+            "Test Combo",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack_with_context(

@@ -1150,7 +1150,8 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, stored/enchantment rows, dynamic profile line,
-    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, creative
+    TooltipDisplay hide/hidden-components gating, intangible projectile line,
+    and ominous bottle amplifier line, potion custom-effect lines, creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
@@ -1239,8 +1240,20 @@ When an agent does any of the following, update this file in the same slice:
     26.1 registry ids, uses loaded enchantment tags when present for
     tooltip-order and curse classification, and keeps vanilla max-level suffix
     behavior for built-in enchantments. Boundary: custom/datapack enchantment
-    max-level and synced dynamic tooltip-order tag projection remain future
-    work; `TooltipDisplay` hidden-components also remains future work.
+    max-level and synced dynamic tooltip-order tag projection remain future work.
+  - Done 2026-07-09 — Advanced tooltip `TooltipDisplay` gating. Vanilla
+    anchors: `TooltipDisplay.STREAM_CODEC` is `hideTooltip` bool plus ordered
+    hidden component type ids; `ItemStack.getTooltipLines` returns no tooltip
+    for non-creative stacks when `hideTooltip` is true, while creative still
+    gets the name and `addDetailsToTooltip` gates every provider through
+    `display.shows(type)`. bbb now preserves decoded tooltip-display summaries,
+    suppresses non-creative tooltips when `hide_tooltip` is set, and applies
+    hidden component ids to the covered top-level providers including map,
+    bees, container, banner/pot, book/projectile/firework/potion/jukebox/trim,
+    enchantments, dyed/profile/lore, unit lines, stew, block-state, and
+    advanced durability. Boundary: option persistence, not-yet-modeled
+    providers, nested recursive item detail providers, and op-warning tooltip
+    behavior remain future work.
   - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
