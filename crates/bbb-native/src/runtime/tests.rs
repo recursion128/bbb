@@ -1492,6 +1492,57 @@ fn hud_debug_overlay_projects_custom_looking_at_fluid_tags() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_looking_at_entity() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut entries = (0..=VANILLA_ENTITY_TYPE_ZOMBIE_ID)
+        .map(|id| RegistryPacketEntry::stub(format!("minecraft:test_entity_{id}")))
+        .collect::<Vec<_>>();
+    entries[VANILLA_ENTITY_TYPE_ZOMBIE_ID as usize] =
+        RegistryPacketEntry::stub("minecraft:debug_target_zombie");
+    world.record_registry_entries("minecraft:entity_type", 0, entries);
+    let mut target = test_add_entity(77, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+    target.position = Vec3d {
+        x: 0.5,
+        y: 0.0,
+        z: 0.0,
+    };
+    world.apply_add_entity(target);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LookingAtEntity,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom looking-at entity entry should show target entity");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "Targeted Entity".to_string(),
+            "minecraft:debug_target_zombie".to_string(),
+        ]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

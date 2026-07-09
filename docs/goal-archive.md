@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  entity/chunk stats 等 individual non-default entry
+  entity-tags/chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5525,7 +5525,7 @@
   与属性投影为左列纯文本。边界：当前 debug text model 不承载 vanilla 的
   underline / boolean green-red styling；server debug values、完整 group
   layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及
-  entity looking-at entries 仍待后续。
+  entity-tags looking-at entry 仍待后续。
 - [x] debug overlay looking-at block-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` 注册
@@ -5541,7 +5541,7 @@
   左列纯文本。边界：该 entry 需要 block registry content 与 block tag packets
   才能解析；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
   order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，
-  以及 entity looking-at entries 仍待后续。
+  以及 entity-tags looking-at entry 仍待后续。
 - [x] debug overlay looking-at fluid-state entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_FLUID_STATE` 注册
@@ -5559,7 +5559,7 @@
   loaded fluid cell 的 own-height box，尚未实现完整 vanilla
   `ClipContext.Fluid.ANY` shape 语义（例如 same-fluid-above full-height
   clipping）；boolean styling、完整 group layout、`DebugOptionsScreen` /
-  `debug-profile.json` 持久化和 entity looking-at entries 仍待后续。
+  `debug-profile.json` 持久化和 entity-tags looking-at entry 仍待后续。
 - [x] debug overlay looking-at fluid-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_FLUID_TAGS` 注册
@@ -5574,8 +5574,24 @@
   name 映射到 tag raw id，并投影匹配的 `#tag` 左列纯文本。边界：该 entry 需要
   fluid registry content 与 fluid tag packets 才能解析；当前 tag 顺序跟随存储
   map 顺序，精确 vanilla holder tag iteration order、完整 fluid clip parity、
-  group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及 entity
-  looking-at entries 仍待后续。
+  group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及
+  entity-tags looking-at entry 仍待后续。
+- [x] debug overlay looking-at entity entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.LOOKING_AT_ENTITY` 注册
+  `DebugEntryLookingAtEntity`；`Minecraft` 每帧用
+  `player.raycastHitResult(partialTicks, cameraEntity)` 更新
+  `crosshairPickEntity`，该 entry 读取该实体，加入
+  `minecraft:looking_at_entity` group，并输出带下划线的
+  `Targeted Entity` 与 `entity.typeHolder().getRegisteredName()`。native
+  现在有非 profile 默认项 `LookingAtEntity` entry id，default / performance
+  profiles 中保持 `Never`，reduced-debug 下按默认
+  `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，复用 normal
+  crosshair entity pick 和 render partial tick，通过已跟踪的
+  `minecraft:entity_type` registry content 或 vanilla 26.1 id table 解析
+  entity type，并投影 target entity 注册名左列纯文本。边界：当前 debug text
+  model 不承载 vanilla underline styling；完整 group layout、
+  `DebugOptionsScreen` / `debug-profile.json` 持久化、entity-tags output，以及
+  shared crosshair entity raycast 的更深 parity gap 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

@@ -29,6 +29,7 @@ pub(crate) enum DebugScreenEntryId {
     LookingAtBlockTags,
     LookingAtFluidState,
     LookingAtFluidTags,
+    LookingAtEntity,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -265,6 +266,10 @@ mod tests {
             entries.status(DebugScreenEntryId::LookingAtFluidTags),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::LookingAtEntity),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -356,5 +361,10 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::LookingAtFluidTags, true));
+        entries.set_status(
+            DebugScreenEntryId::LookingAtEntity,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::LookingAtEntity, true));
     }
 }

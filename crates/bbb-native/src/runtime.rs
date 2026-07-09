@@ -67,8 +67,9 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{
-        debug_looking_at_block_hit_from_camera, debug_looking_at_fluid_hit_from_camera,
-        entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera,
+        crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
+        debug_looking_at_fluid_hit_from_camera, entity_target_outline_from_camera_at_partial_tick,
+        selection_outline_from_camera, CrosshairTarget,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -2130,10 +2131,11 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
-    let hud_debug_overlay = hud_debug_overlay(
+    let hud_debug_overlay = hud_debug_overlay_at_partial_tick(
         input,
         world,
         camera_pose,
+        entity_partial_tick,
         surface_size,
         hud_debug_fps_sampler,
         client_framerate_limit,
@@ -3056,10 +3058,39 @@ fn world_ticking_milliseconds_per_tick(world: &WorldStore) -> f32 {
     }
 }
 
+#[cfg(test)]
 fn hud_debug_overlay(
     input: &ClientInputState,
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    fps_sampler: &HudDebugFpsSampler,
+    client_framerate_limit: u32,
+    client_vsync: bool,
+    network_sampler: &HudDebugNetworkSampler,
+    tps_sampler: &HudDebugTpsSampler,
+    net_counters: &NetCounters,
+) -> Option<HudDebugOverlay> {
+    hud_debug_overlay_at_partial_tick(
+        input,
+        world,
+        camera_pose,
+        1.0,
+        surface_size,
+        fps_sampler,
+        client_framerate_limit,
+        client_vsync,
+        network_sampler,
+        tps_sampler,
+        net_counters,
+    )
+}
+
+fn hud_debug_overlay_at_partial_tick(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    entity_partial_tick: f32,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
     client_framerate_limit: u32,
@@ -3123,6 +3154,13 @@ fn hud_debug_overlay(
     }
     if entry_enabled(DebugScreenEntryId::LookingAtFluidTags) {
         if let Some(looking_at_lines) = hud_debug_looking_at_fluid_tag_lines(world, camera_pose) {
+            left_lines.extend(looking_at_lines);
+        }
+    }
+    if entry_enabled(DebugScreenEntryId::LookingAtEntity) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_entity_lines(world, camera_pose, entity_partial_tick)
+        {
             left_lines.extend(looking_at_lines);
         }
     }
@@ -3601,6 +3639,35 @@ fn hud_debug_looking_at_fluid_tag_lines(
             .map(|(tag, _)| format!("#{tag}"))
             .collect(),
     )
+}
+
+fn hud_debug_looking_at_entity_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+) -> Option<Vec<String>> {
+    let CrosshairTarget::Entity(hit) =
+        crosshair_target_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)?
+    else {
+        return None;
+    };
+    let entity = world.probe_entity(hit.entity_id)?;
+    Some(vec![
+        "Targeted Entity".to_string(),
+        hud_debug_entity_type_name(world, entity.entity_type_id)?,
+    ])
+}
+
+fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {
+    if let Some(entry) = usize::try_from(entity_type_id).ok().and_then(|index| {
+        world
+            .registry_content("minecraft:entity_type")?
+            .entries
+            .get(index)
+    }) {
+        return Some(entry.id.clone());
+    }
+    vanilla_entity_resource_id_for_type_id(entity_type_id)
 }
 
 fn hud_debug_fluid_state_name(fluid: TerrainFluidState) -> &'static str {
