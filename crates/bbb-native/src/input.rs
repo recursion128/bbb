@@ -15,10 +15,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FROG_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
         VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
@@ -339,6 +340,7 @@ const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
 const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
 const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
+const SPELLCASTER_ILLAGER_DEFAULT_SPELL_TICKS: i32 = 0;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
@@ -3754,6 +3756,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_neutral_mob_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_EVOKER_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_patrolling_monster_additional_save_data(fields);
+            debug_push_raider_additional_save_data(fields);
+            debug_push_spellcaster_illager_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => {
             debug_push_end_crystal_additional_save_data(entity, fields);
         }
@@ -4445,6 +4453,12 @@ fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "CanJoinRaid: {}",
         debug_snbt_bool(RAIDER_DEFAULT_CAN_JOIN_RAID)
+    ));
+}
+
+fn debug_push_spellcaster_illager_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "SpellTicks: {SPELLCASTER_ILLAGER_DEFAULT_SPELL_TICKS}"
     ));
 }
 
