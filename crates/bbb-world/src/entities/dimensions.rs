@@ -1747,6 +1747,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (144, pick(0.6, 1.95, 0.0)),      // minecraft:witch
     (145, pick(0.9, 3.5, 0.0)),       // minecraft:wither
     (146, pick(0.7, 2.4, 0.0)),       // minecraft:wither_skeleton
+    (147, pick(0.3125, 0.3125, 0.0)), // minecraft:wither_skull
     (148, pick(0.6, 0.85, 0.0)),      // minecraft:wolf
     (149, pick(1.3964844, 1.4, 0.0)), // minecraft:zoglin
     (150, pick(0.6, 1.95, 0.0)),      // minecraft:zombie

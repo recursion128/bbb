@@ -197,7 +197,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/reference
-  projection, remaining projectile owner/left-owner/private-state projection,
+  projection, remaining projectile owner/left-owner/private shot-state projection,
   private or otherwise unobserved timer/counter projection, remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, codec-backed SNBT projection, entity-specific constructor/default

@@ -951,6 +951,10 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     store.apply_add_entity(protocol_add_entity_with_type(18, 43));
     store.apply_add_entity(protocol_add_entity_with_type(19, 69));
     store.apply_add_entity(protocol_add_entity_with_type(72, 18));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
@@ -983,6 +987,10 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     assert_eq!(
         store.probe_entity_pick_bounds(72),
         Some(wind_charge_pick_bounds())
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(73),
+        Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(19),

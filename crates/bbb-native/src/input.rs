@@ -46,9 +46,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -86,6 +87,7 @@ mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
+use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
@@ -4123,6 +4125,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_wither_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
+            debug_push_wither_skull_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
@@ -4187,6 +4193,12 @@ fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
     ));
+}
+
+fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let dangerous =
+        debug_entity_data_bool_present(entity, WITHER_SKULL_DANGEROUS_DATA_ID).unwrap_or(false);
+    fields.push(format!("dangerous: {}", debug_snbt_bool(dangerous)));
 }
 
 fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

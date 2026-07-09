@@ -245,7 +245,7 @@ const VEX_FLAGS_DATA_ID: u8 = 16;
 const VEX_FLAG_IS_CHARGING: i8 = 1;
 // Vanilla WitherSkull.DATA_DANGEROUS (8, BOOLEAN): `Entity` defines ids 0..=7, while `Projectile` and
 // `AbstractHurtingProjectile` add no synced accessors, so the wither skull's first own accessor lands at 8.
-const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
+pub(crate) const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 // Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
 // Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
 // (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
