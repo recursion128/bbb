@@ -13,6 +13,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -225,6 +226,8 @@ const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
+const ZOGLIN_BABY_DATA_ID: u8 = 16;
+const ZOGLIN_DEFAULT_BABY: bool = false;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3564,6 +3567,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_raider_additional_save_data(fields);
             debug_push_ravager_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_zoglin_additional_save_data(entity, fields);
+        }
         _ => {}
     }
 }
@@ -3681,6 +3688,12 @@ fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Ve
         "RoarTick: {}",
         ravager.map_or(RAVAGER_DEFAULT_ROAR_TICK, |state| state.roar_tick)
     ));
+}
+
+fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let is_baby =
+        debug_entity_data_bool_present(entity, ZOGLIN_BABY_DATA_ID).unwrap_or(ZOGLIN_DEFAULT_BABY);
+    fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {

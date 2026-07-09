@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2833,6 +2833,14 @@ When an agent does any of the following, update this file in the same slice:
     local patrol target, non-default patrol/raid membership, broader Mob save
     data, passengers, and other entity-specific `addAdditionalSaveData` fields
     still need local state owners before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local zoglin save field.
+    Vanilla anchors: `Zoglin.addAdditionalSaveData` calls the Mob save chain
+    and then writes `IsBaby` from `Zoglin.DATA_BABY_ID` (16), whose default is
+    false. bbb now appends the same local Mob fields plus metadata-derived
+    `IsBaby` for authorized Shift+F3+I local zoglin recreate commands.
+    Boundary: broader Mob save data, passengers, and other entity-specific
+    `addAdditionalSaveData` fields still need local state owners before full
+    `saveWithoutId` parity.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -3853,7 +3861,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

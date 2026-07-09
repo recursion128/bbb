@@ -6297,6 +6297,13 @@
   non-default patrol/raid membership、更广泛的 Mob save data、passengers 以及其他
   entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local zoglin save field（P2 native slice，
+  2026-07-09）：依据 `Zoglin.addAdditionalSaveData` 调用 Mob 保存链后，从
+  `Zoglin.DATA_BABY_ID` 16 写 `IsBaby`，vanilla 默认 false。native 现在对授权
+  Shift+F3+I 本地 zoglin recreate command 追加 Mob 字段和 metadata-derived
+  `IsBaby`。边界：更广泛的 Mob save data、passengers 以及其他 entity-specific
+  `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈
