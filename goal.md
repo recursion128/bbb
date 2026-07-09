@@ -366,10 +366,10 @@ Screen Render Surfaces" 条目）：
   container-loot unknown-content line, container item-count/more rows, direct
   jukebox song descriptions, direct armor trim rows, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
-  dynamic profile line, and intangible projectile line, ominous bottle amplifier
-  line, potion custom-effect lines, creative suspicious-stew effect lines,
-  map-id lines, instrument description lines, tropical-fish pattern lines,
-  banner-pattern rows,
+  disc fragment item-specific description line, dynamic profile line, and
+  intangible projectile line, ominous bottle amplifier line, potion custom-effect
+  lines, creative suspicious-stew effect lines, map-id lines, instrument
+  description lines, tropical-fish pattern lines, banner-pattern rows,
   pot-decoration rows、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget

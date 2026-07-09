@@ -1151,10 +1151,10 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, stored/enchantment rows, dynamic profile line,
     TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
-    intangible projectile line, and ominous bottle amplifier line, potion
-    custom-effect lines, creative suspicious-stew effect lines, map-id lines,
-    instrument description lines, tropical-fish pattern lines,
-    banner-pattern rows, pot-decoration rows,
+    disc fragment item-specific description line, intangible projectile line,
+    and ominous bottle amplifier line, potion custom-effect lines, creative
+    suspicious-stew effect lines, map-id lines, instrument description lines,
+    tropical-fish pattern lines, banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1195,6 +1195,15 @@ When an agent does any of the following, update this file in the same slice:
     detection, cartography/inventory changed-slot hashing, native map extraction,
     and tooltip advanced component-count tests. Boundary: this was a narrow
     `MAP_ID` correction, not a full audit of every hard-coded component id.
+  - Done 2026-07-09 — Advanced tooltip disc fragment description line.
+    Vanilla anchor: `DiscFragmentItem.appendHoverText` appends the gray
+    translatable `descriptionId + ".desc"` line before normal component
+    providers, and it does not check `TooltipDisplay.shows` itself. bbb now
+    emits the localized gray `item.minecraft.disc_fragment_5.desc` row for
+    `minecraft:disc_fragment_5`, including creative tooltips when
+    `hide_tooltip` is set. Boundary: remaining item-specific `appendHoverText`
+    implementations such as painting variants and smithing templates remain
+    future work.
   - Done 2026-07-09 — Advanced tooltip instrument description line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls `DataComponents.INSTRUMENT`
     after tropical-fish pattern and before `DataComponents.MAP_ID`, and

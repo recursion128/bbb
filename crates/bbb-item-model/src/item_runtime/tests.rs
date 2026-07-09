@@ -227,6 +227,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         &assets.join("lang").join("en_us.json"),
         r#"{
                 "item.minecraft.test_combo": "Test Combo",
+                "item.minecraft.disc_fragment_5": "Disc Fragment",
+                "item.minecraft.disc_fragment_5.desc": "Music Disc - 5",
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
                 "effect.minecraft.bad_omen": "Bad Omen",
@@ -341,7 +343,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
 
     assert_eq!(runtime.item_definition_count(), 1);
-    assert_eq!(runtime.item_registry_count(), 1);
+    assert_eq!(runtime.item_registry_count(), 2);
     assert_eq!(runtime.item_equipment_slot_count(), 1);
     assert_eq!(runtime.item_mining_profile_count(), 0);
     assert_eq!(
@@ -371,16 +373,22 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     );
     assert_eq!(
         runtime.default_item_particle_sprite_ids_by_protocol_id(),
-        BTreeMap::from([(
-            0,
-            vec![
-                "minecraft:item/test_sword".to_string(),
-                MISSING_TEXTURE_ID.to_string(),
-                "minecraft:item/test_overlay".to_string(),
-            ],
-        )])
+        BTreeMap::from([
+            (
+                0,
+                vec![
+                    "minecraft:item/test_sword".to_string(),
+                    MISSING_TEXTURE_ID.to_string(),
+                    "minecraft:item/test_overlay".to_string(),
+                ],
+            ),
+            (1, vec![MISSING_TEXTURE_ID.to_string()]),
+        ])
     );
-    assert_eq!(runtime.icon_texture_index_for_protocol_id(1), None);
+    assert_eq!(
+        runtime.icon_texture_index_for_protocol_id(1),
+        Some(runtime.texture_index(MISSING_TEXTURE_ID))
+    );
     let icon = runtime.icon_for_protocol_id(0).unwrap();
     assert_eq!(icon.layers.len(), 3);
     assert_eq!(icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
@@ -441,6 +449,37 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+        Some(vec![
+            name_line("Disc Fragment", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Music Disc - 5", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    tooltip_hide_tooltip: true,
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Disc Fragment", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Music Disc - 5", TOOLTIP_TEXT_GRAY),
         ])
     );
     let hidden_tooltip_stack = ItemStackSummary {
@@ -14804,6 +14843,7 @@ fn write_item_registry_sources(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
                 public static final Item TEST_COMBO = registerItem("test_combo", new Item.Properties().equippable(EquipmentSlot.CHEST));
+                public static final Item DISC_FRAGMENT_5 = registerItem("disc_fragment_5");
             }"#,
     );
 }

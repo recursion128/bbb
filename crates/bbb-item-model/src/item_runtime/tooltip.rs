@@ -26,6 +26,8 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
 const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
 const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
 const TOOLTIP_GRAY_TEXT_COLOR: u32 = 0xAA_AA_AA;
+const DISC_FRAGMENT_5_RESOURCE_ID: &str = "minecraft:disc_fragment_5";
+const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.desc";
 const COMPONENT_DAMAGE_TYPE_ID: i32 = 3;
 const COMPONENT_UNBREAKABLE_TYPE_ID: i32 = 4;
 const COMPONENT_LORE_TYPE_ID: i32 = 11;
@@ -671,6 +673,21 @@ fn tooltip_display_shows(component_patch: &DataComponentPatchSummary, type_id: i
         && !component_patch
             .tooltip_hidden_component_type_ids
             .contains(&type_id)
+}
+
+fn push_item_specific_tooltip_lines(
+    language: &LanguageCatalog,
+    item_id: &str,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if item_id == DISC_FRAGMENT_5_RESOURCE_ID {
+        lines.push(NativeItemTooltipLine::plain(
+            language
+                .get_or_key(DISC_FRAGMENT_5_DESCRIPTION_KEY)
+                .to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
 }
 
 #[cfg(test)]
@@ -1849,6 +1866,7 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
+        push_item_specific_tooltip_lines(&self.language, item_id, &mut lines);
         if shows(COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
             push_tropical_fish_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         }

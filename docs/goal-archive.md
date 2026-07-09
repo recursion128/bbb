@@ -6630,6 +6630,13 @@
   cartography/inventory changed-slot hashing、native map extraction 与 tooltip
   advanced component-count 测试都已从旧 41 对齐到 46。边界：本 slice 只校正
   `MAP_ID`，未做全量 data component id 审计。
+- [x] advanced tooltip disc fragment description line（P2 item-runtime
+  slice，2026-07-09）：依据 `DiscFragmentItem.appendHoverText` 在 normal component
+  provider 之前追加灰色 `descriptionId + ".desc"`，且该 item-specific hook
+  自身不检查 `TooltipDisplay.shows`，native item tooltip 现在对
+  `minecraft:disc_fragment_5` 输出本地化灰色 `item.minecraft.disc_fragment_5.desc`
+  行，并覆盖 creative `hide_tooltip` 时仍输出的行为。边界：painting variants、
+  smithing templates 等其它 item-specific `appendHoverText` 仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`
