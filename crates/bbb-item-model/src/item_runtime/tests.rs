@@ -607,6 +607,33 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
+                jukebox_direct_song: Some(JukeboxSongSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(0),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    description: "Test song".to_string(),
+                    length_in_seconds_bits: 120.0f32.to_bits(),
+                    comparator_output: 15,
+                }),
+                dyed_color: Some(0x33_44_55),
+                lore: vec!["After jukebox".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Test song", TOOLTIP_TEXT_GRAY),
+            italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            lore_line("After jukebox"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
                 added_type_ids: vec![44],
                 dyed_color: Some(0x12_3A_BC),
                 lore: vec!["After dyed".to_string()],

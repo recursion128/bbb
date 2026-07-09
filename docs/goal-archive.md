@@ -6509,3 +6509,11 @@
   unknown-content 行。边界：summary 仍跳过 loot-table/seed NBT payload，因为 vanilla
   tooltip 只依赖 presence；其它 component provider tooltip、`TooltipDisplay`
   hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip direct jukebox song description（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 potion contents 之后、
+  trim/enchantments/dyed-color 之前调用 `DataComponents.JUKEBOX_PLAYABLE` provider，
+  以及 `JukeboxPlayable.addToTooltip` 把 song description 合并为灰色行，native item
+  tooltip 现在把 decoded direct `minecraft:jukebox_playable` song payload 投影为灰色
+  description 行。边界：holder-id jukebox songs 仍需要 registry-key description
+  resolution，styled description runs 目前被 flatten；其它 component provider
+  tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。

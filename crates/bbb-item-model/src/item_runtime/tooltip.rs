@@ -409,6 +409,19 @@ fn push_firework_explosion_additional_tooltip_lines(
     }
 }
 
+fn push_jukebox_playable_tooltip_lines(
+    song: Option<&JukeboxSongSummary>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(song) = song else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        song.description.clone(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
 fn firework_explosion_shape_text(
     language: &LanguageCatalog,
     shape: FireworkExplosionShapeSummary,
@@ -723,6 +736,10 @@ impl NativeItemRuntime {
             &mut lines,
         );
         push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
+        push_jukebox_playable_tooltip_lines(
+            stack.component_patch.jukebox_direct_song.as_ref(),
+            &mut lines,
+        );
         push_dyed_color_tooltip_lines(
             &self.language,
             stack.component_patch.dyed_color,

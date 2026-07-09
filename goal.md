@@ -363,7 +363,8 @@ Screen Render Surfaces" 条目）：
   billboard rendering、advanced tooltip component-specific full
   parity/persistence beyond beehive bees/honey, dyed-color lines, and firework
   flight/direct/grouped explosion lines, charged-projectiles headers, and
-  container-loot unknown-content line、F3+I full local entity saveWithoutId parity、
+  container-loot unknown-content line, and direct jukebox song descriptions、F3+I
+  full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，
