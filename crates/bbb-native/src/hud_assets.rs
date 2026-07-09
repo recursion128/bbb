@@ -177,6 +177,28 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_button_highlighted.height,
         &widget_button_highlighted.rgba,
     )?;
+    let game_mode_switcher = gui_texture(
+        roots,
+        "textures/gui/container/gamemode_switcher.png",
+        "minecraft:textures/gui/container/gamemode_switcher",
+    )?;
+    renderer.upload_hud_debug_game_mode_switcher_background(
+        game_mode_switcher.width,
+        game_mode_switcher.height,
+        &game_mode_switcher.rgba,
+    )?;
+    let game_mode_switcher_slot = hud_sprite(&sprites, "gamemode_switcher/slot")?;
+    renderer.upload_hud_debug_game_mode_switcher_slot(
+        game_mode_switcher_slot.width,
+        game_mode_switcher_slot.height,
+        &game_mode_switcher_slot.rgba,
+    )?;
+    let game_mode_switcher_selection = hud_sprite(&sprites, "gamemode_switcher/selection")?;
+    renderer.upload_hud_debug_game_mode_switcher_selection(
+        game_mode_switcher_selection.width,
+        game_mode_switcher_selection.height,
+        &game_mode_switcher_selection.rgba,
+    )?;
     let recipe_book_tab = hud_sprite(&sprites, "recipe_book/tab")?;
     renderer.upload_hud_recipe_book_tab(
         recipe_book_tab.width,

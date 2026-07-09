@@ -6112,6 +6112,17 @@
   switcher-only HUD overlay；renderer sanitizer 也保留该状态。边界：实际背景/
   selection sprite / item icon / 文本像素绘制、first-mouse suppression、
   hover/mouse release、cursor capture 与 exact screen interruption policy 仍待后续。
+- [x] debug overlay F3+F4 GameModeSwitcher background/slot/text rendering（P2
+  renderer/native slice，2026-07-09）：依据 `GameModeSwitcherScreen.extractBackground`
+  对 `textures/gui/container/gamemode_switcher.png` 使用 `0,0 -> 125/128,75/128`
+  UV，`GameModeSlot.extractWidgetRenderState` 先绘制 `gamemode_switcher/slot`、
+  selected slot 再覆盖 `gamemode_switcher/selection`，并用默认 drop-shadow
+  `centeredText` 绘制当前 hovered game-mode name 与 F4 select-next help 行。bbb
+  现在启动加载这三个 HUD 资源，renderer 从 `HudDebugGameModeSwitcher` 实际绘制背景、
+  四个 slot、selected overlay 和两行居中文本；新增 helper layout/UV 测试与
+  offscreen pixel-readback 测试覆盖 layer order。边界：item icon、
+  first-mouse suppression、hover/mouse release、cursor capture 与 exact screen
+  interruption policy 仍待后续。
 - [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
   `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
   `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；

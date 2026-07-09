@@ -476,6 +476,13 @@ const HUD_DEBUG_PROFILER_SLICE_CAPACITY: usize = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_SIZE: u32 = 64;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_MARGIN: i32 = 2;
 const HUD_DEBUG_LIGHTMAP_PREVIEW_BORDER: i32 = 1;
+const HUD_DEBUG_GAME_MODE_SWITCHER_TEXTURE_WIDTH: f32 = 128.0;
+const HUD_DEBUG_GAME_MODE_SWITCHER_TEXTURE_HEIGHT: f32 = 128.0;
+const HUD_DEBUG_GAME_MODE_SWITCHER_BACKGROUND_U_WIDTH: f32 = 125.0;
+const HUD_DEBUG_GAME_MODE_SWITCHER_BACKGROUND_V_HEIGHT: f32 = 75.0;
+const HUD_DEBUG_GAME_MODE_SWITCHER_CENTER_X_OFFSET: i32 = 62;
+const HUD_DEBUG_GAME_MODE_SWITCHER_TITLE_Y_OFFSET: i32 = 7;
+const HUD_DEBUG_GAME_MODE_SWITCHER_HELP_Y_OFFSET: i32 = 63;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -1650,6 +1657,38 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_debug_game_mode_switcher_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_debug_game_mode_switcher_background =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_debug_game_mode_switcher_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_debug_game_mode_switcher_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_debug_game_mode_switcher_selection(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_debug_game_mode_switcher_selection =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -4116,6 +4155,9 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_debug_game_mode_switcher_background.as_ref(),
+                self.hud_debug_game_mode_switcher_slot.as_ref(),
+                self.hud_debug_game_mode_switcher_selection.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -6246,6 +6288,9 @@ fn push_hud_debug_overlay<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    game_mode_switcher_background: Option<&'a HudSpriteGpu>,
+    game_mode_switcher_slot: Option<&'a HudSpriteGpu>,
+    game_mode_switcher_selection: Option<&'a HudSpriteGpu>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -6253,6 +6298,22 @@ fn push_hud_debug_overlay<'a>(
     surface_size: PhysicalSize<u32>,
     overlay: &HudDebugOverlay,
 ) {
+    if let Some(switcher) = &overlay.game_mode_switcher {
+        push_hud_debug_game_mode_switcher(
+            vertices,
+            commands,
+            white_pixel,
+            game_mode_switcher_background,
+            game_mode_switcher_slot,
+            game_mode_switcher_selection,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            switcher,
+        );
+    }
     let Some(font_atlas) = font_atlas else {
         return;
     };
@@ -6351,6 +6412,147 @@ fn push_hud_debug_overlay<'a>(
             hud_debug_profiler_bottom_offset(overlay),
         );
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_game_mode_switcher<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudSpriteGpu>,
+    slot_sprite: Option<&'a HudSpriteGpu>,
+    selection_sprite: Option<&'a HudSpriteGpu>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    switcher: &HudDebugGameModeSwitcher,
+) {
+    if let (Some(background), Some(rect)) = (
+        background,
+        hud_debug_game_mode_switcher_rect(
+            switcher.background_x,
+            switcher.background_y,
+            switcher.background_width,
+            switcher.background_height,
+        ),
+    ) {
+        push_hud_draw_with_uv(
+            vertices,
+            commands,
+            background,
+            surface_size,
+            rect,
+            hud_debug_game_mode_switcher_background_uv(),
+        );
+    }
+
+    for slot in &switcher.slots {
+        let Some(rect) = hud_debug_game_mode_switcher_rect(slot.x, slot.y, slot.width, slot.height)
+        else {
+            continue;
+        };
+        if let Some(slot_sprite) = slot_sprite {
+            push_hud_draw(vertices, commands, slot_sprite, surface_size, rect);
+        }
+        if slot.selected {
+            if let Some(selection_sprite) = selection_sprite {
+                push_hud_draw(vertices, commands, selection_sprite, surface_size, rect);
+            }
+        }
+    }
+
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let center_x = switcher.background_x + HUD_DEBUG_GAME_MODE_SWITCHER_CENTER_X_OFFSET;
+    push_hud_debug_game_mode_switcher_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &switcher.title,
+        center_x,
+        switcher.background_y + HUD_DEBUG_GAME_MODE_SWITCHER_TITLE_Y_OFFSET,
+    );
+    push_hud_debug_game_mode_switcher_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &switcher.help_text,
+        center_x,
+        switcher.background_y + HUD_DEBUG_GAME_MODE_SWITCHER_HELP_Y_OFFSET,
+    );
+}
+
+fn hud_debug_game_mode_switcher_rect(x: i32, y: i32, width: i32, height: i32) -> Option<HudRect> {
+    let width = u32::try_from(width).ok().filter(|width| *width > 0)?;
+    let height = u32::try_from(height).ok().filter(|height| *height > 0)?;
+    Some(absolute_hud_rect(x as f32, y as f32, width, height))
+}
+
+fn hud_debug_game_mode_switcher_background_uv() -> HudUvRect {
+    HudUvRect {
+        min: [0.0, 0.0],
+        max: [
+            HUD_DEBUG_GAME_MODE_SWITCHER_BACKGROUND_U_WIDTH
+                / HUD_DEBUG_GAME_MODE_SWITCHER_TEXTURE_WIDTH,
+            HUD_DEBUG_GAME_MODE_SWITCHER_BACKGROUND_V_HEIGHT
+                / HUD_DEBUG_GAME_MODE_SWITCHER_TEXTURE_HEIGHT,
+        ],
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_game_mode_switcher_centered_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    center_x: i32,
+    y: i32,
+) {
+    let origin = hud_debug_game_mode_switcher_centered_text_origin(text, glyphs, center_x, y);
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        origin,
+        HUD_TINT_WHITE,
+        1.0,
+        true,
+    );
+}
+
+fn hud_debug_game_mode_switcher_centered_text_origin(
+    text: &str,
+    glyphs: &HudFontGlyphMap,
+    center_x: i32,
+    y: i32,
+) -> (f32, f32) {
+    let width = i32::try_from(hud_plain_text_width(text, glyphs)).unwrap_or(i32::MAX);
+    (center_x.saturating_sub(width / 2) as f32, y as f32)
 }
 
 fn push_hud_debug_overlay_column_backgrounds<'a>(
@@ -9954,6 +10156,152 @@ mod tests {
 
         assert_eq!(switcher.title, "Creative Mode");
         assert_eq!(switcher.slots.len(), 4);
+    }
+
+    #[test]
+    fn hud_debug_game_mode_switcher_helpers_match_vanilla_layout() {
+        assert_eq!(
+            hud_debug_game_mode_switcher_background_uv(),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [125.0 / 128.0, 75.0 / 128.0],
+            }
+        );
+
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in ['?', 'a', 'b', 'c'] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance: 5,
+                    width: 4,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        assert_eq!(
+            hud_debug_game_mode_switcher_centered_text_origin("abc", &glyphs, 160, 69),
+            (153.0, 69.0)
+        );
+        assert_eq!(
+            hud_debug_game_mode_switcher_rect(98, 62, 125, 75),
+            Some(absolute_hud_rect(98.0, 62.0, 125, 75))
+        );
+        assert_eq!(hud_debug_game_mode_switcher_rect(98, 62, 0, 75), None);
+    }
+
+    #[test]
+    fn game_mode_switcher_offscreen_frame_draws_background_slots_and_selection() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        let solid = |width: u32, height: u32, rgba: [u8; 4]| -> Vec<u8> {
+            (0..width.saturating_mul(height))
+                .flat_map(|_| rgba)
+                .collect()
+        };
+        renderer
+            .upload_hud_debug_game_mode_switcher_background(
+                128,
+                128,
+                &solid(128, 128, [255, 0, 0, 255]),
+            )
+            .expect("game mode switcher background");
+        renderer
+            .upload_hud_debug_game_mode_switcher_slot(26, 26, &solid(26, 26, [0, 255, 0, 255]))
+            .expect("game mode switcher slot");
+        renderer
+            .upload_hud_debug_game_mode_switcher_selection(
+                26,
+                26,
+                &solid(26, 26, [255, 255, 0, 255]),
+            )
+            .expect("game mode switcher selection");
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            game_mode_switcher: Some(HudDebugGameModeSwitcher {
+                selected: HudGameModeSwitcherMode::Creative,
+                title: "Creative Mode".to_string(),
+                help_text: "Select next: F4".to_string(),
+                background_x: 98,
+                background_y: 62,
+                background_width: 125,
+                background_height: 75,
+                slots: vec![
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Creative,
+                        x: 101,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: true,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Survival,
+                        x: 132,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Adventure,
+                        x: 163,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Spectator,
+                        x: 194,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                ],
+            }),
+            ..HudDebugOverlay::default()
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("game mode switcher frame");
+        let background = pixels.pixel(99, 63);
+        assert!(
+            background[0] > 128 && background[1] < 128 && background[2] < 128,
+            "background should draw red, got {background:?}"
+        );
+        let selected_slot = pixels.pixel(114, 102);
+        assert!(
+            selected_slot[0] > 128 && selected_slot[1] > 128 && selected_slot[2] < 128,
+            "selected slot should draw yellow selection over green slot, got {selected_slot:?}"
+        );
+        let unselected_slot = pixels.pixel(145, 102);
+        assert!(
+            unselected_slot[1] > 128 && unselected_slot[0] < 128 && unselected_slot[2] < 128,
+            "unselected slot should draw green, got {unselected_slot:?}"
+        );
+        let outside = pixels.pixel(97, 61);
+        assert!(
+            outside[2] > 128 && outside[0] < 128 && outside[1] < 128,
+            "outside switcher should stay blue clear color, got {outside:?}"
+        );
     }
 
     #[test]
