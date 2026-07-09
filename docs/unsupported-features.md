@@ -1206,8 +1206,7 @@ When an agent does any of the following, update this file in the same slice:
     emits the localized gray `item.minecraft.disc_fragment_5.desc` row for
     `minecraft:disc_fragment_5`, including creative tooltips when
     `hide_tooltip` is set. Boundary: remaining item-specific `appendHoverText`
-    implementations and painting registry-holder title/author resolution remain
-    future work.
+    implementations remain future work.
   - Done 2026-07-09 — Advanced tooltip smithing template rows. Vanilla anchor:
     `SmithingTemplateItem.appendHoverText` appends gray
     `item.minecraft.smithing_template`, an empty separator, gray
@@ -1217,8 +1216,7 @@ When an agent does any of the following, update this file in the same slice:
     emits those rows for `minecraft:netherite_upgrade_smithing_template` and
     `minecraft:*_armor_trim_smithing_template`, including the netherite-upgrade
     versus armor-trim applies/ingredients variants. Boundary: remaining
-    item-specific hooks and painting registry-holder title/author resolution
-    remain future work.
+    item-specific hooks remain future work.
   - Done 2026-07-09 — Advanced tooltip direct painting variant rows. Vanilla
     anchors: `HangingEntityItem.appendHoverText` handles only
     `EntityType.PAINTING`, gates rows with
@@ -1232,9 +1230,22 @@ When an agent does any of the following, update this file in the same slice:
     direct painting variants as styled title/author rows plus the dimensions row
     for `minecraft:painting`, honors hidden component type id 102, and emits the
     creative random-variant row when no variant component exists. Boundary:
-    registry-holder ids are preserved but not yet resolved through a painting
-    variant registry catalog, so non-direct painting variant tooltip rows remain
-    future work.
+    this slice covered direct payloads; vanilla registry-holder ids are covered
+    by the holder-id painting slice below, while custom/datapack painting variant
+    remaps remain future work.
+  - Done 2026-07-09 — Advanced tooltip holder-id painting variant rows. Vanilla
+    anchors: `PaintingVariants.bootstrap` registers the 26.1 built-in painting
+    variants in holder-id order, with title components using
+    `id.identifier().toLanguageKey("painting", "title")` and
+    `ChatFormatting.YELLOW`, author components using the matching `author` key
+    and `ChatFormatting.GRAY` when `hasAuthor` is true, and
+    `HangingEntityItem.appendHoverText` then appends the dimensions row. bbb now
+    maps vanilla 26.1 painting holder ids to key/size/author metadata, emits
+    localized yellow title rows, gray author rows when present, and the
+    dimensions row for `minecraft:painting`, while unknown holder ids still
+    suppress the creative random-variant fallback. Boundary: custom/datapack
+    painting variant registry remaps are still unavailable without a dynamic
+    painting-variant registry catalog.
   - Done 2026-07-09 — Advanced tooltip instrument description line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls `DataComponents.INSTRUMENT`
     after tropical-fish pattern and before `DataComponents.MAP_ID`, and

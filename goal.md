@@ -369,7 +369,7 @@ Screen Render Surfaces" 条目）：
   custom/datapack trim registry remaps, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific
-  rows, direct painting variant rows, spawner block-entity rows,
+  rows, custom/datapack painting variant registry remaps, spawner block-entity rows,
   entity-data peaceful warning, adventure-mode can-break/can-place direct block
   rows and unknown row, dynamic profile line, and intangible projectile line,
   ominous bottle amplifier line, potion effect lines, creative

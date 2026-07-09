@@ -35,6 +35,7 @@ const TOOLTIP_BLUE_TEXT_COLOR: u32 = 0x55_55_FF;
 const TOOLTIP_DARK_GRAY_TEXT_COLOR: u32 = 0x55_55_55;
 const TOOLTIP_DARK_PURPLE_TEXT_COLOR: u32 = 0xAA_00_AA;
 const TOOLTIP_RED_TEXT_COLOR: u32 = 0xFF_55_55;
+const TOOLTIP_YELLOW_TEXT_COLOR: u32 = 0xFF_FF_55;
 const DISC_FRAGMENT_5_RESOURCE_ID: &str = "minecraft:disc_fragment_5";
 const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.desc";
 const PAINTING_RESOURCE_ID: &str = "minecraft:painting";
@@ -94,6 +95,83 @@ const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
 const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
 const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
 const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 = 60;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct VanillaPaintingVariant {
+    key: &'static str,
+    width: i32,
+    height: i32,
+    has_author: bool,
+}
+
+const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[
+    painting_variant("minecraft:kebab", 1, 1, true),
+    painting_variant("minecraft:aztec", 1, 1, true),
+    painting_variant("minecraft:alban", 1, 1, true),
+    painting_variant("minecraft:aztec2", 1, 1, true),
+    painting_variant("minecraft:bomb", 1, 1, true),
+    painting_variant("minecraft:plant", 1, 1, true),
+    painting_variant("minecraft:wasteland", 1, 1, true),
+    painting_variant("minecraft:pool", 2, 1, true),
+    painting_variant("minecraft:courbet", 2, 1, true),
+    painting_variant("minecraft:sea", 2, 1, true),
+    painting_variant("minecraft:sunset", 2, 1, true),
+    painting_variant("minecraft:creebet", 2, 1, true),
+    painting_variant("minecraft:wanderer", 1, 2, true),
+    painting_variant("minecraft:graham", 1, 2, true),
+    painting_variant("minecraft:match", 2, 2, true),
+    painting_variant("minecraft:bust", 2, 2, true),
+    painting_variant("minecraft:stage", 2, 2, true),
+    painting_variant("minecraft:void", 2, 2, true),
+    painting_variant("minecraft:skull_and_roses", 2, 2, true),
+    painting_variant("minecraft:wither", 2, 2, false),
+    painting_variant("minecraft:fighters", 4, 2, true),
+    painting_variant("minecraft:pointer", 4, 4, true),
+    painting_variant("minecraft:pigscene", 4, 4, true),
+    painting_variant("minecraft:burning_skull", 4, 4, true),
+    painting_variant("minecraft:skeleton", 4, 3, true),
+    painting_variant("minecraft:earth", 2, 2, false),
+    painting_variant("minecraft:wind", 2, 2, false),
+    painting_variant("minecraft:water", 2, 2, false),
+    painting_variant("minecraft:fire", 2, 2, false),
+    painting_variant("minecraft:donkey_kong", 4, 3, true),
+    painting_variant("minecraft:baroque", 2, 2, true),
+    painting_variant("minecraft:humble", 2, 2, true),
+    painting_variant("minecraft:meditative", 1, 1, true),
+    painting_variant("minecraft:prairie_ride", 1, 2, true),
+    painting_variant("minecraft:unpacked", 4, 4, true),
+    painting_variant("minecraft:backyard", 3, 4, true),
+    painting_variant("minecraft:bouquet", 3, 3, true),
+    painting_variant("minecraft:cavebird", 3, 3, true),
+    painting_variant("minecraft:changing", 4, 2, true),
+    painting_variant("minecraft:cotan", 3, 3, true),
+    painting_variant("minecraft:endboss", 3, 3, true),
+    painting_variant("minecraft:fern", 3, 3, true),
+    painting_variant("minecraft:finding", 4, 2, true),
+    painting_variant("minecraft:lowmist", 4, 2, true),
+    painting_variant("minecraft:orb", 4, 4, true),
+    painting_variant("minecraft:owlemons", 3, 3, true),
+    painting_variant("minecraft:passage", 4, 2, true),
+    painting_variant("minecraft:pond", 3, 4, true),
+    painting_variant("minecraft:sunflowers", 3, 3, true),
+    painting_variant("minecraft:tides", 3, 3, true),
+    painting_variant("minecraft:dennis", 3, 3, true),
+];
+
+const fn painting_variant(
+    key: &'static str,
+    width: i32,
+    height: i32,
+    has_author: bool,
+) -> VanillaPaintingVariant {
+    VanillaPaintingVariant {
+        key,
+        width,
+        height,
+        has_author,
+    }
+}
+
 const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     bold: None,
     italic: None,
@@ -926,12 +1004,46 @@ fn push_painting_tooltip_lines(
 ) {
     if let Some(variant) = component_patch.painting_variant_direct.as_ref() {
         push_painting_variant_tooltip_lines(language, variant, lines);
-    } else if creative && component_patch.painting_variant_id.is_none() {
+    } else if let Some(variant_id) = component_patch.painting_variant_id {
+        if let Some(variant) = vanilla_painting_variant(variant_id) {
+            push_vanilla_painting_variant_tooltip_lines(language, variant, lines);
+        }
+    } else if creative {
         lines.push(NativeItemTooltipLine::plain(
             language.get_or_key(PAINTING_RANDOM_KEY).to_string(),
             TOOLTIP_TEXT_GRAY,
         ));
     }
+}
+
+fn push_vanilla_painting_variant_tooltip_lines(
+    language: &LanguageCatalog,
+    variant: VanillaPaintingVariant,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(title_key) = painting_variant_translation_key(variant.key, "title") {
+        lines.push(colored_component_tooltip_line(
+            language.get_or_key(&title_key).to_string(),
+            TOOLTIP_YELLOW_TEXT_COLOR,
+        ));
+    }
+    if variant.has_author {
+        if let Some(author_key) = painting_variant_translation_key(variant.key, "author") {
+            lines.push(colored_component_tooltip_line(
+                language.get_or_key(&author_key).to_string(),
+                TOOLTIP_GRAY_TEXT_COLOR,
+            ));
+        }
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(
+            language,
+            PAINTING_DIMENSIONS_KEY,
+            &variant.width.to_string(),
+            &variant.height.to_string(),
+        ),
+        TOOLTIP_TEXT_WHITE,
+    ));
 }
 
 fn push_painting_variant_tooltip_lines(
@@ -972,6 +1084,33 @@ fn push_optional_component_tooltip_line(
             runs: hud_runs_from_component(runs.unwrap_or(&[]), text, &ComponentStyle::default()),
         });
     }
+}
+
+fn colored_component_tooltip_line(text: String, color: u32) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.clone(),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs: vec![HudStyledTextRun {
+            text,
+            style: HudTextStyle::default(),
+            color: Some(color),
+        }],
+    }
+}
+
+fn vanilla_painting_variant(id: i32) -> Option<VanillaPaintingVariant> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| VANILLA_PAINTING_VARIANTS.get(index).copied())
+}
+
+fn painting_variant_translation_key(key: &str, suffix: &str) -> Option<String> {
+    let (namespace, path) = key.split_once(':')?;
+    Some(format!(
+        "painting.{namespace}.{}.{}",
+        path.replace('/', "."),
+        suffix
+    ))
 }
 
 fn push_spawner_block_entity_tooltip_lines(
@@ -1239,6 +1378,37 @@ mod tests {
         );
         assert_eq!(vanilla_banner_pattern_translation_key(43), None);
         assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
+    }
+
+    #[test]
+    fn vanilla_painting_variants_follow_26_1_bootstrap_order() {
+        assert_eq!(VANILLA_PAINTING_VARIANTS.len(), 51);
+        assert_eq!(
+            vanilla_painting_variant(0),
+            Some(painting_variant("minecraft:kebab", 1, 1, true))
+        );
+        assert_eq!(
+            vanilla_painting_variant(10),
+            Some(painting_variant("minecraft:sunset", 2, 1, true))
+        );
+        assert_eq!(
+            vanilla_painting_variant(19),
+            Some(painting_variant("minecraft:wither", 2, 2, false))
+        );
+        assert_eq!(
+            vanilla_painting_variant(50),
+            Some(painting_variant("minecraft:dennis", 3, 3, true))
+        );
+        assert_eq!(vanilla_painting_variant(51), None);
+        assert_eq!(vanilla_painting_variant(-1), None);
+        assert_eq!(
+            painting_variant_translation_key("minecraft:skull_and_roses", "author"),
+            Some("painting.minecraft.skull_and_roses.author".to_string())
+        );
+        assert_eq!(
+            painting_variant_translation_key("custom:gallery/frame", "title"),
+            Some("painting.custom.gallery.frame.title".to_string())
+        );
     }
 
     #[test]

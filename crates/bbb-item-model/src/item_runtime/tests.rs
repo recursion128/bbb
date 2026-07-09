@@ -316,6 +316,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.disc_fragment_5.desc": "Music Disc - 5",
                 "item.minecraft.painting": "Painting",
                 "painting.dimensions": "%sx%s",
+                "painting.minecraft.sunset.author": "Kristoffer Zetterstrand",
+                "painting.minecraft.sunset.title": "sunset_dense",
+                "painting.minecraft.wither.title": "Wither",
                 "painting.random": "Random variant",
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
@@ -633,7 +636,44 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 item_id: Some(2),
                 count: 1,
                 component_patch: DataComponentPatchSummary {
-                    painting_variant_id: Some(5),
+                    painting_variant_id: Some(10),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Painting", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            colored_tooltip_line("sunset_dense", TOOLTIP_TEXT_WHITE, 0xFF_FF_55),
+            colored_tooltip_line("Kristoffer Zetterstrand", TOOLTIP_TEXT_WHITE, 0xAA_AA_AA),
+            tooltip_line("2x1", TOOLTIP_TEXT_WHITE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(2),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                painting_variant_id: Some(19),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Painting", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            colored_tooltip_line("Wither", TOOLTIP_TEXT_WHITE, 0xFF_FF_55),
+            tooltip_line("2x2", TOOLTIP_TEXT_WHITE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(2),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    painting_variant_id: Some(999),
                     ..DataComponentPatchSummary::default()
                 },
             },

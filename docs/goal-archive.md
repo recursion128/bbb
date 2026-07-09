@@ -6727,16 +6727,15 @@
   provider 之前追加灰色 `descriptionId + ".desc"`，且该 item-specific hook
   自身不检查 `TooltipDisplay.shows`，native item tooltip 现在对
   `minecraft:disc_fragment_5` 输出本地化灰色 `item.minecraft.disc_fragment_5.desc`
-  行，并覆盖 creative `hide_tooltip` 时仍输出的行为。边界：painting variants、
-  smithing templates 等其它 item-specific `appendHoverText` 仍未完成。
+  行，并覆盖 creative `hide_tooltip` 时仍输出的行为。边界：其它 item-specific
+  `appendHoverText` 仍未完成。
 - [x] advanced tooltip smithing template rows（P2 item-runtime slice，2026-07-09）：
   依据 `SmithingTemplateItem.appendHoverText` 在 normal component provider 之前追加
   gray suffix、空行、gray applies-to title、blue 前导空格 applies-to、gray ingredients
   title、blue 前导空格 ingredients，native item tooltip 现在对
   `minecraft:netherite_upgrade_smithing_template` 和
   `minecraft:*_armor_trim_smithing_template` 输出对应 netherite/armor-trim
-  applies/ingredients 文案。边界：其它 item-specific hook 与 painting registry-holder
-  title/author resolution 仍未完成。
+  applies/ingredients 文案。边界：其它 item-specific hook 仍未完成。
 - [x] advanced tooltip direct painting variant rows（P2 protocol + item-runtime
   slice，2026-07-09）：依据 `HangingEntityItem.appendHoverText` 只在
   `EntityType.PAINTING` 且 `TooltipDisplay.shows(DataComponents.PAINTING_VARIANT)`
@@ -6747,8 +6746,17 @@
   decoded `minecraft:painting/variant` holder id 和 direct payload，native item
   tooltip 对 `minecraft:painting` direct variant 输出 styled title/author、dimensions
   行，应用 hidden component type id 102，并覆盖 creative random-variant fallback。
-  边界：registry-holder ids 已保存但尚未通过 painting variant registry catalog 解析
-  title/author/size，非 direct holder tooltip rows 仍未完成。
+  边界：本 slice 覆盖 direct payload；vanilla registry-holder ids 由后续 holder-id
+  painting slice 覆盖，custom/datapack painting variant remap 仍未完成。
+- [x] advanced tooltip holder-id painting variant rows（P2 item-runtime slice，2026-07-09）：
+  依据 `PaintingVariants.bootstrap` 的 26.1 built-in painting variant holder-id
+  顺序，以及 title component 使用
+  `id.identifier().toLanguageKey("painting", "title")` + yellow、author component
+  在 `hasAuthor` 时使用 matching `author` key + gray 的 vanilla 构造方式，native
+  item tooltip 现在对 `minecraft:painting` 的 vanilla holder id 输出本地化黄色
+  title、灰色 author（若存在）和 `painting.dimensions(width, height)`；unknown holder
+  id 仍抑制 creative random-variant fallback。边界：custom/datapack painting variant
+  registry remap 仍未完成，需要动态 painting-variant registry catalog。
 - [x] advanced tooltip spawner block-entity rows（P2 protocol + item-runtime
   slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 block-state/entity-data
   provider 后对 `Items.SPAWNER` / `Items.TRIAL_SPAWNER` 调用
