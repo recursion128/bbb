@@ -6613,8 +6613,17 @@
   最多输出五行 `item.container.item_count(display_name, count)`，更多非空 stack
   时输出 italic `item.container.more_items(remaining)`，native item tooltip 现在把
   decoded `minecraft:container` item templates 按 provider 顺序投影为 item-count 和
-  more rows。边界：nested display-name run styling 精确还原、递归 nested item detail
-  rows、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+  more rows。边界：nested hover-name run styling 已由后续条目覆盖；递归 nested item
+  detail rows、`TooltipDisplay` hidden-components 与其它 component provider tooltip
+  仍未完成。
+- [x] advanced tooltip container item-count hover-name styling（P2 item-runtime
+  slice，2026-07-09）：依据 `ItemContainerContents.addToTooltip` 从
+  `ItemStackTemplate` 创建 preview stack，并把 `itemStack.getHoverName()` 作为
+  `item.container.item_count` 的第一个 translatable 参数，native item tooltip 现在对
+  container item-count 行使用 run-aware localized placeholders，保留 nested
+  custom/item-name component styles，同时 count 和字面量文本保持无样式。边界：
+  当前覆盖 item-count row text projection；broader rich component events、recursive
+  nested item detail rows 和 options persistence 仍属后续。
 - [x] advanced tooltip direct jukebox song description（P2 item-runtime slice，
   2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 potion contents 之后、
   trim/enchantments/dyed-color 之前调用 `DataComponents.JUKEBOX_PLAYABLE` provider，

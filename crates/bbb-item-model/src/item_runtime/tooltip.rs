@@ -601,6 +601,22 @@ fn display_name_arg_for_component_patch(
     }
 }
 
+fn hover_name_arg_for_component_patch(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> TooltipTextArg {
+    let (name_runs, _) =
+        hover_name_source_runs_for_component_patch(language, resource_id, component_patch);
+    TooltipTextArg {
+        text: hover_name_for_component_patch(language, resource_id, component_patch),
+        runs: name_runs
+            .iter()
+            .map(|run| hud_run_from_component(run, &ComponentStyle::default()))
+            .collect(),
+    }
+}
+
 pub(super) fn push_written_book_tooltip_lines(
     language: &LanguageCatalog,
     book: &bbb_protocol::packets::WrittenBookContentSummary,
@@ -2638,9 +2654,9 @@ impl NativeItemRuntime {
         }
     }
 
-    fn template_hover_name(&self, item: &ItemStackTemplateSummary) -> Option<String> {
+    fn template_hover_name_arg(&self, item: &ItemStackTemplateSummary) -> Option<TooltipTextArg> {
         let resource_id = self.registry.as_ref()?.resource_id(item.item_id)?;
-        Some(hover_name_for_component_patch(
+        Some(hover_name_arg_for_component_patch(
             &self.language,
             resource_id,
             &item.component_patch,
@@ -2733,16 +2749,13 @@ impl NativeItemRuntime {
                 continue;
             }
             line_count += 1;
-            let Some(item_name) = self.template_hover_name(item) else {
+            let Some(item_name) = self.template_hover_name_arg(item) else {
                 continue;
             };
-            lines.push(NativeItemTooltipLine::plain(
-                translate_with_two_args(
-                    &self.language,
-                    "item.container.item_count",
-                    &item_name,
-                    &item.count.to_string(),
-                ),
+            lines.push(translated_tooltip_line_with_args(
+                &self.language,
+                "item.container.item_count",
+                &[item_name, TooltipTextArg::plain(item.count.to_string())],
                 TOOLTIP_TEXT_WHITE,
             ));
         }

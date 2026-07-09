@@ -363,7 +363,8 @@ Screen Render Surfaces" 条目）：
   billboard rendering、advanced tooltip component-specific full
   parity/persistence beyond beehive bees/honey, dyed-color lines, and firework
   flight/direct/grouped explosion lines, charged-projectiles display-name
-  headers/detail rows, and container-loot unknown-content line, container item-count/more rows,
+  headers/detail rows, and container-loot unknown-content line, container item-count
+  hover-name/more rows,
   jukebox song descriptions, armor trim rows, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific

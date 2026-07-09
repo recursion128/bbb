@@ -1452,9 +1452,19 @@ When an agent does any of the following, update this file in the same slice:
     rows, then emits italic `item.container.more_items(remaining)` when more
     non-empty stacks are present. bbb now projects decoded
     `minecraft:container` item templates into those rows after container-loot
-    and before written-book. Boundary: exact nested display-name run styling,
-    recursive nested item detail rows, hidden-components filtering, and
-    remaining component providers remain future work.
+    and before written-book. Boundary: nested hover-name run styling is covered
+    by the later 2026-07-09 item below; recursive nested item detail rows,
+    hidden-components filtering, and remaining component providers remain future
+    work.
+  - Done 2026-07-09 — Advanced tooltip container item-count hover-name styling.
+    Vanilla anchors: `ItemContainerContents.addToTooltip` creates each preview
+    stack from its `ItemStackTemplate` and passes `itemStack.getHoverName()` as
+    the first `item.container.item_count` translatable argument. bbb now emits
+    those item-count rows with run-aware localized placeholders, preserving
+    nested custom/item-name component styles while keeping the count and literal
+    text unstyled. Boundary: this covers the item-count row text projection;
+    broader rich component events, recursive nested item detail rows, and
+    options persistence remain future work.
   - Done 2026-07-09 — Advanced tooltip direct jukebox song description.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.JUKEBOX_PLAYABLE, ...)` after potion contents

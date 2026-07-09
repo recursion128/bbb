@@ -67,6 +67,21 @@ fn charged_projectile_header_line(
     }
 }
 
+fn container_item_count_line(
+    text: &str,
+    name_runs: Vec<HudStyledTextRun>,
+    count: i32,
+) -> NativeItemTooltipLine {
+    let mut runs = name_runs;
+    runs.push(HudStyledTextRun::plain(" x"));
+    runs.push(HudStyledTextRun::plain(count.to_string()));
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs,
+    }
+}
+
 fn display_name_bracket_run(text: &str) -> HudStyledTextRun {
     HudStyledTextRun {
         text: text.to_string(),
@@ -1250,13 +1265,84 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         }),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
-            tooltip_line("Test Combo x1", TOOLTIP_TEXT_WHITE),
-            tooltip_line("Test Combo x2", TOOLTIP_TEXT_WHITE),
-            tooltip_line("Test Combo x3", TOOLTIP_TEXT_WHITE),
-            tooltip_line("Test Combo x4", TOOLTIP_TEXT_WHITE),
-            tooltip_line("Test Combo x5", TOOLTIP_TEXT_WHITE),
+            container_item_count_line(
+                "Test Combo x1",
+                vec![HudStyledTextRun::plain("Test Combo")],
+                1
+            ),
+            container_item_count_line(
+                "Test Combo x2",
+                vec![HudStyledTextRun::plain("Test Combo")],
+                2
+            ),
+            container_item_count_line(
+                "Test Combo x3",
+                vec![HudStyledTextRun::plain("Test Combo")],
+                3
+            ),
+            container_item_count_line(
+                "Test Combo x4",
+                vec![HudStyledTextRun::plain("Test Combo")],
+                4
+            ),
+            container_item_count_line(
+                "Test Combo x5",
+                vec![HudStyledTextRun::plain("Test Combo")],
+                5
+            ),
             italic_plain_tooltip_line("and 1 more...", TOOLTIP_TEXT_WHITE),
             lore_line("After container items"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                container_items: vec![ItemStackTemplateSummary {
+                    item_id: 0,
+                    count: 2,
+                    component_patch: DataComponentPatchSummary {
+                        custom_name: Some("Styled Item".to_string()),
+                        custom_name_styled: Some(vec![
+                            bbb_protocol::StyledTextRun {
+                                text: "Styled".to_string(),
+                                style: bbb_protocol::ComponentStyle {
+                                    color: Some(0x55_FF_FF),
+                                    bold: Some(true),
+                                    ..bbb_protocol::ComponentStyle::default()
+                                },
+                            },
+                            bbb_protocol::StyledTextRun {
+                                text: " Item".to_string(),
+                                style: bbb_protocol::ComponentStyle::default(),
+                            },
+                        ]),
+                        ..DataComponentPatchSummary::default()
+                    },
+                }],
+                lore: vec!["After styled container item".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            container_item_count_line(
+                "Styled Item x2",
+                vec![
+                    HudStyledTextRun {
+                        text: "Styled".to_string(),
+                        style: HudTextStyle {
+                            bold: true,
+                            ..HudTextStyle::default()
+                        },
+                        color: Some(0x55_FF_FF),
+                    },
+                    HudStyledTextRun::plain(" Item"),
+                ],
+                2,
+            ),
+            lore_line("After styled container item"),
         ])
     );
     assert_eq!(
