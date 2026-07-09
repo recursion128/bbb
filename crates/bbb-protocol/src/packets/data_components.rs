@@ -53,6 +53,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub unbreakable: bool,
     #[serde(default)]
+    pub ominous_bottle_amplifier: Option<i32>,
+    #[serde(default)]
     pub custom_name: Option<String>,
     /// Styled-run projection of `custom_name` (same decode, style kept);
     /// `custom_name` is its plain-text concatenation.
@@ -603,6 +605,9 @@ fn decode_typed_data_component_patch_summary(
             22 => {
                 summary.intangible_projectile = true;
                 skip_nbt_tag_from_decoder(decoder)?;
+            }
+            63 => {
+                summary.ominous_bottle_amplifier = Some(decoder.read_var_i32()?);
             }
             6 => {
                 let runs = decode_styled_component_summary_from_decoder(decoder)?;
@@ -2305,7 +2310,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(10);
+        payload.write_var_i32(11);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -2326,6 +2331,8 @@ mod tests {
         payload.write_f32(1.5);
         payload.write_bool(true);
         payload.write_string("minecraft:ender_pearl");
+        payload.write_var_i32(63);
+        payload.write_var_i32(3);
         payload.write_var_i32(79);
         payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(3);
@@ -2337,8 +2344,8 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 10,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 22, 26, 79],
+                added: 11,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 22, 26, 63, 79],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
@@ -2351,6 +2358,7 @@ mod tests {
                 intangible_projectile: true,
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                ominous_bottle_amplifier: Some(3),
                 container_loot: true,
                 ..DataComponentPatchSummary::default()
             }

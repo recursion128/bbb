@@ -1149,9 +1149,9 @@ When an agent does any of the following, update this file in the same slice:
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, and intangible projectile line,
-    F3+I full local entity saveWithoutId parity, full vanilla profiler section
-    coverage, profiling metrics recorder/output,
+    armor trim rows, dynamic profile line, intangible projectile line, and
+    ominous bottle amplifier line, F3+I full local entity saveWithoutId parity,
+    full vanilla profiler section coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
@@ -1298,6 +1298,18 @@ When an agent does any of the following, update this file in the same slice:
     presence and projects the gray Intangible line before Unbreakable.
     Boundary: `TooltipDisplay` hiding, attribute tooltip parity, and remaining
     component providers remain future work.
+  - Done 2026-07-09 — Advanced tooltip ominous bottle amplifier line. Vanilla
+    anchors: `DataComponents.OMINOUS_BOTTLE_AMPLIFIER` uses
+    `OminousBottleAmplifier.STREAM_CODEC` as a VarInt value 0..4; `ItemStack`
+    calls that provider after unbreakable and before suspicious stew/block-state;
+    `OminousBottleAmplifier.addToTooltip` delegates to
+    `PotionContents.addPotionTooltip` with BAD_OMEN, 120000 ticks, amplifier
+    value, no particles/icon, and category formatting (NEUTRAL -> blue).
+    bbb now records the decoded amplifier and emits the blue localized
+    `Bad Omen <potency> (01:40:00)` line at default 20 TPS. Boundary: dynamic
+    non-20-TPS tooltip duration, generic potion/effect registry names,
+    `TooltipDisplay` hiding, attribute tooltip parity, and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2434,7 +2446,8 @@ When an agent does any of the following, update this file in the same slice:
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, container
     item-count/more rows, direct jukebox song descriptions, direct armor trim
-    rows, dynamic profile line, and intangible projectile line.
+    rows, dynamic profile line, intangible projectile line, and ominous bottle
+    amplifier line.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2701,8 +2714,8 @@ When an agent does any of the following, update this file in the same slice:
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, and intangible projectile line are
-    covered by later entries.
+    armor trim rows, dynamic profile line, intangible projectile line, and
+    ominous bottle amplifier line are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3382,9 +3395,9 @@ When an agent does any of the following, update this file in the same slice:
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, dynamic profile line, and intangible projectile line, F3+I
-    full local entity saveWithoutId parity, full vanilla profiler section coverage,
-    profiling metrics recorder/output,
+    armor trim rows, dynamic profile line, intangible projectile line, and
+    ominous bottle amplifier line, F3+I full local entity saveWithoutId parity,
+    full vanilla profiler section coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining actions/subscreens.

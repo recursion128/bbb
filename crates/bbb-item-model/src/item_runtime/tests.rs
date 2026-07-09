@@ -229,6 +229,10 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.test_combo": "Test Combo",
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
+                "effect.minecraft.bad_omen": "Bad Omen",
+                "potion.potency.3": "IV",
+                "potion.withAmplifier": "%s %s",
+                "potion.withDuration": "%s (%s)",
                 "item.durability": "Durability: %s / %s",
                 "item.components": "%s component(s)",
                 "component.profile.dynamic": "Dynamic",
@@ -595,6 +599,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             component_patch: DataComponentPatchSummary {
                 intangible_projectile: true,
                 unbreakable: true,
+                ominous_bottle_amplifier: Some(3),
                 lore: vec!["Before unit components".to_string()],
                 ..DataComponentPatchSummary::default()
             },
@@ -604,6 +609,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             lore_line("Before unit components"),
             tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Bad Omen IV (01:40:00)", TOOLTIP_TEXT_BLUE),
         ])
     );
     assert_eq!(

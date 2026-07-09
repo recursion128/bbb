@@ -17,6 +17,8 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
     color: Some(0xAA_00_AA),
     click_event: None,
 };
+const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
+const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
@@ -259,6 +261,46 @@ fn push_intangible_projectile_tooltip_line(
         language.get_or_key("item.intangible").to_string(),
         TOOLTIP_TEXT_GRAY,
     ));
+}
+
+fn push_ominous_bottle_tooltip_lines(
+    language: &LanguageCatalog,
+    amplifier: Option<i32>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(amplifier) = amplifier else {
+        return;
+    };
+
+    let mut effect = language.get_or_key("effect.minecraft.bad_omen").to_string();
+    if amplifier > 0 {
+        let potency = language
+            .get_or_key(&format!("potion.potency.{amplifier}"))
+            .to_string();
+        effect = translate_with_two_args(language, "potion.withAmplifier", &effect, &potency);
+    }
+
+    let duration = format_tick_duration(
+        OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS,
+        DEFAULT_TOOLTIP_TICKRATE,
+    );
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(language, "potion.withDuration", &effect, &duration),
+        TOOLTIP_TEXT_BLUE,
+    ));
+}
+
+fn format_tick_duration(ticks: i32, tickrate: f32) -> String {
+    let mut seconds = ((ticks as f32) / tickrate).floor() as i32;
+    let mut minutes = seconds / 60;
+    seconds %= 60;
+    let hours = minutes / 60;
+    minutes %= 60;
+    if hours > 0 {
+        format!("{hours:02}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes:02}:{seconds:02}")
+    }
 }
 
 fn push_dyed_color_tooltip_lines(
@@ -902,6 +944,11 @@ impl NativeItemRuntime {
                 TOOLTIP_TEXT_BLUE,
             ));
         }
+        push_ominous_bottle_tooltip_lines(
+            &self.language,
+            stack.component_patch.ominous_bottle_amplifier,
+            &mut lines,
+        );
         push_block_state_tooltip_lines(
             &self.language,
             &stack.component_patch.block_state_properties,

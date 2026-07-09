@@ -6547,3 +6547,14 @@
   `minecraft:intangible_projectile` presence，native item tooltip 输出灰色
   `Intangible` 行。边界：`TooltipDisplay` hidden-components、attribute tooltip parity
   与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip ominous bottle amplifier line（P2 protocol +
+  item-runtime slice，2026-07-09）：依据
+  `DataComponents.OMINOUS_BOTTLE_AMPLIFIER` 的 VarInt network codec、
+  `ItemStack.addDetailsToTooltip` 在 unbreakable 之后调用该 provider，以及
+  `OminousBottleAmplifier.addToTooltip` 通过 `PotionContents.addPotionTooltip`
+  输出 BAD_OMEN 120000 tick、amplifier value、NEUTRAL category 蓝色行，protocol
+  summary 现在记录 decoded amplifier，native item tooltip 以默认 20 TPS 投影为
+  蓝色 `Bad Omen <potency> (01:40:00)` 行。边界：非 20 TPS 动态 tooltip
+  duration、generic potion/effect registry names、`TooltipDisplay`
+  hidden-components、attribute tooltip parity 与其它 component provider tooltip
+  仍未完成。
