@@ -16,9 +16,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -3590,6 +3590,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
