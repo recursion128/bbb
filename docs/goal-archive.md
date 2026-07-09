@@ -6259,3 +6259,12 @@
   clipboard write 失败时不删除搜索文本。边界：Ctrl 之外的平台 edit-shortcut
   quirk、Alt-modifier suppression、鼠标点击/拖拽选区、narration、scrollbar
   dragging 与完整 vanilla widget sprite styling 仍待后续 polish。
+- [x] debug overlay DebugOptionsScreen bordered search EditBox styling（P2
+  renderer slice，2026-07-09）：依据 `EditBox` 默认 bordered、
+  `DebugOptionsScreen` 创建 20px 高 search box，以及
+  `EditBox.extractWidgetRenderState` 在文字前 blit active/focused
+  `widget/text_field_highlighted` sprite 且 bordered text position 为 `x + 4` /
+  centered-y，renderer 现在把 DebugOptionsScreen search box 绘制为 1px light
+  outer frame + dark inner fill，并保留现有 bordered text origin、cursor 与
+  selection。边界：精确 vanilla text-field sprite/nine-slice、鼠标点击/拖拽选区、
+  narration、scrollbar dragging 与完整 widget sprite styling 仍待后续 polish。

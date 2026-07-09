@@ -340,6 +340,7 @@ Screen Render Surfaces" 条目）：
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、
   DebugOptionsScreen EditBox cursor/selection polish、
   DebugOptionsScreen EditBox clipboard shortcuts、
+  DebugOptionsScreen bordered search EditBox styling、
   ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text

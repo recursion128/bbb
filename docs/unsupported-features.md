@@ -1262,6 +1262,17 @@ When an agent does any of the following, update this file in the same slice:
     platform edit-shortcut quirks beyond Ctrl, Alt-modifier suppression, mouse
     click/drag selection, narration, scrollbar dragging, and full vanilla
     widget sprite styling remain future polish.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen bordered search
+    EditBox styling. Vanilla anchors: `EditBox` is bordered by default,
+    `DebugOptionsScreen` creates the search box at height 20, and
+    `EditBox.extractWidgetRenderState` blits the active/focused
+    `widget/text_field_highlighted` sprite before drawing text at the bordered
+    `x + 4` / centered-y text position. bbb now draws the DebugOptionsScreen
+    search box as a bordered focused text field with a 1px light outer frame,
+    dark inner fill, the existing bordered text origin, cursor, and selection.
+    Boundary: exact vanilla text-field sprites/nine-slice texture, mouse
+    click/drag selection, narration, scrollbar dragging, and full widget sprite
+    styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it

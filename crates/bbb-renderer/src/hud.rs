@@ -6272,15 +6272,27 @@ fn push_hud_debug_options_search_box<'a>(
     let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
         - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
     let y = 6;
+    let (outer, inner) = hud_debug_options_search_box_rects(surface_size);
     push_hud_debug_tinted_rect(
         vertices,
         commands,
         white_pixel,
         surface_size,
-        x,
-        y,
-        HUD_DEBUG_OPTIONS_SEARCH_WIDTH as u32,
-        HUD_DEBUG_OPTIONS_SEARCH_HEIGHT as u32,
+        outer.0,
+        outer.1,
+        outer.2,
+        outer.3,
+        [0.95, 0.95, 0.95, 1.0],
+    );
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        inner.0,
+        inner.1,
+        inner.2,
+        inner.3,
         [0.0, 0.0, 0.0, 0.75],
     );
     let input = HudInventoryTextInputDecoration {
@@ -6320,6 +6332,25 @@ fn push_hud_debug_options_search_box<'a>(
         input,
         ((x + 4) as f32, (y + 6) as f32),
     );
+}
+
+fn hud_debug_options_search_box_rects(
+    surface_size: PhysicalSize<u32>,
+) -> ((i32, i32, u32, u32), (i32, i32, u32, u32)) {
+    let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
+        - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
+    let y = 6;
+    let width = HUD_DEBUG_OPTIONS_SEARCH_WIDTH.max(0) as u32;
+    let height = HUD_DEBUG_OPTIONS_SEARCH_HEIGHT.max(0) as u32;
+    (
+        (x, y, width, height),
+        (
+            x + 1,
+            y + 1,
+            width.saturating_sub(2),
+            height.saturating_sub(2),
+        ),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -14626,6 +14657,15 @@ mod tests {
         assert_eq!(scroller.width, 6);
         assert_eq!(scroller.height, 32);
         assert_eq!(hud_debug_options_scrollbar_rects(surface, 0, 3), None);
+    }
+
+    #[test]
+    fn debug_options_search_box_rects_match_bordered_edit_box_metrics() {
+        let surface = PhysicalSize::new(420, 240);
+        let (outer, inner) = hud_debug_options_search_box_rects(surface);
+
+        assert_eq!(outer, (269, 6, 116, 20));
+        assert_eq!(inner, (270, 7, 114, 18));
     }
 
     #[test]
