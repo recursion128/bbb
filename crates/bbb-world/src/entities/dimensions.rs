@@ -1661,6 +1661,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (34, pick(1.375, 0.5625, 0.0)),   // minecraft:dark_oak_chest_boat
     (35, pick(0.9, 0.6, 0.0)),        // minecraft:dolphin
     (36, pick(1.3964844, 1.5, 0.0)),  // minecraft:donkey
+    (37, pick(1.0, 1.0, 0.0)),        // minecraft:dragon_fireball
     (38, pick(0.6, 1.95, 0.0)),       // minecraft:drowned
     (40, pick(1.9975, 1.9975, 0.0)),  // minecraft:elder_guardian
     (41, pick(0.6, 2.9, 0.0)),        // minecraft:enderman
