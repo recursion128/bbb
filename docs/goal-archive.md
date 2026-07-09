@@ -6444,3 +6444,11 @@
   `Bees: n / 3` 行，并保持在 lore 之前。边界：协议摘要当前只有 occupant count，
   不能区分“存在但为空”的 bees component，所以 `Bees: 0 / 3` 仍待后续；其它
   component provider tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip dyed-color line（P2 item-runtime slice，2026-07-09）：
+  依据 `ItemStack.addDetailsToTooltip` 在 enchantments 之后、profile/lore 之前调用
+  `DataComponents.DYED_COLOR` provider，以及 `DyedItemColor.addToTooltip` 在普通模式
+  输出灰色斜体 `item.dyed`、advanced 模式输出灰色 `item.color(#RRGGBB)`，native
+  item tooltip 现在把 decoded `minecraft:dyed_color` component summary 投影为
+  `Dyed` 或 `Color: #RRGGBB`，并保持在 lore 和 advanced registry-id/component-count
+  前。边界：其它 component provider tooltip、`TooltipDisplay` hidden-components 与
+  options 持久化仍未完成。

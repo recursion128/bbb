@@ -25,6 +25,21 @@ fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
     }
 }
 
+fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(color),
+        }],
+    }
+}
+
 /// A hover-name line: vanilla `getStyledHoverName` wraps the name in the
 /// rarity colour and italicizes custom names.
 fn name_line(text: &str, tint: [f32; 4], color: u32, italic: bool) -> NativeItemTooltipLine {
@@ -201,6 +216,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.durability": "Durability: %s / %s",
                 "item.components": "%s component(s)",
                 "container.beehive.bees": "Bees: %s / %s",
+                "item.dyed": "Dyed",
+                "item.color": "Color: %s",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -509,6 +526,43 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Bees: 2 / 3", TOOLTIP_TEXT_GRAY),
             lore_line("After bees"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![44],
+                dyed_color: Some(0x12_3A_BC),
+                lore: vec!["After dyed".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            lore_line("After dyed"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_options(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![44],
+                    dyed_color: Some(0x12_3A_BC),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            true,
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Color: #123ABC", TOOLTIP_TEXT_GRAY),
+            tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
+            tooltip_line("14 component(s)", TOOLTIP_TEXT_DARK_GRAY),
         ])
     );
     assert_eq!(

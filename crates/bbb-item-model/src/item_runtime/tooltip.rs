@@ -188,6 +188,38 @@ fn push_bees_tooltip_lines(
     ));
 }
 
+fn push_dyed_color_tooltip_lines(
+    language: &LanguageCatalog,
+    dyed_color: Option<i32>,
+    advanced: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(dyed_color) = dyed_color else {
+        return;
+    };
+    if advanced {
+        let rgb = (dyed_color as u32) & 0x00FF_FFFF;
+        lines.push(NativeItemTooltipLine::plain(
+            translate_with_first_arg(language, "item.color", &format!("#{rgb:06X}")),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    } else {
+        let text = language.get_or_key("item.dyed").to_string();
+        lines.push(NativeItemTooltipLine {
+            text: text.clone(),
+            tint: TOOLTIP_TEXT_GRAY,
+            runs: vec![HudStyledTextRun {
+                text,
+                style: HudTextStyle {
+                    italic: true,
+                    ..HudTextStyle::default()
+                },
+                color: Some(0xAA_AA_AA),
+            }],
+        });
+    }
+}
+
 pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
     let template = language.get_or_key(key);
     if template.contains("%1$s") {
@@ -355,6 +387,12 @@ impl NativeItemRuntime {
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
+        push_dyed_color_tooltip_lines(
+            &self.language,
+            stack.component_patch.dyed_color,
+            advanced,
+            &mut lines,
+        );
         // Vanilla `ItemLore.styledLines`: every lore line gets `LORE_STYLE`
         // (DARK_PURPLE + italic) merged under its own style keys.
         lines.extend(

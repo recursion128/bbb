@@ -1146,7 +1146,7 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond occupied
-    beehive bees,
+    beehive bees and dyed-color lines,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1180,6 +1180,15 @@ When an agent does any of the following, update this file in the same slice:
     bees component cannot yet render `Bees: 0 / 3`; remaining component
     providers, `TooltipDisplay` hiding, and option persistence remain future
     work.
+  - Done 2026-07-09 — Advanced tooltip dyed-color line. Vanilla anchors:
+    `ItemStack.addDetailsToTooltip` calls `addToTooltip(DataComponents.DYED_COLOR, ...)`
+    after enchantments and before profile/lore; `DyedItemColor.addToTooltip`
+    emits gray italic `item.dyed` in normal mode and gray
+    `item.color(#RRGGBB)` in advanced mode. bbb now projects decoded
+    `minecraft:dyed_color` summaries as `Dyed` before lore in normal tooltips
+    and as `Color: #RRGGBB` before the advanced registry-id/component-count
+    lines. Boundary: remaining component providers, `TooltipDisplay` hiding,
+    and options persistence remain future work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,
@@ -2300,7 +2309,8 @@ When an agent does any of the following, update this file in the same slice:
     before the event loop; F3+H still toggles that runtime state and emits the
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; component-provider
-    tooltip parity remains open except for the later occupied beehive bees line.
+    tooltip parity remains open except for the later occupied beehive bees and
+    dyed-color lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2563,8 +2573,8 @@ When an agent does any of the following, update this file in the same slice:
     Boundary at the time: effective component-count display and other
     component-specific advanced tooltip additions were not modeled yet; startup
     configuration is tracked separately because bbb does not expose vanilla's
-    in-game options UI. Effective component-count display and occupied beehive
-    bees lines are covered by later entries.
+    in-game options UI. Effective component-count display, occupied beehive
+    bees lines, and dyed-color lines are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3241,7 +3251,7 @@ When an agent does any of the following, update this file in the same slice:
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond occupied
-    beehive bees, F3+I full
+    beehive bees and dyed-color lines, F3+I full
     local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
