@@ -13,14 +13,14 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID,
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -202,6 +202,8 @@ const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 const ENTITY_DEFAULT_AIR_SUPPLY: i32 = 300;
+const AXOLOTL_TOTAL_AIR_SUPPLY: i32 = 6000;
+const DOLPHIN_TOTAL_AIR_SUPPLY: i32 = 4800;
 const ENTITY_DEFAULT_FALL_DISTANCE: f64 = 0.0;
 const ENTITY_DEFAULT_FIRE_TICKS: i16 = 0;
 const ENTITY_DEFAULT_INVULNERABLE: bool = false;
@@ -242,6 +244,10 @@ const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const GOAT_DEFAULT_SCREAMING: bool = false;
 const GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
 const GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
+const DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
+const DOLPHIN_MOISTNESS_DATA_ID: u8 = 19;
+const DOLPHIN_DEFAULT_GOT_FISH: bool = false;
+const DOLPHIN_DEFAULT_MOISTNESS: i32 = 2400;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3582,7 +3588,7 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
     ));
     fields.push(format!("Fire: {ENTITY_DEFAULT_FIRE_TICKS}s"));
     let air = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID)
-        .unwrap_or(ENTITY_DEFAULT_AIR_SUPPLY);
+        .unwrap_or_else(|| debug_entity_default_air_supply(entity.entity_type_id));
     fields.push(format!("Air: {}s", air as i16));
     let on_ground = entity.on_ground.unwrap_or(false);
     fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
@@ -3670,6 +3676,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_COD_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_dolphin_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_COW_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -3807,11 +3818,20 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
     }
 }
 
+fn debug_entity_default_air_supply(entity_type_id: i32) -> i32 {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID => AXOLOTL_TOTAL_AIR_SUPPLY,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID => DOLPHIN_TOTAL_AIR_SUPPLY,
+        _ => ENTITY_DEFAULT_AIR_SUPPLY,
+    }
+}
+
 fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let flags = debug_entity_data_byte_present(entity, MOB_FLAGS_DATA_ID).unwrap_or(0);
+    let can_pick_up_loot = debug_mob_default_can_pick_up_loot(entity.entity_type_id);
     fields.push(format!(
         "CanPickUpLoot: {}",
-        debug_snbt_bool(MOB_DEFAULT_CAN_PICK_UP_LOOT)
+        debug_snbt_bool(can_pick_up_loot)
     ));
     fields.push(format!(
         "PersistenceRequired: {}",
@@ -3823,6 +3843,13 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     ));
     if flags & MOB_FLAG_NO_AI != 0 {
         fields.push("NoAI: 1b".to_string());
+    }
+}
+
+fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
+        _ => MOB_DEFAULT_CAN_PICK_UP_LOOT,
     }
 }
 
@@ -3977,6 +4004,15 @@ fn debug_push_goat_additional_save_data(entity: &EntityState, fields: &mut Vec<S
     ));
     fields.push(format!("HasLeftHorn: {}", debug_snbt_bool(has_left_horn)));
     fields.push(format!("HasRightHorn: {}", debug_snbt_bool(has_right_horn)));
+}
+
+fn debug_push_dolphin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let got_fish = debug_entity_data_bool_present(entity, DOLPHIN_GOT_FISH_DATA_ID)
+        .unwrap_or(DOLPHIN_DEFAULT_GOT_FISH);
+    let moistness = debug_entity_data_int_present(entity, DOLPHIN_MOISTNESS_DATA_ID)
+        .unwrap_or(DOLPHIN_DEFAULT_MOISTNESS);
+    fields.push(format!("GotFish: {}", debug_snbt_bool(got_fish)));
+    fields.push(format!("Moistness: {moistness}"));
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

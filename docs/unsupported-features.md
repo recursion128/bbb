@@ -197,8 +197,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state needs additional
   local owners, private timer/reference projection, registry-backed variant
-  projection, codec-backed SNBT projection, or entity-specific age, container,
-  and equipment projection before it can be emitted.
+  projection, codec-backed SNBT projection, entity-specific constructor/default
+  save values, or entity-specific age, container, and equipment projection
+  before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.
