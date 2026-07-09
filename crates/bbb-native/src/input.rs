@@ -8,9 +8,9 @@ use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
-        vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -207,6 +207,8 @@ const SLIME_DEFAULT_WAS_ON_GROUND: bool = false;
 const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
 const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
+const BAT_FLAGS_DATA_ID: u8 = 16;
+const BAT_DEFAULT_FLAGS: i8 = 0;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3524,6 +3526,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_snow_golem_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_BAT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_bat_additional_save_data(entity, fields);
+        }
         _ => {}
     }
 }
@@ -3578,6 +3584,12 @@ fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut
         "Pumpkin: {}",
         debug_snbt_bool(flags & SNOW_GOLEM_PUMPKIN_FLAG != 0)
     ));
+}
+
+fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags =
+        debug_entity_data_byte_present(entity, BAT_FLAGS_DATA_ID).unwrap_or(BAT_DEFAULT_FLAGS);
+    fields.push(format!("BatFlags: {flags}b"));
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {
