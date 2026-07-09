@@ -9,9 +9,9 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
-        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-        VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
-        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
@@ -239,6 +239,15 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
+const ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 = 9;
+const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+const ABSTRACT_ARROW_FLAG_CRIT: i8 = 1;
+const ABSTRACT_ARROW_DEFAULT_LIFE: i16 = 0;
+const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
+const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
+const ABSTRACT_ARROW_DEFAULT_DAMAGE: f64 = 2.0;
+const ABSTRACT_ARROW_DEFAULT_SOUND_EVENT: &str = "minecraft:entity.arrow.hit";
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
@@ -4026,6 +4035,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
             debug_push_projectile_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_ARROW_ID => {
+            debug_push_projectile_additional_save_data(fields);
+            debug_push_abstract_arrow_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             debug_push_projectile_additional_save_data(fields);
             debug_push_shulker_bullet_additional_save_data(fields);
@@ -4216,6 +4229,31 @@ fn debug_push_evoker_fangs_additional_save_data(fields: &mut Vec<String>) {
 
 fn debug_push_projectile_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("HasBeenShot: {}", debug_snbt_bool(false)));
+}
+
+fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID).unwrap_or(0);
+    let in_ground =
+        debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID).unwrap_or(false);
+    let pierce_level =
+        debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID).unwrap_or(0);
+    let damage = debug_snbt_double(ABSTRACT_ARROW_DEFAULT_DAMAGE)
+        .expect("finite abstract arrow default damage");
+
+    fields.push(format!("life: {ABSTRACT_ARROW_DEFAULT_LIFE}s"));
+    fields.push(format!("shake: {ABSTRACT_ARROW_DEFAULT_SHAKE}b"));
+    fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
+    fields.push(format!("pickup: {ABSTRACT_ARROW_DEFAULT_PICKUP}b"));
+    fields.push(format!("damage: {damage}"));
+    fields.push(format!(
+        "crit: {}",
+        debug_snbt_bool(flags & ABSTRACT_ARROW_FLAG_CRIT != 0)
+    ));
+    fields.push(format!("PierceLevel: {pierce_level}b"));
+    fields.push(format!(
+        "SoundEvent: {}",
+        debug_snbt_string(ABSTRACT_ARROW_DEFAULT_SOUND_EVENT)
+    ));
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(
