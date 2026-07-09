@@ -376,7 +376,8 @@ Screen Render Surfaces" 条目）：
   custom/datapack potion/effect registry remaps, creative suspicious-stew
   effect lines, map-id lines,
   instrument description lines, tropical-fish pattern lines, banner-pattern rows,
-  pot-decoration rows、F3+I full local entity saveWithoutId parity、
+  pot-decoration rows、remaining F3+I full local entity saveWithoutId parity
+  beyond local creeper Mob/Creeper save fields、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，

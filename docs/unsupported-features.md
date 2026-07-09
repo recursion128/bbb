@@ -1160,7 +1160,8 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper Mob/Creeper save fields,
+    full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
@@ -2755,6 +2756,18 @@ When an agent does any of the following, update this file in the same slice:
     escapes. Boundary: protocol currently stores only the component summary
     text for entity metadata, so styled/compound component NBT fidelity remains
     future work with the broader component owner.
+  - Done 2026-07-09 — Debug overlay F3+I local creeper save fields.
+    Vanilla anchors: `Mob.addAdditionalSaveData` writes `CanPickUpLoot`,
+    `PersistenceRequired`, `LeftHanded`, and true `NoAI` before subclass data;
+    `Creeper.addAdditionalSaveData` then writes `powered`, `Fuse`,
+    `ExplosionRadius`, and `ignited`. bbb now appends these fields to
+    authorized Shift+F3+I local creeper recreate commands, deriving
+    `LeftHanded`/`NoAI` from `Mob.DATA_MOB_FLAGS_ID` (15), powered/ignited from
+    creeper metadata ids 17/18, and using vanilla defaults for client-unowned
+    pickup/persistence/fuse/radius fields. Boundary: non-default pickup,
+    persistence, drop chances, leash/home, loot-table, custom data, passengers,
+    and other entity-specific `addAdditionalSaveData` fields still need local
+    state owners before full `saveWithoutId` parity.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -3775,7 +3788,8 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper Mob/Creeper save fields,
+    full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full

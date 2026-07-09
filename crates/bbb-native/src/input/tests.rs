@@ -2619,7 +2619,7 @@ fn shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback()
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
+fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -2680,6 +2680,21 @@ fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
                 serializer_id: 1,
                 value: EntityDataValueKind::Int(42),
             },
+            ProtocolEntityDataValue {
+                data_id: MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
+            },
+            ProtocolEntityDataValue {
+                data_id: CREEPER_POWERED_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: CREEPER_IGNITED_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -2717,7 +2732,9 @@ fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
              {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 123s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, CustomName: 'Bob \"Prime\"', \
-             CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
+             CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42, \
+             CanPickUpLoot: 0b, PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
+             powered: 1b, Fuse: 30s, ExplosionRadius: 3b, ignited: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());

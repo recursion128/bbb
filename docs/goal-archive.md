@@ -6228,6 +6228,17 @@
   `PortalCooldown` 后、`CustomNameVisible` 前，并使用与 tag-query SNBT 一致的
   string quote/escape 规则。边界：协议当前只保存 entity metadata component 的
   summary text；styled/compound component NBT 保真仍归后续 component owner。
+- [x] debug overlay F3+I local creeper save fields（P2 native slice，
+  2026-07-09）：依据 `Mob.addAdditionalSaveData` 先写
+  `CanPickUpLoot`、`PersistenceRequired`、`LeftHanded` 和 true `NoAI`，以及
+  `Creeper.addAdditionalSaveData` 继续写 `powered`、`Fuse`、
+  `ExplosionRadius`、`ignited`。native 现在对授权 Shift+F3+I 本地
+  creeper recreate command 追加这些字段：`LeftHanded`/`NoAI` 来自
+  `Mob.DATA_MOB_FLAGS_ID` 15，powered/ignited 来自 creeper metadata 17/18，
+  pickup/persistence/fuse/radius 使用原版默认值。边界：非默认
+  pickup/persistence、drop chances、leash/home、loot table、custom data、
+  passengers 以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state
+  owner 后才能关闭完整 `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈
