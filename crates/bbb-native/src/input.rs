@@ -119,6 +119,7 @@ const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET: i32 = 56;
+const PAUSE_SCREEN_DISCONNECT_ROW_TOP_OFFSET: i32 = 104;
 const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
 const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
 const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
@@ -350,6 +351,7 @@ pub(crate) struct ClientInputState {
     advancement_is_scrolling: bool,
     stats_screen_cursor_position: Option<(i32, i32)>,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
+    pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
     debug_profile_store_path: Option<PathBuf>,
     debug_modifier_down: bool,
@@ -1295,6 +1297,7 @@ impl ClientInputState {
 
     pub(crate) fn open_debug_pause_screen_without_menu(&mut self) {
         self.debug_options_screen = None;
+        self.pause_screen_disconnect_requested = false;
         self.debug_pause_screen = Some(DebugPauseScreenState {
             show_pause_menu: false,
             cursor_position: None,
@@ -1303,6 +1306,7 @@ impl ClientInputState {
 
     pub(crate) fn open_debug_pause_screen_with_menu(&mut self) {
         self.debug_options_screen = None;
+        self.pause_screen_disconnect_requested = false;
         self.debug_pause_screen = Some(DebugPauseScreenState {
             show_pause_menu: true,
             cursor_position: None,
@@ -1311,6 +1315,7 @@ impl ClientInputState {
 
     pub(crate) fn close_debug_pause_screen(&mut self) {
         self.debug_pause_screen = None;
+        self.pause_screen_disconnect_requested = false;
     }
 
     pub(crate) fn debug_pause_screen(&self) -> Option<DebugPauseScreenState> {
@@ -1404,9 +1409,15 @@ impl ClientInputState {
                     .push(PauseScreenLinkRequest::ReportBugs {
                         url: PAUSE_SCREEN_SNAPSHOT_BUGS_URL,
                     });
+            } else if pause_screen_disconnect_button_contains(cursor_position, surface_size) {
+                self.pause_screen_disconnect_requested = true;
             }
         }
         true
+    }
+
+    pub(crate) fn pause_screen_disconnect_requested(&self) -> bool {
+        self.pause_screen_disconnect_requested
     }
 
     pub(crate) fn take_pause_screen_link_requests(&mut self) -> Vec<PauseScreenLinkRequest> {
@@ -2548,6 +2559,17 @@ pub(crate) fn pause_screen_report_bugs_button_enabled() -> bool {
     MC_DATA_VERSION_SERIES == "main"
 }
 
+pub(crate) fn pause_screen_disconnect_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_disconnect_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
 pub(crate) fn pause_screen_feedback_url() -> &'static str {
     if MC_STABLE {
         PAUSE_SCREEN_RELEASE_FEEDBACK_URL
@@ -2620,6 +2642,17 @@ fn pause_screen_report_bugs_button_rect(surface_size: PhysicalSize<u32>) -> (i32
         width / 2 + 4,
         height / 4 + PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET,
         PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_disconnect_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + PAUSE_SCREEN_DISCONNECT_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
 }

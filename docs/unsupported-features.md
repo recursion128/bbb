@@ -1136,6 +1136,7 @@ When an agent does any of the following, update this file in the same slice:
     render/input/action, PauseScreen Advancements button render/input/action,
     PauseScreen Stats button loading screen shell,
     PauseScreen Send Feedback / Report Bugs link row shell,
+    PauseScreen Disconnect button render/input/action,
     SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
@@ -1886,7 +1887,7 @@ When an agent does any of the following, update this file in the same slice:
     button rect, renders the native Return to Game button in menu pause
     screens, closes the pause screen on left click, and restores cursor capture
     on pause-screen close. Boundary: dim background, custom additions/dialogs,
-    Options, Share to LAN / Player Reporting, Disconnect, draft-report icon,
+    Options, Share to LAN / Player Reporting, draft-report icon,
     music toast, and pause tick-freeze eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Advancements button.
     Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
@@ -1898,8 +1899,8 @@ When an agent does any of the following, update this file in the same slice:
     advancements screen and queuing the vanilla `SeenAdvancements::OpenedTab`
     when a visible root is selected. Boundary: parent-return behavior,
     custom additions/dialogs, Options, Share to LAN / Player Reporting,
-    Disconnect, draft-report icon, dim background, music toast, and pause
-    tick-freeze eligibility remain future work.
+    draft-report icon, dim background, music toast, and pause tick-freeze
+    eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Stats button loading screen shell.
     Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
     `gui.stats` button next to Advancements and opens `new StatsScreen(this,
@@ -1911,8 +1912,8 @@ When an agent does any of the following, update this file in the same slice:
     `gui.stats` / `multiplayer.downloadingStats`, and closes it from Done or
     Escape. Boundary: populated General/Items/Mobs stats tabs, sorting/icons,
     server-driven `onStatsUpdated`, parent-return behavior, custom additions/dialogs,
-    Options, Share to LAN / Player Reporting, Disconnect, draft-report icon, dim
-    background, music toast, and pause tick-freeze eligibility remain future work.
+    Options, Share to LAN / Player Reporting, draft-report icon, dim background,
+    music toast, and pause tick-freeze eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Send Feedback / Report Bugs row shell.
     Vanilla anchors: when no pause-screen custom additions are present,
     `PauseScreen.addFeedbackButtons` adds half-width `menu.sendFeedback` and
@@ -1926,6 +1927,19 @@ When an agent does any of the following, update this file in the same slice:
     and records drainable link requests from clicks. Boundary: ConfirmLinkScreen,
     actual platform browser opening, and the custom-additions Feedback sub-screen
     / server-dialog row remain future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` Disconnect button.
+    Vanilla anchors: `PauseScreen.createPauseMenu` adds a full-width
+    `CommonComponents.disconnectButtonLabel(minecraft.isLocalServer())` button
+    after the feedback/report row; clicking disables the button and routes
+    through `reportingContext.draftReportHandled(... disconnectFromWorld(...),
+    true)`. bbb now renders the full-width Disconnect row at
+    `(width / 2 - 102, height / 4 + 104, 204, 20)`, projects hover/enabled
+    state, records a local disconnect request after click, disables the HUD
+    button, and the main loop routes it through the existing net disconnect
+    command path. Boundary: local-server Return to Menu label/flow,
+    draft-report confirmation UI, exact quit-message/title transition,
+    Options, Share to LAN / Player Reporting, dim background, music toast, and
+    pause tick-freeze eligibility remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -3021,11 +3035,12 @@ When an agent does any of the following, update this file in the same slice:
     `PauseScreen(true)` title/menu-state shell, and renders the `Game Menu`
     title after active screens/containers decline the key.
     Menu pause screens now render the native Return to Game, Advancements,
-    Stats, Send Feedback, and Report Bugs buttons, hover them from cursor
-    position, close on Return click with cursor recapture, open the native
-    advancements screen from Advancements click, open a native Stats loading
-    shell that requests stats and closes from Done/Escape, and record drainable
-    feedback/report link requests from the default feedback row.
+    Stats, Send Feedback, Report Bugs, and Disconnect buttons, hover them from
+    cursor position, close on Return click with cursor recapture, open the
+    native advancements screen from Advancements click, open a native Stats
+    loading shell that requests stats and closes from Done/Escape, record
+    drainable feedback/report link requests from the default feedback row, and
+    route Disconnect clicks through the existing net disconnect command path.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and

@@ -5842,6 +5842,8 @@ fn hud_pause_screen_projects_no_menu_title() {
     assert!(!screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
     assert!(screen.report_bugs_enabled);
+    assert!(!screen.disconnect_hovered);
+    assert!(screen.disconnect_enabled);
 }
 
 #[test]
@@ -5859,6 +5861,8 @@ fn hud_pause_screen_projects_menu_title() {
     assert!(!screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
     assert!(screen.report_bugs_enabled);
+    assert!(!screen.disconnect_hovered);
+    assert!(screen.disconnect_enabled);
 }
 
 #[test]
@@ -5880,6 +5884,7 @@ fn hud_pause_screen_projects_return_to_game_hover() {
     assert!(!screen.stats_hovered);
     assert!(!screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
+    assert!(!screen.disconnect_hovered);
 }
 
 #[test]
@@ -5901,6 +5906,7 @@ fn hud_pause_screen_projects_advancements_hover() {
     assert!(!screen.stats_hovered);
     assert!(!screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
+    assert!(!screen.disconnect_hovered);
 }
 
 #[test]
@@ -5922,6 +5928,7 @@ fn hud_pause_screen_projects_stats_hover() {
     assert!(screen.stats_hovered);
     assert!(!screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
+    assert!(!screen.disconnect_hovered);
 }
 
 #[test]
@@ -5941,6 +5948,7 @@ fn hud_pause_screen_projects_send_feedback_hover() {
     assert!(screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
     assert!(screen.report_bugs_enabled);
+    assert!(!screen.disconnect_hovered);
 }
 
 #[test]
@@ -5960,6 +5968,41 @@ fn hud_pause_screen_projects_report_bugs_hover() {
     assert!(!screen.send_feedback_hovered);
     assert!(screen.report_bugs_hovered);
     assert!(screen.report_bugs_enabled);
+    assert!(!screen.disconnect_hovered);
+}
+
+#[test]
+fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            68.0, 174.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(screen.show_pause_menu);
+    assert!(screen.disconnect_hovered);
+    assert!(screen.disconnect_enabled);
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(68.0, 174.0)),
+        surface,
+    ));
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(!screen.disconnect_hovered);
+    assert!(!screen.disconnect_enabled);
 }
 
 #[test]

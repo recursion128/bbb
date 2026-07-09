@@ -823,6 +823,9 @@ fn main() -> Result<()> {
                             window.inner_size(),
                         );
                         drain_pause_screen_link_requests(&mut input);
+                        if input.pause_screen_disconnect_requested() {
+                            request_net_disconnect(&net_commands, &mut net_disconnect_requested);
+                        }
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }

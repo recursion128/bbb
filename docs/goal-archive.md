@@ -5383,7 +5383,7 @@
   runtime 投影 hover，renderer 绘制 native Return to Game button，main 在
   pause-screen close 后恢复 cursor capture。边界：dim background、
   custom additions/dialogs、Options、Share to LAN / Player Reporting、
-  Disconnect、draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
+  draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Advancements button（P2 input/runtime/renderer
   slice，2026-07-09）：依据 `PauseScreen.createPauseMenu` 在 Return to Game 后
   添加 half-width `gui.advancements` button，并在 grid `(0.5, 0.25)` alignment
@@ -5392,8 +5392,8 @@
   renderer 绘制该按钮，左键点击会关闭 pause shell、打开现有 native advancements
   screen，并在有 visible root tab 时沿用既有 `SeenAdvancements::OpenedTab`
   packet 语义。边界：parent-return behavior、custom additions/dialogs、
-  Options、Share to LAN / Player Reporting、Disconnect、draft-report icon、dim
-  background、music toast、以及 tick-freeze eligibility 仍未实现。
+  Options、Share to LAN / Player Reporting、draft-report icon、dim background、
+  music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Stats button loading screen shell（P2
   input/runtime/renderer slice，2026-07-09）：依据 `PauseScreen.createPauseMenu`
   添加 half-width `gui.stats` button，并在 grid `(0.5, 0.25)` alignment 下位于
@@ -5405,7 +5405,7 @@
   native Stats loading shell 并排队 `RequestStats`；Stats shell 渲染 `Stats` 与
   `Downloading statistics...`，Done/Escape 关闭。边界：General/Items/Mobs 统计
   列表、排序/icons、server `onStatsUpdated` populated view、parent-return behavior、
-  custom additions/dialogs、Options、Share to LAN / Player Reporting、Disconnect、
+  custom additions/dialogs、Options、Share to LAN / Player Reporting、
   draft-report icon、dim background、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Send Feedback / Report Bugs link row shell（P2
   input/runtime/renderer slice，2026-07-09）：依据
@@ -5419,6 +5419,17 @@
   状态，renderer 绘制 Send Feedback / Report Bugs，左键点击记录可 drain 的 link
   request 并由 main 记录日志。边界：ConfirmLinkScreen、实际 platform browser
   opening、自定义 additions 时的 Feedback sub-screen / server-dialog row 仍未实现。
+- [x] native PauseScreen(true) Disconnect button（P2 input/runtime/renderer slice，
+  2026-07-09）：依据 `PauseScreen.createPauseMenu` 在 feedback/report row 后添加
+  full-width `CommonComponents.disconnectButtonLabel(minecraft.isLocalServer())`
+  button，点击后禁用 button 并经
+  `reportingContext.draftReportHandled(... disconnectFromWorld(...), true)` 的行为。
+  native pause screen 现在在 `(width / 2 - 102, height / 4 + 104, 204, 20)`
+  投影 Disconnect hover/enabled 状态，renderer 绘制该按钮，左键点击记录本地
+  disconnect request 并禁用 HUD button；main 复用已有 net disconnect command path
+  执行断开请求。边界：local-server Return to Menu label/flow、draft-report
+  confirmation UI、exact quit-message/title transition、Options、Share to LAN /
+  Player Reporting、dim background、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

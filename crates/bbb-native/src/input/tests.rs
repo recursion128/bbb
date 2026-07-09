@@ -3604,6 +3604,29 @@ fn debug_pause_screen_report_bugs_button_records_link_request_when_enabled() {
 }
 
 #[test]
+fn debug_pause_screen_disconnect_button_records_disconnect_request() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(68.0, 174.0)),
+        surface,
+    ));
+
+    assert!(input.debug_pause_screen_is_open());
+    assert!(input.pause_screen_disconnect_requested());
+    assert!(input.take_pause_screen_link_requests().is_empty());
+}
+
+#[test]
 fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();

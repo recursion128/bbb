@@ -128,6 +128,8 @@ pub struct HudPauseScreen {
     pub send_feedback_hovered: bool,
     pub report_bugs_hovered: bool,
     pub report_bugs_enabled: bool,
+    pub disconnect_hovered: bool,
+    pub disconnect_enabled: bool,
 }
 
 /// Vanilla `StatsScreen` loading shell: title, pending-text body, and footer Done button.
@@ -581,6 +583,7 @@ const HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const HUD_PAUSE_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const HUD_PAUSE_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const HUD_PAUSE_THIRD_ROW_TOP_OFFSET: i32 = 56;
+const HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET: i32 = 104;
 const HUD_PAUSE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const HUD_STATS_DONE_BUTTON_WIDTH: i32 = 200;
 const HUD_STATS_DONE_BUTTON_HEIGHT: i32 = 20;
@@ -5890,6 +5893,20 @@ fn push_hud_pause_screen<'a>(
             screen.report_bugs_hovered,
             screen.report_bugs_enabled,
         );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_disconnect_button_rect(surface_size),
+            "Disconnect",
+            screen.disconnect_hovered,
+            screen.disconnect_enabled,
+        );
     }
 }
 
@@ -6892,6 +6909,17 @@ fn hud_pause_report_bugs_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i
         width / 2 + 4,
         height / 4 + HUD_PAUSE_THIRD_ROW_TOP_OFFSET,
         HUD_PAUSE_HALF_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_disconnect_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH,
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
 }
@@ -10558,6 +10586,8 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         send_feedback_hovered: screen.send_feedback_hovered,
         report_bugs_hovered: screen.report_bugs_hovered,
         report_bugs_enabled: screen.report_bugs_enabled,
+        disconnect_hovered: screen.disconnect_hovered,
+        disconnect_enabled: screen.disconnect_enabled,
     })
 }
 
@@ -14901,6 +14931,8 @@ mod tests {
             send_feedback_hovered: true,
             report_bugs_hovered: true,
             report_bugs_enabled: false,
+            disconnect_hovered: true,
+            disconnect_enabled: false,
         })
         .expect("pause screen");
         assert_eq!(screen.title, "GamePaused");
@@ -14911,6 +14943,8 @@ mod tests {
         assert!(screen.send_feedback_hovered);
         assert!(screen.report_bugs_hovered);
         assert!(!screen.report_bugs_enabled);
+        assert!(screen.disconnect_hovered);
+        assert!(!screen.disconnect_enabled);
 
         assert!(sanitize_hud_pause_screen(HudPauseScreen {
             title: "\n\t".to_string(),
@@ -14921,6 +14955,8 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            disconnect_hovered: false,
+            disconnect_enabled: true,
         })
         .is_none());
     }
@@ -15074,6 +15110,8 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            disconnect_hovered: false,
+            disconnect_enabled: true,
         };
         let menu = HudPauseScreen {
             title: "ab".to_string(),
@@ -15084,6 +15122,8 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            disconnect_hovered: false,
+            disconnect_enabled: true,
         };
 
         assert_eq!(
@@ -15137,6 +15177,14 @@ mod tests {
         assert_eq!(
             hud_pause_report_bugs_button_rect(PhysicalSize::new(854, 480)),
             (431, 176, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_disconnect_button_rect(PhysicalSize::new(320, 240)),
+            (58, 164, 204, 20)
+        );
+        assert_eq!(
+            hud_pause_disconnect_button_rect(PhysicalSize::new(854, 480)),
+            (325, 224, 204, 20)
         );
         assert_eq!(
             hud_stats_done_button_rect(PhysicalSize::new(320, 240)),
