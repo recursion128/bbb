@@ -1137,6 +1137,7 @@ When an agent does any of the following, update this file in the same slice:
     PauseScreen Stats button loading screen shell,
     PauseScreen Send Feedback / Report Bugs link row shell,
     PauseScreen Disconnect button render/input/action,
+    PauseScreen menu background gradient,
     SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
@@ -1875,9 +1876,9 @@ When an agent does any of the following, update this file in the same slice:
     screens/containers decline the key, releases cursor capture and active
     input through the runtime entry path, releases Escape from pressed state,
     and projects the `Game Menu` title through the existing y=40 HUD path.
-    Boundary: tick freezing, singleplayer-vs-server eligibility, dim
-    background, remaining buttons/actions, music toast, and
-    disconnect/report/options sub-screens remain future work.
+    Boundary: tick freezing, singleplayer-vs-server eligibility, remaining
+    buttons/actions, music toast, and disconnect/report/options sub-screens
+    remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Return to Game button.
     Vanilla anchors: `PauseScreen.createPauseMenu` first adds a full-width
     `menu.returnToGame` button (`Return to Game`) with width 204 and top
@@ -1886,9 +1887,9 @@ When an agent does any of the following, update this file in the same slice:
     projects hover for the vanilla `(width / 2 - 102, height / 4 + 8, 204, 20)`
     button rect, renders the native Return to Game button in menu pause
     screens, closes the pause screen on left click, and restores cursor capture
-    on pause-screen close. Boundary: dim background, custom additions/dialogs,
-    Options, Share to LAN / Player Reporting, draft-report icon,
-    music toast, and pause tick-freeze eligibility remain future work.
+    on pause-screen close. Boundary: custom additions/dialogs, Options,
+    Share to LAN / Player Reporting, draft-report icon, music toast, and pause
+    tick-freeze eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Advancements button.
     Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
     `gui.advancements` button immediately after Return to Game, using the same
@@ -1899,8 +1900,8 @@ When an agent does any of the following, update this file in the same slice:
     advancements screen and queuing the vanilla `SeenAdvancements::OpenedTab`
     when a visible root is selected. Boundary: parent-return behavior,
     custom additions/dialogs, Options, Share to LAN / Player Reporting,
-    draft-report icon, dim background, music toast, and pause tick-freeze
-    eligibility remain future work.
+    draft-report icon, music toast, and pause tick-freeze eligibility remain
+    future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Stats button loading screen shell.
     Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
     `gui.stats` button next to Advancements and opens `new StatsScreen(this,
@@ -1912,8 +1913,8 @@ When an agent does any of the following, update this file in the same slice:
     `gui.stats` / `multiplayer.downloadingStats`, and closes it from Done or
     Escape. Boundary: populated General/Items/Mobs stats tabs, sorting/icons,
     server-driven `onStatsUpdated`, parent-return behavior, custom additions/dialogs,
-    Options, Share to LAN / Player Reporting, draft-report icon, dim background,
-    music toast, and pause tick-freeze eligibility remain future work.
+    Options, Share to LAN / Player Reporting, draft-report icon, music toast,
+    and pause tick-freeze eligibility remain future work.
   - Done 2026-07-09 — Native `PauseScreen(true)` Send Feedback / Report Bugs row shell.
     Vanilla anchors: when no pause-screen custom additions are present,
     `PauseScreen.addFeedbackButtons` adds half-width `menu.sendFeedback` and
@@ -1938,8 +1939,18 @@ When an agent does any of the following, update this file in the same slice:
     button, and the main loop routes it through the existing net disconnect
     command path. Boundary: local-server Return to Menu label/flow,
     draft-report confirmation UI, exact quit-message/title transition,
-    Options, Share to LAN / Player Reporting, dim background, music toast, and
-    pause tick-freeze eligibility remain future work.
+    Options, Share to LAN / Player Reporting, music toast, and pause
+    tick-freeze eligibility remain future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` in-game background gradient.
+    Vanilla anchors: `PauseScreen.extractBackground` calls the base screen
+    background only when `showPauseMenu` is true; `Screen.extractBackground`
+    treats pause screens as in-game UI and calls `extractTransparentBackground`,
+    which fills a full-screen gradient from ARGB `0xC0101010` to `0xD0101010`.
+    bbb now keeps no-menu `PauseScreen(false)` background-free, and menu pause
+    screens draw a full-surface transparent dark gradient before the title and
+    buttons. Boundary: menu music toast, local-server/share/reporting flows,
+    draft-report confirmation UI, and pause tick-freeze eligibility remain
+    future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -3040,7 +3051,8 @@ When an agent does any of the following, update this file in the same slice:
     native advancements screen from Advancements click, open a native Stats
     loading shell that requests stats and closes from Done/Escape, record
     drainable feedback/report link requests from the default feedback row, and
-    route Disconnect clicks through the existing net disconnect command path.
+    route Disconnect clicks through the existing net disconnect command path,
+    with the vanilla in-game transparent background gradient behind the menu.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and

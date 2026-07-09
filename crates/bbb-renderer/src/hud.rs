@@ -117,7 +117,8 @@ pub struct HudDebugOverlay {
 }
 
 /// Vanilla `PauseScreen` render-state shell: no-menu debug pause screens only submit the centered
-/// title row, while menu pause screens currently project the title plus the implemented menu buttons.
+/// title row, while menu pause screens project the transparent in-game background, title, and the
+/// implemented menu buttons.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudPauseScreen {
     pub title: String,
@@ -585,6 +586,10 @@ const HUD_PAUSE_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const HUD_PAUSE_THIRD_ROW_TOP_OFFSET: i32 = 56;
 const HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET: i32 = 104;
 const HUD_PAUSE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
+const HUD_PAUSE_BACKGROUND_TOP_TINT: [f32; 4] =
+    [16.0 / 255.0, 16.0 / 255.0, 16.0 / 255.0, 192.0 / 255.0];
+const HUD_PAUSE_BACKGROUND_BOTTOM_TINT: [f32; 4] =
+    [16.0 / 255.0, 16.0 / 255.0, 16.0 / 255.0, 208.0 / 255.0];
 const HUD_STATS_DONE_BUTTON_WIDTH: i32 = 200;
 const HUD_STATS_DONE_BUTTON_HEIGHT: i32 = 20;
 const HUD_STATS_FOOTER_HEIGHT: i32 = 33;
@@ -5801,6 +5806,10 @@ fn push_hud_pause_screen<'a>(
     surface_size: PhysicalSize<u32>,
     screen: &HudPauseScreen,
 ) {
+    if hud_pause_screen_draws_background(screen) {
+        push_hud_pause_background(vertices, commands, white_pixel, surface_size);
+    }
+
     let Some(font_atlas) = font_atlas else {
         return;
     };
@@ -5908,6 +5917,47 @@ fn push_hud_pause_screen<'a>(
             screen.disconnect_enabled,
         );
     }
+}
+
+fn hud_pause_screen_draws_background(screen: &HudPauseScreen) -> bool {
+    screen.show_pause_menu
+}
+
+fn push_hud_pause_background<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+) {
+    let start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_pause_background_vertices(surface_size));
+    let end = vertices.len() as u32;
+    commands.push(HudDrawCommand::Sprite {
+        sprite: white_pixel,
+        start,
+        end,
+    });
+}
+
+fn hud_pause_background_vertices(surface_size: PhysicalSize<u32>) -> [HudVertex; 6] {
+    let mut vertices = hud_quad_vertices(
+        surface_size,
+        absolute_hud_rect(
+            0.0,
+            0.0,
+            surface_size.width.max(1),
+            surface_size.height.max(1),
+        ),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        HUD_PAUSE_BACKGROUND_TOP_TINT,
+    );
+    vertices[2].tint = HUD_PAUSE_BACKGROUND_BOTTOM_TINT;
+    vertices[4].tint = HUD_PAUSE_BACKGROUND_BOTTOM_TINT;
+    vertices[5].tint = HUD_PAUSE_BACKGROUND_BOTTOM_TINT;
+    vertices
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -15134,6 +15184,26 @@ mod tests {
             hud_pause_screen_title_origin(&menu, &glyphs, PhysicalSize::new(100, 50)),
             (44.0, 40.0)
         );
+        assert!(!hud_pause_screen_draws_background(&no_menu));
+        assert!(hud_pause_screen_draws_background(&menu));
+    }
+
+    #[test]
+    fn pause_screen_menu_background_matches_vanilla_transparent_gradient() {
+        let vertices = hud_pause_background_vertices(PhysicalSize::new(320, 240));
+
+        assert_eq!(vertices[0].position, [-1.0, 1.0]);
+        assert_eq!(vertices[1].position, [1.0, 1.0]);
+        assert_eq!(vertices[2].position, [1.0, -1.0]);
+        assert_eq!(vertices[3].position, [-1.0, 1.0]);
+        assert_eq!(vertices[4].position, [1.0, -1.0]);
+        assert_eq!(vertices[5].position, [-1.0, -1.0]);
+        assert_eq!(vertices[0].tint, HUD_PAUSE_BACKGROUND_TOP_TINT);
+        assert_eq!(vertices[1].tint, HUD_PAUSE_BACKGROUND_TOP_TINT);
+        assert_eq!(vertices[3].tint, HUD_PAUSE_BACKGROUND_TOP_TINT);
+        assert_eq!(vertices[2].tint, HUD_PAUSE_BACKGROUND_BOTTOM_TINT);
+        assert_eq!(vertices[4].tint, HUD_PAUSE_BACKGROUND_BOTTOM_TINT);
+        assert_eq!(vertices[5].tint, HUD_PAUSE_BACKGROUND_BOTTOM_TINT);
     }
 
     #[test]
