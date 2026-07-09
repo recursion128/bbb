@@ -27,21 +27,22 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
         VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
         VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
-        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -351,6 +352,9 @@ const ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
 const ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
 const ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT: bool = true;
 const ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD: i32 = 0;
+const PIGLIN_BABY_DATA_ID: u8 = 17;
+const PIGLIN_DEFAULT_IS_BABY: bool = false;
+const PIGLIN_DEFAULT_CANNOT_HUNT: bool = false;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const PIG_VARIANT_DATA_ID: u8 = 19;
@@ -3892,6 +3896,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_pig_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PIGLIN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_abstract_piglin_additional_save_data(entity, fields);
+            debug_push_piglin_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_piglin_additional_save_data(entity, fields);
@@ -4035,7 +4044,9 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
+            ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT
+        }
         _ => MOB_DEFAULT_CAN_PICK_UP_LOOT,
     }
 }
@@ -4497,6 +4508,17 @@ fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields:
     fields.push(format!(
         "TimeInOverworld: {ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD}"
     ));
+}
+
+fn debug_push_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let is_baby = debug_entity_data_bool_present(entity, PIGLIN_BABY_DATA_ID)
+        .unwrap_or(PIGLIN_DEFAULT_IS_BABY);
+    fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
+    fields.push(format!(
+        "CannotHunt: {}",
+        debug_snbt_bool(PIGLIN_DEFAULT_CANNOT_HUNT)
+    ));
+    debug_push_inventory_carrier_additional_save_data(fields);
 }
 
 fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
