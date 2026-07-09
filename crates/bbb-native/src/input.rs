@@ -9,14 +9,15 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-        VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
-        VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
@@ -230,6 +231,16 @@ const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
 const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
+const BEE_FLAGS_DATA_ID: u8 = 18;
+const BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
+const BEE_FLAG_HAS_STUNG: i8 = 4;
+const BEE_FLAG_HAS_NECTAR: i8 = 8;
+const BEE_DEFAULT_HAS_NECTAR: bool = false;
+const BEE_DEFAULT_HAS_STUNG: bool = false;
+const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
+const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
+const BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION: i32 = 0;
+const BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
@@ -3690,6 +3701,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bat_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_BEE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_bee_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4286,6 +4303,34 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     fields.push(format!("BatFlags: {flags}b"));
 }
 
+fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, BEE_FLAGS_DATA_ID).unwrap_or(0);
+    let has_nectar = if flags & BEE_FLAG_HAS_NECTAR != 0 {
+        true
+    } else {
+        BEE_DEFAULT_HAS_NECTAR
+    };
+    let has_stung = if flags & BEE_FLAG_HAS_STUNG != 0 {
+        true
+    } else {
+        BEE_DEFAULT_HAS_STUNG
+    };
+    fields.push(format!("HasNectar: {}", debug_snbt_bool(has_nectar)));
+    fields.push(format!("HasStung: {}", debug_snbt_bool(has_stung)));
+    fields.push(format!(
+        "TicksSincePollination: {BEE_DEFAULT_TICKS_SINCE_POLLINATION}"
+    ));
+    fields.push(format!(
+        "CannotEnterHiveTicks: {BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS}"
+    ));
+    fields.push(format!(
+        "CropsGrownSincePollination: {BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION}"
+    ));
+    let anger_end_time = debug_entity_data_long_present(entity, BEE_ANGER_END_TIME_DATA_ID)
+        .unwrap_or(BEE_DEFAULT_ANGER_END_TIME);
+    debug_push_neutral_mob_additional_save_data_with_end_time(fields, anger_end_time);
+}
+
 fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let sheared = debug_entity_data_bool_present(entity, BOGGED_SHEARED_DATA_ID)
         .unwrap_or(BOGGED_DEFAULT_SHEARED);
@@ -4380,9 +4425,17 @@ fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut
 }
 
 fn debug_push_neutral_mob_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "anger_end_time: {NEUTRAL_MOB_DEFAULT_ANGER_END_TIME}L"
-    ));
+    debug_push_neutral_mob_additional_save_data_with_end_time(
+        fields,
+        NEUTRAL_MOB_DEFAULT_ANGER_END_TIME,
+    );
+}
+
+fn debug_push_neutral_mob_additional_save_data_with_end_time(
+    fields: &mut Vec<String>,
+    anger_end_time: i64,
+) {
+    fields.push(format!("anger_end_time: {anger_end_time}L"));
 }
 
 fn debug_push_ocelot_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -4596,6 +4649,17 @@ fn debug_entity_data_int_present(entity: &EntityState, data_id: u8) -> Option<i3
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_long_present(entity: &EntityState, data_id: u8) -> Option<i64> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Long(value) => Some(*value),
             _ => None,
         })
 }
