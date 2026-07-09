@@ -365,8 +365,8 @@ Screen Render Surfaces" 条目）：
   and firework flight/direct/grouped explosion lines, charged-projectiles
   display-name headers/detail rows, and container-loot unknown-content line,
   container item-count hover-name/more rows,
-  jukebox song descriptions, custom/datapack trim registry remaps,
-  stored/enchantment rows,
+  custom/datapack jukebox-song registry remaps,
+  custom/datapack trim registry remaps, stored/enchantment rows,
   TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
   disc fragment item-specific description line, smithing template item-specific
   rows, direct painting variant rows, spawner block-entity rows,

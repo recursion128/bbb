@@ -1847,19 +1847,31 @@ fn push_jukebox_playable_tooltip_lines(
     song: Option<&JukeboxSongSummary>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let description = if let Some(song) = song {
-        song.description.clone()
-    } else {
-        let Some(song_id) = song_id else {
-            return;
+    if let Some(song) = song {
+        let base = ComponentStyle {
+            color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+            ..ComponentStyle::default()
         };
-        let Some(song_key) = songs.song_id(song_id) else {
-            return;
-        };
-        language
-            .get_or_key(&description_key("jukebox_song", song_key))
-            .to_string()
+        lines.push(NativeItemTooltipLine {
+            text: song.description.clone(),
+            tint: TOOLTIP_TEXT_GRAY,
+            runs: hud_runs_from_component(
+                song.description_styled.as_deref().unwrap_or(&[]),
+                &song.description,
+                &base,
+            ),
+        });
+        return;
+    }
+    let Some(song_id) = song_id else {
+        return;
     };
+    let Some(song_key) = songs.song_id(song_id) else {
+        return;
+    };
+    let description = language
+        .get_or_key(&description_key("jukebox_song", song_key))
+        .to_string();
     lines.push(NativeItemTooltipLine::plain(description, TOOLTIP_TEXT_GRAY));
 }
 
@@ -2552,7 +2564,7 @@ impl NativeItemRuntime {
                 &self.language,
                 &self.jukebox_songs,
                 component_patch.jukebox_song_id,
-                component_patch.jukebox_direct_song.as_ref(),
+                component_patch.jukebox_direct_song.as_deref(),
                 lines,
             );
         }

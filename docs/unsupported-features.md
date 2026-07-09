@@ -1148,11 +1148,12 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/empty-bees/honey, dyed-color lines, and firework flight/direct/grouped
     explosion lines, charged-projectiles headers, container-loot unknown-content
-    line, container item-count/more rows, jukebox song descriptions,
-    custom/datapack trim registry remaps, stored/enchantment rows, TooltipDisplay
-    hide/hidden-components gating, map_id component type-id 46, disc fragment
-    item-specific description line, smithing template item-specific rows, direct
-    painting variant rows, spawner block-entity rows, entity-data peaceful
+    line, container item-count/more rows, custom/datapack jukebox-song registry
+    remaps, custom/datapack trim registry remaps, stored/enchantment rows,
+    TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
+    disc fragment item-specific description line, smithing template
+    item-specific rows, direct painting variant rows, spawner block-entity rows,
+    entity-data peaceful
     warning, adventure-mode can-break/can-place direct block rows and unknown
     row, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion effect lines, creative suspicious-stew effect lines,
@@ -1479,9 +1480,8 @@ When an agent does any of the following, update this file in the same slice:
     emits the song description merged with gray. bbb now projects decoded direct
     `minecraft:jukebox_playable` song payloads as a gray description row in
     that provider position. Boundary: holder-id resolution is covered by the
-    later entry below; styled description runs are flattened, and remaining
-    component providers, `TooltipDisplay` hiding, and options persistence remain
-    future work.
+    later entry below; styled description runs are covered by the follow-up item
+    below, and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip holder-id jukebox song description.
     Vanilla anchors: vanilla built-in `JukeboxSongs.bootstrap` registers
     `JukeboxSong` descriptions with
@@ -1491,8 +1491,16 @@ When an agent does any of the following, update this file in the same slice:
     for holder ids, resolves `minecraft:jukebox_playable` holder ids through that
     registry, localizes `jukebox_song.<namespace>.<path>`, emits the gray row in
     the same provider position, and honors hidden component type id 64. Boundary:
-    custom/datapack jukebox-song registry remaps and styled description runs
-    remain future work.
+    direct styled description runs are covered by the follow-up item below, and
+    custom/datapack jukebox-song registry remaps remain future work.
+  - Done 2026-07-09 — Advanced tooltip direct jukebox styled description.
+    Vanilla anchors: `JukeboxSong.DIRECT_STREAM_CODEC` carries the description
+    via `ComponentSerialization.STREAM_CODEC`, and
+    `JukeboxPlayable.addToTooltip` calls `ComponentUtils.mergeStyles` with a
+    gray base style. bbb now preserves decoded direct jukebox song description
+    styled runs, renders them in the jukebox provider position, and lets direct
+    component style keys override the gray fallback while unset keys inherit it.
+    Boundary: custom/datapack jukebox-song registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip direct armor trim rows. Vanilla anchors:
     `ArmorTrim.addToTooltip` emits gray `item.minecraft.smithing_template.upgrade`,
     then a leading-space pattern description styled by the material, then a

@@ -1513,16 +1513,26 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                jukebox_direct_song: Some(JukeboxSongSummary {
+                jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(0),
                         sound_id: None,
                         fixed_range_bits: None,
                     },
                     description: "Test song".to_string(),
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test song".to_string(),
+                            style: bbb_protocol::ComponentStyle {
+                                bold: Some(true),
+                                ..bbb_protocol::ComponentStyle::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
-                }),
+                })),
                 dyed_color: Some(0x33_44_55),
                 lore: vec!["After jukebox".to_string()],
                 ..DataComponentPatchSummary::default()
@@ -1530,7 +1540,18 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         }),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
-            tooltip_line("Test song", TOOLTIP_TEXT_GRAY),
+            NativeItemTooltipLine {
+                text: "Test song".to_string(),
+                tint: TOOLTIP_TEXT_GRAY,
+                runs: vec![HudStyledTextRun {
+                    text: "Test song".to_string(),
+                    style: HudTextStyle {
+                        bold: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0xAA_AA_AA),
+                }],
+            },
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After jukebox"),
         ])
@@ -5733,16 +5754,17 @@ fn native_item_runtime_resolves_component_condition_predicates() {
     );
     let exact_jukebox_playable = DataComponentPatchSummary {
         added_type_ids: vec![64],
-        jukebox_direct_song: Some(JukeboxSongSummary {
+        jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
             sound_event: SoundEventSummary {
                 registry_id: Some(286),
                 sound_id: None,
                 fixed_range_bits: None,
             },
             description: "Test song".to_string(),
+            description_styled: None,
             length_in_seconds_bits: 3.5f32.to_bits(),
             comparator_output: 7,
-        }),
+        })),
         ..DataComponentPatchSummary::default()
     };
     assert_eq!(
@@ -5753,10 +5775,15 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             89,
             named_bundle_entry(DataComponentPatchSummary {
-                jukebox_direct_song: Some(JukeboxSongSummary {
+                jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     comparator_output: 8,
-                    ..exact_jukebox_playable.jukebox_direct_song.clone().unwrap()
-                }),
+                    ..exact_jukebox_playable
+                        .jukebox_direct_song
+                        .clone()
+                        .unwrap()
+                        .as_ref()
+                        .clone()
+                })),
                 ..exact_jukebox_playable.clone()
             })
         ),

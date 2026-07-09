@@ -182,7 +182,7 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub jukebox_song_id: Option<i32>,
     #[serde(default)]
-    pub jukebox_direct_song: Option<JukeboxSongSummary>,
+    pub jukebox_direct_song: Option<Box<JukeboxSongSummary>>,
     #[serde(default)]
     pub map_id: Option<i32>,
     #[serde(default)]
@@ -250,6 +250,8 @@ pub struct LodestoneTargetSummary {
 pub struct JukeboxSongSummary {
     pub sound_event: SoundEventSummary,
     pub description: String,
+    #[serde(default)]
+    pub description_styled: Option<Box<[StyledTextRun]>>,
     pub length_in_seconds_bits: u32,
     pub comparator_output: i32,
 }
@@ -774,7 +776,7 @@ fn decode_typed_data_component_patch_summary(
             64 => {
                 let song = decode_jukebox_song_holder(decoder)?;
                 summary.jukebox_song_id = song.registry_id;
-                summary.jukebox_direct_song = song.direct;
+                summary.jukebox_direct_song = song.direct.map(Box::new);
             }
             50 => {
                 summary.bundle_contents_items =
@@ -2193,12 +2195,14 @@ fn decode_direct_jukebox_song(decoder: &mut Decoder<'_>) -> Result<()> {
 
 fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<JukeboxSongSummary> {
     let sound_event = decode_sound_event_holder_summary(decoder)?;
-    let description = decode_component_summary_from_decoder(decoder)?;
+    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let description = styled_runs_summary_text(&description_styled);
     let length_in_seconds_bits = decoder.read_f32()?.to_bits();
     let comparator_output = decoder.read_var_i32()?;
     Ok(JukeboxSongSummary {
         sound_event,
         description,
+        description_styled: Some(description_styled.into_boxed_slice()),
         length_in_seconds_bits,
         comparator_output,
     })
@@ -2910,13 +2914,18 @@ mod tests {
 
     #[test]
     fn decodes_inline_jukebox_playable_song_payload() {
+        let mut styled_song = vec![10u8];
+        write_named_nbt_string(&mut styled_song, "text", "Test song");
+        write_named_nbt_byte(&mut styled_song, "bold", 1);
+        styled_song.push(0);
+
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
         payload.write_var_i32(0);
         payload.write_var_i32(64);
         payload.write_var_i32(0);
         write_direct_sound_event(&mut payload, "minecraft:test.song", Some(16.0));
-        payload.write_bytes(&nbt_string_root("Test song"));
+        payload.write_bytes(&styled_song);
         payload.write_f32(3.5);
         payload.write_var_i32(7);
 
@@ -2928,16 +2937,26 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![64],
-                jukebox_direct_song: Some(JukeboxSongSummary {
+                jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: None,
                         sound_id: Some("minecraft:test.song".to_string()),
                         fixed_range_bits: Some(16.0f32.to_bits()),
                     },
                     description: "Test song".to_string(),
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test song".to_string(),
+                            style: crate::ComponentStyle {
+                                bold: Some(true),
+                                ..Default::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
                     length_in_seconds_bits: 3.5f32.to_bits(),
                     comparator_output: 7,
-                }),
+                })),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -2964,16 +2983,17 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![64],
-                jukebox_direct_song: Some(JukeboxSongSummary {
+                jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(286),
                         sound_id: None,
                         fixed_range_bits: None,
                     },
                     description: "Registry sound song".to_string(),
+                    description_styled: Some(plain_runs("Registry sound song").into_boxed_slice()),
                     length_in_seconds_bits: 4.25f32.to_bits(),
                     comparator_output: 9,
-                }),
+                })),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -4434,16 +4454,17 @@ mod tests {
                 armor_trim_pattern_id: Some(2),
                 instrument_description: Some("Instrument".to_string()),
                 instrument_description_styled: Some(plain_runs("Instrument")),
-                jukebox_direct_song: Some(JukeboxSongSummary {
+                jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(0),
                         sound_id: None,
                         fixed_range_bits: None,
                     },
                     description: "Song".to_string(),
+                    description_styled: Some(plain_runs("Song").into_boxed_slice()),
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
-                }),
+                })),
                 block_state_properties: BTreeMap::from([
                     ("facing".to_string(), "north".to_string()),
                     ("lit".to_string(), "true".to_string()),

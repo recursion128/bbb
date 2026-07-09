@@ -6637,9 +6637,9 @@
   trim/enchantments/dyed-color 之前调用 `DataComponents.JUKEBOX_PLAYABLE` provider，
   以及 `JukeboxPlayable.addToTooltip` 把 song description 合并为灰色行，native item
   tooltip 现在把 decoded direct `minecraft:jukebox_playable` song payload 投影为灰色
-  description 行。边界：holder-id jukebox songs 仍需要 registry-key description
-  resolution，styled description runs 目前被 flatten；其它 component provider
-  tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+  description 行。边界：holder-id jukebox songs registry-key resolution 和 direct
+  styled description runs 分别由后续 item 覆盖；其它 component provider tooltip
+  仍未完成。
 - [x] advanced tooltip holder-id jukebox song description（P2 pack +
   item-runtime slice，2026-07-09）：依据 vanilla `JukeboxSongs.bootstrap` 以
   `Util.makeDescriptionId("jukebox_song", registryKey.identifier())` 创建内置 song
@@ -6648,7 +6648,15 @@
   vanilla jukebox-song registry key，native item tooltip 用该 key 本地化
   `jukebox_song.<namespace>.<path>` 并在 direct song 缺席时输出灰色行，同时应用
   hidden component type id 64。边界：custom/datapack jukebox-song registry remap
-  与 styled description run 保真仍属后续。
+  仍属后续。
+- [x] advanced tooltip direct jukebox styled description（P2 item-runtime
+  slice，2026-07-09）：依据 `JukeboxSong.DIRECT_STREAM_CODEC` 通过
+  `ComponentSerialization.STREAM_CODEC` 传输 description，且
+  `JukeboxPlayable.addToTooltip` 以 `ComponentUtils.mergeStyles(description,
+  gray)` 输出 tooltip，native protocol summary 现在保留 direct jukebox song
+  description styled runs，item tooltip 在 jukebox provider 位置合并灰色 base，
+  让 direct component 自身 style 覆盖 fallback、未设置项继承灰色。边界：
+  custom/datapack jukebox-song registry remap 仍属后续。
 - [x] advanced tooltip direct armor trim rows（P2 item-runtime slice，
   2026-07-09）：依据 `ArmorTrim.addToTooltip` 输出灰色
   `item.minecraft.smithing_template.upgrade`、leading-space pattern description
