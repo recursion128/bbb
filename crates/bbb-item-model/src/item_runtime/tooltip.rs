@@ -239,6 +239,29 @@ fn push_fireworks_tooltip_lines(
     ));
 }
 
+fn push_block_state_tooltip_lines(
+    language: &LanguageCatalog,
+    block_state_properties: &BTreeMap<String, String>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(honey_level) = block_state_properties
+        .get("honey_level")
+        .and_then(|value| value.parse::<i32>().ok())
+        .filter(|honey_level| (0..=5).contains(honey_level))
+    else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(
+            language,
+            "container.beehive.honey",
+            &honey_level.to_string(),
+            "5",
+        ),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
 pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
     let template = language.get_or_key(key);
     if template.contains("%1$s") {
@@ -446,6 +469,11 @@ impl NativeItemRuntime {
                 TOOLTIP_TEXT_BLUE,
             ));
         }
+        push_block_state_tooltip_lines(
+            &self.language,
+            &stack.component_patch.block_state_properties,
+            &mut lines,
+        );
         if advanced {
             push_advanced_tooltip_lines(
                 &self.language,

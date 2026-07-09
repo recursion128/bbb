@@ -6461,3 +6461,12 @@
   投影为本地化 `Flight Duration: n` 行，并保持在 lore 和 advanced
   registry-id/component-count 前。边界：firework explosion 星形/颜色/trail/twinkle 明细、
   其它 component provider tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip beehive honey block-state line（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 近末尾调用
+  `DataComponents.BLOCK_STATE` provider，以及
+  `BlockItemStateProperties.addToTooltip` 读取 `BeehiveBlock.HONEY_LEVEL` 并输出灰色
+  `container.beehive.honey(level, 5)`，native item tooltip 现在把 decoded
+  `minecraft:block_state` summary 的有效 `honey_level=0..5` 投影为本地化
+  `Honey: n / 5` 行。边界：其它 block-state properties 在该 provider 中没有
+  vanilla tooltip 行；其它 component provider tooltip、`TooltipDisplay`
+  hidden-components 与 options 持久化仍未完成。

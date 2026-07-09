@@ -361,7 +361,7 @@ Screen Render Surfaces" 条目）：
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
-  parity/persistence beyond occupied beehive bees, dyed-color lines, and
+  parity/persistence beyond beehive bees/honey, dyed-color lines, and
   firework flight-duration lines、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
