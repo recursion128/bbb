@@ -1075,6 +1075,88 @@ fn hud_debug_overlay_projects_vanilla_default_profile_entries() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_performance_profile_fps_when_overlay_hidden() {
+    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    input.load_debug_screen_profile(crate::debug_entries::DebugScreenProfile::Performance);
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(144);
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        false,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("performance profile FPS is always-on");
+
+    assert_eq!(overlay.left_lines, vec!["144 fps T: inf".to_string()]);
+    assert!(overlay.right_lines.is_empty());
+    assert_eq!(overlay.debug_crosshair, None);
+}
+
+#[test]
+fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
+    let world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    let mut input = ClientInputState::new(true);
+    let fps_sampler = hud_debug_fps_sampler_with_reported_fps(60);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [10.25, 64.0, -5.75],
+            y_rot: 90.0,
+            x_rot: 15.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &fps_sampler,
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("reduced-debug still projects allowed default entries");
+
+    assert!(overlay
+        .left_lines
+        .contains(&format!("Minecraft {MC_VERSION} ({MC_VERSION}/bbb-native)")));
+    assert!(overlay
+        .left_lines
+        .contains(&"60 fps T: inf vsync".to_string()));
+    assert!(overlay
+        .left_lines
+        .contains(&"Section-relative: 10 00 10".to_string()));
+    assert!(!overlay
+        .left_lines
+        .iter()
+        .any(|line| line.starts_with("XYZ: ")));
+    assert!(!overlay
+        .left_lines
+        .iter()
+        .any(|line| line.starts_with("Block: ")));
+    assert!(!overlay
+        .left_lines
+        .iter()
+        .any(|line| line.starts_with("Facing: ")));
+    assert_eq!(overlay.debug_crosshair, None);
+}
+
+#[test]
 fn hud_debug_fps_sampler_reports_completed_one_second_windows() {
     let start = Instant::now();
     let mut sampler = HudDebugFpsSampler::default();
@@ -3948,6 +4030,15 @@ fn world_with_dimension_last_death_location(
 }
 
 fn world_with_dimension_height(dimension_type_id: i32, dimension: &str, height: i32) -> WorldStore {
+    world_with_dimension_height_and_reduced_debug_info(dimension_type_id, dimension, height, false)
+}
+
+fn world_with_dimension_height_and_reduced_debug_info(
+    dimension_type_id: i32,
+    dimension: &str,
+    height: i32,
+    reduced_debug_info: bool,
+) -> WorldStore {
     let mut world = WorldStore::with_dimension(WorldDimension { min_y: 0, height });
     world.apply_login(&PlayLogin {
         player_id: 42,
@@ -3960,7 +4051,7 @@ fn world_with_dimension_height(dimension_type_id: i32, dimension: &str, height: 
         max_players: 20,
         chunk_radius: 8,
         simulation_distance: 6,
-        reduced_debug_info: false,
+        reduced_debug_info,
         show_death_screen: true,
         do_limited_crafting: false,
         common_spawn_info: CommonPlayerSpawnInfo {

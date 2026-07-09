@@ -20,7 +20,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::code_of_conduct::CodeOfConductAcceptance;
+use crate::{code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile};
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
 
@@ -103,6 +103,8 @@ pub(crate) struct Args {
     pub(crate) hide_lightning_flash: bool,
     #[arg(long = "advanced-item-tooltips")]
     pub(crate) advanced_item_tooltips: bool,
+    #[arg(long = "debug-profile", value_enum, default_value = "default")]
+    pub(crate) debug_profile: DebugScreenProfileArg,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -126,6 +128,21 @@ impl From<ClientChatVisibilityArg> for ClientChatVisibility {
 pub(crate) enum ClientMainHandArg {
     Left,
     Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum DebugScreenProfileArg {
+    Default,
+    Performance,
+}
+
+impl From<DebugScreenProfileArg> for DebugScreenProfile {
+    fn from(value: DebugScreenProfileArg) -> Self {
+        match value {
+            DebugScreenProfileArg::Default => Self::Default,
+            DebugScreenProfileArg::Performance => Self::Performance,
+        }
+    }
 }
 
 impl From<ClientMainHandArg> for ClientMainHand {
@@ -541,6 +558,15 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--advanced-item-tooltips"]).unwrap();
         assert!(args.advanced_item_tooltips);
+    }
+
+    #[test]
+    fn args_accept_debug_profile_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.debug_profile, DebugScreenProfileArg::Default);
+
+        let args = Args::try_parse_from(["bbb-native", "--debug-profile", "performance"]).unwrap();
+        assert_eq!(args.debug_profile, DebugScreenProfileArg::Performance);
     }
 
     #[test]

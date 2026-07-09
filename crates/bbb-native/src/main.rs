@@ -26,6 +26,7 @@ mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod conduit_scene;
 mod crosshair;
+mod debug_entries;
 mod decorated_pot_scene;
 mod enchanting_table_book_scene;
 mod end_portal_scene;
@@ -302,6 +303,7 @@ fn main() -> Result<()> {
     let window = build_window(&event_loop)?;
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
+    input.load_debug_screen_profile(args.debug_profile.into());
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);

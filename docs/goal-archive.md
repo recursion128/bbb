@@ -5436,8 +5436,21 @@
   现在有单个 F3 overlay 投影测试覆盖这些 default-profile entries：version /
   FPS / TPS、player position 与 section-relative position、right-column
   memory/system/performance groups、以及 3D crosshair state。边界：
-  非默认/可编辑 debug entries、具体 advanced entry renderers、以及
-  `DebugOptionsScreen` profile 持久化仍未实现。
+  debug-entry status/profile model 已由后续 slice 覆盖；具体 advanced entry
+  renderers、以及 `DebugOptionsScreen` profile 持久化仍未实现。
+- [x] debug overlay debug-entry status/profile model（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntryList` 的 `ALWAYS_ON` / `IN_OVERLAY` /
+  `NEVER` 状态、`DebugScreenEntries.PROFILES` 的 default/performance profile、
+  `toggleStatus` 在 overlay hidden/visible 时分别选择 `ALWAYS_ON` / `IN_OVERLAY`
+  的语义，以及 `DebugScreenEntry.isAllowed` / `DebugEntryNoop.isAllowed` 的
+  reduced-debug gate。native 现在有独立 `debug_entries` owner，F3+B/F3+G 走
+  vanilla status toggle，启动参数 `--debug-profile default|performance` 可选择
+  profile，默认 profile 继续驱动已有 overlay entry，performance profile 的 FPS
+  `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
+  reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
+  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 GPU utilization /
+  detailed memory / look-at / light / biome / chunk stats 等 individual
+  non-default entry renderers 仍待后续。
 - [x] debug overlay F3+C long-hold manual-crash warning shell（P2 input/world
   slice，2026-07-08）：依据 `Options.keyDebugCrash` 与
   `Options.keyDebugCopyLocation` 共同绑定 C、`KeyboardHandler.keyPress`

@@ -919,6 +919,103 @@ fn f3_debug_status_keys_toggle_state_without_forcing_overlay_visible() {
 }
 
 #[test]
+fn f3_debug_status_key_uses_in_overlay_status_when_overlay_is_visible() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::EntityHitboxes),
+        DebugScreenEntryStatus::InOverlay
+    );
+    assert!(input.debug_entity_hitboxes_visible());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+    assert!(input.debug_overlay_visible());
+    assert!(input.debug_entity_hitboxes_visible());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(!input.debug_overlay_visible());
+    assert!(!input.debug_entity_hitboxes_visible());
+}
+
+#[test]
+fn custom_debug_screen_entry_status_drives_entry_visibility() {
+    let mut input = ClientInputState::new(true);
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::ChunkBorders,
+        DebugScreenEntryStatus::AlwaysOn,
+    );
+    assert!(input.debug_chunk_borders_visible());
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::ChunkBorders,
+        DebugScreenEntryStatus::Never,
+    );
+    assert!(!input.debug_chunk_borders_visible());
+}
+
+#[test]
 fn f3_debug_status_keys_follow_player_reduced_debug_gate() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

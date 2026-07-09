@@ -1115,8 +1115,8 @@ When an agent does any of the following, update this file in the same slice:
     profiler chart numeric-key routing shell, and F3+N spectator
     change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
     shell, and ordinary F3 keymap audit:
-    non-default/editable debug entries, actual entity hitbox
-    server details,
+    remaining individual non-default debug entry renderers/profile persistence,
+    actual entity hitbox server details,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
@@ -1146,9 +1146,25 @@ When an agent does any of the following, update this file in the same slice:
     projection test covering those default-profile entries in a visible F3
     overlay snapshot: version/FPS/TPS, player position and section-relative
     position, right-column memory/system/performance groups, and the 3D
-    crosshair state. Boundary: non-default entries selected through
-    `DebugOptionsScreen`, individual advanced entry renderers, and editable
-    profile persistence remain future work.
+    crosshair state. Boundary: the entry status/profile model is covered by the
+    following slice; individual advanced entry renderers and editable profile
+    persistence remain future work.
+  - Done 2026-07-09 — Debug overlay debug-entry status/profile model.
+    Vanilla anchors: `DebugScreenEntryList` stores `ALWAYS_ON`, `IN_OVERLAY`,
+    and `NEVER` statuses, default and performance profiles from
+    `DebugScreenEntries.PROFILES`, `toggleStatus` chooses `ALWAYS_ON` while the
+    overlay is hidden but `IN_OVERLAY` while visible, and `DebugScreenEntry` /
+    `DebugEntryNoop` filter renderer/text entries under reduced-debug info. bbb
+    now has a native `DebugScreenEntryList` owner for the implemented default
+    entries, startup `--debug-profile default|performance`, the performance
+    profile FPS always-on status, custom statuses used by focused tests,
+    F3+B/F3+G toggle routing through vanilla status semantics, reduced-debug
+    filtering for position/3D-crosshair/renderer entries, and HUD projection of
+    implemented always-on text entries even when the F3 overlay is hidden.
+    Boundary: actual `DebugOptionsScreen`, persisted
+    `debug-profile.json`, and individual non-default entry renderers such as GPU
+    utilization/detailed memory/look-at/light/biome/chunk stats remain future
+    work.
   - Done 2026-07-08 — Debug overlay 3D crosshair rendering. Vanilla anchors:
     `DebugScreenEntries` enables `THREE_DIMENSIONAL_CROSSHAIR` in the default
     profile, `Gui.extractCrosshair` suppresses the ordinary 2D crosshair while
@@ -2340,12 +2356,15 @@ When an agent does any of the following, update this file in the same slice:
     hotbar keys.
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
     request. F3+F4 now has a native GameModeSwitcher input/command shell. The
+    debug entry status/profile model now owns default/performance/custom
+    statuses for implemented entries, startup `--debug-profile`, vanilla
+    `toggleStatus` semantics, and reduced-debug filtering. The
     ordinary F3 keymap has been audited against vanilla `Options.debugKeys`;
     remaining combo work is limited to debug-flag gated dev hotkeys. The
     remaining open surfaces in
     this ledger row
-    are non-default/editable debug entries, entity hitbox
-    server details,
+    are remaining individual non-default debug entry renderers/profile
+    persistence, entity hitbox server details,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual

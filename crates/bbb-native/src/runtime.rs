@@ -67,6 +67,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
+    debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
@@ -3062,54 +3063,94 @@ fn hud_debug_overlay(
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
-    if !input.debug_overlay_visible() {
+    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let entry_enabled = |entry| input.debug_screen_entry_enabled(entry, reduced_debug_info);
+
+    let mut left_lines = Vec::new();
+    if entry_enabled(DebugScreenEntryId::GameVersion) {
+        left_lines.push(hud_debug_version_line());
+    }
+    if entry_enabled(DebugScreenEntryId::Fps) {
+        left_lines.push(hud_debug_fps_line(
+            fps_sampler.fps(),
+            client_framerate_limit,
+            client_vsync,
+        ));
+    }
+    if entry_enabled(DebugScreenEntryId::Tps) {
+        if let Some(tps_line) = hud_debug_tps_line(world) {
+            left_lines.push(tps_line);
+        }
+    }
+    let debug_crosshair = camera_pose
+        .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
+        .map(hud_debug_crosshair);
+    if let Some(camera_pose) = camera_pose {
+        let mut position_lines = Vec::new();
+        if entry_enabled(DebugScreenEntryId::PlayerPosition) {
+            position_lines.extend(hud_debug_position_lines(world, camera_pose));
+        }
+        if entry_enabled(DebugScreenEntryId::PlayerSectionPosition) {
+            position_lines.push(hud_debug_section_position_line(camera_pose));
+        }
+        if !position_lines.is_empty() {
+            if !left_lines.is_empty() {
+                left_lines.push("".to_string());
+            }
+            left_lines.extend(position_lines);
+        }
+    }
+    if input.debug_overlay_visible() {
+        left_lines.push("".to_string());
+        left_lines.push(format!(
+            "Debug charts: [F3+1] Profiler {}; [F3+2] FPS {};",
+            hud_debug_visibility_label(input.debug_profiler_chart_visible()),
+            hud_debug_visibility_label(input.debug_fps_charts_visible())
+        ));
+        left_lines.push(format!(
+            "[F3+3] Network {}; [F3+4] Lightmap {}",
+            hud_debug_visibility_label(input.debug_network_charts_visible()),
+            hud_debug_visibility_label(input.debug_lightmap_texture_visible())
+        ));
+        left_lines.push(format!(
+            "Debug toggles: [F3+B] Hitboxes {}; [F3+G] Chunks {}",
+            hud_debug_visibility_label(input.debug_entity_hitboxes_visible_for_world(world)),
+            hud_debug_visibility_label(input.debug_chunk_borders_visible_for_world(world))
+        ));
+        left_lines.push(format!(
+            "Debug options: [F3+H] Tooltips {}; [F3+P] Focus pause {}",
+            hud_debug_enabled_label(input.debug_advanced_item_tooltips()),
+            hud_debug_enabled_label(input.debug_pause_on_lost_focus())
+        ));
+        left_lines.push("Debug actions: [F3+A] Reload chunks; [F3+C] Copy location".to_string());
+        left_lines.push("Debug actions: [F3+D] Clear chat; [F3+S] Dump textures".to_string());
+        left_lines.push("Debug actions: [F3+T] Reload packs; [F3+V] Version".to_string());
+        left_lines.push("Game mode: [F3+N] Spectator; [F3+F4] Switcher".to_string());
+        left_lines.push("To edit: press [F3+F6]".to_string());
+    }
+    let mut right_lines = Vec::new();
+    if entry_enabled(DebugScreenEntryId::Memory) {
+        right_lines.extend(hud_debug_memory_lines(hud_debug_memory_snapshot()));
+    }
+    if entry_enabled(DebugScreenEntryId::SystemSpecs) {
+        if !right_lines.is_empty() {
+            right_lines.push("".to_string());
+        }
+        right_lines.extend(hud_debug_system_lines(surface_size));
+    }
+    if entry_enabled(DebugScreenEntryId::SimplePerformanceImpactors) {
+        if !right_lines.is_empty() {
+            right_lines.push("".to_string());
+        }
+        right_lines.extend(hud_debug_simple_performance_impactor_lines());
+    }
+    if left_lines.is_empty() && right_lines.is_empty() && debug_crosshair.is_none() {
         return None;
     }
 
-    let mut left_lines = vec![hud_debug_version_line()];
-    left_lines.push(hud_debug_fps_line(
-        fps_sampler.fps(),
-        client_framerate_limit,
-        client_vsync,
-    ));
-    if let Some(tps_line) = hud_debug_tps_line(world) {
-        left_lines.push(tps_line);
-    }
-    let debug_crosshair = camera_pose.map(hud_debug_crosshair);
-    if let Some(camera_pose) = camera_pose {
-        left_lines.push("".to_string());
-        left_lines.extend(hud_debug_position_lines(world, camera_pose));
-    }
-    left_lines.push("".to_string());
-    left_lines.push(format!(
-        "Debug charts: [F3+1] Profiler {}; [F3+2] FPS {};",
-        hud_debug_visibility_label(input.debug_profiler_chart_visible()),
-        hud_debug_visibility_label(input.debug_fps_charts_visible())
-    ));
-    left_lines.push(format!(
-        "[F3+3] Network {}; [F3+4] Lightmap {}",
-        hud_debug_visibility_label(input.debug_network_charts_visible()),
-        hud_debug_visibility_label(input.debug_lightmap_texture_visible())
-    ));
-    left_lines.push(format!(
-        "Debug toggles: [F3+B] Hitboxes {}; [F3+G] Chunks {}",
-        hud_debug_visibility_label(input.debug_entity_hitboxes_visible()),
-        hud_debug_visibility_label(input.debug_chunk_borders_visible())
-    ));
-    left_lines.push(format!(
-        "Debug options: [F3+H] Tooltips {}; [F3+P] Focus pause {}",
-        hud_debug_enabled_label(input.debug_advanced_item_tooltips()),
-        hud_debug_enabled_label(input.debug_pause_on_lost_focus())
-    ));
-    left_lines.push("Debug actions: [F3+A] Reload chunks; [F3+C] Copy location".to_string());
-    left_lines.push("Debug actions: [F3+D] Clear chat; [F3+S] Dump textures".to_string());
-    left_lines.push("Debug actions: [F3+T] Reload packs; [F3+V] Version".to_string());
-    left_lines.push("Game mode: [F3+N] Spectator; [F3+F4] Switcher".to_string());
-    left_lines.push("To edit: press [F3+F6]".to_string());
-
     Some(HudDebugOverlay {
         left_lines,
-        right_lines: hud_debug_right_lines(surface_size),
+        right_lines,
         debug_crosshair,
         profiler_chart: None,
         fps_chart: input
@@ -3149,7 +3190,7 @@ fn debug_entity_scene_outline(
     entity_partial_tick: f32,
 ) -> Option<SelectionOutline> {
     input
-        .debug_entity_hitboxes_visible()
+        .debug_entity_hitboxes_visible_for_world(world)
         .then(|| entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick))
         .flatten()
 }
@@ -3159,7 +3200,7 @@ fn debug_chunk_border_outline(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
 ) -> Option<SelectionOutline> {
-    if !input.debug_chunk_borders_visible() {
+    if !input.debug_chunk_borders_visible_for_world(world) {
         return None;
     }
     world.level_info()?;
@@ -3396,15 +3437,6 @@ fn hud_debug_enabled_label(enabled: bool) -> &'static str {
     }
 }
 
-fn hud_debug_right_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<String> {
-    let mut lines = hud_debug_memory_lines(hud_debug_memory_snapshot());
-    lines.push("".to_string());
-    lines.extend(hud_debug_system_lines(surface_size));
-    lines.push("".to_string());
-    lines.extend(hud_debug_simple_performance_impactor_lines());
-    lines
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct HudDebugMemorySnapshot {
     used_mib: u64,
@@ -3524,13 +3556,20 @@ fn hud_debug_position_lines(world: &WorldStore, camera_pose: CameraPose) -> Vec<
             hud_debug_wrap_degrees(camera_pose.x_rot)
         ),
         format!("{dimension} FC: 0"),
-        format!(
-            "Section-relative: {:02} {:02} {:02}",
-            block_x & 15,
-            block_y & 15,
-            block_z & 15
-        ),
     ]
+}
+
+fn hud_debug_section_position_line(camera_pose: CameraPose) -> String {
+    let block_x = f64::from(camera_pose.position[0]).floor() as i32;
+    let block_y = f64::from(camera_pose.position[1]).floor() as i32;
+    let block_z = f64::from(camera_pose.position[2]).floor() as i32;
+
+    format!(
+        "Section-relative: {:02} {:02} {:02}",
+        block_x & 15,
+        block_y & 15,
+        block_z & 15
+    )
 }
 
 fn hud_debug_facing(y_rot: f32) -> (&'static str, &'static str) {

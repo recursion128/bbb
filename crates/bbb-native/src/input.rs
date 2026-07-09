@@ -28,6 +28,10 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
+#[cfg(test)]
+use crate::debug_entries::DebugScreenEntryStatus;
+use crate::debug_entries::{DebugScreenEntryId, DebugScreenEntryList, DebugScreenProfile};
+
 mod bundle;
 mod commands;
 mod inventory;
@@ -228,15 +232,13 @@ pub(crate) struct ClientInputState {
     advancement_hover_fade: f32,
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
-    debug_overlay_visible: bool,
+    debug_entries: DebugScreenEntryList,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
     debug_fps_charts_visible: bool,
     debug_network_charts_visible: bool,
     debug_lightmap_texture_visible: bool,
-    debug_entity_hitboxes_visible: bool,
-    debug_chunk_borders_visible: bool,
     debug_advanced_item_tooltips: bool,
     debug_pause_on_lost_focus: bool,
     debug_resource_pack_reload_requests: u32,
@@ -623,31 +625,77 @@ impl ClientInputState {
     }
 
     pub(crate) fn debug_overlay_visible(&self) -> bool {
-        self.debug_overlay_visible
+        self.debug_entries.is_overlay_visible()
     }
 
     pub(crate) fn debug_profiler_chart_visible(&self) -> bool {
-        self.debug_overlay_visible && self.debug_profiler_chart_visible
+        self.debug_overlay_visible() && self.debug_profiler_chart_visible
     }
 
     pub(crate) fn debug_fps_charts_visible(&self) -> bool {
-        self.debug_overlay_visible && self.debug_fps_charts_visible
+        self.debug_overlay_visible() && self.debug_fps_charts_visible
     }
 
     pub(crate) fn debug_network_charts_visible(&self) -> bool {
-        self.debug_overlay_visible && self.debug_network_charts_visible
+        self.debug_overlay_visible() && self.debug_network_charts_visible
     }
 
     pub(crate) fn debug_lightmap_texture_visible(&self) -> bool {
-        self.debug_overlay_visible && self.debug_lightmap_texture_visible
+        self.debug_overlay_visible() && self.debug_lightmap_texture_visible
     }
 
+    #[cfg(test)]
     pub(crate) fn debug_entity_hitboxes_visible(&self) -> bool {
-        self.debug_entity_hitboxes_visible
+        self.debug_screen_entry_enabled(DebugScreenEntryId::EntityHitboxes, false)
     }
 
+    #[cfg(test)]
     pub(crate) fn debug_chunk_borders_visible(&self) -> bool {
-        self.debug_chunk_borders_visible
+        self.debug_screen_entry_enabled(DebugScreenEntryId::ChunkBorders, false)
+    }
+
+    pub(crate) fn debug_entity_hitboxes_visible_for_world(&self, world: &WorldStore) -> bool {
+        self.debug_screen_entry_enabled(
+            DebugScreenEntryId::EntityHitboxes,
+            world.local_player_has_reduced_debug_info(),
+        )
+    }
+
+    pub(crate) fn debug_chunk_borders_visible_for_world(&self, world: &WorldStore) -> bool {
+        self.debug_screen_entry_enabled(
+            DebugScreenEntryId::ChunkBorders,
+            world.local_player_has_reduced_debug_info(),
+        )
+    }
+
+    pub(crate) fn debug_screen_entry_enabled(
+        &self,
+        entry: DebugScreenEntryId,
+        reduced_debug_info: bool,
+    ) -> bool {
+        self.debug_entries
+            .is_currently_enabled(entry, reduced_debug_info)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_debug_screen_entry_status(
+        &mut self,
+        entry: DebugScreenEntryId,
+        status: DebugScreenEntryStatus,
+    ) {
+        self.debug_entries.set_status(entry, status);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_screen_entry_status(
+        &self,
+        entry: DebugScreenEntryId,
+    ) -> DebugScreenEntryStatus {
+        self.debug_entries.status(entry)
+    }
+
+    pub(crate) fn load_debug_screen_profile(&mut self, profile: DebugScreenProfile) {
+        self.debug_entries.load_profile(profile);
     }
 
     pub(crate) fn debug_advanced_item_tooltips(&self) -> bool {
@@ -835,7 +883,7 @@ impl ClientInputState {
                     if self.debug_modifier_used {
                         self.debug_modifier_used = false;
                     } else {
-                        self.debug_overlay_visible = !self.debug_overlay_visible;
+                        self.debug_entries.toggle_overlay();
                     }
                 }
             }
@@ -916,10 +964,12 @@ impl ClientInputState {
                 if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
-                self.debug_entity_hitboxes_visible = !self.debug_entity_hitboxes_visible;
+                let enabled = self
+                    .debug_entries
+                    .toggle_status(DebugScreenEntryId::EntityHitboxes);
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
-                    if self.debug_entity_hitboxes_visible {
+                    if enabled {
                         "Hitboxes: shown"
                     } else {
                         "Hitboxes: hidden"
@@ -931,10 +981,12 @@ impl ClientInputState {
                 if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
-                self.debug_chunk_borders_visible = !self.debug_chunk_borders_visible;
+                let enabled = self
+                    .debug_entries
+                    .toggle_status(DebugScreenEntryId::ChunkBorders);
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
-                    if self.debug_chunk_borders_visible {
+                    if enabled {
                         "Chunk borders: shown"
                     } else {
                         "Chunk borders: hidden"
@@ -1165,17 +1217,17 @@ impl ClientInputState {
 
     fn toggle_debug_profiler_chart(&mut self) {
         self.debug_profiler_chart_visible =
-            !self.debug_overlay_visible || !self.debug_profiler_chart_visible;
+            !self.debug_overlay_visible() || !self.debug_profiler_chart_visible;
         if self.debug_profiler_chart_visible {
-            self.debug_overlay_visible = true;
+            self.debug_entries.set_overlay_visible(true);
         }
     }
 
     fn toggle_debug_fps_charts(&mut self) {
         self.debug_fps_charts_visible =
-            !self.debug_overlay_visible || !self.debug_fps_charts_visible;
+            !self.debug_overlay_visible() || !self.debug_fps_charts_visible;
         if self.debug_fps_charts_visible {
-            self.debug_overlay_visible = true;
+            self.debug_entries.set_overlay_visible(true);
             self.debug_network_charts_visible = false;
             self.debug_lightmap_texture_visible = false;
         }
@@ -1183,9 +1235,9 @@ impl ClientInputState {
 
     fn toggle_debug_network_charts(&mut self) {
         self.debug_network_charts_visible =
-            !self.debug_overlay_visible || !self.debug_network_charts_visible;
+            !self.debug_overlay_visible() || !self.debug_network_charts_visible;
         if self.debug_network_charts_visible {
-            self.debug_overlay_visible = true;
+            self.debug_entries.set_overlay_visible(true);
             self.debug_fps_charts_visible = false;
             self.debug_lightmap_texture_visible = false;
         }
@@ -1193,9 +1245,9 @@ impl ClientInputState {
 
     fn toggle_debug_lightmap_texture(&mut self) {
         self.debug_lightmap_texture_visible =
-            !self.debug_overlay_visible || !self.debug_lightmap_texture_visible;
+            !self.debug_overlay_visible() || !self.debug_lightmap_texture_visible;
         if self.debug_lightmap_texture_visible {
-            self.debug_overlay_visible = true;
+            self.debug_entries.set_overlay_visible(true);
             self.debug_fps_charts_visible = false;
             self.debug_network_charts_visible = false;
         }
