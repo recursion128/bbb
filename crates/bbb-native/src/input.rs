@@ -22,8 +22,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -265,6 +266,9 @@ const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
 const SALMON_DEFAULT_VARIANT: i32 = 1;
+const TADPOLE_AGE_LOCKED_DATA_ID: u8 = 17;
+const TADPOLE_DEFAULT_AGE: i32 = 0;
+const TADPOLE_DEFAULT_AGE_LOCKED: bool = false;
 const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
 const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
@@ -3659,6 +3663,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_TADPOLE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_tadpole_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_INTERACTION_ID => {
             debug_push_interaction_additional_save_data(entity, fields);
         }
@@ -3921,6 +3929,14 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
         1 => "medium",
         _ => "large",
     }
+}
+
+fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    fields.push(format!("FromBucket: {}", debug_snbt_bool(true)));
+    fields.push(format!("Age: {TADPOLE_DEFAULT_AGE}"));
+    let age_locked = debug_entity_data_bool_present(entity, TADPOLE_AGE_LOCKED_DATA_ID)
+        .unwrap_or(TADPOLE_DEFAULT_AGE_LOCKED);
+    fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
 }
 
 fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
