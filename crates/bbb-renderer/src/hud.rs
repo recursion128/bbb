@@ -124,6 +124,42 @@ pub struct HudPauseScreen {
     pub show_pause_menu: bool,
 }
 
+/// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
+/// in vanilla category/path order, three status buttons per entry, and the
+/// default/performance/done footer buttons. The renderer derives layout from
+/// the fixed vanilla row metrics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudDebugOptionsScreen {
+    pub title: String,
+    pub warning: String,
+    pub search_text: String,
+    pub rows: Vec<HudDebugOptionsRow>,
+    pub scroll_row: usize,
+    pub total_rows: usize,
+    pub visible_rows: usize,
+    pub default_profile_active: bool,
+    pub performance_profile_active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HudDebugOptionsRow {
+    Category {
+        label: String,
+    },
+    Entry {
+        path: String,
+        status: HudDebugOptionsEntryStatus,
+        allowed: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudDebugOptionsEntryStatus {
+    AlwaysOn,
+    InOverlay,
+    Never,
+}
+
 /// Vanilla `GameModeSwitcherScreen` render-state shell: background bounds, four
 /// 26px slots in vanilla order, selected mode, and the two centered text rows.
 #[derive(Debug, Clone, PartialEq)]
@@ -493,6 +529,16 @@ const HUD_DEBUG_GAME_MODE_SWITCHER_BACKGROUND_V_HEIGHT: f32 = 75.0;
 const HUD_DEBUG_GAME_MODE_SWITCHER_CENTER_X_OFFSET: i32 = 62;
 const HUD_DEBUG_GAME_MODE_SWITCHER_TITLE_Y_OFFSET: i32 = 7;
 const HUD_DEBUG_GAME_MODE_SWITCHER_HELP_Y_OFFSET: i32 = 63;
+const HUD_DEBUG_OPTIONS_HEADER_HEIGHT: i32 = 61;
+const HUD_DEBUG_OPTIONS_FOOTER_HEIGHT: i32 = 33;
+const HUD_DEBUG_OPTIONS_ROW_WIDTH: i32 = 350;
+const HUD_DEBUG_OPTIONS_ROW_HEIGHT: i32 = 20;
+const HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
+const HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
+const HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
+const HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
+const HUD_DEBUG_OPTIONS_SEARCH_WIDTH: i32 = HUD_DEBUG_OPTIONS_ROW_WIDTH / 3;
+const HUD_DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -3202,6 +3248,10 @@ impl Renderer {
         self.hud_pause_screen = screen.and_then(sanitize_hud_pause_screen);
     }
 
+    pub fn set_hud_debug_options_screen(&mut self, screen: Option<HudDebugOptionsScreen>) {
+        self.hud_debug_options_screen = screen.and_then(sanitize_hud_debug_options_screen);
+    }
+
     pub fn set_hud_action_bar_text(&mut self, action_bar: Option<HudActionBarText>) {
         self.hud_action_bar_text = action_bar.filter(|state| state.partial_tick.is_finite());
     }
@@ -3277,6 +3327,10 @@ impl Renderer {
 
     pub fn clear_hud_pause_screen(&mut self) {
         self.hud_pause_screen = None;
+    }
+
+    pub fn clear_hud_debug_options_screen(&mut self) {
+        self.hud_debug_options_screen = None;
     }
 
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
@@ -4195,7 +4249,47 @@ impl Renderer {
             );
         }
 
-        if let Some(debug_overlay) = &self.hud_debug_overlay {
+        if let Some(screen) = &self.hud_debug_options_screen {
+            if let Some(debug_overlay) = &self.hud_debug_overlay {
+                push_hud_debug_overlay(
+                    &mut vertices,
+                    &mut commands,
+                    &mut post_gui_item_commands,
+                    &self.hud_white_pixel,
+                    self.hud_item_atlas.as_ref(),
+                    self.hud_digit_atlas.as_ref(),
+                    &self.hud_digit_glyphs,
+                    self.hud_debug_game_mode_switcher_background.as_ref(),
+                    self.hud_debug_game_mode_switcher_slot.as_ref(),
+                    self.hud_debug_game_mode_switcher_selection.as_ref(),
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    debug_overlay,
+                );
+                if debug_overlay.show_lightmap_preview {
+                    push_hud_debug_lightmap_preview(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_black_pixel,
+                        surface_size,
+                    );
+                }
+            }
+            push_hud_debug_options_screen(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        } else if let Some(debug_overlay) = &self.hud_debug_overlay {
             push_hud_debug_overlay(
                 &mut vertices,
                 &mut commands,
@@ -5654,6 +5748,511 @@ fn push_hud_pause_screen<'a>(
         surface_size,
         &draw,
     );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudDebugOptionsScreen,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        0,
+        0,
+        surface_size.width,
+        surface_size.height,
+        [0.0, 0.0, 0.0, 0.45],
+    );
+
+    push_hud_debug_options_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.title,
+        8,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_options_centered_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.warning,
+        34,
+        hud_argb_to_tint(0xFFDF5050),
+    );
+    push_hud_debug_options_search_box(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &screen.search_text,
+    );
+
+    let content_x = hud_debug_options_content_x(surface_size);
+    for (row_index, row) in screen.rows.iter().enumerate() {
+        let y = HUD_DEBUG_OPTIONS_HEADER_HEIGHT
+            + i32::try_from(row_index).unwrap_or(i32::MAX) * HUD_DEBUG_OPTIONS_ROW_HEIGHT;
+        match row {
+            HudDebugOptionsRow::Category { label } => {
+                push_hud_debug_options_centered_text_in_width(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    label,
+                    content_x,
+                    HUD_DEBUG_OPTIONS_ROW_WIDTH,
+                    y + 5,
+                    HUD_TINT_WHITE,
+                );
+            }
+            HudDebugOptionsRow::Entry {
+                path,
+                status,
+                allowed,
+            } => {
+                push_hud_debug_options_entry(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    content_x,
+                    y,
+                    path,
+                    *status,
+                    *allowed,
+                );
+            }
+        }
+    }
+
+    push_hud_debug_options_footer(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        screen.default_profile_active,
+        screen.performance_profile_active,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_entry<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    content_x: i32,
+    y: i32,
+    path: &str,
+    status: HudDebugOptionsEntryStatus,
+    allowed: bool,
+) {
+    let name_tint = if allowed {
+        HUD_TINT_WHITE
+    } else {
+        hud_argb_to_tint(0xFF808080)
+    };
+    push_hud_debug_options_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        path,
+        (content_x as f32, (y + 5) as f32),
+        name_tint,
+    );
+    let buttons_start_x =
+        content_x + HUD_DEBUG_OPTIONS_ROW_WIDTH - HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    for (index, (button_status, label)) in [
+        (HudDebugOptionsEntryStatus::Never, "OFF"),
+        (HudDebugOptionsEntryStatus::InOverlay, "In Overlay"),
+        (HudDebugOptionsEntryStatus::AlwaysOn, "Always"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let x = buttons_start_x
+            + i32::try_from(index).unwrap_or(i32::MAX) * HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH;
+        push_hud_debug_options_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            x,
+            y,
+            HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH,
+            label,
+            status != button_status,
+            hud_debug_options_status_tint(button_status, status == button_status),
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_footer<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    default_profile_active: bool,
+    performance_profile_active: bool,
+) {
+    let y = hud_debug_options_footer_button_y(surface_size);
+    let (default_x, performance_x, done_x) = hud_debug_options_footer_button_xs(surface_size);
+    push_hud_debug_options_button(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        default_x,
+        y,
+        HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
+        "Default",
+        default_profile_active,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_options_button(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        performance_x,
+        y,
+        HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
+        "Performance",
+        performance_profile_active,
+        HUD_TINT_WHITE,
+    );
+    push_hud_debug_options_button(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        done_x,
+        y,
+        HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH,
+        "Done",
+        true,
+        HUD_TINT_WHITE,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_search_box<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    search_text: &str,
+) {
+    let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
+        - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
+    let y = 6;
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        x,
+        y,
+        HUD_DEBUG_OPTIONS_SEARCH_WIDTH as u32,
+        HUD_DEBUG_OPTIONS_SEARCH_HEIGHT as u32,
+        [0.0, 0.0, 0.0, 0.75],
+    );
+    let (text, tint) = if search_text.is_empty() {
+        ("Search...", hud_argb_to_tint(0xFFA0A0A0))
+    } else {
+        (search_text, HUD_TINT_WHITE)
+    };
+    push_hud_debug_options_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        ((x + 4) as f32, (y + 6) as f32),
+        tint,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_button<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    x: i32,
+    y: i32,
+    width: i32,
+    label: &str,
+    active: bool,
+    text_tint: [f32; 4],
+) {
+    let background_tint = if active {
+        [0.18, 0.18, 0.18, 0.92]
+    } else {
+        [0.08, 0.08, 0.08, 0.86]
+    };
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        x,
+        y,
+        width.max(0) as u32,
+        16,
+        background_tint,
+    );
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        x,
+        y,
+        width.max(0) as u32,
+        1,
+        [0.8, 0.8, 0.8, 0.75],
+    );
+    push_hud_debug_options_centered_text_in_width(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        label,
+        x,
+        width,
+        y + 4,
+        if active {
+            text_tint
+        } else {
+            hud_argb_to_tint(0xFF8A8A8A)
+        },
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_centered_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    y: i32,
+    tint: [f32; 4],
+) {
+    push_hud_debug_options_centered_text_in_width(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        text,
+        0,
+        i32::try_from(surface_size.width).unwrap_or(i32::MAX),
+        y,
+        tint,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_centered_text_in_width<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    x: i32,
+    width: i32,
+    y: i32,
+    tint: [f32; 4],
+) {
+    let runs = [HudStyledTextRun::plain(text)];
+    let text_width = hud_font_runs_width(&runs, glyphs).unwrap_or_default() as f32;
+    let origin = (
+        x as f32 + width.max(0) as f32 * 0.5 - text_width * 0.5,
+        y as f32,
+    );
+    let draw = HudScreenTextDraw {
+        runs: &runs,
+        origin,
+        scale: 1.0,
+        tint,
+    };
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &draw,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    origin: (f32, f32),
+    tint: [f32; 4],
+) {
+    let runs = [HudStyledTextRun::plain(text)];
+    let draw = HudScreenTextDraw {
+        runs: &runs,
+        origin,
+        scale: 1.0,
+        tint,
+    };
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &draw,
+    );
+}
+
+fn hud_debug_options_status_tint(status: HudDebugOptionsEntryStatus, current: bool) -> [f32; 4] {
+    if !current {
+        return hud_argb_to_tint(0xFF8A8A8A);
+    }
+    match status {
+        HudDebugOptionsEntryStatus::AlwaysOn => hud_argb_to_tint(0xFFDF5050),
+        HudDebugOptionsEntryStatus::InOverlay => hud_argb_to_tint(0xFFFFFF55),
+        HudDebugOptionsEntryStatus::Never => HUD_TINT_WHITE,
+    }
+}
+
+fn hud_debug_options_content_x(surface_size: PhysicalSize<u32>) -> i32 {
+    i32::try_from(surface_size.width).unwrap_or(i32::MAX) / 2 - HUD_DEBUG_OPTIONS_ROW_WIDTH / 2
+}
+
+fn hud_debug_options_footer_button_y(surface_size: PhysicalSize<u32>) -> i32 {
+    i32::try_from(surface_size.height).unwrap_or(i32::MAX) - HUD_DEBUG_OPTIONS_FOOTER_HEIGHT + 6
+}
+
+fn hud_debug_options_footer_button_xs(surface_size: PhysicalSize<u32>) -> (i32, i32, i32) {
+    let total_width = HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH * 2
+        + HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH
+        + HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING * 2;
+    let default_x = i32::try_from(surface_size.width).unwrap_or(i32::MAX) / 2 - total_width / 2;
+    let performance_x = default_x
+        + HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH
+        + HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING;
+    let done_x = performance_x
+        + HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH
+        + HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING;
+    (default_x, performance_x, done_x)
 }
 
 fn hud_pause_screen_title_origin(
@@ -9312,6 +9911,53 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         title,
         show_pause_menu: screen.show_pause_menu,
     })
+}
+
+fn sanitize_hud_debug_options_screen(
+    screen: HudDebugOptionsScreen,
+) -> Option<HudDebugOptionsScreen> {
+    let title = sanitize_hud_text_line(screen.title)?;
+    let warning = sanitize_hud_text_line(screen.warning)?;
+    let search_text = sanitize_hud_text_preserving_empty(screen.search_text, 64);
+    let visible_rows = screen.visible_rows.min(64);
+    let rows = screen
+        .rows
+        .into_iter()
+        .filter_map(sanitize_hud_debug_options_row)
+        .take(visible_rows)
+        .collect::<Vec<_>>();
+    (!title.is_empty()).then_some(HudDebugOptionsScreen {
+        title,
+        warning,
+        search_text,
+        rows,
+        scroll_row: screen.scroll_row.min(screen.total_rows),
+        total_rows: screen.total_rows.min(256),
+        visible_rows,
+        default_profile_active: screen.default_profile_active,
+        performance_profile_active: screen.performance_profile_active,
+    })
+}
+
+fn sanitize_hud_debug_options_row(row: HudDebugOptionsRow) -> Option<HudDebugOptionsRow> {
+    match row {
+        HudDebugOptionsRow::Category { label } => {
+            let label = sanitize_hud_text_line(label)?;
+            Some(HudDebugOptionsRow::Category { label })
+        }
+        HudDebugOptionsRow::Entry {
+            path,
+            status,
+            allowed,
+        } => {
+            let path = sanitize_hud_text_line(path)?;
+            Some(HudDebugOptionsRow::Entry {
+                path,
+                status,
+                allowed,
+            })
+        }
+    }
 }
 
 fn sanitize_hud_debug_game_mode_switcher_slot(
@@ -13568,6 +14214,55 @@ mod tests {
         assert!(sanitize_hud_pause_screen(HudPauseScreen {
             title: "\n\t".to_string(),
             show_pause_menu: true,
+        })
+        .is_none());
+    }
+
+    #[test]
+    fn sanitize_debug_options_screen_keeps_empty_search_and_clamps_visible_rows() {
+        let screen = sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
+            title: "Debug\nOptions".to_string(),
+            warning: "Warning".to_string(),
+            search_text: String::new(),
+            rows: vec![
+                HudDebugOptionsRow::Category {
+                    label: "Debug Screen Text".to_string(),
+                },
+                HudDebugOptionsRow::Entry {
+                    path: "biome".to_string(),
+                    status: HudDebugOptionsEntryStatus::AlwaysOn,
+                    allowed: true,
+                },
+                HudDebugOptionsRow::Entry {
+                    path: "fps".to_string(),
+                    status: HudDebugOptionsEntryStatus::InOverlay,
+                    allowed: false,
+                },
+            ],
+            scroll_row: 999,
+            total_rows: 3,
+            visible_rows: 2,
+            default_profile_active: false,
+            performance_profile_active: true,
+        })
+        .expect("debug options screen");
+
+        assert_eq!(screen.title, "DebugOptions");
+        assert_eq!(screen.search_text, "");
+        assert_eq!(screen.rows.len(), 2);
+        assert_eq!(screen.scroll_row, 3);
+        assert!(!screen.default_profile_active);
+        assert!(screen.performance_profile_active);
+        assert!(sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
+            title: "\n".to_string(),
+            warning: "Warning".to_string(),
+            search_text: String::new(),
+            rows: Vec::new(),
+            scroll_row: 0,
+            total_rows: 0,
+            visible_rows: 0,
+            default_profile_active: true,
+            performance_profile_active: true,
         })
         .is_none());
     }

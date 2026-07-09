@@ -766,11 +766,16 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(")
         .expect("pump should extract hotbar item icons");
+    let debug_options_screen_extract = source
+        .find(
+            "let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);",
+        )
+        .expect("pump should extract debug options screen HUD state");
     let pause_screen_extract = source
-        .find("let hud_pause_screen = hud_pause_screen(input);")
+        .find("let hud_pause_screen = if hud_debug_options_screen.is_some()")
         .expect("pump should extract pause screen HUD state");
     let sign_editor_extract = source
-        .find("let hud_sign_editor_screen = if hud_pause_screen.is_some() {")
+        .find("let hud_sign_editor_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()")
         .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
         .find("hud_inventory_screen_with_local_state(")
@@ -785,6 +790,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     for extraction in [
         selected_slot_extract,
         hotbar_icons_extract,
+        debug_options_screen_extract,
         pause_screen_extract,
         sign_editor_extract,
         inventory_screen_extract,
@@ -5825,6 +5831,41 @@ fn hud_pause_screen_projects_no_menu_title() {
     let screen = hud_pause_screen(&input).expect("pause screen");
     assert_eq!(screen.title, "Game Paused");
     assert!(!screen.show_pause_menu);
+}
+
+#[test]
+fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
+    let mut input = ClientInputState::new(true);
+    let world = WorldStore::new();
+    input.open_debug_pause_screen_without_menu();
+    input.open_debug_options_screen();
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::Biome,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    assert!(hud_pause_screen(&input).is_none());
+    let screen = hud_debug_options_screen(&input, &world, winit::dpi::PhysicalSize::new(420, 240))
+        .expect("debug options screen");
+
+    assert_eq!(screen.title, "Debug Options");
+    assert_eq!(screen.total_rows, 47);
+    assert_eq!(screen.visible_rows, 7);
+    assert!(screen.default_profile_active);
+    assert_eq!(
+        screen.rows[0],
+        HudDebugOptionsRow::Category {
+            label: "Debug Screen Text".to_string()
+        }
+    );
+    assert_eq!(
+        screen.rows[1],
+        HudDebugOptionsRow::Entry {
+            path: "biome".to_string(),
+            status: HudDebugOptionsEntryStatus::AlwaysOn,
+            allowed: true,
+        }
+    );
 }
 
 #[test]

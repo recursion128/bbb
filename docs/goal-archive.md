@@ -6188,3 +6188,14 @@
   request shell 且排在普通 F3 profiling 之前。边界：captured frustum、
   terrain SOG smart-cull、wireframe terrain pipeline 和集成
   `FeatureCountTracker` 数据仍是后续 renderer/runtime 工作。
+- [x] debug overlay DebugOptionsScreen screen shell（P2
+  input/runtime/renderer slice，2026-07-09）：依据
+  `KeyboardHandler.handleDebugKeys` 的 F3+F6 toggle、`DebugOptionsScreen`
+  的 61px header / 33px footer / 350px option-list / 20px row 布局、
+  category+path sort、search path filter、`OFF`/`In Overlay`/`Always`
+  三态按钮和 Default/Performance/Done footer，native 现在能打开/关闭
+  DebugOptionsScreen、释放 cursor/active input、消费普通 gameplay keys 但
+  允许全局 F3 组合键、搜索/滚动 entry、点击 status/profile/done、复用
+  debug-profile persistence，并在 renderer 中把 F3 overlay 画在 screen
+  背后。边界：scrollbar 视觉、not-allowed tooltip、narration、EditBox
+  光标/selection 和完整 vanilla widget styling 仍是后续 polish。

@@ -25,7 +25,8 @@ use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugGameModeSwitcher,
-    HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts, HudDebugOverlay, HudDebugTpsChart,
+    HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts, HudDebugOptionsEntryStatus,
+    HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOverlay, HudDebugTpsChart,
     HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
     HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
@@ -90,9 +91,9 @@ use crate::{
         recipe_book_type_for_background, recipe_book_type_settings,
         recipe_book_visible_tab_indices, release_active_input, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
-        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT,
-        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        DebugOptionsScreenHudRow, InventoryScreenBackground, RecipeBookOverlayHudState,
+        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
@@ -2090,13 +2091,22 @@ pub(crate) fn pump_network_and_terrain(
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade =
         advancement_hover_fade_for_hud(input, world, advancement_scroll_delta, surface_size);
-    let hud_pause_screen = hud_pause_screen(input);
-    let hud_sign_editor_screen = if hud_pause_screen.is_some() {
+    let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);
+    let hud_pause_screen = if hud_debug_options_screen.is_some() {
+        None
+    } else {
+        hud_pause_screen(input)
+    };
+    let hud_sign_editor_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some()
+    {
         None
     } else {
         hud_sign_editor_screen(input, world)
     };
-    let hud_inventory_screen = if hud_pause_screen.is_some() || hud_sign_editor_screen.is_some() {
+    let hud_inventory_screen = if hud_debug_options_screen.is_some()
+        || hud_pause_screen.is_some()
+        || hud_sign_editor_screen.is_some()
+    {
         None
     } else {
         hud_inventory_screen_with_local_state_for_surface(
@@ -2404,6 +2414,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_inventory_screen,
             hud_sign_editor_screen,
             hud_pause_screen,
+            hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
             hud_debug_overlay,
@@ -2905,6 +2916,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_dialog().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
         || input.sign_editor_is_active_or_pending(world)
 }
@@ -2920,6 +2932,59 @@ fn hud_pause_screen(input: &ClientInputState) -> Option<HudPauseScreen> {
         .to_string(),
         show_pause_menu: state.show_pause_menu,
     })
+}
+
+fn hud_debug_options_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudDebugOptionsScreen> {
+    let state = input.debug_options_screen_hud_state(
+        surface_size,
+        world.local_player_has_reduced_debug_info(),
+    )?;
+    let rows = state
+        .rows
+        .into_iter()
+        .map(|row| match row {
+            DebugOptionsScreenHudRow::Category { label } => HudDebugOptionsRow::Category { label },
+            DebugOptionsScreenHudRow::Entry {
+                path,
+                status,
+                allowed,
+                ..
+            } => HudDebugOptionsRow::Entry {
+                path,
+                status: hud_debug_options_status(status),
+                allowed,
+            },
+        })
+        .collect();
+    Some(HudDebugOptionsScreen {
+        title: "Debug Options".to_string(),
+        warning: "These options are for testing purposes only. They may slow down your computer, crash the game, or eat your pet rock.".to_string(),
+        search_text: state.search_text,
+        rows,
+        scroll_row: state.scroll_row,
+        total_rows: state.total_rows,
+        visible_rows: state.visible_rows,
+        default_profile_active: state.default_profile_active,
+        performance_profile_active: state.performance_profile_active,
+    })
+}
+
+fn hud_debug_options_status(
+    status: crate::debug_entries::DebugScreenEntryStatus,
+) -> HudDebugOptionsEntryStatus {
+    match status {
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn => {
+            HudDebugOptionsEntryStatus::AlwaysOn
+        }
+        crate::debug_entries::DebugScreenEntryStatus::InOverlay => {
+            HudDebugOptionsEntryStatus::InOverlay
+        }
+        crate::debug_entries::DebugScreenEntryStatus::Never => HudDebugOptionsEntryStatus::Never,
+    }
 }
 
 fn hud_sign_editor_screen(

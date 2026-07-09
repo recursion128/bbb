@@ -103,6 +103,45 @@ pub(crate) enum DebugScreenEntryId {
 }
 
 impl DebugScreenEntryId {
+    pub(crate) fn all_debug_options_ordered() -> &'static [Self] {
+        &DEBUG_OPTIONS_ORDERED_ENTRIES
+    }
+
+    pub(crate) fn path(self) -> &'static str {
+        self.vanilla_id()
+            .strip_prefix("minecraft:")
+            .unwrap_or(self.vanilla_id())
+    }
+
+    pub(crate) fn category_label(self) -> &'static str {
+        if self.is_renderer_entry() {
+            "Debug Renderers"
+        } else {
+            "Debug Screen Text"
+        }
+    }
+
+    pub(crate) fn is_renderer_entry(self) -> bool {
+        matches!(
+            self,
+            Self::EntityHitboxes
+                | Self::ChunkBorders
+                | Self::ThreeDimensionalCrosshair
+                | Self::ChunkSectionPaths
+                | Self::ChunkSectionOctree
+                | Self::VisualizeWaterLevels
+                | Self::VisualizeHeightmap
+                | Self::VisualizeCollisionBoxes
+                | Self::VisualizeEntitySupportingBlocks
+                | Self::VisualizeBlockLightLevels
+                | Self::VisualizeSkyLightLevels
+                | Self::VisualizeSolidFaces
+                | Self::VisualizeChunksOnServer
+                | Self::VisualizeSkyLightSections
+                | Self::ChunkSectionVisibility
+        )
+    }
+
     fn vanilla_id(self) -> &'static str {
         match self {
             Self::ThreeDimensionalCrosshair => "minecraft:3d_crosshair",
@@ -231,6 +270,54 @@ impl DebugScreenEntryId {
     }
 }
 
+const DEBUG_OPTIONS_ORDERED_ENTRIES: [DebugScreenEntryId; 45] = [
+    DebugScreenEntryId::Biome,
+    DebugScreenEntryId::ChunkGenerationStats,
+    DebugScreenEntryId::ChunkRenderStats,
+    DebugScreenEntryId::ChunkSourceStats,
+    DebugScreenEntryId::DayCount,
+    DebugScreenEntryId::DetailedMemory,
+    DebugScreenEntryId::EntityRenderStats,
+    DebugScreenEntryId::EntitySpawnCounts,
+    DebugScreenEntryId::Fps,
+    DebugScreenEntryId::GameVersion,
+    DebugScreenEntryId::GpuUtilization,
+    DebugScreenEntryId::Heightmap,
+    DebugScreenEntryId::LightLevels,
+    DebugScreenEntryId::LocalDifficulty,
+    DebugScreenEntryId::LookingAtBlockState,
+    DebugScreenEntryId::LookingAtBlockTags,
+    DebugScreenEntryId::LookingAtEntity,
+    DebugScreenEntryId::LookingAtEntityTags,
+    DebugScreenEntryId::LookingAtFluidState,
+    DebugScreenEntryId::LookingAtFluidTags,
+    DebugScreenEntryId::Memory,
+    DebugScreenEntryId::ParticleRenderStats,
+    DebugScreenEntryId::PlayerPosition,
+    DebugScreenEntryId::PlayerSectionPosition,
+    DebugScreenEntryId::PostEffect,
+    DebugScreenEntryId::SimplePerformanceImpactors,
+    DebugScreenEntryId::SoundCache,
+    DebugScreenEntryId::SoundMood,
+    DebugScreenEntryId::SystemSpecs,
+    DebugScreenEntryId::Tps,
+    DebugScreenEntryId::ThreeDimensionalCrosshair,
+    DebugScreenEntryId::ChunkBorders,
+    DebugScreenEntryId::ChunkSectionOctree,
+    DebugScreenEntryId::ChunkSectionPaths,
+    DebugScreenEntryId::ChunkSectionVisibility,
+    DebugScreenEntryId::EntityHitboxes,
+    DebugScreenEntryId::VisualizeBlockLightLevels,
+    DebugScreenEntryId::VisualizeChunksOnServer,
+    DebugScreenEntryId::VisualizeCollisionBoxes,
+    DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+    DebugScreenEntryId::VisualizeHeightmap,
+    DebugScreenEntryId::VisualizeSkyLightLevels,
+    DebugScreenEntryId::VisualizeSkyLightSections,
+    DebugScreenEntryId::VisualizeSolidFaces,
+    DebugScreenEntryId::VisualizeWaterLevels,
+];
+
 #[derive(Debug, Clone)]
 pub(crate) struct DebugScreenEntryList {
     overlay_visible: bool,
@@ -279,8 +366,7 @@ impl DebugScreenEntryList {
             .extend_from_slice(debug_screen_profile_entries(profile));
     }
 
-    #[cfg(test)]
-    fn is_using_profile(&self, profile: DebugScreenProfile) -> bool {
+    pub(crate) fn is_using_profile(&self, profile: DebugScreenProfile) -> bool {
         self.profile == Some(profile)
     }
 

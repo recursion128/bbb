@@ -1131,15 +1131,16 @@ When an agent does any of the following, update this file in the same slice:
     interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
     PauseScreen(false) input/cursor/render shell, SharedConstants DEBUG_HOTKEYS /
-    DEBUG_FEATURE_COUNT gated dev hotkeys, and ordinary F3 keymap audit:
+    DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
+    input/search/list/profile/status/done screen shell, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
-    ProfileResults tree navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, and native pause tick-freeze eligibility/full
-    PauseScreen menu remain (large, low priority).
+    ProfileResults tree navigation, profiling metrics recorder/output,
+    DebugOptionsScreen scrollbar/tooltip/narration polish, and native pause
+    tick-freeze eligibility/full PauseScreen menu remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -1177,7 +1178,8 @@ When an agent does any of the following, update this file in the same slice:
     F3+B/F3+G toggle routing through vanilla status semantics, reduced-debug
     filtering for position/3D-crosshair/renderer entries, and HUD projection of
     implemented always-on text entries even when the F3 overlay is hidden.
-    Boundary: actual `DebugOptionsScreen` and remaining individual non-default
+    Boundary: this item is superseded by the 2026-07-09
+    `DebugOptionsScreen` screen shell below; remaining individual non-default
     entry renderers such as chunk generation stats remain future work.
   - Done 2026-07-09 — Debug overlay debug-profile.json persistence.
     Vanilla anchors: `DebugScreenEntryList` reads `debug-profile.json`,
@@ -1190,8 +1192,24 @@ When an agent does any of the following, update this file in the same slice:
     profile/custom JSON with `DataVersion`, preserves unknown custom entries on
     write-back, writes current `DataVersion`, and persists F3+B/F3+G status
     toggles. Boundary: there is no default game-directory auto-discovery, no
-    in-game `DebugOptionsScreen`, no full DataFixer chain, and unimplemented
-    entries are preserved in the file but not rendered.
+    full DataFixer chain, and unimplemented entries are preserved in the file
+    but not rendered.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen screen shell. Vanilla
+    anchors: `KeyboardHandler.handleDebugKeys` toggles `new DebugOptionsScreen()`
+    on F3+F6, `DebugOptionsScreen` uses a 61px header, 33px footer, 350px
+    option-list row width, 20px rows, search-by-entry-path filtering, category
+    rows ordered as debug screen text then debug renderers, per-entry
+    `OFF` / `In Overlay` / `Always` status buttons, and Default/Performance/
+    Done footer buttons; `GameRenderer` draws the debug overlay behind this
+    screen instead of as the final overlay pass. bbb now opens/closes a
+    repo-native DebugOptionsScreen from F3+F6, releases gameplay input/cursor,
+    consumes ordinary gameplay keys while allowing global F3 combos, supports
+    search text, row scrolling, status/profile/done mouse actions, persists
+    status/profile changes through the existing debug-profile store, projects a
+    renderer HUD screen, and draws the existing debug overlay behind it.
+    Boundary: visual scrollbar, not-allowed tooltip, narration, exact EditBox
+    cursor/selection behavior, and full vanilla widget styling remain future
+    polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1212,9 +1230,8 @@ When an agent does any of the following, update this file in the same slice:
     non-profile `DayCount` entry id, keeps it `Never` in default/performance
     profiles, filters it under reduced-debug info like the default
     `DebugScreenEntry.isAllowed`, and projects custom-enabled day count as
-    `Day #<world day_time / 24000>` when world time exists. Boundary: no
-    `DebugOptionsScreen` yet; broader clock timeline registry/display parity
-    remains future work.
+    `Day #<world day_time / 24000>` when world time exists. Boundary: broader
+    clock timeline registry/display parity remains future work.
   - Done 2026-07-09 — Debug overlay detailed-memory entry shell. Vanilla
     anchors: `DebugScreenEntries.DETAILED_MEMORY` registers
     `DebugEntryDetailedMemory`; the entry reads `MemoryMXBean`
@@ -1227,8 +1244,7 @@ When an agent does any of the following, update this file in the same slice:
     projects custom-enabled native process memory in the same two-row field
     shape. Boundary: bbb is a native client with no JVM `MemoryMXBean`, so the
     numbers come from Linux `/proc` process fields rather than exact Java heap /
-    non-heap pools; full group layout still belongs to future
-    `DebugOptionsScreen` work.
+    non-heap pools; full group layout remains future work.
   - Done 2026-07-09 — Debug overlay light-levels entry shell. Vanilla
     anchors: `DebugScreenEntries.LIGHT_LEVELS` registers `DebugEntryLight`;
     the entry reads the camera entity `blockPosition()`, gets raw brightness
@@ -1241,8 +1257,8 @@ When an agent does any of the following, update this file in the same slice:
     info, and projects custom-enabled client light from the loaded camera feet
     block. Boundary: vanilla's optional `Server Light` row behind
     `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` needs a local-server light
-    mirror and remains future work; full debug group layout still belongs to
-    `DebugOptionsScreen`.
+    mirror and remains future work; full debug group layout remains future
+    work.
   - Done 2026-07-09 — Debug overlay heightmap entry shell. Vanilla anchors:
     `DebugScreenEntries.HEIGHTMAP` registers `DebugEntryHeightmap`; it reads
     the camera entity `blockPosition()`, requires a loaded client chunk, adds
@@ -1453,7 +1469,7 @@ When an agent does any of the following, update this file in the same slice:
     default/performance profiles, filters it under reduced-debug info, and
     projects `P: active_particle_instances` from renderer particle counters
     when custom-enabled. Boundary: exact frame timing, group layout, and
-    `DebugOptionsScreen` remain future work.
+    DebugOptionsScreen polish remain future work.
   - Done 2026-07-09 — Debug overlay chunk-source-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.CHUNK_SOURCE_STATS` registers
     `DebugEntryChunkSourceStats`; it emits the client level
@@ -1472,7 +1488,7 @@ When an agent does any of the following, update this file in the same slice:
     custom-enabled. Boundary: bbb does not yet mirror vanilla entity section
     storage, so `sectionCount` is `0`; it also has no integrated server
     `ServerLevel.gatherChunkSourceStats()` line yet. Exact frame timing, group
-    layout, and `DebugOptionsScreen` remain future work.
+    layout, and DebugOptionsScreen polish remain future work.
   - Done 2026-07-09 — Debug overlay sound-cache entry shell. Vanilla anchors:
     `DebugScreenEntries.SOUND_CACHE` registers `DebugEntrySoundCache`, it
     overrides `isAllowed` to allow reduced-debug info, reads
@@ -1498,7 +1514,7 @@ When an agent does any of the following, update this file in the same slice:
     custom-enabled. Boundary: native audio does not yet mirror vanilla OpenAL
     static/streaming channel pools or biome ambient moodiness, so the new
     counters default to zero until those runtime mirrors exist; exact group
-    layout and `DebugOptionsScreen` remain future work.
+    layout and DebugOptionsScreen polish remain future work.
   - Done 2026-07-09 — Debug overlay post-effect entry client-only shell.
     Vanilla anchors: `DebugScreenEntries.POST_EFFECT` registers
     `DebugEntryPostEffect`; the entry reads
@@ -1771,11 +1787,10 @@ When an agent does any of the following, update this file in the same slice:
     and `KeyboardHandler.handleDebugKeys` toggles an existing
     `DebugOptionsScreen` closed or opens a new one when `Minecraft.canInterruptScreen()`
     allows it, while still marking the key as a debug action. bbb now consumes
-    F6 while F3 is held, records a drainable native debug-options screen
-    request, and logs that request in the main event loop without toggling the
-    debug overlay. Boundary: the actual `DebugOptionsScreen`, editable debug
-    entries, option-list refresh, and screen interruption policy are still not
-    implemented.
+    F6 while F3 is held and records a drainable native debug-options screen
+    request without toggling the debug overlay. Boundary: this request-shell
+    item is superseded by the 2026-07-09 DebugOptionsScreen screen shell; exact
+    vanilla screen interruption policy is still future work.
   - Done 2026-07-08 — Debug overlay F3+L profiling request shell. Vanilla
     anchors: `Options.keyDebugProfiling` binds key code 76 (L), and
     `KeyboardHandler.handleDebugKeys` calls `Minecraft.debugClientMetricsStart`
@@ -2038,8 +2053,8 @@ When an agent does any of the following, update this file in the same slice:
     deadline scheduling, projects `260` as `T: inf`, carries finite limits into
     `HudDebugFrameTimeChart`, sanitizes out non-vanilla guide values, and renders
     the cyan target line in the F3+2 FPS chart.
-    Boundary: this is startup configuration only; no in-game options UI or
-    DebugOptionsScreen is implemented.
+    Boundary: this remains startup configuration only; bbb still has no
+    in-game options UI for changing framerate settings.
   - Done 2026-07-08 — Debug overlay vsync FPS text/config. Vanilla anchors:
     `Options.enableVsync` is the boolean `options.vsync` option with default
     `true`, `Minecraft` applies it to the window on startup, and
@@ -2199,8 +2214,8 @@ When an agent does any of the following, update this file in the same slice:
     anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6), and
     `DebugScreenOverlay` renders `To edit: press ` plus that keybind. bbb now
     shows `To edit: press [F3+F6]` in the debug overlay and locks it with a
-    HUD projection test. Boundary: the actual `DebugOptionsScreen` is not
-    implemented yet.
+    HUD projection test. Boundary: the keybind prompt is now backed by the
+    2026-07-09 DebugOptionsScreen screen shell.
   - Done 2026-07-08 — Debug overlay F3+V version debug chat action. Vanilla
     anchors: `Options.keyDebugDumpVersion` binds V, and
     `KeyboardHandler.handleDebugKeys` maps it to
@@ -2835,6 +2850,9 @@ When an agent does any of the following, update this file in the same slice:
     statuses, F disables fog, L updates smart-cull HUD state, U and
     feature-count L/R drain request shells, and W keeps a wireframe
     state/feedback shell.
+    F3+F6 now opens a native DebugOptionsScreen with search, scrollable
+    vanilla-ordered categories, status/profile/done buttons, cursor release,
+    profile persistence, and debug overlay drawn behind the screen.
     The debug
     entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
@@ -2888,8 +2906,9 @@ When an agent does any of the following, update this file in the same slice:
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
-    ProfileResults tree navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause tick-freeze eligibility/full
+    ProfileResults tree navigation, profiling metrics recorder/output,
+    DebugOptionsScreen scrollbar/tooltip/narration polish, native pause
+    tick-freeze eligibility/full
     PauseScreen menu.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select

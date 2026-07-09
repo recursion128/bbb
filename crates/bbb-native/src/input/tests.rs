@@ -2797,6 +2797,146 @@ fn f3_f6_records_debug_options_screen_request_without_toggling_overlay() {
 }
 
 #[test]
+fn debug_options_screen_projects_vanilla_order_and_search_filter() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .expect("screen should project");
+    assert_eq!(state.total_rows, 47);
+    assert_eq!(state.visible_rows, 7);
+    assert!(!state.default_profile_active);
+    assert!(state.performance_profile_active);
+    assert_eq!(
+        state.rows[..3],
+        [
+            DebugOptionsScreenHudRow::Category {
+                label: "Debug Screen Text".to_string()
+            },
+            DebugOptionsScreenHudRow::Entry {
+                entry: DebugScreenEntryId::Biome,
+                path: "biome".to_string(),
+                status: DebugScreenEntryStatus::Never,
+                allowed: true,
+            },
+            DebugOptionsScreenHudRow::Entry {
+                entry: DebugScreenEntryId::ChunkGenerationStats,
+                path: "chunk_generation_stats".to_string(),
+                status: DebugScreenEntryStatus::Never,
+                allowed: true,
+            },
+        ]
+    );
+
+    assert!(input.handle_debug_options_screen_text_input("chunk"));
+    let filtered = input
+        .debug_options_screen_hud_state(surface, false)
+        .expect("screen should project after search");
+    let labels = filtered
+        .rows
+        .iter()
+        .map(|row| match row {
+            DebugOptionsScreenHudRow::Category { label } => label.as_str(),
+            DebugOptionsScreenHudRow::Entry { path, .. } => path.as_str(),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        labels,
+        vec![
+            "Debug Screen Text",
+            "chunk_generation_stats",
+            "chunk_render_stats",
+            "chunk_source_stats",
+            "Debug Renderers",
+            "chunk_borders",
+            "chunk_section_octree",
+        ]
+    );
+}
+
+#[test]
+fn debug_options_screen_buttons_update_status_and_profiles() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("entity_hitboxes"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let content_x = debug_options_content_x(surface);
+    let buttons_start = content_x + DEBUG_OPTIONS_ROW_WIDTH - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    let always_x = buttons_start + DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 2 + 2;
+    let entry_y = DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT + 2;
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(always_x),
+            f64::from(entry_y)
+        )),
+        surface,
+        false,
+    ));
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::EntityHitboxes),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(state.default_profile_active);
+    assert!(state.performance_profile_active);
+
+    let (_, performance_x, _) = debug_options_footer_button_xs(surface);
+    let footer_y = debug_options_footer_button_y(surface) + 2;
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(performance_x + 2),
+            f64::from(footer_y)
+        )),
+        surface,
+        false,
+    ));
+    assert_eq!(
+        input.debug_screen_entry_status(DebugScreenEntryId::Fps),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(state.default_profile_active);
+    assert!(!state.performance_profile_active);
+}
+
+#[test]
+fn debug_options_screen_consumes_keys_scrolls_and_allows_f3_global_keymap() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    let surface = winit::dpi::PhysicalSize::new(420, 161);
+
+    assert!(input.handle_debug_options_screen_mouse_wheel(
+        winit::event::MouseScrollDelta::LineDelta(0.0, -3.0),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert_eq!(state.visible_rows, 3);
+    assert_eq!(state.scroll_row, 3);
+
+    assert!(!input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::F3), ElementState::Pressed));
+    assert!(input.debug_options_screen_is_open());
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed
+    ));
+    assert!(!input.debug_options_screen_is_open());
+}
+
+#[test]
 fn f3_escape_records_pause_without_menu_request_without_toggling_overlay() {
     let mut input = ClientInputState::new(true);
 

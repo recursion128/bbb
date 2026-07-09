@@ -29,9 +29,9 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
-#[cfg(test)]
-use crate::debug_entries::DebugScreenEntryStatus;
-use crate::debug_entries::{DebugScreenEntryId, DebugScreenEntryList, DebugScreenProfile};
+use crate::debug_entries::{
+    DebugScreenEntryId, DebugScreenEntryList, DebugScreenEntryStatus, DebugScreenProfile,
+};
 
 mod bundle;
 mod commands;
@@ -99,6 +99,15 @@ const CHAT_ENTRY_MAX_LENGTH: usize = 256;
 pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
 pub(crate) const DEBUG_PROFILING_RESULTS_RELATIVE_DIR: &str = "debug/profiling";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
+const DEBUG_OPTIONS_HEADER_HEIGHT: i32 = 61;
+const DEBUG_OPTIONS_FOOTER_HEIGHT: i32 = 33;
+const DEBUG_OPTIONS_ROW_WIDTH: i32 = 350;
+const DEBUG_OPTIONS_ROW_HEIGHT: i32 = 20;
+const DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
+const DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
+const DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
+const DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
+const DEBUG_OPTIONS_SEARCH_MAX_CHARS: usize = 64;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
@@ -165,6 +174,42 @@ struct DebugGameModeSwitcherState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DebugPauseScreenState {
     pub(crate) show_pause_menu: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct DebugOptionsScreenState {
+    search_text: String,
+    scroll_row: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DebugOptionsScreenHudState {
+    pub(crate) search_text: String,
+    pub(crate) rows: Vec<DebugOptionsScreenHudRow>,
+    pub(crate) scroll_row: usize,
+    pub(crate) total_rows: usize,
+    pub(crate) visible_rows: usize,
+    pub(crate) default_profile_active: bool,
+    pub(crate) performance_profile_active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DebugOptionsScreenHudRow {
+    Category {
+        label: String,
+    },
+    Entry {
+        entry: DebugScreenEntryId,
+        path: String,
+        status: DebugScreenEntryStatus,
+        allowed: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DebugOptionsScreenRow {
+    Category { label: &'static str },
+    Entry(DebugScreenEntryId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,6 +325,7 @@ pub(crate) struct ClientInputState {
     debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
+    debug_options_screen: Option<DebugOptionsScreenState>,
     debug_pause_screen: Option<DebugPauseScreenState>,
     debug_game_mode_switcher: Option<DebugGameModeSwitcherState>,
     debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
@@ -752,7 +798,6 @@ impl ClientInputState {
         enabled
     }
 
-    #[cfg(test)]
     fn set_debug_screen_entry_status_inner(
         &mut self,
         entry: DebugScreenEntryId,
@@ -841,7 +886,178 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_feature_count_requests)
     }
 
+    pub(crate) fn open_debug_options_screen(&mut self) {
+        self.debug_pause_screen = None;
+        self.debug_game_mode_switcher = None;
+        self.debug_options_screen = Some(DebugOptionsScreenState::default());
+    }
+
+    pub(crate) fn close_debug_options_screen(&mut self) {
+        self.debug_options_screen = None;
+    }
+
+    pub(crate) fn debug_options_screen_is_open(&self) -> bool {
+        self.debug_options_screen.is_some()
+    }
+
+    pub(crate) fn debug_options_screen_hud_state(
+        &self,
+        surface_size: PhysicalSize<u32>,
+        reduced_debug_info: bool,
+    ) -> Option<DebugOptionsScreenHudState> {
+        let screen = self.debug_options_screen.as_ref()?;
+        let rows = debug_options_screen_rows(&screen.search_text);
+        let total_rows = rows.len();
+        let visible_rows = debug_options_visible_row_count(surface_size);
+        let scroll_row = screen
+            .scroll_row
+            .min(debug_options_max_scroll_row(total_rows, visible_rows));
+        let rows = rows
+            .into_iter()
+            .skip(scroll_row)
+            .take(visible_rows)
+            .map(|row| match row {
+                DebugOptionsScreenRow::Category { label } => DebugOptionsScreenHudRow::Category {
+                    label: label.to_string(),
+                },
+                DebugOptionsScreenRow::Entry(entry) => DebugOptionsScreenHudRow::Entry {
+                    entry,
+                    path: entry.path().to_string(),
+                    status: self.debug_entries.status(entry),
+                    allowed: entry.is_allowed(reduced_debug_info),
+                },
+            })
+            .collect();
+        Some(DebugOptionsScreenHudState {
+            search_text: screen.search_text.clone(),
+            rows,
+            scroll_row,
+            total_rows,
+            visible_rows,
+            default_profile_active: !self
+                .debug_entries
+                .is_using_profile(DebugScreenProfile::Default),
+            performance_profile_active: !self
+                .debug_entries
+                .is_using_profile(DebugScreenProfile::Performance),
+        })
+    }
+
+    pub(crate) fn handle_debug_options_screen_key(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) -> bool {
+        if self.debug_options_screen.is_none() {
+            return false;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return true;
+        };
+        let pressed = matches!(state, ElementState::Pressed);
+        if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
+            self.set_shift_key(code, pressed);
+        }
+        if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
+            self.set_control_key(code, pressed);
+        }
+        if matches!(code, KeyCode::F3) || self.debug_modifier_down {
+            return false;
+        }
+        if !pressed {
+            return true;
+        }
+        match code {
+            KeyCode::Escape => {
+                self.set_key_down(code, false);
+                self.close_debug_options_screen();
+            }
+            KeyCode::Backspace => {
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    screen.search_text.pop();
+                    screen.scroll_row = 0;
+                }
+            }
+            _ => {}
+        }
+        true
+    }
+
+    pub(crate) fn handle_debug_options_screen_text_input(&mut self, text: &str) -> bool {
+        let Some(screen) = self.debug_options_screen.as_mut() else {
+            return false;
+        };
+        let remaining = DEBUG_OPTIONS_SEARCH_MAX_CHARS.saturating_sub(screen.search_text.len());
+        screen
+            .search_text
+            .extend(text.chars().filter(|c| !c.is_control()).take(remaining));
+        screen.scroll_row = 0;
+        true
+    }
+
+    pub(crate) fn handle_debug_options_screen_mouse_input(
+        &mut self,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+        reduced_debug_info: bool,
+    ) -> bool {
+        if self.debug_options_screen.is_none() {
+            return false;
+        }
+        if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+            return true;
+        }
+        let Some((mouse_x, mouse_y)) = cursor_position.and_then(physical_position_floor_i32) else {
+            return true;
+        };
+        if let Some(profile) = debug_options_profile_button_at(mouse_x, mouse_y, surface_size) {
+            if !self.debug_entries.is_using_profile(profile) {
+                self.load_debug_screen_profile(profile);
+                if let Some(screen) = self.debug_options_screen.as_mut() {
+                    screen.scroll_row = 0;
+                }
+            }
+            return true;
+        }
+        if debug_options_done_button_contains(mouse_x, mouse_y, surface_size) {
+            self.close_debug_options_screen();
+            return true;
+        }
+        if let Some((entry, status)) =
+            self.debug_options_status_button_at(mouse_x, mouse_y, surface_size, reduced_debug_info)
+        {
+            self.set_debug_screen_entry_status_inner(entry, status);
+        }
+        true
+    }
+
+    pub(crate) fn handle_debug_options_screen_mouse_wheel(
+        &mut self,
+        delta: MouseScrollDelta,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        let Some(screen) = self.debug_options_screen.as_mut() else {
+            return false;
+        };
+        let rows = debug_options_screen_rows(&screen.search_text);
+        let visible_rows = debug_options_visible_row_count(surface_size);
+        let max_scroll = debug_options_max_scroll_row(rows.len(), visible_rows);
+        let delta_rows = debug_options_scroll_delta_rows(delta);
+        if delta_rows < 0 {
+            screen.scroll_row = screen
+                .scroll_row
+                .saturating_add(delta_rows.unsigned_abs() as usize);
+        } else if delta_rows > 0 {
+            screen.scroll_row = screen.scroll_row.saturating_sub(delta_rows as usize);
+        }
+        screen.scroll_row = screen.scroll_row.min(max_scroll);
+        true
+    }
+
     pub(crate) fn open_debug_pause_screen_without_menu(&mut self) {
+        self.debug_options_screen = None;
         self.debug_pause_screen = Some(DebugPauseScreenState {
             show_pause_menu: false,
         });
@@ -923,6 +1139,38 @@ impl ClientInputState {
             switcher.selected = hovered;
         }
         true
+    }
+
+    fn debug_options_status_button_at(
+        &self,
+        mouse_x: i32,
+        mouse_y: i32,
+        surface_size: PhysicalSize<u32>,
+        _reduced_debug_info: bool,
+    ) -> Option<(DebugScreenEntryId, DebugScreenEntryStatus)> {
+        let screen = self.debug_options_screen.as_ref()?;
+        let row_index = debug_options_row_index_at(mouse_x, mouse_y, surface_size)?;
+        let rows = debug_options_screen_rows(&screen.search_text);
+        let visible_rows = debug_options_visible_row_count(surface_size);
+        let scroll_row = screen
+            .scroll_row
+            .min(debug_options_max_scroll_row(rows.len(), visible_rows));
+        let DebugOptionsScreenRow::Entry(entry) = *rows.get(scroll_row + row_index)? else {
+            return None;
+        };
+        let buttons_start_x = debug_options_content_x(surface_size) + DEBUG_OPTIONS_ROW_WIDTH
+            - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+        if mouse_x < buttons_start_x {
+            return None;
+        }
+        let button_index =
+            ((mouse_x - buttons_start_x) / DEBUG_OPTIONS_STATUS_BUTTON_WIDTH).clamp(0, 2);
+        let status = match button_index {
+            0 => DebugScreenEntryStatus::Never,
+            1 => DebugScreenEntryStatus::InOverlay,
+            _ => DebugScreenEntryStatus::AlwaysOn,
+        };
+        Some((entry, status))
     }
 
     pub(crate) fn take_debug_recreate_server_query_requests(
@@ -1619,6 +1867,118 @@ fn debug_spectate_target_game_mode(world: &WorldStore) -> GameType {
             .unwrap_or(GameType::Creative)
     } else {
         GameType::Spectator
+    }
+}
+
+fn debug_options_screen_rows(search: &str) -> Vec<DebugOptionsScreenRow> {
+    let mut rows = Vec::new();
+    let mut current_category = None;
+    for entry in DebugScreenEntryId::all_debug_options_ordered()
+        .iter()
+        .copied()
+        .filter(|entry| entry.path().contains(search))
+    {
+        let category = entry.category_label();
+        if current_category != Some(category) {
+            rows.push(DebugOptionsScreenRow::Category { label: category });
+            current_category = Some(category);
+        }
+        rows.push(DebugOptionsScreenRow::Entry(entry));
+    }
+    rows
+}
+
+fn debug_options_visible_row_count(surface_size: PhysicalSize<u32>) -> usize {
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    ((height - DEBUG_OPTIONS_HEADER_HEIGHT - DEBUG_OPTIONS_FOOTER_HEIGHT)
+        / DEBUG_OPTIONS_ROW_HEIGHT)
+        .max(0) as usize
+}
+
+fn debug_options_max_scroll_row(total_rows: usize, visible_rows: usize) -> usize {
+    total_rows.saturating_sub(visible_rows)
+}
+
+fn debug_options_content_x(surface_size: PhysicalSize<u32>) -> i32 {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    width / 2 - DEBUG_OPTIONS_ROW_WIDTH / 2
+}
+
+fn debug_options_row_index_at(
+    mouse_x: i32,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+) -> Option<usize> {
+    let x = debug_options_content_x(surface_size);
+    if mouse_x < x || mouse_x >= x + DEBUG_OPTIONS_ROW_WIDTH {
+        return None;
+    }
+    if mouse_y < DEBUG_OPTIONS_HEADER_HEIGHT {
+        return None;
+    }
+    let row_index = (mouse_y - DEBUG_OPTIONS_HEADER_HEIGHT) / DEBUG_OPTIONS_ROW_HEIGHT;
+    (row_index >= 0 && (row_index as usize) < debug_options_visible_row_count(surface_size))
+        .then_some(row_index as usize)
+}
+
+fn debug_options_footer_button_y(surface_size: PhysicalSize<u32>) -> i32 {
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    height - DEBUG_OPTIONS_FOOTER_HEIGHT + 6
+}
+
+fn debug_options_footer_button_xs(surface_size: PhysicalSize<u32>) -> (i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let total_width = DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH * 2
+        + DEBUG_OPTIONS_DONE_BUTTON_WIDTH
+        + DEBUG_OPTIONS_FOOTER_BUTTON_SPACING * 2;
+    let default_x = width / 2 - total_width / 2;
+    let performance_x =
+        default_x + DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH + DEBUG_OPTIONS_FOOTER_BUTTON_SPACING;
+    let done_x =
+        performance_x + DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH + DEBUG_OPTIONS_FOOTER_BUTTON_SPACING;
+    (default_x, performance_x, done_x)
+}
+
+fn debug_options_profile_button_at(
+    mouse_x: i32,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+) -> Option<DebugScreenProfile> {
+    let y = debug_options_footer_button_y(surface_size);
+    if mouse_y < y || mouse_y >= y + DEBUG_OPTIONS_ROW_HEIGHT {
+        return None;
+    }
+    let (default_x, performance_x, _) = debug_options_footer_button_xs(surface_size);
+    if mouse_x >= default_x && mouse_x < default_x + DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH {
+        return Some(DebugScreenProfile::Default);
+    }
+    if mouse_x >= performance_x && mouse_x < performance_x + DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH {
+        return Some(DebugScreenProfile::Performance);
+    }
+    None
+}
+
+fn debug_options_done_button_contains(
+    mouse_x: i32,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let y = debug_options_footer_button_y(surface_size);
+    let (_, _, done_x) = debug_options_footer_button_xs(surface_size);
+    mouse_x >= done_x
+        && mouse_x < done_x + DEBUG_OPTIONS_DONE_BUTTON_WIDTH
+        && mouse_y >= y
+        && mouse_y < y + DEBUG_OPTIONS_ROW_HEIGHT
+}
+
+fn debug_options_scroll_delta_rows(delta: MouseScrollDelta) -> i32 {
+    match delta {
+        MouseScrollDelta::LineDelta(_, y) => y.round() as i32,
+        MouseScrollDelta::PixelDelta(position) => {
+            (position.y / f64::from(DEBUG_OPTIONS_ROW_HEIGHT))
+                .round()
+                .clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32
+        }
     }
 }
 
