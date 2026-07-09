@@ -21,7 +21,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -222,6 +223,8 @@ const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
 const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
+const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
+const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 const AXOLOTL_DEFAULT_VARIANT: i32 = 0;
 const AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
@@ -255,6 +258,9 @@ const FROG_DEFAULT_VARIANT_ID: i32 = 0;
 const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
 const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 const PANDA_DEFAULT_GENE_ID: i32 = 0;
+const PARROT_VARIANT_DATA_ID: u8 = 20;
+const PARROT_DEFAULT_VARIANT: i32 = 0;
+const PARROT_MAX_VARIANT: i32 = 4;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3779,6 +3785,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_panda_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PARROT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_tamable_animal_additional_save_data(entity, fields);
+            debug_push_parrot_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_PHANTOM_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
@@ -3899,6 +3912,14 @@ fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mu
 
 fn debug_push_animal_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("InLove: {ANIMAL_DEFAULT_IN_LOVE}"));
+}
+
+fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, TAMABLE_ANIMAL_FLAGS_DATA_ID).unwrap_or(0);
+    fields.push(format!(
+        "Sitting: {}",
+        debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)
+    ));
 }
 
 fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -4093,6 +4114,13 @@ fn debug_panda_gene_name(gene: i32) -> &'static str {
         6 => "aggressive",
         _ => "normal",
     }
+}
+
+fn debug_push_parrot_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_int_present(entity, PARROT_VARIANT_DATA_ID)
+        .unwrap_or(PARROT_DEFAULT_VARIANT)
+        .clamp(PARROT_DEFAULT_VARIANT, PARROT_MAX_VARIANT);
+    fields.push(format!("Variant: {variant}"));
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
