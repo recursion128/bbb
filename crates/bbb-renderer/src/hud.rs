@@ -116,6 +116,14 @@ pub struct HudDebugOverlay {
     pub show_lightmap_preview: bool,
 }
 
+/// Vanilla `PauseScreen(false)` render-state: the no-menu debug pause screen
+/// only submits the centered title row and skips the dim background/buttons.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudPauseScreen {
+    pub title: String,
+    pub show_pause_menu: bool,
+}
+
 /// Vanilla `GameModeSwitcherScreen` render-state shell: background bounds, four
 /// 26px slots in vanilla order, selected mode, and the two centered text rows.
 #[derive(Debug, Clone, PartialEq)]
@@ -3190,6 +3198,10 @@ impl Renderer {
         self.hud_sign_editor_screen = screen.and_then(sanitize_hud_sign_editor_screen);
     }
 
+    pub fn set_hud_pause_screen(&mut self, screen: Option<HudPauseScreen>) {
+        self.hud_pause_screen = screen.and_then(sanitize_hud_pause_screen);
+    }
+
     pub fn set_hud_action_bar_text(&mut self, action_bar: Option<HudActionBarText>) {
         self.hud_action_bar_text = action_bar.filter(|state| state.partial_tick.is_finite());
     }
@@ -3261,6 +3273,10 @@ impl Renderer {
 
     pub fn clear_hud_sign_editor_screen(&mut self) {
         self.hud_sign_editor_screen = None;
+    }
+
+    pub fn clear_hud_pause_screen(&mut self) {
+        self.hud_pause_screen = None;
     }
 
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
@@ -4162,6 +4178,20 @@ impl Renderer {
                 screen,
                 !self.hud_entity_preview_pip_targets.is_empty(),
                 &self.hud_hanging_sign_backgrounds,
+            );
+        }
+
+        if let Some(screen) = &self.hud_pause_screen {
+            push_hud_pause_screen(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
             );
         }
 
@@ -5589,6 +5619,52 @@ fn push_hud_sign_editor_screen<'a>(
         surface_size,
         screen,
     );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_pause_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudPauseScreen,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let runs = [HudStyledTextRun::plain(screen.title.as_str())];
+    let draw = HudScreenTextDraw {
+        runs: &runs,
+        origin: hud_pause_screen_title_origin(screen, glyphs, surface_size),
+        scale: 1.0,
+        tint: HUD_TINT_WHITE,
+    };
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &draw,
+    );
+}
+
+fn hud_pause_screen_title_origin(
+    screen: &HudPauseScreen,
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+) -> (f32, f32) {
+    let runs = [HudStyledTextRun::plain(screen.title.as_str())];
+    let width = hud_font_runs_width(&runs, glyphs).unwrap_or_default() as f32;
+    let y = if screen.show_pause_menu { 40.0 } else { 10.0 };
+    (surface_size.width.max(1) as f32 * 0.5 - width * 0.5, y)
 }
 
 fn hud_sign_editor_standing_preview_rect(surface_size: PhysicalSize<u32>) -> HudRect {
@@ -9228,6 +9304,14 @@ fn sanitize_hud_debug_game_mode_switcher(
             ..switcher
         },
     )
+}
+
+fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
+    let title = sanitize_hud_text_line(screen.title)?;
+    (!title.is_empty()).then_some(HudPauseScreen {
+        title,
+        show_pause_menu: screen.show_pause_menu,
+    })
 }
 
 fn sanitize_hud_debug_game_mode_switcher_slot(
@@ -13469,6 +13553,45 @@ mod tests {
         })
         .expect("hanging sign editor");
         assert!(hanging.sign_preview.is_none());
+    }
+
+    #[test]
+    fn sanitize_pause_screen_strips_control_text_and_drops_empty_title() {
+        let screen = sanitize_hud_pause_screen(HudPauseScreen {
+            title: "Game\nPaused".to_string(),
+            show_pause_menu: false,
+        })
+        .expect("pause screen");
+        assert_eq!(screen.title, "GamePaused");
+        assert!(!screen.show_pause_menu);
+
+        assert!(sanitize_hud_pause_screen(HudPauseScreen {
+            title: "\n\t".to_string(),
+            show_pause_menu: true,
+        })
+        .is_none());
+    }
+
+    #[test]
+    fn pause_screen_title_origin_matches_vanilla_y_positions() {
+        let glyphs = styled_test_glyphs();
+        let no_menu = HudPauseScreen {
+            title: "ab".to_string(),
+            show_pause_menu: false,
+        };
+        let menu = HudPauseScreen {
+            title: "ab".to_string(),
+            show_pause_menu: true,
+        };
+
+        assert_eq!(
+            hud_pause_screen_title_origin(&no_menu, &glyphs, PhysicalSize::new(100, 50)),
+            (44.0, 10.0)
+        );
+        assert_eq!(
+            hud_pause_screen_title_origin(&menu, &glyphs, PhysicalSize::new(100, 50)),
+            (44.0, 40.0)
+        );
     }
 
     #[test]

@@ -766,8 +766,11 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = hotbar_item_icons_with_input_context(")
         .expect("pump should extract hotbar item icons");
+    let pause_screen_extract = source
+        .find("let hud_pause_screen = hud_pause_screen(input);")
+        .expect("pump should extract pause screen HUD state");
     let sign_editor_extract = source
-        .find("let hud_sign_editor_screen = hud_sign_editor_screen(input, world);")
+        .find("let hud_sign_editor_screen = if hud_pause_screen.is_some() {")
         .expect("pump should extract sign editor HUD state");
     let inventory_screen_extract = source
         .find("hud_inventory_screen_with_local_state(")
@@ -782,6 +785,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     for extraction in [
         selected_slot_extract,
         hotbar_icons_extract,
+        pause_screen_extract,
         sign_editor_extract,
         inventory_screen_extract,
     ] {
@@ -5809,6 +5813,18 @@ fn hud_sign_editor_screen_projects_hanging_sign_background_state() {
         }
     );
     assert!(screen.sign_preview.is_none());
+}
+
+#[test]
+fn hud_pause_screen_projects_no_menu_title() {
+    let mut input = ClientInputState::new(true);
+
+    assert!(hud_pause_screen(&input).is_none());
+    input.open_debug_pause_screen_without_menu();
+
+    let screen = hud_pause_screen(&input).expect("pause screen");
+    assert_eq!(screen.title, "Game Paused");
+    assert!(!screen.show_pause_menu);
 }
 
 #[test]

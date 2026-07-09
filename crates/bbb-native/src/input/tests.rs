@@ -2587,6 +2587,92 @@ fn f3_escape_records_pause_without_menu_request_without_toggling_overlay() {
 }
 
 #[test]
+fn releasing_active_input_preserves_f3_escape_debug_action_state() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+        None,
+        None
+    ));
+    assert_eq!(input.take_debug_pause_without_menu_requests(), 1);
+
+    release_active_input(&mut input, &mut world, &mut counters, &None);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+        None,
+        None
+    ));
+    assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn debug_pause_screen_consumes_gameplay_keys_and_escape_closes() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    input.open_debug_pause_screen_without_menu();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert!(input.debug_pause_screen_is_open());
+    assert!(!input.forward);
+    assert!(!input.pressed_keys.contains(&KeyCode::KeyW));
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.debug_pause_screen_is_open());
+    assert!(!input.pressed_keys.contains(&KeyCode::Escape));
+}
+
+#[test]
+fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    input.open_debug_pause_screen_without_menu();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Released,
+    );
+
+    assert!(input.debug_pause_screen_is_open());
+    assert!(input.debug_overlay_visible());
+}
+
+#[test]
 fn f3_c_copies_location_tp_command_to_clipboard_and_reports_feedback() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

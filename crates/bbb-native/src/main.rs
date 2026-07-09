@@ -442,6 +442,12 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    if input.handle_debug_pause_screen_key(event.physical_key, event.state) {
+                        if runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, false);
+                        }
+                        return;
+                    }
                     if input.handle_debug_overlay_key_with_clipboard_and_net(
                         event.physical_key,
                         event.state,
@@ -558,9 +564,17 @@ fn main() -> Result<()> {
                         let pause_without_menu_requests =
                             input.take_debug_pause_without_menu_requests();
                         if pause_without_menu_requests > 0 {
+                            release_active_input(
+                                &mut input,
+                                &mut world,
+                                &mut net_counters,
+                                &net_commands,
+                            );
+                            input.open_debug_pause_screen_without_menu();
+                            set_cursor_capture(&window, &mut cursor_captured, false);
                             tracing::info!(
                                 pause_without_menu_requests,
-                                "pause without menu requested by debug hotkey; native pause loop is not implemented"
+                                "opened no-menu pause screen requested by debug hotkey"
                             );
                         }
                         return;
@@ -570,6 +584,7 @@ fn main() -> Result<()> {
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     let book_open = world.current_book().is_some();
                     let advancements_open = world.advancements_screen_is_open();
+                    let pause_open = input.debug_pause_screen_is_open();
                     if dialog_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
@@ -581,6 +596,7 @@ fn main() -> Result<()> {
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
+                        && !pause_open
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
@@ -592,7 +608,7 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if sign_editor_open || book_open || advancements_open {
+                    if sign_editor_open || book_open || advancements_open || pause_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
                     if !cursor_captured
@@ -600,6 +616,7 @@ fn main() -> Result<()> {
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
+                        && !pause_open
                     {
                         return;
                     }
@@ -1090,6 +1107,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
     world_wants_cursor(world)
         || input.sign_editor_is_active_or_pending(world)
+        || input.debug_pause_screen_is_open()
         || input.debug_game_mode_switcher_is_open()
 }
 
@@ -1230,6 +1248,16 @@ mod tests {
             Some(&mut world),
             None
         ));
+        assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn runtime_wants_cursor_for_debug_pause_screen() {
+        let mut input = ClientInputState::new(true);
+        let world = WorldStore::new();
+
+        assert!(!runtime_wants_cursor(&input, &world));
+        input.open_debug_pause_screen_without_menu();
         assert!(runtime_wants_cursor(&input, &world));
     }
 

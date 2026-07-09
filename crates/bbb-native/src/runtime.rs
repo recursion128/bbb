@@ -33,15 +33,15 @@ use bbb_renderer::{
     HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
     HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
-    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
+    HudSignEditorKind, HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting,
+    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -2086,8 +2086,13 @@ pub(crate) fn pump_network_and_terrain(
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade =
         advancement_hover_fade_for_hud(input, world, advancement_scroll_delta, surface_size);
-    let hud_sign_editor_screen = hud_sign_editor_screen(input, world);
-    let hud_inventory_screen = if hud_sign_editor_screen.is_some() {
+    let hud_pause_screen = hud_pause_screen(input);
+    let hud_sign_editor_screen = if hud_pause_screen.is_some() {
+        None
+    } else {
+        hud_sign_editor_screen(input, world)
+    };
+    let hud_inventory_screen = if hud_pause_screen.is_some() || hud_sign_editor_screen.is_some() {
         None
     } else {
         hud_inventory_screen_with_local_state_for_surface(
@@ -2394,6 +2399,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_hotbar_block_item_models,
             hud_inventory_screen,
             hud_sign_editor_screen,
+            hud_pause_screen,
             hud_action_bar_text,
             hud_title_text,
             hud_debug_overlay,
@@ -2895,7 +2901,21 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_dialog().is_some()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
+        || input.debug_pause_screen_is_open()
         || input.sign_editor_is_active_or_pending(world)
+}
+
+fn hud_pause_screen(input: &ClientInputState) -> Option<HudPauseScreen> {
+    let state = input.debug_pause_screen()?;
+    Some(HudPauseScreen {
+        title: if state.show_pause_menu {
+            "Game Menu"
+        } else {
+            "Game Paused"
+        }
+        .to_string(),
+        show_pause_menu: state.show_pause_menu,
+    })
 }
 
 fn hud_sign_editor_screen(

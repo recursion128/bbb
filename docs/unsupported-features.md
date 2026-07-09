@@ -1129,14 +1129,16 @@ When an agent does any of the following, update this file in the same slice:
     GameModeSwitcher background/slot/text rendering, F3+F4 GameModeSwitcher
     hover/first-mouse/cursor capture, F3+F4 GameModeSwitcher screen
     interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
-    decision, F3+F4 GameModeSwitcher item icon parity, and ordinary F3 keymap audit:
+    decision, F3+F4 GameModeSwitcher item icon parity, no-menu
+    PauseScreen(false) input/cursor/render shell, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause loop/PauseScreen, and `SharedConstants.DEBUG_HOTKEYS` /
+    DebugOptionsScreen, native pause tick-freeze eligibility/full PauseScreen
+    menu, and `SharedConstants.DEBUG_HOTKEYS` /
     `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
@@ -1750,9 +1752,20 @@ When an agent does any of the following, update this file in the same slice:
     and marks the event as a debug action. bbb now consumes Escape while F3 is
     held, records a drainable native pause-without-menu request, and logs that
     request in the main event loop without toggling the debug overlay.
-    Boundary: actual pause-loop state, `PauseScreen(false)`, singleplayer
-    pause eligibility, and cursor/screen transition behavior are still not
-    implemented.
+    Boundary: full pause-loop state, singleplayer pause eligibility, and the
+    full menu `PauseScreen(true)` are still not implemented.
+  - Done 2026-07-09 — Debug overlay no-menu PauseScreen shell. Vanilla
+    anchors: `Minecraft.pauseGame(true)` opens `new PauseScreen(false)` when
+    the game can really be paused and `PauseScreen(false)` uses
+    `menu.paused` (`Game Paused`), draws only the title at y=10, skips the
+    dimmed background, and creates no pause-menu buttons. bbb now drains the
+    F3+Esc request by releasing active gameplay input, opening a native local
+    no-menu pause screen, releasing cursor capture, and projecting a
+    `HudPauseScreen` with `show_pause_menu = false`; the screen consumes
+    gameplay keys, lets global F3 handling continue, and closes on Escape.
+    Boundary: tick freezing, singleplayer pause eligibility, server/realm
+    differences, and the full `PauseScreen(true)` menu/buttons remain future
+    work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -2801,6 +2814,8 @@ When an agent does any of the following, update this file in the same slice:
     renderer-neutral HUD render-state shell, background/slot/text rendering,
     hover selection, first-mouse suppression, cursor capture, screen
     interruption parity, the mouse-release not-needed decision, and item icons.
+    F3+Esc now opens the native no-menu `PauseScreen(false)` shell, releases
+    cursor capture, consumes gameplay keys, and renders the `Game Paused` title.
     The debug
     entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
@@ -2854,7 +2869,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
-    DebugOptionsScreen, native pause loop/PauseScreen, and
+    DebugOptionsScreen, native pause tick-freeze eligibility/full
+    PauseScreen menu, and
     `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select

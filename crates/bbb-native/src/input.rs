@@ -163,6 +163,11 @@ struct DebugGameModeSwitcherState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DebugPauseScreenState {
+    pub(crate) show_pause_menu: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DebugProfilingToggleRequest {
     Start,
     Stop,
@@ -256,6 +261,7 @@ pub(crate) struct ClientInputState {
     debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
     debug_pause_without_menu_requests: u32,
+    debug_pause_screen: Option<DebugPauseScreenState>,
     debug_game_mode_switcher: Option<DebugGameModeSwitcherState>,
     debug_recreate_server_query_requests: Vec<DebugRecreateServerQueryRequest>,
     pending_debug_recreate_server_query: Option<PendingDebugRecreateServerQuery>,
@@ -443,9 +449,6 @@ impl ClientInputState {
         self.advancement_hover_fade = 0.0;
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
-        self.debug_modifier_down = false;
-        self.debug_modifier_used = false;
-        self.debug_game_mode_switcher = None;
         self.reset_debug_crash_hold();
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
@@ -461,6 +464,13 @@ impl ClientInputState {
         self.shift_right_down = false;
         self.control_left_down = false;
         self.control_right_down = false;
+    }
+
+    fn clear_debug_key_state(&mut self) {
+        self.debug_modifier_down = false;
+        self.debug_modifier_used = false;
+        self.debug_game_mode_switcher = None;
+        self.reset_debug_crash_hold();
     }
 
     fn set_shift_key(&mut self, code: KeyCode, pressed: bool) {
@@ -784,6 +794,54 @@ impl ClientInputState {
 
     pub(crate) fn take_debug_pause_without_menu_requests(&mut self) -> u32 {
         std::mem::take(&mut self.debug_pause_without_menu_requests)
+    }
+
+    pub(crate) fn open_debug_pause_screen_without_menu(&mut self) {
+        self.debug_pause_screen = Some(DebugPauseScreenState {
+            show_pause_menu: false,
+        });
+    }
+
+    pub(crate) fn close_debug_pause_screen(&mut self) {
+        self.debug_pause_screen = None;
+    }
+
+    pub(crate) fn debug_pause_screen(&self) -> Option<DebugPauseScreenState> {
+        self.debug_pause_screen
+    }
+
+    pub(crate) fn debug_pause_screen_is_open(&self) -> bool {
+        self.debug_pause_screen.is_some()
+    }
+
+    pub(crate) fn handle_debug_pause_screen_key(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) -> bool {
+        if self.debug_pause_screen.is_none() {
+            return false;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return true;
+        };
+        let pressed = matches!(state, ElementState::Pressed);
+        if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
+            self.set_shift_key(code, pressed);
+        }
+        if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
+            self.set_control_key(code, pressed);
+        }
+        if matches!(state, ElementState::Pressed) && matches!(code, KeyCode::Escape) {
+            self.set_key_down(code, false);
+            self.close_debug_pause_screen();
+            return true;
+        }
+        if matches!(code, KeyCode::F3) || self.debug_modifier_down {
+            return false;
+        }
+        self.set_key_down(code, false);
+        true
     }
 
     pub(crate) fn debug_game_mode_switcher_selected(&self) -> Option<GameType> {
@@ -2056,6 +2114,7 @@ pub(crate) fn handle_focus_change(
     if !focused {
         release_active_input(input, world, counters, net_commands);
         input.clear_modifiers();
+        input.clear_debug_key_state();
     }
     input.focused = focused;
 }
@@ -2501,6 +2560,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
+    if input.handle_debug_pause_screen_key(physical_key, state) {
+        return;
+    }
+
     if input.handle_debug_overlay_key_with_clipboard_and_net(
         physical_key,
         state,
@@ -2510,6 +2573,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         counters,
         net_commands,
     ) {
+        return;
+    }
+
+    if input.debug_pause_screen_is_open() {
         return;
     }
 

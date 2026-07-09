@@ -5352,6 +5352,16 @@
   loop 尚未实现；F3 release 不触发普通 overlay toggle。边界：实际 paused
   loop、`PauseScreen(false)`、singleplayer pause eligibility、以及 cursor/screen
   transition behavior 仍未实现。
+- [x] debug overlay no-menu PauseScreen shell（P2 input/runtime/renderer
+  slice，2026-07-09）：依据 `Minecraft.pauseGame(true)` 在可真正 pause 的
+  singleplayer 中打开 `new PauseScreen(false)`，以及 `PauseScreen(false)` 使用
+  `menu.paused` / `Game Paused`、只在 y=10 绘制标题、不创建按钮且不绘制 dim
+  background 的行为。主循环现在 drain F3+Esc request 后释放 active gameplay
+  input、打开本地 no-menu pause screen、释放 cursor capture；`ClientInputState`
+  让该 screen 消费普通 gameplay key、允许 F3 全局 debug 继续处理、Escape
+  关闭；runtime 投影 `HudPauseScreen { show_pause_menu: false }`，renderer 绘制
+  centered title。边界：tick freeze、singleplayer pause eligibility、server/realm
+  差异、以及完整 `PauseScreen(true)` menu/buttons 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`
