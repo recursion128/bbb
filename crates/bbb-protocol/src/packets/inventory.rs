@@ -19,8 +19,9 @@ pub use data_components::{
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, PlayerModelTypeSummary,
     PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
     ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-    ResourceTextureSummary, SoundEventSummary, SwingAnimationSummary, SwingAnimationTypeSummary,
-    TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+    ResourceTextureSummary, SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
+    SwingAnimationTypeSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

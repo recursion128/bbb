@@ -6489,6 +6489,18 @@
   potion custom effects 投影为红/蓝本地化 effect 行。边界：base potion holder
   effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration、
   `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+- [x] creative tooltip suspicious-stew effect lines（P2 protocol + item-runtime
+  + native slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在
+  unbreakable/ominous bottle 之后调用 `DataComponents.SUSPICIOUS_STEW_EFFECTS`
+  provider，以及 `SuspiciousStewEffects.addToTooltip` 仅在
+  `TooltipFlag.isCreative()` 时把 entries 转成默认-amplifier `MobEffectInstance` 并
+  复用 `PotionContents.addPotionTooltip`，protocol summary 现在记录 decoded
+  suspicious-stew entries，native item tooltip 新增
+  `NativeItemTooltipOptions { advanced, creative }`，HUD extraction 从 game type 传入
+  creative flag，并只在 creative tooltip 中输出 stew effect 行。边界：base potion
+  holder effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip
+  duration、`TooltipDisplay` hidden-components 与其它 component provider tooltip
+  仍未完成。
 - [x] advanced tooltip rocket firework explosion grouping（P2 item-runtime
   slice，2026-07-09）：依据 `Fireworks.addToTooltip` 对相邻相同 explosion 分组，
   单个输出 `item.minecraft.firework_rocket.single_star(shape)`，多个输出

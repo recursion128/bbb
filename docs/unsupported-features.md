@@ -1150,9 +1150,9 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, potion custom-effect lines, F3+I full local
-    entity saveWithoutId parity, full vanilla profiler section coverage,
-    profiling metrics recorder/output,
+    ominous bottle amplifier line, potion custom-effect lines, creative
+    suspicious-stew effect lines, F3+I full local entity saveWithoutId parity,
+    full vanilla profiler section coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
@@ -1234,6 +1234,20 @@ When an agent does any of the following, update this file in the same slice:
     holder effect lists, potion attribute modifier sub-lines, dynamic
     non-20-TPS duration, `TooltipDisplay` hiding, and remaining component
     providers remain future work.
+  - Done 2026-07-09 — Creative tooltip suspicious-stew effect lines. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `DataComponents.SUSPICIOUS_STEW_EFFECTS` after unbreakable/ominous bottle
+    and before block-state; `SuspiciousStewEffects.addToTooltip` emits its
+    effect list only when `TooltipFlag.isCreative()`, converting entries to
+    default-amplifier `MobEffectInstance`s and delegating to
+    `PotionContents.addPotionTooltip`. bbb now preserves decoded
+    `minecraft:suspicious_stew_effects` entries, adds
+    `NativeItemTooltipOptions { advanced, creative }`, passes creative gameplay
+    mode from native HUD extraction, and emits the same effect lines only for
+    creative tooltips. Boundary: base potion holder effect lists, potion
+    attribute modifier sub-lines, dynamic non-20-TPS duration,
+    `TooltipDisplay` hiding, and remaining component providers remain future
+    work.
   - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
     Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
     coalesces adjacent equal `FireworkExplosion` values, emits gray
@@ -2461,7 +2475,8 @@ When an agent does any of the following, update this file in the same slice:
     charged-projectiles headers, container-loot unknown-content line, container
     item-count/more rows, direct jukebox song descriptions, direct armor trim
     rows, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line, and potion custom-effect lines.
+    amplifier line, potion custom-effect lines, and creative suspicious-stew
+    effect lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2729,8 +2744,8 @@ When an agent does any of the following, update this file in the same slice:
     plus charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, and potion custom-effect lines are covered
-    by later entries.
+    ominous bottle amplifier line, potion custom-effect lines, and creative
+    suspicious-stew effect lines are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3411,9 +3426,9 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, and potion custom-effect lines, F3+I full
-    local entity saveWithoutId parity, full vanilla profiler section coverage,
-    profiling metrics recorder/output,
+    ominous bottle amplifier line, potion custom-effect lines, and creative
+    suspicious-stew effect lines, F3+I full local entity saveWithoutId parity,
+    full vanilla profiler section coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining actions/subscreens.

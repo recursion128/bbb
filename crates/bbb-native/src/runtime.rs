@@ -9,7 +9,7 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{
     AudioCounters, NetCounters, RendererCounters, SharedControlRequests, SharedSnapshot,
 };
-use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
+use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime, NativeItemTooltipOptions};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
@@ -4807,6 +4807,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
             &layout.slots,
             container,
             local_state.advanced_item_tooltips,
+            world.gameplay().game_type == 1,
         ),
     })
 }
@@ -8150,13 +8151,17 @@ fn hud_inventory_tooltip(
     layout_slots: &[crate::input::InventorySlotLayout],
     container: &ContainerState,
     advanced: bool,
+    creative: bool,
 ) -> Option<HudInventoryTooltip> {
     let slot_id = hovered_slot_id?;
     let layout = layout_slots
         .iter()
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
-    let lines = item_runtime?.tooltip_lines_for_stack_with_options(&slot.item, advanced)?;
+    let lines = item_runtime?.tooltip_lines_for_stack_with_context(
+        &slot.item,
+        NativeItemTooltipOptions { advanced, creative },
+    )?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(slot_id).ok()?,
         x: layout.x,

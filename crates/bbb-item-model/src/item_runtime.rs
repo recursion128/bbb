@@ -32,7 +32,7 @@ use bbb_protocol::packets::{
 #[cfg(test)]
 use bbb_protocol::packets::{
     LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, SoundEventSummary, WrittenBookContentSummary,
+    NbtSummaryValue, SoundEventSummary, SuspiciousStewEffectSummary, WrittenBookContentSummary,
 };
 use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -85,9 +85,9 @@ use icon::*;
 use profiles::*;
 pub use profiles::{NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload};
 use tables::*;
-pub use tooltip::NativeItemTooltipLine;
 #[cfg(test)]
 use tooltip::*;
+pub use tooltip::{NativeItemTooltipLine, NativeItemTooltipOptions};
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 

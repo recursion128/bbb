@@ -1,4 +1,7 @@
-use bbb_protocol::{packets::MobEffectInstanceSummary, ComponentStyle, StyledTextRun};
+use bbb_protocol::{
+    packets::{MobEffectInstanceSummary, SuspiciousStewEffectSummary},
+    ComponentStyle, StyledTextRun,
+};
 
 use super::mob_effects::{
     vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
@@ -31,6 +34,12 @@ pub struct NativeItemTooltipLine {
     /// `text`. Unstyled lines carry a single default-style run with no colour
     /// override (the renderer then falls back to `tint`).
     pub runs: Vec<HudStyledTextRun>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NativeItemTooltipOptions {
+    pub advanced: bool,
+    pub creative: bool,
 }
 
 impl NativeItemTooltipLine {
@@ -302,6 +311,26 @@ fn push_potion_contents_tooltip_lines(
     }
 }
 
+fn push_suspicious_stew_tooltip_lines(
+    language: &LanguageCatalog,
+    effects: &[SuspiciousStewEffectSummary],
+    creative: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !creative {
+        return;
+    }
+    for effect in effects {
+        let Some(effect_key) = vanilla_mob_effect_key(effect.effect_id) else {
+            continue;
+        };
+        lines.push(NativeItemTooltipLine::plain(
+            potion_effect_tooltip_text(language, effect_key, 0, effect.duration),
+            mob_effect_tooltip_tint_for_id(effect.effect_id),
+        ));
+    }
+}
+
 fn potion_effect_tooltip_text(
     language: &LanguageCatalog,
     effect_key: &str,
@@ -331,7 +360,11 @@ fn potion_effect_tooltip_text(
 }
 
 fn mob_effect_tooltip_tint(effect: &MobEffectInstanceSummary) -> [f32; 4] {
-    match vanilla_mob_effect_category(effect.effect_id) {
+    mob_effect_tooltip_tint_for_id(effect.effect_id)
+}
+
+fn mob_effect_tooltip_tint_for_id(effect_id: i32) -> [f32; 4] {
+    match vanilla_mob_effect_category(effect_id) {
         Some(VanillaMobEffectCategory::Harmful) => TOOLTIP_TEXT_RED,
         Some(VanillaMobEffectCategory::Beneficial | VanillaMobEffectCategory::Neutral) => {
             TOOLTIP_TEXT_BLUE
@@ -894,6 +927,20 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         advanced: bool,
     ) -> Option<Vec<NativeItemTooltipLine>> {
+        self.tooltip_lines_for_stack_with_context(
+            stack,
+            NativeItemTooltipOptions {
+                advanced,
+                creative: false,
+            },
+        )
+    }
+
+    pub fn tooltip_lines_for_stack_with_context(
+        &self,
+        stack: &ItemStackSummary,
+        options: NativeItemTooltipOptions,
+    ) -> Option<Vec<NativeItemTooltipLine>> {
         if item_stack_is_empty(stack) {
             return None;
         }
@@ -953,7 +1000,7 @@ impl NativeItemRuntime {
         push_dyed_color_tooltip_lines(
             &self.language,
             stack.component_patch.dyed_color,
-            advanced,
+            options.advanced,
             &mut lines,
         );
         push_profile_tooltip_lines(
@@ -1000,12 +1047,18 @@ impl NativeItemRuntime {
             stack.component_patch.ominous_bottle_amplifier,
             &mut lines,
         );
+        push_suspicious_stew_tooltip_lines(
+            &self.language,
+            &stack.component_patch.suspicious_stew_effects,
+            options.creative,
+            &mut lines,
+        );
         push_block_state_tooltip_lines(
             &self.language,
             &stack.component_patch.block_state_properties,
             &mut lines,
         );
-        if advanced {
+        if options.advanced {
             push_advanced_tooltip_lines(
                 &self.language,
                 item_id,

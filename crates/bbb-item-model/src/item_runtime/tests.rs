@@ -586,6 +586,42 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             lore_line("After potion"),
         ])
     );
+    let suspicious_stew_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            suspicious_stew_effects: vec![SuspiciousStewEffectSummary {
+                effect_id: 18,
+                duration: 160,
+            }],
+            lore: vec!["Before creative stew details".to_string()],
+            unbreakable: true,
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&suspicious_stew_stack),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before creative stew details"),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &suspicious_stew_stack,
+            NativeItemTooltipOptions {
+                creative: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before creative stew details"),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Poison (00:08)", TOOLTIP_TEXT_RED),
+        ])
+    );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),

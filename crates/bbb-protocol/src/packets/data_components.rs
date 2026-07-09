@@ -110,6 +110,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub potion_custom_name: Option<String>,
     #[serde(default)]
+    pub suspicious_stew_effects: Vec<SuspiciousStewEffectSummary>,
+    #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
     pub firework_explosion_fade_colors: Vec<i32>,
@@ -249,6 +251,12 @@ pub struct MobEffectInstanceSummary {
     pub show_icon: bool,
     #[serde(default)]
     pub hidden_effect: Option<Box<MobEffectDetailsSummary>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SuspiciousStewEffectSummary {
+    pub effect_id: i32,
+    pub duration: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -692,6 +700,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.potion_custom_effects = potion.custom_effects;
                 summary.potion_custom_name = potion.custom_name;
             }
+            53 => {
+                summary.suspicious_stew_effects = decode_suspicious_stew_effects(decoder)?;
+            }
             68 => {
                 let explosion = decode_firework_explosion(decoder)?;
                 summary.firework_explosion_colors = explosion.colors;
@@ -1030,7 +1041,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             decode_potion_contents(decoder)?;
         }
         // suspicious_stew_effects.
-        53 => decode_suspicious_stew_effects(decoder)?,
+        53 => {
+            let _ = decode_suspicious_stew_effects(decoder)?;
+        }
         // writable_book_content and written_book_content.
         54 => {
             let _ = decode_writable_book_content(decoder)?;
@@ -2088,13 +2101,18 @@ fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSum
     })
 }
 
-fn decode_suspicious_stew_effects(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_suspicious_stew_effects(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<SuspiciousStewEffectSummary>> {
     let effects = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut summaries = Vec::with_capacity(effects);
     for _ in 0..effects {
-        decode_holder_registry(decoder)?;
-        decoder.read_var_i32()?;
+        summaries.push(SuspiciousStewEffectSummary {
+            effect_id: decode_holder_registry_id(decoder)?,
+            duration: decoder.read_var_i32()?,
+        });
     }
-    Ok(())
+    Ok(summaries)
 }
 
 fn decode_mob_effect_instance(decoder: &mut Decoder<'_>) -> Result<MobEffectInstanceSummary> {
@@ -2405,6 +2423,38 @@ mod tests {
             ]))
         );
         assert_eq!(patch.added_type_ids, vec![0]);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_suspicious_stew_effects_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(53);
+        payload.write_var_i32(2);
+        payload.write_var_i32(18);
+        payload.write_var_i32(160);
+        payload.write_var_i32(9);
+        payload.write_var_i32(200);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(patch.added_type_ids, vec![53]);
+        assert_eq!(
+            patch.suspicious_stew_effects,
+            vec![
+                SuspiciousStewEffectSummary {
+                    effect_id: 18,
+                    duration: 160,
+                },
+                SuspiciousStewEffectSummary {
+                    effect_id: 9,
+                    duration: 200,
+                },
+            ]
+        );
         assert!(decoder.is_empty());
     }
 
@@ -3737,6 +3787,10 @@ mod tests {
                     hidden_effect: None,
                 }],
                 potion_custom_name: Some("healing".to_string()),
+                suspicious_stew_effects: vec![SuspiciousStewEffectSummary {
+                    effect_id: 4,
+                    duration: 160,
+                }],
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 firework_explosion_fade_colors: vec![0x070809],
                 firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
