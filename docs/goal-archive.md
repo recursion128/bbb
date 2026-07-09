@@ -6524,6 +6524,14 @@
   description 行。边界：holder-id jukebox songs 仍需要 registry-key description
   resolution，styled description runs 目前被 flatten；其它 component provider
   tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip direct armor trim rows（P2 item-runtime slice，
+  2026-07-09）：依据 `ArmorTrim.addToTooltip` 输出灰色
+  `item.minecraft.smithing_template.upgrade`、leading-space pattern description
+  与 leading-space material description，native item tooltip 现在把 decoded direct trim
+  material + direct trim pattern payload 投影为这三行，并保持在 jukebox playable 之后、
+  dyed-color 之前。边界：holder-id material/pattern registry resolution、material style
+  transfer 精确还原、`TooltipDisplay` hidden-components 与其它 component provider
+  tooltip 仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

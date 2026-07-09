@@ -1148,8 +1148,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, and
-    dynamic profile line,
+    container item-count/more rows, direct jukebox song descriptions, direct
+    armor trim rows, and dynamic profile line,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1273,6 +1273,14 @@ When an agent does any of the following, update this file in the same slice:
     registry-key description resolution, styled description runs are flattened,
     and remaining component providers, `TooltipDisplay` hiding, and options
     persistence remain future work.
+  - Done 2026-07-09 — Advanced tooltip direct armor trim rows. Vanilla anchors:
+    `ArmorTrim.addToTooltip` emits gray `item.minecraft.smithing_template.upgrade`,
+    then a leading-space pattern description styled by the material, then a
+    leading-space material description. bbb now projects decoded direct trim
+    material + direct trim pattern payloads into those three rows after jukebox
+    playable and before dyed-color. Boundary: holder-id material/pattern
+    registry resolution, exact material style transfer, hidden-components
+    filtering, and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip dynamic profile line. Vanilla anchors:
     `ItemStack.addDetailsToTooltip` calls `DataComponents.PROFILE` after
     dyed-color and before lore; `ResolvableProfile.Dynamic.addToTooltip`
@@ -2417,8 +2425,8 @@ When an agent does any of the following, update this file in the same slice:
     tooltip parity remains open except for the later beehive bees/honey,
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, container
-    item-count/more rows, direct jukebox song descriptions, and dynamic profile
-    line.
+    item-count/more rows, direct jukebox song descriptions, direct armor trim
+    rows, and dynamic profile line.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2684,8 +2692,8 @@ When an agent does any of the following, update this file in the same slice:
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, and
-    dynamic profile line are covered by later entries.
+    container item-count/more rows, direct jukebox song descriptions, direct
+    armor trim rows, and dynamic profile line are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3364,9 +3372,9 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, and dynamic
-    profile line, F3+I full local entity saveWithoutId parity, full vanilla
-    profiler section coverage,
+    container item-count/more rows, direct jukebox song descriptions, direct
+    armor trim rows, and dynamic profile line, F3+I full local entity
+    saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full

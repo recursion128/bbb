@@ -437,6 +437,31 @@ fn push_jukebox_playable_tooltip_lines(
     ));
 }
 
+fn push_armor_trim_tooltip_lines(
+    language: &LanguageCatalog,
+    material: Option<&TrimMaterialSummary>,
+    pattern: Option<&TrimPatternSummary>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let (Some(material), Some(pattern)) = (material, pattern) else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key("item.minecraft.smithing_template.upgrade")
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        format!(" {}", pattern.description),
+        TOOLTIP_TEXT_WHITE,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        format!(" {}", material.description),
+        TOOLTIP_TEXT_WHITE,
+    ));
+}
+
 fn push_profile_tooltip_lines(
     language: &LanguageCatalog,
     profile: Option<&ResolvableProfileSummary>,
@@ -810,6 +835,12 @@ impl NativeItemRuntime {
         push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_jukebox_playable_tooltip_lines(
             stack.component_patch.jukebox_direct_song.as_ref(),
+            &mut lines,
+        );
+        push_armor_trim_tooltip_lines(
+            &self.language,
+            stack.component_patch.armor_trim_material_direct.as_ref(),
+            stack.component_patch.armor_trim_pattern_direct.as_ref(),
             &mut lines,
         );
         push_dyed_color_tooltip_lines(

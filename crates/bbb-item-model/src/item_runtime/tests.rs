@@ -237,6 +237,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.container.loot_table.unknown": "Unknown contents",
                 "item.container.item_count": "%s x%s",
                 "item.container.more_items": "and %s more...",
+                "item.minecraft.smithing_template.upgrade": "Upgrade: ",
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
@@ -673,6 +674,35 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Test song", TOOLTIP_TEXT_GRAY),
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After jukebox"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                armor_trim_material_direct: Some(TrimMaterialSummary {
+                    asset_name: "test_material".to_string(),
+                    override_armor_assets: BTreeMap::new(),
+                    description: "Test material".to_string(),
+                }),
+                armor_trim_pattern_direct: Some(TrimPatternSummary {
+                    asset_id: "minecraft:test_pattern".to_string(),
+                    description: "Test pattern".to_string(),
+                    decal: false,
+                }),
+                dyed_color: Some(0x11_22_33),
+                lore: vec!["After trim".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Test pattern", TOOLTIP_TEXT_WHITE),
+            tooltip_line(" Test material", TOOLTIP_TEXT_WHITE),
+            italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            lore_line("After trim"),
         ])
     );
     assert_eq!(

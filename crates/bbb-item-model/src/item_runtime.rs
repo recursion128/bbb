@@ -25,14 +25,14 @@ use bbb_protocol::packets::{
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
     ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
     ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    TrimMaterialSummary, TrimPatternSummary,
 };
 // These summary types are referenced only by this crate's tests; keep them out
 // of the non-test import set so the standalone library build stays warning-free.
 #[cfg(test)]
 use bbb_protocol::packets::{
     LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
-    WrittenBookContentSummary,
+    NbtSummaryValue, SoundEventSummary, WrittenBookContentSummary,
 };
 use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
