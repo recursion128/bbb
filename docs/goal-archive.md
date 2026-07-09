@@ -7031,3 +7031,114 @@
   `PersistenceRequired`、`LeftHanded` 与 `NoAI`。边界：moving/attack-target 是客户端
   行为 metadata，不是 vanilla save NBT 字段；`LivingEntity` 的 health/attributes/
   brain/equipment 等复杂 state 仍不在本地轻量 F3+I 覆盖内。
+
+## 2026-07-09 迁入：goal.md 队列节关闭（P1 五节 + P2 terrain 节原文）
+
+P1 五个子队列与 P2 Terrain / Block Render Presentation 节均已无 open 项，按
+`goal.md` 维护规则从该文件删除，原文（含各节完成标准）逐字保留于此。结转的
+blocked/defer 项（creative inventory-tab preview、entity-in-UI preview 的
+`item_layers` GPU 绘制、font bidi/unihex、player-head BE profile owner skin）
+留在 `goal.md`，不在本节。
+
+### P1-1 完成标准（原 goal.md）
+
+每个 GPU state slice 有 vanilla `RenderTypes.*`、shader json、post-chain 或
+`LevelRenderer` 依据；测试覆盖 render plan / pipeline key / target order；能
+readback 的视觉路径补 deterministic pixel proof。
+
+### P1-2 收口说明与完成标准（原 goal.md）
+
+仍在推进：（空——最后一项 arrow/trident pickup carried 模型已于 2026-07-05
+落地；vanilla 泛化 `EntityRenderDispatcher.submit` 的实际消费面只有
+ItemPickupParticle 的三类被捡实体，item/orb/arrow+trident 均已按各自 carried
+路径覆盖，不再保留"通用 submit 管线"开放项。）
+
+完成标准：每个实体差异先定位 vanilla renderer/model/layer 源码再改测试；每个
+特殊 renderer branch 至少一个状态化测试；不再新增只验证 vertex count 的
+textured regression。
+
+### P1-3 完成标准（原 goal.md）
+
+每个 item consumer 都以 vanilla `ItemDisplayContext`、display transform 和
+renderer 源码为依据；GUI/world 使用不同 lighting context 时必须在测试或手动
+对比记录中说明。
+
+### P1-4 收口说明（原 goal.md）
+
+狭义 surface closeout 已完成，无未完成项。creative preview 归 P1-3；entity
+preview 实际 GPU PIP drawing 已于 2026-07-05 完成（完成记录归档在 goal-archive
+P1-4 段 entity-in-UI 小节，preview item_layers 的 GPU 绘制仍为后续 entity-in-UI
+子项）。
+
+### P1-5 收口说明与完成标准（原 goal.md）
+
+仍在推进：无 open 项。透明排序 2026-07-05 收口（跨 section 段间序修复，审计
+确认段内 quad 序/合成序/粒子序/within-target 序均已一致）。逐 provider 追踪表放
+账本 particle 条目 `docs/unsupported/particle-runtime-vanilla-parity.md`（30 个
+todo 已清零，本文件不复制清单）；新增缺口一律走账本表流程（先加行/立 todo 再切
+slice）。
+
+完成标准：每个 particle slice 记录 vanilla provider 类和精确公式；对随机行为
+使用确定性 seed 或固定样本测试。
+
+### P2：Terrain / Block Render Presentation 节原文（2026-07-08 闭项）
+
+已完成项见 goal-archive P2 小节。2026-07-05 入口审计：原三条伞形核查项中
+AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段内+
+段间）/atlas mip 与 sampler 状态均已对齐 vanilla；2026-07-08
+`skipRendering` same-block / bars adjacency culling 也已闭项（判据与锚点见账本
+"Terrain Block Presentation Parity" 条目），伞形措辞撤销，改为下列具体缺口
+（消化顺序即列出顺序）：
+
+- block-entity 特殊 renderer（player-head profile skin 随 P3 动态纹理/profile
+  管线）：
+  chest 全家族
+  （2026-07-06 首片）、sign + hanging sign 板体 + 牌面文本（2026-07-06
+  第二片）、bed + bell（2026-07-06 第三片：`createModelTransform` 转写 +
+  cube emitter 补 vanilla `visibleFaces` 逐面可见性 + BlockEvent(1,dir)
+  摇摆链）、shulker box + decorated pot（2026-07-06 第四片：box 17 色 ×
+  六向 `Direction.getRotation()` 根变换 + BlockEvent(1,count) 开合状态机
+  0.1/tick 双 progress lerp；pot BE NBT `sherds`（back/left/right/front）
+  → 23 项 sherd→pattern 转写表四面选纹理 + `BlockEvent(1,style)` wobble
+  POSITIVE(7 tick)/NEGATIVE(10 tick) 根变换）、banner（2026-07-06 第五片：
+  16 色 × standing ROTATION 16 段/wall FACING 双形态 + BE NBT `patterns`
+  逐层 tint 合成——base 色底 + ≤16 层 pattern 同 flag 几何重提交、
+  `DyeColor.getTextureDiffuseColor` 逐 pass 顶点 tint + flag 摆动
+  `(floorMod(x·7+y·9+z·13+gameTime,100)+partial)/100` 相位）、附魔台悬浮书
+  + lectern 摆放书（2026-07-07 第六片：共享 `ModelLayers.BOOK` / `BookModel`
+  + 单一 `enchanting_table_book` 纹理——附魔台 `bookAnimationTick` 每 tick 状态
+  链（最近玩家 3 格朝向 + 0.1/tick 开合 + 确定性随机翻页），native 侧
+  `extractRenderState` partial lerp + `submit` 浮动/翻页/根变换；lectern 纯
+  `HAS_BOOK` state 派生 + `FACING.getClockWise().toYRot()` 固定开书）、conduit
+  （2026-07-08 第七片：water/prismarine frame client tick + active cage/wind/eye
+  分片 renderer）、skull/head（2026-07-08 第八片：standing ROTATION_16 / wall
+  FACING placement、7 类 skull/head 纹理/模型分派、powered dragon/piglin
+  animation tick）、end portal/gateway（2026-07-08 第九片：Y 轴 face source、
+  gateway age/cooldown beam tick、BeaconRenderer beam geometry；2026-07-08
+  第十一片：专用 `RenderTypes.endPortal()` / `endGateway()` 15/16-layer
+  shader parity）、spawner 旋转体（2026-07-08
+  第十片：`SpawnData.entity.id` NBT decode + `BaseSpawner.clientTick`
+  spin/delay/range ticker + `SpawnerRenderer.submitEntityInSpawner` wrapper
+  transform 复用实体模型流）已完成；判据与 defer 边界见账本
+  "Terrain Block Presentation Parity" 条目；BE-driven model source 已清零；随行审计
+  `Custom`→`Cube` shape 兜底命中清单。
+
+完成标准：每个 block/render shape 差异必须有 vanilla source 或资源 JSON
+依据；对视觉 slice 使用确定性 pixel/readback 测试或明确手动对比记录。
+
+## 2026-07-09：docs/unsupported/ 明细目录并回账本
+
+`docs/unsupported-features.md` 于 2026-07-09 改为纯 TODO list：删除全部完成史
+（~10,700 行 Evidence 段与混入 Next action 的完成陈述），三个明细文件
+（`particle-runtime-vanilla-parity.md`、`renderer-scene-parity.md`、
+`native-input-movement-interaction-inventory-and-command-flows.md`）并回主文件，
+`docs/unsupported/` 目录随之删除；账本条目超 800 行的拆分规则一并撤销。
+
+保留下来的非待办内容：约 110 条 `deferred`（附重启判据）与 `not-needed`
+（附 vanilla 判据）决策记录，以及 115 行 per-provider 粒子覆盖矩阵。
+
+被删除的完成史不在本归档内（本归档只收 goal.md 视角的完成史，且始于
+2026-07-02）；2026-06-16 起的账本 Evidence 原文以 git 历史为唯一留存，
+可经 `git log -p -- docs/unsupported-features.md docs/unsupported/` 取回。
+本文件上方 2026-07-05 之前提到的 `docs/unsupported/...` 路径均为当时的历史
+陈述，文件已不存在。
