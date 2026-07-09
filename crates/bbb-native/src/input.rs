@@ -37,7 +37,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -3922,6 +3922,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_zombie_additional_save_data(entity, fields);
+            debug_push_neutral_mob_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
             debug_push_mob_additional_save_data(entity, fields);

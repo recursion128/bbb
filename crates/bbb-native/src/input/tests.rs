@@ -26,7 +26,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
     VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
@@ -5897,6 +5897,92 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
             "[Debug]: Copied client-side entity data to clipboard"
         );
     }
+}
+
+#[test]
+fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboard() {
+    const ZOMBIE_BABY_DATA_ID: u8 = 16;
+
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    world.apply_add_entity(AddEntity {
+        id: 58,
+        uuid: Uuid::from_u128(58),
+        entity_type_id: VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 1.25,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 58,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
+            },
+            ProtocolEntityDataValue {
+                data_id: ZOMBIE_BABY_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some(
+            "/summon minecraft:zombified_piglin 0.00 1.25 3.00 \
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
+             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
+             IsBaby: 1b, CanBreakDoors: 0b, InWaterTime: -1, \
+             DrownedConversionTime: -1, anger_end_time: 0L}"
+        )
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side entity data to clipboard"
+    );
 }
 
 #[test]
