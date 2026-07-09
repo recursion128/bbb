@@ -28,7 +28,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
@@ -47,7 +48,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
         VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -304,6 +305,8 @@ const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 const WOLF_DEFAULT_ANGER_END_TIME: i64 = -1;
 const WOLF_DEFAULT_VARIANT_ID: i32 = 0;
 const WOLF_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
+const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
+const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 const AXOLOTL_DEFAULT_VARIANT: i32 = 0;
 const AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
@@ -3857,6 +3860,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_mooshroom_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_tamable_animal_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
@@ -4114,6 +4123,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_tamable_animal_additional_save_data(entity, fields);
+            debug_push_zombie_nautilus_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -4413,6 +4429,26 @@ fn debug_wolf_sound_variant_resource_id(variant: i32) -> &'static str {
         5 => "minecraft:big",
         6 => "minecraft:cute",
         _ => "minecraft:classic",
+    }
+}
+
+fn debug_push_zombie_nautilus_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::ZombieNautilusVariant,
+    )
+    .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID);
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_zombie_nautilus_variant_resource_id(variant))
+    ));
+}
+
+fn debug_zombie_nautilus_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:warm",
+        _ => "minecraft:temperate",
     }
 }
 

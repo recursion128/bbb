@@ -198,7 +198,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/reference
   projection, private or otherwise unobserved timer/counter projection,
-  remaining registry-backed variant projection (including dynamic-registry
+  remaining registry-backed entity-data projection (including dynamic-registry
   ordering), packed variant projection, codec-backed SNBT projection,
   entity-specific constructor/default save values, observable non-empty
   entity inventory/container projection, or entity-specific age and equipment
