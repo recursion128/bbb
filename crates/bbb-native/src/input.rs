@@ -18,11 +18,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -260,6 +260,8 @@ const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
+const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
+const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
 const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
@@ -3663,6 +3665,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_abstract_fish_additional_save_data(entity, fields);
+            debug_push_pufferfish_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -3876,6 +3883,12 @@ fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Ve
     let size =
         debug_entity_data_int_present(entity, PHANTOM_SIZE_DATA_ID).unwrap_or(PHANTOM_DEFAULT_SIZE);
     fields.push(format!("size: {size}"));
+}
+
+fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let puff_state = debug_entity_data_int_present(entity, PUFFERFISH_PUFF_STATE_DATA_ID)
+        .unwrap_or(PUFFERFISH_DEFAULT_PUFF_STATE);
+    fields.push(format!("PuffState: {puff_state}"));
 }
 
 fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
