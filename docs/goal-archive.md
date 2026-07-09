@@ -6119,8 +6119,8 @@
   `centeredText` 绘制当前 hovered game-mode name 与 F4 select-next help 行。bbb
   现在启动加载这三个 HUD 资源，renderer 从 `HudDebugGameModeSwitcher` 实际绘制背景、
   四个 slot、selected overlay 和两行居中文本；新增 helper layout/UV 测试与
-  offscreen pixel-readback 测试覆盖 layer order。边界：item icon、
-  first-mouse suppression、hover 与 cursor capture 仍待后续。
+  offscreen pixel-readback 测试覆盖 layer order。item icon 后续由独立 slice
+  完成；first-mouse suppression、hover 与 cursor capture 当时仍待后续。
 - [x] debug overlay F3+F4 GameModeSwitcher hover/first-mouse/cursor capture（P2
   native/platform slice，2026-07-09）：依据 `GameModeSwitcherScreen.extractRenderState`
   的 first mouse latch 与 slot hover 规则，native switcher state 现在记录首次鼠标坐标、
@@ -6128,7 +6128,7 @@
   adventure / spectator slot 后更新 selected mode，并在额外 F4 循环时重置 latch。
   main event loop 在 switcher 打开时通过 `runtime_wants_cursor` 释放/显示 cursor，
   `CursorMoved` 送入 switcher hit-test，普通 mouse input 不再重新捕获第一人称输入。
-  边界：item icon 仍待后续。
+  item icon 后续由独立 slice 完成。
 - [x] debug overlay F3+F4 GameModeSwitcher screen interruption parity（P2
   native input slice，2026-07-09）：依据 `KeyboardHandler.handleDebugKeys`
   对 `keyDebugSwitchGameMode` 的 `level != null && screen == null` 条件，以及
@@ -6136,8 +6136,8 @@
   global-input 例外的行为，native input 现在只在无聊天/命令输入、container/
   本地库存、book、dialog、advancements、pending/active sign editor screen 时
   打开本地 switcher；被 screen 阻止的 F4 返回非 debug action，F3 release
-  仍是普通 overlay toggle；已打开 switcher 的额外 F4 循环保持可用。边界：
-  item icon 仍待后续。
+  仍是普通 overlay toggle；已打开 switcher 的额外 F4 循环保持可用。item icon
+  后续由独立 slice 完成。
 - [x] debug overlay F3+F4 GameModeSwitcher mouse-release path not-needed
   decision（P2 docs slice，2026-07-09）：依据 `Options.keyDebugModifier`
   默认是 `InputConstants.Type.KEYSYM` F3、`GameModeSwitcherScreen.mouseReleased`
@@ -6146,7 +6146,18 @@
   或 mouse-bound debug modifier 配置，native debug modifier 是硬编码 F3
   keyboard path；因此 vanilla mouse-release close/select 分支在现有 native 输入
   面没有生产者，判 not-needed until keybind rebinding / mouse debug modifier
-  support exists。边界：item icon 仍待后续。
+  support exists。item icon 后续由独立 slice 完成。
+- [x] debug overlay F3+F4 GameModeSwitcher item icon parity（P2
+  native/renderer slice，2026-07-09）：依据 `GameModeSwitcherScreen.GameModeIcon`
+  的固定栈 `Blocks.GRASS_BLOCK`、`Items.IRON_SWORD`、`Items.MAP`、
+  `Items.ENDER_EYE`，以及 `GameModeSlot.extractWidgetRenderState` 在 slot
+  `x + 5`、`y + 5` 通过 `GuiGraphicsExtractor.item` 提交图标的行为，native
+  现在从 `NativeItemRuntime` 投影四个固定 resource id，经既有 HUD item icon
+  resolver 生成 render-state，并去除 switcher 路径不提交的 count/durability/
+  cooldown decorations；renderer slot pass 绘制 flat item layers，block-item
+  models 进入 GUI item pass，再绘制 switcher 文本。focused tests 覆盖 vanilla
+  resource-id 顺序、sanitize、flat icon pixel readback 与 switcher block-model
+  mesh collection。
 - [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
   `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
   `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；

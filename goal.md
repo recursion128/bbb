@@ -332,14 +332,14 @@ Screen Render Surfaces" 条目）：
   F3+F4 GameModeSwitcher background/slot/text rendering、
   F3+F4 GameModeSwitcher hover/first-mouse/cursor capture、F3+F4
   GameModeSwitcher screen interruption parity、F3+F4 GameModeSwitcher
-  mouse-release not-needed decision、ordinary F3 keymap audit 已完成；
+  mouse-release not-needed decision、F3+F4 GameModeSwitcher item icon parity、
+  ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
-  profiling metrics recorder/output、actual DebugOptionsScreen、
-  F3+F4 GameModeSwitcher item icon parity、native pause
+  profiling metrics recorder/output、actual DebugOptionsScreen、native pause
   loop/PauseScreen、
   `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys，
   低优先）。

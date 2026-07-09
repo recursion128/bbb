@@ -1725,6 +1725,8 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
             eye_height: 1.62,
         }),
         1.0,
+        None,
+        &TerrainTextureState::default(),
         &renderer_counters,
         12,
         winit::dpi::PhysicalSize::new(320, 240),
@@ -1837,6 +1839,8 @@ fn hud_debug_overlay_projects_custom_particle_render_stats() {
             eye_height: 1.62,
         }),
         1.0,
+        None,
+        &TerrainTextureState::default(),
         &renderer_counters,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
@@ -1930,6 +1934,8 @@ fn hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info() {
             eye_height: 1.62,
         }),
         1.0,
+        None,
+        &TerrainTextureState::default(),
         &bbb_renderer::RendererCounters::default(),
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
@@ -1977,6 +1983,8 @@ fn hud_debug_overlay_projects_custom_sound_mood() {
             eye_height: 1.62,
         }),
         1.0,
+        None,
+        &TerrainTextureState::default(),
         &bbb_renderer::RendererCounters::default(),
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
@@ -2701,6 +2709,99 @@ fn hud_debug_overlay_projects_game_mode_switcher_state() {
     assert!(switcher.slots[1..].iter().all(|slot| !slot.selected));
     assert!(overlay.left_lines.is_empty());
     assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
+fn hud_debug_overlay_projects_game_mode_switcher_item_icons() {
+    let root = unique_runtime_temp_dir("game-mode-switcher-icons");
+    write_runtime_game_mode_switcher_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let terrain_textures = TerrainTextureState::default();
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let player_id = world
+        .local_player_id()
+        .expect("test world has a local player");
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: player_id,
+        event_id: 26,
+    }));
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+
+    let overlay = hud_debug_overlay_at_partial_tick(
+        &input,
+        &world,
+        None,
+        1.0,
+        Some(&item_runtime),
+        &terrain_textures,
+        &bbb_renderer::RendererCounters::default(),
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+        &AudioCounters::default(),
+    )
+    .expect("game mode switcher should project with runtime icons");
+    let switcher = overlay.game_mode_switcher.expect("switcher render state");
+
+    assert_eq!(
+        DEBUG_GAME_MODE_SWITCHER_MODES
+            .iter()
+            .copied()
+            .map(hud_game_mode_switcher_icon_resource_id)
+            .collect::<Vec<_>>(),
+        vec![
+            "minecraft:grass_block",
+            "minecraft:iron_sword",
+            "minecraft:map",
+            "minecraft:ender_eye",
+        ]
+    );
+    for (slot, mode) in switcher.slots.iter().zip(DEBUG_GAME_MODE_SWITCHER_MODES) {
+        let resource_id = hud_game_mode_switcher_icon_resource_id(mode);
+        let item_id = item_runtime
+            .item_protocol_id(resource_id)
+            .expect("test item is registered");
+        let stack = ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        let expected_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+        let icon = slot.icon.as_ref().expect("slot has item icon");
+
+        assert_eq!(slot.mode, mode);
+        assert_eq!(
+            icon.layers[0].uv,
+            HudUvRect {
+                min: expected_uv.min,
+                max: expected_uv.max,
+            }
+        );
+        assert_eq!(icon.count_label, None);
+        assert_eq!(icon.durability_bar, None);
+        assert_eq!(icon.cooldown_progress, None);
+        assert!(slot.block_model.is_none());
+    }
+
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -15920,6 +16021,64 @@ fn write_flat_runtime_item_model_and_texture(assets: &Path, model_id: &str, rgba
             .join("item")
             .join(format!("{model_id}.png")),
         rgba,
+    );
+}
+
+fn write_runtime_game_mode_switcher_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    for (item_id, rgba) in [
+        ("grass_block", [80, 160, 80, 255]),
+        ("iron_sword", [180, 180, 190, 255]),
+        ("map", [210, 190, 120, 255]),
+        ("ender_eye", [80, 170, 140, 255]),
+    ] {
+        write_runtime_json(
+            &assets.join("items").join(format!("{item_id}.json")),
+            &format!(
+                r#"{{
+                    "model": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{item_id}"
+                    }}
+                }}"#
+            ),
+        );
+        write_flat_runtime_item_model_and_texture(&assets, item_id, &rgba);
+    }
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item GRASS_BLOCK = registerItem("grass_block");
+            public static final Item IRON_SWORD = registerItem("iron_sword");
+            public static final Item MAP = registerItem("map");
+            public static final Item ENDER_EYE = registerItem("ender_eye");
+        }"#,
     );
 }
 

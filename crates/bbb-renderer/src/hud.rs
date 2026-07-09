@@ -118,7 +118,7 @@ pub struct HudDebugOverlay {
 
 /// Vanilla `GameModeSwitcherScreen` render-state shell: background bounds, four
 /// 26px slots in vanilla order, selected mode, and the two centered text rows.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudDebugGameModeSwitcher {
     pub selected: HudGameModeSwitcherMode,
     pub title: String,
@@ -130,7 +130,7 @@ pub struct HudDebugGameModeSwitcher {
     pub slots: Vec<HudDebugGameModeSwitcherSlot>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudDebugGameModeSwitcherSlot {
     pub mode: HudGameModeSwitcherMode,
     pub x: i32,
@@ -138,6 +138,8 @@ pub struct HudDebugGameModeSwitcherSlot {
     pub width: i32,
     pub height: i32,
     pub selected: bool,
+    pub icon: Option<HudItemIcon>,
+    pub block_model: Option<HudBlockItemModel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3326,6 +3328,19 @@ impl Renderer {
                 }
             }
         }
+        if let Some(switcher) = self
+            .hud_debug_overlay
+            .as_ref()
+            .and_then(|overlay| overlay.game_mode_switcher.as_ref())
+        {
+            for slot in &switcher.slots {
+                if let Some(model) = &slot.block_model {
+                    if let Some(rect) = hud_debug_game_mode_switcher_icon_rect(slot) {
+                        append_model(model, gui_item_slot_placement(rect), None);
+                    }
+                }
+            }
+        }
         meshes
     }
 
@@ -4153,8 +4168,12 @@ impl Renderer {
         if let Some(debug_overlay) = &self.hud_debug_overlay {
             push_hud_debug_overlay(
                 &mut vertices,
+                &mut commands,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_item_atlas.as_ref(),
+                self.hud_digit_atlas.as_ref(),
+                &self.hud_digit_glyphs,
                 self.hud_debug_game_mode_switcher_background.as_ref(),
                 self.hud_debug_game_mode_switcher_slot.as_ref(),
                 self.hud_debug_game_mode_switcher_selection.as_ref(),
@@ -6287,7 +6306,11 @@ fn hud_debug_crosshair_line_corners(
 fn push_hud_debug_overlay<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    item_atlas: Option<&'a HudSpriteGpu>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    digit_glyphs: &[HudDigitGlyph; 10],
     game_mode_switcher_background: Option<&'a HudSpriteGpu>,
     game_mode_switcher_slot: Option<&'a HudSpriteGpu>,
     game_mode_switcher_selection: Option<&'a HudSpriteGpu>,
@@ -6306,17 +6329,22 @@ fn push_hud_debug_overlay<'a>(
             game_mode_switcher_background,
             game_mode_switcher_slot,
             game_mode_switcher_selection,
+            item_atlas,
+            digit_atlas,
+            digit_glyphs,
             font_atlas,
             glyphs,
             obfuscated_pool,
             frame_index,
             surface_size,
             switcher,
+            post_gui_item_commands,
         );
     }
     let Some(font_atlas) = font_atlas else {
         return;
     };
+    let commands = post_gui_item_commands;
     push_hud_debug_overlay_column_backgrounds(
         vertices,
         commands,
@@ -6422,12 +6450,16 @@ fn push_hud_debug_game_mode_switcher<'a>(
     background: Option<&'a HudSpriteGpu>,
     slot_sprite: Option<&'a HudSpriteGpu>,
     selection_sprite: Option<&'a HudSpriteGpu>,
+    item_atlas: Option<&'a HudSpriteGpu>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    digit_glyphs: &[HudDigitGlyph; 10],
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     switcher: &HudDebugGameModeSwitcher,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
 ) {
     if let (Some(background), Some(rect)) = (
         background,
@@ -6461,6 +6493,41 @@ fn push_hud_debug_game_mode_switcher<'a>(
                 push_hud_draw(vertices, commands, selection_sprite, surface_size, rect);
             }
         }
+        if let (Some(item_atlas), Some(icon_rect), Some(icon)) = (
+            item_atlas,
+            hud_debug_game_mode_switcher_icon_rect(slot),
+            slot.icon.as_ref(),
+        ) {
+            let renders_as_3d_block = slot.block_model.is_some();
+            push_hud_item_icon(
+                vertices,
+                commands,
+                item_atlas,
+                white_pixel,
+                digit_atlas,
+                digit_glyphs,
+                surface_size,
+                icon_rect,
+                icon,
+                !renders_as_3d_block,
+                !renders_as_3d_block,
+            );
+            if renders_as_3d_block {
+                push_hud_item_icon(
+                    vertices,
+                    post_gui_item_commands,
+                    item_atlas,
+                    white_pixel,
+                    digit_atlas,
+                    digit_glyphs,
+                    surface_size,
+                    icon_rect,
+                    icon,
+                    false,
+                    true,
+                );
+            }
+        }
     }
 
     let Some(font_atlas) = font_atlas else {
@@ -6469,7 +6536,7 @@ fn push_hud_debug_game_mode_switcher<'a>(
     let center_x = switcher.background_x + HUD_DEBUG_GAME_MODE_SWITCHER_CENTER_X_OFFSET;
     push_hud_debug_game_mode_switcher_centered_text(
         vertices,
-        commands,
+        post_gui_item_commands,
         white_pixel,
         font_atlas,
         glyphs,
@@ -6482,7 +6549,7 @@ fn push_hud_debug_game_mode_switcher<'a>(
     );
     push_hud_debug_game_mode_switcher_centered_text(
         vertices,
-        commands,
+        post_gui_item_commands,
         white_pixel,
         font_atlas,
         glyphs,
@@ -6499,6 +6566,10 @@ fn hud_debug_game_mode_switcher_rect(x: i32, y: i32, width: i32, height: i32) ->
     let width = u32::try_from(width).ok().filter(|width| *width > 0)?;
     let height = u32::try_from(height).ok().filter(|height| *height > 0)?;
     Some(absolute_hud_rect(x as f32, y as f32, width, height))
+}
+
+fn hud_debug_game_mode_switcher_icon_rect(slot: &HudDebugGameModeSwitcherSlot) -> Option<HudRect> {
+    hud_debug_game_mode_switcher_rect(slot.x + 5, slot.y + 5, 16, 16)
 }
 
 fn hud_debug_game_mode_switcher_background_uv() -> HudUvRect {
@@ -9146,7 +9217,7 @@ fn sanitize_hud_debug_game_mode_switcher(
     let slots = switcher
         .slots
         .into_iter()
-        .filter(|slot| slot.width > 0 && slot.height > 0)
+        .filter_map(sanitize_hud_debug_game_mode_switcher_slot)
         .take(4)
         .collect::<Vec<_>>();
     (switcher.background_width > 0 && switcher.background_height > 0 && slots.len() == 4).then_some(
@@ -9157,6 +9228,21 @@ fn sanitize_hud_debug_game_mode_switcher(
             ..switcher
         },
     )
+}
+
+fn sanitize_hud_debug_game_mode_switcher_slot(
+    slot: HudDebugGameModeSwitcherSlot,
+) -> Option<HudDebugGameModeSwitcherSlot> {
+    (slot.width > 0 && slot.height > 0).then_some(HudDebugGameModeSwitcherSlot {
+        mode: slot.mode,
+        x: slot.x,
+        y: slot.y,
+        width: slot.width,
+        height: slot.height,
+        selected: slot.selected,
+        icon: slot.icon.and_then(sanitize_hud_item_icon),
+        block_model: slot.block_model.filter(hud_block_item_model_is_renderable),
+    })
 }
 
 fn sanitize_hud_debug_crosshair(crosshair: HudDebugCrosshair) -> Option<HudDebugCrosshair> {
@@ -10120,6 +10206,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: true,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Survival,
@@ -10128,6 +10216,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Adventure,
@@ -10136,6 +10226,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Spectator,
@@ -10144,6 +10236,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                 ],
             }),
@@ -10156,6 +10250,68 @@ mod tests {
 
         assert_eq!(switcher.title, "Creative Mode");
         assert_eq!(switcher.slots.len(), 4);
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_sanitizes_game_mode_switcher_icons() {
+        let valid_icon = HudItemIcon::single(HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        });
+        let invalid_icon = HudItemIcon {
+            lighting: GuiItemLightingEntry::Items3d,
+            ..valid_icon.clone()
+        };
+        let empty_block_model = HudBlockItemModel {
+            quads: Vec::new(),
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+        let slot = |mode, x, icon, block_model| HudDebugGameModeSwitcherSlot {
+            mode,
+            x,
+            y: 89,
+            width: 26,
+            height: 26,
+            selected: mode == HudGameModeSwitcherMode::Creative,
+            icon,
+            block_model,
+        };
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            game_mode_switcher: Some(HudDebugGameModeSwitcher {
+                selected: HudGameModeSwitcherMode::Creative,
+                title: "Creative Mode".to_string(),
+                help_text: "Select next: F4".to_string(),
+                background_x: 98,
+                background_y: 62,
+                background_width: 125,
+                background_height: 75,
+                slots: vec![
+                    slot(
+                        HudGameModeSwitcherMode::Creative,
+                        101,
+                        Some(valid_icon),
+                        Some(empty_block_model),
+                    ),
+                    slot(
+                        HudGameModeSwitcherMode::Survival,
+                        132,
+                        Some(invalid_icon),
+                        None,
+                    ),
+                    slot(HudGameModeSwitcherMode::Adventure, 163, None, None),
+                    slot(HudGameModeSwitcherMode::Spectator, 194, None, None),
+                ],
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("game mode switcher with sanitized icons survives");
+        let slots = overlay.game_mode_switcher.unwrap().slots;
+
+        assert!(slots[0].icon.is_some());
+        assert!(slots[0].block_model.is_none());
+        assert!(slots[1].icon.is_none());
     }
 
     #[test]
@@ -10188,6 +10344,19 @@ mod tests {
         assert_eq!(
             hud_debug_game_mode_switcher_rect(98, 62, 125, 75),
             Some(absolute_hud_rect(98.0, 62.0, 125, 75))
+        );
+        assert_eq!(
+            hud_debug_game_mode_switcher_icon_rect(&HudDebugGameModeSwitcherSlot {
+                mode: HudGameModeSwitcherMode::Creative,
+                x: 101,
+                y: 89,
+                width: 26,
+                height: 26,
+                selected: true,
+                icon: None,
+                block_model: None,
+            }),
+            Some(absolute_hud_rect(106.0, 94.0, 16, 16))
         );
         assert_eq!(hud_debug_game_mode_switcher_rect(98, 62, 0, 75), None);
     }
@@ -10249,6 +10418,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: true,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Survival,
@@ -10257,6 +10428,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Adventure,
@@ -10265,6 +10438,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                     HudDebugGameModeSwitcherSlot {
                         mode: HudGameModeSwitcherMode::Spectator,
@@ -10273,6 +10448,8 @@ mod tests {
                         width: 26,
                         height: 26,
                         selected: false,
+                        icon: None,
+                        block_model: None,
                     },
                 ],
             }),
@@ -10302,6 +10479,130 @@ mod tests {
             outside[2] > 128 && outside[0] < 128 && outside[1] < 128,
             "outside switcher should stay blue clear color, got {outside:?}"
         );
+    }
+
+    #[test]
+    fn game_mode_switcher_offscreen_frame_draws_flat_item_icons_inside_slots() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+        renderer
+            .upload_hud_item_atlas(1, 1, &[255, 0, 0, 255])
+            .expect("item atlas");
+        let icon = HudItemIcon::single(HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        });
+        let slot = |mode, x, icon| HudDebugGameModeSwitcherSlot {
+            mode,
+            x,
+            y: 89,
+            width: 26,
+            height: 26,
+            selected: false,
+            icon,
+            block_model: None,
+        };
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            game_mode_switcher: Some(HudDebugGameModeSwitcher {
+                selected: HudGameModeSwitcherMode::Creative,
+                title: "Creative Mode".to_string(),
+                help_text: "Select next: F4".to_string(),
+                background_x: 98,
+                background_y: 62,
+                background_width: 125,
+                background_height: 75,
+                slots: vec![
+                    slot(HudGameModeSwitcherMode::Creative, 101, None),
+                    slot(HudGameModeSwitcherMode::Survival, 132, Some(icon)),
+                    slot(HudGameModeSwitcherMode::Adventure, 163, None),
+                    slot(HudGameModeSwitcherMode::Spectator, 194, None),
+                ],
+            }),
+            ..HudDebugOverlay::default()
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("game mode switcher icon frame");
+        let icon_pixel = pixels.pixel(145, 102);
+        assert!(
+            icon_pixel[0] > 128 && icon_pixel[1] < 128 && icon_pixel[2] < 128,
+            "flat item icon should draw red inside slot, got {icon_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn game_mode_switcher_block_item_mesh_includes_slot_block_models() {
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let quad = crate::item_models::ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 8.0],
+                [16.0, 0.0, 8.0],
+                [16.0, 16.0, 8.0],
+                [0.0, 16.0, 8.0],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let model = HudBlockItemModel {
+            quads: vec![quad],
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+        let slot = |mode, x, block_model| HudDebugGameModeSwitcherSlot {
+            mode,
+            x,
+            y: 89,
+            width: 26,
+            height: 26,
+            selected: false,
+            icon: None,
+            block_model,
+        };
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            game_mode_switcher: Some(HudDebugGameModeSwitcher {
+                selected: HudGameModeSwitcherMode::Creative,
+                title: "Creative Mode".to_string(),
+                help_text: "Select next: F4".to_string(),
+                background_x: 98,
+                background_y: 62,
+                background_width: 125,
+                background_height: 75,
+                slots: vec![
+                    slot(HudGameModeSwitcherMode::Creative, 101, Some(model)),
+                    slot(HudGameModeSwitcherMode::Survival, 132, None),
+                    slot(HudGameModeSwitcherMode::Adventure, 163, None),
+                    slot(HudGameModeSwitcherMode::Spectator, 194, None),
+                ],
+            }),
+            ..HudDebugOverlay::default()
+        }));
+
+        let meshes = renderer.collect_hud_block_item_mesh();
+
+        assert_eq!(meshes.solid.indices.len(), 6);
     }
 
     #[test]

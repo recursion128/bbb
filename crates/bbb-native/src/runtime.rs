@@ -2146,6 +2146,8 @@ pub(crate) fn pump_network_and_terrain(
         world,
         camera_pose,
         entity_partial_tick,
+        item_runtime,
+        terrain_textures,
         &renderer_counters,
         render_distance_chunks,
         surface_size,
@@ -3085,11 +3087,14 @@ fn hud_debug_overlay(
     net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
     let audio_counters = AudioCounters::default();
+    let terrain_textures = TerrainTextureState::default();
     hud_debug_overlay_at_partial_tick(
         input,
         world,
         camera_pose,
         1.0,
+        None,
+        &terrain_textures,
         &bbb_renderer::RendererCounters::default(),
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         surface_size,
@@ -3108,6 +3113,8 @@ fn hud_debug_overlay_at_partial_tick(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
     entity_partial_tick: f32,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     renderer_counters: &bbb_renderer::RendererCounters,
     render_distance_chunks: u32,
     surface_size: winit::dpi::PhysicalSize<u32>,
@@ -3312,7 +3319,14 @@ fn hud_debug_overlay_at_partial_tick(
         }
         right_lines.extend(hud_debug_simple_performance_impactor_lines());
     }
-    let game_mode_switcher = hud_debug_game_mode_switcher(input, surface_size);
+    let game_mode_switcher = hud_debug_game_mode_switcher(
+        input,
+        world,
+        item_runtime,
+        terrain_textures,
+        surface_size,
+        entity_partial_tick,
+    );
     if left_lines.is_empty()
         && right_lines.is_empty()
         && debug_crosshair.is_none()
@@ -3361,7 +3375,11 @@ const DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET: i32 = 31;
 
 fn hud_debug_game_mode_switcher(
     input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     surface_size: winit::dpi::PhysicalSize<u32>,
+    partial_tick: f32,
 ) -> Option<HudDebugGameModeSwitcher> {
     let selected = input.debug_game_mode_switcher_selected()?;
     let center_x = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
@@ -3369,17 +3387,37 @@ fn hud_debug_game_mode_switcher(
     let selected_mode = hud_game_mode_switcher_mode(selected);
     let slot_start_x = center_x - DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH / 2;
     let slot_y = center_y - DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET;
+    let shift_down = input.shift_down();
+    let keybind_context = input.item_model_keybind_context();
     let slots = DEBUG_GAME_MODE_SWITCHER_MODES
         .iter()
         .enumerate()
-        .map(|(index, mode)| HudDebugGameModeSwitcherSlot {
-            mode: *mode,
-            x: slot_start_x
-                + i32::try_from(index).unwrap_or(0) * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED,
-            y: slot_y,
-            width: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
-            height: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
-            selected: *mode == selected_mode,
+        .map(|(index, mode)| {
+            let stack = hud_game_mode_switcher_icon_stack(*mode, item_runtime);
+            let icon = stack.as_ref().and_then(|stack| {
+                hud_game_mode_switcher_icon_for_stack(
+                    world,
+                    item_runtime,
+                    stack,
+                    shift_down,
+                    keybind_context,
+                    i32::try_from(index + 1).unwrap_or(0),
+                    partial_tick,
+                )
+            });
+            let block_model =
+                stack.and_then(|stack| block_item_3d_model(&stack, item_runtime, terrain_textures));
+            HudDebugGameModeSwitcherSlot {
+                mode: *mode,
+                x: slot_start_x
+                    + i32::try_from(index).unwrap_or(0) * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED,
+                y: slot_y,
+                width: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
+                height: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
+                selected: *mode == selected_mode,
+                icon,
+                block_model,
+            }
         })
         .collect();
     Some(HudDebugGameModeSwitcher {
@@ -3392,6 +3430,47 @@ fn hud_debug_game_mode_switcher(
         background_height: DEBUG_GAME_MODE_SWITCHER_BACKGROUND_HEIGHT,
         slots,
     })
+}
+
+fn hud_game_mode_switcher_icon_stack(
+    mode: HudGameModeSwitcherMode,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<ItemStackSummary> {
+    let item_id = item_runtime?.item_protocol_id(hud_game_mode_switcher_icon_resource_id(mode))?;
+    Some(ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: Default::default(),
+    })
+}
+
+fn hud_game_mode_switcher_icon_for_stack(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    stack: &ItemStackSummary,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+    partial_tick: f32,
+) -> Option<HudItemIcon> {
+    let mut icon = hud_item_icon_for_stack(
+        world,
+        item_runtime,
+        stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+        partial_tick,
+    )?;
+    icon.count_label = None;
+    icon.durability_bar = None;
+    icon.cooldown_progress = None;
+    Some(icon)
 }
 
 const DEBUG_GAME_MODE_SWITCHER_MODES: [HudGameModeSwitcherMode; 4] = [
@@ -3416,6 +3495,15 @@ fn hud_game_mode_switcher_title(mode: HudGameModeSwitcherMode) -> &'static str {
         HudGameModeSwitcherMode::Survival => "Survival Mode",
         HudGameModeSwitcherMode::Adventure => "Adventure Mode",
         HudGameModeSwitcherMode::Spectator => "Spectator Mode",
+    }
+}
+
+fn hud_game_mode_switcher_icon_resource_id(mode: HudGameModeSwitcherMode) -> &'static str {
+    match mode {
+        HudGameModeSwitcherMode::Creative => "minecraft:grass_block",
+        HudGameModeSwitcherMode::Survival => "minecraft:iron_sword",
+        HudGameModeSwitcherMode::Adventure => "minecraft:map",
+        HudGameModeSwitcherMode::Spectator => "minecraft:ender_eye",
     }
 }
 
