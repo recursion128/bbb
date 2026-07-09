@@ -1148,7 +1148,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line, and
-    direct jukebox song descriptions,
+    direct jukebox song descriptions, and dynamic profile line,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1263,6 +1263,15 @@ When an agent does any of the following, update this file in the same slice:
     registry-key description resolution, styled description runs are flattened,
     and remaining component providers, `TooltipDisplay` hiding, and options
     persistence remain future work.
+  - Done 2026-07-09 — Advanced tooltip dynamic profile line. Vanilla anchors:
+    `ItemStack.addDetailsToTooltip` calls `DataComponents.PROFILE` after
+    dyed-color and before lore; `ResolvableProfile.Dynamic.addToTooltip`
+    emits gray `component.profile.dynamic`, while `ResolvableProfile.Static`
+    emits nothing. bbb now derives the dynamic case from decoded partial
+    profiles with empty properties and exactly one of name/id present, then
+    projects the gray dynamic line before lore. Boundary: full profile resolver
+    state, hidden-components filtering, and remaining component providers remain
+    future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2398,7 +2407,7 @@ When an agent does any of the following, update this file in the same slice:
     tooltip parity remains open except for the later beehive bees/honey,
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, and direct
-    jukebox song descriptions.
+    jukebox song descriptions, and dynamic profile line.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2664,7 +2673,8 @@ When an agent does any of the following, update this file in the same slice:
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line, and
-    direct jukebox song descriptions are covered by later entries.
+    direct jukebox song descriptions, and dynamic profile line are covered by
+    later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3343,8 +3353,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line, and
-    direct jukebox song descriptions, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage,
+    direct jukebox song descriptions, and dynamic profile line, F3+I full local
+    entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full

@@ -6517,3 +6517,11 @@
   description 行。边界：holder-id jukebox songs 仍需要 registry-key description
   resolution，styled description runs 目前被 flatten；其它 component provider
   tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
+  依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
+  `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`
+  输出灰色 `component.profile.dynamic`、`ResolvableProfile.Static.addToTooltip` 无输出，
+  native item tooltip 现在从 decoded partial profile（properties 为空且 name/id
+  恰好只有一个存在）推导 dynamic 并输出灰色 `Dynamic` 行。边界：完整 profile
+  resolver state、`TooltipDisplay` hidden-components 与其它 component provider
+  tooltip 仍未完成。

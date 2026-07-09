@@ -24,7 +24,7 @@ use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
     ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
-    ResolvableProfileSummary, ResourceTextureSummary,
+    ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
 };
 // These summary types are referenced only by this crate's tests; keep them out
 // of the non-test import set so the standalone library build stays warning-free.

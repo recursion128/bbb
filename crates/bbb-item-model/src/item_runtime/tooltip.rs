@@ -422,6 +422,26 @@ fn push_jukebox_playable_tooltip_lines(
     ));
 }
 
+fn push_profile_tooltip_lines(
+    language: &LanguageCatalog,
+    profile: Option<&ResolvableProfileSummary>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !profile.is_some_and(is_dynamic_profile) {
+        return;
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        language.get_or_key("component.profile.dynamic").to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
+fn is_dynamic_profile(profile: &ResolvableProfileSummary) -> bool {
+    profile.kind == ResolvableProfileKindSummary::Partial
+        && profile.properties.is_empty()
+        && (profile.name.is_some() != profile.uuid.is_some())
+}
+
 fn firework_explosion_shape_text(
     language: &LanguageCatalog,
     shape: FireworkExplosionShapeSummary,
@@ -744,6 +764,11 @@ impl NativeItemRuntime {
             &self.language,
             stack.component_patch.dyed_color,
             advanced,
+            &mut lines,
+        );
+        push_profile_tooltip_lines(
+            &self.language,
+            stack.component_patch.profile.as_ref(),
             &mut lines,
         );
         // Vanilla `ItemLore.styledLines`: every lore line gets `LORE_STYLE`
