@@ -11,7 +11,7 @@ use bbb_protocol::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
         VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID,
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
@@ -229,6 +229,10 @@ const CHICKEN_SOUND_VARIANT_DATA_ID: u8 = 19;
 const CHICKEN_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CHICKEN_DEFAULT_CHICKEN_JOCKEY: bool = false;
 const CHICKEN_DEFAULT_EGG_LAY_TIME: i32 = 0;
+const COW_VARIANT_DATA_ID: u8 = 18;
+const COW_DEFAULT_VARIANT_ID: i32 = 0;
+const COW_SOUND_VARIANT_DATA_ID: u8 = 19;
+const COW_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3658,6 +3662,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_COW_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_cow_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
@@ -3875,6 +3885,44 @@ fn debug_chicken_variant_resource_id(variant: i32) -> &'static str {
 fn debug_chicken_sound_variant_resource_id(variant: i32) -> &'static str {
     match variant {
         1 => "minecraft:picky",
+        _ => "minecraft:classic",
+    }
+}
+
+fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        COW_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::CowVariant,
+    )
+    .unwrap_or(COW_DEFAULT_VARIANT_ID);
+    let sound_variant = debug_entity_data_registry_id_present(
+        entity,
+        COW_SOUND_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::CowSoundVariant,
+    )
+    .unwrap_or(COW_DEFAULT_SOUND_VARIANT_ID);
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_cow_variant_resource_id(variant))
+    ));
+    fields.push(format!(
+        "sound_variant: {}",
+        debug_snbt_string(debug_cow_sound_variant_resource_id(sound_variant))
+    ));
+}
+
+fn debug_cow_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:warm",
+        2 => "minecraft:cold",
+        _ => "minecraft:temperate",
+    }
+}
+
+fn debug_cow_sound_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:moody",
         _ => "minecraft:classic",
     }
 }
