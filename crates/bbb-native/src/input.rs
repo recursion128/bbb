@@ -9,7 +9,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
@@ -3584,6 +3584,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_bat_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BLAZE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_BREEZE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {

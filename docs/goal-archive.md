@@ -7009,3 +7009,10 @@
   与 `NoAI`。边界：攀爬状态是 synched client state，不是 vanilla save NBT 字段；
   `LivingEntity` 的 health/attributes/brain/equipment 等复杂 state 仍不在本地轻量
   F3+I 覆盖内。
+- [x] Debug overlay F3+I local breeze save fields（P2 native input slice，
+  2026-07-09）：依据 vanilla 26.1 `Breeze` 不定义自己的 synched data 且不覆写
+  `addAdditionalSaveData`，pose 只驱动客户端动画，保存链落在
+  `Mob.addAdditionalSaveData` 的 mob 字段。native F3+I 本地实体复制现在对 breeze 输出
+  `CanPickUpLoot`、`PersistenceRequired`、`LeftHanded` 与 `NoAI`。边界：
+  `LivingEntity` 的 health/attributes/brain/equipment 等复杂 state 仍不在本地轻量
+  F3+I 覆盖内，breeze 动画 pose 不作为额外 save 字段写出。
