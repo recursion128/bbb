@@ -12,18 +12,18 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
-        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
@@ -280,6 +280,12 @@ const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
 const TURTLE_DEFAULT_HAS_EGG: bool = false;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
+const CAT_VARIANT_DATA_ID: u8 = 20;
+const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
+const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
+const CAT_DEFAULT_VARIANT_ID: i32 = 1;
+const CAT_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
+const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 const AXOLOTL_DEFAULT_VARIANT: i32 = 0;
 const AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
@@ -3772,6 +3778,13 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_horse_additional_save_data(entity, fields);
             debug_push_camel_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_CAT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_tamable_animal_additional_save_data(entity, fields);
+            debug_push_cat_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4227,6 +4240,63 @@ fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: 
         "Sitting: {}",
         debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)
     ));
+}
+
+fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        CAT_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::CatVariant,
+    )
+    .unwrap_or(CAT_DEFAULT_VARIANT_ID);
+    let sound_variant = debug_entity_data_registry_id_present(
+        entity,
+        CAT_SOUND_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::CatSoundVariant,
+    )
+    .unwrap_or(CAT_DEFAULT_SOUND_VARIANT_ID);
+    let collar_color = debug_entity_data_int_present(entity, CAT_COLLAR_COLOR_DATA_ID)
+        .map(debug_dye_color_legacy_save_id)
+        .unwrap_or(CAT_DEFAULT_COLLAR_COLOR_ID);
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_cat_variant_resource_id(variant))
+    ));
+    fields.push(format!(
+        "sound_variant: {}",
+        debug_snbt_string(debug_cat_sound_variant_resource_id(sound_variant))
+    ));
+    fields.push(format!("CollarColor: {collar_color}b"));
+}
+
+fn debug_cat_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        0 => "minecraft:tabby",
+        2 => "minecraft:red",
+        3 => "minecraft:siamese",
+        4 => "minecraft:british_shorthair",
+        5 => "minecraft:calico",
+        6 => "minecraft:persian",
+        7 => "minecraft:ragdoll",
+        8 => "minecraft:white",
+        9 => "minecraft:jellie",
+        10 => "minecraft:all_black",
+        _ => "minecraft:black",
+    }
+}
+
+fn debug_cat_sound_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:royal",
+        _ => "minecraft:classic",
+    }
+}
+
+fn debug_dye_color_legacy_save_id(color: i32) -> i32 {
+    match color {
+        0..=15 => color,
+        _ => 0,
+    }
 }
 
 fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
