@@ -1146,7 +1146,8 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
-    bees/honey, dyed-color lines, and direct firework lines,
+    bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
+    lines,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1201,8 +1202,8 @@ When an agent does any of the following, update this file in the same slice:
     lines. Boundary at the time: firework explosion star grouping, direct
     shape/color/trail/twinkle detail lines, remaining component providers,
     `TooltipDisplay` hiding, and options persistence remained future work;
-    direct firework explosion detail lines are covered by the later 2026-07-09
-    item below.
+    direct and grouped firework explosion detail lines are covered by later
+    2026-07-09 items below.
   - Done 2026-07-09 — Advanced tooltip direct firework explosion detail lines.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.FIREWORK_EXPLOSION, ...)` after fireworks and
@@ -1212,10 +1213,22 @@ When an agent does any of the following, update this file in the same slice:
     optional gray `trail` / `flicker` lines. bbb now projects decoded direct
     `minecraft:firework_explosion` summaries as those localized gray detail
     lines, including vanilla firework-color name lookup and `Custom` for
-    unmatched RGB values. Boundary: grouping explosions inside the
-    `minecraft:fireworks` component into single/multiple star rows remains
-    future work, along with remaining component providers, `TooltipDisplay`
-    hiding, and options persistence.
+    unmatched RGB values. Boundary at the time: grouping explosions inside the
+    `minecraft:fireworks` component into single/multiple star rows remained
+    future work; the following 2026-07-09 item covers that. Remaining component
+    providers, `TooltipDisplay` hiding, and options persistence remain future
+    work.
+  - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
+    Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
+    coalesces adjacent equal `FireworkExplosion` values, emits gray
+    `item.minecraft.firework_rocket.single_star` or
+    `item.minecraft.firework_rocket.multiple_stars(count, shape)`, and appends
+    each explosion's additional color/fade/trail/flicker lines with a two-space
+    literal prefix. bbb now projects decoded `minecraft:fireworks.explosions`
+    into those localized grouped star rows after flight duration and before the
+    direct `minecraft:firework_explosion` provider. Boundary: remaining
+    component providers, `TooltipDisplay` hiding, and options persistence
+    remain future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2349,7 +2362,7 @@ When an agent does any of the following, update this file in the same slice:
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; component-provider
     tooltip parity remains open except for the later beehive bees/honey,
-    dyed-color, and direct firework lines.
+    dyed-color, and firework flight/direct/grouped explosion lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2613,8 +2626,8 @@ When an agent does any of the following, update this file in the same slice:
     component-specific advanced tooltip additions were not modeled yet; startup
     configuration is tracked separately because bbb does not expose vanilla's
     in-game options UI. Effective component-count display, beehive bees/honey
-    lines, dyed-color lines, and direct firework lines are covered by later
-    entries.
+    lines, dyed-color lines, and firework flight/direct/grouped explosion lines
+    are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3291,8 +3304,8 @@ When an agent does any of the following, update this file in the same slice:
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
-    bees/honey, dyed-color lines, and direct firework lines, F3+I full
-    local entity saveWithoutId parity, full vanilla profiler section coverage,
+    bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
+    lines, F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full

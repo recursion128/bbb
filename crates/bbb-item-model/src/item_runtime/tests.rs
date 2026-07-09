@@ -219,8 +219,14 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.dyed": "Dyed",
                 "item.color": "Color: %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
+                "item.minecraft.firework_rocket.single_star": "%s",
+                "item.minecraft.firework_rocket.multiple_stars": "%s x %s",
                 "container.beehive.honey": "Honey: %s / %s",
+                "item.minecraft.firework_star.shape.small_ball": "Small Ball",
+                "item.minecraft.firework_star.shape.large_ball": "Large Ball",
                 "item.minecraft.firework_star.shape.star": "Star-shaped",
+                "item.minecraft.firework_star.shape.creeper": "Creeper-shaped",
+                "item.minecraft.firework_star.shape.burst": "Burst",
                 "item.minecraft.firework_star.red": "Red",
                 "item.minecraft.firework_star.yellow": "Yellow",
                 "item.minecraft.firework_star.custom_color": "Custom",
@@ -589,6 +595,53 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Flight Duration: 2", TOOLTIP_TEXT_GRAY),
             lore_line("After fireworks"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![69],
+                fireworks_flight_duration: Some(2),
+                fireworks_explosions_count: Some(3),
+                fireworks_explosions: vec![
+                    FireworkExplosionSummary {
+                        shape: FireworkExplosionShapeSummary::LargeBall,
+                        colors: vec![11_743_532],
+                        fade_colors: vec![14_602_026],
+                        has_trail: true,
+                        has_twinkle: false,
+                    },
+                    FireworkExplosionSummary {
+                        shape: FireworkExplosionShapeSummary::LargeBall,
+                        colors: vec![11_743_532],
+                        fade_colors: vec![14_602_026],
+                        has_trail: true,
+                        has_twinkle: false,
+                    },
+                    FireworkExplosionSummary {
+                        shape: FireworkExplosionShapeSummary::Burst,
+                        colors: Vec::new(),
+                        fade_colors: Vec::new(),
+                        has_trail: false,
+                        has_twinkle: true,
+                    },
+                ],
+                lore: vec!["After grouped fireworks".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Flight Duration: 2", TOOLTIP_TEXT_GRAY),
+            tooltip_line("2 x Large Ball", TOOLTIP_TEXT_GRAY),
+            tooltip_line("  Red", TOOLTIP_TEXT_GRAY),
+            tooltip_line("  Fade to Yellow", TOOLTIP_TEXT_GRAY),
+            tooltip_line("  Trail", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Burst", TOOLTIP_TEXT_GRAY),
+            tooltip_line("  Twinkle", TOOLTIP_TEXT_GRAY),
+            lore_line("After grouped fireworks"),
         ])
     );
     assert_eq!(

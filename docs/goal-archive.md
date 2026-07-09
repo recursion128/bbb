@@ -6476,6 +6476,16 @@
   输出 shape、颜色名列表、fade-to 颜色名列表、trail/flicker 的灰色行，native item
   tooltip 现在把 decoded direct `minecraft:firework_explosion` summary 投影为本地化
   shape/color/fade/trail/twinkle 行，并按 vanilla `DyeColor.byFireworkColor` exact
-  match，未知 RGB 显示 `Custom`。边界：`minecraft:fireworks` 内的多 explosion
-  single/multiple-star grouping 仍待后续；其它 component provider tooltip、
-  `TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+  match，未知 RGB 显示 `Custom`。当时边界：`minecraft:fireworks` 内的多
+  explosion single/multiple-star grouping 仍待后续；该边界由下面的 grouped
+  firework slice 覆盖。其它 component provider tooltip、`TooltipDisplay`
+  hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip rocket firework explosion grouping（P2 item-runtime
+  slice，2026-07-09）：依据 `Fireworks.addToTooltip` 对相邻相同 explosion 分组，
+  单个输出 `item.minecraft.firework_rocket.single_star(shape)`，多个输出
+  `item.minecraft.firework_rocket.multiple_stars(count, shape)`，并把
+  `FireworkExplosion.addAdditionalTooltip` 的颜色/fade/trail/flicker 行加两个空格
+  前缀，native item tooltip 现在把 decoded `minecraft:fireworks.explosions`
+  投影为本地化 grouped star 行，并复用 firework color exact match/Custom 逻辑。
+  边界：其它 component provider tooltip、`TooltipDisplay` hidden-components 与
+  options 持久化仍未完成。

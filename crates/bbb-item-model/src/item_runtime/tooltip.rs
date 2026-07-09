@@ -223,20 +223,74 @@ fn push_dyed_color_tooltip_lines(
 fn push_fireworks_tooltip_lines(
     language: &LanguageCatalog,
     flight_duration: Option<i32>,
+    explosions: &[FireworkExplosionSummary],
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(flight_duration) = flight_duration.filter(|flight_duration| *flight_duration > 0)
-    else {
-        return;
+    if let Some(flight_duration) = flight_duration.filter(|flight_duration| *flight_duration > 0) {
+        lines.push(NativeItemTooltipLine::plain(
+            format!(
+                "{} {}",
+                language.get_or_key("item.minecraft.firework_rocket.flight"),
+                flight_duration
+            ),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+
+    let mut current = None;
+    let mut count = 0;
+    for explosion in explosions {
+        match current {
+            None => {
+                current = Some(explosion);
+                count = 1;
+            }
+            Some(previous) if previous == explosion => {
+                count += 1;
+            }
+            Some(previous) => {
+                push_fireworks_explosion_group_tooltip_lines(language, previous, count, lines);
+                current = Some(explosion);
+                count = 1;
+            }
+        }
+    }
+    if let Some(explosion) = current {
+        push_fireworks_explosion_group_tooltip_lines(language, explosion, count, lines);
+    }
+}
+
+fn push_fireworks_explosion_group_tooltip_lines(
+    language: &LanguageCatalog,
+    explosion: &FireworkExplosionSummary,
+    count: usize,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let shape_name = firework_explosion_shape_text(language, explosion.shape);
+    let text = if count == 1 {
+        translate_with_first_arg(
+            language,
+            "item.minecraft.firework_rocket.single_star",
+            &shape_name,
+        )
+    } else {
+        translate_with_two_args(
+            language,
+            "item.minecraft.firework_rocket.multiple_stars",
+            &count.to_string(),
+            &shape_name,
+        )
     };
-    lines.push(NativeItemTooltipLine::plain(
-        format!(
-            "{} {}",
-            language.get_or_key("item.minecraft.firework_rocket.flight"),
-            flight_duration
-        ),
-        TOOLTIP_TEXT_GRAY,
-    ));
+    lines.push(NativeItemTooltipLine::plain(text, TOOLTIP_TEXT_GRAY));
+    push_firework_explosion_additional_tooltip_lines(
+        language,
+        &explosion.colors,
+        &explosion.fade_colors,
+        explosion.has_trail,
+        explosion.has_twinkle,
+        "  ",
+        lines,
+    );
 }
 
 fn push_firework_explosion_tooltip_lines(
@@ -248,52 +302,79 @@ fn push_firework_explosion_tooltip_lines(
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
-        language
-            .get_or_key(&format!(
-                "item.minecraft.firework_star.shape.{}",
-                firework_explosion_shape_name(shape)
-            ))
-            .to_string(),
+        firework_explosion_shape_text(language, shape),
         TOOLTIP_TEXT_GRAY,
     ));
-    if !component_patch.firework_explosion_colors.is_empty() {
+    push_firework_explosion_additional_tooltip_lines(
+        language,
+        &component_patch.firework_explosion_colors,
+        &component_patch.firework_explosion_fade_colors,
+        component_patch
+            .firework_explosion_has_trail
+            .unwrap_or_default(),
+        component_patch
+            .firework_explosion_has_twinkle
+            .unwrap_or_default(),
+        "",
+        lines,
+    );
+}
+
+fn push_firework_explosion_additional_tooltip_lines(
+    language: &LanguageCatalog,
+    colors: &[i32],
+    fade_colors: &[i32],
+    has_trail: bool,
+    has_twinkle: bool,
+    prefix: &str,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !colors.is_empty() {
         lines.push(NativeItemTooltipLine::plain(
-            firework_color_names(language, &component_patch.firework_explosion_colors),
+            format!("{prefix}{}", firework_color_names(language, colors)),
             TOOLTIP_TEXT_GRAY,
         ));
     }
-    if !component_patch.firework_explosion_fade_colors.is_empty() {
+    if !fade_colors.is_empty() {
         lines.push(NativeItemTooltipLine::plain(
             format!(
-                "{} {}",
+                "{prefix}{} {}",
                 language.get_or_key("item.minecraft.firework_star.fade_to"),
-                firework_color_names(language, &component_patch.firework_explosion_fade_colors)
+                firework_color_names(language, fade_colors)
             ),
             TOOLTIP_TEXT_GRAY,
         ));
     }
-    if component_patch
-        .firework_explosion_has_trail
-        .unwrap_or_default()
-    {
+    if has_trail {
         lines.push(NativeItemTooltipLine::plain(
-            language
-                .get_or_key("item.minecraft.firework_star.trail")
-                .to_string(),
+            format!(
+                "{prefix}{}",
+                language.get_or_key("item.minecraft.firework_star.trail")
+            ),
             TOOLTIP_TEXT_GRAY,
         ));
     }
-    if component_patch
-        .firework_explosion_has_twinkle
-        .unwrap_or_default()
-    {
+    if has_twinkle {
         lines.push(NativeItemTooltipLine::plain(
-            language
-                .get_or_key("item.minecraft.firework_star.flicker")
-                .to_string(),
+            format!(
+                "{prefix}{}",
+                language.get_or_key("item.minecraft.firework_star.flicker")
+            ),
             TOOLTIP_TEXT_GRAY,
         ));
     }
+}
+
+fn firework_explosion_shape_text(
+    language: &LanguageCatalog,
+    shape: FireworkExplosionShapeSummary,
+) -> String {
+    language
+        .get_or_key(&format!(
+            "item.minecraft.firework_star.shape.{}",
+            firework_explosion_shape_name(shape)
+        ))
+        .to_string()
 }
 
 fn firework_explosion_shape_name(shape: FireworkExplosionShapeSummary) -> &'static str {
@@ -533,6 +614,7 @@ impl NativeItemRuntime {
         push_fireworks_tooltip_lines(
             &self.language,
             stack.component_patch.fireworks_flight_duration,
+            &stack.component_patch.fireworks_explosions,
             &mut lines,
         );
         push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
