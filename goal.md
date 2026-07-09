@@ -355,6 +355,7 @@ Screen Render Surfaces" 条目）：
   DebugOptionsScreen search text-field sprite styling、
   DebugOptionsScreen button sprite styling、
   DebugOptionsScreen button hover highlighted sprite styling、
+  DebugOptionsScreen scrollbar dragging、
   ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text

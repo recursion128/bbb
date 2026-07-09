@@ -107,6 +107,8 @@ const DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
 const DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
+const DEBUG_OPTIONS_SCROLLBAR_WIDTH: i32 = 6;
+const DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT: i32 = 32;
 const DEBUG_OPTIONS_SEARCH_WIDTH: i32 = DEBUG_OPTIONS_ROW_WIDTH / 3;
 const DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
 const DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET: i32 = 4;
@@ -261,6 +263,7 @@ struct DebugOptionsScreenState {
     search_selecting: bool,
     last_left_click_at: Option<Instant>,
     scroll_row: usize,
+    scrollbar_drag_y: Option<i32>,
     cursor_position: Option<(i32, i32)>,
 }
 
@@ -1277,6 +1280,10 @@ impl ClientInputState {
         };
         let position = cursor_position.and_then(physical_position_floor_i32);
         screen.cursor_position = position;
+        if let (Some(_), Some((_, mouse_y))) = (screen.scrollbar_drag_y, position) {
+            drag_debug_options_scrollbar(screen, mouse_y, surface_size);
+            return true;
+        }
         if let (true, Some((mouse_x, _))) = (screen.search_selecting, position) {
             let cursor = debug_options_search_cursor_for_mouse_x_with_text_measurer(
                 screen,
@@ -1326,6 +1333,7 @@ impl ClientInputState {
         if matches!((button, state), (MouseButton::Left, ElementState::Released)) {
             if let Some(screen) = self.debug_options_screen.as_mut() {
                 screen.search_selecting = false;
+                screen.scrollbar_drag_y = None;
             }
             return true;
         }
@@ -1370,6 +1378,16 @@ impl ClientInputState {
         }
         if let Some(screen) = self.debug_options_screen.as_mut() {
             screen.search_selecting = false;
+            screen.scrollbar_drag_y = None;
+        }
+        let over_scrollbar = self.debug_options_screen.as_ref().is_some_and(|screen| {
+            debug_options_scrollbar_contains(mouse_x, mouse_y, &screen.search_text, surface_size)
+        });
+        if over_scrollbar {
+            if let Some(screen) = self.debug_options_screen.as_mut() {
+                screen.scrollbar_drag_y = Some(mouse_y);
+            }
+            return true;
         }
         if let Some(profile) = debug_options_profile_button_at(mouse_x, mouse_y, surface_size) {
             if !self.debug_entries.is_using_profile(profile) {
@@ -2462,14 +2480,16 @@ fn debug_options_search_len(text: &str) -> usize {
 }
 
 fn debug_options_visible_row_count(surface_size: PhysicalSize<u32>) -> usize {
-    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
-    ((height - DEBUG_OPTIONS_HEADER_HEIGHT - DEBUG_OPTIONS_FOOTER_HEIGHT)
-        / DEBUG_OPTIONS_ROW_HEIGHT)
-        .max(0) as usize
+    (debug_options_list_height(surface_size) / DEBUG_OPTIONS_ROW_HEIGHT).max(0) as usize
 }
 
 fn debug_options_max_scroll_row(total_rows: usize, visible_rows: usize) -> usize {
     total_rows.saturating_sub(visible_rows)
+}
+
+fn debug_options_list_height(surface_size: PhysicalSize<u32>) -> i32 {
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (height - DEBUG_OPTIONS_HEADER_HEIGHT - DEBUG_OPTIONS_FOOTER_HEIGHT).max(0)
 }
 
 fn debug_options_content_x(surface_size: PhysicalSize<u32>) -> i32 {
@@ -2485,6 +2505,108 @@ fn debug_options_search_box_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, 
         DEBUG_OPTIONS_SEARCH_WIDTH,
         DEBUG_OPTIONS_SEARCH_HEIGHT,
     )
+}
+
+fn debug_options_scrollbar_x(surface_size: PhysicalSize<u32>) -> i32 {
+    debug_options_content_x(surface_size)
+        + DEBUG_OPTIONS_ROW_WIDTH
+        + DEBUG_OPTIONS_SCROLLBAR_WIDTH
+        + 2
+}
+
+fn debug_options_scrollbar_contains(
+    mouse_x: i32,
+    mouse_y: i32,
+    search_text: &str,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let total_rows = debug_options_screen_rows(search_text).len();
+    let list_height = debug_options_list_height(surface_size);
+    if !debug_options_scrollbar_scrollable(total_rows, list_height) {
+        return false;
+    }
+    let scrollbar_x = debug_options_scrollbar_x(surface_size);
+    mouse_x >= scrollbar_x
+        && mouse_x <= scrollbar_x + DEBUG_OPTIONS_SCROLLBAR_WIDTH
+        && mouse_y >= DEBUG_OPTIONS_HEADER_HEIGHT
+        && mouse_y < DEBUG_OPTIONS_HEADER_HEIGHT + list_height
+}
+
+fn drag_debug_options_scrollbar(
+    screen: &mut DebugOptionsScreenState,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+) {
+    let Some(last_y) = screen.scrollbar_drag_y else {
+        return;
+    };
+    let total_rows = debug_options_screen_rows(&screen.search_text).len();
+    screen.scroll_row = debug_options_scrollbar_drag_scroll_row(
+        screen.scroll_row,
+        total_rows,
+        surface_size,
+        last_y,
+        mouse_y,
+    );
+    screen.scrollbar_drag_y = Some(mouse_y);
+}
+
+fn debug_options_scrollbar_drag_scroll_row(
+    scroll_row: usize,
+    total_rows: usize,
+    surface_size: PhysicalSize<u32>,
+    last_y: i32,
+    mouse_y: i32,
+) -> usize {
+    let visible_rows = debug_options_visible_row_count(surface_size);
+    let max_scroll_row = debug_options_max_scroll_row(total_rows, visible_rows);
+    if max_scroll_row == 0 {
+        return 0;
+    }
+    let list_height = debug_options_list_height(surface_size);
+    if mouse_y < DEBUG_OPTIONS_HEADER_HEIGHT {
+        return 0;
+    }
+    if mouse_y > DEBUG_OPTIONS_HEADER_HEIGHT + list_height {
+        return max_scroll_row;
+    }
+    let content_height = debug_options_scrollbar_content_height(total_rows);
+    let max_scroll_amount = (content_height - list_height).max(0);
+    if max_scroll_amount == 0 {
+        return 0;
+    }
+    let scroller_height = debug_options_scroller_height(list_height, content_height);
+    let y_drag_scale =
+        f64::from(max_scroll_amount.max(1)) / f64::from((list_height - scroller_height).max(1));
+    let y_drag_scale = y_drag_scale.max(1.0);
+    let scroll_amount = i32::try_from(scroll_row)
+        .unwrap_or(i32::MAX / DEBUG_OPTIONS_ROW_HEIGHT)
+        .saturating_mul(DEBUG_OPTIONS_ROW_HEIGHT)
+        .min(max_scroll_amount);
+    let dragged = f64::from(scroll_amount) + f64::from(mouse_y - last_y) * y_drag_scale;
+    ((dragged.clamp(0.0, f64::from(max_scroll_amount)) / f64::from(DEBUG_OPTIONS_ROW_HEIGHT))
+        .round() as usize)
+        .min(max_scroll_row)
+}
+
+fn debug_options_scrollbar_scrollable(total_rows: usize, list_height: i32) -> bool {
+    list_height > 8 && debug_options_scrollbar_content_height(total_rows) > list_height
+}
+
+fn debug_options_scrollbar_content_height(total_rows: usize) -> i32 {
+    i32::try_from(total_rows)
+        .unwrap_or(i32::MAX / DEBUG_OPTIONS_ROW_HEIGHT)
+        .saturating_mul(DEBUG_OPTIONS_ROW_HEIGHT)
+}
+
+fn debug_options_scroller_height(list_height: i32, content_height: i32) -> i32 {
+    let max_scroller_height = (list_height - 8).max(1);
+    let min_scroller_height = DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT.min(max_scroller_height);
+    list_height
+        .saturating_mul(list_height)
+        .checked_div(content_height.max(1))
+        .unwrap_or(max_scroller_height)
+        .clamp(min_scroller_height, max_scroller_height)
 }
 
 fn debug_options_search_cursor_at_with_text_measurer(

@@ -3593,6 +3593,76 @@ fn debug_options_screen_projects_not_allowed_tooltip_on_entry_name_hover() {
 }
 
 #[test]
+fn debug_options_screen_scrollbar_drag_updates_scroll_row() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let scrollbar_x = debug_options_scrollbar_x(surface) + 1;
+    let start_y = DEBUG_OPTIONS_HEADER_HEIGHT + 29;
+
+    assert_eq!(
+        debug_options_scrollbar_drag_scroll_row(0, 47, surface, start_y, start_y + 3),
+        1
+    );
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(scrollbar_x),
+            f64::from(start_y)
+        )),
+        surface,
+        false,
+    ));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(scrollbar_x),
+            f64::from(start_y + 3)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert_eq!(state.scroll_row, 1);
+
+    let below_list_y = DEBUG_OPTIONS_HEADER_HEIGHT + debug_options_list_height(surface) + 1;
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(scrollbar_x),
+            f64::from(below_list_y)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert_eq!(state.scroll_row, 40);
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Released,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(scrollbar_x),
+            f64::from(below_list_y)
+        )),
+        surface,
+        false,
+    ));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(scrollbar_x),
+            f64::from(DEBUG_OPTIONS_HEADER_HEIGHT)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert_eq!(state.scroll_row, 40);
+}
+
+#[test]
 fn debug_options_screen_consumes_keys_scrolls_and_allows_f3_global_keymap() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

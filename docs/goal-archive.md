@@ -6321,9 +6321,9 @@
   cursor/selection、按 UTF-16 code unit 限制 32 长度、支持选区替换、
   Ctrl+A、字符/词移动、Shift 选区、Home/End、Backspace/Delete，并在文本变化时
   重置过滤滚动；runtime/renderer 现在投影并绘制 blinking cursor 和蓝色
-  selection。当时边界：Ctrl+C/V/X 剪贴板、鼠标点击/拖拽选区、narration、
-  scrollbar dragging 与完整 vanilla widget sprite styling 仍待后续 polish；
-  Ctrl+C/V/X 由后续 2026-07-09 clipboard shortcuts 条目补齐。
+  selection。当时边界：Ctrl+C/V/X 剪贴板、鼠标点击/拖拽选区、narration
+  与完整 vanilla widget sprite styling 仍待后续 polish；Ctrl+C/V/X 由后续
+  2026-07-09 clipboard shortcuts 条目补齐。
 - [x] debug overlay DebugOptionsScreen EditBox clipboard shortcuts（P2
   input/main slice，2026-07-09）：依据 `InputWithModifiers.isCopy/isPaste/isCut`
   的 edit shortcut modifier + C/V/X 且无 Shift/Alt，以及
@@ -6343,14 +6343,14 @@
   centered-y，renderer 现在把 DebugOptionsScreen search box 绘制为 1px light
   outer frame + dark inner fill，并保留现有 bordered text origin、cursor 与
   selection。边界：精确 vanilla text-field sprite rendering 由后续 2026-07-09
-  条目补齐；narration、scrollbar dragging 与完整 widget sprite styling 仍待后续
-  polish；鼠标点击/拖拽选区由后续 2026-07-09 mouse selection behavior 条目补齐。
+  条目补齐；narration 与完整 widget sprite styling 仍待后续 polish；鼠标点击/拖拽选区
+  由后续 2026-07-09 mouse selection behavior 条目补齐。
 - [x] debug overlay DebugOptionsScreen search text-field sprite styling（P2
   renderer slice，2026-07-09）：依据 `EditBox.SPRITES` 在 active/focused bordered
   field 使用 `widget/text_field_highlighted`，且 `EditBox.extractWidgetRenderState`
   先在 widget bounds blit 该 sprite 再绘制文本，renderer 现在用已上传的
   `widget/text_field_highlighted` HUD sprite 绘制 DebugOptionsScreen search
-  background，并保留缺资源时的旧矩形 fallback。边界：narration、scrollbar dragging、
+  background，并保留缺资源时的旧矩形 fallback。边界：narration、
   DebugOptionsScreen button sprite styling 由后续 2026-07-09 条目补齐；button hover
   highlighted sprite styling 由后续 2026-07-09 条目补齐；keyboard focus highlighted
   states 与 broader full-widget polish 仍待后续。
@@ -6361,8 +6361,7 @@
   `widget/button_disabled`，renderer 用 `widget/button` / `widget/button_disabled`
   绘制 DebugOptionsScreen status/profile/done button backgrounds，并保留缺资源时的旧矩形
   fallback。边界：button hover highlighted sprite styling 由后续 2026-07-09 条目补齐；
-  keyboard focus highlighted button states、narration、scrollbar dragging 与 broader
-  full-widget polish 仍待后续。
+  keyboard focus highlighted button states、narration 与 broader full-widget polish 仍待后续。
 - [x] debug overlay DebugOptionsScreen button hover highlighted sprite styling（P2
   input/renderer slice，2026-07-09）：依据 `WidgetSprites.get(enabled, focused)`，
   enabled focused buttons 使用 `widget/button_highlighted`，而
@@ -6370,8 +6369,16 @@
   `widget/button_disabled`，native 现在把 DebugOptionsScreen
   status/profile/done hovered buttons 投影到 HUD state，renderer 对 active hovered
   buttons 使用已上传的 `widget/button_highlighted`，并保留 disabled 与 missing-sprite
-  fallback。边界：keyboard focus highlighted button states、narration、scrollbar
-  dragging 与 broader full-widget polish 仍待后续。
+  fallback。边界：keyboard focus highlighted button states、narration 与 broader
+  full-widget polish 仍待后续。
+- [x] debug overlay DebugOptionsScreen scrollbar dragging（P2 input slice，
+  2026-07-09）：依据 `AbstractContainerWidget.mouseClicked` 先调用
+  `updateScrolling`，以及 `AbstractScrollArea.mouseDragged` 在滚动条拖拽中按
+  `dy * yDragScale` 更新 scroll amount、拖到 list 上/下方时 clamp 到 0/max，native
+  现在在 DebugOptionsScreen scrollbar band 按下左键时开始拖拽，cursor move 用同一
+  drag scale 更新 row-granular `scroll_row`，left release 结束拖拽。边界：
+  pixel-partial list scroll offsets、narration、keyboard focus highlighted states 与
+  broader full-widget polish 仍待后续。
 - [x] debug overlay DebugOptionsScreen search mouse selection behavior（P2
   input/main slice，2026-07-09）：依据 `EditBox.onClick` 通过
   `findClickedPositionInText` 移动 cursor、Shift-click 传入
@@ -6380,8 +6387,8 @@
   native 现在支持在 DebugOptionsScreen search box 中 left-click 定位 cursor、
   Shift-click 扩展选区、从搜索框内拖拽更新 highlight，并在 left release 结束拖拽。
   边界：variable-width hit-testing 与 double-click word selection 由后续
-  2026-07-09 条目补齐；narration、scrollbar dragging、keyboard focus highlighted
-  states 与 remaining full widget polish 仍待后续。
+  2026-07-09 条目补齐；narration、keyboard focus highlighted states 与 remaining
+  full widget polish 仍待后续。
 - [x] debug overlay DebugOptionsScreen variable-width search hit-testing（P2
   input/renderer/main slice，2026-07-09）：依据
   `EditBox.findClickedPositionInText` 将 `floor(mouseX) - textX` clamp 到
@@ -6391,8 +6398,8 @@
   `Renderer::hud_plain_text_cursor_for_width` 使用实际 glyph advance，测试/未加载字体
   场景保留旧 ASCII advance fallback。边界：horizontal display-start hit-testing
   由后续 2026-07-09 条目补齐；double-click word selection 由后续 2026-07-09
-  条目补齐；narration、scrollbar dragging、keyboard focus highlighted states 与
-  remaining full widget polish 仍待后续。
+  条目补齐；narration、keyboard focus highlighted states 与 remaining full widget
+  polish 仍待后续。
 - [x] debug overlay DebugOptionsScreen horizontal search display hit-testing（P2
   input/renderer/main slice，2026-07-09）：依据 `EditBox.setCursorPosition`
   调用 `scrollTo(cursorPos)`，且 `findClickedPositionInText` 通过
@@ -6400,12 +6407,11 @@
   text-input display-start 计算与 from-display-start cursor 映射，native
   DebugOptionsScreen search click/drag hit-testing 使用与已渲染文本相同的可见 substring
   起点。边界：double-click word selection 由后续 2026-07-09 条目补齐；narration、
-  scrollbar dragging、keyboard focus highlighted states 与 remaining full widget
-  polish 仍待后续。
+  keyboard focus highlighted states 与 remaining full widget polish 仍待后续。
 - [x] debug overlay DebugOptionsScreen double-click word selection（P2
   input slice，2026-07-09）：依据 `MouseHandler.DOUBLE_CLICK_THRESHOLD_MS = 250L`，
   `EditBox.onClick(..., doubleClick = true)` 调用 `selectWord`，并从点击位置向
   `getWordPosition(-1)` / `getWordPosition(1)` 扩展，native 现在记录
   DebugOptionsScreen 最近一次 left click，在 250ms double-click 时选中点击处的
-  search word。边界：narration、scrollbar dragging、keyboard focus highlighted states
-  与 remaining full widget polish 仍待后续。
+  search word。边界：narration、keyboard focus highlighted states 与 remaining full
+  widget polish 仍待后续。
