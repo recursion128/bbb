@@ -12,7 +12,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
-        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
         VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
@@ -246,6 +247,9 @@ const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
 const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
 const BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION: i32 = 0;
 const BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
+const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
+const COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 = 0;
+const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
@@ -3736,6 +3740,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_chicken_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_copper_golem_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_COD_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
@@ -4000,7 +4008,9 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     ));
     fields.push(format!(
         "PersistenceRequired: {}",
-        debug_snbt_bool(MOB_DEFAULT_PERSISTENCE_REQUIRED)
+        debug_snbt_bool(debug_mob_default_persistence_required(
+            entity.entity_type_id
+        ))
     ));
     fields.push(format!(
         "LeftHanded: {}",
@@ -4016,6 +4026,13 @@ fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT,
         _ => MOB_DEFAULT_CAN_PICK_UP_LOOT,
+    }
+}
+
+fn debug_mob_default_persistence_required(entity_type_id: i32) -> bool {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => true,
+        _ => MOB_DEFAULT_PERSISTENCE_REQUIRED,
     }
 }
 
@@ -4065,6 +4082,31 @@ fn debug_armadillo_state_name(state_id: i32) -> &'static str {
         2 => "scared",
         3 => "unrolling",
         _ => "idle",
+    }
+}
+
+fn debug_push_copper_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    fields.push(format!(
+        "next_weather_age: {COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE}L"
+    ));
+    let weather_state_id = debug_entity_data_enum_id_present(
+        entity,
+        COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+        EntityDataEnumSerializer::WeatheringCopperState,
+    )
+    .unwrap_or(COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID);
+    fields.push(format!(
+        "weather_state: {}",
+        debug_snbt_string(debug_copper_golem_weather_state_name(weather_state_id))
+    ));
+}
+
+fn debug_copper_golem_weather_state_name(state_id: i32) -> &'static str {
+    match state_id {
+        1 => "exposed",
+        2 => "weathered",
+        3.. => "oxidized",
+        _ => "unaffected",
     }
 }
 
