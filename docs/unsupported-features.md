@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2776,6 +2776,16 @@ When an agent does any of the following, update this file in the same slice:
     Shift+F3+I local creaking recreate commands. Boundary: broader Mob save
     data, passengers, and other entity-specific `addAdditionalSaveData` fields
     still need local state owners before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local shulker save fields.
+    Vanilla anchors: `Shulker.addAdditionalSaveData` calls the Mob save chain,
+    stores `AttachFace` through `Direction.LEGACY_ID_CODEC` (byte legacy 3D
+    direction id), then writes byte `Peek` and byte `Color` from synced shulker
+    metadata ids 16, 17, and 18 with defaults down/0/16. bbb now appends the
+    same local Mob fields plus metadata-derived `AttachFace`, `Peek`, and
+    `Color` for authorized Shift+F3+I local shulker recreate commands.
+    Boundary: broader Mob save data, passengers, client teleport interpolation,
+    and other entity-specific `addAdditionalSaveData` fields still need local
+    state owners before full `saveWithoutId` parity.
   - Done 2026-07-09 — Debug overlay F3+I local slime-family save fields.
     Vanilla anchors: `Slime.addAdditionalSaveData` calls `Mob` save data, then
     writes `Size` as `getSize() - 1` and `wasOnGround`; `MagmaCube` inherits
@@ -3903,7 +3913,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

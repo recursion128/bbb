@@ -14,8 +14,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -205,6 +206,12 @@ const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
 const CREEPER_DEFAULT_POWERED: bool = false;
 const CREEPER_DEFAULT_IGNITED: bool = false;
 const CREAKING_HOME_POS_DATA_ID: u8 = 19;
+const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+const SHULKER_PEEK_DATA_ID: u8 = 17;
+const SHULKER_COLOR_DATA_ID: u8 = 18;
+const SHULKER_DEFAULT_ATTACH_FACE: i8 = 0;
+const SHULKER_DEFAULT_PEEK: i8 = 0;
+const SHULKER_DEFAULT_COLOR: i8 = 16;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -3552,6 +3559,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_creaking_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_SHULKER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_shulker_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_slime_additional_save_data(entity, fields);
@@ -3646,6 +3657,18 @@ fn debug_push_creaking_additional_save_data(entity: &EntityState, fields: &mut V
             home_pos.x, home_pos.y, home_pos.z
         ));
     }
+}
+
+fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let attach_face = debug_entity_data_direction_present(entity, SHULKER_ATTACH_FACE_DATA_ID)
+        .unwrap_or(SHULKER_DEFAULT_ATTACH_FACE);
+    let peek = debug_entity_data_byte_present(entity, SHULKER_PEEK_DATA_ID)
+        .unwrap_or(SHULKER_DEFAULT_PEEK);
+    let color = debug_entity_data_byte_present(entity, SHULKER_COLOR_DATA_ID)
+        .unwrap_or(SHULKER_DEFAULT_COLOR);
+    fields.push(format!("AttachFace: {attach_face}b"));
+    fields.push(format!("Peek: {peek}b"));
+    fields.push(format!("Color: {color}b"));
 }
 
 fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -3797,6 +3820,17 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_direction_present(entity: &EntityState, data_id: u8) -> Option<i8> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Direction(value) => Some(value.rem_euclid(6) as i8),
             _ => None,
         })
 }

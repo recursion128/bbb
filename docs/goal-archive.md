@@ -6246,6 +6246,15 @@
   字段，并在本地 metadata 存在时追加 `home_pos: [I; x, y, z]`。边界：更广泛的
   Mob save data、passengers 以及其他 entity-specific `addAdditionalSaveData`
   仍待本地 state owner 后才能关闭完整 `saveWithoutId` parity。
+- [x] debug overlay F3+I local shulker save fields（P2 native slice，
+  2026-07-09）：依据 `Shulker.addAdditionalSaveData` 调用 Mob 保存链后，通过
+  `Direction.LEGACY_ID_CODEC` 保存 `AttachFace`（byte legacy 3D direction id），
+  并从 synced shulker metadata ids 16、17、18 写 byte `Peek` 与 byte `Color`，
+  默认值分别为 down/0/16。native 现在对授权 Shift+F3+I 本地 shulker recreate
+  command 追加 Mob 字段和 metadata-derived `AttachFace`、`Peek`、`Color`。
+  边界：更广泛的 Mob save data、passengers、client teleport interpolation 以及其他
+  entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local slime-family save fields（P2 native slice，
   2026-07-09）：依据 `Slime.addAdditionalSaveData` 先调用 `Mob` 保存链，再以
   `getSize() - 1` 写 `Size`，并写 `wasOnGround`；`MagmaCube` 继承同一实现。
