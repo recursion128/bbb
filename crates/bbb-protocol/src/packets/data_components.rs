@@ -49,6 +49,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub damage: Option<i32>,
     #[serde(default)]
+    pub intangible_projectile: bool,
+    #[serde(default)]
     pub unbreakable: bool,
     #[serde(default)]
     pub custom_name: Option<String>,
@@ -597,6 +599,10 @@ fn decode_typed_data_component_patch_summary(
             }
             4 => {
                 summary.unbreakable = true;
+            }
+            22 => {
+                summary.intangible_projectile = true;
+                skip_nbt_tag_from_decoder(decoder)?;
             }
             6 => {
                 let runs = decode_styled_component_summary_from_decoder(decoder)?;
@@ -2299,7 +2305,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(9);
+        payload.write_var_i32(10);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -2314,6 +2320,8 @@ mod tests {
         payload.write_string("minecraft:diamond_sword");
         payload.write_var_i32(21);
         payload.write_bool(true);
+        payload.write_var_i32(22);
+        payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(26);
         payload.write_f32(1.5);
         payload.write_bool(true);
@@ -2329,8 +2337,8 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 9,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 26, 79],
+                added: 10,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 22, 26, 79],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
@@ -2340,6 +2348,7 @@ mod tests {
                 custom_name_styled: Some(plain_runs("Named")),
                 item_model: Some("minecraft:diamond_sword".to_string()),
                 enchantment_glint_override: Some(true),
+                intangible_projectile: true,
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 container_loot: true,

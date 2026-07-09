@@ -228,6 +228,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         r#"{
                 "item.minecraft.test_combo": "Test Combo",
                 "item.unbreakable": "Unbreakable",
+                "item.intangible": "Intangible",
                 "item.durability": "Durability: %s / %s",
                 "item.components": "%s component(s)",
                 "component.profile.dynamic": "Dynamic",
@@ -584,6 +585,24 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         }),
         Some(vec![
             name_line("Durable Item", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                intangible_projectile: true,
+                unbreakable: true,
+                lore: vec!["Before unit components".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before unit components"),
+            tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
         ])
     );

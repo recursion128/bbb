@@ -6540,3 +6540,10 @@
   恰好只有一个存在）推导 dynamic 并输出灰色 `Dynamic` 行。边界：完整 profile
   resolver state、`TooltipDisplay` hidden-components 与其它 component provider
   tooltip 仍未完成。
+- [x] advanced tooltip intangible projectile line（P2 protocol + item-runtime
+  slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 lore/attribute handling
+  之后、unbreakable 之前把 `DataComponents.INTANGIBLE_PROJECTILE` 作为 unit component
+  输出灰色 `item.intangible`，protocol summary 现在记录 decoded
+  `minecraft:intangible_projectile` presence，native item tooltip 输出灰色
+  `Intangible` 行。边界：`TooltipDisplay` hidden-components、attribute tooltip parity
+  与其它 component provider tooltip 仍未完成。

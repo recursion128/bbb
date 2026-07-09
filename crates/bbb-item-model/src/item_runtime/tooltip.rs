@@ -247,6 +247,20 @@ fn item_container_more_tooltip_line(text: String) -> NativeItemTooltipLine {
     }
 }
 
+fn push_intangible_projectile_tooltip_line(
+    language: &LanguageCatalog,
+    intangible_projectile: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !intangible_projectile {
+        return;
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        language.get_or_key("item.intangible").to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
 fn push_dyed_color_tooltip_lines(
     language: &LanguageCatalog,
     dyed_color: Option<i32>,
@@ -876,6 +890,11 @@ impl NativeItemRuntime {
                         &LORE_STYLE,
                     ),
                 }),
+        );
+        push_intangible_projectile_tooltip_line(
+            &self.language,
+            stack.component_patch.intangible_projectile,
+            &mut lines,
         );
         if stack.component_patch.unbreakable {
             lines.push(NativeItemTooltipLine::plain(
