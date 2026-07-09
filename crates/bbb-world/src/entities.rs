@@ -1876,7 +1876,7 @@ pub enum WolfArmorCrackiness {
 pub(crate) const ENTITY_LIGHT_PROBE_FULL_BRIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
 /// Vanilla `ExperienceOrb.DATA_VALUE`: `ExperienceOrb` extends base `Entity`,
 /// whose synced data ids occupy `0..=7`.
-pub(crate) const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
+pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 
 fn entity_model_source_full_bright_light() -> TerrainLight {
     ENTITY_LIGHT_PROBE_FULL_BRIGHT

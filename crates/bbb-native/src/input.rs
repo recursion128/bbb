@@ -21,8 +21,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
@@ -67,7 +68,7 @@ use bbb_protocol::{
 };
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
-    TagQueryResponseState, WorldStore,
+    TagQueryResponseState, WorldStore, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -3996,6 +3997,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_fireball_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
+            debug_push_experience_orb_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
             debug_push_projectile_additional_save_data(fields);
         }
@@ -4223,6 +4227,15 @@ fn debug_push_shulker_bullet_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("TXD: {zero}"));
     fields.push(format!("TYD: {zero}"));
     fields.push(format!("TZD: {zero}"));
+}
+
+fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let value =
+        debug_entity_data_int_present(entity, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID).unwrap_or(0);
+    fields.push("Health: 5s".to_string());
+    fields.push("Age: 0s".to_string());
+    fields.push(format!("Value: {value}s"));
+    fields.push("Count: 1".to_string());
 }
 
 fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

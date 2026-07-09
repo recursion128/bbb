@@ -198,8 +198,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
   projection, remaining projectile owner references, left-owner flag, and non-default
-  private `hasBeenShot` projection, private or otherwise unobserved timer/counter projection,
-  remaining registry-backed
+  private `hasBeenShot` projection, non-default private or otherwise unobserved
+  timer/counter projection, remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, codec-backed SNBT projection, entity-specific constructor/default
   save values not yet covered by existing local helper chains, observable
