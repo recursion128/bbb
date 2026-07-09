@@ -13,16 +13,17 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID,
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
         VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
@@ -36,6 +37,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -349,6 +351,11 @@ const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
 const WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
 const WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
+const ZOMBIE_BABY_DATA_ID: u8 = 16;
+const ZOMBIE_DEFAULT_BABY: bool = false;
+const ZOMBIE_DEFAULT_CAN_BREAK_DOORS: bool = false;
+const ZOMBIE_DEFAULT_IN_WATER_TIME: i32 = -1;
+const ZOMBIE_DEFAULT_DROWNED_CONVERSION_TIME: i32 = -1;
 const ZOGLIN_BABY_DATA_ID: u8 = 16;
 const ZOGLIN_DEFAULT_BABY: bool = false;
 const HAPPY_GHAST_DEFAULT_STILL_TIMEOUT: i32 = 0;
@@ -3708,6 +3715,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_dolphin_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_DROWNED_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_zombie_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_FROG_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -3750,6 +3761,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_hoglin_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_HUSK_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -3903,6 +3918,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_WITHER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_wither_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -4504,6 +4523,20 @@ fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec
         debug_entity_data_int_present(entity, WITHER_INVULNERABLE_TICKS_DATA_ID)
             .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
     fields.push(format!("Invul: {invulnerable_ticks}"));
+}
+
+fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let is_baby =
+        debug_entity_data_bool_present(entity, ZOMBIE_BABY_DATA_ID).unwrap_or(ZOMBIE_DEFAULT_BABY);
+    fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
+    fields.push(format!(
+        "CanBreakDoors: {}",
+        debug_snbt_bool(ZOMBIE_DEFAULT_CAN_BREAK_DOORS)
+    ));
+    fields.push(format!("InWaterTime: {ZOMBIE_DEFAULT_IN_WATER_TIME}"));
+    fields.push(format!(
+        "DrownedConversionTime: {ZOMBIE_DEFAULT_DROWNED_CONVERSION_TIME}"
+    ));
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
