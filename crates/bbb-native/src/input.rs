@@ -9,10 +9,10 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -211,6 +211,8 @@ const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
 const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
+const BOGGED_SHEARED_DATA_ID: u8 = 16;
+const BOGGED_DEFAULT_SHEARED: bool = false;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 const IRON_GOLEM_PLAYER_CREATED_FLAG: i8 = 1;
@@ -3544,6 +3546,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bat_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_BOGGED_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_bogged_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_GHAST_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
@@ -3618,6 +3624,12 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     let flags =
         debug_entity_data_byte_present(entity, BAT_FLAGS_DATA_ID).unwrap_or(BAT_DEFAULT_FLAGS);
     fields.push(format!("BatFlags: {flags}b"));
+}
+
+fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let sheared = debug_entity_data_bool_present(entity, BOGGED_SHEARED_DATA_ID)
+        .unwrap_or(BOGGED_DEFAULT_SHEARED);
+    fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
 }
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {

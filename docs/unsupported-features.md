@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast/iron-golem/ravager save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2796,6 +2796,14 @@ When an agent does any of the following, update this file in the same slice:
     default. Boundary: broader Mob save data, passengers, and other
     entity-specific `addAdditionalSaveData` fields still need local state owners
     before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local bogged save field.
+    Vanilla anchors: `Bogged.addAdditionalSaveData` calls the `AbstractSkeleton`
+    / Mob save chain and then writes lowercase `sheared` from
+    `Bogged.DATA_SHEARED` (16), whose default is false. bbb now appends the same
+    local Mob fields plus metadata-derived `sheared` for authorized Shift+F3+I
+    local bogged recreate commands. Boundary: broader Mob save data, passengers,
+    and other entity-specific `addAdditionalSaveData` fields still need local
+    state owners before full `saveWithoutId` parity.
   - Done 2026-07-09 — Debug overlay F3+I local ghast save field.
     Vanilla anchors: `Ghast.addAdditionalSaveData` calls `Mob` save data and
     then writes `ExplosionPower` as a byte; vanilla initializes
@@ -3845,7 +3853,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast/iron-golem/ravager save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

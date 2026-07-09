@@ -6263,6 +6263,13 @@
   边界：更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local bogged save field（P2 native slice，
+  2026-07-09）：依据 `Bogged.addAdditionalSaveData` 调用 `AbstractSkeleton` /
+  Mob 保存链后，从 `Bogged.DATA_SHEARED` 16 写 lowercase `sheared`，vanilla
+  默认 false。native 现在对授权 Shift+F3+I 本地 bogged recreate command 追加 Mob
+  字段和 metadata-derived `sheared`。边界：更广泛的 Mob save data、passengers
+  以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local ghast save field（P2 native slice，
   2026-07-09）：依据 `Ghast.addAdditionalSaveData` 先调用 `Mob` 保存链，再写
   `ExplosionPower` byte；vanilla 初始化 `explosionPower` 为 1，NBT 读取也使用

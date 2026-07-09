@@ -377,7 +377,7 @@ Screen Render Surfaces" 条目）：
   effect lines, map-id lines,
   instrument description lines, tropical-fish pattern lines, banner-pattern rows,
   pot-decoration rows、remaining F3+I full local entity saveWithoutId parity
-  beyond local creeper/slime-family/snow-golem/bat/ghast/iron-golem/ravager save fields、
+  beyond local creeper/slime-family/snow-golem/bat/bogged/ghast/iron-golem/ravager save fields、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，
