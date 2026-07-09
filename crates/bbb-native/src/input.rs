@@ -115,6 +115,11 @@ const ENTITY_SILENT_DATA_ID: u8 = 4;
 const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+const ENTITY_DEFAULT_AIR_SUPPLY: i32 = 300;
+const ENTITY_DEFAULT_FALL_DISTANCE: f64 = 0.0;
+const ENTITY_DEFAULT_FIRE_TICKS: i16 = 0;
+const ENTITY_DEFAULT_INVULNERABLE: bool = false;
+const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -2425,12 +2430,21 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
     if let Some(rotation) = debug_snbt_rotation(entity.y_rot, entity.x_rot) {
         fields.push(rotation);
     }
-    if let Some(air) = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID) {
-        fields.push(format!("Air: {}s", air as i16));
-    }
-    if let Some(on_ground) = entity.on_ground {
-        fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
-    }
+    fields.push(format!(
+        "fall_distance: {}",
+        debug_snbt_double(ENTITY_DEFAULT_FALL_DISTANCE)?
+    ));
+    fields.push(format!("Fire: {ENTITY_DEFAULT_FIRE_TICKS}s"));
+    let air = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID)
+        .unwrap_or(ENTITY_DEFAULT_AIR_SUPPLY);
+    fields.push(format!("Air: {}s", air as i16));
+    let on_ground = entity.on_ground.unwrap_or(false);
+    fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
+    fields.push(format!(
+        "Invulnerable: {}b",
+        if ENTITY_DEFAULT_INVULNERABLE { 1 } else { 0 }
+    ));
+    fields.push(format!("PortalCooldown: {ENTITY_DEFAULT_PORTAL_COOLDOWN}"));
     if debug_entity_data_bool_present(entity, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
         .is_some_and(|visible| visible)
     {
@@ -2454,7 +2468,7 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
             fields.push(format!("TicksFrozen: {ticks_frozen}"));
         }
     }
-    (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {

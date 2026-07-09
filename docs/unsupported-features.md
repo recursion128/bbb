@@ -1121,7 +1121,8 @@ When an agent does any of the following, update this file in the same slice:
     renderer-noop debug entry coverage,
     chunk-generation-stats debug entry client-only shell,
     debug-profile.json persistence, F3+I local block-entity NBT capture,
-    advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
+    advanced tooltip component-count display, F3+I local entity transform NBT capture,
+    F3+I local entity metadata/base-default NBT capture, debug
     feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
     feedback payload, profiler chart numeric-key routing shell, and F3+N spectator
     change-game-mode request routing, F3+F4 GameModeSwitcher input/command
@@ -1943,6 +1944,20 @@ When an agent does any of the following, update this file in the same slice:
     `Fire`, `Invulnerable`, `PortalCooldown`, `CustomName`, `HasVisualFire`,
     `Tags`, `data`, passengers, and entity-specific `addAdditionalSaveData`
     fields remain future work until those states are owned locally.
+  - Done 2026-07-09 — Debug overlay F3+I local entity base default fields.
+    Vanilla anchors: `Entity.saveWithoutId` always writes `Motion`,
+    `Rotation`, `fall_distance`, `Fire`, `Air`, `OnGround`, `Invulnerable`,
+    `PortalCooldown`, then root `UUID` before conditional metadata, while
+    `KeyboardHandler.copyCreateEntityCommand` strips root `UUID`/`Pos` before
+    formatting `/summon`; `Entity.getMaxAirSupply` returns `300`. bbb now
+    emits the fixed local-entity base SNBT shape for authorized Shift+F3+I:
+    current `Motion`/`Rotation`, default `fall_distance: 0.0d`, `Fire: 0s`,
+    synced-or-default `Air: 300s`, current-or-default `OnGround`, default
+    `Invulnerable: 0b`, and default `PortalCooldown: 0`, followed by the
+    previously covered metadata-derived fields. Boundary: non-default
+    fall/fire/invulnerable/portal state, `CustomName`, `HasVisualFire`,
+    `Tags`, `data`, passengers, and entity-specific `addAdditionalSaveData`
+    still need local state ownership before full `saveWithoutId` parity.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and

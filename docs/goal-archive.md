@@ -6061,6 +6061,18 @@
   relative order。边界：`fall_distance`、`Fire`、`Invulnerable`、
   `PortalCooldown`、`CustomName`、`HasVisualFire`、`Tags`、`data`、
   passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态 owner。
+- [x] debug overlay F3+I local entity base default fields（P2 native
+  slice，2026-07-09）：依据 `Entity.saveWithoutId` 总是写入 `Motion`、
+  `Rotation`、`fall_distance`、`Fire`、`Air`、`OnGround`、`Invulnerable`、
+  `PortalCooldown`、root `UUID`，以及 `KeyboardHandler.copyCreateEntityCommand`
+  会移除 root `UUID` / `Pos`；`Entity.getMaxAirSupply` 固定返回 `300`。
+  native 现在让授权 Shift+F3+I 本地 entity SNBT 始终包含当前
+  `Motion`/`Rotation`、默认 `fall_distance: 0.0d`、`Fire: 0s`、同步或默认
+  `Air: 300s`、当前或默认 `OnGround`、默认 `Invulnerable: 0b` 和
+  `PortalCooldown: 0`，再追加既有 metadata-derived 字段。边界：非默认
+  fall/fire/invulnerable/portal 状态、`CustomName`、`HasVisualFire`、`Tags`、
+  `data`、passengers 和 entity-specific `addAdditionalSaveData` 仍需本地状态
+  owner 后才能关闭完整 `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

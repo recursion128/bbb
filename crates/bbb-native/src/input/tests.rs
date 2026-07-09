@@ -2537,7 +2537,7 @@ fn shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback()
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_entity_transform_nbt_to_clipboard() {
+fn shift_f3_i_with_permission_copies_local_entity_base_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -2627,8 +2627,10 @@ fn shift_f3_i_with_permission_copies_local_entity_transform_nbt_to_clipboard() {
         clipboard.text.as_deref(),
         Some(
             "/summon minecraft:creeper 0.00 0.00 3.00 \
-             {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], Air: 123s, \
-             CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
+             {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], \
+             fall_distance: 0.0d, Fire: 0s, Air: 123s, OnGround: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, CustomNameVisible: 1b, Silent: 1b, \
+             NoGravity: 1b, Glowing: 1b, TicksFrozen: 42}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
