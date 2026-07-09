@@ -220,6 +220,25 @@ fn push_dyed_color_tooltip_lines(
     }
 }
 
+fn push_fireworks_tooltip_lines(
+    language: &LanguageCatalog,
+    flight_duration: Option<i32>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(flight_duration) = flight_duration.filter(|flight_duration| *flight_duration > 0)
+    else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        format!(
+            "{} {}",
+            language.get_or_key("item.minecraft.firework_rocket.flight"),
+            flight_duration
+        ),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
 pub(super) fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
     let template = language.get_or_key(key);
     if template.contains("%1$s") {
@@ -387,6 +406,11 @@ impl NativeItemRuntime {
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
+        push_fireworks_tooltip_lines(
+            &self.language,
+            stack.component_patch.fireworks_flight_duration,
+            &mut lines,
+        );
         push_dyed_color_tooltip_lines(
             &self.language,
             stack.component_patch.dyed_color,

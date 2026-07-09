@@ -218,6 +218,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "container.beehive.bees": "Bees: %s / %s",
                 "item.dyed": "Dyed",
                 "item.color": "Color: %s",
+                "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -563,6 +564,23 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Color: #123ABC", TOOLTIP_TEXT_GRAY),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("14 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![69],
+                fireworks_flight_duration: Some(2),
+                lore: vec!["After fireworks".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Flight Duration: 2", TOOLTIP_TEXT_GRAY),
+            lore_line("After fireworks"),
         ])
     );
     assert_eq!(

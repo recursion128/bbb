@@ -6452,3 +6452,12 @@
   `Dyed` 或 `Color: #RRGGBB`，并保持在 lore 和 advanced registry-id/component-count
   前。边界：其它 component provider tooltip、`TooltipDisplay` hidden-components 与
   options 持久化仍未完成。
+- [x] advanced tooltip firework flight-duration line（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 charged projectiles 之后、
+  firework explosion/potion/trim/enchantments/dyed-color/lore 之前调用
+  `DataComponents.FIREWORKS` provider，以及 `Fireworks.addToTooltip` 在
+  `flightDuration > 0` 时输出灰色 `item.minecraft.firework_rocket.flight` + 空格 +
+  duration，native item tooltip 现在把 decoded `minecraft:fireworks.flight_duration`
+  投影为本地化 `Flight Duration: n` 行，并保持在 lore 和 advanced
+  registry-id/component-count 前。边界：firework explosion 星形/颜色/trail/twinkle 明细、
+  其它 component provider tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。

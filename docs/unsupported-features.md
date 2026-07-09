@@ -1146,7 +1146,7 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond occupied
-    beehive bees and dyed-color lines,
+    beehive bees, dyed-color lines, and firework flight-duration lines,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1189,6 +1189,18 @@ When an agent does any of the following, update this file in the same slice:
     and as `Color: #RRGGBB` before the advanced registry-id/component-count
     lines. Boundary: remaining component providers, `TooltipDisplay` hiding,
     and options persistence remain future work.
+  - Done 2026-07-09 — Advanced tooltip firework flight-duration line. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.FIREWORKS, ...)` after charged projectiles and
+    before firework explosion, potion, trim, enchantment, dyed-color, profile,
+    lore, and advanced id/component-count lines; `Fireworks.addToTooltip`
+    emits gray `item.minecraft.firework_rocket.flight` plus a space and the
+    flight duration when the duration is positive. bbb now projects decoded
+    `minecraft:fireworks.flight_duration > 0` as the localized gray
+    `Flight Duration: n` tooltip line before dyed-color, lore, and advanced
+    lines. Boundary: firework explosion star grouping, shape/color/trail/
+    twinkle detail lines, remaining component providers, `TooltipDisplay`
+    hiding, and options persistence remain future work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,
@@ -2309,8 +2321,8 @@ When an agent does any of the following, update this file in the same slice:
     before the event loop; F3+H still toggles that runtime state and emits the
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; component-provider
-    tooltip parity remains open except for the later occupied beehive bees and
-    dyed-color lines.
+    tooltip parity remains open except for the later occupied beehive bees,
+    dyed-color, and firework flight-duration lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2574,7 +2586,8 @@ When an agent does any of the following, update this file in the same slice:
     component-specific advanced tooltip additions were not modeled yet; startup
     configuration is tracked separately because bbb does not expose vanilla's
     in-game options UI. Effective component-count display, occupied beehive
-    bees lines, and dyed-color lines are covered by later entries.
+    bees lines, dyed-color lines, and firework flight-duration lines are
+    covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3251,7 +3264,7 @@ When an agent does any of the following, update this file in the same slice:
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond occupied
-    beehive bees and dyed-color lines, F3+I full
+    beehive bees, dyed-color lines, and firework flight-duration lines, F3+I full
     local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
