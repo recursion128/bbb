@@ -20,8 +20,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
@@ -229,6 +229,8 @@ const ENTITY_DEFAULT_FALL_DISTANCE: f64 = 0.0;
 const ENTITY_DEFAULT_FIRE_TICKS: i16 = 0;
 const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
+const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
+const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const MOB_FLAGS_DATA_ID: u8 = 15;
 const MOB_FLAG_NO_AI: i8 = 1;
 const MOB_FLAG_LEFT_HANDED: i8 = 2;
@@ -3979,6 +3981,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
             debug_push_evoker_fangs_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_FIREBALL_ID => {
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
+            debug_push_fireball_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_iron_golem_additional_save_data(entity, fields);
@@ -4157,6 +4163,30 @@ fn debug_entity_default_air_supply(entity_type_id: i32) -> i32 {
 
 fn debug_push_evoker_fangs_additional_save_data(fields: &mut Vec<String>) {
     fields.push("Warmup: 0".to_string());
+}
+
+fn debug_push_projectile_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("HasBeenShot: {}", debug_snbt_bool(false)));
+}
+
+fn debug_push_abstract_hurting_projectile_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    debug_push_projectile_additional_save_data(fields);
+    let acceleration_power = entity
+        .hurting_projectile
+        .map(|projectile| projectile.acceleration_power)
+        .unwrap_or(HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER);
+    if let Some(acceleration_power) = debug_snbt_double(acceleration_power) {
+        fields.push(format!("acceleration_power: {acceleration_power}"));
+    }
+}
+
+fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
+    ));
 }
 
 fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
