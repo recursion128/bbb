@@ -3168,6 +3168,13 @@ fn hud_debug_overlay_at_partial_tick(
             left_lines.push(local_difficulty_line);
         }
     }
+    if entry_enabled(DebugScreenEntryId::EntitySpawnCounts) {
+        if let Some(entity_spawn_counts_line) =
+            hud_debug_entity_spawn_counts_line(world, camera_pose)
+        {
+            left_lines.push(entity_spawn_counts_line);
+        }
+    }
     if entry_enabled(DebugScreenEntryId::LookingAtBlockState) {
         if let Some(looking_at_lines) = hud_debug_looking_at_block_state_lines(world, camera_pose) {
             left_lines.extend(looking_at_lines);
@@ -3665,6 +3672,16 @@ fn hud_debug_local_difficulty_line(
 ) -> Option<String> {
     // Vanilla only displays local difficulty from an integrated ServerLevel and
     // server chunk. bbb has no local-server difficulty mirror yet.
+    None
+}
+
+fn hud_debug_entity_spawn_counts_line(
+    _world: &WorldStore,
+    _camera_pose: Option<CameraPose>,
+) -> Option<String> {
+    // Vanilla only displays this entry from an integrated ServerLevel with a
+    // populated NaturalSpawner SpawnState. bbb has no local-server mob-cap
+    // mirror yet.
     None
 }
 

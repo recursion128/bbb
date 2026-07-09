@@ -1112,7 +1112,8 @@ When an agent does any of the following, update this file in the same slice:
     performance-profile GPU utilization entry shell, day-count debug entry
     shell, detailed-memory debug entry shell, light-levels debug entry shell,
     heightmap debug entry shell, biome debug entry shell,
-    local-difficulty debug entry client-only shell, looking-at
+    local-difficulty debug entry client-only shell,
+    entity-spawn-counts debug entry client-only shell, looking-at
     block/fluid/entity state+tag entry shells, chunk/entity/particle render
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
     shell, chunk-generation-stats debug entry client-only shell,
@@ -1278,6 +1279,22 @@ When an agent does any of the following, update this file in the same slice:
     runtime. Boundary: bbb has no integrated local-server difficulty,
     server-chunk inhabited-time, or server moon-brightness mirror yet; actual
     `DifficultyInstance` rows remain future local-server mirror work.
+  - Done 2026-07-09 — Debug overlay entity-spawn-counts entry client-only
+    shell. Vanilla anchors: `DebugScreenEntries.ENTITY_SPAWN_COUNTS`
+    registers `DebugEntrySpawnCounts`; it displays only when a camera entity
+    and integrated `ServerLevel` are present and
+    `ServerChunkCache.getLastSpawnState()` is non-null. It reads
+    `NaturalSpawner.SpawnState.getSpawnableChunkCount()` and
+    `getMobCategoryCounts()`, then formats `SC: <chunks>` followed by
+    `M/C/A/A/U/W/W/M` category count fields in `MobCategory.values()` order
+    using each category name's uppercase first character. bbb now has a known
+    `EntitySpawnCounts` entry id, keeps it
+    `Never` in default/performance profiles, filters it under reduced-debug
+    info, round-trips vanilla `minecraft:entity_spawn_counts` custom statuses
+    as a known entry, and intentionally emits no HUD line in the current
+    client-only runtime. Boundary: bbb has no integrated local-server
+    `NaturalSpawner.SpawnState`, spawnable chunk count, or mob-category count
+    mirror yet; actual spawn-count rows remain future local-server mirror work.
   - Done 2026-07-09 — Debug overlay looking-at block-state entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` registers
     `DebugEntryLookingAt.BlockStateInfo`; that entry uses
@@ -2678,6 +2695,8 @@ When an agent does any of the following, update this file in the same slice:
     Custom-enabled local difficulty is likewise recognized but emits no
     client-only HUD row until bbb owns an integrated server difficulty/chunk
     mirror.
+    Custom-enabled entity spawn counts are recognized but emit no client-only
+    HUD row until bbb owns an integrated server natural-spawner mirror.
     Custom-enabled sound cache now renders the vanilla-shaped buffer-count/MiB
     row from native audio counters. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed

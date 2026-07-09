@@ -69,6 +69,7 @@ pub(crate) enum DebugScreenEntryId {
     Heightmap,
     Biome,
     LocalDifficulty,
+    EntitySpawnCounts,
     LookingAtBlockState,
     LookingAtBlockTags,
     LookingAtFluidState,
@@ -104,6 +105,7 @@ impl DebugScreenEntryId {
             Self::Heightmap => "minecraft:heightmap",
             Self::Biome => "minecraft:biome",
             Self::LocalDifficulty => "minecraft:local_difficulty",
+            Self::EntitySpawnCounts => "minecraft:entity_spawn_counts",
             Self::LookingAtBlockState => "minecraft:looking_at_block_state",
             Self::LookingAtBlockTags => "minecraft:looking_at_block_tags",
             Self::LookingAtFluidState => "minecraft:looking_at_fluid_state",
@@ -139,6 +141,7 @@ impl DebugScreenEntryId {
             "minecraft:heightmap" => Some(Self::Heightmap),
             "minecraft:biome" => Some(Self::Biome),
             "minecraft:local_difficulty" => Some(Self::LocalDifficulty),
+            "minecraft:entity_spawn_counts" => Some(Self::EntitySpawnCounts),
             "minecraft:looking_at_block" | "minecraft:looking_at_block_state" => {
                 Some(Self::LookingAtBlockState)
             }
@@ -502,6 +505,10 @@ mod tests {
             DebugScreenEntryStatus::Never
         );
         assert_eq!(
+            entries.status(DebugScreenEntryId::EntitySpawnCounts),
+            DebugScreenEntryStatus::Never
+        );
+        assert_eq!(
             entries.status(DebugScreenEntryId::LookingAtBlockState),
             DebugScreenEntryStatus::Never
         );
@@ -631,6 +638,11 @@ mod tests {
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::LocalDifficulty, true));
         entries.set_status(
+            DebugScreenEntryId::EntitySpawnCounts,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::EntitySpawnCounts, true));
+        entries.set_status(
             DebugScreenEntryId::LookingAtBlockState,
             DebugScreenEntryStatus::AlwaysOn,
         );
@@ -727,6 +739,7 @@ mod tests {
   "custom": {
     "minecraft:chunk_generation_stats": "alwaysOn",
     "minecraft:local_difficulty": "never",
+    "minecraft:entity_spawn_counts": "alwaysOn",
     "minecraft:entity_hitboxes": "inF3",
     "minecraft:looking_at_block": "never",
     "minecraft:looking_at_fluid": "alwaysOn"
@@ -745,6 +758,10 @@ mod tests {
         assert_eq!(
             loaded.status(DebugScreenEntryId::LocalDifficulty),
             DebugScreenEntryStatus::Never
+        );
+        assert_eq!(
+            loaded.status(DebugScreenEntryId::EntitySpawnCounts),
+            DebugScreenEntryStatus::AlwaysOn
         );
         assert_eq!(
             loaded.status(DebugScreenEntryId::EntityHitboxes),
@@ -769,6 +786,10 @@ mod tests {
             Some("alwaysOn")
         );
         assert_eq!(custom["minecraft:local_difficulty"].as_str(), Some("never"));
+        assert_eq!(
+            custom["minecraft:entity_spawn_counts"].as_str(),
+            Some("alwaysOn")
+        );
         assert_eq!(
             custom["minecraft:entity_hitboxes"].as_str(),
             Some("inOverlay")

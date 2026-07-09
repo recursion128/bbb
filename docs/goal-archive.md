@@ -5552,6 +5552,22 @@
   integrated local-server difficulty、server-chunk inhabited-time 或 server
   moon-brightness mirror，实际 `DifficultyInstance` 行仍待后续 local-server
   mirror 工作。
+- [x] debug overlay entity-spawn-counts entry client-only shell（P2
+  native/runtime slice，2026-07-09）：依据
+  `DebugScreenEntries.ENTITY_SPAWN_COUNTS` 注册 `DebugEntrySpawnCounts`；该
+  entry 仅在 camera entity 与 integrated `ServerLevel` 存在且
+  `ServerChunkCache.getLastSpawnState()` 非 null 时显示。它读取
+  `NaturalSpawner.SpawnState.getSpawnableChunkCount()` 与
+  `getMobCategoryCounts()`，再输出 `SC: <chunks>` 以及按
+  `MobCategory.values()` 顺序生成的 `M/C/A/A/U/W/W/M` category count fields
+  （取 category name 首字母大写）。native 现在把
+  `minecraft:entity_spawn_counts` 作为已知 `EntitySpawnCounts` entry id，
+  default / performance profiles 中保持 `Never`，reduced-debug 下按默认
+  `DebugScreenEntry.isAllowed` 过滤，debug-profile custom 状态也按已知 entry
+  往返；当前 client-only runtime 按 vanilla 条件不输出 HUD 行。边界：bbb 尚无
+  integrated local-server `NaturalSpawner.SpawnState`、spawnable chunk count
+  或 mob-category count mirror，实际 spawn-count 行仍待后续 local-server mirror
+  工作。
 - [x] debug overlay looking-at block-state entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` 注册
