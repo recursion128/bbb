@@ -48,15 +48,16 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
         VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -247,10 +248,12 @@ const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_MAX: i32 = 40;
 const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
+const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
 const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
 const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
 const MINECART_DEFAULT_HAS_TICKED: bool = false;
+const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
@@ -4050,6 +4053,10 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
         }
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID => {
+            debug_push_minecart_additional_save_data(world, entity, fields);
+            debug_push_tnt_minecart_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
         }
@@ -4424,11 +4431,16 @@ fn debug_push_minecart_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    if let Some(display) = world.minecart_display_block_state(entity.id) {
-        fields.push(format!(
-            "DisplayState: {}",
-            debug_snbt_block_state(&display.block.name, &display.block.properties)
-        ));
+    if debug_entity_data_optional_block_state_present(entity, MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID)
+        .flatten()
+        .is_some()
+    {
+        if let Some(display) = world.minecart_display_block_state(entity.id) {
+            fields.push(format!(
+                "DisplayState: {}",
+                debug_snbt_block_state(&display.block.name, &display.block.properties)
+            ));
+        }
     }
     let display_offset = debug_entity_data_int_present(entity, MINECART_DISPLAY_OFFSET_DATA_ID)
         .unwrap_or(MINECART_DEFAULT_DISPLAY_OFFSET);
@@ -4443,6 +4455,14 @@ fn debug_push_minecart_additional_save_data(
         "HasTicked: {}",
         debug_snbt_bool(MINECART_DEFAULT_HAS_TICKED)
     ));
+}
+
+fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let fuse = entity
+        .client_animations
+        .minecart_tnt_fuse
+        .map_or(TNT_MINECART_DEFAULT_FUSE, |fuse| fuse.fuse_remaining_ticks);
+    fields.push(format!("fuse: {fuse}"));
 }
 
 fn debug_push_primed_tnt_additional_save_data(
@@ -5688,6 +5708,20 @@ fn debug_entity_data_optional_block_pos_present(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(*pos),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_optional_block_state_present(
+    entity: &EntityState,
+    data_id: u8,
+) -> Option<Option<i32>> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalBlockState(value) => Some(*value),
             _ => None,
         })
 }
