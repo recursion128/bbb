@@ -1689,6 +1689,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (74, pick(1.375, 0.5625, 0.0)),   // minecraft:jungle_boat
     (75, pick(1.375, 0.5625, 0.0)),   // minecraft:jungle_chest_boat
     (78, pick(0.9, 1.87, 0.0)),       // minecraft:llama
+    (79, pick(0.25, 0.25, 0.0)),      // minecraft:llama_spit
     (80, pick(0.52, 0.52, 0.0)),      // minecraft:magma_cube
     (81, pick(1.375, 0.5625, 0.0)),   // minecraft:mangrove_boat
     (82, pick(1.375, 0.5625, 0.0)),   // minecraft:mangrove_chest_boat

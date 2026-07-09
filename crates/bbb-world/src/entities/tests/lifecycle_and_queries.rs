@@ -959,6 +959,10 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         74,
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
@@ -999,6 +1003,10 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     assert_eq!(
         store.probe_entity_pick_bounds(74),
         Some(EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0))
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(75),
+        Some(EntityPickBoundsState::from_base_size(0.25, 0.25, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(19),
