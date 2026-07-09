@@ -3112,6 +3112,97 @@ fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
 }
 
 #[test]
+fn debug_options_screen_search_handles_mouse_click_and_drag_selection() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("alpha beta"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 5),
+            f64::from(search_y + 2)
+        )),
+        surface,
+        false,
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_cursor, 5);
+        assert_eq!(screen.search_selection, 5);
+    }
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 9),
+            f64::from(search_y + 18)
+        )),
+        surface,
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_cursor, 9);
+        assert_eq!(screen.search_selection, 5);
+    }
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Released,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 9),
+            f64::from(search_y + 18)
+        )),
+        surface,
+        false,
+    ));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x),
+            f64::from(search_y + 2)
+        )),
+        surface,
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_cursor, 9);
+        assert_eq!(screen.search_selection, 5);
+    }
+}
+
+#[test]
+fn debug_options_screen_search_shift_click_extends_selection() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("chunk stats"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 5),
+            f64::from(search_y + 2)
+        )),
+        surface,
+        false,
+    ));
+
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_cursor, 5);
+    assert_eq!(screen.search_selection, 11);
+}
+
+#[test]
 fn debug_options_screen_buttons_update_status_and_profiles() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();
@@ -3175,9 +3266,13 @@ fn debug_options_screen_projects_not_allowed_tooltip_on_entry_name_hover() {
     let name_x = content_x + 2;
     let entry_y = DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT + 2;
 
-    assert!(input.handle_debug_options_screen_cursor_moved(Some(
-        winit::dpi::PhysicalPosition::new(f64::from(name_x), f64::from(entry_y))
-    )));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(name_x),
+            f64::from(entry_y)
+        )),
+        surface,
+    ));
     let reduced = input
         .debug_options_screen_hud_state(surface, true)
         .expect("screen should project under reduced debug info");
@@ -3202,9 +3297,13 @@ fn debug_options_screen_projects_not_allowed_tooltip_on_entry_name_hover() {
     assert_eq!(full.tooltip, None);
 
     let buttons_start = content_x + DEBUG_OPTIONS_ROW_WIDTH - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
-    assert!(input.handle_debug_options_screen_cursor_moved(Some(
-        winit::dpi::PhysicalPosition::new(f64::from(buttons_start), f64::from(entry_y))
-    )));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(buttons_start),
+            f64::from(entry_y)
+        )),
+        surface,
+    ));
     let over_button = input
         .debug_options_screen_hud_state(surface, true)
         .expect("screen should project with button hover");

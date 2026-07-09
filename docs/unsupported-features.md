@@ -1259,9 +1259,10 @@ When an agent does any of the following, update this file in the same slice:
     DebugOptionsScreen key handling, supports Ctrl+C copy, Ctrl+V paste through
     the same allowed-character and 32 UTF-16-unit insertion path, and Ctrl+X
     cut without mutating the search box if clipboard write fails. Boundary:
-    platform edit-shortcut quirks beyond Ctrl, Alt-modifier suppression, mouse
-    click/drag selection, narration, scrollbar dragging, and full vanilla
-    widget sprite styling remain future polish.
+    platform edit-shortcut quirks beyond Ctrl, Alt-modifier suppression,
+    narration, scrollbar dragging, and full vanilla widget sprite styling
+    remain future polish; mouse click/drag selection is covered by the later
+    2026-07-09 item below.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen bordered search
     EditBox styling. Vanilla anchors: `EditBox` is bordered by default,
     `DebugOptionsScreen` creates the search box at height 20, and
@@ -1270,9 +1271,22 @@ When an agent does any of the following, update this file in the same slice:
     `x + 4` / centered-y text position. bbb now draws the DebugOptionsScreen
     search box as a bordered focused text field with a 1px light outer frame,
     dark inner fill, the existing bordered text origin, cursor, and selection.
-    Boundary: exact vanilla text-field sprites/nine-slice texture, mouse
-    click/drag selection, narration, scrollbar dragging, and full widget sprite
-    styling remain future polish.
+    Boundary: exact vanilla text-field sprites/nine-slice texture, narration,
+    scrollbar dragging, and full widget sprite styling remain future polish;
+    mouse click/drag selection is covered by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen search mouse
+    selection behavior. Vanilla anchors: `EditBox.onClick` moves the cursor to
+    `findClickedPositionInText`, extends selection when Shift is held,
+    `EditBox.onDrag` moves the cursor with `extendSelection = true`, and
+    `findClickedPositionInText` clamps the click into the bordered text field's
+    inner width from `textX`. bbb now lets DebugOptionsScreen left-click the
+    search box to place the search cursor, Shift-click to extend the existing
+    selection, drag from the search box to update the highlight, and release
+    left mouse to stop selection. Boundary: input hit-testing currently uses a
+    small native ASCII advance model instead of the renderer's loaded
+    variable-width `Font`, and double-click word selection, narration,
+    scrollbar dragging, exact text-field sprites/nine-slice texture, and full
+    widget sprite styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it

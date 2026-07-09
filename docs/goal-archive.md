@@ -6266,5 +6266,17 @@
   `widget/text_field_highlighted` sprite 且 bordered text position 为 `x + 4` /
   centered-y，renderer 现在把 DebugOptionsScreen search box 绘制为 1px light
   outer frame + dark inner fill，并保留现有 bordered text origin、cursor 与
-  selection。边界：精确 vanilla text-field sprite/nine-slice、鼠标点击/拖拽选区、
-  narration、scrollbar dragging 与完整 widget sprite styling 仍待后续 polish。
+  selection。边界：精确 vanilla text-field sprite/nine-slice、narration、
+  scrollbar dragging 与完整 widget sprite styling 仍待后续 polish；鼠标点击/拖拽选区
+  由后续 2026-07-09 mouse selection behavior 条目补齐。
+- [x] debug overlay DebugOptionsScreen search mouse selection behavior（P2
+  input/main slice，2026-07-09）：依据 `EditBox.onClick` 通过
+  `findClickedPositionInText` 移动 cursor、Shift-click 传入
+  `extendSelection`、`EditBox.onDrag` 用 `extendSelection = true` 更新 cursor，
+  且 `findClickedPositionInText` 从 bordered `textX` 起按 inner width clamp，
+  native 现在支持在 DebugOptionsScreen search box 中 left-click 定位 cursor、
+  Shift-click 扩展选区、从搜索框内拖拽更新 highlight，并在 left release 结束拖拽。
+  边界：input hit-testing 目前使用小型 native ASCII advance model，而不是 renderer
+  已加载的 variable-width `Font`；double-click word selection、narration、
+  scrollbar dragging、精确 text-field sprite/nine-slice 与完整 widget sprite styling
+  仍待后续 polish。

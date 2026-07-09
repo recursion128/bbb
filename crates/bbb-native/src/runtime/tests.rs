@@ -5878,9 +5878,13 @@ fn hud_debug_options_screen_projects_not_allowed_tooltip_under_reduced_debug_inf
     assert!(input.handle_debug_options_screen_text_input("biome"));
     let tooltip_x = 37;
     let tooltip_y = 83;
-    assert!(input.handle_debug_options_screen_cursor_moved(Some(
-        winit::dpi::PhysicalPosition::new(f64::from(tooltip_x), f64::from(tooltip_y))
-    )));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(tooltip_x),
+            f64::from(tooltip_y)
+        )),
+        surface,
+    ));
 
     let screen = hud_debug_options_screen(&input, &world, surface).expect("debug options screen");
 

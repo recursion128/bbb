@@ -107,6 +107,11 @@ const DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
 const DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
 const DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
+const DEBUG_OPTIONS_SEARCH_WIDTH: i32 = DEBUG_OPTIONS_ROW_WIDTH / 3;
+const DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
+const DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET: i32 = 4;
+const DEBUG_OPTIONS_SEARCH_INNER_WIDTH: i32 = DEBUG_OPTIONS_SEARCH_WIDTH - 8;
+const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
@@ -191,6 +196,7 @@ struct DebugOptionsScreenState {
     search_text: String,
     search_cursor: usize,
     search_selection: usize,
+    search_selecting: bool,
     scroll_row: usize,
     cursor_position: Option<(i32, i32)>,
 }
@@ -1164,11 +1170,18 @@ impl ClientInputState {
     pub(crate) fn handle_debug_options_screen_cursor_moved(
         &mut self,
         cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
     ) -> bool {
         let Some(screen) = self.debug_options_screen.as_mut() else {
             return false;
         };
-        screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        let position = cursor_position.and_then(physical_position_floor_i32);
+        screen.cursor_position = position;
+        if let (true, Some((mouse_x, _))) = (screen.search_selecting, position) {
+            let cursor =
+                debug_options_search_cursor_for_mouse_x(&screen.search_text, mouse_x, surface_size);
+            move_debug_options_search_cursor(screen, cursor, true);
+        }
         true
     }
 
@@ -1186,12 +1199,35 @@ impl ClientInputState {
         if let Some(screen) = self.debug_options_screen.as_mut() {
             screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
         }
+        if matches!((button, state), (MouseButton::Left, ElementState::Released)) {
+            if let Some(screen) = self.debug_options_screen.as_mut() {
+                screen.search_selecting = false;
+            }
+            return true;
+        }
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
             return true;
         }
         let Some((mouse_x, mouse_y)) = cursor_position.and_then(physical_position_floor_i32) else {
+            if let Some(screen) = self.debug_options_screen.as_mut() {
+                screen.search_selecting = false;
+            }
             return true;
         };
+        let search_cursor = self.debug_options_screen.as_ref().and_then(|screen| {
+            debug_options_search_cursor_at(&screen.search_text, mouse_x, mouse_y, surface_size)
+        });
+        if let Some(cursor) = search_cursor {
+            let shift_down = self.shift_down();
+            if let Some(screen) = self.debug_options_screen.as_mut() {
+                move_debug_options_search_cursor(screen, cursor, shift_down);
+                screen.search_selecting = true;
+            }
+            return true;
+        }
+        if let Some(screen) = self.debug_options_screen.as_mut() {
+            screen.search_selecting = false;
+        }
         if let Some(profile) = debug_options_profile_button_at(mouse_x, mouse_y, surface_size) {
             if !self.debug_entries.is_using_profile(profile) {
                 self.load_debug_screen_profile(profile);
@@ -2170,6 +2206,66 @@ fn debug_options_max_scroll_row(total_rows: usize, visible_rows: usize) -> usize
 fn debug_options_content_x(surface_size: PhysicalSize<u32>) -> i32 {
     let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
     width / 2 - DEBUG_OPTIONS_ROW_WIDTH / 2
+}
+
+fn debug_options_search_box_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    (
+        debug_options_content_x(surface_size) + DEBUG_OPTIONS_ROW_WIDTH
+            - DEBUG_OPTIONS_SEARCH_WIDTH,
+        6,
+        DEBUG_OPTIONS_SEARCH_WIDTH,
+        DEBUG_OPTIONS_SEARCH_HEIGHT,
+    )
+}
+
+fn debug_options_search_cursor_at(
+    search_text: &str,
+    mouse_x: i32,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+) -> Option<usize> {
+    let (x, y, width, height) = debug_options_search_box_rect(surface_size);
+    if mouse_x < x || mouse_x >= x + width || mouse_y < y || mouse_y >= y + height {
+        return None;
+    }
+    Some(debug_options_search_cursor_for_mouse_x(
+        search_text,
+        mouse_x,
+        surface_size,
+    ))
+}
+
+fn debug_options_search_cursor_for_mouse_x(
+    search_text: &str,
+    mouse_x: i32,
+    surface_size: PhysicalSize<u32>,
+) -> usize {
+    let (x, _, _, _) = debug_options_search_box_rect(surface_size);
+    let position_in_text = (mouse_x - x - DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET)
+        .clamp(0, DEBUG_OPTIONS_SEARCH_INNER_WIDTH);
+    debug_options_search_cursor_for_text_offset(search_text, position_in_text)
+}
+
+fn debug_options_search_cursor_for_text_offset(search_text: &str, offset: i32) -> usize {
+    let mut width = 0;
+    let mut cursor = 0;
+    for ch in search_text.chars() {
+        let advance = debug_options_search_char_advance(ch);
+        if width + advance > offset {
+            break;
+        }
+        width += advance;
+        cursor += 1;
+    }
+    cursor
+}
+
+fn debug_options_search_char_advance(ch: char) -> i32 {
+    if ch == ' ' {
+        4
+    } else {
+        DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE
+    }
 }
 
 fn debug_options_row_index_at(
