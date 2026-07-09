@@ -28,13 +28,14 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -281,6 +282,7 @@ const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 const SHEEP_DEFAULT_WOOL_DATA: u8 = 0;
+const SKELETON_DEFAULT_STRAY_CONVERSION_TIME: i32 = -1;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -3730,6 +3732,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_SKELETON_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_skeleton_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
@@ -3866,6 +3872,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
+        }
+        VANILLA_ENTITY_TYPE_STRAY_ID | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -4438,6 +4447,12 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
         1 => "medium",
         _ => "large",
     }
+}
+
+fn debug_push_skeleton_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "StrayConversionTime: {SKELETON_DEFAULT_STRAY_CONVERSION_TIME}"
+    ));
 }
 
 fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
