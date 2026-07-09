@@ -14,6 +14,16 @@ pub struct AudioCounters {
     #[serde(default)]
     pub sound_cache_bytes: u64,
     #[serde(default)]
+    pub sound_static_channels_used: usize,
+    #[serde(default)]
+    pub sound_static_channels_capacity: usize,
+    #[serde(default)]
+    pub sound_streaming_channels_used: usize,
+    #[serde(default)]
+    pub sound_streaming_channels_capacity: usize,
+    #[serde(default)]
+    pub sound_mood_percent: u8,
+    #[serde(default)]
     pub registry_updates: u64,
     #[serde(default)]
     pub commands_submitted: u64,

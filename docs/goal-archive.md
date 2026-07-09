@@ -5752,6 +5752,20 @@
   buffer count 和 0 bytes 作为 shell，尚未 mirror Kira/static/streaming decoded
   buffer residency；精确 `SoundBufferLibrary` cache bytes 与完整 group layout
   仍待后续。
+- [x] debug overlay sound-mood entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.SOUND_MOOD` 注册
+  `DebugEntrySoundMood`；该 entry 读取
+  `Minecraft.getSoundManager().getChannelDebugString()` 并追加
+  ` (Mood <round(player.getCurrentMood() * 100)>%)`。sound manager 委托到
+  `Library.getChannelDebugString()`，其格式为
+  `Sounds: <static used>/<static max> + <streaming used>/<streaming max>`；
+  `LocalPlayer.getCurrentMood()` 则读取 `BiomeAmbientSoundsHandler`
+  moodiness。native 现在有非 profile 默认项 `SoundMood` entry id，default /
+  performance profiles 中保持 `Never`，reduced-debug 下按默认
+  `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，从 `AudioCounters`
+  投影同形状左列文本。边界：native audio 尚未 mirror vanilla OpenAL
+  static/streaming channel pools 或 biome ambient moodiness，因此新增 counters
+  默认值为 0；完整 group layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

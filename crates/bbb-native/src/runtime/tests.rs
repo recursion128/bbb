@@ -1951,6 +1951,53 @@ fn hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_sound_mood() {
+    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::SoundMood,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let audio_counters = AudioCounters {
+        sound_static_channels_used: 3,
+        sound_static_channels_capacity: 32,
+        sound_streaming_channels_used: 1,
+        sound_streaming_channels_capacity: 8,
+        sound_mood_percent: 42,
+        ..AudioCounters::default()
+    };
+
+    let overlay = hud_debug_overlay_at_partial_tick(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        1.0,
+        &bbb_renderer::RendererCounters::default(),
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+        &audio_counters,
+    )
+    .expect("custom sound mood entry should show while always-on");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec!["Sounds: 3/32 + 1/8 (Mood 42%)".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

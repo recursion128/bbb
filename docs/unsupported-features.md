@@ -1116,7 +1116,8 @@ When an agent does any of the following, update this file in the same slice:
     entity-spawn-counts debug entry client-only shell, looking-at
     block/fluid/entity state+tag entry shells, chunk/entity/particle render
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
-    shell, chunk-generation-stats debug entry client-only shell,
+    shell, sound-mood debug entry shell,
+    chunk-generation-stats debug entry client-only shell,
     debug-profile.json persistence, F3+I local block-entity NBT capture,
     advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
     feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
@@ -1478,6 +1479,20 @@ When an agent does any of the following, update this file in the same slice:
     Boundary: native audio currently reports catalog-backed buffer count and
     zero bytes until Kira/static/streaming decoded-buffer residency is mirrored;
     exact `SoundBufferLibrary` cache bytes and group layout remain future work.
+  - Done 2026-07-09 — Debug overlay sound-mood entry shell. Vanilla anchors:
+    `DebugScreenEntries.SOUND_MOOD` registers `DebugEntrySoundMood`; it reads
+    `Minecraft.getSoundManager().getChannelDebugString()` and appends
+    ` (Mood <round(player.getCurrentMood() * 100)>%)`. The sound manager
+    delegates to `Library.getChannelDebugString()`, which formats
+    `Sounds: <static used>/<static max> + <streaming used>/<streaming max>`.
+    `LocalPlayer.getCurrentMood()` reads `BiomeAmbientSoundsHandler`
+    moodiness. bbb now has a non-profile `SoundMood` entry id, keeps it
+    `Never` in default/performance profiles, filters it under reduced-debug
+    info, and projects the same line shape from `AudioCounters` when
+    custom-enabled. Boundary: native audio does not yet mirror vanilla OpenAL
+    static/streaming channel pools or biome ambient moodiness, so the new
+    counters default to zero until those runtime mirrors exist; exact group
+    layout and `DebugOptionsScreen` remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2698,7 +2713,8 @@ When an agent does any of the following, update this file in the same slice:
     Custom-enabled entity spawn counts are recognized but emit no client-only
     HUD row until bbb owns an integrated server natural-spawner mirror.
     Custom-enabled sound cache now renders the vanilla-shaped buffer-count/MiB
-    row from native audio counters. Custom-enabled day-count
+    row from native audio counters. Custom-enabled sound mood now renders the
+    vanilla-shaped channel/mood row from native audio counters. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed
     memory now renders the vanilla-shaped heap/non-heap rows from native process
     memory. Custom-enabled light levels now render the client light row from the

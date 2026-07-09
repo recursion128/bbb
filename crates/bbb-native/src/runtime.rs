@@ -3235,6 +3235,9 @@ fn hud_debug_overlay_at_partial_tick(
     if entry_enabled(DebugScreenEntryId::SoundCache) {
         left_lines.push(hud_debug_sound_cache_line(audio_counters));
     }
+    if entry_enabled(DebugScreenEntryId::SoundMood) {
+        left_lines.push(hud_debug_sound_mood_line(audio_counters));
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3867,6 +3870,17 @@ fn hud_debug_sound_cache_line(counters: &AudioCounters) -> String {
         "Sound cache: {} buffers, {} MiB",
         counters.sound_cache_buffers,
         hud_debug_sound_cache_bytes_to_mebibytes(counters.sound_cache_bytes)
+    )
+}
+
+fn hud_debug_sound_mood_line(counters: &AudioCounters) -> String {
+    format!(
+        "Sounds: {}/{} + {}/{} (Mood {}%)",
+        counters.sound_static_channels_used,
+        counters.sound_static_channels_capacity,
+        counters.sound_streaming_channels_used,
+        counters.sound_streaming_channels_capacity,
+        counters.sound_mood_percent.min(100)
     )
 }
 

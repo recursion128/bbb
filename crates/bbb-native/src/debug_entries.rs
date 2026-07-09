@@ -82,6 +82,7 @@ pub(crate) enum DebugScreenEntryId {
     ParticleRenderStats,
     ChunkSourceStats,
     SoundCache,
+    SoundMood,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -118,6 +119,7 @@ impl DebugScreenEntryId {
             Self::ParticleRenderStats => "minecraft:particle_render_stats",
             Self::ChunkSourceStats => "minecraft:chunk_source_stats",
             Self::SoundCache => "minecraft:sound_cache",
+            Self::SoundMood => "minecraft:sound_mood",
             Self::SimplePerformanceImpactors => "minecraft:simple_performance_impactors",
             Self::EntityHitboxes => "minecraft:entity_hitboxes",
             Self::ChunkBorders => "minecraft:chunk_borders",
@@ -158,6 +160,7 @@ impl DebugScreenEntryId {
             "minecraft:particle_render_stats" => Some(Self::ParticleRenderStats),
             "minecraft:chunk_source_stats" => Some(Self::ChunkSourceStats),
             "minecraft:sound_cache" => Some(Self::SoundCache),
+            "minecraft:sound_mood" => Some(Self::SoundMood),
             "minecraft:simple_performance_impactors" => Some(Self::SimplePerformanceImpactors),
             "minecraft:entity_hitboxes" => Some(Self::EntityHitboxes),
             "minecraft:chunk_borders" => Some(Self::ChunkBorders),
@@ -556,6 +559,10 @@ mod tests {
             entries.status(DebugScreenEntryId::SoundCache),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::SoundMood),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -702,6 +709,11 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(entries.is_currently_enabled(DebugScreenEntryId::SoundCache, true));
+        entries.set_status(
+            DebugScreenEntryId::SoundMood,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::SoundMood, true));
     }
 
     #[test]
@@ -740,6 +752,7 @@ mod tests {
     "minecraft:chunk_generation_stats": "alwaysOn",
     "minecraft:local_difficulty": "never",
     "minecraft:entity_spawn_counts": "alwaysOn",
+    "minecraft:sound_mood": "alwaysOn",
     "minecraft:entity_hitboxes": "inF3",
     "minecraft:looking_at_block": "never",
     "minecraft:looking_at_fluid": "alwaysOn"
@@ -761,6 +774,10 @@ mod tests {
         );
         assert_eq!(
             loaded.status(DebugScreenEntryId::EntitySpawnCounts),
+            DebugScreenEntryStatus::AlwaysOn
+        );
+        assert_eq!(
+            loaded.status(DebugScreenEntryId::SoundMood),
             DebugScreenEntryStatus::AlwaysOn
         );
         assert_eq!(
@@ -790,6 +807,7 @@ mod tests {
             custom["minecraft:entity_spawn_counts"].as_str(),
             Some("alwaysOn")
         );
+        assert_eq!(custom["minecraft:sound_mood"].as_str(), Some("alwaysOn"));
         assert_eq!(
             custom["minecraft:entity_hitboxes"].as_str(),
             Some("inOverlay")
