@@ -37,11 +37,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
         VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -250,6 +250,11 @@ const BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
 const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
 const COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 = 0;
 const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
+const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
+const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
+const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
+const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
+const TURTLE_DEFAULT_HAS_EGG: bool = false;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
@@ -3945,6 +3950,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_tropical_fish_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_TURTLE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_turtle_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -4108,6 +4119,15 @@ fn debug_copper_golem_weather_state_name(state_id: i32) -> &'static str {
         3.. => "oxidized",
         _ => "unaffected",
     }
+}
+
+fn debug_push_turtle_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    fields.push(format!(
+        "home_pos: [I; {TURTLE_DEFAULT_HOME_POS_X}, {TURTLE_DEFAULT_HOME_POS_Y}, {TURTLE_DEFAULT_HOME_POS_Z}]"
+    ));
+    let has_egg = debug_entity_data_bool_present(entity, TURTLE_HAS_EGG_DATA_ID)
+        .unwrap_or(TURTLE_DEFAULT_HAS_EGG);
+    fields.push(format!("has_egg: {}", debug_snbt_bool(has_egg)));
 }
 
 fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
