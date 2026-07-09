@@ -1217,6 +1217,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
+                bees_present: true,
                 bees_count: 2,
                 lore: vec!["After bees".to_string()],
                 ..DataComponentPatchSummary::default()
@@ -1233,6 +1234,23 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
+                bees_present: true,
+                lore: vec!["After empty bees".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Bees: 0 / 3", TOOLTIP_TEXT_GRAY),
+            lore_line("After empty bees"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bees_present: true,
                 bees_count: 1,
                 container_loot: true,
                 lore: vec!["After container loot".to_string()],
@@ -9457,6 +9475,7 @@ fn native_item_runtime_resolves_value_aware_range_dispatch() {
             item_id: 5,
             count: 1,
             component_patch: DataComponentPatchSummary {
+                bees_present: true,
                 bees_count: 1,
                 ..DataComponentPatchSummary::default()
             },

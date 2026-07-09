@@ -148,6 +148,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub pot_decorations_item_ids: Vec<i32>,
     #[serde(default)]
+    pub bees_present: bool,
+    #[serde(default)]
     pub bees_count: usize,
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
@@ -859,6 +861,7 @@ fn decode_typed_data_component_patch_summary(
                 skip_nbt_tag_from_decoder(decoder)?;
             }
             77 => {
+                summary.bees_present = true;
                 summary.bees_count = decode_bees(decoder)?;
             }
             58 => {
@@ -3936,6 +3939,7 @@ mod tests {
                     },
                 ],
                 pot_decorations_item_ids: vec![1, 2, 3, 4],
+                bees_present: true,
                 bees_count: 1,
                 lodestone_target: Some(LodestoneTargetSummary {
                     dimension: "minecraft:overworld".to_string(),
@@ -3966,6 +3970,31 @@ mod tests {
                         model: Some(PlayerModelTypeSummary::Slim),
                     },
                 }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_empty_bees_data_component_presence() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(77);
+        payload.write_var_i32(0);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![77],
+                removed_type_ids: Vec::new(),
+                bees_present: true,
                 ..DataComponentPatchSummary::default()
             }
         );

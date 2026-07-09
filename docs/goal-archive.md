@@ -6491,9 +6491,17 @@
   advanced id/component-count 前调用 `DataComponents.BEES` provider，以及
   `Bees.addToTooltip` 输出灰色 `container.beehive.bees(count, 3)`，native item
   tooltip 现在把非空 decoded `minecraft:bees` component summary 投影为本地化
-  `Bees: n / 3` 行，并保持在 lore 之前。边界：协议摘要当前只有 occupant count，
-  不能区分“存在但为空”的 bees component，所以 `Bees: 0 / 3` 仍待后续；其它
-  component provider tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+  `Bees: n / 3` 行，并保持在 lore 之前。边界：此 slice 覆盖非空 occupant
+  count，显式空组件存在性由后续 item 覆盖；其它 component provider tooltip、
+  `TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip occupied beehive empty bees line（P2 item-runtime slice，
+  2026-07-09）：依据 `Bees.EMPTY` 是空 occupant list，且
+  `Bees.addToTooltip` 总是输出灰色 `container.beehive.bees(size, 3)`，present
+  empty `minecraft:bees` component 在 vanilla 中显示 `Bees: 0 / 3`。native
+  protocol summary 现在把 bees component presence 与 occupant count 分开保存，
+  item tooltip 对显式空组件也输出本地化灰色零计数行，并保持在 lore 之前。
+  边界：其它 component provider tooltip、`TooltipDisplay` hidden-components 与
+  options 持久化仍未完成。
 - [x] advanced tooltip dyed-color line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 enchantments 之后、profile/lore 之前调用
   `DataComponents.DYED_COLOR` provider，以及 `DyedItemColor.addToTooltip` 在普通模式

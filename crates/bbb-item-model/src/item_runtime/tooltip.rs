@@ -638,10 +638,11 @@ pub(super) fn push_written_book_tooltip_lines(
 
 fn push_bees_tooltip_lines(
     language: &LanguageCatalog,
+    bees_present: bool,
     bees_count: usize,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    if bees_count == 0 {
+    if !bees_present {
         return;
     }
     lines.push(NativeItemTooltipLine::plain(
@@ -2435,7 +2436,12 @@ impl NativeItemRuntime {
             push_map_id_tooltip_lines(&self.language, component_patch, options, lines);
         }
         if shows(COMPONENT_BEES_TYPE_ID) {
-            push_bees_tooltip_lines(&self.language, component_patch.bees_count, lines);
+            push_bees_tooltip_lines(
+                &self.language,
+                component_patch.bees_present,
+                component_patch.bees_count,
+                lines,
+            );
         }
         if shows(COMPONENT_CONTAINER_LOOT_TYPE_ID) {
             push_container_loot_tooltip_lines(

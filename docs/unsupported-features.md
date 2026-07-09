@@ -1311,11 +1311,18 @@ When an agent does any of the following, update this file in the same slice:
     `container.beehive.bees` with the current occupant count and capacity `3`
     in gray. bbb now projects non-empty decoded `minecraft:bees` component
     summaries as the localized gray `Bees: n / 3` tooltip line before lore and
-    written-book details. Boundary: the protocol summary currently tracks the
-    occupant count but not empty-component presence, so an explicitly empty
-    bees component cannot yet render `Bees: 0 / 3`; remaining component
-    providers, `TooltipDisplay` hiding, and option persistence remain future
-    work.
+    written-book details. Boundary: this slice covered non-empty occupant
+    counts; empty-component presence is covered by the follow-up item below,
+    and remaining component providers, `TooltipDisplay` hiding, and option
+    persistence remain future work.
+  - Done 2026-07-09 — Advanced tooltip occupied beehive empty bees line.
+    Vanilla anchors: `Bees.EMPTY` is an empty occupant list and
+    `Bees.addToTooltip` always emits gray `container.beehive.bees(size, 3)`,
+    so a present empty `minecraft:bees` component renders `Bees: 0 / 3`. bbb
+    now preserves decoded bees-component presence separately from occupant
+    count and renders the localized gray zero-count line before lore. Boundary:
+    remaining component providers, `TooltipDisplay` hiding, and option
+    persistence remain future work.
   - Done 2026-07-09 — Advanced tooltip dyed-color line. Vanilla anchors:
     `ItemStack.addDetailsToTooltip` calls `addToTooltip(DataComponents.DYED_COLOR, ...)`
     after enchantments and before profile/lore; `DyedItemColor.addToTooltip`
