@@ -5766,6 +5766,19 @@
   投影同形状左列文本。边界：native audio 尚未 mirror vanilla OpenAL
   static/streaming channel pools 或 biome ambient moodiness，因此新增 counters
   默认值为 0；完整 group layout 与 `DebugOptionsScreen` 仍待后续。
+- [x] debug overlay post-effect entry client-only shell（P2 native/runtime
+  slice，2026-07-09）：依据 `DebugScreenEntries.POST_EFFECT` 注册
+  `DebugEntryPostEffect`；该 entry 读取
+  `Minecraft.gameRenderer.currentPostEffect()`，仅在 id 非 null 时输出
+  `Post: <effect id>`。`GameRenderer.currentPostEffect()` 返回存储的
+  `postEffectId`，该 id 会由 creeper/spider/invert 等实体 post effect 设置，并在
+  camera entity 不适用时清空。native 现在把 `minecraft:post_effect` 作为已知
+  `PostEffect` entry id，default / performance profiles 中保持 `Never`，
+  reduced-debug 下按默认 `DebugScreenEntry.isAllowed` 过滤，debug-profile
+  custom 状态也按已知 entry 往返；当前 runtime 没有 current post-effect id，
+  因此 custom 启用时也不输出 HUD 行。边界：bbb 尚未实现 renderer post-chain
+  state、spectator shader effect toggle 或 current post-effect mirror，实际
+  `Post: ...` 行仍待后续 renderer/runtime 工作。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

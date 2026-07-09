@@ -320,7 +320,7 @@ Screen Render Surfaces" 条目）：
   entity-render-stats debug entry shell、particle-render-stats
   debug entry shell、chunk-source-stats debug entry shell、
   sound-cache debug entry shell、sound-mood debug entry shell、
-  debug-profile.json persistence、
+  post-effect debug entry client-only shell、debug-profile.json persistence、
   F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、

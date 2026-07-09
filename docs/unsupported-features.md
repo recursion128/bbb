@@ -1117,6 +1117,7 @@ When an agent does any of the following, update this file in the same slice:
     block/fluid/entity state+tag entry shells, chunk/entity/particle render
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
     shell, sound-mood debug entry shell,
+    post-effect debug entry client-only shell,
     chunk-generation-stats debug entry client-only shell,
     debug-profile.json persistence, F3+I local block-entity NBT capture,
     advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
@@ -1493,6 +1494,20 @@ When an agent does any of the following, update this file in the same slice:
     static/streaming channel pools or biome ambient moodiness, so the new
     counters default to zero until those runtime mirrors exist; exact group
     layout and `DebugOptionsScreen` remain future work.
+  - Done 2026-07-09 — Debug overlay post-effect entry client-only shell.
+    Vanilla anchors: `DebugScreenEntries.POST_EFFECT` registers
+    `DebugEntryPostEffect`; the entry reads
+    `Minecraft.gameRenderer.currentPostEffect()` and only emits
+    `Post: <effect id>` when that id is non-null. `GameRenderer.currentPostEffect`
+    returns the stored `postEffectId`, which is set by entity post effects such
+    as creeper/spider/invert and cleared when no applicable camera entity exists.
+    bbb now has a known `PostEffect` entry id, keeps it `Never` in
+    default/performance profiles, filters it under reduced-debug info,
+    round-trips vanilla `minecraft:post_effect` custom statuses as a known entry,
+    and intentionally emits no HUD line while the native runtime has no current
+    post-effect id. Boundary: bbb does not yet own renderer post-chain state,
+    spectator shader effect toggling, or a current post-effect mirror; actual
+    `Post: ...` rows remain future renderer/runtime work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2714,7 +2729,9 @@ When an agent does any of the following, update this file in the same slice:
     HUD row until bbb owns an integrated server natural-spawner mirror.
     Custom-enabled sound cache now renders the vanilla-shaped buffer-count/MiB
     row from native audio counters. Custom-enabled sound mood now renders the
-    vanilla-shaped channel/mood row from native audio counters. Custom-enabled day-count
+    vanilla-shaped channel/mood row from native audio counters. Custom-enabled
+    post effect is recognized but emits no HUD row until bbb owns a current
+    post-effect mirror. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed
     memory now renders the vanilla-shaped heap/non-heap rows from native process
     memory. Custom-enabled light levels now render the client light row from the

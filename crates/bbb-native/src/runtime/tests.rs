@@ -1998,6 +1998,34 @@ fn hud_debug_overlay_projects_custom_sound_mood() {
 }
 
 #[test]
+fn hud_debug_overlay_suppresses_post_effect_without_current_effect() {
+    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::PostEffect,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    );
+
+    assert!(
+        overlay.is_none(),
+        "post-effect entry should not render until a current post effect exists"
+    );
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
