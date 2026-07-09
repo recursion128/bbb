@@ -17,8 +17,8 @@ use bbb_pack::{
     ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
     ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
     ItemUseAnimation as PackItemUseAnimation, ItemUseEffects as PackItemUseEffects,
-    LanguageCatalog, PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TagCatalog,
-    TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    JukeboxSongRegistry, LanguageCatalog, PackResourceStack, PackRoots, ResourceLocation,
+    SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary,
@@ -293,6 +293,7 @@ pub struct NativeItemRuntime {
     trim_material_tags: Option<TagCatalog>,
     trim_pattern_tags: Option<TagCatalog>,
     jukebox_song_tags: Option<TagCatalog>,
+    jukebox_songs: JukeboxSongRegistry,
     potion_tags: Option<TagCatalog>,
     attribute_tags: Option<TagCatalog>,
     villager_type_tags: Option<TagCatalog>,
@@ -646,6 +647,7 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let jukebox_songs = JukeboxSongRegistry::vanilla_26_1();
         let potion_tags = roots
             .load_tag_catalog("potion")
             .context("load native potion tags")
@@ -730,6 +732,7 @@ impl NativeItemRuntime {
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            jukebox_songs,
             potion_tags,
             attribute_tags,
             villager_type_tags,
@@ -757,6 +760,7 @@ impl NativeItemRuntime {
         trim_material_tags: Option<TagCatalog>,
         trim_pattern_tags: Option<TagCatalog>,
         jukebox_song_tags: Option<TagCatalog>,
+        jukebox_songs: JukeboxSongRegistry,
         potion_tags: Option<TagCatalog>,
         attribute_tags: Option<TagCatalog>,
         villager_type_tags: Option<TagCatalog>,
@@ -842,6 +846,7 @@ impl NativeItemRuntime {
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            jukebox_songs,
             potion_tags,
             attribute_tags,
             villager_type_tags,
@@ -888,6 +893,7 @@ impl NativeItemRuntime {
             trim_material_tags: None,
             trim_pattern_tags: None,
             jukebox_song_tags: None,
+            jukebox_songs: JukeboxSongRegistry::vanilla_26_1(),
             potion_tags: None,
             attribute_tags: None,
             villager_type_tags: None,

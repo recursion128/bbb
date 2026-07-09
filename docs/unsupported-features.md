@@ -1148,8 +1148,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, stored/enchantment rows, TooltipDisplay
+    container item-count/more rows, jukebox song descriptions, direct armor
+    trim rows, stored/enchantment rows, TooltipDisplay
     hide/hidden-components gating, map_id component type-id 46, disc fragment
     item-specific description line, smithing template item-specific rows, direct
     painting variant rows, spawner block-entity rows, entity-data peaceful
@@ -1429,10 +1429,21 @@ When an agent does any of the following, update this file in the same slice:
     and before trim/enchantments/dyed-color; `JukeboxPlayable.addToTooltip`
     emits the song description merged with gray. bbb now projects decoded direct
     `minecraft:jukebox_playable` song payloads as a gray description row in
-    that provider position. Boundary: holder-id jukebox songs still need
-    registry-key description resolution, styled description runs are flattened,
-    and remaining component providers, `TooltipDisplay` hiding, and options
-    persistence remain future work.
+    that provider position. Boundary: holder-id resolution is covered by the
+    later entry below; styled description runs are flattened, and remaining
+    component providers, `TooltipDisplay` hiding, and options persistence remain
+    future work.
+  - Done 2026-07-09 — Advanced tooltip holder-id jukebox song description.
+    Vanilla anchors: vanilla built-in `JukeboxSongs.bootstrap` registers
+    `JukeboxSong` descriptions with
+    `Util.makeDescriptionId("jukebox_song", registryKey.identifier())`, and
+    `JukeboxPlayable.addToTooltip` emits the resolved holder value's description
+    as a gray row. bbb now preserves the vanilla 26.1 jukebox-song registry key
+    for holder ids, resolves `minecraft:jukebox_playable` holder ids through that
+    registry, localizes `jukebox_song.<namespace>.<path>`, emits the gray row in
+    the same provider position, and honors hidden component type id 64. Boundary:
+    custom/datapack jukebox-song registry remaps and styled description runs
+    remain future work.
   - Done 2026-07-09 — Advanced tooltip direct armor trim rows. Vanilla anchors:
     `ArmorTrim.addToTooltip` emits gray `item.minecraft.smithing_template.upgrade`,
     then a leading-space pattern description styled by the material, then a
@@ -2649,8 +2660,8 @@ When an agent does any of the following, update this file in the same slice:
     tooltip parity remains open except for the later beehive bees/honey,
     dyed-color, firework flight/direct/grouped explosion lines, and
     charged-projectiles headers, container-loot unknown-content line, container
-    item-count/more rows, direct jukebox song descriptions, direct armor trim
-    rows, stored/enchantment rows, dynamic profile line, intangible projectile line, and ominous bottle
+    item-count/more rows, jukebox song descriptions, direct armor trim rows,
+    stored/enchantment rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
     effect lines, map-id lines, instrument description lines, tropical-fish
     pattern lines, banner-pattern rows, and pot-decoration rows.
@@ -2919,8 +2930,8 @@ When an agent does any of the following, update this file in the same slice:
     in-game options UI. Effective component-count display, beehive bees/honey
     lines, dyed-color lines, and firework flight/direct/grouped explosion lines
     plus charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, stored/enchantment rows, dynamic profile line,
+    container item-count/more rows, jukebox song descriptions, direct armor trim
+    rows, stored/enchantment rows, dynamic profile line,
     intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, and pot-decoration rows
@@ -3603,8 +3614,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence beyond beehive
     bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
     lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, direct jukebox song descriptions, direct
-    armor trim rows, stored/enchantment rows, dynamic profile line,
+    container item-count/more rows, jukebox song descriptions, direct armor trim
+    rows, stored/enchantment rows, dynamic profile line,
     intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration

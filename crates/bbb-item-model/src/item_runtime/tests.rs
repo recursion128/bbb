@@ -301,7 +301,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.firework_star.flicker": "Twinkle",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
-                "book.generation.2": "Copy of a copy"
+                "book.generation.2": "Copy of a copy",
+                "jukebox_song.minecraft.cat": "C418 - cat"
             }"#,
     );
     write_json(
@@ -1247,6 +1248,38 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Test song", TOOLTIP_TEXT_GRAY),
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After jukebox"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                jukebox_song_id: Some(1),
+                lore: vec!["After jukebox holder".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("C418 - cat", TOOLTIP_TEXT_GRAY),
+            lore_line("After jukebox holder"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                jukebox_song_id: Some(1),
+                tooltip_hidden_component_type_ids: vec![64],
+                lore: vec!["After hidden jukebox".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("After hidden jukebox"),
         ])
     );
     assert_eq!(

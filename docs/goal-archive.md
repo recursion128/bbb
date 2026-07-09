@@ -6595,6 +6595,15 @@
   description 行。边界：holder-id jukebox songs 仍需要 registry-key description
   resolution，styled description runs 目前被 flatten；其它 component provider
   tooltip、`TooltipDisplay` hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip holder-id jukebox song description（P2 pack +
+  item-runtime slice，2026-07-09）：依据 vanilla `JukeboxSongs.bootstrap` 以
+  `Util.makeDescriptionId("jukebox_song", registryKey.identifier())` 创建内置 song
+  description，以及 `JukeboxPlayable.addToTooltip` 输出 resolved holder value 的
+  灰色 description 行，`bbb-pack::JukeboxSongRegistry` 现在保留 holder id 对应的
+  vanilla jukebox-song registry key，native item tooltip 用该 key 本地化
+  `jukebox_song.<namespace>.<path>` 并在 direct song 缺席时输出灰色行，同时应用
+  hidden component type id 64。边界：custom/datapack jukebox-song registry remap
+  与 styled description run 保真仍属后续。
 - [x] advanced tooltip direct armor trim rows（P2 item-runtime slice，
   2026-07-09）：依据 `ArmorTrim.addToTooltip` 输出灰色
   `item.minecraft.smithing_template.upgrade`、leading-space pattern description

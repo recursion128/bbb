@@ -5,6 +5,7 @@ const VANILLA_26_1_JUKEBOX_SONGS: &str = include_str!("../data/jukebox_songs_26_
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JukeboxSongRegistry {
     by_protocol_id: Vec<Option<String>>,
+    by_protocol_song_id: Vec<Option<String>>,
 }
 
 impl JukeboxSongRegistry {
@@ -18,21 +19,47 @@ impl JukeboxSongRegistry {
     }
 
     pub fn from_sound_event_ids(ids: impl IntoIterator<Item = Option<impl Into<String>>>) -> Self {
+        let mut by_protocol_id = Vec::new();
+        let mut by_protocol_song_id = Vec::new();
+        for id in ids {
+            let id = id.map(Into::into);
+            by_protocol_song_id.push(
+                id.as_deref()
+                    .and_then(vanilla_26_1_song_id_for_sound_event)
+                    .map(str::to_string),
+            );
+            by_protocol_id.push(id);
+        }
         Self {
-            by_protocol_id: ids.into_iter().map(|id| id.map(Into::into)).collect(),
+            by_protocol_id,
+            by_protocol_song_id,
         }
     }
 
     pub fn from_registry_entry_ids(ids: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
-        Self::from_sound_event_ids(
-            ids.into_iter()
-                .map(|id| vanilla_26_1_song_sound_event(id.as_ref()).map(str::to_string)),
-        )
+        let mut by_protocol_id = Vec::new();
+        let mut by_protocol_song_id = Vec::new();
+        for id in ids {
+            let id = id.as_ref();
+            by_protocol_id.push(vanilla_26_1_song_sound_event(id).map(str::to_string));
+            by_protocol_song_id.push(Some(id.to_string()));
+        }
+        Self {
+            by_protocol_id,
+            by_protocol_song_id,
+        }
     }
 
     pub fn sound_event_id(&self, registry_id: i32) -> Option<&str> {
         let index = usize::try_from(registry_id).ok()?;
         self.by_protocol_id
+            .get(index)
+            .and_then(|entry| entry.as_deref())
+    }
+
+    pub fn song_id(&self, registry_id: i32) -> Option<&str> {
+        let index = usize::try_from(registry_id).ok()?;
+        self.by_protocol_song_id
             .get(index)
             .and_then(|entry| entry.as_deref())
     }
@@ -44,6 +71,34 @@ impl JukeboxSongRegistry {
     pub fn is_empty(&self) -> bool {
         self.by_protocol_id.is_empty()
     }
+}
+
+fn vanilla_26_1_song_id_for_sound_event(sound_event_id: &str) -> Option<&'static str> {
+    let song = match sound_event_id {
+        "minecraft:music_disc.13" => "minecraft:13",
+        "minecraft:music_disc.cat" => "minecraft:cat",
+        "minecraft:music_disc.blocks" => "minecraft:blocks",
+        "minecraft:music_disc.chirp" => "minecraft:chirp",
+        "minecraft:music_disc.far" => "minecraft:far",
+        "minecraft:music_disc.mall" => "minecraft:mall",
+        "minecraft:music_disc.mellohi" => "minecraft:mellohi",
+        "minecraft:music_disc.stal" => "minecraft:stal",
+        "minecraft:music_disc.strad" => "minecraft:strad",
+        "minecraft:music_disc.ward" => "minecraft:ward",
+        "minecraft:music_disc.11" => "minecraft:11",
+        "minecraft:music_disc.wait" => "minecraft:wait",
+        "minecraft:music_disc.pigstep" => "minecraft:pigstep",
+        "minecraft:music_disc.otherside" => "minecraft:otherside",
+        "minecraft:music_disc.5" => "minecraft:5",
+        "minecraft:music_disc.relic" => "minecraft:relic",
+        "minecraft:music_disc.precipice" => "minecraft:precipice",
+        "minecraft:music_disc.creator" => "minecraft:creator",
+        "minecraft:music_disc.creator_music_box" => "minecraft:creator_music_box",
+        "minecraft:music_disc.tears" => "minecraft:tears",
+        "minecraft:music_disc.lava_chicken" => "minecraft:lava_chicken",
+        _ => return None,
+    };
+    Some(song)
 }
 
 fn vanilla_26_1_song_sound_event(song_id: &str) -> Option<&'static str> {
@@ -90,7 +145,11 @@ mod tests {
             registry.sound_event_id(20),
             Some("minecraft:music_disc.lava_chicken")
         );
+        assert_eq!(registry.song_id(0), Some("minecraft:13"));
+        assert_eq!(registry.song_id(1), Some("minecraft:cat"));
+        assert_eq!(registry.song_id(20), Some("minecraft:lava_chicken"));
         assert_eq!(registry.sound_event_id(21), None);
+        assert_eq!(registry.song_id(21), None);
     }
 
     #[test]
@@ -108,5 +167,8 @@ mod tests {
             Some("minecraft:music_disc.tears")
         );
         assert_eq!(registry.sound_event_id(2), None);
+        assert_eq!(registry.song_id(0), Some("minecraft:cat"));
+        assert_eq!(registry.song_id(1), Some("minecraft:tears"));
+        assert_eq!(registry.song_id(2), Some("bbb:custom_song"));
     }
 }

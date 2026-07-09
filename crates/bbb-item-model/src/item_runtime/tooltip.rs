@@ -1526,16 +1526,26 @@ fn push_firework_explosion_additional_tooltip_lines(
 }
 
 fn push_jukebox_playable_tooltip_lines(
+    language: &LanguageCatalog,
+    songs: &JukeboxSongRegistry,
+    song_id: Option<i32>,
     song: Option<&JukeboxSongSummary>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(song) = song else {
-        return;
+    let description = if let Some(song) = song {
+        song.description.clone()
+    } else {
+        let Some(song_id) = song_id else {
+            return;
+        };
+        let Some(song_key) = songs.song_id(song_id) else {
+            return;
+        };
+        language
+            .get_or_key(&description_key("jukebox_song", song_key))
+            .to_string()
     };
-    lines.push(NativeItemTooltipLine::plain(
-        song.description.clone(),
-        TOOLTIP_TEXT_GRAY,
-    ));
+    lines.push(NativeItemTooltipLine::plain(description, TOOLTIP_TEXT_GRAY));
 }
 
 fn push_armor_trim_tooltip_lines(
@@ -2198,6 +2208,9 @@ impl NativeItemRuntime {
         }
         if shows(COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID) {
             push_jukebox_playable_tooltip_lines(
+                &self.language,
+                &self.jukebox_songs,
+                stack.component_patch.jukebox_song_id,
                 stack.component_patch.jukebox_direct_song.as_ref(),
                 &mut lines,
             );
