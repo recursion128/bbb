@@ -240,6 +240,7 @@ pub(crate) struct ClientInputState {
     debug_network_charts_visible: bool,
     debug_lightmap_texture_visible: bool,
     debug_advanced_item_tooltips: bool,
+    debug_show_local_server_entity_hit_boxes: bool,
     debug_pause_on_lost_focus: bool,
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
@@ -704,6 +705,14 @@ impl ClientInputState {
 
     pub(crate) fn set_debug_advanced_item_tooltips(&mut self, enabled: bool) {
         self.debug_advanced_item_tooltips = enabled;
+    }
+
+    pub(crate) fn debug_show_local_server_entity_hit_boxes(&self) -> bool {
+        self.debug_show_local_server_entity_hit_boxes
+    }
+
+    pub(crate) fn set_debug_show_local_server_entity_hit_boxes(&mut self, enabled: bool) {
+        self.debug_show_local_server_entity_hit_boxes = enabled;
     }
 
     pub(crate) fn debug_pause_on_lost_focus(&self) -> bool {

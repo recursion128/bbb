@@ -45,6 +45,15 @@ pub struct SelectionPoint {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SelectionTextLabel {
+    pub position: [f32; 3],
+    pub text: String,
+    pub color: [f32; 4],
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub centered: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectionOutline {
     pub boxes: Vec<SelectionBox>,
     #[serde(default)]
@@ -53,6 +62,8 @@ pub struct SelectionOutline {
     pub lines: Vec<SelectionLine>,
     #[serde(default)]
     pub points: Vec<SelectionPoint>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub text_labels: Vec<SelectionTextLabel>,
 }
 
 impl SelectionOutline {
@@ -62,6 +73,7 @@ impl SelectionOutline {
             colored_boxes: Vec::new(),
             lines: Vec::new(),
             points: Vec::new(),
+            text_labels: Vec::new(),
         }
     }
 
@@ -71,6 +83,7 @@ impl SelectionOutline {
             colored_boxes: Vec::new(),
             lines: Vec::new(),
             points: Vec::new(),
+            text_labels: Vec::new(),
         }
     }
 
@@ -90,11 +103,26 @@ impl SelectionOutline {
         lines: impl IntoIterator<Item = SelectionLine>,
         points: impl IntoIterator<Item = SelectionPoint>,
     ) -> Self {
+        Self::from_colored_boxes_lines_points_and_labels(
+            colored_boxes,
+            lines,
+            points,
+            std::iter::empty::<SelectionTextLabel>(),
+        )
+    }
+
+    pub fn from_colored_boxes_lines_points_and_labels(
+        colored_boxes: impl IntoIterator<Item = SelectionColoredBox>,
+        lines: impl IntoIterator<Item = SelectionLine>,
+        points: impl IntoIterator<Item = SelectionPoint>,
+        text_labels: impl IntoIterator<Item = SelectionTextLabel>,
+    ) -> Self {
         Self {
             boxes: Vec::new(),
             colored_boxes: colored_boxes.into_iter().collect(),
             lines: lines.into_iter().collect(),
             points: points.into_iter().collect(),
+            text_labels: text_labels.into_iter().collect(),
         }
     }
 }

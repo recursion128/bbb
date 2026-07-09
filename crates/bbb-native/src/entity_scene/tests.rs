@@ -24,6 +24,36 @@ fn entity_scene_outline_is_none_without_visible_entity_targets() {
 }
 
 #[test]
+fn entity_scene_outline_projects_missing_server_entity_labels_when_debug_flag_is_enabled() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+        [0.0, 1.0, 3.0],
+    ));
+
+    let default_outline = entity_scene_outline_from_world_at_partial_tick(&world, 1.0)
+        .expect("expected default client-side hitbox outline");
+    assert!(default_outline.text_labels.is_empty());
+
+    let outline =
+        entity_scene_outline_from_world_at_partial_tick_with_server_details(&world, 1.0, true)
+            .expect("expected local-server debug entity outline");
+
+    assert_eq!(outline.text_labels.len(), 1);
+    assert_eq!(
+        outline.text_labels[0].text,
+        ENTITY_MISSING_SERVER_LABEL_TEXT
+    );
+    assert_eq!(
+        outline.text_labels[0].color,
+        ENTITY_MISSING_SERVER_LABEL_COLOR
+    );
+    assert!(outline.text_labels[0].centered);
+    assert_selection_box_close(outline.text_labels[0].position, [0.0, 3.2, 3.0]);
+}
+
+#[test]
 fn entity_scene_outline_projects_pick_bounds_for_all_visible_targets() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(

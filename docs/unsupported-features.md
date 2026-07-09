@@ -1116,7 +1116,8 @@ When an agent does any of the following, update this file in the same slice:
     change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
     shell, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers/profile persistence,
-    actual entity hitbox server details,
+    entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
+    billboard rendering,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
@@ -1165,6 +1166,20 @@ When an agent does any of the following, update this file in the same slice:
     `debug-profile.json`, and individual non-default entry renderers such as GPU
     utilization/detailed memory/look-at/light/biome/chunk stats remain future
     work.
+  - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
+    data and startup flag. Vanilla anchors:
+    `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
+    debugFlag("SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES")`; when that flag is true,
+    `EntityHitboxDebugRenderer.render` calls `getServerEntity(entity)` and, if
+    none exists, emits centered red billboard text `Missing Server Entity` at
+    `entity.getPosition(partialTick) + (0, boundingBox.getYsize() + 1.5, 0)`.
+    bbb now accepts `--debug-show-local-server-entity-hit-boxes` at startup,
+    stores it in `ClientInputState`, passes it through runtime F3+B extraction,
+    and carries a `SelectionTextLabel` in `SelectionOutline` for each visible
+    client entity when no integrated local-server entity mirror exists.
+    Boundary: current selection rendering does not draw 3D text billboards yet;
+    green server hitboxes and yellow delta-movement arrows still require a real
+    local-server entity mirror.
   - Done 2026-07-08 — Debug overlay 3D crosshair rendering. Vanilla anchors:
     `DebugScreenEntries` enables `THREE_DIMENSIONAL_CROSSHAIR` in the default
     profile, `Gui.extractCrosshair` suppresses the ordinary 2D crosshair while
@@ -1307,7 +1322,8 @@ When an agent does any of the following, update this file in the same slice:
     existing black box constructors intact; F3+B entity debug output submits
     white entity AABBs, red living eye-height slabs, and a blue two-block
     view-vector line sampled from the same partial-tick entity source. Boundary:
-    vanilla arrowheads, local-server green boxes/delta arrows, missing server-entity labels,
+    vanilla arrowheads, local-server green boxes/delta arrows,
+    3D debug-text billboard rendering,
     and dedicated debug gizmo styling remain future parity work.
   - Done 2026-07-08 — Debug overlay F3+B entity position point markers.
     Vanilla anchors: `EntityHitboxDebugRenderer.showHitboxes` calls
@@ -2358,13 +2374,17 @@ When an agent does any of the following, update this file in the same slice:
     request. F3+F4 now has a native GameModeSwitcher input/command shell. The
     debug entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
-    `toggleStatus` semantics, and reduced-debug filtering. The
+    `toggleStatus` semantics, and reduced-debug filtering. F3+B local-server
+    debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
+    plus client-side `Missing Server Entity` label data when no local-server
+    entity mirror exists. The
     ordinary F3 keymap has been audited against vanilla `Options.debugKeys`;
     remaining combo work is limited to debug-flag gated dev hotkeys. The
     remaining open surfaces in
     this ledger row
     are remaining individual non-default debug entry renderers/profile
-    persistence, entity hitbox server details,
+    persistence, entity hitbox local-server mirror green boxes/delta arrows and
+    3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual

@@ -135,6 +135,7 @@ pub use crate::player_skin::{
 pub use crate::renderer::Renderer;
 pub use crate::selection::{
     SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint,
+    SelectionTextLabel,
 };
 pub use crate::sky::{
     CelestialTextureImage, CelestialTextureKind, SkyEnvironment, SkyMoonPhase, SkyboxKind,

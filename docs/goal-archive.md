@@ -5451,6 +5451,21 @@
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 GPU utilization /
   detailed memory / look-at / light / biome / chunk stats 等 individual
   non-default entry renderers 仍待后续。
+- [x] debug overlay F3+B local-server missing-entity label data and startup
+  flag（P2 native/renderer slice，2026-07-09）：依据
+  `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
+  debugFlag("SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES")`，以及
+  `EntityHitboxDebugRenderer.render` 在该 flag 开启时查找
+  `getServerEntity(entity)`；找不到服务端实体时，在
+  `entity.getPosition(partialTick) + (0, boundingBox.getYsize() + 1.5, 0)`
+  位置绘制居中的红色 `Missing Server Entity` billboard。renderer
+  `SelectionOutline` 现在携带 `SelectionTextLabel`，startup 接受
+  `--debug-show-local-server-entity-hit-boxes`，native input/runtime 将该启动
+  开关传入 F3+B entity-scene extraction；由于 bbb 目前没有 integrated
+  local-server entity mirror，开启该调试 flag 时为每个可见 client entity 输出
+  `Missing Server Entity` 标签数据。边界：当前 selection pipeline 尚不绘制
+  3D text billboard；真实 local-server 绿色 hitbox 和黄色 delta-movement arrow
+  需要本地服务端实体镜像后再接入。
 - [x] debug overlay F3+C long-hold manual-crash warning shell（P2 input/world
   slice，2026-07-08）：依据 `Options.keyDebugCrash` 与
   `Options.keyDebugCopyLocation` 共同绑定 C、`KeyboardHandler.keyPress`
@@ -5505,8 +5520,8 @@
   和自由线段，同时保留既有黑色 selection-box constructors；native F3+B
   entity debug 输出白色 AABB、红色 living eye slab、蓝色 view-vector line，
   并复用 world 的 `vanilla_living_entity_type` 判定避免重复实体分类表。边界：
-  arrowheads、local-server green boxes/delta arrows、missing-server labels、
-  以及专用 debug gizmo styling 仍未实现。
+  arrowheads、local-server green boxes/delta arrows、3D debug-text billboard
+  rendering、以及专用 debug gizmo styling 仍未实现。
 - [x] debug overlay F3+B entity position point markers（P2 renderer/native
   slice，2026-07-08）：依据 `EntityHitboxDebugRenderer.showHitboxes` 紧跟
   hitbox 后调用 `Gizmos.point(currentPosition, mainColor, 2.0F)`，以及

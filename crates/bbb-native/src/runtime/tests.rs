@@ -1939,6 +1939,33 @@ fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
     assert_eq!(outline.colored_boxes.len(), 2);
     assert_eq!(outline.lines.len(), 1);
     assert_eq!(outline.points.len(), 1);
+    assert!(outline.text_labels.is_empty());
+}
+
+#[test]
+fn debug_entity_scene_outline_includes_missing_server_label_when_startup_flag_is_enabled() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    let mut input = ClientInputState::new(true);
+    input.set_debug_show_local_server_entity_hit_boxes(true);
+
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+
+    let outline = debug_entity_scene_outline(&input, &world, 1.0)
+        .expect("F3+B should enable entity AABB debug outlines");
+    assert_eq!(outline.text_labels.len(), 1);
+    assert_eq!(outline.text_labels[0].text, "Missing Server Entity");
 }
 
 #[test]

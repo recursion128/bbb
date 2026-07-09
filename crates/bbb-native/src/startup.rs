@@ -105,6 +105,8 @@ pub(crate) struct Args {
     pub(crate) advanced_item_tooltips: bool,
     #[arg(long = "debug-profile", value_enum, default_value = "default")]
     pub(crate) debug_profile: DebugScreenProfileArg,
+    #[arg(long = "debug-show-local-server-entity-hit-boxes")]
+    pub(crate) debug_show_local_server_entity_hit_boxes: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -567,6 +569,17 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--debug-profile", "performance"]).unwrap();
         assert_eq!(args.debug_profile, DebugScreenProfileArg::Performance);
+    }
+
+    #[test]
+    fn args_accept_debug_show_local_server_entity_hit_boxes_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!default_args.debug_show_local_server_entity_hit_boxes);
+
+        let args =
+            Args::try_parse_from(["bbb-native", "--debug-show-local-server-entity-hit-boxes"])
+                .unwrap();
+        assert!(args.debug_show_local_server_entity_hit_boxes);
     }
 
     #[test]

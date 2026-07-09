@@ -305,6 +305,9 @@ fn main() -> Result<()> {
     let mut input = ClientInputState::new(window.has_focus());
     input.load_debug_screen_profile(args.debug_profile.into());
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
+    input.set_debug_show_local_server_entity_hit_boxes(
+        args.debug_show_local_server_entity_hit_boxes,
+    );
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 

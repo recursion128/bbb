@@ -315,7 +315,8 @@ Screen Render Surfaces" 条目）：
   request routing、F3+F4 GameModeSwitcher input/command shell、ordinary F3
   keymap audit 已完成；
   剩余 individual non-default debug entry renderers/profile persistence、
-  entity hitbox server details、advanced tooltip component-specific full
+  entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
+  billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、actual DebugOptionsScreen、F3+F4

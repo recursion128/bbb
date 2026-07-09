@@ -17,11 +17,11 @@ use bbb_renderer::{
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox,
-    SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint, SheepHeadEatPose,
-    SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint, SelectionTextLabel,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
+    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -59,6 +59,8 @@ const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 const ENTITY_DRAGON_PART_HITBOX_COLOR: [f32; 4] = [0.25, 1.0, 0.0, 1.0];
 const ENTITY_PASSENGER_VEHICLE_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 const ENTITY_VIEW_VECTOR_COLOR: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+const ENTITY_MISSING_SERVER_LABEL_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+const ENTITY_MISSING_SERVER_LABEL_TEXT: &str = "Missing Server Entity";
 const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
 const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
@@ -310,6 +312,18 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
     entity_partial_tick: f32,
 ) -> Option<SelectionOutline> {
+    entity_scene_outline_from_world_at_partial_tick_with_server_details(
+        world,
+        entity_partial_tick,
+        false,
+    )
+}
+
+pub(crate) fn entity_scene_outline_from_world_at_partial_tick_with_server_details(
+    world: &WorldStore,
+    entity_partial_tick: f32,
+    show_local_server_entity_hit_boxes: bool,
+) -> Option<SelectionOutline> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
@@ -321,6 +335,7 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     let mut boxes = Vec::new();
     let mut lines = Vec::new();
     let mut points = Vec::new();
+    let mut text_labels = Vec::new();
 
     for target in world
         .entity_debug_hitbox_targets_at_partial_tick(entity_partial_tick)
@@ -347,10 +362,21 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
             sources_by_id.get(&target.entity_id).copied(),
             world,
         );
+        if show_local_server_entity_hit_boxes {
+            text_labels.push(entity_debug_missing_server_label(target));
+        }
     }
 
-    (!boxes.is_empty() || !lines.is_empty() || !points.is_empty())
-        .then(|| SelectionOutline::from_colored_boxes_lines_and_points(boxes, lines, points))
+    (!boxes.is_empty() || !lines.is_empty() || !points.is_empty() || !text_labels.is_empty()).then(
+        || {
+            SelectionOutline::from_colored_boxes_lines_points_and_labels(
+                boxes,
+                lines,
+                points,
+                text_labels,
+            )
+        },
+    )
 }
 
 pub(crate) fn entity_model_instances_from_world_at_partial_tick(
@@ -512,6 +538,23 @@ fn entity_debug_hitbox_box(target: EntityPickTargetState) -> SelectionColoredBox
 
 fn entity_debug_passenger_vehicle_box(target: EntityPickTargetState) -> SelectionColoredBox {
     entity_debug_hitbox_box_with_color(target, ENTITY_PASSENGER_VEHICLE_COLOR)
+}
+
+fn entity_debug_missing_server_label(target: EntityPickTargetState) -> SelectionTextLabel {
+    SelectionTextLabel {
+        position: [
+            target.position.x as f32,
+            target.position.y as f32 + entity_debug_bounds_height(target) + 1.5,
+            target.position.z as f32,
+        ],
+        text: ENTITY_MISSING_SERVER_LABEL_TEXT.to_string(),
+        color: ENTITY_MISSING_SERVER_LABEL_COLOR,
+        centered: true,
+    }
+}
+
+fn entity_debug_bounds_height(target: EntityPickTargetState) -> f32 {
+    (target.bounds.max[1] - target.bounds.min[1]).abs()
 }
 
 fn entity_debug_hitbox_box_with_color(

@@ -75,6 +75,7 @@ use crate::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
+        entity_scene_outline_from_world_at_partial_tick_with_server_details,
     },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
@@ -3189,10 +3190,18 @@ fn debug_entity_scene_outline(
     world: &WorldStore,
     entity_partial_tick: f32,
 ) -> Option<SelectionOutline> {
-    input
-        .debug_entity_hitboxes_visible_for_world(world)
-        .then(|| entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick))
-        .flatten()
+    if !input.debug_entity_hitboxes_visible_for_world(world) {
+        return None;
+    }
+    if input.debug_show_local_server_entity_hit_boxes() {
+        entity_scene_outline_from_world_at_partial_tick_with_server_details(
+            world,
+            entity_partial_tick,
+            true,
+        )
+    } else {
+        entity_scene_outline_from_world_at_partial_tick(world, entity_partial_tick)
+    }
 }
 
 fn debug_chunk_border_outline(
@@ -3326,6 +3335,7 @@ fn debug_chunk_border_outline(
         }],
         lines,
         points: Vec::new(),
+        text_labels: Vec::new(),
     })
 }
 
