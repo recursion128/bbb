@@ -3188,6 +3188,9 @@ fn hud_debug_overlay_at_partial_tick(
     if entry_enabled(DebugScreenEntryId::EntityRenderStats) {
         left_lines.push(hud_debug_entity_render_stats_line(world));
     }
+    if entry_enabled(DebugScreenEntryId::ParticleRenderStats) {
+        left_lines.push(hud_debug_particle_render_stats_line(renderer_counters));
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3727,6 +3730,10 @@ fn hud_debug_entity_render_stats_line(world: &WorldStore) -> String {
     let entity_count = world.entity_count();
     let simulation_distance = world.local_player().simulation_distance.unwrap_or(0);
     format!("E: {entity_count}/{entity_count}, SD: {simulation_distance}")
+}
+
+fn hud_debug_particle_render_stats_line(counters: &bbb_renderer::RendererCounters) -> String {
+    format!("P: {}", counters.active_particle_instances)
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {

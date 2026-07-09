@@ -1166,9 +1166,8 @@ When an agent does any of the following, update this file in the same slice:
     filtering for position/3D-crosshair/renderer entries, and HUD projection of
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
-    `debug-profile.json`, and individual non-default entry renderers such as
-    chunk generation/source plus entity/particle render stats remain future
-    work.
+    `debug-profile.json`, and remaining individual non-default entry renderers
+    such as chunk generation/source stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1340,8 +1339,8 @@ When an agent does any of the following, update this file in the same slice:
     terrain counters when custom-enabled. Boundary: bbb does not yet mirror the
     vanilla `ViewArea` total section count, smart-cull flag, or section buffer
     pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
-    frame timing, group layout, profile persistence, chunk generation/source
-    stats, and particle render stats remain future work.
+    frame timing, group layout, profile persistence, and chunk
+    generation/source stats remain future work.
   - Done 2026-07-09 — Debug overlay entity-render-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.ENTITY_RENDER_STATS` registers
     `DebugEntryEntityRenderStats`; it calls
@@ -1360,7 +1359,19 @@ When an agent does any of the following, update this file in the same slice:
     `LevelRenderState.lastEntityRenderStateCount`, so the rendered numerator
     is a shell using tracked entity count; if no simulation-distance packet has
     arrived the line currently uses `SD: 0`. Exact frame timing, group layout,
-    profile persistence, and particle render stats remain future work.
+    and profile persistence remain future work.
+  - Done 2026-07-09 — Debug overlay particle-render-stats entry shell.
+    Vanilla anchors: `DebugScreenEntries.PARTICLE_RENDER_STATS` registers
+    `DebugEntryParticleRenderStats`; it emits
+    `P: ` plus `Minecraft.getInstance().particleEngine.countParticles()`.
+    `ParticleEngine.countParticles()` sums live `ParticleGroup::size` values
+    and returns the total as a string, while the entry uses the default
+    `DebugScreenEntry.isAllowed`, so reduced-debug info filters it. bbb now
+    has a non-profile `ParticleRenderStats` entry id, keeps it `Never` in
+    default/performance profiles, filters it under reduced-debug info, and
+    projects `P: active_particle_instances` from renderer particle counters
+    when custom-enabled. Boundary: exact frame timing, group layout, and
+    `DebugOptionsScreen` / `debug-profile.json` persistence remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

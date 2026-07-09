@@ -5449,8 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 chunk
-  generation/source 与 entity/particle render stats 等 individual non-default
-  entry renderers 仍待后续。
+  generation/source stats 等剩余 individual non-default entry renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
   `DebugScreenEntries.GPU_UTILIZATION`、performance profile 中该 entry 的
@@ -5621,7 +5620,7 @@
   flag 或 section buffer pool free count，因此 `uploaded_sections` 与
   `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
   `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation/source
-  stats、particle render stats 仍待后续。
+  stats 仍待后续。
 - [x] debug overlay entity-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.ENTITY_RENDER_STATS` 注册
   `DebugEntryEntityRenderStats`；该 entry 调用
@@ -5640,8 +5639,19 @@
   `LevelRenderState.lastEntityRenderStateCount`，因此 rendered numerator
   暂用 tracked entity count；如果尚未收到 simulation-distance packet，该行
   目前显示 `SD: 0`。精确 frame timing、完整 group layout、
-  `DebugOptionsScreen` / `debug-profile.json` 持久化、particle render stats
-  仍待后续。
+  `DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+- [x] debug overlay particle-render-stats entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.PARTICLE_RENDER_STATS` 注册
+  `DebugEntryParticleRenderStats`；该 entry 输出 `P: ` 加
+  `Minecraft.getInstance().particleEngine.countParticles()`。
+  `ParticleEngine.countParticles()` 汇总 live `ParticleGroup::size` 并返回
+  字符串；该 entry 使用默认 `DebugScreenEntry.isAllowed`，因此
+  reduced-debug info 下会被过滤。native 现在有非 profile 默认项
+  `ParticleRenderStats` entry id，default / performance profiles 中保持
+  `Never`，reduced-debug 下过滤；custom status 启用时，基于 renderer
+  particle counters 投影 `P: active_particle_instances` 左列纯文本。边界：
+  精确 frame timing、完整 group layout、`DebugOptionsScreen` /
+  `debug-profile.json` 持久化仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

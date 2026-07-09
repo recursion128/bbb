@@ -1680,6 +1680,45 @@ fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_inf
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_particle_render_stats() {
+    let world = world_with_dimension(0, "minecraft:overworld");
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::ParticleRenderStats,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let renderer_counters = bbb_renderer::RendererCounters {
+        active_particle_instances: 23,
+        ..Default::default()
+    };
+
+    let overlay = hud_debug_overlay_at_partial_tick(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        1.0,
+        &renderer_counters,
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("particle render stats should show outside reduced debug info");
+
+    assert_eq!(overlay.left_lines, vec!["P: 23".to_string()]);
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
