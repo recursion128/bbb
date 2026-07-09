@@ -32,6 +32,16 @@ impl BlockOutlineTarget {
         }
     }
 
+    pub(crate) fn from_fluid_height(height: f64) -> Self {
+        Self {
+            material: TerrainMaterialClass::Translucent,
+            outline: Some(BlockOutlineShape::single(BlockOutlineBox {
+                min: [0.0, 0.0, 0.0],
+                max: [1.0, height.clamp(0.0, 1.0), 1.0],
+            })),
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn from_box(material: TerrainMaterialClass, min: [f64; 3], max: [f64; 3]) -> Self {
         Self {

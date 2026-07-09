@@ -105,6 +105,22 @@ pub(crate) fn debug_looking_at_block_hit_from_camera(
     )
 }
 
+pub(crate) fn debug_looking_at_fluid_hit_from_camera(
+    world: &WorldStore,
+    pose: Option<CameraPose>,
+) -> Option<CrosshairBlockHit> {
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_camera_pose(pose?),
+        DEBUG_LOOKING_AT_RANGE,
+        |pos| {
+            let probe = world.probe_block(pos)?;
+            Some(BlockOutlineTarget::from_fluid_height(
+                probe.fluid?.own_height(),
+            ))
+        },
+    )
+}
+
 fn crosshair_block_hit_from_ray(
     world: &WorldStore,
     ray: CrosshairRay,

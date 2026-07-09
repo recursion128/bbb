@@ -67,8 +67,8 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{
-        debug_looking_at_block_hit_from_camera, entity_target_outline_from_camera_at_partial_tick,
-        selection_outline_from_camera,
+        debug_looking_at_block_hit_from_camera, debug_looking_at_fluid_hit_from_camera,
+        entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -3116,6 +3116,11 @@ fn hud_debug_overlay(
             left_lines.extend(looking_at_lines);
         }
     }
+    if entry_enabled(DebugScreenEntryId::LookingAtFluidState) {
+        if let Some(looking_at_lines) = hud_debug_looking_at_fluid_state_lines(world, camera_pose) {
+            left_lines.extend(looking_at_lines);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3548,6 +3553,35 @@ fn hud_debug_looking_at_block_tag_lines(
             .map(|(tag, _)| format!("#{tag}"))
             .collect(),
     )
+}
+
+fn hud_debug_looking_at_fluid_state_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<Vec<String>> {
+    let hit = debug_looking_at_fluid_hit_from_camera(world, camera_pose)?;
+    let fluid = world.probe_block(hit.pos)?.fluid?;
+    let mut lines = vec![
+        format!(
+            "Targeted Fluid: {}, {}, {}",
+            hit.pos.x, hit.pos.y, hit.pos.z
+        ),
+        hud_debug_fluid_state_name(fluid).to_string(),
+        format!("falling: {}", fluid.falling),
+    ];
+    if fluid.amount < 8 || fluid.falling {
+        lines.push(format!("level: {}", fluid.amount));
+    }
+    Some(lines)
+}
+
+fn hud_debug_fluid_state_name(fluid: TerrainFluidState) -> &'static str {
+    match (fluid.kind, fluid.amount >= 8 && !fluid.falling) {
+        (TerrainFluidKind::Water, true) => "minecraft:water",
+        (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
+        (TerrainFluidKind::Lava, true) => "minecraft:lava",
+        (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
+    }
 }
 
 fn camera_feet_block_position(camera: CameraPose) -> Option<BlockPos> {

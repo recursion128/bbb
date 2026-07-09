@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  fluid/entity/chunk stats 等 individual non-default entry
+  fluid tags/entity/chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5525,7 +5525,7 @@
   与属性投影为左列纯文本。边界：当前 debug text model 不承载 vanilla 的
   underline / boolean green-red styling；server debug values、完整 group
   layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及
-  fluid/entity looking-at entries 仍待后续。
+  fluid-tags/entity looking-at entries 仍待后续。
 - [x] debug overlay looking-at block-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` 注册
@@ -5541,7 +5541,25 @@
   左列纯文本。边界：该 entry 需要 block registry content 与 block tag packets
   才能解析；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
   order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，
-  以及 fluid/entity looking-at entries 仍待后续。
+  以及 fluid-tags/entity looking-at entries 仍待后续。
+- [x] debug overlay looking-at fluid-state entry shell（P2 native/runtime
+  slice，2026-07-09）：依据
+  `DebugScreenEntries.LOOKING_AT_FLUID_STATE` 注册
+  `DebugEntryLookingAt.FluidStateInfo`；该 entry 使用
+  `cameraEntity.pick(20.0, 0.0F, true)`，读取 `level.getFluidState(pos)`，
+  加入 `minecraft:looking_at_fluid` group，并输出
+  `Targeted Fluid: x, y, z`、fluid state 的 registered name、以及每个 fluid
+  state property 的 `property: value`。vanilla `FlowingFluid` 定义
+  `FALLING`；flowing water/lava 再加 `LEVEL`，legacy liquid block `level=1`
+  对应 fluid amount `7`。native 现在有非 profile 默认项
+  `LookingAtFluidState` entry id，default / performance profiles 中保持
+  `Never`，reduced-debug 下按默认 `DebugScreenEntry.isAllowed` 过滤；custom
+  status 启用时，用 vanilla 20-block debug range 找到 loaded fluid cell，并把
+  water/lava source 或 flowing state 投影为左列纯文本。边界：当前 picking 使用
+  loaded fluid cell 的 own-height box，尚未实现完整 vanilla
+  `ClipContext.Fluid.ANY` shape 语义（例如 same-fluid-above full-height
+  clipping）；boolean styling、完整 group layout、`DebugOptionsScreen` /
+  `debug-profile.json` 持久化、fluid tags 和 entity looking-at entries 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

@@ -1167,7 +1167,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    look-at fluid/entity/chunk stats remain future work.
+    look-at fluid tags/entity/chunk stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1244,7 +1244,7 @@ When an agent does any of the following, update this file in the same slice:
     lines when custom-enabled. Boundary: vanilla underline and boolean
     green/red text styling are not represented by the current plain debug text
     model; server debug values, exact group layout, profile persistence, and
-    the fluid/entity looking-at entries remain future work.
+    the fluid-tags/entity looking-at entries remain future work.
   - Done 2026-07-09 — Debug overlay looking-at block-tags entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` registers
     `DebugEntryLookingAt.BlockTagInfo`; it uses the same
@@ -1260,8 +1260,25 @@ When an agent does any of the following, update this file in the same slice:
     needs block registry content and block tag packets before it can map a
     block name to raw tag ids; current tag order follows the stored tag map
     order, while exact vanilla holder tag iteration order, group layout,
-    profile persistence, and fluid/entity looking-at entries remain future
+    profile persistence, and fluid-tags/entity looking-at entries remain future
     work.
+  - Done 2026-07-09 — Debug overlay looking-at fluid-state entry shell.
+    Vanilla anchors: `DebugScreenEntries.LOOKING_AT_FLUID_STATE` registers
+    `DebugEntryLookingAt.FluidStateInfo`; it uses
+    `cameraEntity.pick(20.0, 0.0F, true)`, reads `level.getFluidState(pos)`,
+    writes to `minecraft:looking_at_fluid`, and outputs
+    `Targeted Fluid: x, y, z`, the fluid state's registered name, and one
+    `property: value` row per fluid state property. Vanilla `FlowingFluid`
+    defines `FALLING`; flowing water/lava add `LEVEL`, where legacy liquid
+    block `level=1` maps to fluid amount `7`. bbb now has a non-profile
+    `LookingAtFluidState` entry id, keeps it `Never` in default/performance
+    profiles, filters it under reduced-debug info, uses the vanilla 20-block
+    debug range to find loaded fluid cells, and projects water/lava source or
+    flowing state as plain left-column lines. Boundary: current picking uses
+    the loaded fluid cell's own-height box and does not yet implement full
+    vanilla `ClipContext.Fluid.ANY` shape semantics such as same-fluid-above
+    full-height clipping; boolean styling, exact group layout, profile
+    persistence, fluid tags, and entity looking-at entries remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2480,6 +2497,8 @@ When an agent does any of the following, update this file in the same slice:
     biome registry key. Custom-enabled looking-at block state now renders the
     targeted block position, registry name, and state properties; custom-enabled
     looking-at block tags now renders tracked `#tag` rows for the target block.
+    Custom-enabled looking-at fluid state now renders target fluid position,
+    water/lava source or flowing registry name, and fluid state properties.
     F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
