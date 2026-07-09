@@ -17,7 +17,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
@@ -3810,6 +3810,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_GHAST_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
+        }
+        VANILLA_ENTITY_TYPE_GIANT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => {
             debug_push_mob_additional_save_data(entity, fields);

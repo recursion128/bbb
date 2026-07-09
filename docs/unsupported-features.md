@@ -196,7 +196,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `TooltipDisplay` hide/hidden-component gating and options persistence.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
-  parent-chain classification, additional local owners, remaining private
+  remaining parent-chain classification, additional local owners, private
   timer/reference or non-synced counter projection, registry-backed variant
   projection, codec-backed SNBT projection, entity-specific constructor/default
   save values, non-empty entity inventory/container projection, or
