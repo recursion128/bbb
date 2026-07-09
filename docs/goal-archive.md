@@ -6271,6 +6271,15 @@
   更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local ravager save fields（P2 native slice，
+  2026-07-09）：依据 `Ravager.addAdditionalSaveData` 在
+  `PatrollingMonster` 与 `Raider` 父类字段之后写入 `AttackTick`、`StunTick`、
+  `RoarTick`，native 现在对授权 Shift+F3+I 本地 ravager recreate command 追加默认
+  `PatrolLeader`/`Patrolling`、默认 `Wave`/`CanJoinRaid`，以及从 client-owned
+  entity event animation state 派生的 ravager timers。边界：local patrol target、
+  non-default patrol/raid membership、更广泛的 Mob save data、passengers 以及其他
+  entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

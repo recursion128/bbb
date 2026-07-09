@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast/ravager save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2805,6 +2805,16 @@ When an agent does any of the following, update this file in the same slice:
     explosion power, broader Mob save data, passengers, and other
     entity-specific `addAdditionalSaveData` fields still need local state owners
     before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local ravager save fields.
+    Vanilla anchors: `Ravager.addAdditionalSaveData` writes after
+    `PatrollingMonster` and `Raider`, so the save order is default
+    `PatrolLeader`/`Patrolling`, default `Wave`/`CanJoinRaid`, then
+    `AttackTick`, `StunTick`, and `RoarTick`. bbb now appends those fields for
+    authorized Shift+F3+I local ravager recreate commands, deriving the three
+    ravager timers from client-owned entity event animation state. Boundary:
+    local patrol target, non-default patrol/raid membership, broader Mob save
+    data, passengers, and other entity-specific `addAdditionalSaveData` fields
+    still need local state owners before full `saveWithoutId` parity.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -3825,7 +3835,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/ghast/ravager save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

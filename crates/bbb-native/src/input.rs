@@ -10,8 +10,8 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -211,6 +211,13 @@ const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
+const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
+const RAIDER_DEFAULT_WAVE: i32 = 0;
+const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
+const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
+const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
+const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3536,6 +3543,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_RAVAGER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_patrolling_monster_additional_save_data(fields);
+            debug_push_raider_additional_save_data(fields);
+            debug_push_ravager_additional_save_data(entity, fields);
+        }
         _ => {}
     }
 }
@@ -3600,6 +3613,41 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
+}
+
+fn debug_push_patrolling_monster_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "PatrolLeader: {}",
+        debug_snbt_bool(PATROLLING_MONSTER_DEFAULT_PATROL_LEADER)
+    ));
+    fields.push(format!(
+        "Patrolling: {}",
+        debug_snbt_bool(PATROLLING_MONSTER_DEFAULT_PATROLLING)
+    ));
+}
+
+fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("Wave: {RAIDER_DEFAULT_WAVE}"));
+    fields.push(format!(
+        "CanJoinRaid: {}",
+        debug_snbt_bool(RAIDER_DEFAULT_CAN_JOIN_RAID)
+    ));
+}
+
+fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let ravager = entity.client_animations.ravager;
+    fields.push(format!(
+        "AttackTick: {}",
+        ravager.map_or(RAVAGER_DEFAULT_ATTACK_TICK, |state| state.attack_tick)
+    ));
+    fields.push(format!(
+        "StunTick: {}",
+        ravager.map_or(RAVAGER_DEFAULT_STUN_TICK, |state| state.stunned_tick)
+    ));
+    fields.push(format!(
+        "RoarTick: {}",
+        ravager.map_or(RAVAGER_DEFAULT_ROAR_TICK, |state| state.roar_tick)
+    ));
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {
