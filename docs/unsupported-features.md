@@ -1141,8 +1141,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox clipboard actions/full widget
-    styling polish, and native pause
+    DebugOptionsScreen narration/EditBox mouse selection/full widget styling
+    polish, and native pause
     tick-freeze eligibility/full PauseScreen menu remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
@@ -1245,9 +1245,23 @@ When an agent does any of the following, update this file in the same slice:
     Delete, resets filtered-list scroll on text changes, projects the cursor
     and selection through HUD state, and renders the focused search box with a
     blinking cursor/blue selection instead of showing the hint while focused.
-    Boundary: Ctrl+C/Ctrl+V/Ctrl+X clipboard actions, mouse click/drag
-    selection, narration, scrollbar dragging, and full vanilla widget sprite
-    styling remain future polish.
+    Boundary at the time: Ctrl+C/Ctrl+V/Ctrl+X clipboard actions, mouse
+    click/drag selection, narration, scrollbar dragging, and full vanilla
+    widget sprite styling remained future polish; clipboard shortcuts are
+    covered by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen EditBox clipboard
+    shortcuts. Vanilla anchors: `InputWithModifiers.isCopy/isPaste/isCut`
+    require the edit shortcut modifier plus C/V/X with no Shift/Alt, and
+    `EditBox.keyPressed` copies `getHighlighted()`, pastes
+    `KeyboardHandler.getClipboard()` through `insertText`, and cuts by copying
+    the highlighted text before replacing the selection with empty text. bbb
+    now passes the native arboard-backed debug clipboard into
+    DebugOptionsScreen key handling, supports Ctrl+C copy, Ctrl+V paste through
+    the same allowed-character and 32 UTF-16-unit insertion path, and Ctrl+X
+    cut without mutating the search box if clipboard write fails. Boundary:
+    platform edit-shortcut quirks beyond Ctrl, Alt-modifier suppression, mouse
+    click/drag selection, narration, scrollbar dragging, and full vanilla
+    widget sprite styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -2974,8 +2988,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox clipboard actions/full widget
-    styling polish, native pause
+    DebugOptionsScreen narration/EditBox mouse selection/full widget styling
+    polish, native pause
     tick-freeze eligibility/full
     PauseScreen menu.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

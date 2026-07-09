@@ -6245,5 +6245,17 @@
   cursor/selection、按 UTF-16 code unit 限制 32 长度、支持选区替换、
   Ctrl+A、字符/词移动、Shift 选区、Home/End、Backspace/Delete，并在文本变化时
   重置过滤滚动；runtime/renderer 现在投影并绘制 blinking cursor 和蓝色
-  selection。边界：Ctrl+C/V/X 剪贴板、鼠标点击/拖拽选区、narration、
-  scrollbar dragging 与完整 vanilla widget sprite styling 仍待后续 polish。
+  selection。当时边界：Ctrl+C/V/X 剪贴板、鼠标点击/拖拽选区、narration、
+  scrollbar dragging 与完整 vanilla widget sprite styling 仍待后续 polish；
+  Ctrl+C/V/X 由后续 2026-07-09 clipboard shortcuts 条目补齐。
+- [x] debug overlay DebugOptionsScreen EditBox clipboard shortcuts（P2
+  input/main slice，2026-07-09）：依据 `InputWithModifiers.isCopy/isPaste/isCut`
+  的 edit shortcut modifier + C/V/X 且无 Shift/Alt，以及
+  `EditBox.keyPressed` copy `getHighlighted()`、paste
+  `KeyboardHandler.getClipboard()` through `insertText`、cut 先复制选区再用空文本
+  替换选区，native 现在把 arboard-backed debug clipboard 传入
+  DebugOptionsScreen key handling，支持 Ctrl+C copy、Ctrl+V paste 走同一
+  allowed-character 与 32 UTF-16 code-unit insertion path、Ctrl+X cut，并在
+  clipboard write 失败时不删除搜索文本。边界：Ctrl 之外的平台 edit-shortcut
+  quirk、Alt-modifier suppression、鼠标点击/拖拽选区、narration、scrollbar
+  dragging 与完整 vanilla widget sprite styling 仍待后续 polish。

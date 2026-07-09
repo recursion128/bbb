@@ -164,6 +164,10 @@ enum BookScreenClickTarget {
 
 pub(crate) trait DebugClipboard {
     fn set_debug_clipboard_text(&mut self, text: &str) -> bool;
+
+    fn get_debug_clipboard_text(&mut self) -> Option<String> {
+        None
+    }
 }
 
 struct DebugNetContext<'a> {
@@ -986,10 +990,20 @@ impl ClientInputState {
         })
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_options_screen_key(
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
+    ) -> bool {
+        self.handle_debug_options_screen_key_with_clipboard(physical_key, state, None)
+    }
+
+    pub(crate) fn handle_debug_options_screen_key_with_clipboard(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        mut clipboard: Option<&mut dyn DebugClipboard>,
     ) -> bool {
         if self.debug_options_screen.is_none() {
             return false;
@@ -1018,6 +1032,37 @@ impl ClientInputState {
             KeyCode::KeyA if self.control_down() && !self.shift_down() => {
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     select_debug_options_search_text(screen);
+                }
+            }
+            KeyCode::KeyC if self.control_down() && !self.shift_down() => {
+                if let (Some(screen), Some(clipboard)) =
+                    (self.debug_options_screen.as_ref(), clipboard.as_deref_mut())
+                {
+                    clipboard.set_debug_clipboard_text(&debug_options_search_selected_text(screen));
+                }
+            }
+            KeyCode::KeyV if self.control_down() && !self.shift_down() => {
+                if let (Some(text), Some(screen)) = (
+                    clipboard
+                        .as_deref_mut()
+                        .and_then(|clipboard| clipboard.get_debug_clipboard_text()),
+                    self.debug_options_screen.as_mut(),
+                ) {
+                    insert_debug_options_search_text(screen, &text);
+                }
+            }
+            KeyCode::KeyX if self.control_down() && !self.shift_down() => {
+                if let (Some(screen), Some(clipboard)) =
+                    (self.debug_options_screen.as_mut(), clipboard.as_deref_mut())
+                {
+                    let selected = debug_options_search_selected_text(screen);
+                    if clipboard.set_debug_clipboard_text(&selected) {
+                        let before = screen.search_text.clone();
+                        delete_debug_options_search_selection(screen);
+                        if screen.search_text != before {
+                            screen.scroll_row = 0;
+                        }
+                    }
                 }
             }
             KeyCode::ArrowLeft => {
@@ -2061,6 +2106,17 @@ fn move_debug_options_search_cursor(
 fn select_debug_options_search_text(screen: &mut DebugOptionsScreenState) {
     screen.search_selection = 0;
     screen.search_cursor = text_edit::char_len(&screen.search_text);
+}
+
+fn debug_options_search_selected_text(screen: &DebugOptionsScreenState) -> String {
+    if screen.search_selection == screen.search_cursor {
+        return String::new();
+    }
+    let start = screen.search_selection.min(screen.search_cursor);
+    let end = screen.search_selection.max(screen.search_cursor);
+    let start_byte = text_edit::byte_index(&screen.search_text, start);
+    let end_byte = text_edit::byte_index(&screen.search_text, end);
+    screen.search_text[start_byte..end_byte].to_string()
 }
 
 fn delete_debug_options_search_selection(screen: &mut DebugOptionsScreenState) -> bool {

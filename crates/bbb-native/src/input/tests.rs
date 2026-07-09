@@ -169,6 +169,13 @@ impl MockDebugClipboard {
             accepts_text: true,
         }
     }
+
+    fn with_text(text: impl Into<String>) -> Self {
+        Self {
+            text: Some(text.into()),
+            accepts_text: true,
+        }
+    }
 }
 
 impl DebugClipboard for MockDebugClipboard {
@@ -179,6 +186,10 @@ impl DebugClipboard for MockDebugClipboard {
         } else {
             false
         }
+    }
+
+    fn get_debug_clipboard_text(&mut self) -> Option<String> {
+        self.text.clone()
     }
 }
 
@@ -2993,6 +3004,111 @@ fn debug_options_screen_search_uses_editbox_filter_and_default_max_length() {
     assert_eq!(debug_options_search_len(&screen.search_text), 32);
     assert_eq!(screen.search_cursor, 32);
     assert_eq!(screen.search_selection, 32);
+}
+
+#[test]
+fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("chunk stats"));
+
+    let mut clipboard = MockDebugClipboard::with_text("stale");
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    assert_eq!(clipboard.text.as_deref(), Some("chunk stats"));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "chunk stats");
+        assert_eq!(screen.search_cursor, 11);
+        assert_eq!(screen.search_selection, 0);
+    }
+
+    clipboard.text = Some("entity_hitboxes".to_string());
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyV),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "entity_hitboxes");
+        assert_eq!(screen.search_cursor, 15);
+        assert_eq!(screen.search_selection, 15);
+    }
+
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyX),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    assert_eq!(clipboard.text.as_deref(), Some("entity_hitboxes"));
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_text, "");
+        assert_eq!(screen.search_cursor, 0);
+        assert_eq!(screen.search_selection, 0);
+    }
+
+    clipboard.text = Some("abc\u{a7}\ndef".to_string());
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyV),
+        ElementState::Pressed,
+        Some(&mut clipboard),
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(winit::dpi::PhysicalSize::new(420, 240), false)
+        .unwrap();
+    assert_eq!(state.search_text, "abcdef");
+    assert_eq!(state.search_cursor, 6);
+    assert_eq!(state.search_selection, 6);
+
+    let mut rejecting_clipboard = MockDebugClipboard {
+        text: None,
+        accepts_text: false,
+    };
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+        Some(&mut rejecting_clipboard),
+    ));
+    assert!(input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyX),
+        ElementState::Pressed,
+        Some(&mut rejecting_clipboard),
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    ));
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_text, "abcdef");
+    assert_eq!(screen.search_cursor, 6);
+    assert_eq!(screen.search_selection, 0);
 }
 
 #[test]

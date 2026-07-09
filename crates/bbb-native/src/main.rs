@@ -88,19 +88,24 @@ struct NativeDebugClipboard {
     clipboard: Option<arboard::Clipboard>,
 }
 
-impl DebugClipboard for NativeDebugClipboard {
-    fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
+impl NativeDebugClipboard {
+    fn clipboard_mut(&mut self) -> Option<&mut arboard::Clipboard> {
         if self.clipboard.is_none() {
             match arboard::Clipboard::new() {
                 Ok(clipboard) => self.clipboard = Some(clipboard),
                 Err(err) => {
                     tracing::warn!(?err, "debug clipboard unavailable");
-                    return false;
+                    return None;
                 }
             }
         }
+        self.clipboard.as_mut()
+    }
+}
 
-        let Some(clipboard) = self.clipboard.as_mut() else {
+impl DebugClipboard for NativeDebugClipboard {
+    fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
+        let Some(clipboard) = self.clipboard_mut() else {
             return false;
         };
         if let Err(err) = clipboard.set_text(text.to_string()) {
@@ -108,6 +113,17 @@ impl DebugClipboard for NativeDebugClipboard {
             return false;
         }
         true
+    }
+
+    fn get_debug_clipboard_text(&mut self) -> Option<String> {
+        let clipboard = self.clipboard_mut()?;
+        match clipboard.get_text() {
+            Ok(text) => Some(text),
+            Err(err) => {
+                tracing::warn!(?err, "failed to get debug clipboard text");
+                None
+            }
+        }
     }
 }
 
@@ -455,7 +471,11 @@ fn main() -> Result<()> {
                         }
                         return;
                     }
-                    if input.handle_debug_options_screen_key(event.physical_key, event.state) {
+                    if input.handle_debug_options_screen_key_with_clipboard(
+                        event.physical_key,
+                        event.state,
+                        Some(&mut debug_clipboard),
+                    ) {
                         if runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                         }
