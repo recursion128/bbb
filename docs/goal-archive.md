@@ -6247,6 +6247,14 @@
   并按 vanilla 1..127 clamp 后再保存。边界：非默认 `wasOnGround`、更广泛的
   Mob save data、passengers 以及其他 entity-specific `addAdditionalSaveData`
   仍待本地 state owner 后才能关闭完整 `saveWithoutId` parity。
+- [x] debug overlay F3+I local snow-golem save field（P2 native slice，
+  2026-07-09）：依据 `SnowGolem.addAdditionalSaveData` 先调用 `Mob` 保存链，再从
+  `SnowGolem.hasPumpkin()` 写 `Pumpkin`；该方法读取 `DATA_PUMPKIN_ID` 16 的 bit
+  16，vanilla 默认 true。native 现在对授权 Shift+F3+I 本地 snow-golem
+  recreate command 追加 Mob 字段和 `Pumpkin`，该值来自 synced metadata id 16
+  或原版默认值。边界：更广泛的 Mob save data、passengers 以及其他
+  entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

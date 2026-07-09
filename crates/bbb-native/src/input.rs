@@ -10,6 +10,7 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_CREEPER_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -203,6 +204,9 @@ const SLIME_DEFAULT_SIZE: i32 = 1;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
 const SLIME_DEFAULT_WAS_ON_GROUND: bool = false;
+const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
+const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
+const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3516,6 +3520,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_slime_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_snow_golem_additional_save_data(entity, fields);
+        }
         _ => {}
     }
 }
@@ -3560,6 +3568,15 @@ fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<
     fields.push(format!(
         "wasOnGround: {}",
         debug_snbt_bool(SLIME_DEFAULT_WAS_ON_GROUND)
+    ));
+}
+
+fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, SNOW_GOLEM_PUMPKIN_DATA_ID)
+        .unwrap_or(SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS);
+    fields.push(format!(
+        "Pumpkin: {}",
+        debug_snbt_bool(flags & SNOW_GOLEM_PUMPKIN_FLAG != 0)
     ));
 }
 
