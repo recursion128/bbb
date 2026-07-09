@@ -1150,8 +1150,9 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage, profiling metrics recorder/output,
+    ominous bottle amplifier line, potion custom-effect lines, F3+I full local
+    entity saveWithoutId parity, full vanilla profiler section coverage,
+    profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
@@ -1220,6 +1221,19 @@ When an agent does any of the following, update this file in the same slice:
     future work; the following 2026-07-09 item covers that. Remaining component
     providers, `TooltipDisplay` hiding, and options persistence remain future
     work.
+  - Done 2026-07-09 — Advanced tooltip potion custom-effect lines. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.POTION_CONTENTS, ...)` after firework
+    explosion and before jukebox playable; `PotionContents.getAllEffects`
+    includes `customEffects`, and `addPotionTooltip` emits effect description,
+    amplifier potency, `StringUtil.formatTickDuration` duration, and category
+    formatting (`HARMFUL` -> red, `BENEFICIAL`/`NEUTRAL` -> blue). bbb now
+    shares the vanilla 26.1 mob-effect id/key/category table between
+    item-model exact predicates and tooltip projection, then emits decoded
+    potion custom effects in vanilla provider order. Boundary: base potion
+    holder effect lists, potion attribute modifier sub-lines, dynamic
+    non-20-TPS duration, `TooltipDisplay` hiding, and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
     Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
     coalesces adjacent equal `FireworkExplosion` values, emits gray
@@ -2447,7 +2461,7 @@ When an agent does any of the following, update this file in the same slice:
     charged-projectiles headers, container-loot unknown-content line, container
     item-count/more rows, direct jukebox song descriptions, direct armor trim
     rows, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line.
+    amplifier line, and potion custom-effect lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2715,7 +2729,8 @@ When an agent does any of the following, update this file in the same slice:
     plus charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line are covered by later entries.
+    ominous bottle amplifier line, and potion custom-effect lines are covered
+    by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3396,8 +3411,9 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
-    ominous bottle amplifier line, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage, profiling metrics recorder/output,
+    ominous bottle amplifier line, and potion custom-effect lines, F3+I full
+    local entity saveWithoutId parity, full vanilla profiler section coverage,
+    profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining actions/subscreens.

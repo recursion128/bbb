@@ -230,6 +230,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
                 "effect.minecraft.bad_omen": "Bad Omen",
+                "effect.minecraft.poison": "Poison",
+                "potion.potency.1": "II",
                 "potion.potency.3": "IV",
                 "potion.withAmplifier": "%s %s",
                 "potion.withDuration": "%s (%s)",
@@ -558,6 +560,30 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Projectile: Charged Custom", TOOLTIP_TEXT_WHITE),
             tooltip_line("Flight Duration: 1", TOOLTIP_TEXT_GRAY),
             lore_line("After charged projectiles"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                potion_custom_effects: vec![MobEffectInstanceSummary {
+                    effect_id: 18,
+                    amplifier: 1,
+                    duration: 200,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    hidden_effect: None,
+                }],
+                lore: vec!["After potion".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Poison II (00:10)", TOOLTIP_TEXT_RED),
+            lore_line("After potion"),
         ])
     );
     assert_eq!(

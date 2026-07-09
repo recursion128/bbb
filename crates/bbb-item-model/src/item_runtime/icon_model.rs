@@ -20,6 +20,7 @@ use chrono::{
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
+use super::mob_effects::vanilla_mob_effect_key;
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
     ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
@@ -147,48 +148,6 @@ const VANILLA_POTION_KEYS: &[&str] = &[
     "minecraft:weaving",
     "minecraft:oozing",
     "minecraft:infested",
-];
-const VANILLA_MOB_EFFECT_KEYS: &[&str] = &[
-    "minecraft:speed",
-    "minecraft:slowness",
-    "minecraft:haste",
-    "minecraft:mining_fatigue",
-    "minecraft:strength",
-    "minecraft:instant_health",
-    "minecraft:instant_damage",
-    "minecraft:jump_boost",
-    "minecraft:nausea",
-    "minecraft:regeneration",
-    "minecraft:resistance",
-    "minecraft:fire_resistance",
-    "minecraft:water_breathing",
-    "minecraft:invisibility",
-    "minecraft:blindness",
-    "minecraft:night_vision",
-    "minecraft:hunger",
-    "minecraft:weakness",
-    "minecraft:poison",
-    "minecraft:wither",
-    "minecraft:health_boost",
-    "minecraft:absorption",
-    "minecraft:saturation",
-    "minecraft:glowing",
-    "minecraft:levitation",
-    "minecraft:luck",
-    "minecraft:unluck",
-    "minecraft:slow_falling",
-    "minecraft:conduit_power",
-    "minecraft:dolphins_grace",
-    "minecraft:bad_omen",
-    "minecraft:hero_of_the_village",
-    "minecraft:darkness",
-    "minecraft:trial_omen",
-    "minecraft:raid_omen",
-    "minecraft:wind_charged",
-    "minecraft:weaving",
-    "minecraft:oozing",
-    "minecraft:infested",
-    "minecraft:breath_of_the_nautilus",
 ];
 const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:desert",
@@ -6085,10 +6044,7 @@ fn mob_effect_instance_exact_match(
     expected: &ExactMobEffectInstance<'_>,
     actual: &MobEffectInstanceSummary,
 ) -> bool {
-    let Ok(actual_index) = usize::try_from(actual.effect_id) else {
-        return false;
-    };
-    VANILLA_MOB_EFFECT_KEYS.get(actual_index) == Some(&expected.effect_key)
+    vanilla_mob_effect_key(actual.effect_id) == Some(expected.effect_key)
         && expected.details.matches_instance(actual)
 }
 

@@ -76,6 +76,7 @@ use profile_skin::{entity_player_skin_model, profile_default_player_skin, profil
 use crate::font::load_hud_font_atlas;
 
 mod icon;
+mod mob_effects;
 mod profiles;
 mod tables;
 mod tooltip;
@@ -213,6 +214,8 @@ const TOOLTIP_TEXT_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0
 const TOOLTIP_TEXT_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 
 const TOOLTIP_TEXT_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
+
+const TOOLTIP_TEXT_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 
 const BREWING_POTION_ITEM_IDS: &[&str] = &[
     "minecraft:potion",

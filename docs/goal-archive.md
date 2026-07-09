@@ -6480,6 +6480,15 @@
   explosion single/multiple-star grouping 仍待后续；该边界由下面的 grouped
   firework slice 覆盖。其它 component provider tooltip、`TooltipDisplay`
   hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip potion custom-effect lines（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 firework explosion 之后、
+  jukebox playable 之前调用 `DataComponents.POTION_CONTENTS` provider，以及
+  `PotionContents.addPotionTooltip` 对 `customEffects` 输出 effect description、
+  amplifier potency、`StringUtil.formatTickDuration` duration 和 category formatting，
+  native item tooltip 现在共享 vanilla 26.1 mob-effect id/key/category 表并把 decoded
+  potion custom effects 投影为红/蓝本地化 effect 行。边界：base potion holder
+  effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration、
+  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip rocket firework explosion grouping（P2 item-runtime
   slice，2026-07-09）：依据 `Fireworks.addToTooltip` 对相邻相同 explosion 分组，
   单个输出 `item.minecraft.firework_rocket.single_star(shape)`，多个输出

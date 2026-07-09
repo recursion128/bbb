@@ -365,8 +365,8 @@ Screen Render Surfaces" 条目）：
   flight/direct/grouped explosion lines, charged-projectiles headers, and
   container-loot unknown-content line, container item-count/more rows, direct
   jukebox song descriptions, direct armor trim rows, dynamic profile line, and
-  intangible projectile line, ominous bottle amplifier line、F3+I full local
-  entity saveWithoutId parity、
+  intangible projectile line, ominous bottle amplifier line, potion custom-effect
+  lines、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，

@@ -1,5 +1,8 @@
-use bbb_protocol::{ComponentStyle, StyledTextRun};
+use bbb_protocol::{packets::MobEffectInstanceSummary, ComponentStyle, StyledTextRun};
 
+use super::mob_effects::{
+    vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
+};
 use super::*;
 
 /// Vanilla `ItemLore.LORE_STYLE`
@@ -272,7 +275,42 @@ fn push_ominous_bottle_tooltip_lines(
         return;
     };
 
-    let mut effect = language.get_or_key("effect.minecraft.bad_omen").to_string();
+    lines.push(NativeItemTooltipLine::plain(
+        potion_effect_tooltip_text(
+            language,
+            "minecraft:bad_omen",
+            amplifier,
+            OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS,
+        ),
+        TOOLTIP_TEXT_BLUE,
+    ));
+}
+
+fn push_potion_contents_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    for effect in &component_patch.potion_custom_effects {
+        let Some(effect_key) = vanilla_mob_effect_key(effect.effect_id) else {
+            continue;
+        };
+        lines.push(NativeItemTooltipLine::plain(
+            potion_effect_tooltip_text(language, effect_key, effect.amplifier, effect.duration),
+            mob_effect_tooltip_tint(effect),
+        ));
+    }
+}
+
+fn potion_effect_tooltip_text(
+    language: &LanguageCatalog,
+    effect_key: &str,
+    amplifier: i32,
+    duration_ticks: i32,
+) -> String {
+    let mut effect = language
+        .get_or_key(&description_key("effect", effect_key))
+        .to_string();
     if amplifier > 0 {
         let potency = language
             .get_or_key(&format!("potion.potency.{amplifier}"))
@@ -280,14 +318,26 @@ fn push_ominous_bottle_tooltip_lines(
         effect = translate_with_two_args(language, "potion.withAmplifier", &effect, &potency);
     }
 
-    let duration = format_tick_duration(
-        OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS,
-        DEFAULT_TOOLTIP_TICKRATE,
-    );
-    lines.push(NativeItemTooltipLine::plain(
-        translate_with_two_args(language, "potion.withDuration", &effect, &duration),
-        TOOLTIP_TEXT_BLUE,
-    ));
+    if duration_ticks == -1 || duration_ticks > 20 {
+        let duration = if duration_ticks == -1 {
+            language.get_or_key("effect.duration.infinite").to_string()
+        } else {
+            format_tick_duration(duration_ticks, DEFAULT_TOOLTIP_TICKRATE)
+        };
+        effect = translate_with_two_args(language, "potion.withDuration", &effect, &duration);
+    }
+
+    effect
+}
+
+fn mob_effect_tooltip_tint(effect: &MobEffectInstanceSummary) -> [f32; 4] {
+    match vanilla_mob_effect_category(effect.effect_id) {
+        Some(VanillaMobEffectCategory::Harmful) => TOOLTIP_TEXT_RED,
+        Some(VanillaMobEffectCategory::Beneficial | VanillaMobEffectCategory::Neutral) => {
+            TOOLTIP_TEXT_BLUE
+        }
+        None => TOOLTIP_TEXT_GRAY,
+    }
 }
 
 fn format_tick_duration(ticks: i32, tickrate: f32) -> String {
@@ -889,6 +939,7 @@ impl NativeItemRuntime {
             &mut lines,
         );
         push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
+        push_potion_contents_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_jukebox_playable_tooltip_lines(
             stack.component_patch.jukebox_direct_song.as_ref(),
             &mut lines,
