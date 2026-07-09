@@ -40,6 +40,21 @@ fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTool
     }
 }
 
+fn italic_plain_tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: None,
+        }],
+    }
+}
+
 /// A hover-name line: vanilla `getStyledHoverName` wraps the name in the
 /// rarity colour and italicizes custom names.
 fn name_line(text: &str, tint: [f32; 4], color: u32, italic: bool) -> NativeItemTooltipLine {
@@ -220,6 +235,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.dyed": "Dyed",
                 "item.color": "Color: %s",
                 "item.container.loot_table.unknown": "Unknown contents",
+                "item.container.item_count": "%s x%s",
+                "item.container.more_items": "and %s more...",
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
@@ -601,6 +618,34 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Bees: 1 / 3", TOOLTIP_TEXT_GRAY),
             tooltip_line("Unknown contents", TOOLTIP_TEXT_WHITE),
             lore_line("After container loot"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                container_item_count: Some(6),
+                container_items: (1..=6)
+                    .map(|count| ItemStackTemplateSummary {
+                        item_id: 0,
+                        count,
+                        component_patch: DataComponentPatchSummary::default(),
+                    })
+                    .collect(),
+                lore: vec!["After container items".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Test Combo x1", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Combo x2", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Combo x3", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Combo x4", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Combo x5", TOOLTIP_TEXT_WHITE),
+            italic_plain_tooltip_line("and 1 more...", TOOLTIP_TEXT_WHITE),
+            lore_line("After container items"),
         ])
     );
     assert_eq!(

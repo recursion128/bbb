@@ -6509,6 +6509,13 @@
   unknown-content 行。边界：summary 仍跳过 loot-table/seed NBT payload，因为 vanilla
   tooltip 只依赖 presence；其它 component provider tooltip、`TooltipDisplay`
   hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip container item-count rows（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemContainerContents.addToTooltip` 遍历非空 container slots，
+  最多输出五行 `item.container.item_count(display_name, count)`，更多非空 stack
+  时输出 italic `item.container.more_items(remaining)`，native item tooltip 现在把
+  decoded `minecraft:container` item templates 按 provider 顺序投影为 item-count 和
+  more rows。边界：nested display-name run styling 精确还原、递归 nested item detail
+  rows、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip direct jukebox song description（P2 item-runtime slice，
   2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 potion contents 之后、
   trim/enchantments/dyed-color 之前调用 `DataComponents.JUKEBOX_PLAYABLE` provider，

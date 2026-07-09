@@ -232,6 +232,21 @@ fn charged_projectile_group_tooltip_text(
     }
 }
 
+fn item_container_more_tooltip_line(text: String) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.clone(),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs: vec![HudStyledTextRun {
+            text,
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: None,
+        }],
+    }
+}
+
 fn push_dyed_color_tooltip_lines(
     language: &LanguageCatalog,
     dyed_color: Option<i32>,
@@ -648,12 +663,12 @@ pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
 }
 
 impl NativeItemRuntime {
-    fn projectile_hover_name(&self, projectile: &ItemStackTemplateSummary) -> Option<String> {
-        let resource_id = self.registry.as_ref()?.resource_id(projectile.item_id)?;
+    fn template_hover_name(&self, item: &ItemStackTemplateSummary) -> Option<String> {
+        let resource_id = self.registry.as_ref()?.resource_id(item.item_id)?;
         Some(hover_name_for_component_patch(
             &self.language,
             resource_id,
-            &projectile.component_patch,
+            &item.component_patch,
         ))
     }
 
@@ -663,7 +678,7 @@ impl NativeItemRuntime {
         count: usize,
         lines: &mut Vec<NativeItemTooltipLine>,
     ) {
-        let Some(projectile_name) = self.projectile_hover_name(projectile) else {
+        let Some(projectile_name) = self.template_hover_name(projectile) else {
             return;
         };
         lines.push(NativeItemTooltipLine::plain(
@@ -697,6 +712,42 @@ impl NativeItemRuntime {
         }
         if let Some(projectile) = current {
             self.push_charged_projectile_group_tooltip_line(projectile, count, lines);
+        }
+    }
+
+    fn push_container_items_tooltip_lines(
+        &self,
+        items: &[ItemStackTemplateSummary],
+        lines: &mut Vec<NativeItemTooltipLine>,
+    ) {
+        let mut line_count = 0;
+        let item_count = items.len();
+        for item in items {
+            if line_count > 4 {
+                continue;
+            }
+            line_count += 1;
+            let Some(item_name) = self.template_hover_name(item) else {
+                continue;
+            };
+            lines.push(NativeItemTooltipLine::plain(
+                translate_with_two_args(
+                    &self.language,
+                    "item.container.item_count",
+                    &item_name,
+                    &item.count.to_string(),
+                ),
+                TOOLTIP_TEXT_WHITE,
+            ));
+        }
+
+        let hidden_count = item_count.saturating_sub(line_count);
+        if hidden_count > 0 {
+            lines.push(item_container_more_tooltip_line(translate_with_first_arg(
+                &self.language,
+                "item.container.more_items",
+                &hidden_count.to_string(),
+            )));
         }
     }
 
@@ -742,6 +793,7 @@ impl NativeItemRuntime {
             stack.component_patch.container_loot,
             &mut lines,
         );
+        self.push_container_items_tooltip_lines(&stack.component_patch.container_items, &mut lines);
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
