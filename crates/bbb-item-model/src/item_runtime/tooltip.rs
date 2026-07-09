@@ -1,10 +1,14 @@
 use bbb_protocol::{
     entity_types::vanilla_entity_type_allowed_in_peaceful,
-    packets::{AdventureModePredicateSummary, PaintingVariantSummary, SuspiciousStewEffectSummary},
+    packets::{
+        AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
+        SuspiciousStewEffectSummary,
+    },
     ComponentStyle, StyledTextRun,
 };
 use bbb_world::RegistrySet;
 
+use super::attributes::{vanilla_attribute, VanillaAttributeSentiment};
 use super::icon_model::{
     VANILLA_TRIM_MATERIAL_COLORS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
@@ -72,6 +76,7 @@ const COMPONENT_LORE_TYPE_ID: i32 = 11;
 const COMPONENT_ENCHANTMENTS_TYPE_ID: i32 = 13;
 const COMPONENT_CAN_PLACE_ON_TYPE_ID: i32 = 14;
 const COMPONENT_CAN_BREAK_TYPE_ID: i32 = 15;
+const COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID: i32 = 16;
 const COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID: i32 = 22;
 const COMPONENT_MAP_ID_TYPE_ID: i32 = 46;
 const COMPONENT_STORED_ENCHANTMENTS_TYPE_ID: i32 = 42;
@@ -97,6 +102,10 @@ const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
 const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
 const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
 const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 = 60;
+const EQUIPMENT_SLOT_GROUP_KEYS: &[&str] = &[
+    "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor", "body",
+    "saddle",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct VanillaPaintingVariant {
@@ -1901,6 +1910,114 @@ fn format_attribute_modifier_amount(amount: f64) -> String {
     }
 }
 
+fn push_stack_attribute_modifiers_tooltip_lines(
+    language: &LanguageCatalog,
+    modifiers: &[AttributeModifierSummary],
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    for (slot_id, slot_key) in EQUIPMENT_SLOT_GROUP_KEYS.iter().copied().enumerate() {
+        let Ok(slot_id) = i32::try_from(slot_id) else {
+            continue;
+        };
+        let mut first = true;
+        for modifier in modifiers
+            .iter()
+            .filter(|modifier| modifier.slot_id == slot_id)
+        {
+            if modifier.display_id == 1 {
+                continue;
+            }
+            let Some(line) = stack_attribute_modifier_tooltip_line(language, modifier) else {
+                continue;
+            };
+            if first {
+                lines.push(NativeItemTooltipLine::plain(
+                    String::new(),
+                    TOOLTIP_TEXT_WHITE,
+                ));
+                lines.push(NativeItemTooltipLine::plain(
+                    language
+                        .get_or_key(&format!("item.modifiers.{slot_key}"))
+                        .to_string(),
+                    TOOLTIP_TEXT_GRAY,
+                ));
+                first = false;
+            }
+            lines.push(line);
+        }
+    }
+}
+
+fn stack_attribute_modifier_tooltip_line(
+    language: &LanguageCatalog,
+    modifier: &AttributeModifierSummary,
+) -> Option<NativeItemTooltipLine> {
+    if modifier.display_id == 2 {
+        return modifier
+            .display_text
+            .as_ref()
+            .map(|text| NativeItemTooltipLine::plain(text.clone(), TOOLTIP_TEXT_WHITE));
+    }
+
+    let attribute = vanilla_attribute(modifier.attribute_id)?;
+    let amount = f64::from_bits(modifier.amount_bits);
+    if amount == 0.0 {
+        return None;
+    }
+    let mut display_amount = if modifier.operation_id == 1 || modifier.operation_id == 2 {
+        amount * 100.0
+    } else if attribute.key == "minecraft:knockback_resistance" {
+        amount * 10.0
+    } else {
+        amount
+    };
+    let (key_prefix, tint) = if amount > 0.0 {
+        (
+            "attribute.modifier.plus",
+            stack_attribute_modifier_tint(attribute.sentiment, true),
+        )
+    } else {
+        display_amount *= -1.0;
+        (
+            "attribute.modifier.take",
+            stack_attribute_modifier_tint(attribute.sentiment, false),
+        )
+    };
+    let amount = format_attribute_modifier_amount(display_amount);
+    let attribute_name = language.get_or_key(attribute.description_key).to_string();
+    let text = translate_with_two_args(
+        language,
+        &format!("{key_prefix}.{}", modifier.operation_id),
+        &amount,
+        &attribute_name,
+    )
+    .replace("%%", "%");
+    Some(NativeItemTooltipLine::plain(text, tint))
+}
+
+fn stack_attribute_modifier_tint(
+    sentiment: VanillaAttributeSentiment,
+    value_increase: bool,
+) -> [f32; 4] {
+    match sentiment {
+        VanillaAttributeSentiment::Positive => {
+            if value_increase {
+                TOOLTIP_TEXT_BLUE
+            } else {
+                TOOLTIP_TEXT_RED
+            }
+        }
+        VanillaAttributeSentiment::Neutral => TOOLTIP_TEXT_GRAY,
+        VanillaAttributeSentiment::Negative => {
+            if value_increase {
+                TOOLTIP_TEXT_RED
+            } else {
+                TOOLTIP_TEXT_BLUE
+            }
+        }
+    }
+}
+
 fn push_suspicious_stew_tooltip_lines(
     language: &LanguageCatalog,
     effects: &[SuspiciousStewEffectSummary],
@@ -2950,6 +3067,13 @@ impl NativeItemRuntime {
                             &LORE_STYLE,
                         ),
                     }),
+            );
+        }
+        if shows(COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID) {
+            push_stack_attribute_modifiers_tooltip_lines(
+                &self.language,
+                &component_patch.attribute_modifiers,
+                lines,
             );
         }
         if shows(COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {

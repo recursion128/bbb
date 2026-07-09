@@ -333,9 +333,15 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "potion.withAmplifier": "%s %s",
                 "potion.withDuration": "%s (%s)",
                 "potion.whenDrank": "When Applied:",
+                "attribute.modifier.plus.0": "+%s %s",
                 "attribute.modifier.plus.2": "+%s%% %s",
                 "attribute.modifier.take.0": "-%s %s",
+                "attribute.modifier.take.2": "-%s%% %s",
+                "item.modifiers.mainhand": "When in Main Hand:",
+                "item.modifiers.offhand": "When in Off Hand:",
                 "attribute.name.attack_damage": "Attack Damage",
+                "attribute.name.attack_speed": "Attack Speed",
+                "attribute.name.knockback_resistance": "Knockback Resistance",
                 "attribute.name.movement_speed": "Speed",
                 "item.durability": "Durability: %s / %s",
                 "item.components": "%s component(s)",
@@ -761,6 +767,70 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
             tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    let stack_attribute_modifier = |attribute_id: i32,
+                                    amount: f64,
+                                    operation_id: i32,
+                                    slot_id: i32,
+                                    display_id: i32,
+                                    display_text: Option<&str>| {
+        AttributeModifierSummary {
+            attribute_id,
+            modifier_id: format!(
+                "minecraft:test_{attribute_id}_{operation_id}_{slot_id}_{display_id}"
+            ),
+            amount_bits: amount.to_bits(),
+            operation_id,
+            slot_id,
+            display_id,
+            display_text: display_text.map(str::to_string),
+        }
+    };
+    let attribute_modifier_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            attribute_modifiers: vec![
+                stack_attribute_modifier(2, 3.0, 0, 1, 0, None),
+                stack_attribute_modifier(4, -0.2, 2, 1, 0, None),
+                stack_attribute_modifier(16, 1.0, 0, 1, 1, None),
+                stack_attribute_modifier(2, 1.0, 0, 2, 2, Some("Heavy hit")),
+                stack_attribute_modifier(16, 0.5, 0, 2, 0, None),
+            ],
+            intangible_projectile: true,
+            lore: vec!["Before attributes".to_string()],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&attribute_modifier_stack),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before attributes"),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("+3 Attack Damage", TOOLTIP_TEXT_BLUE),
+            tooltip_line("-20% Attack Speed", TOOLTIP_TEXT_RED),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("When in Off Hand:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Heavy hit", TOOLTIP_TEXT_WHITE),
+            tooltip_line("+5 Knockback Resistance", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                tooltip_hidden_component_type_ids: vec![16],
+                ..attribute_modifier_stack.component_patch.clone()
+            },
+            ..attribute_modifier_stack
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("Before attributes"),
+            tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
         ])
     );
     assert_eq!(

@@ -1603,8 +1603,27 @@ When an agent does any of the following, update this file in the same slice:
     lore/attribute handling and before unbreakable, using gray
     `item.intangible`. bbb now records decoded `minecraft:intangible_projectile`
     presence and projects the gray Intangible line before Unbreakable.
-    Boundary: `TooltipDisplay` hiding, attribute tooltip parity, and remaining
+    Boundary: `TooltipDisplay` hiding is covered by the later gating item;
+    explicit decoded attribute modifier rows are covered by the attribute entry
+    below; default-item/enchantment/player-base attribute rows and remaining
     component providers remain future work.
+  - Done 2026-07-09 — Advanced tooltip explicit attribute modifier rows.
+    Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
+    `addAttributeTooltips` after lore/profile and before unit components;
+    `ItemAttributeModifiers.forEach` visits exact `EquipmentSlotGroup` ids in
+    vanilla order, honors hidden/default/override display modes, emits a blank
+    line plus gray `item.modifiers.<slot>` header before the first visible row
+    in each group, formats values with `ATTRIBUTE_MODIFIER_FORMAT` (`#.##`),
+    uses percentage templates for multiply operations, scales
+    `knockback_resistance` add rows by 10, and colors rows through the
+    attribute sentiment. bbb now projects decoded `minecraft:attribute_modifiers`
+    component entries after lore and before `Intangible`, applies hidden
+    component type id 16, supports display ids 0/1/2, slot group headers,
+    plus/take formatting including `%%` templates, knockback-resistance scaling,
+    and vanilla 26.1 built-in attribute id/name/sentiment order. Boundary:
+    player-aware base attack damage/speed `equals` rows, default item/enchantment
+    attribute sources outside the decoded stack component, styled override
+    components, and custom/datapack attribute registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip ominous bottle amplifier line. Vanilla
     anchors: `DataComponents.OMINOUS_BOTTLE_AMPLIFIER` uses
     `OminousBottleAmplifier.STREAM_CODEC` as a VarInt value 0..4; `ItemStack`
@@ -1615,8 +1634,9 @@ When an agent does any of the following, update this file in the same slice:
     bbb now records the decoded amplifier and emits the blue localized
     `Bad Omen <potency> (01:40:00)` line at default 20 TPS. Boundary: dynamic
     non-20-TPS tooltip duration is covered by the tick-rate entry above; generic
-    potion/effect registry names, `TooltipDisplay` hiding, attribute tooltip
-    parity, and remaining component providers remain future work.
+    potion/effect registry names, `TooltipDisplay` hiding, remaining
+    player/default/enchantment attribute tooltip parity, and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component

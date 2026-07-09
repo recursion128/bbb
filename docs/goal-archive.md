@@ -6834,8 +6834,9 @@
   之后、unbreakable 之前把 `DataComponents.INTANGIBLE_PROJECTILE` 作为 unit component
   输出灰色 `item.intangible`，protocol summary 现在记录 decoded
   `minecraft:intangible_projectile` presence，native item tooltip 输出灰色
-  `Intangible` 行。边界：`TooltipDisplay` hidden-components、attribute tooltip parity
-  与其它 component provider tooltip 仍未完成。
+  `Intangible` 行。边界：`TooltipDisplay` hidden-components 已由后续 gating 条目覆盖；
+  explicit decoded attribute modifier rows 已由后续 attribute 条目覆盖，default
+  item/enchantment/player-base attribute rows 与其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip ominous bottle amplifier line（P2 protocol +
   item-runtime slice，2026-07-09）：依据
   `DataComponents.OMINOUS_BOTTLE_AMPLIFIER` 的 VarInt network codec、
@@ -6845,5 +6846,18 @@
   summary 现在记录 decoded amplifier，native item tooltip 以默认 20 TPS 投影为
   蓝色 `Bad Omen <potency> (01:40:00)` 行。边界：非 20 TPS 动态 tooltip
   duration 已由 dynamic tick-rate 条目覆盖；generic potion/effect registry names、
-  `TooltipDisplay` hidden-components、attribute tooltip parity 与其它 component
-  provider tooltip 仍未完成。
+  `TooltipDisplay` hidden-components、remaining player/default/enchantment attribute
+  tooltip parity 与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip explicit attribute modifier rows（P2 item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 lore/profile 之后、
+  unit components 之前调用 `addAttributeTooltips`，以及
+  `ItemAttributeModifiers.forEach` 按 exact `EquipmentSlotGroup` id 分组、支持
+  hidden/default/override display mode、每组首行前追加空行和灰色
+  `item.modifiers.<slot>` header，native item tooltip 现在把 decoded
+  `minecraft:attribute_modifiers` component 投影为显式 attribute rows，应用 hidden
+  component type id 16，覆盖 default/hidden/override rows、slot group header、
+  `#.##` 数值格式、multiply operation 的 percent template、knockback resistance
+  ×10 显示缩放，以及 vanilla 26.1 built-in attribute id/name/sentiment order。边界：
+  player-aware base attack damage/speed `equals` rows、decoded stack component 之外的
+  default item/enchantment attribute sources、styled override components 与
+  custom/datapack attribute registry remap 仍属后续。
