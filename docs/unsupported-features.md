@@ -198,7 +198,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
   projection, remaining projectile owner references, left-owner flag, and non-default
-  private `hasBeenShot` projection, non-default private or otherwise unobserved
+  private `hasBeenShot` projection, non-default private projectile flags such as
+  `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   timer/counter projection (including non-default `SpectralArrow.duration`),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant

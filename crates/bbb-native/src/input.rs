@@ -47,14 +47,15 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
         VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -249,6 +250,8 @@ const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_DAMAGE: f64 = 2.0;
 const ABSTRACT_ARROW_DEFAULT_SOUND_EVENT: &str = "minecraft:entity.arrow.hit";
 const SPECTRAL_ARROW_DEFAULT_DURATION: i32 = 200;
+const TRIDENT_DEFAULT_SOUND_EVENT: &str = "minecraft:item.trident.hit_ground";
+const TRIDENT_DEFAULT_DEALT_DAMAGE: bool = false;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
@@ -4038,12 +4041,29 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         }
         VANILLA_ENTITY_TYPE_ARROW_ID => {
             debug_push_projectile_additional_save_data(fields);
-            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_abstract_arrow_additional_save_data(
+                entity,
+                fields,
+                ABSTRACT_ARROW_DEFAULT_SOUND_EVENT,
+            );
         }
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
             debug_push_projectile_additional_save_data(fields);
-            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_abstract_arrow_additional_save_data(
+                entity,
+                fields,
+                ABSTRACT_ARROW_DEFAULT_SOUND_EVENT,
+            );
             debug_push_spectral_arrow_additional_save_data(fields);
+        }
+        VANILLA_ENTITY_TYPE_TRIDENT_ID => {
+            debug_push_projectile_additional_save_data(fields);
+            debug_push_abstract_arrow_additional_save_data(
+                entity,
+                fields,
+                TRIDENT_DEFAULT_SOUND_EVENT,
+            );
+            debug_push_trident_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             debug_push_projectile_additional_save_data(fields);
@@ -4237,7 +4257,11 @@ fn debug_push_projectile_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("HasBeenShot: {}", debug_snbt_bool(false)));
 }
 
-fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_abstract_arrow_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+    default_sound_event: &str,
+) {
     let flags = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID).unwrap_or(0);
     let in_ground =
         debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID).unwrap_or(false);
@@ -4258,12 +4282,19 @@ fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: 
     fields.push(format!("PierceLevel: {pierce_level}b"));
     fields.push(format!(
         "SoundEvent: {}",
-        debug_snbt_string(ABSTRACT_ARROW_DEFAULT_SOUND_EVENT)
+        debug_snbt_string(default_sound_event)
     ));
 }
 
 fn debug_push_spectral_arrow_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("Duration: {SPECTRAL_ARROW_DEFAULT_DURATION}"));
+}
+
+fn debug_push_trident_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "DealtDamage: {}",
+        debug_snbt_bool(TRIDENT_DEFAULT_DEALT_DAMAGE)
+    ));
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(
