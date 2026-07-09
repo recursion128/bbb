@@ -8,9 +8,9 @@ use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
-        vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-        VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
-        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
+        vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
         VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
@@ -44,9 +44,10 @@ use bbb_protocol::{
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
-        Direction as ProtocolDirection, EntityDataRegistryHolder, EntityDataValueKind,
-        EntityTagQuery, GameType, InteractionHand, ItemStackSummary, PlayerActionKind,
-        PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
+        Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
+        EntityDataValueKind, EntityTagQuery, GameType, InteractionHand, ItemStackSummary,
+        PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements,
+        SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -232,6 +233,9 @@ const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
 const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
+const ARMADILLO_STATE_DATA_ID: u8 = 18;
+const ARMADILLO_STATE_IDLE_ID: i32 = 0;
+const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
 const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 const BEE_FLAG_HAS_STUNG: i8 = 4;
@@ -3708,6 +3712,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_bee_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_armadillo_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4033,6 +4043,29 @@ fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: 
         "Sitting: {}",
         debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)
     ));
+}
+
+fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let state_id = debug_entity_data_enum_id_present(
+        entity,
+        ARMADILLO_STATE_DATA_ID,
+        EntityDataEnumSerializer::ArmadilloState,
+    )
+    .unwrap_or(ARMADILLO_STATE_IDLE_ID);
+    fields.push(format!(
+        "state: {}",
+        debug_snbt_string(debug_armadillo_state_name(state_id))
+    ));
+    fields.push(format!("scute_time: {ARMADILLO_DEFAULT_SCUTE_TIME}"));
+}
+
+fn debug_armadillo_state_name(state_id: i32) -> &'static str {
+    match state_id {
+        1 => "rolling",
+        2 => "scared",
+        3 => "unrolling",
+        _ => "idle",
+    }
 }
 
 fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -4692,6 +4725,25 @@ fn debug_entity_data_registry_id_present(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId { serializer, id }
+                if *serializer == expected_serializer =>
+            {
+                Some(*id)
+            }
+            _ => None,
+        })
+}
+
+fn debug_entity_data_enum_id_present(
+    entity: &EntityState,
+    data_id: u8,
+    expected_serializer: EntityDataEnumSerializer,
+) -> Option<i32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::EnumId { serializer, id }
                 if *serializer == expected_serializer =>
             {
                 Some(*id)
