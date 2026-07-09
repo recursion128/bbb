@@ -193,6 +193,29 @@ impl DebugClipboard for MockDebugClipboard {
     }
 }
 
+struct VariableDebugOptionsSearchTextMeasurer;
+
+impl DebugOptionsSearchTextMeasurer for VariableDebugOptionsSearchTextMeasurer {
+    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize {
+        let mut width = 0;
+        let mut cursor = 0;
+        for ch in search_text.chars() {
+            let advance = match ch {
+                'i' => 2,
+                'w' => 7,
+                ' ' => 4,
+                _ => DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE,
+            };
+            if width + advance > offset {
+                break;
+            }
+            width += advance;
+            cursor += 1;
+        }
+        cursor
+    }
+}
+
 fn world_with_local_boat(player_id: i32) -> WorldStore {
     world_with_local_vehicle(player_id, 10, VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID)
 }
@@ -3171,6 +3194,50 @@ fn debug_options_screen_search_handles_mouse_click_and_drag_selection() {
         assert_eq!(screen.search_cursor, 9);
         assert_eq!(screen.search_selection, 5);
     }
+}
+
+#[test]
+fn debug_options_screen_search_mouse_hit_testing_uses_variable_text_measurer() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("iwx"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+    let measurer = VariableDebugOptionsSearchTextMeasurer;
+
+    assert!(
+        input.handle_debug_options_screen_mouse_input_with_text_measurer(
+            winit::event::MouseButton::Left,
+            ElementState::Pressed,
+            Some(winit::dpi::PhysicalPosition::new(
+                f64::from(text_x + 2),
+                f64::from(search_y + 2)
+            )),
+            surface,
+            false,
+            &measurer,
+        )
+    );
+    {
+        let screen = input.debug_options_screen.as_ref().unwrap();
+        assert_eq!(screen.search_cursor, 1);
+        assert_eq!(screen.search_selection, 1);
+    }
+
+    assert!(
+        input.handle_debug_options_screen_cursor_moved_with_text_measurer(
+            Some(winit::dpi::PhysicalPosition::new(
+                f64::from(text_x + 9),
+                f64::from(search_y + 18)
+            )),
+            surface,
+            &measurer,
+        )
+    );
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_cursor, 2);
+    assert_eq!(screen.search_selection, 1);
 }
 
 #[test]

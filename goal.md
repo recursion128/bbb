@@ -349,6 +349,7 @@ Screen Render Surfaces" 条目）：
   DebugOptionsScreen EditBox clipboard shortcuts、
   DebugOptionsScreen bordered search EditBox styling、
   DebugOptionsScreen search mouse selection behavior、
+  DebugOptionsScreen variable-width search hit-testing、
   ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
@@ -356,7 +357,7 @@ Screen Render Surfaces" 条目）：
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、DebugOptionsScreen narration/EditBox
-  variable-width mouse hit-testing/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen remaining buttons/actions，
+  horizontal scrolling/double-click selection/full widget styling polish、native pause tick-freeze eligibility/full PauseScreen remaining buttons/actions，
   低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉

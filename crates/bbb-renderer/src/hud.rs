@@ -1487,6 +1487,10 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn hud_plain_text_cursor_for_width(&self, text: &str, width: u32) -> Option<usize> {
+        hud_plain_text_cursor_for_width(text, width, &self.hud_font_glyphs)
+    }
+
     pub fn upload_hud_inventory_background(
         &mut self,
         width: u32,
@@ -10147,6 +10151,33 @@ fn hud_font_text_width_styled(
     )
 }
 
+/// Vanilla `Font.plainSubstrByWidth` cursor equivalent for a plain search
+/// field: include glyphs while the cumulative unstyled advance fits inside
+/// the caller's pixel budget.
+fn hud_plain_text_cursor_for_width(
+    text: &str,
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Option<usize> {
+    if glyphs.len() == 0 {
+        return None;
+    }
+    let mut used = 0u32;
+    let mut cursor = 0usize;
+    for ch in text.chars() {
+        let advance = hud_font_glyph(ch, glyphs).styled_advance(HudTextStyle::default());
+        let Some(next) = used.checked_add(advance) else {
+            break;
+        };
+        if next > width {
+            break;
+        }
+        used = next;
+        cursor += 1;
+    }
+    Some(cursor)
+}
+
 /// Vanilla `Font.width` across a line's styled runs: sum of per-glyph
 /// `GlyphInfo.getAdvance(style.isBold())` — bold widens each glyph by one
 /// font pixel; the unstyled default reproduces the prior plain-advance width
@@ -12807,6 +12838,32 @@ mod tests {
             );
         }
         glyphs
+    }
+
+    #[test]
+    fn plain_text_cursor_for_width_uses_loaded_glyph_advances() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance) in [('i', 2), ('w', 7), ('x', 6)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    width: advance,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+
+        assert_eq!(hud_plain_text_cursor_for_width("iwx", 0, &glyphs), Some(0));
+        assert_eq!(hud_plain_text_cursor_for_width("iwx", 2, &glyphs), Some(1));
+        assert_eq!(hud_plain_text_cursor_for_width("iwx", 8, &glyphs), Some(1));
+        assert_eq!(hud_plain_text_cursor_for_width("iwx", 9, &glyphs), Some(2));
+        assert_eq!(hud_plain_text_cursor_for_width("iwx", 15, &glyphs), Some(3));
+        assert_eq!(
+            hud_plain_text_cursor_for_width("iwx", 15, &HudFontGlyphMap::new()),
+            None
+        );
     }
 
     #[test]

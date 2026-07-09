@@ -83,6 +83,17 @@ use startup::{
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
+impl input::DebugOptionsSearchTextMeasurer for bbb_renderer::Renderer {
+    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize {
+        let offset = offset.max(0);
+        let width = u32::try_from(offset).unwrap_or(u32::MAX);
+        self.hud_plain_text_cursor_for_width(search_text, width)
+            .unwrap_or_else(|| {
+                input::debug_options_search_cursor_for_text_offset_fallback(search_text, offset)
+            })
+    }
+}
+
 #[derive(Default)]
 struct NativeDebugClipboard {
     clipboard: Option<arboard::Clipboard>,
@@ -428,9 +439,10 @@ fn main() -> Result<()> {
                         return;
                     }
                     if input.debug_options_screen_is_open() {
-                        input.handle_debug_options_screen_cursor_moved(
+                        input.handle_debug_options_screen_cursor_moved_with_text_measurer(
                             cursor_position,
                             window.inner_size(),
+                            &renderer,
                         );
                         return;
                     }
@@ -802,12 +814,13 @@ fn main() -> Result<()> {
                     }
                     if input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_debug_options_screen_mouse_input(
+                        input.handle_debug_options_screen_mouse_input_with_text_measurer(
                             button,
                             state,
                             cursor_position,
                             window.inner_size(),
                             world.local_player_has_reduced_debug_info(),
+                            &renderer,
                         );
                         return;
                     }

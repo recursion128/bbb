@@ -1147,8 +1147,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox mouse selection/full widget styling
-    polish, and native pause
+    DebugOptionsScreen narration/EditBox horizontal scrolling/double-click
+    selection/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
     (large, low priority).
 - Evidence / boundary:
@@ -1289,9 +1289,19 @@ When an agent does any of the following, update this file in the same slice:
     inner width from `textX`. bbb now lets DebugOptionsScreen left-click the
     search box to place the search cursor, Shift-click to extend the existing
     selection, drag from the search box to update the highlight, and release
-    left mouse to stop selection. Boundary: input hit-testing currently uses a
-    small native ASCII advance model instead of the renderer's loaded
-    variable-width `Font`, and double-click word selection, narration,
+    left mouse to stop selection. Boundary: double-click word selection,
+    narration, scrollbar dragging, exact text-field sprites/nine-slice texture,
+    and full widget sprite styling remain future polish; variable-width
+    hit-testing is covered by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen variable-width search
+    hit-testing. Vanilla anchors: `EditBox.findClickedPositionInText` clamps
+    `floor(mouseX) - textX` to `getInnerWidth`, then maps that pixel budget
+    through `Font.plainSubstrByWidth`. bbb now routes DebugOptionsScreen
+    search click and drag hit-testing through a text measurer; the main loop
+    supplies the renderer's loaded `HudFontGlyphMap` via
+    `Renderer::hud_plain_text_cursor_for_width`, with the previous ASCII
+    advance model retained for tests and no-font fallback. Boundary:
+    horizontal display scrolling, double-click word selection, narration,
     scrollbar dragging, exact text-field sprites/nine-slice texture, and full
     widget sprite styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
@@ -3116,8 +3126,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox mouse selection/full widget styling
-    polish, native pause
+    DebugOptionsScreen narration/EditBox horizontal scrolling/double-click
+    selection/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

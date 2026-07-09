@@ -113,6 +113,21 @@ const DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET: i32 = 4;
 const DEBUG_OPTIONS_SEARCH_INNER_WIDTH: i32 = DEBUG_OPTIONS_SEARCH_WIDTH - 8;
 const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
+
+pub(crate) trait DebugOptionsSearchTextMeasurer {
+    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize;
+}
+
+#[cfg(test)]
+pub(crate) struct DebugOptionsFallbackSearchTextMeasurer;
+
+#[cfg(test)]
+impl DebugOptionsSearchTextMeasurer for DebugOptionsFallbackSearchTextMeasurer {
+    fn debug_options_search_cursor_for_text_offset(&self, search_text: &str, offset: i32) -> usize {
+        debug_options_search_cursor_for_text_offset_fallback(search_text, offset)
+    }
+}
+
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH: i32 = 204;
 const PAUSE_SCREEN_HALF_BUTTON_WIDTH: i32 = 98;
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
@@ -1190,10 +1205,24 @@ impl ClientInputState {
         true
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_options_screen_cursor_moved(
         &mut self,
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        self.handle_debug_options_screen_cursor_moved_with_text_measurer(
+            cursor_position,
+            surface_size,
+            &DebugOptionsFallbackSearchTextMeasurer,
+        )
+    }
+
+    pub(crate) fn handle_debug_options_screen_cursor_moved_with_text_measurer(
+        &mut self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+        text_measurer: &dyn DebugOptionsSearchTextMeasurer,
     ) -> bool {
         let Some(screen) = self.debug_options_screen.as_mut() else {
             return false;
@@ -1201,13 +1230,18 @@ impl ClientInputState {
         let position = cursor_position.and_then(physical_position_floor_i32);
         screen.cursor_position = position;
         if let (true, Some((mouse_x, _))) = (screen.search_selecting, position) {
-            let cursor =
-                debug_options_search_cursor_for_mouse_x(&screen.search_text, mouse_x, surface_size);
+            let cursor = debug_options_search_cursor_for_mouse_x_with_text_measurer(
+                &screen.search_text,
+                mouse_x,
+                surface_size,
+                text_measurer,
+            );
             move_debug_options_search_cursor(screen, cursor, true);
         }
         true
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_options_screen_mouse_input(
         &mut self,
         button: MouseButton,
@@ -1215,6 +1249,25 @@ impl ClientInputState {
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
         reduced_debug_info: bool,
+    ) -> bool {
+        self.handle_debug_options_screen_mouse_input_with_text_measurer(
+            button,
+            state,
+            cursor_position,
+            surface_size,
+            reduced_debug_info,
+            &DebugOptionsFallbackSearchTextMeasurer,
+        )
+    }
+
+    pub(crate) fn handle_debug_options_screen_mouse_input_with_text_measurer(
+        &mut self,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+        reduced_debug_info: bool,
+        text_measurer: &dyn DebugOptionsSearchTextMeasurer,
     ) -> bool {
         if self.debug_options_screen.is_none() {
             return false;
@@ -1238,7 +1291,13 @@ impl ClientInputState {
             return true;
         };
         let search_cursor = self.debug_options_screen.as_ref().and_then(|screen| {
-            debug_options_search_cursor_at(&screen.search_text, mouse_x, mouse_y, surface_size)
+            debug_options_search_cursor_at_with_text_measurer(
+                &screen.search_text,
+                mouse_x,
+                mouse_y,
+                surface_size,
+                text_measurer,
+            )
         });
         if let Some(cursor) = search_cursor {
             let shift_down = self.shift_down();
@@ -2360,35 +2419,41 @@ fn debug_options_search_box_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, 
     )
 }
 
-fn debug_options_search_cursor_at(
+fn debug_options_search_cursor_at_with_text_measurer(
     search_text: &str,
     mouse_x: i32,
     mouse_y: i32,
     surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DebugOptionsSearchTextMeasurer,
 ) -> Option<usize> {
     let (x, y, width, height) = debug_options_search_box_rect(surface_size);
     if mouse_x < x || mouse_x >= x + width || mouse_y < y || mouse_y >= y + height {
         return None;
     }
-    Some(debug_options_search_cursor_for_mouse_x(
+    Some(debug_options_search_cursor_for_mouse_x_with_text_measurer(
         search_text,
         mouse_x,
         surface_size,
+        text_measurer,
     ))
 }
 
-fn debug_options_search_cursor_for_mouse_x(
+fn debug_options_search_cursor_for_mouse_x_with_text_measurer(
     search_text: &str,
     mouse_x: i32,
     surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DebugOptionsSearchTextMeasurer,
 ) -> usize {
     let (x, _, _, _) = debug_options_search_box_rect(surface_size);
     let position_in_text = (mouse_x - x - DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET)
         .clamp(0, DEBUG_OPTIONS_SEARCH_INNER_WIDTH);
-    debug_options_search_cursor_for_text_offset(search_text, position_in_text)
+    text_measurer.debug_options_search_cursor_for_text_offset(search_text, position_in_text)
 }
 
-fn debug_options_search_cursor_for_text_offset(search_text: &str, offset: i32) -> usize {
+pub(crate) fn debug_options_search_cursor_for_text_offset_fallback(
+    search_text: &str,
+    offset: i32,
+) -> usize {
     let mut width = 0;
     let mut cursor = 0;
     for ch in search_text.chars() {

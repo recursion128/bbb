@@ -6352,7 +6352,16 @@
   且 `findClickedPositionInText` 从 bordered `textX` 起按 inner width clamp，
   native 现在支持在 DebugOptionsScreen search box 中 left-click 定位 cursor、
   Shift-click 扩展选区、从搜索框内拖拽更新 highlight，并在 left release 结束拖拽。
-  边界：input hit-testing 目前使用小型 native ASCII advance model，而不是 renderer
-  已加载的 variable-width `Font`；double-click word selection、narration、
-  scrollbar dragging、精确 text-field sprite/nine-slice 与完整 widget sprite styling
-  仍待后续 polish。
+  边界：double-click word selection、narration、scrollbar dragging、精确 text-field
+  sprite/nine-slice 与完整 widget sprite styling 仍待后续 polish；variable-width
+  hit-testing 由后续 2026-07-09 条目补齐。
+- [x] debug overlay DebugOptionsScreen variable-width search hit-testing（P2
+  input/renderer/main slice，2026-07-09）：依据
+  `EditBox.findClickedPositionInText` 将 `floor(mouseX) - textX` clamp 到
+  `getInnerWidth`，再通过 `Font.plainSubstrByWidth` 映射像素预算，native 现在把
+  DebugOptionsScreen search click/drag hit-testing 路由到 text measurer；主循环传入
+  renderer 已加载的 `HudFontGlyphMap`，通过
+  `Renderer::hud_plain_text_cursor_for_width` 使用实际 glyph advance，测试/未加载字体
+  场景保留旧 ASCII advance fallback。边界：horizontal display scrolling、
+  double-click word selection、narration、scrollbar dragging、精确 text-field
+  sprite/nine-slice 与完整 widget sprite styling 仍待后续 polish。
