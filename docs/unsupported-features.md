@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2768,6 +2768,14 @@ When an agent does any of the following, update this file in the same slice:
     persistence, drop chances, leash/home, loot-table, custom data, passengers,
     and other entity-specific `addAdditionalSaveData` fields still need local
     state owners before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local creaking save field.
+    Vanilla anchors: `Creaking.addAdditionalSaveData` calls the Mob save chain
+    and then stores nullable `home_pos` from synced `Creaking.HOME_POS` (19)
+    with `BlockPos.CODEC`. bbb now appends the same local Mob fields plus
+    metadata-derived `home_pos: [I; x, y, z]` when present for authorized
+    Shift+F3+I local creaking recreate commands. Boundary: broader Mob save
+    data, passengers, and other entity-specific `addAdditionalSaveData` fields
+    still need local state owners before full `saveWithoutId` parity.
   - Done 2026-07-09 — Debug overlay F3+I local slime-family save fields.
     Vanilla anchors: `Slime.addAdditionalSaveData` calls `Mob` save data, then
     writes `Size` as `getSize() - 1` and `wasOnGround`; `MagmaCube` inherits
@@ -3895,7 +3903,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

@@ -9,13 +9,13 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -204,6 +204,7 @@ const CREEPER_DEFAULT_FUSE: i16 = 30;
 const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
 const CREEPER_DEFAULT_POWERED: bool = false;
 const CREEPER_DEFAULT_IGNITED: bool = false;
+const CREAKING_HOME_POS_DATA_ID: u8 = 19;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -3547,6 +3548,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_creeper_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_CREAKING_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_creaking_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_slime_additional_save_data(entity, fields);
@@ -3630,6 +3635,17 @@ fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Ve
         "ExplosionRadius: {CREEPER_DEFAULT_EXPLOSION_RADIUS}b"
     ));
     fields.push(format!("ignited: {}", debug_snbt_bool(ignited)));
+}
+
+fn debug_push_creaking_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    if let Some(home_pos) =
+        debug_entity_data_optional_block_pos_present(entity, CREAKING_HOME_POS_DATA_ID)
+    {
+        fields.push(format!(
+            "home_pos: [I; {}, {}, {}]",
+            home_pos.x, home_pos.y, home_pos.z
+        ));
+    }
 }
 
 fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

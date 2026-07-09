@@ -6239,6 +6239,13 @@
   pickup/persistence、drop chances、leash/home、loot table、custom data、
   passengers 以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state
   owner 后才能关闭完整 `saveWithoutId` parity。
+- [x] debug overlay F3+I local creaking save field（P2 native slice，
+  2026-07-09）：依据 `Creaking.addAdditionalSaveData` 调用 Mob 保存链后，用
+  `BlockPos.CODEC` 保存 nullable `home_pos`；该值来自 synced `Creaking.HOME_POS`
+  19。native 现在对授权 Shift+F3+I 本地 creaking recreate command 追加 Mob
+  字段，并在本地 metadata 存在时追加 `home_pos: [I; x, y, z]`。边界：更广泛的
+  Mob save data、passengers 以及其他 entity-specific `addAdditionalSaveData`
+  仍待本地 state owner 后才能关闭完整 `saveWithoutId` parity。
 - [x] debug overlay F3+I local slime-family save fields（P2 native slice，
   2026-07-09）：依据 `Slime.addAdditionalSaveData` 先调用 `Mob` 保存链，再以
   `getSize() - 1` 写 `Size`，并写 `wasOnGround`；`MagmaCube` 继承同一实现。
