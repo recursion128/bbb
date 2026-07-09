@@ -5381,9 +5381,19 @@
   `setScreen(null)` / `grabMouse()` 的行为。`ClientInputState` 现在跟踪 pause
   screen cursor，menu pause screen 左键点击 Return to Game rect 会关闭 screen；
   runtime 投影 hover，renderer 绘制 native Return to Game button，main 在
-  pause-screen close 后恢复 cursor capture。边界：dim background、Advancements、
-  Stats、feedback/custom-dialog、Options、Share to LAN / Player Reporting、
+  pause-screen close 后恢复 cursor capture。边界：dim background、Stats、
+  feedback/custom-dialog、Options、Share to LAN / Player Reporting、
   Disconnect、draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
+- [x] native PauseScreen(true) Advancements button（P2 input/runtime/renderer
+  slice，2026-07-09）：依据 `PauseScreen.createPauseMenu` 在 Return to Game 后
+  添加 half-width `gui.advancements` button，并在 grid `(0.5, 0.25)` alignment
+  下位于 `(width / 2 - 102, height / 4 + 32, 98, 20)`、点击后打开
+  `AdvancementsScreen` 的行为。native pause screen 现在投影 Advancements hover，
+  renderer 绘制该按钮，左键点击会关闭 pause shell、打开现有 native advancements
+  screen，并在有 visible root tab 时沿用既有 `SeenAdvancements::OpenedTab`
+  packet 语义。边界：parent-return behavior、Stats、feedback/custom-dialog、
+  Options、Share to LAN / Player Reporting、Disconnect、draft-report icon、dim
+  background、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

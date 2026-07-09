@@ -114,8 +114,10 @@ const DEBUG_OPTIONS_SEARCH_INNER_WIDTH: i32 = DEBUG_OPTIONS_SEARCH_WIDTH - 8;
 const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH: i32 = 204;
+const PAUSE_SCREEN_HALF_BUTTON_WIDTH: i32 = 98;
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
+const PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -1347,22 +1349,32 @@ impl ClientInputState {
 
     pub(crate) fn handle_debug_pause_screen_mouse_input(
         &mut self,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
         button: MouseButton,
         state: ElementState,
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
     ) -> bool {
-        let Some(screen) = self.debug_pause_screen.as_mut() else {
+        let Some((show_pause_menu, cursor_position)) =
+            self.debug_pause_screen.as_mut().map(|screen| {
+                screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
+                (screen.show_pause_menu, screen.cursor_position)
+            })
+        else {
             return false;
         };
-        screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
             return true;
         }
-        if screen.show_pause_menu
-            && pause_screen_return_to_game_button_contains(screen.cursor_position, surface_size)
-        {
-            self.close_debug_pause_screen();
+        if show_pause_menu {
+            if pause_screen_return_to_game_button_contains(cursor_position, surface_size) {
+                self.close_debug_pause_screen();
+            } else if pause_screen_advancements_button_contains(cursor_position, surface_size) {
+                self.close_debug_pause_screen();
+                open_advancements_screen(self, counters, world, net_commands);
+            }
         }
         true
     }
@@ -2415,6 +2427,17 @@ pub(crate) fn pause_screen_return_to_game_button_contains(
     mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
 }
 
+pub(crate) fn pause_screen_advancements_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_advancements_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
 fn pause_screen_return_to_game_button_rect(
     surface_size: PhysicalSize<u32>,
 ) -> (i32, i32, i32, i32) {
@@ -2424,6 +2447,17 @@ fn pause_screen_return_to_game_button_rect(
         width / 2 - PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH / 2,
         height / 4 + PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_advancements_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
 }

@@ -86,15 +86,15 @@ use crate::{
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
-        inventory_screen_selected_hotbar_slot_id, pause_screen_return_to_game_button_contains,
-        recipe_book_button_position, recipe_book_main_gui_offset,
-        recipe_book_tab_count_for_background, recipe_book_type_for_background,
-        recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
-        sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-        sync_stonecutter_recipe_scroll_state, ClientInputState, DebugOptionsScreenHudRow,
-        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
-        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, RECIPE_BOOK_BUTTON_HEIGHT,
-        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        inventory_screen_selected_hotbar_slot_id, pause_screen_advancements_button_contains,
+        pause_screen_return_to_game_button_contains, recipe_book_button_position,
+        recipe_book_main_gui_offset, recipe_book_tab_count_for_background,
+        recipe_book_type_for_background, recipe_book_type_settings,
+        recipe_book_visible_tab_indices, release_active_input, sync_beacon_effect_selection_state,
+        sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
+        DebugOptionsScreenHudRow, InventoryScreenBackground, RecipeBookOverlayHudState,
+        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
@@ -2929,6 +2929,8 @@ fn hud_pause_screen(
     let state = input.debug_pause_screen()?;
     let return_to_game_hovered = state.show_pause_menu
         && pause_screen_return_to_game_button_contains(state.cursor_position, surface_size);
+    let advancements_hovered = state.show_pause_menu
+        && pause_screen_advancements_button_contains(state.cursor_position, surface_size);
     Some(HudPauseScreen {
         title: if state.show_pause_menu {
             "Game Menu"
@@ -2938,6 +2940,7 @@ fn hud_pause_screen(
         .to_string(),
         show_pause_menu: state.show_pause_menu,
         return_to_game_hovered,
+        advancements_hovered,
     })
 }
 

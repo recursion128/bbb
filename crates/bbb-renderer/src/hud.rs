@@ -117,12 +117,14 @@ pub struct HudDebugOverlay {
 }
 
 /// Vanilla `PauseScreen` render-state shell: no-menu debug pause screens only submit the centered
-/// title row, while menu pause screens currently project the title and native return button.
+/// title row, while menu pause screens currently project the title, return button, and advancements
+/// button.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudPauseScreen {
     pub title: String,
     pub show_pause_menu: bool,
     pub return_to_game_hovered: bool,
+    pub advancements_hovered: bool,
 }
 
 /// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
@@ -563,8 +565,10 @@ const HUD_DEBUG_OPTIONS_SEARCH_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH: i32 = 6;
 const HUD_DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT: i32 = 32;
 const HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH: i32 = 204;
+const HUD_PAUSE_HALF_BUTTON_WIDTH: i32 = 98;
 const HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const HUD_PAUSE_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
+const HUD_PAUSE_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const HUD_PAUSE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
@@ -5778,7 +5782,7 @@ fn push_hud_pause_screen<'a>(
         &draw,
     );
     if screen.show_pause_menu {
-        push_hud_pause_return_to_game_button(
+        push_hud_pause_button(
             vertices,
             commands,
             white_pixel,
@@ -5787,13 +5791,28 @@ fn push_hud_pause_screen<'a>(
             obfuscated_pool,
             frame_index,
             surface_size,
+            hud_pause_return_to_game_button_rect(surface_size),
+            "Return to Game",
             screen.return_to_game_hovered,
+        );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_advancements_button_rect(surface_size),
+            "Advancements",
+            screen.advancements_hovered,
         );
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn push_hud_pause_return_to_game_button<'a>(
+fn push_hud_pause_button<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
@@ -5802,9 +5821,11 @@ fn push_hud_pause_return_to_game_button<'a>(
     obfuscated_pool: &HudObfuscatedGlyphPool,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
+    rect: (i32, i32, i32, i32),
+    label: &str,
     hovered: bool,
 ) {
-    let (x, y, width, height) = hud_pause_return_to_game_button_rect(surface_size);
+    let (x, y, width, height) = rect;
     let background_tint = if hovered {
         [0.32, 0.32, 0.32, 0.94]
     } else {
@@ -5857,7 +5878,7 @@ fn push_hud_pause_return_to_game_button<'a>(
         obfuscated_pool,
         frame_index,
         surface_size,
-        "Return to Game",
+        label,
         x,
         width,
         y + HUD_PAUSE_BUTTON_TEXT_Y_OFFSET,
@@ -6666,6 +6687,17 @@ fn hud_pause_return_to_game_button_rect(surface_size: PhysicalSize<u32>) -> (i32
         width / 2 - HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH / 2,
         height / 4 + HUD_PAUSE_RETURN_TO_GAME_TOP_OFFSET,
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_advancements_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + HUD_PAUSE_SECOND_ROW_TOP_OFFSET,
+        HUD_PAUSE_HALF_BUTTON_WIDTH,
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
 }
@@ -10315,6 +10347,7 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         title,
         show_pause_menu: screen.show_pause_menu,
         return_to_game_hovered: screen.return_to_game_hovered,
+        advancements_hovered: screen.advancements_hovered,
     })
 }
 
@@ -14643,16 +14676,19 @@ mod tests {
             title: "Game\nPaused".to_string(),
             show_pause_menu: false,
             return_to_game_hovered: true,
+            advancements_hovered: true,
         })
         .expect("pause screen");
         assert_eq!(screen.title, "GamePaused");
         assert!(!screen.show_pause_menu);
         assert!(screen.return_to_game_hovered);
+        assert!(screen.advancements_hovered);
 
         assert!(sanitize_hud_pause_screen(HudPauseScreen {
             title: "\n\t".to_string(),
             show_pause_menu: true,
             return_to_game_hovered: false,
+            advancements_hovered: false,
         })
         .is_none());
     }
@@ -14781,11 +14817,13 @@ mod tests {
             title: "ab".to_string(),
             show_pause_menu: false,
             return_to_game_hovered: false,
+            advancements_hovered: false,
         };
         let menu = HudPauseScreen {
             title: "ab".to_string(),
             show_pause_menu: true,
             return_to_game_hovered: false,
+            advancements_hovered: false,
         };
 
         assert_eq!(
@@ -14807,6 +14845,14 @@ mod tests {
         assert_eq!(
             hud_pause_return_to_game_button_rect(PhysicalSize::new(854, 480)),
             (325, 128, 204, 20)
+        );
+        assert_eq!(
+            hud_pause_advancements_button_rect(PhysicalSize::new(320, 240)),
+            (58, 92, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_advancements_button_rect(PhysicalSize::new(854, 480)),
+            (325, 152, 98, 20)
         );
     }
 

@@ -5833,6 +5833,7 @@ fn hud_pause_screen_projects_no_menu_title() {
     assert_eq!(screen.title, "Game Paused");
     assert!(!screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
+    assert!(!screen.advancements_hovered);
 }
 
 #[test]
@@ -5845,6 +5846,7 @@ fn hud_pause_screen_projects_menu_title() {
     assert_eq!(screen.title, "Game Menu");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
+    assert!(!screen.advancements_hovered);
 }
 
 #[test]
@@ -5862,6 +5864,25 @@ fn hud_pause_screen_projects_return_to_game_hover() {
     let screen = hud_pause_screen(&input, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.return_to_game_hovered);
+    assert!(!screen.advancements_hovered);
+}
+
+#[test]
+fn hud_pause_screen_projects_advancements_hover() {
+    let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            68.0, 102.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(screen.show_pause_menu);
+    assert!(!screen.return_to_game_hovered);
+    assert!(screen.advancements_hovered);
 }
 
 #[test]

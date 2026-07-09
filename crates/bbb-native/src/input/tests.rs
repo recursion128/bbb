@@ -3452,6 +3452,8 @@ fn escape_opens_pause_screen_with_menu() {
 #[test]
 fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
     let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
     input.open_debug_pause_screen_with_menu();
 
@@ -3464,6 +3466,9 @@ fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
         })
     );
     assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
         MouseButton::Left,
         ElementState::Pressed,
         Some(PhysicalPosition::new(68.0, 78.0)),
@@ -3471,6 +3476,49 @@ fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
     ));
 
     assert!(!input.debug_pause_screen_is_open());
+}
+
+#[test]
+fn debug_pause_screen_advancements_button_opens_advancements_screen() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    world.apply_update_advancements(UpdateAdvancements {
+        reset: true,
+        added: vec![input_displayed_advancement("minecraft:story/root", None)],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
+    });
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(68.0, 102.0)),
+        surface,
+    ));
+
+    assert!(!input.debug_pause_screen_is_open());
+    assert!(world.advancements_screen_is_open());
+    assert_eq!(
+        world.selected_advancements_tab(),
+        Some("minecraft:story/root")
+    );
+    assert_eq!(counters.advancements_seen_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SeenAdvancements(SeenAdvancements::OpenedTab {
+            tab: "minecraft:story/root".to_string()
+        })
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

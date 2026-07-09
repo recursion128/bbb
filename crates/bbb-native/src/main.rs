@@ -802,6 +802,9 @@ fn main() -> Result<()> {
                     if input.debug_pause_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         input.handle_debug_pause_screen_mouse_input(
+                            &mut net_counters,
+                            &mut world,
+                            &net_commands,
                             button,
                             state,
                             cursor_position,

@@ -1133,8 +1133,8 @@ When an agent does any of the following, update this file in the same slice:
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
     PauseScreen(false) input/cursor/render shell, ordinary-Escape
     PauseScreen(true) title/menu-state shell, PauseScreen Return to Game button
-    render/input/action, SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT
-    gated dev hotkeys, DebugOptionsScreen
+    render/input/action, PauseScreen Advancements button render/input/action,
+    SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
@@ -1883,10 +1883,21 @@ When an agent does any of the following, update this file in the same slice:
     projects hover for the vanilla `(width / 2 - 102, height / 4 + 8, 204, 20)`
     button rect, renders the native Return to Game button in menu pause
     screens, closes the pause screen on left click, and restores cursor capture
-    on pause-screen close. Boundary: dim background, Advancements, Stats,
+    on pause-screen close. Boundary: dim background, Stats, feedback/custom-dialog,
+    Options, Share to LAN / Player Reporting, Disconnect, draft-report icon,
+    music toast, and pause tick-freeze eligibility remain future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` Advancements button.
+    Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
+    `gui.advancements` button immediately after Return to Game, using the same
+    grid alignment; its left-half rect is `(width / 2 - 102, height / 4 + 32,
+    98, 20)` and it opens `AdvancementsScreen` with the pause screen as parent.
+    bbb now tracks hover for that rect, renders the native Advancements button,
+    and left click closes the pause shell while opening the existing native
+    advancements screen and queuing the vanilla `SeenAdvancements::OpenedTab`
+    when a visible root is selected. Boundary: parent-return behavior, Stats,
     feedback/custom-dialog, Options, Share to LAN / Player Reporting,
-    Disconnect, draft-report icon, music toast, and pause tick-freeze
-    eligibility remain future work.
+    Disconnect, draft-report icon, dim background, music toast, and pause
+    tick-freeze eligibility remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -2981,8 +2992,9 @@ When an agent does any of the following, update this file in the same slice:
     Ordinary Escape now releases cursor capture, opens the native
     `PauseScreen(true)` title/menu-state shell, and renders the `Game Menu`
     title after active screens/containers decline the key.
-    Menu pause screens now render the native Return to Game button, hover it
-    from cursor position, close on left click, and recapture cursor after close.
+    Menu pause screens now render the native Return to Game and Advancements
+    buttons, hover them from cursor position, close on Return click with cursor
+    recapture, and open the native advancements screen from Advancements click.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and
