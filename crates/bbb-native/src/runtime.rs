@@ -2136,6 +2136,10 @@ pub(crate) fn pump_network_and_terrain(
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
     let renderer_counters = renderer.counters();
+    let hud_audio_counters = audio_events
+        .as_deref()
+        .map(AudioEventSink::counters)
+        .unwrap_or_else(|| audio_status.clone());
     let hud_debug_overlay = hud_debug_overlay_at_partial_tick(
         input,
         world,
@@ -2150,6 +2154,7 @@ pub(crate) fn pump_network_and_terrain(
         hud_debug_network_sampler,
         hud_debug_tps_sampler,
         net_counters,
+        &hud_audio_counters,
     );
     let dropped_item_models = dropped_item_models(
         world,
@@ -3078,6 +3083,7 @@ fn hud_debug_overlay(
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
+    let audio_counters = AudioCounters::default();
     hud_debug_overlay_at_partial_tick(
         input,
         world,
@@ -3092,6 +3098,7 @@ fn hud_debug_overlay(
         network_sampler,
         tps_sampler,
         net_counters,
+        &audio_counters,
     )
 }
 
@@ -3109,6 +3116,7 @@ fn hud_debug_overlay_at_partial_tick(
     network_sampler: &HudDebugNetworkSampler,
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
+    audio_counters: &AudioCounters,
 ) -> Option<HudDebugOverlay> {
     let reduced_debug_info = world.local_player_has_reduced_debug_info();
     let entry_enabled = |entry| input.debug_screen_entry_enabled(entry, reduced_debug_info);
@@ -3204,6 +3212,9 @@ fn hud_debug_overlay_at_partial_tick(
     }
     if entry_enabled(DebugScreenEntryId::ChunkSourceStats) {
         left_lines.push(hud_debug_chunk_source_stats_line(world));
+    }
+    if entry_enabled(DebugScreenEntryId::SoundCache) {
+        left_lines.push(hud_debug_sound_cache_line(audio_counters));
     }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
@@ -3802,6 +3813,22 @@ fn hud_debug_chunk_source_stats_line(world: &WorldStore) -> String {
         entity_count,
         chunk_count
     )
+}
+
+fn hud_debug_sound_cache_line(counters: &AudioCounters) -> String {
+    format!(
+        "Sound cache: {} buffers, {} MiB",
+        counters.sound_cache_buffers,
+        hud_debug_sound_cache_bytes_to_mebibytes(counters.sound_cache_bytes)
+    )
+}
+
+fn hud_debug_sound_cache_bytes_to_mebibytes(bytes: u64) -> u64 {
+    if bytes == 0 {
+        0
+    } else {
+        bytes.saturating_add(1024 * 1024 - 1) / (1024 * 1024)
+    }
 }
 
 fn hud_debug_client_chunk_storage_slots(radius: Option<i32>) -> usize {

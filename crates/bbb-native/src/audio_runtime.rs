@@ -43,6 +43,7 @@ impl NativeAudioRuntime {
             enabled: true,
             catalog_events: catalog.len(),
             registry_entries: registry.len(),
+            sound_cache_buffers: catalog.len(),
             ..AudioCounters::default()
         };
         Ok(Self {

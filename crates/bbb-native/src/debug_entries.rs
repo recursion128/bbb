@@ -78,6 +78,7 @@ pub(crate) enum DebugScreenEntryId {
     EntityRenderStats,
     ParticleRenderStats,
     ChunkSourceStats,
+    SoundCache,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -110,6 +111,7 @@ impl DebugScreenEntryId {
             Self::EntityRenderStats => "minecraft:entity_render_stats",
             Self::ParticleRenderStats => "minecraft:particle_render_stats",
             Self::ChunkSourceStats => "minecraft:chunk_source_stats",
+            Self::SoundCache => "minecraft:sound_cache",
             Self::SimplePerformanceImpactors => "minecraft:simple_performance_impactors",
             Self::EntityHitboxes => "minecraft:entity_hitboxes",
             Self::ChunkBorders => "minecraft:chunk_borders",
@@ -146,6 +148,7 @@ impl DebugScreenEntryId {
             "minecraft:entity_render_stats" => Some(Self::EntityRenderStats),
             "minecraft:particle_render_stats" => Some(Self::ParticleRenderStats),
             "minecraft:chunk_source_stats" => Some(Self::ChunkSourceStats),
+            "minecraft:sound_cache" => Some(Self::SoundCache),
             "minecraft:simple_performance_impactors" => Some(Self::SimplePerformanceImpactors),
             "minecraft:entity_hitboxes" => Some(Self::EntityHitboxes),
             "minecraft:chunk_borders" => Some(Self::ChunkBorders),
@@ -168,6 +171,7 @@ impl DebugScreenEntryId {
                     | Self::ChunkRenderStats
                     | Self::EntityRenderStats
                     | Self::ChunkSourceStats
+                    | Self::SoundCache
                     | Self::SimplePerformanceImpactors
                     | Self::GpuUtilization
             )
@@ -527,6 +531,10 @@ mod tests {
             entries.status(DebugScreenEntryId::ChunkSourceStats),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::SoundCache),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -653,6 +661,11 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(entries.is_currently_enabled(DebugScreenEntryId::ChunkSourceStats, true));
+        entries.set_status(
+            DebugScreenEntryId::SoundCache,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(entries.is_currently_enabled(DebugScreenEntryId::SoundCache, true));
     }
 
     #[test]

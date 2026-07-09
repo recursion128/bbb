@@ -10,6 +10,10 @@ pub struct AudioCounters {
     #[serde(default)]
     pub registry_entries: usize,
     #[serde(default)]
+    pub sound_cache_buffers: usize,
+    #[serde(default)]
+    pub sound_cache_bytes: u64,
+    #[serde(default)]
     pub registry_updates: u64,
     #[serde(default)]
     pub commands_submitted: u64,

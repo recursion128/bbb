@@ -5694,6 +5694,18 @@
   `sectionCount` 为 `0`；也还没有 integrated server
   `ServerLevel.gatherChunkSourceStats()` line。精确 frame timing、完整 group
   layout 与 `DebugOptionsScreen` 仍待后续。
+- [x] debug overlay sound-cache entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.SOUND_CACHE` 注册
+  `DebugEntrySoundCache`，该 entry 覆盖 `isAllowed` 以便 reduced-debug info 下
+  仍显示；它通过 `SoundManager.getSoundCacheDebugStats` 填充
+  `SoundBufferLibrary.DebugOutput.Counter`，并以
+  `Sound cache: <buffers> buffers, <ceil(bytes / 1024 / 1024)> MiB` 格式输出。
+  native 现在有非 profile 默认项 `SoundCache` entry id，default / performance
+  profiles 中保持 `Never`，reduced-debug 下允许；custom status 启用时，从
+  `AudioCounters` 投影同形状左列文本。边界：native audio 当前用 catalog-backed
+  buffer count 和 0 bytes 作为 shell，尚未 mirror Kira/static/streaming decoded
+  buffer residency；精确 `SoundBufferLibrary` cache bytes 与完整 group layout
+  仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

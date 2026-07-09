@@ -1674,6 +1674,7 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
+        &AudioCounters::default(),
     )
     .expect("chunk render stats should be allowed under reduced debug info");
 
@@ -1755,6 +1756,7 @@ fn hud_debug_overlay_projects_custom_particle_render_stats() {
         &HudDebugNetworkSampler::default(),
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
+        &AudioCounters::default(),
     )
     .expect("particle render stats should show outside reduced debug info");
 
@@ -1805,6 +1807,55 @@ fn hud_debug_overlay_projects_custom_chunk_source_stats_under_reduced_debug_info
     assert_eq!(
         overlay.left_lines,
         vec!["Chunks[C] W: 121, 2 E: 1,0,2".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
+fn hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info() {
+    let world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::SoundCache,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let audio_counters = AudioCounters {
+        sound_cache_buffers: 7,
+        sound_cache_bytes: 1_048_577,
+        ..AudioCounters::default()
+    };
+
+    assert_eq!(hud_debug_sound_cache_bytes_to_mebibytes(0), 0);
+    assert_eq!(hud_debug_sound_cache_bytes_to_mebibytes(1), 1);
+    assert_eq!(hud_debug_sound_cache_bytes_to_mebibytes(2_097_152), 2);
+
+    let overlay = hud_debug_overlay_at_partial_tick(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        1.0,
+        &bbb_renderer::RendererCounters::default(),
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+        &audio_counters,
+    )
+    .expect("sound cache should be allowed under reduced debug info");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec!["Sound cache: 7 buffers, 2 MiB".to_string()]
     );
     assert!(overlay.right_lines.is_empty());
 }
