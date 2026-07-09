@@ -1124,8 +1124,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
     feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
     feedback payload, profiler chart numeric-key routing shell, and F3+N spectator
-    change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
-    shell, and ordinary F3 keymap audit:
+    change-game-mode request routing, F3+F4 GameModeSwitcher input/command
+    shell, F3+F4 GameModeSwitcher render-state shell, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
@@ -1133,7 +1133,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen,
-    F3+F4 GameModeSwitcher rendering/mouse polish, native pause
+    F3+F4 GameModeSwitcher actual rendering/mouse polish, native pause
     loop/PauseScreen, and `SharedConstants.DEBUG_HOTKEYS` /
     `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
 - Evidence / boundary:
@@ -2068,6 +2068,19 @@ When an agent does any of the following, update this file in the same slice:
     Boundary: HUD rendering of slots/icons/text/background, first-mouse
     suppression, hover selection, mouse-release selection, cursor capture, and
     exact screen interruption policy remain future work.
+  - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher render-state
+    shell. Vanilla anchors: `GameModeSwitcherScreen` extracts a 125x75
+    background centered at `width / 2 - 62`, `height / 2 - 58`, four 26x26
+    slots in creative/survival/adventure/spectator order starting at
+    `width / 2 - 119 / 2`, `height / 2 - 31` with a 31px stride, a centered
+    hovered game-mode name, and the `debug.gamemodes.select_next` F4 help row.
+    bbb now exports a renderer-neutral `HudDebugGameModeSwitcher` state on the
+    debug overlay, projects the native switcher selection into the vanilla slot
+    layout even while the ordinary F3 overlay is hidden, and preserves that
+    switcher-only overlay through HUD sanitization. Boundary: actual pixel
+    rendering of the background/sprites/icons/text, first-mouse suppression,
+    hover selection, mouse-release selection, cursor capture, and exact screen
+    interruption policy remain future work.
   - Done 2026-07-08 — Debug overlay ordinary F3 keymap audit. Vanilla anchors:
     `Options.debugKeys` contains the ordinary F3 mappings already tracked in
     this row (`A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` plus F3 itself), while
@@ -2729,7 +2742,8 @@ When an agent does any of the following, update this file in the same slice:
     digit presses now route to a drainable navigation shell without blocking
     hotbar keys.
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
-    request. F3+F4 now has a native GameModeSwitcher input/command shell. The
+    request. F3+F4 now has a native GameModeSwitcher input/command shell and a
+    renderer-neutral HUD render-state shell. The
     debug entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
     `toggleStatus` semantics, and reduced-debug filtering. The performance
@@ -2783,7 +2797,7 @@ When an agent does any of the following, update this file in the same slice:
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, F3+F4
-    GameModeSwitcher rendering/mouse polish, native pause loop/PauseScreen, and
+    GameModeSwitcher actual rendering/mouse polish, native pause loop/PauseScreen, and
     `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select

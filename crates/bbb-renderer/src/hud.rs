@@ -108,11 +108,44 @@ pub struct HudDebugOverlay {
     pub left_lines: Vec<String>,
     pub right_lines: Vec<String>,
     pub debug_crosshair: Option<HudDebugCrosshair>,
+    pub game_mode_switcher: Option<HudDebugGameModeSwitcher>,
     pub profiler_chart: Option<HudDebugProfilerChart>,
     pub fps_chart: Option<HudDebugFrameTimeChart>,
     pub tps_chart: Option<HudDebugTpsChart>,
     pub network_charts: Option<HudDebugNetworkCharts>,
     pub show_lightmap_preview: bool,
+}
+
+/// Vanilla `GameModeSwitcherScreen` render-state shell: background bounds, four
+/// 26px slots in vanilla order, selected mode, and the two centered text rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudDebugGameModeSwitcher {
+    pub selected: HudGameModeSwitcherMode,
+    pub title: String,
+    pub help_text: String,
+    pub background_x: i32,
+    pub background_y: i32,
+    pub background_width: i32,
+    pub background_height: i32,
+    pub slots: Vec<HudDebugGameModeSwitcherSlot>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudDebugGameModeSwitcherSlot {
+    pub mode: HudGameModeSwitcherMode,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudGameModeSwitcherMode {
+    Creative,
+    Survival,
+    Adventure,
+    Spectator,
 }
 
 /// Vanilla `DebugScreenEntries.THREE_DIMENSIONAL_CROSSHAIR`: a camera-relative
@@ -8870,6 +8903,9 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
     let debug_crosshair = overlay
         .debug_crosshair
         .and_then(sanitize_hud_debug_crosshair);
+    let game_mode_switcher = overlay
+        .game_mode_switcher
+        .and_then(sanitize_hud_debug_game_mode_switcher);
     let profiler_chart = overlay
         .profiler_chart
         .map(sanitize_hud_debug_profiler_chart);
@@ -8881,6 +8917,7 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
     (!left_lines.is_empty()
         || !right_lines.is_empty()
         || debug_crosshair.is_some()
+        || game_mode_switcher.is_some()
         || profiler_chart.is_some()
         || fps_chart.is_some()
         || tps_chart.is_some()
@@ -8890,12 +8927,34 @@ fn sanitize_hud_debug_overlay(overlay: HudDebugOverlay) -> Option<HudDebugOverla
             left_lines,
             right_lines,
             debug_crosshair,
+            game_mode_switcher,
             profiler_chart,
             fps_chart,
             tps_chart,
             network_charts,
             show_lightmap_preview: overlay.show_lightmap_preview,
         })
+}
+
+fn sanitize_hud_debug_game_mode_switcher(
+    switcher: HudDebugGameModeSwitcher,
+) -> Option<HudDebugGameModeSwitcher> {
+    let title = sanitize_hud_text_line(switcher.title)?;
+    let help_text = sanitize_hud_text_line(switcher.help_text)?;
+    let slots = switcher
+        .slots
+        .into_iter()
+        .filter(|slot| slot.width > 0 && slot.height > 0)
+        .take(4)
+        .collect::<Vec<_>>();
+    (switcher.background_width > 0 && switcher.background_height > 0 && slots.len() == 4).then_some(
+        HudDebugGameModeSwitcher {
+            title,
+            help_text,
+            slots,
+            ..switcher
+        },
+    )
 }
 
 fn sanitize_hud_debug_crosshair(crosshair: HudDebugCrosshair) -> Option<HudDebugCrosshair> {
@@ -9819,6 +9878,7 @@ mod tests {
             left_lines: vec!["A\u{0007}B".to_string(), "".to_string()],
             right_lines: vec!["Right".to_string()],
             debug_crosshair: None,
+            game_mode_switcher: None,
             profiler_chart: None,
             fps_chart: None,
             tps_chart: None,
@@ -9837,6 +9897,63 @@ mod tests {
         })
         .expect("lightmap preview survives without text lines");
         assert!(preview_only.show_lightmap_preview);
+    }
+
+    #[test]
+    fn sanitize_hud_debug_overlay_keeps_game_mode_switcher_without_text_lines() {
+        let overlay = sanitize_hud_debug_overlay(HudDebugOverlay {
+            game_mode_switcher: Some(HudDebugGameModeSwitcher {
+                selected: HudGameModeSwitcherMode::Creative,
+                title: "Creative\u{0007} Mode".to_string(),
+                help_text: "Select next: F4".to_string(),
+                background_x: 98,
+                background_y: 62,
+                background_width: 125,
+                background_height: 75,
+                slots: vec![
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Creative,
+                        x: 101,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: true,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Survival,
+                        x: 132,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Adventure,
+                        x: 163,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                    HudDebugGameModeSwitcherSlot {
+                        mode: HudGameModeSwitcherMode::Spectator,
+                        x: 194,
+                        y: 89,
+                        width: 26,
+                        height: 26,
+                        selected: false,
+                    },
+                ],
+            }),
+            ..HudDebugOverlay::default()
+        })
+        .expect("game mode switcher survives without text lines");
+        let switcher = overlay
+            .game_mode_switcher
+            .expect("switcher should remain after sanitize");
+
+        assert_eq!(switcher.title, "Creative Mode");
+        assert_eq!(switcher.slots.len(), 4);
     }
 
     #[test]

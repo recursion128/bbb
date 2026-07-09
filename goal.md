@@ -327,15 +327,15 @@ Screen Render Surfaces" 条目）：
   capture、debug feedback styled prefix baseline、
   F3+S dynamic texture dump clickable/open-file feedback payload、
   profiler chart numeric-key routing shell、F3+N spectator change-game-mode
-  request routing、F3+F4 GameModeSwitcher input/command shell、ordinary F3
-  keymap audit 已完成；
+  request routing、F3+F4 GameModeSwitcher input/command shell、
+  F3+F4 GameModeSwitcher render-state shell、ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、actual DebugOptionsScreen、F3+F4
-  GameModeSwitcher rendering/mouse polish、native pause loop/PauseScreen、
+  GameModeSwitcher actual rendering/mouse polish、native pause loop/PauseScreen、
   `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys，
   低优先）。
 

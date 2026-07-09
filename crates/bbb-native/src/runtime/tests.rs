@@ -16,12 +16,12 @@ use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
-    DataComponentPatchSummary, DialogHolder, GameEvent as ProtocolGameEvent,
-    InitializeBorder as ProtocolInitializeBorder, InteractionHand, MerchantOffer, MerchantOffers,
-    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
-    SetBorderLerpSize as ProtocolSetBorderLerpSize, SetCursorItem as ProtocolSetCursorItem,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateAdvancements,
-    UpdateMobEffect, WrittenBookContentSummary,
+    DataComponentPatchSummary, DialogHolder, EntityEvent as ProtocolEntityEvent,
+    GameEvent as ProtocolGameEvent, InitializeBorder as ProtocolInitializeBorder, InteractionHand,
+    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
+    RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
+    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
@@ -2643,6 +2643,64 @@ fn hud_debug_overlay_projects_profiler_toggle_without_fake_chart_data() {
     assert_eq!(overlay.profiler_chart, None);
     assert_eq!(overlay.fps_chart, None);
     assert_eq!(overlay.network_charts, None);
+}
+
+#[test]
+fn hud_debug_overlay_projects_game_mode_switcher_state() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let player_id = world
+        .local_player_id()
+        .expect("test world has a local player");
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: player_id,
+        event_id: 26,
+    }));
+    let mut input = ClientInputState::new(true);
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+    assert!(input.handle_debug_overlay_key(
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+        Some(&mut world),
+        None
+    ));
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("game mode switcher should project even while the F3 overlay is hidden");
+    let switcher = overlay
+        .game_mode_switcher
+        .expect("game mode switcher render state should be present");
+
+    assert_eq!(
+        switcher.selected,
+        bbb_renderer::HudGameModeSwitcherMode::Creative
+    );
+    assert_eq!(switcher.title, "Creative Mode");
+    assert_eq!(switcher.help_text, "Select next: F4");
+    assert_eq!((switcher.background_x, switcher.background_y), (98, 62));
+    assert_eq!(
+        switcher.slots.iter().map(|slot| slot.x).collect::<Vec<_>>(),
+        vec![101, 132, 163, 194]
+    );
+    assert!(switcher.slots[0].selected);
+    assert!(switcher.slots[1..].iter().all(|slot| !slot.selected));
+    assert!(overlay.left_lines.is_empty());
+    assert!(overlay.right_lines.is_empty());
 }
 
 #[test]

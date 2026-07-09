@@ -781,7 +781,6 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_pause_without_menu_requests)
     }
 
-    #[cfg(test)]
     pub(crate) fn debug_game_mode_switcher_selected(&self) -> Option<GameType> {
         self.debug_game_mode_switcher
             .as_ref()

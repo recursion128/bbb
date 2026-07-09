@@ -14,8 +14,8 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     packets::{
-        AdvancementFrameType, ItemCostSummary, ItemStackSummary, MapPostProcessingSummary,
-        RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
+        AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
+        MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
     },
     MC_VERSION,
 };
@@ -24,21 +24,22 @@ use bbb_renderer::{
     CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugNetworkCharts, HudDebugOverlay,
-    HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugGameModeSwitcher,
+    HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts, HudDebugOverlay, HudDebugTpsChart,
+    HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
     HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryItemScissor, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen, HudUvRect,
-    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
-    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPlayerHealth, HudSignEditorKind,
+    HudSignEditorScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -3311,7 +3312,12 @@ fn hud_debug_overlay_at_partial_tick(
         }
         right_lines.extend(hud_debug_simple_performance_impactor_lines());
     }
-    if left_lines.is_empty() && right_lines.is_empty() && debug_crosshair.is_none() {
+    let game_mode_switcher = hud_debug_game_mode_switcher(input, surface_size);
+    if left_lines.is_empty()
+        && right_lines.is_empty()
+        && debug_crosshair.is_none()
+        && game_mode_switcher.is_none()
+    {
         return None;
     }
 
@@ -3319,6 +3325,7 @@ fn hud_debug_overlay_at_partial_tick(
         left_lines,
         right_lines,
         debug_crosshair,
+        game_mode_switcher,
         profiler_chart: None,
         fps_chart: input
             .debug_fps_charts_visible()
@@ -3341,6 +3348,75 @@ fn hud_debug_overlay_at_partial_tick(
         ),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
+}
+
+const DEBUG_GAME_MODE_SWITCHER_BACKGROUND_WIDTH: i32 = 125;
+const DEBUG_GAME_MODE_SWITCHER_BACKGROUND_HEIGHT: i32 = 75;
+const DEBUG_GAME_MODE_SWITCHER_BACKGROUND_X_OFFSET: i32 = 62;
+const DEBUG_GAME_MODE_SWITCHER_BACKGROUND_Y_OFFSET: i32 = 58;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_AREA: i32 = 26;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED: i32 = 31;
+const DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH: i32 = 4 * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED - 5;
+const DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET: i32 = 31;
+
+fn hud_debug_game_mode_switcher(
+    input: &ClientInputState,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudDebugGameModeSwitcher> {
+    let selected = input.debug_game_mode_switcher_selected()?;
+    let center_x = i32::try_from(surface_size.width / 2).unwrap_or(i32::MAX);
+    let center_y = i32::try_from(surface_size.height / 2).unwrap_or(i32::MAX);
+    let selected_mode = hud_game_mode_switcher_mode(selected);
+    let slot_start_x = center_x - DEBUG_GAME_MODE_SWITCHER_ALL_SLOTS_WIDTH / 2;
+    let slot_y = center_y - DEBUG_GAME_MODE_SWITCHER_SLOT_Y_OFFSET;
+    let slots = DEBUG_GAME_MODE_SWITCHER_MODES
+        .iter()
+        .enumerate()
+        .map(|(index, mode)| HudDebugGameModeSwitcherSlot {
+            mode: *mode,
+            x: slot_start_x
+                + i32::try_from(index).unwrap_or(0) * DEBUG_GAME_MODE_SWITCHER_SLOT_PADDED,
+            y: slot_y,
+            width: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
+            height: DEBUG_GAME_MODE_SWITCHER_SLOT_AREA,
+            selected: *mode == selected_mode,
+        })
+        .collect();
+    Some(HudDebugGameModeSwitcher {
+        selected: selected_mode,
+        title: hud_game_mode_switcher_title(selected_mode).to_string(),
+        help_text: "Select next: F4".to_string(),
+        background_x: center_x - DEBUG_GAME_MODE_SWITCHER_BACKGROUND_X_OFFSET,
+        background_y: center_y - DEBUG_GAME_MODE_SWITCHER_BACKGROUND_Y_OFFSET,
+        background_width: DEBUG_GAME_MODE_SWITCHER_BACKGROUND_WIDTH,
+        background_height: DEBUG_GAME_MODE_SWITCHER_BACKGROUND_HEIGHT,
+        slots,
+    })
+}
+
+const DEBUG_GAME_MODE_SWITCHER_MODES: [HudGameModeSwitcherMode; 4] = [
+    HudGameModeSwitcherMode::Creative,
+    HudGameModeSwitcherMode::Survival,
+    HudGameModeSwitcherMode::Adventure,
+    HudGameModeSwitcherMode::Spectator,
+];
+
+fn hud_game_mode_switcher_mode(game_type: GameType) -> HudGameModeSwitcherMode {
+    match game_type {
+        GameType::Creative => HudGameModeSwitcherMode::Creative,
+        GameType::Survival => HudGameModeSwitcherMode::Survival,
+        GameType::Adventure => HudGameModeSwitcherMode::Adventure,
+        GameType::Spectator => HudGameModeSwitcherMode::Spectator,
+    }
+}
+
+fn hud_game_mode_switcher_title(mode: HudGameModeSwitcherMode) -> &'static str {
+    match mode {
+        HudGameModeSwitcherMode::Creative => "Creative Mode",
+        HudGameModeSwitcherMode::Survival => "Survival Mode",
+        HudGameModeSwitcherMode::Adventure => "Adventure Mode",
+        HudGameModeSwitcherMode::Spectator => "Spectator Mode",
+    }
 }
 
 fn hud_debug_crosshair(camera_pose: CameraPose) -> HudDebugCrosshair {

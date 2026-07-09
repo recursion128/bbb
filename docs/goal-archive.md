@@ -6100,6 +6100,18 @@
   type，则经既有 `ChangeGameMode` net command 发送并关闭该非暂停 screen。边界：
   HUD rendering、first-mouse suppression、hover/mouse release、cursor capture 与
   exact screen interruption policy 仍待后续。
+- [x] debug overlay F3+F4 GameModeSwitcher render-state shell（P2
+  native/renderer slice，2026-07-09）：依据 `GameModeSwitcherScreen`
+  `extractBackground` / `extractRenderState` 的布局，vanilla 在屏幕中心绘制
+  125x75 背景（`width / 2 - 62`, `height / 2 - 58`），creative / survival /
+  adventure / spectator 四个 26x26 slot 从 `width / 2 - 119 / 2`,
+  `height / 2 - 31` 开始、31px 步进，并绘制当前 hovered game-mode name 与
+  `debug.gamemodes.select_next` F4 help 行。renderer 现在导出
+  `HudDebugGameModeSwitcher` / slot / mode render-state，native runtime 在 F3+F4
+  switcher 打开时把 selected mode 投影为该布局，即使普通 F3 overlay 未打开也保留
+  switcher-only HUD overlay；renderer sanitizer 也保留该状态。边界：实际背景/
+  selection sprite / item icon / 文本像素绘制、first-mouse suppression、
+  hover/mouse release、cursor capture 与 exact screen interruption policy 仍待后续。
 - [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
   `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
   `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；
