@@ -18,7 +18,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -30,9 +30,9 @@ use bbb_protocol::{
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
-        Direction as ProtocolDirection, EntityDataValueKind, EntityTagQuery, GameType,
-        InteractionHand, ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput,
-        RecipeBookType, SeenAdvancements, SignUpdate,
+        Direction as ProtocolDirection, EntityDataRegistryHolder, EntityDataValueKind,
+        EntityTagQuery, GameType, InteractionHand, ItemStackSummary, PlayerActionKind,
+        PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -274,6 +274,10 @@ const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
+const PIG_VARIANT_DATA_ID: u8 = 19;
+const PIG_DEFAULT_VARIANT_ID: i32 = 0;
+const PIG_SOUND_VARIANT_DATA_ID: u8 = 20;
+const PIG_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 const RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -3705,6 +3709,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PIG_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_pig_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
@@ -3981,6 +3991,45 @@ fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Ve
     fields.push(format!("size: {size}"));
 }
 
+fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        PIG_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::PigVariant,
+    )
+    .unwrap_or(PIG_DEFAULT_VARIANT_ID);
+    let sound_variant = debug_entity_data_registry_id_present(
+        entity,
+        PIG_SOUND_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::PigSoundVariant,
+    )
+    .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_ID);
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_pig_variant_resource_id(variant))
+    ));
+    fields.push(format!(
+        "sound_variant: {}",
+        debug_snbt_string(debug_pig_sound_variant_resource_id(sound_variant))
+    ));
+}
+
+fn debug_pig_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:warm",
+        2 => "minecraft:cold",
+        _ => "minecraft:temperate",
+    }
+}
+
+fn debug_pig_sound_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:big",
+        2 => "minecraft:mini",
+        _ => "minecraft:classic",
+    }
+}
+
 fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let puff_state = debug_entity_data_int_present(entity, PUFFERFISH_PUFF_STATE_DATA_ID)
         .unwrap_or(PUFFERFISH_DEFAULT_PUFF_STATE);
@@ -4101,6 +4150,25 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_registry_id_present(
+    entity: &EntityState,
+    data_id: u8,
+    expected_serializer: EntityDataRegistryHolder,
+) -> Option<i32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId { serializer, id }
+                if *serializer == expected_serializer =>
+            {
+                Some(*id)
+            }
             _ => None,
         })
 }
