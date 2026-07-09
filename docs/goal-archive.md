@@ -5779,6 +5779,19 @@
   因此 custom 启用时也不输出 HUD 行。边界：bbb 尚未实现 renderer post-chain
   state、spectator shader effect toggle 或 current post-effect mirror，实际
   `Post: ...` 行仍待后续 renderer/runtime 工作。
+- [x] debug overlay renderer-noop entry coverage（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries` 用 `DebugEntryNoop` 注册
+  `chunk_section_paths`、`chunk_section_octree`、`visualize_water_levels`、
+  `visualize_heightmap`、`visualize_collision_boxes`、
+  `visualize_entity_supporting_blocks`、`visualize_block_light_levels`、
+  `visualize_sky_light_levels`、`visualize_solid_faces`、
+  `visualize_chunks_on_server`、`visualize_sky_light_sections` 与
+  `chunk_section_visibility`；`DebugEntryNoop.display` 为空，category 是
+  renderer，默认 `isAllowed` 在 reduced-debug info 下过滤。native 现在把这些
+  vanilla id 都作为已知 debug entries，default / performance profiles 中保持
+  `Never`，reduced-debug 下过滤，custom status 按 known entry 语义保存/往返。
+  边界：这些 toggle 背后的实际 renderer visualizations 尚未实现；本 slice 只补齐
+  entry/status/profile 覆盖。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

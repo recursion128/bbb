@@ -1118,6 +1118,7 @@ When an agent does any of the following, update this file in the same slice:
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
     shell, sound-mood debug entry shell,
     post-effect debug entry client-only shell,
+    renderer-noop debug entry coverage,
     chunk-generation-stats debug entry client-only shell,
     debug-profile.json persistence, F3+I local block-entity NBT capture,
     advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
@@ -1508,6 +1509,21 @@ When an agent does any of the following, update this file in the same slice:
     post-effect id. Boundary: bbb does not yet own renderer post-chain state,
     spectator shader effect toggling, or a current post-effect mirror; actual
     `Post: ...` rows remain future renderer/runtime work.
+  - Done 2026-07-09 — Debug overlay renderer-noop entry coverage. Vanilla
+    anchors: `DebugScreenEntries` registers `chunk_section_paths`,
+    `chunk_section_octree`, `visualize_water_levels`, `visualize_heightmap`,
+    `visualize_collision_boxes`, `visualize_entity_supporting_blocks`,
+    `visualize_block_light_levels`, `visualize_sky_light_levels`,
+    `visualize_solid_faces`, `visualize_chunks_on_server`,
+    `visualize_sky_light_sections`, and `chunk_section_visibility` with
+    `DebugEntryNoop`; `DebugEntryNoop.display` is empty, its category is
+    renderer, and its default `isAllowed` filters reduced-debug info. bbb now
+    recognizes these vanilla ids as known debug entries, keeps them `Never` in
+    default/performance profiles, filters them under reduced-debug info, and
+    preserves/toggles their custom status with normal known-entry semantics.
+    Boundary: the actual renderer visualizations behind those toggles remain
+    future renderer/debug-visualization work; this slice only closes the
+    entry/status/profile coverage gap.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2731,7 +2747,9 @@ When an agent does any of the following, update this file in the same slice:
     row from native audio counters. Custom-enabled sound mood now renders the
     vanilla-shaped channel/mood row from native audio counters. Custom-enabled
     post effect is recognized but emits no HUD row until bbb owns a current
-    post-effect mirror. Custom-enabled day-count
+    post-effect mirror. Renderer-only `DebugEntryNoop` visualization entries are
+    recognized and profile-filtered, but their visualizations are still future
+    renderer work. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed
     memory now renders the vanilla-shaped heap/non-heap rows from native process
     memory. Custom-enabled light levels now render the client light row from the

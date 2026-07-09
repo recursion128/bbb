@@ -87,7 +87,19 @@ pub(crate) enum DebugScreenEntryId {
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
+    ChunkSectionPaths,
     GpuUtilization,
+    ChunkSectionOctree,
+    VisualizeWaterLevels,
+    VisualizeHeightmap,
+    VisualizeCollisionBoxes,
+    VisualizeEntitySupportingBlocks,
+    VisualizeBlockLightLevels,
+    VisualizeSkyLightLevels,
+    VisualizeSolidFaces,
+    VisualizeChunksOnServer,
+    VisualizeSkyLightSections,
+    ChunkSectionVisibility,
 }
 
 impl DebugScreenEntryId {
@@ -125,7 +137,19 @@ impl DebugScreenEntryId {
             Self::SimplePerformanceImpactors => "minecraft:simple_performance_impactors",
             Self::EntityHitboxes => "minecraft:entity_hitboxes",
             Self::ChunkBorders => "minecraft:chunk_borders",
+            Self::ChunkSectionPaths => "minecraft:chunk_section_paths",
             Self::GpuUtilization => "minecraft:gpu_utilization",
+            Self::ChunkSectionOctree => "minecraft:chunk_section_octree",
+            Self::VisualizeWaterLevels => "minecraft:visualize_water_levels",
+            Self::VisualizeHeightmap => "minecraft:visualize_heightmap",
+            Self::VisualizeCollisionBoxes => "minecraft:visualize_collision_boxes",
+            Self::VisualizeEntitySupportingBlocks => "minecraft:visualize_entity_supporting_blocks",
+            Self::VisualizeBlockLightLevels => "minecraft:visualize_block_light_levels",
+            Self::VisualizeSkyLightLevels => "minecraft:visualize_sky_light_levels",
+            Self::VisualizeSolidFaces => "minecraft:visualize_solid_faces",
+            Self::VisualizeChunksOnServer => "minecraft:visualize_chunks_on_server",
+            Self::VisualizeSkyLightSections => "minecraft:visualize_sky_light_sections",
+            Self::ChunkSectionVisibility => "minecraft:chunk_section_visibility",
         }
     }
 
@@ -167,7 +191,21 @@ impl DebugScreenEntryId {
             "minecraft:simple_performance_impactors" => Some(Self::SimplePerformanceImpactors),
             "minecraft:entity_hitboxes" => Some(Self::EntityHitboxes),
             "minecraft:chunk_borders" => Some(Self::ChunkBorders),
+            "minecraft:chunk_section_paths" => Some(Self::ChunkSectionPaths),
             "minecraft:gpu_utilization" => Some(Self::GpuUtilization),
+            "minecraft:chunk_section_octree" => Some(Self::ChunkSectionOctree),
+            "minecraft:visualize_water_levels" => Some(Self::VisualizeWaterLevels),
+            "minecraft:visualize_heightmap" => Some(Self::VisualizeHeightmap),
+            "minecraft:visualize_collision_boxes" => Some(Self::VisualizeCollisionBoxes),
+            "minecraft:visualize_entity_supporting_blocks" => {
+                Some(Self::VisualizeEntitySupportingBlocks)
+            }
+            "minecraft:visualize_block_light_levels" => Some(Self::VisualizeBlockLightLevels),
+            "minecraft:visualize_sky_light_levels" => Some(Self::VisualizeSkyLightLevels),
+            "minecraft:visualize_solid_faces" => Some(Self::VisualizeSolidFaces),
+            "minecraft:visualize_chunks_on_server" => Some(Self::VisualizeChunksOnServer),
+            "minecraft:visualize_sky_light_sections" => Some(Self::VisualizeSkyLightSections),
+            "minecraft:chunk_section_visibility" => Some(Self::ChunkSectionVisibility),
             _ => None,
         }
     }
@@ -570,6 +608,9 @@ mod tests {
             entries.status(DebugScreenEntryId::PostEffect),
             DebugScreenEntryStatus::Never
         );
+        for entry in VANILLA_RENDERER_NOOP_NON_PROFILE_ENTRIES {
+            assert_eq!(entries.status(entry), DebugScreenEntryStatus::Never);
+        }
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -726,6 +767,10 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::PostEffect, true));
+        for entry in VANILLA_RENDERER_NOOP_ENTRIES {
+            entries.set_status(entry, DebugScreenEntryStatus::AlwaysOn);
+            assert!(!entries.is_currently_enabled(entry, true));
+        }
     }
 
     #[test]
@@ -751,6 +796,63 @@ mod tests {
         );
         assert!(loaded.is_using_profile(DebugScreenProfile::Performance));
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn renderer_noop_entry_ids_match_vanilla_registry() {
+        for (entry, id) in [
+            (
+                DebugScreenEntryId::ChunkSectionPaths,
+                "minecraft:chunk_section_paths",
+            ),
+            (
+                DebugScreenEntryId::ChunkSectionOctree,
+                "minecraft:chunk_section_octree",
+            ),
+            (
+                DebugScreenEntryId::VisualizeWaterLevels,
+                "minecraft:visualize_water_levels",
+            ),
+            (
+                DebugScreenEntryId::VisualizeHeightmap,
+                "minecraft:visualize_heightmap",
+            ),
+            (
+                DebugScreenEntryId::VisualizeCollisionBoxes,
+                "minecraft:visualize_collision_boxes",
+            ),
+            (
+                DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+                "minecraft:visualize_entity_supporting_blocks",
+            ),
+            (
+                DebugScreenEntryId::VisualizeBlockLightLevels,
+                "minecraft:visualize_block_light_levels",
+            ),
+            (
+                DebugScreenEntryId::VisualizeSkyLightLevels,
+                "minecraft:visualize_sky_light_levels",
+            ),
+            (
+                DebugScreenEntryId::VisualizeSolidFaces,
+                "minecraft:visualize_solid_faces",
+            ),
+            (
+                DebugScreenEntryId::VisualizeChunksOnServer,
+                "minecraft:visualize_chunks_on_server",
+            ),
+            (
+                DebugScreenEntryId::VisualizeSkyLightSections,
+                "minecraft:visualize_sky_light_sections",
+            ),
+            (
+                DebugScreenEntryId::ChunkSectionVisibility,
+                "minecraft:chunk_section_visibility",
+            ),
+        ] {
+            assert_eq!(entry.vanilla_id(), id);
+            assert_eq!(DebugScreenEntryId::from_vanilla_id(id), Some(entry));
+        }
     }
 
     #[test]
@@ -848,4 +950,39 @@ mod tests {
             process::id()
         ))
     }
+
+    const VANILLA_RENDERER_NOOP_ENTRIES: [DebugScreenEntryId; 15] = [
+        DebugScreenEntryId::EntityHitboxes,
+        DebugScreenEntryId::ChunkBorders,
+        DebugScreenEntryId::ThreeDimensionalCrosshair,
+        DebugScreenEntryId::ChunkSectionPaths,
+        DebugScreenEntryId::ChunkSectionOctree,
+        DebugScreenEntryId::VisualizeWaterLevels,
+        DebugScreenEntryId::VisualizeHeightmap,
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        DebugScreenEntryId::VisualizeBlockLightLevels,
+        DebugScreenEntryId::VisualizeSkyLightLevels,
+        DebugScreenEntryId::VisualizeSolidFaces,
+        DebugScreenEntryId::VisualizeChunksOnServer,
+        DebugScreenEntryId::VisualizeSkyLightSections,
+        DebugScreenEntryId::ChunkSectionVisibility,
+    ];
+
+    const VANILLA_RENDERER_NOOP_NON_PROFILE_ENTRIES: [DebugScreenEntryId; 14] = [
+        DebugScreenEntryId::EntityHitboxes,
+        DebugScreenEntryId::ChunkBorders,
+        DebugScreenEntryId::ChunkSectionPaths,
+        DebugScreenEntryId::ChunkSectionOctree,
+        DebugScreenEntryId::VisualizeWaterLevels,
+        DebugScreenEntryId::VisualizeHeightmap,
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        DebugScreenEntryId::VisualizeBlockLightLevels,
+        DebugScreenEntryId::VisualizeSkyLightLevels,
+        DebugScreenEntryId::VisualizeSolidFaces,
+        DebugScreenEntryId::VisualizeChunksOnServer,
+        DebugScreenEntryId::VisualizeSkyLightSections,
+        DebugScreenEntryId::ChunkSectionVisibility,
+    ];
 }
