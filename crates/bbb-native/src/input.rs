@@ -18,8 +18,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -233,6 +233,8 @@ const COW_VARIANT_DATA_ID: u8 = 18;
 const COW_DEFAULT_VARIANT_ID: i32 = 0;
 const COW_SOUND_VARIANT_DATA_ID: u8 = 19;
 const COW_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
+const MOOSHROOM_TYPE_DATA_ID: u8 = 18;
+const MOOSHROOM_DEFAULT_TYPE_ID: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3668,6 +3670,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_cow_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_mooshroom_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
@@ -3924,6 +3932,22 @@ fn debug_cow_sound_variant_resource_id(variant: i32) -> &'static str {
     match variant {
         1 => "minecraft:moody",
         _ => "minecraft:classic",
+    }
+}
+
+fn debug_push_mooshroom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_int_present(entity, MOOSHROOM_TYPE_DATA_ID)
+        .unwrap_or(MOOSHROOM_DEFAULT_TYPE_ID);
+    fields.push(format!(
+        "Type: {}",
+        debug_snbt_string(debug_mooshroom_variant_name(variant))
+    ));
+}
+
+fn debug_mooshroom_variant_name(variant: i32) -> &'static str {
+    match variant {
+        1 => "brown",
+        _ => "red",
     }
 }
 
