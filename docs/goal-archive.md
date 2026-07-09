@@ -5537,6 +5537,21 @@
   biome id，并通过已跟踪的 `minecraft:worldgen/biome` registry entries 映射为
   registry key。边界：optional server biome row 需要 local-server biome mirror；
   registry content 缺失时 native 显示 `[unregistered <id>]` 而非 key。
+- [x] debug overlay local-difficulty entry client-only shell（P2 native/runtime
+  slice，2026-07-09）：依据 `DebugScreenEntries.LOCAL_DIFFICULTY` 注册
+  `DebugEntryLocalDifficulty`；该 entry 仅在 camera entity、integrated
+  `ServerLevel` 与 server chunk 都存在且 feet Y 在 build height 内时显示。它从
+  server level 读取 moon brightness，从 server chunk 读取 inhabited time，并用
+  server difficulty、overworld clock time、local inhabited time、moon brightness
+  构造 `DifficultyInstance`，最终格式化
+  `Local Difficulty: <effective> // <special multiplier>`（两位小数）。native
+  现在把 `minecraft:local_difficulty` 作为已知 `LocalDifficulty` entry id，
+  default / performance profiles 中保持 `Never`，reduced-debug 下按默认
+  `DebugScreenEntry.isAllowed` 过滤，debug-profile custom 状态也按已知 entry
+  往返；当前 client-only runtime 按 vanilla 条件不输出 HUD 行。边界：bbb 尚无
+  integrated local-server difficulty、server-chunk inhabited-time 或 server
+  moon-brightness mirror，实际 `DifficultyInstance` 行仍待后续 local-server
+  mirror 工作。
 - [x] debug overlay looking-at block-state entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` 注册

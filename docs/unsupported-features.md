@@ -1111,7 +1111,8 @@ When an agent does any of the following, update this file in the same slice:
     3D crosshair rendering, default-profile debug entry coverage,
     performance-profile GPU utilization entry shell, day-count debug entry
     shell, detailed-memory debug entry shell, light-levels debug entry shell,
-    heightmap debug entry shell, biome debug entry shell, looking-at
+    heightmap debug entry shell, biome debug entry shell,
+    local-difficulty debug entry client-only shell, looking-at
     block/fluid/entity state+tag entry shells, chunk/entity/particle render
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
     shell, chunk-generation-stats debug entry client-only shell,
@@ -1261,6 +1262,22 @@ When an agent does any of the following, update this file in the same slice:
     tracked `minecraft:worldgen/biome` registry entries. Boundary: the optional
     server biome row needs a local-server biome mirror; if registry content is
     unavailable, bbb reports `[unregistered <id>]` instead of a key.
+  - Done 2026-07-09 — Debug overlay local-difficulty entry client-only shell.
+    Vanilla anchors: `DebugScreenEntries.LOCAL_DIFFICULTY` registers
+    `DebugEntryLocalDifficulty`; it displays only when the camera entity,
+    integrated `ServerLevel`, and server chunk are present and the feet Y is
+    inside build height. It reads moon brightness from the server level,
+    inhabited time from the server chunk, constructs `DifficultyInstance` from
+    server difficulty, overworld clock time, local inhabited time, and moon
+    brightness, then formats
+    `Local Difficulty: <effective> // <special multiplier>` with two decimals.
+    bbb now has a known `LocalDifficulty` entry id, keeps it `Never` in
+    default/performance profiles, filters it under reduced-debug info,
+    round-trips vanilla `minecraft:local_difficulty` custom statuses as a
+    known entry, and intentionally emits no HUD line in the current client-only
+    runtime. Boundary: bbb has no integrated local-server difficulty,
+    server-chunk inhabited-time, or server moon-brightness mirror yet; actual
+    `DifficultyInstance` rows remain future local-server mirror work.
   - Done 2026-07-09 — Debug overlay looking-at block-state entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` registers
     `DebugEntryLookingAt.BlockStateInfo`; that entry uses
@@ -2658,6 +2675,9 @@ When an agent does any of the following, update this file in the same slice:
     `debug-profile.json` data for custom statuses. Custom-enabled chunk
     generation stats are recognized as a vanilla entry but emit no client-only
     HUD rows until bbb owns an integrated server generator mirror.
+    Custom-enabled local difficulty is likewise recognized but emits no
+    client-only HUD row until bbb owns an integrated server difficulty/chunk
+    mirror.
     Custom-enabled sound cache now renders the vanilla-shaped buffer-count/MiB
     row from native audio counters. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed

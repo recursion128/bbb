@@ -3163,6 +3163,11 @@ fn hud_debug_overlay_at_partial_tick(
             }
         }
     }
+    if entry_enabled(DebugScreenEntryId::LocalDifficulty) {
+        if let Some(local_difficulty_line) = hud_debug_local_difficulty_line(world, camera_pose) {
+            left_lines.push(local_difficulty_line);
+        }
+    }
     if entry_enabled(DebugScreenEntryId::LookingAtBlockState) {
         if let Some(looking_at_lines) = hud_debug_looking_at_block_state_lines(world, camera_pose) {
             left_lines.extend(looking_at_lines);
@@ -3652,6 +3657,15 @@ fn hud_debug_biome_line(world: &WorldStore, camera_pose: CameraPose) -> Option<S
         .map(str::to_string)
         .unwrap_or_else(|| format!("[unregistered {biome_id}]"));
     Some(format!("Biome: {biome}"))
+}
+
+fn hud_debug_local_difficulty_line(
+    _world: &WorldStore,
+    _camera_pose: Option<CameraPose>,
+) -> Option<String> {
+    // Vanilla only displays local difficulty from an integrated ServerLevel and
+    // server chunk. bbb has no local-server difficulty mirror yet.
+    None
 }
 
 fn hud_debug_looking_at_block_state_lines(

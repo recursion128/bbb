@@ -310,7 +310,8 @@ Screen Render Surfaces" 条目）：
   default-profile debug entry coverage、performance-profile GPU utilization
   entry shell、day-count debug entry shell、detailed-memory debug entry
   shell、light-levels debug entry shell、heightmap debug entry shell、biome
-  debug entry shell、looking-at block-state debug entry shell、looking-at
+  debug entry shell、local-difficulty debug entry client-only shell、
+  looking-at block-state debug entry shell、looking-at
   block-tags debug entry shell、looking-at fluid-state debug entry shell、
   looking-at fluid-tags debug entry shell、looking-at entity debug entry
   shell、looking-at entity-tags debug entry shell、chunk-render-stats debug
