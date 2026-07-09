@@ -1704,6 +1704,107 @@ fn native_item_runtime_shows_spawner_block_entity_tooltips() {
 }
 
 #[test]
+fn native_item_runtime_shows_entity_data_peaceful_warning() {
+    let root = unique_temp_dir("item-runtime-entity-data-tooltip");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_source(&root, &["zombie_spawn_egg", "pig_spawn_egg"]);
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "item.minecraft.zombie_spawn_egg": "Zombie Spawn Egg",
+                "item.minecraft.pig_spawn_egg": "Pig Spawn Egg",
+                "item.spawn_egg.peaceful": "This creature cannot spawn in Peaceful mode"
+            }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let zombie_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            entity_data_entity_type_id: Some(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&zombie_stack),
+        Some(vec![name_line(
+            "Zombie Spawn Egg",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &zombie_stack,
+            NativeItemTooltipOptions {
+                peaceful: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Zombie Spawn Egg", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line(
+                "This creature cannot spawn in Peaceful mode",
+                TOOLTIP_TEXT_RED
+            ),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    tooltip_hidden_component_type_ids: vec![58],
+                    ..zombie_stack.component_patch.clone()
+                },
+                ..zombie_stack.clone()
+            },
+            NativeItemTooltipOptions {
+                peaceful: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![name_line(
+            "Zombie Spawn Egg",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    entity_data_entity_type_id: Some(
+                        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PIG_ID,
+                    ),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                peaceful: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![name_line(
+            "Pig Spawn Egg",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn native_item_runtime_shows_adventure_mode_predicate_tooltips() {
     let root = unique_temp_dir("item-runtime-adventure-mode-tooltip");
     let assets = assets_dir(&root);

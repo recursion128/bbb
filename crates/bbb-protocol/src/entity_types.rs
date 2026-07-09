@@ -210,6 +210,52 @@ pub fn vanilla_entity_resource_id_for_type_id(entity_type_id: i32) -> Option<Str
     None
 }
 
+/// Mirrors vanilla 26.1 `EntityType.Builder.notInPeaceful()` calls. `EntityType`
+/// defaults `allowedInPeaceful` to true, so only these registry ids make
+/// `TypedEntityData.addToTooltip` emit the spawn-egg peaceful warning.
+pub fn vanilla_entity_type_allowed_in_peaceful(entity_type_id: i32) -> bool {
+    !matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_BLAZE_ID
+            | VANILLA_ENTITY_TYPE_BOGGED_ID
+            | VANILLA_ENTITY_TYPE_BREEZE_ID
+            | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID
+            | VANILLA_ENTITY_TYPE_CREAKING_ID
+            | VANILLA_ENTITY_TYPE_CREEPER_ID
+            | VANILLA_ENTITY_TYPE_DROWNED_ID
+            | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_ENDERMAN_ID
+            | VANILLA_ENTITY_TYPE_ENDERMITE_ID
+            | VANILLA_ENTITY_TYPE_EVOKER_ID
+            | VANILLA_ENTITY_TYPE_GHAST_ID
+            | VANILLA_ENTITY_TYPE_GIANT_ID
+            | VANILLA_ENTITY_TYPE_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_HUSK_ID
+            | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+            | VANILLA_ENTITY_TYPE_PARCHED_ID
+            | VANILLA_ENTITY_TYPE_PHANTOM_ID
+            | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+            | VANILLA_ENTITY_TYPE_PILLAGER_ID
+            | VANILLA_ENTITY_TYPE_RAVAGER_ID
+            | VANILLA_ENTITY_TYPE_SILVERFISH_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_ID
+            | VANILLA_ENTITY_TYPE_SLIME_ID
+            | VANILLA_ENTITY_TYPE_SPIDER_ID
+            | VANILLA_ENTITY_TYPE_STRAY_ID
+            | VANILLA_ENTITY_TYPE_VEX_ID
+            | VANILLA_ENTITY_TYPE_VINDICATOR_ID
+            | VANILLA_ENTITY_TYPE_WARDEN_ID
+            | VANILLA_ENTITY_TYPE_WITCH_ID
+            | VANILLA_ENTITY_TYPE_WITHER_ID
+            | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID
+            | VANILLA_ENTITY_TYPE_ZOGLIN_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,5 +297,24 @@ mod tests {
         );
         assert_eq!(vanilla_entity_resource_id_for_type_id(-1), None);
         assert_eq!(vanilla_entity_resource_id_for_type_id(10_000), None);
+    }
+
+    #[test]
+    fn peaceful_allowance_matches_vanilla_not_in_peaceful_calls() {
+        assert!(!vanilla_entity_type_allowed_in_peaceful(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID
+        ));
+        assert!(!vanilla_entity_type_allowed_in_peaceful(
+            VANILLA_ENTITY_TYPE_CREEPER_ID
+        ));
+        assert!(!vanilla_entity_type_allowed_in_peaceful(
+            VANILLA_ENTITY_TYPE_WITHER_ID
+        ));
+        assert!(vanilla_entity_type_allowed_in_peaceful(
+            VANILLA_ENTITY_TYPE_PIG_ID
+        ));
+        assert!(vanilla_entity_type_allowed_in_peaceful(
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+        ));
     }
 }

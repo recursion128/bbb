@@ -208,6 +208,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub block_entity_spawn_entity_type: Option<String>,
     #[serde(default)]
+    pub entity_data_entity_type_id: Option<i32>,
+    #[serde(default)]
     pub can_place_on: Option<AdventureModePredicateSummary>,
     #[serde(default)]
     pub can_break: Option<AdventureModePredicateSummary>,
@@ -858,6 +860,10 @@ fn decode_typed_data_component_patch_summary(
             }
             77 => {
                 summary.bees_count = decode_bees(decoder)?;
+            }
+            58 => {
+                summary.entity_data_entity_type_id =
+                    Some(decode_typed_entity_data_summary(decoder)?.type_id);
             }
             60 => {
                 let block_entity_data = decode_typed_entity_data_summary(decoder)?;
@@ -1858,6 +1864,7 @@ fn decode_trim_material_holder_summary(
 }
 
 struct TypedEntityDataSummary {
+    type_id: i32,
     tag: Option<NbtSummaryValue>,
 }
 
@@ -1867,8 +1874,9 @@ fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_typed_entity_data_summary(decoder: &mut Decoder<'_>) -> Result<TypedEntityDataSummary> {
-    let _type_id = decode_holder_registry_id(decoder)?;
+    let type_id = decode_holder_registry_id(decoder)?;
     Ok(TypedEntityDataSummary {
+        type_id,
         tag: decode_nbt_summary_from_decoder(decoder)?,
     })
 }
@@ -4055,6 +4063,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                entity_data_entity_type_id: Some(1),
                 block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
                 ..DataComponentPatchSummary::default()
             }

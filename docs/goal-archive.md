@@ -6668,8 +6668,21 @@
   `minecraft:block_entity_data` typed NBT 提取 `SpawnData.entity.id`，native item
   tooltip 对 spawner/trial_spawner 输出 spawned entity name 或默认 help rows，并应用 hidden
   component type id 60。边界：这是 targeted tooltip extraction，不是通用
-  `TypedEntityData`/block-entity NBT 模型；`ENTITY_DATA` peaceful warning 和 broader
-  block-entity exact predicates 仍未完成。
+  `TypedEntityData`/block-entity NBT 模型；broader block-entity exact predicates
+  仍未完成。
+- [x] advanced tooltip `ENTITY_DATA` peaceful warning（P2 protocol + native +
+  item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在
+  block-state rows 之后、spawner block-entity branch 之前调用
+  `addToTooltip(DataComponents.ENTITY_DATA, ...)`，以及
+  `TypedEntityData.addToTooltip` 仅在 tooltip context 为 peaceful 且 entity type
+  `allowedInPeaceful == false` 时输出红色 `item.spawn_egg.peaceful`，protocol
+  summary 现在保留 decoded `minecraft:entity_data` entity type id；
+  `bbb-protocol::entity_types` 镜像 vanilla 26.1
+  `EntityType.Builder.notInPeaceful()` id 集；native 从 `WorldStore::difficulty()`
+  把 peaceful 上下文传入 item tooltip；item-runtime 输出红色 peaceful warning 并应用
+  hidden component type id 58。边界：本 slice 只覆盖 vanilla tooltip warning；
+  full entity custom-data application、entity NBT display/debug output 与 spawn
+  behavior 仍是后续 gameplay/runtime 工作。
 - [x] advanced tooltip adventure-mode can-break/can-place rows（P2 protocol +
   world + item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip`
   在 spawner block-entity provider 之后、advanced tooltip 之前按

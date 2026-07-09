@@ -1152,10 +1152,10 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, stored/enchantment rows, TooltipDisplay
     hide/hidden-components gating, map_id component type-id 46, disc fragment
     item-specific description line, smithing template item-specific rows, direct
-    painting variant rows, spawner block-entity rows, adventure-mode
-    can-break/can-place direct block rows and unknown row, dynamic profile line,
-    intangible projectile line, and ominous bottle amplifier line, potion
-    custom-effect lines, creative suspicious-stew effect lines,
+    painting variant rows, spawner block-entity rows, entity-data peaceful
+    warning, adventure-mode can-break/can-place direct block rows and unknown
+    row, dynamic profile line, intangible projectile line, and ominous bottle
+    amplifier line, potion custom-effect lines, creative suspicious-stew effect lines,
     map-id lines, instrument description lines, tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
@@ -1495,8 +1495,20 @@ When an agent does any of the following, update this file in the same slice:
     emits the default spawner help rows for spawner and trial-spawner item
     stacks, and honors hidden component type id 60. Boundary: this is a targeted
     tooltip extraction, not a general `TypedEntityData`/block-entity NBT summary
-    model; `ENTITY_DATA` peaceful-mode warnings and broader block-entity exact
-    predicates remain future work.
+    model; broader block-entity exact predicates remain future work.
+  - Done 2026-07-09 — Advanced tooltip `ENTITY_DATA` peaceful warning. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.ENTITY_DATA, ...)` after block-state rows and
+    before the spawner block-entity branch; `TypedEntityData.addToTooltip` emits
+    red `item.spawn_egg.peaceful` only when the tooltip context is peaceful and
+    the entity type's `allowedInPeaceful` flag is false. bbb now preserves
+    decoded `minecraft:entity_data` entity type ids, mirrors vanilla 26.1
+    `EntityType.Builder.notInPeaceful()` ids beside the existing entity type
+    registry table, threads the current world difficulty into native item
+    tooltip options, and emits the red warning while honoring hidden component
+    type id 58. Boundary: this slice only covers the vanilla tooltip warning;
+    full entity custom-data application, entity NBT display/debug output, and
+    spawn behavior remain separate gameplay/runtime work.
   - Done 2026-07-09 — Advanced tooltip adventure-mode can-break/can-place rows.
     Vanilla anchors: after the spawner block-entity provider and before advanced
     id/component-count lines, `ItemStack.addDetailsToTooltip` appends

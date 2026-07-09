@@ -1,4 +1,5 @@
 use bbb_protocol::{
+    entity_types::vanilla_entity_type_allowed_in_peaceful,
     packets::{
         AdventureModePredicateSummary, MobEffectInstanceSummary, PaintingVariantSummary,
         SuspiciousStewEffectSummary,
@@ -42,6 +43,7 @@ const SPAWNER_DESC2_KEY: &str = "block.minecraft.spawner.desc2";
 const CAN_BREAK_HEADER_KEY: &str = "item.canBreak";
 const CAN_PLACE_HEADER_KEY: &str = "item.canPlace";
 const CAN_USE_UNKNOWN_KEY: &str = "item.canUse.unknown";
+const SPAWN_EGG_PEACEFUL_KEY: &str = "item.spawn_egg.peaceful";
 const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
     "minecraft:netherite_upgrade_smithing_template";
 const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
@@ -72,6 +74,7 @@ const COMPONENT_POTION_CONTENTS_TYPE_ID: i32 = 51;
 const COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID: i32 = 53;
 const COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID: i32 = 55;
 const COMPONENT_TRIM_TYPE_ID: i32 = 56;
+const COMPONENT_ENTITY_DATA_TYPE_ID: i32 = 58;
 const COMPONENT_INSTRUMENT_TYPE_ID: i32 = 61;
 const COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID: i32 = 63;
 const COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID: i32 = 64;
@@ -294,6 +297,7 @@ pub struct NativeItemTooltipLine {
 pub struct NativeItemTooltipOptions<'a> {
     pub advanced: bool,
     pub creative: bool,
+    pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub enchantment_keys: Option<&'a [String]>,
 }
@@ -819,6 +823,23 @@ fn localized_entity_name(language: &LanguageCatalog, resource_id: &str) -> Strin
     language
         .get_or_key(&description_key("entity", resource_id))
         .to_string()
+}
+
+fn push_entity_data_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    peaceful: bool,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(entity_type_id) = component_patch.entity_data_entity_type_id else {
+        return;
+    };
+    if peaceful && !vanilla_entity_type_allowed_in_peaceful(entity_type_id) {
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key(SPAWN_EGG_PEACEFUL_KEY).to_string(),
+            TOOLTIP_TEXT_RED,
+        ));
+    }
 }
 
 fn item_is_spawner(resource_id: &str) -> bool {
@@ -2058,6 +2079,7 @@ impl NativeItemRuntime {
             NativeItemTooltipOptions {
                 advanced,
                 creative: false,
+                peaceful: false,
                 map_data: None,
                 enchantment_keys: None,
             },
@@ -2283,6 +2305,14 @@ impl NativeItemRuntime {
             push_block_state_tooltip_lines(
                 &self.language,
                 &stack.component_patch.block_state_properties,
+                &mut lines,
+            );
+        }
+        if shows(COMPONENT_ENTITY_DATA_TYPE_ID) {
+            push_entity_data_tooltip_lines(
+                &self.language,
+                &stack.component_patch,
+                options.peaceful,
                 &mut lines,
             );
         }
