@@ -18,10 +18,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FROG_ID,
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
         VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
@@ -297,6 +297,9 @@ const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 const GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING: i32 = 0;
+const HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
+const HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
+const HOGLIN_DEFAULT_CANNOT_BE_HUNTED: bool = false;
 const INTERACTION_WIDTH_DATA_ID: u8 = 8;
 const INTERACTION_HEIGHT_DATA_ID: u8 = 9;
 const INTERACTION_RESPONSE_DATA_ID: u8 = 10;
@@ -3728,6 +3731,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_happy_ghast_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_HOGLIN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_hoglin_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bogged_additional_save_data(entity, fields);
@@ -4238,6 +4247,20 @@ fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut
 fn debug_push_happy_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "still_timeout: {HAPPY_GHAST_DEFAULT_STILL_TIMEOUT}"
+    ));
+}
+
+fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let immune_to_zombification =
+        debug_entity_data_bool_present(entity, HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID)
+            .unwrap_or(HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+    fields.push(format!(
+        "IsImmuneToZombification: {}",
+        debug_snbt_bool(immune_to_zombification)
+    ));
+    fields.push(format!(
+        "CannotBeHunted: {}",
+        debug_snbt_bool(HOGLIN_DEFAULT_CANNOT_BE_HUNTED)
     ));
 }
 
