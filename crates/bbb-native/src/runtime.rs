@@ -3191,6 +3191,9 @@ fn hud_debug_overlay_at_partial_tick(
     if entry_enabled(DebugScreenEntryId::ParticleRenderStats) {
         left_lines.push(hud_debug_particle_render_stats_line(renderer_counters));
     }
+    if entry_enabled(DebugScreenEntryId::ChunkSourceStats) {
+        left_lines.push(hud_debug_chunk_source_stats_line(world));
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3734,6 +3737,29 @@ fn hud_debug_entity_render_stats_line(world: &WorldStore) -> String {
 
 fn hud_debug_particle_render_stats_line(counters: &bbb_renderer::RendererCounters) -> String {
     format!("P: {}", counters.active_particle_instances)
+}
+
+fn hud_debug_chunk_source_stats_line(world: &WorldStore) -> String {
+    let chunk_count = world.chunk_count();
+    let entity_count = world.entity_count();
+    format!(
+        "Chunks[C] W: {}, {} E: {},0,{}",
+        hud_debug_client_chunk_storage_slots(world.chunk_cache_radius()),
+        chunk_count,
+        entity_count,
+        chunk_count
+    )
+}
+
+fn hud_debug_client_chunk_storage_slots(radius: Option<i32>) -> usize {
+    let Some(radius) = radius else {
+        return 0;
+    };
+    let storage_range = usize::try_from(radius.max(2))
+        .unwrap_or(2)
+        .saturating_add(3);
+    let view_range = storage_range.saturating_mul(2).saturating_add(1);
+    view_range.saturating_mul(view_range)
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {

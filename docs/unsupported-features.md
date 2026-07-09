@@ -1167,7 +1167,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and remaining individual non-default entry renderers
-    such as chunk generation/source stats remain future work.
+    such as chunk generation stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1339,8 +1339,8 @@ When an agent does any of the following, update this file in the same slice:
     terrain counters when custom-enabled. Boundary: bbb does not yet mirror the
     vanilla `ViewArea` total section count, smart-cull flag, or section buffer
     pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
-    frame timing, group layout, profile persistence, and chunk
-    generation/source stats remain future work.
+    frame timing, group layout, profile persistence, and chunk generation
+    stats remain future work.
   - Done 2026-07-09 — Debug overlay entity-render-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.ENTITY_RENDER_STATS` registers
     `DebugEntryEntityRenderStats`; it calls
@@ -1372,6 +1372,26 @@ When an agent does any of the following, update this file in the same slice:
     projects `P: active_particle_instances` from renderer particle counters
     when custom-enabled. Boundary: exact frame timing, group layout, and
     `DebugOptionsScreen` / `debug-profile.json` persistence remain future work.
+  - Done 2026-07-09 — Debug overlay chunk-source-stats entry shell. Vanilla
+    anchors: `DebugScreenEntries.CHUNK_SOURCE_STATS` registers
+    `DebugEntryChunkSourceStats`; it emits the client level
+    `gatherChunkSourceStats()` line and, when an integrated server level is
+    present, the server line too. The client line is
+    `Chunks[C] W: <ClientChunkCache.gatherStats()> E: <TransientEntitySectionManager.gatherStats()>`;
+    `ClientChunkCache.gatherStats()` formats `<storage slots>, <loaded chunks>`
+    with slots from `(calculateStorageRange(radius) * 2 + 1)^2`, and
+    `calculateStorageRange(radius)` is `max(2, radius) + 3`.
+    `TransientEntitySectionManager.gatherStats()` formats
+    `entityCount,sectionCount,tickingChunkCount`. bbb now has a non-profile
+    `ChunkSourceStats` entry id, keeps it `Never` in default/performance
+    profiles, allows it under reduced-debug info, and projects
+    `Chunks[C] W: slots, chunk_count E: entity_count,0,chunk_count` from the
+    tracked chunk cache radius, loaded chunk count, and entity count when
+    custom-enabled. Boundary: bbb does not yet mirror vanilla entity section
+    storage, so `sectionCount` is `0`; it also has no integrated server
+    `ServerLevel.gatherChunkSourceStats()` line yet. Exact frame timing, group
+    layout, and `DebugOptionsScreen` / `debug-profile.json` persistence remain
+    future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

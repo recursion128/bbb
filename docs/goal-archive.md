@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 chunk
-  generation/source stats 等剩余 individual non-default entry renderers 仍待后续。
+  generation stats 等剩余 individual non-default entry renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
   `DebugScreenEntries.GPU_UTILIZATION`、performance profile 中该 entry 的
@@ -5619,8 +5619,8 @@
   边界：当前尚未 mirror vanilla `ViewArea` total section count、smart-cull
   flag 或 section buffer pool free count，因此 `uploaded_sections` 与
   `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
-  `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation/source
-  stats 仍待后续。
+  `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation stats
+  仍待后续。
 - [x] debug overlay entity-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.ENTITY_RENDER_STATS` 注册
   `DebugEntryEntityRenderStats`；该 entry 调用
@@ -5652,6 +5652,25 @@
   particle counters 投影 `P: active_particle_instances` 左列纯文本。边界：
   精确 frame timing、完整 group layout、`DebugOptionsScreen` /
   `debug-profile.json` 持久化仍待后续。
+- [x] debug overlay chunk-source-stats entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.CHUNK_SOURCE_STATS` 注册
+  `DebugEntryChunkSourceStats`；该 entry 输出 client level 的
+  `gatherChunkSourceStats()`，若存在 integrated server level 也会输出 server
+  line。client line 格式为
+  `Chunks[C] W: <ClientChunkCache.gatherStats()> E: <TransientEntitySectionManager.gatherStats()>`；
+  `ClientChunkCache.gatherStats()` 输出 `<storage slots>, <loaded chunks>`，
+  slots 来自 `(calculateStorageRange(radius) * 2 + 1)^2`，
+  `calculateStorageRange(radius)` 为 `max(2, radius) + 3`；
+  `TransientEntitySectionManager.gatherStats()` 输出
+  `entityCount,sectionCount,tickingChunkCount`。native 现在有非 profile 默认项
+  `ChunkSourceStats` entry id，default / performance profiles 中保持
+  `Never`，reduced-debug 下允许；custom status 启用时，基于 tracked chunk
+  cache radius、loaded chunk count 和 entity count 投影
+  `Chunks[C] W: slots, chunk_count E: entity_count,0,chunk_count` 左列纯文本。
+  边界：当前尚未 mirror vanilla entity section storage，所以
+  `sectionCount` 为 `0`；也还没有 integrated server
+  `ServerLevel.gatherChunkSourceStats()` line。精确 frame timing、完整 group
+  layout、`DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
