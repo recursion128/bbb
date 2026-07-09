@@ -6552,15 +6552,27 @@
   amplifier potency、`StringUtil.formatTickDuration` duration 和 category formatting，
   native item tooltip 现在共享 vanilla 26.1 mob-effect id/key/category 表并把 decoded
   potion custom effects 投影为红/蓝本地化 effect 行。边界：base potion holder
-  effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration、
-  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+  effect lists 与 potion attribute modifier sub-lines 由后续条目覆盖；非 20 TPS
+  动态 tooltip duration、`TooltipDisplay` hidden-components 与其它 component
+  provider tooltip 仍未完成。
 - [x] advanced tooltip base potion holder effect lines（P2 item-runtime slice，
   2026-07-09）：依据 `PotionContents.getAllEffects` 先返回 base potion holder
   effects、再返回 custom effects，以及 vanilla `Potions` 注册顺序，native item tooltip
   现在把 built-in `potion_id` 映射为 base effect 列表，在 custom effects 之前输出红/蓝
   本地化 effect 行，并对 present empty potion contents 输出灰色 `effect.none`。边界：
-  potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration 与
-  custom/datapack potion registry remap 仍属后续。
+  potion attribute modifier sub-lines 由后续条目覆盖；非 20 TPS 动态 tooltip
+  duration 与 custom/datapack potion registry remap 仍属后续。
+- [x] advanced tooltip potion attribute modifier sub-lines（P2 item-runtime
+  slice，2026-07-09）：依据 `PotionContents.addPotionTooltip` 调用
+  `MobEffect.createModifiers(amplifier, ...)`、`MobEffect.AttributeTemplate`
+  以 `amplifier + 1` 缩放 amount，再追加空行、dark-purple `potion.whenDrank`
+  和 blue/red `attribute.modifier.plus|take.<operation>` 行，并使用
+  `ItemAttributeModifiers.ATTRIBUTE_MODIFIER_FORMAT` (`#.##`) 格式化数值，native
+  item tooltip 现在保留 vanilla 26.1 `MobEffects` attribute modifier 表，对
+  base/custom potion effects 输出 attribute section，处理 `+%s%% %s` 百分比模板，
+  并保持 modifier rows 在 lore 等后续 provider 之前。边界：custom/datapack
+  mob-effect modifier definitions、非 20 TPS 动态 duration 和 custom/datapack
+  potion/effect registry remap 仍属后续。
 - [x] creative tooltip suspicious-stew effect lines（P2 protocol + item-runtime
   + native slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在
   unbreakable/ominous bottle 之后调用 `DataComponents.SUSPICIOUS_STEW_EFFECTS`
@@ -6570,9 +6582,9 @@
   suspicious-stew entries，native item tooltip 新增
   `NativeItemTooltipOptions { advanced, creative }`，HUD extraction 从 game type 传入
   creative flag，并只在 creative tooltip 中输出 stew effect 行。边界：base potion
-  holder effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip
-  duration、`TooltipDisplay` hidden-components 与其它 component provider tooltip
-  仍未完成。
+  holder effect lists 与 potion attribute modifier sub-lines 已由后续条目覆盖；非
+  20 TPS 动态 tooltip duration、`TooltipDisplay` hidden-components 与其它
+  component provider tooltip 仍未完成。
 - [x] advanced tooltip rocket firework explosion grouping（P2 item-runtime
   slice，2026-07-09）：依据 `Fireworks.addToTooltip` 对相邻相同 explosion 分组，
   单个输出 `item.minecraft.firework_rocket.single_star(shape)`，多个输出
@@ -6602,8 +6614,8 @@
   projectile 自身详情行并带两空格灰色前缀，同时保留 potion/effect 与 unit 行的
   子文本颜色。边界：nested header display-name run styling 仍为 flattened，
   nested header display-name run styling 已由后续条目覆盖，stack-specific map
-  tooltip context 目前只覆盖 hovered stack，potion attribute modifier rows 和更广的
-  options persistence 仍属后续。
+  tooltip context 目前只覆盖 hovered stack，potion attribute modifier rows 已由后续
+  条目覆盖，更广的 options persistence 仍属后续。
 - [x] advanced tooltip charged-projectiles display-name header styling（P2
   item-runtime slice，2026-07-09）：依据
   `ChargedProjectiles.addProjectileTooltip` 把 `projectile.getDisplayName()`

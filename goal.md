@@ -372,8 +372,8 @@ Screen Render Surfaces" 条目）：
   rows, custom/datapack painting variant registry remaps, spawner block-entity rows,
   entity-data peaceful warning, adventure-mode can-break/can-place direct block
   rows and unknown row, dynamic profile line, and intangible projectile line,
-  ominous bottle amplifier line, potion effect lines, creative
-  suspicious-stew effect lines, map-id lines,
+  ominous bottle amplifier line, dynamic non-20-TPS potion durations,
+  custom/datapack potion/effect registry remaps, creative suspicious-stew effect lines, map-id lines,
   instrument description lines, tropical-fish pattern lines, banner-pattern rows,
   pot-decoration rows、F3+I full local entity saveWithoutId parity、
   full vanilla profiler section coverage、

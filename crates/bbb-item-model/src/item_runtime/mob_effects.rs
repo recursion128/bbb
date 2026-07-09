@@ -5,6 +5,13 @@ pub(super) enum VanillaMobEffectCategory {
     Neutral,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct VanillaMobEffectAttributeModifier {
+    pub attribute_description_key: &'static str,
+    pub amount: f64,
+    pub operation_id: i32,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct VanillaMobEffect {
     key: &'static str,
@@ -100,6 +107,53 @@ const fn effect(key: &'static str, category: VanillaMobEffectCategory) -> Vanill
     VanillaMobEffect { key, category }
 }
 
+const fn attribute_modifier(
+    attribute_description_key: &'static str,
+    amount: f64,
+    operation_id: i32,
+) -> VanillaMobEffectAttributeModifier {
+    VanillaMobEffectAttributeModifier {
+        attribute_description_key,
+        amount,
+        operation_id,
+    }
+}
+
+const SPEED_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.movement_speed", 0.2, 2)];
+const SLOWNESS_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] = &[attribute_modifier(
+    "attribute.name.movement_speed",
+    -0.15,
+    2,
+)];
+const HASTE_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.attack_speed", 0.1, 2)];
+const MINING_FATIGUE_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.attack_speed", -0.1, 2)];
+const STRENGTH_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.attack_damage", 3.0, 0)];
+const JUMP_BOOST_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] = &[attribute_modifier(
+    "attribute.name.safe_fall_distance",
+    1.0,
+    0,
+)];
+const INVISIBILITY_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier(
+        "attribute.name.waypoint_transmit_range",
+        -1.0,
+        2,
+    )];
+const WEAKNESS_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.attack_damage", -4.0, 0)];
+const HEALTH_BOOST_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.max_health", 4.0, 0)];
+const ABSORPTION_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.max_absorption", 4.0, 0)];
+const LUCK_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.luck", 1.0, 0)];
+const UNLUCK_ATTRIBUTE_MODIFIERS: &[VanillaMobEffectAttributeModifier] =
+    &[attribute_modifier("attribute.name.luck", -1.0, 0)];
+
 fn vanilla_mob_effect(effect_id: i32) -> Option<VanillaMobEffect> {
     let effect_id = usize::try_from(effect_id).ok()?;
     VANILLA_MOB_EFFECTS.get(effect_id).copied()
@@ -111,4 +165,47 @@ pub(super) fn vanilla_mob_effect_key(effect_id: i32) -> Option<&'static str> {
 
 pub(super) fn vanilla_mob_effect_category(effect_id: i32) -> Option<VanillaMobEffectCategory> {
     vanilla_mob_effect(effect_id).map(|effect| effect.category)
+}
+
+pub(super) fn vanilla_mob_effect_attribute_modifiers(
+    effect_id: i32,
+) -> &'static [VanillaMobEffectAttributeModifier] {
+    match effect_id {
+        0 => SPEED_ATTRIBUTE_MODIFIERS,
+        1 => SLOWNESS_ATTRIBUTE_MODIFIERS,
+        2 => HASTE_ATTRIBUTE_MODIFIERS,
+        3 => MINING_FATIGUE_ATTRIBUTE_MODIFIERS,
+        4 => STRENGTH_ATTRIBUTE_MODIFIERS,
+        7 => JUMP_BOOST_ATTRIBUTE_MODIFIERS,
+        13 => INVISIBILITY_ATTRIBUTE_MODIFIERS,
+        17 => WEAKNESS_ATTRIBUTE_MODIFIERS,
+        20 => HEALTH_BOOST_ATTRIBUTE_MODIFIERS,
+        21 => ABSORPTION_ATTRIBUTE_MODIFIERS,
+        25 => LUCK_ATTRIBUTE_MODIFIERS,
+        26 => UNLUCK_ATTRIBUTE_MODIFIERS,
+        _ => &[],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vanilla_mob_effect_attribute_modifiers_follow_26_1_mob_effects() {
+        assert_eq!(
+            vanilla_mob_effect_attribute_modifiers(0),
+            &[attribute_modifier("attribute.name.movement_speed", 0.2, 2)]
+        );
+        assert_eq!(
+            vanilla_mob_effect_attribute_modifiers(17),
+            &[attribute_modifier("attribute.name.attack_damage", -4.0, 0)]
+        );
+        assert_eq!(
+            vanilla_mob_effect_attribute_modifiers(26),
+            &[attribute_modifier("attribute.name.luck", -1.0, 0)]
+        );
+        assert_eq!(vanilla_mob_effect_attribute_modifiers(18), &[]);
+        assert_eq!(vanilla_mob_effect_attribute_modifiers(-1), &[]);
+    }
 }

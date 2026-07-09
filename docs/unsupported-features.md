@@ -1156,8 +1156,9 @@ When an agent does any of the following, update this file in the same slice:
     entity-data peaceful
     warning, adventure-mode can-break/can-place direct block rows and unknown
     row, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line, potion effect lines, creative suspicious-stew effect lines,
-    map-id lines, instrument description lines, tropical-fish pattern lines,
+    amplifier line, dynamic non-20-TPS potion durations, custom/datapack
+    potion/effect registry remaps, creative suspicious-stew effect lines, map-id
+    lines, instrument description lines, tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
@@ -1390,8 +1391,8 @@ When an agent does any of the following, update this file in the same slice:
     shares the vanilla 26.1 mob-effect id/key/category table between
     item-model exact predicates and tooltip projection, then emits decoded
     potion custom effects in vanilla provider order. Boundary: base potion
-    holder effect lists are covered by the later entry below; potion attribute
-    modifier sub-lines, dynamic non-20-TPS duration, `TooltipDisplay` hiding,
+    holder effect lists and potion attribute modifier sub-lines are covered by
+    later entries below; dynamic non-20-TPS duration, `TooltipDisplay` hiding,
     and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip base potion holder effect lines. Vanilla
     anchors: `PotionContents.addToTooltip` delegates to
@@ -1401,8 +1402,21 @@ When an agent does any of the following, update this file in the same slice:
     lists. bbb now resolves built-in `potion_id` values through that order, emits
     base potion effect rows before custom effect rows, and emits gray
     `effect.none` for present empty potion contents. Boundary: potion attribute
-    modifier sub-lines, dynamic non-20-TPS duration, and custom/datapack potion
-    registry remaps remain future work.
+    modifier sub-lines are covered by the later entry below; dynamic non-20-TPS
+    duration and custom/datapack potion registry remaps remain future work.
+  - Done 2026-07-09 — Advanced tooltip potion attribute modifier sub-lines.
+    Vanilla anchors: `PotionContents.addPotionTooltip` calls
+    `MobEffect.createModifiers(amplifier, ...)`, `MobEffect.AttributeTemplate`
+    scales each modifier amount by `amplifier + 1`, then appends an empty line,
+    dark-purple `potion.whenDrank`, and blue/red
+    `attribute.modifier.plus|take.<operation>` rows using
+    `ItemAttributeModifiers.ATTRIBUTE_MODIFIER_FORMAT` (`#.##`). bbb now
+    preserves the vanilla 26.1 `MobEffects` attribute modifier table for
+    built-in effects, emits the attribute section after base/custom potion
+    effect rows, handles percentage operation templates such as `+%s%% %s`, and
+    keeps modifier rows before later component providers such as lore. Boundary:
+    custom/datapack mob-effect modifier definitions, dynamic non-20-TPS duration,
+    and custom/datapack potion/effect registry remaps remain future work.
   - Done 2026-07-09 — Creative tooltip suspicious-stew effect lines. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `DataComponents.SUSPICIOUS_STEW_EFFECTS` after unbreakable/ominous bottle
@@ -1413,9 +1427,9 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:suspicious_stew_effects` entries, adds
     `NativeItemTooltipOptions { advanced, creative }`, passes creative gameplay
     mode from native HUD extraction, and emits the same effect lines only for
-    creative tooltips. Boundary: potion attribute modifier sub-lines, dynamic
-    non-20-TPS duration, `TooltipDisplay` hiding, and remaining component
-    providers remain future work.
+    creative tooltips. Boundary: potion attribute modifier sub-lines are covered
+    by the follow-up entry above; dynamic non-20-TPS duration, `TooltipDisplay`
+    hiding, and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
     Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
     coalesces adjacent equal `FireworkExplosion` values, emits gray
@@ -1448,10 +1462,10 @@ When an agent does any of the following, update this file in the same slice:
     provider-order helper, emits projectile detail rows after each grouped
     header with the two-space gray prefix, keeps colored child effect/unit
     lines, and uses normal tooltip flags for nested projectile details.
-    Boundary: nested header display-name run styling is covered by the later
-    2026-07-09 item below, stack-specific map tooltip context is only available
-    for the hovered stack, potion attribute modifier rows remain unimplemented,
-    and broader provider/options persistence parity stays future work.
+    Boundary: nested header display-name run styling and potion attribute
+    modifier rows are covered by 2026-07-09 follow-up items, stack-specific map
+    tooltip context is only available for the hovered stack, and broader
+    provider/options persistence parity stays future work.
   - Done 2026-07-09 — Advanced tooltip charged-projectiles display-name header
     styling. Vanilla anchors: `ChargedProjectiles.addProjectileTooltip` passes
     `projectile.getDisplayName()` into the single/multiple projectile

@@ -9,7 +9,8 @@ use super::icon_model::{
     VANILLA_TRIM_MATERIAL_COLORS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::mob_effects::{
-    vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
+    vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
+    VanillaMobEffectCategory,
 };
 use super::*;
 
@@ -41,6 +42,7 @@ const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.de
 const PAINTING_RESOURCE_ID: &str = "minecraft:painting";
 const PAINTING_DIMENSIONS_KEY: &str = "painting.dimensions";
 const PAINTING_RANDOM_KEY: &str = "painting.random";
+const POTION_WHEN_DRANK_KEY: &str = "potion.whenDrank";
 const SPAWNER_RESOURCE_ID: &str = "minecraft:spawner";
 const TRIAL_SPAWNER_RESOURCE_ID: &str = "minecraft:trial_spawner";
 const SPAWNER_DESC1_KEY: &str = "block.minecraft.spawner.desc1";
@@ -426,6 +428,13 @@ const fn potion_effect(effect_id: i32, duration: i32, amplifier: i32) -> Vanilla
         duration,
         amplifier,
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PotionAttributeModifierLine {
+    attribute_description_key: &'static str,
+    amount: f64,
+    operation_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1494,6 +1503,9 @@ mod tests {
         );
         assert_eq!(vanilla_potion_effects(46), None);
         assert_eq!(vanilla_potion_effects(-1), None);
+        assert_eq!(format_attribute_modifier_amount(40.0), "40");
+        assert_eq!(format_attribute_modifier_amount(1.5), "1.5");
+        assert_eq!(format_attribute_modifier_amount(1.234), "1.23");
     }
 
     #[test]
@@ -1700,6 +1712,7 @@ fn push_potion_contents_tooltip_lines(
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     let mut has_effect_entries = false;
+    let mut attribute_modifiers = Vec::new();
     if let Some(potion_id) = component_patch.potion_id {
         if let Some(effects) = vanilla_potion_effects(potion_id) {
             has_effect_entries |= !effects.is_empty();
@@ -1710,6 +1723,11 @@ fn push_potion_contents_tooltip_lines(
                     effect.amplifier,
                     effect.duration,
                     lines,
+                );
+                collect_potion_effect_attribute_modifiers(
+                    effect.effect_id,
+                    effect.amplifier,
+                    &mut attribute_modifiers,
                 );
             }
         }
@@ -1723,6 +1741,11 @@ fn push_potion_contents_tooltip_lines(
             effect.duration,
             lines,
         );
+        collect_potion_effect_attribute_modifiers(
+            effect.effect_id,
+            effect.amplifier,
+            &mut attribute_modifiers,
+        );
     }
     if !has_effect_entries && potion_contents_component_present(component_patch) {
         lines.push(NativeItemTooltipLine::plain(
@@ -1730,6 +1753,7 @@ fn push_potion_contents_tooltip_lines(
             TOOLTIP_TEXT_GRAY,
         ));
     }
+    push_potion_attribute_modifier_tooltip_lines(language, &attribute_modifiers, lines);
 }
 
 fn vanilla_potion_effects(potion_id: i32) -> Option<&'static [VanillaPotionEffect]> {
@@ -1760,6 +1784,93 @@ fn push_potion_effect_tooltip_line(
         potion_effect_tooltip_text(language, effect_key, amplifier, duration),
         mob_effect_tooltip_tint_for_id(effect_id),
     ));
+}
+
+fn collect_potion_effect_attribute_modifiers(
+    effect_id: i32,
+    amplifier: i32,
+    lines: &mut Vec<PotionAttributeModifierLine>,
+) {
+    let amplifier_scale = f64::from(amplifier) + 1.0;
+    lines.extend(
+        vanilla_mob_effect_attribute_modifiers(effect_id)
+            .iter()
+            .map(|modifier| PotionAttributeModifierLine {
+                attribute_description_key: modifier.attribute_description_key,
+                amount: modifier.amount * amplifier_scale,
+                operation_id: modifier.operation_id,
+            }),
+    );
+}
+
+fn push_potion_attribute_modifier_tooltip_lines(
+    language: &LanguageCatalog,
+    modifiers: &[PotionAttributeModifierLine],
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if modifiers.is_empty() {
+        return;
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        String::new(),
+        TOOLTIP_TEXT_WHITE,
+    ));
+    lines.push(NativeItemTooltipLine::plain(
+        language.get_or_key(POTION_WHEN_DRANK_KEY).to_string(),
+        TOOLTIP_TEXT_DARK_PURPLE,
+    ));
+
+    for modifier in modifiers {
+        push_potion_attribute_modifier_tooltip_line(language, modifier, lines);
+    }
+}
+
+fn push_potion_attribute_modifier_tooltip_line(
+    language: &LanguageCatalog,
+    modifier: &PotionAttributeModifierLine,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if modifier.amount == 0.0 {
+        return;
+    }
+    let mut display_amount = if modifier.operation_id == 1 || modifier.operation_id == 2 {
+        modifier.amount * 100.0
+    } else {
+        modifier.amount
+    };
+    let (key_prefix, tint) = if modifier.amount > 0.0 {
+        ("attribute.modifier.plus", TOOLTIP_TEXT_BLUE)
+    } else {
+        display_amount *= -1.0;
+        ("attribute.modifier.take", TOOLTIP_TEXT_RED)
+    };
+    let amount = format_attribute_modifier_amount(display_amount);
+    let attribute = language
+        .get_or_key(modifier.attribute_description_key)
+        .to_string();
+    let text = translate_with_two_args(
+        language,
+        &format!("{key_prefix}.{}", modifier.operation_id),
+        &amount,
+        &attribute,
+    )
+    .replace("%%", "%");
+    lines.push(NativeItemTooltipLine::plain(text, tint));
+}
+
+fn format_attribute_modifier_amount(amount: f64) -> String {
+    let mut text = format!("{amount:.2}");
+    while text.contains('.') && text.ends_with('0') {
+        text.pop();
+    }
+    if text.ends_with('.') {
+        text.pop();
+    }
+    if text == "-0" {
+        "0".to_string()
+    } else {
+        text
+    }
 }
 
 fn push_suspicious_stew_tooltip_lines(
