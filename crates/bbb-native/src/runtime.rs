@@ -3185,6 +3185,9 @@ fn hud_debug_overlay_at_partial_tick(
             false,
         ));
     }
+    if entry_enabled(DebugScreenEntryId::EntityRenderStats) {
+        left_lines.push(hud_debug_entity_render_stats_line(world));
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3718,6 +3721,12 @@ fn hud_debug_chunk_render_stats_line(
         counters.queued_sections,
         0
     )
+}
+
+fn hud_debug_entity_render_stats_line(world: &WorldStore) -> String {
+    let entity_count = world.entity_count();
+    let simulation_distance = world.local_player().simulation_distance.unwrap_or(0);
+    format!("E: {entity_count}/{entity_count}, SD: {simulation_distance}")
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {

@@ -5621,7 +5621,27 @@
   flag 或 section buffer pool free count，因此 `uploaded_sections` 与
   `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
   `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation/source
-  stats、entity/particle render stats 仍待后续。
+  stats、particle render stats 仍待后续。
+- [x] debug overlay entity-render-stats entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.ENTITY_RENDER_STATS` 注册
+  `DebugEntryEntityRenderStats`；该 entry 调用
+  `Minecraft.getInstance().levelRenderer.getEntityStatistics()`，返回值非
+  null 时直接输出该行，同时覆盖 `isAllowed` 以便 reduced-debug info 下仍
+  允许显示。`LevelRenderer.getEntityStatistics()` 格式为
+  `E: <lastEntityRenderStateCount>/<level.getEntityCount()>, SD: <serverSimulationDistance>`；
+  vanilla 在提取 visible entity render states 后把
+  `levelRenderState.entityRenderStates.size()` 写入
+  `lastEntityRenderStateCount`，`ClientLevel.getServerSimulationDistance()`
+  返回服务端 simulation distance。native 现在有非 profile 默认项
+  `EntityRenderStats` entry id，default / performance profiles 中保持
+  `Never`，reduced-debug 下允许；custom status 启用时，基于 canonical
+  world state 投影 `E: entity_count/entity_count, SD: simulation_distance`
+  左列纯文本。边界：当前尚未 mirror vanilla
+  `LevelRenderState.lastEntityRenderStateCount`，因此 rendered numerator
+  暂用 tracked entity count；如果尚未收到 simulation-distance packet，该行
+  目前显示 `SD: 0`。精确 frame timing、完整 group layout、
+  `DebugOptionsScreen` / `debug-profile.json` 持久化、particle render stats
+  仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

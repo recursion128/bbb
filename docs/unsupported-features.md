@@ -1341,7 +1341,26 @@ When an agent does any of the following, update this file in the same slice:
     vanilla `ViewArea` total section count, smart-cull flag, or section buffer
     pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
     frame timing, group layout, profile persistence, chunk generation/source
-    stats, and entity/particle render stats remain future work.
+    stats, and particle render stats remain future work.
+  - Done 2026-07-09 — Debug overlay entity-render-stats entry shell. Vanilla
+    anchors: `DebugScreenEntries.ENTITY_RENDER_STATS` registers
+    `DebugEntryEntityRenderStats`; it calls
+    `Minecraft.getInstance().levelRenderer.getEntityStatistics()`, emits the
+    returned line when non-null, and overrides `isAllowed` so reduced-debug
+    info still allows it. `LevelRenderer.getEntityStatistics()` formats
+    `E: <lastEntityRenderStateCount>/<level.getEntityCount()>, SD: <serverSimulationDistance>`;
+    vanilla refreshes `lastEntityRenderStateCount` from
+    `levelRenderState.entityRenderStates.size()` after extracting visible
+    entity render states, and `ClientLevel.getServerSimulationDistance()`
+    returns the server-supplied simulation distance. bbb now has a non-profile
+    `EntityRenderStats` entry id, keeps it `Never` in default/performance
+    profiles, allows it under reduced-debug info, and projects
+    `E: entity_count/entity_count, SD: simulation_distance` from canonical
+    world state when custom-enabled. Boundary: bbb does not yet mirror vanilla
+    `LevelRenderState.lastEntityRenderStateCount`, so the rendered numerator
+    is a shell using tracked entity count; if no simulation-distance packet has
+    arrived the line currently uses `SD: 0`. Exact frame timing, group layout,
+    profile persistence, and particle render stats remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

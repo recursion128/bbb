@@ -1641,6 +1641,45 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_info() {
+    let mut world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
+    world.apply_add_entity(test_add_entity(
+        7,
+        VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID,
+    ));
+    world.apply_add_entity(test_add_entity(8, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::EntityRenderStats,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("entity render stats should be allowed under reduced debug info");
+
+    assert_eq!(overlay.left_lines, vec!["E: 2/2, SD: 12".to_string()]);
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
