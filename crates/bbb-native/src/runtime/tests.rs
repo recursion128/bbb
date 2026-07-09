@@ -1543,6 +1543,59 @@ fn hud_debug_overlay_projects_custom_looking_at_entity() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_looking_at_entity_tags() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    apply_entity_type_tags(
+        &mut world,
+        vec![
+            ("minecraft:arrows", vec![VANILLA_ENTITY_TYPE_ARROW_ID]),
+            ("minecraft:hostile", vec![VANILLA_ENTITY_TYPE_ZOMBIE_ID]),
+            ("minecraft:zombies", vec![VANILLA_ENTITY_TYPE_ZOMBIE_ID]),
+        ],
+    );
+    let mut target = test_add_entity(77, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+    target.position = Vec3d {
+        x: 0.5,
+        y: 0.0,
+        z: 0.0,
+    };
+    world.apply_add_entity(target);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LookingAtEntityTags,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom looking-at entity-tags entry should show target tags");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "#minecraft:hostile".to_string(),
+            "#minecraft:zombies".to_string(),
+        ]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
@@ -13957,6 +14010,21 @@ fn apply_fluid_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
     world.apply_update_tags(bbb_protocol::packets::UpdateTags {
         registries: vec![bbb_protocol::packets::RegistryTags {
             registry: "minecraft:fluid".to_string(),
+            tags: tags
+                .into_iter()
+                .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {
+                    tag: tag.to_string(),
+                    entries,
+                })
+                .collect(),
+        }],
+    });
+}
+
+fn apply_entity_type_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:entity_type".to_string(),
             tags: tags
                 .into_iter()
                 .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {

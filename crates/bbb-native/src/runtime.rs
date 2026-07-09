@@ -3164,6 +3164,13 @@ fn hud_debug_overlay_at_partial_tick(
             left_lines.extend(looking_at_lines);
         }
     }
+    if entry_enabled(DebugScreenEntryId::LookingAtEntityTags) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_entity_tag_lines(world, camera_pose, entity_partial_tick)
+        {
+            left_lines.extend(looking_at_lines);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3646,16 +3653,40 @@ fn hud_debug_looking_at_entity_lines(
     camera_pose: Option<CameraPose>,
     entity_partial_tick: f32,
 ) -> Option<Vec<String>> {
+    let entity = hud_debug_looking_at_entity(world, camera_pose, entity_partial_tick)?;
+    Some(vec![
+        "Targeted Entity".to_string(),
+        hud_debug_entity_type_name(world, entity.entity_type_id)?,
+    ])
+}
+
+fn hud_debug_looking_at_entity_tag_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+) -> Option<Vec<String>> {
+    let entity = hud_debug_looking_at_entity(world, camera_pose, entity_partial_tick)?;
+    let tags = world.registry_tags("minecraft:entity_type")?;
+    Some(
+        tags.tags
+            .iter()
+            .filter(|(_, entries)| entries.contains(&entity.entity_type_id))
+            .map(|(tag, _)| format!("#{tag}"))
+            .collect(),
+    )
+}
+
+fn hud_debug_looking_at_entity(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+) -> Option<bbb_world::EntityState> {
     let CrosshairTarget::Entity(hit) =
         crosshair_target_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)?
     else {
         return None;
     };
-    let entity = world.probe_entity(hit.entity_id)?;
-    Some(vec![
-        "Targeted Entity".to_string(),
-        hud_debug_entity_type_name(world, entity.entity_type_id)?,
-    ])
+    world.probe_entity(hit.entity_id)
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {
