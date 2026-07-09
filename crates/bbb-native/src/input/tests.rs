@@ -27,9 +27,10 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
     VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
     VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
-    VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+    VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
     VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
     VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
     VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
@@ -8424,6 +8425,73 @@ fn shift_f3_i_with_permission_copies_local_llama_spit_save_nbt_to_clipboard() {
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b}"
+        )
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn shift_f3_i_with_permission_copies_local_shulker_bullet_save_nbt_to_clipboard() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    world.apply_add_entity(AddEntity {
+        id: 58,
+        uuid: Uuid::from_u128(58),
+        entity_type_id: VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 1.5,
+            z: 2.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some(
+            "/summon minecraft:shulker_bullet 0.00 1.50 2.00 \
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
+             Steps: 0, TXD: 0.0d, TYD: 0.0d, TZD: 0.0d}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
