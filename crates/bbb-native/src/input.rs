@@ -22,8 +22,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -265,6 +265,8 @@ const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
 const SALMON_DEFAULT_VARIANT: i32 = 1;
+const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
+const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
 const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
@@ -3678,6 +3680,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_salmon_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_abstract_fish_additional_save_data(entity, fields);
+            debug_push_tropical_fish_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -3914,6 +3921,12 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
         1 => "medium",
         _ => "large",
     }
+}
+
+fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_int_present(entity, TROPICAL_FISH_VARIANT_DATA_ID)
+        .unwrap_or(TROPICAL_FISH_DEFAULT_VARIANT);
+    fields.push(format!("Variant: {variant}"));
 }
 
 fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
