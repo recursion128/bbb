@@ -6620,6 +6620,13 @@
   在 direct payload 缺席时输出 upgrade、pattern、material 三行，并应用 hidden
   component type id 56。边界：custom/datapack trim registry remap 与 exact material
   style transfer 仍属后续。
+- [x] advanced tooltip holder-id armor trim material colors（P2 item-runtime
+  slice，2026-07-09）：依据 `TrimMaterials.bootstrap` 为每个内置 material
+  description 设置 `Style.EMPTY.withColor(...)`，以及 `ArmorTrim.addToTooltip` 对
+  pattern row 调用 `copyWithStyle(this.material)`，native item tooltip 现在把 built-in
+  holder-id trim pattern/material 两行的 run color 设为对应 material 颜色。边界：
+  direct inline trim component style preservation 与 custom/datapack trim registry
+  remap 仍属后续。
 - [x] advanced tooltip stored/enchantment rows（P2 item-runtime + native
   slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 trim 之后调用
   `DataComponents.STORED_ENCHANTMENTS`，再调用 `DataComponents.ENCHANTMENTS`，

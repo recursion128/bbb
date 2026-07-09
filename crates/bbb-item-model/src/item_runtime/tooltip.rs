@@ -8,7 +8,9 @@ use bbb_protocol::{
 };
 use bbb_world::RegistrySet;
 
-use super::icon_model::{VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS};
+use super::icon_model::{
+    VANILLA_TRIM_MATERIAL_COLORS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+};
 use super::mob_effects::{
     vanilla_mob_effect_category, vanilla_mob_effect_key, VanillaMobEffectCategory,
 };
@@ -1080,6 +1082,13 @@ mod tests {
             ]
         );
         assert_eq!(
+            VANILLA_TRIM_MATERIAL_COLORS,
+            &[
+                0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36,
+                0x6E_EC_D2, 0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
+            ]
+        );
+        assert_eq!(
             VANILLA_TRIM_PATTERN_KEYS,
             &[
                 "minecraft:sentry",
@@ -1106,6 +1115,9 @@ mod tests {
         assert_eq!(vanilla_trim_material_key(10), Some("minecraft:resin"));
         assert_eq!(vanilla_trim_material_key(11), None);
         assert_eq!(vanilla_trim_material_key(-1), None);
+        assert_eq!(vanilla_trim_material_color(1), Some(0xEC_EC_EC));
+        assert_eq!(vanilla_trim_material_color(11), None);
+        assert_eq!(vanilla_trim_material_color(-1), None);
         assert_eq!(vanilla_trim_pattern_key(0), Some("minecraft:sentry"));
         assert_eq!(vanilla_trim_pattern_key(17), Some("minecraft:bolt"));
         assert_eq!(vanilla_trim_pattern_key(18), None);
@@ -1608,8 +1620,7 @@ fn push_armor_trim_tooltip_lines(
     pattern: Option<&TrimPatternSummary>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(material_description) =
-        armor_trim_material_description(language, material_id, material)
+    let Some(material_tooltip) = armor_trim_material_tooltip(language, material_id, material)
     else {
         return;
     };
@@ -1623,30 +1634,40 @@ fn push_armor_trim_tooltip_lines(
             .to_string(),
         TOOLTIP_TEXT_GRAY,
     ));
-    lines.push(NativeItemTooltipLine::plain(
+    lines.push(armor_trim_description_line(
         format!(" {pattern_description}"),
-        TOOLTIP_TEXT_WHITE,
+        material_tooltip.color,
     ));
-    lines.push(NativeItemTooltipLine::plain(
-        format!(" {material_description}"),
-        TOOLTIP_TEXT_WHITE,
+    lines.push(armor_trim_description_line(
+        format!(" {}", material_tooltip.description),
+        material_tooltip.color,
     ));
 }
 
-fn armor_trim_material_description(
+struct ArmorTrimMaterialTooltip {
+    description: String,
+    color: Option<u32>,
+}
+
+fn armor_trim_material_tooltip(
     language: &LanguageCatalog,
     material_id: Option<i32>,
     material: Option<&TrimMaterialSummary>,
-) -> Option<String> {
+) -> Option<ArmorTrimMaterialTooltip> {
     if let Some(material) = material {
-        return Some(material.description.clone());
+        return Some(ArmorTrimMaterialTooltip {
+            description: material.description.clone(),
+            color: None,
+        });
     }
-    let key = vanilla_trim_material_key(material_id?)?;
-    Some(
-        language
+    let material_id = material_id?;
+    let key = vanilla_trim_material_key(material_id)?;
+    Some(ArmorTrimMaterialTooltip {
+        description: language
             .get_or_key(&description_key("trim_material", key))
             .to_string(),
-    )
+        color: vanilla_trim_material_color(material_id),
+    })
 }
 
 fn armor_trim_pattern_description(
@@ -1671,10 +1692,31 @@ fn vanilla_trim_material_key(id: i32) -> Option<&'static str> {
         .and_then(|index| VANILLA_TRIM_MATERIAL_KEYS.get(index).copied())
 }
 
+fn vanilla_trim_material_color(id: i32) -> Option<u32> {
+    usize::try_from(id)
+        .ok()
+        .and_then(|index| VANILLA_TRIM_MATERIAL_COLORS.get(index).copied())
+}
+
 fn vanilla_trim_pattern_key(id: i32) -> Option<&'static str> {
     usize::try_from(id)
         .ok()
         .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index).copied())
+}
+
+fn armor_trim_description_line(text: String, color: Option<u32>) -> NativeItemTooltipLine {
+    match color {
+        Some(color) => NativeItemTooltipLine {
+            text: text.clone(),
+            tint: TOOLTIP_TEXT_WHITE,
+            runs: vec![HudStyledTextRun {
+                text,
+                style: HudTextStyle::default(),
+                color: Some(color),
+            }],
+        },
+        None => NativeItemTooltipLine::plain(text, TOOLTIP_TEXT_WHITE),
+    }
 }
 
 fn push_enchantments_tooltip_lines(

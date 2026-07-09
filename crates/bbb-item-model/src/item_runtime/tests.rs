@@ -1327,8 +1327,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
-            tooltip_line(" Sentry Armor Trim", TOOLTIP_TEXT_WHITE),
-            tooltip_line(" Iron Material", TOOLTIP_TEXT_WHITE),
+            colored_tooltip_line(" Sentry Armor Trim", TOOLTIP_TEXT_WHITE, 0xEC_EC_EC),
+            colored_tooltip_line(" Iron Material", TOOLTIP_TEXT_WHITE, 0xEC_EC_EC),
             lore_line("After trim holder"),
         ])
     );

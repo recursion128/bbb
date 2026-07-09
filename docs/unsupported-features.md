@@ -1461,9 +1461,18 @@ When an agent does any of the following, update this file in the same slice:
     resolves built-in trim material and pattern holder ids to
     `trim_material.<namespace>.<path>` and `trim_pattern.<namespace>.<path>`,
     localizes those descriptions, emits the same three rows when direct payloads
-    are absent, and honors hidden component type id 56. Boundary:
-    custom/datapack trim registry remaps and exact material style transfer remain
-    future work.
+    are absent, and honors hidden component type id 56. Boundary: holder-id
+    material color styling is covered by the later entry below; custom/datapack
+    trim registry remaps and direct inline trim component styles remain future
+    work.
+  - Done 2026-07-09 — Advanced tooltip holder-id armor trim material colors.
+    Vanilla anchors: `TrimMaterials.bootstrap` assigns a material `Style` color
+    to each built-in material description, and `ArmorTrim.addToTooltip` applies
+    that material style to the pattern row via `copyWithStyle(this.material)`.
+    bbb now locks the vanilla 26.1 material colors beside the built-in trim
+    material holder order and emits holder-id pattern/material rows with the
+    material color run. Boundary: direct inline trim component style preservation
+    and custom/datapack trim registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip dynamic profile line. Vanilla anchors:
     `ItemStack.addDetailsToTooltip` calls `DataComponents.PROFILE` after
     dyed-color and before lore; `ResolvableProfile.Dynamic.addToTooltip`
