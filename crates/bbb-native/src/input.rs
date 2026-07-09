@@ -163,7 +163,8 @@ const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET: i32 = 56;
-const PAUSE_SCREEN_DISCONNECT_ROW_TOP_OFFSET: i32 = 104;
+const PAUSE_SCREEN_FOURTH_ROW_TOP_OFFSET: i32 = 80;
+const PAUSE_SCREEN_DISCONNECT_ROW_TOP_OFFSET: i32 = 128;
 const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
 const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
 const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
@@ -2885,6 +2886,36 @@ pub(crate) fn pause_screen_report_bugs_button_enabled() -> bool {
     MC_DATA_VERSION_SERIES == "main"
 }
 
+pub(crate) fn pause_screen_options_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_options_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
+pub(crate) fn pause_screen_options_button_enabled() -> bool {
+    false
+}
+
+pub(crate) fn pause_screen_player_reporting_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_player_reporting_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
+pub(crate) fn pause_screen_player_reporting_button_enabled() -> bool {
+    false
+}
+
 pub(crate) fn pause_screen_disconnect_button_contains(
     cursor_position: Option<(i32, i32)>,
     surface_size: PhysicalSize<u32>,
@@ -2967,6 +2998,30 @@ fn pause_screen_report_bugs_button_rect(surface_size: PhysicalSize<u32>) -> (i32
     (
         width / 2 + 4,
         height / 4 + PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_options_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + PAUSE_SCREEN_FOURTH_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_player_reporting_button_rect(
+    surface_size: PhysicalSize<u32>,
+) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 + 4,
+        height / 4 + PAUSE_SCREEN_FOURTH_ROW_TOP_OFFSET,
         PAUSE_SCREEN_HALF_BUTTON_WIDTH,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
     )

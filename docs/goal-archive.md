@@ -5438,6 +5438,17 @@
   `PauseScreen(true)` title/buttons 前绘制全屏透明深色渐变。边界：menu music
   toast、local-server/share/reporting flows、draft-report confirmation UI、以及
   pause tick-freeze eligibility 仍未实现。
+- [x] native PauseScreen(true) Options / Player Reporting row shell（P2
+  input/runtime/renderer slice，2026-07-09）：依据 `PauseScreen.createPauseMenu`
+  在默认 feedback/report row 后添加 half-width `menu.options`，再按是否有未发布
+  integrated server 添加 `menu.shareToLan` 或 `menu.playerReporting`，最后才添加
+  full-width Disconnect 的顺序。native/renderer 现在投影并绘制第四行 Options /
+  Player Reporting disabled shell，坐标为 `(width / 2 - 102, height / 4 + 80,
+  98, 20)` 和 `(width / 2 + 4, height / 4 + 80, 98, 20)`，并把 Disconnect 行
+  下移到 `(width / 2 - 102, height / 4 + 128, 204, 20)`。边界：Options
+  仍按仓库约束保持启动/命令行配置，不提供 in-game config UI；Share to LAN /
+  Player Reporting actions/subscreens、integrated-server branching、draft-report
+  icon、music toast、以及 pause tick-freeze eligibility 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

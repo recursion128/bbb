@@ -1138,6 +1138,7 @@ When an agent does any of the following, update this file in the same slice:
     PauseScreen Send Feedback / Report Bugs link row shell,
     PauseScreen Disconnect button render/input/action,
     PauseScreen menu background gradient,
+    PauseScreen Options / Player Reporting row shell,
     SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
@@ -1148,7 +1149,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
-    tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
+    tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
@@ -2022,6 +2023,20 @@ When an agent does any of the following, update this file in the same slice:
     buttons. Boundary: menu music toast, local-server/share/reporting flows,
     draft-report confirmation UI, and pause tick-freeze eligibility remain
     future work.
+  - Done 2026-07-09 — Native `PauseScreen(true)` Options / Player Reporting row shell.
+    Vanilla anchors: `PauseScreen.createPauseMenu` adds the half-width
+    `menu.options` button after the default feedback/report row, then adds
+    `menu.shareToLan` for an unpublished integrated server or
+    `menu.playerReporting` otherwise, before the full-width Disconnect row.
+    bbb now renders the fourth-row Options / Player Reporting shell at
+    `(width / 2 - 102, height / 4 + 80, 98, 20)` and
+    `(width / 2 + 4, height / 4 + 80, 98, 20)`, projects disabled state for
+    both buttons, and moves the Disconnect row to
+    `(width / 2 - 102, height / 4 + 128, 204, 20)`. Boundary: Options remains
+    command-line/startup configuration only per repo policy; Share to LAN /
+    Player Reporting actions/subscreens, unpublished-integrated-server
+    branching, draft-report icon, music toast, and pause tick-freeze
+    eligibility remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -3123,7 +3138,9 @@ When an agent does any of the following, update this file in the same slice:
     loading shell that requests stats and closes from Done/Escape, record
     drainable feedback/report link requests from the default feedback row, and
     route Disconnect clicks through the existing net disconnect command path,
-    with the vanilla in-game transparent background gradient behind the menu.
+    render the disabled Options / Player Reporting row shell with vanilla row
+    spacing, and draw the vanilla in-game transparent background gradient behind
+    the menu.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and
@@ -3189,7 +3206,7 @@ When an agent does any of the following, update this file in the same slice:
     ProfileResults tree navigation, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
-    PauseScreen remaining menu buttons/actions.
+    PauseScreen remaining actions/subscreens.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

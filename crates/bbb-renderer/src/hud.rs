@@ -129,6 +129,10 @@ pub struct HudPauseScreen {
     pub send_feedback_hovered: bool,
     pub report_bugs_hovered: bool,
     pub report_bugs_enabled: bool,
+    pub options_hovered: bool,
+    pub options_enabled: bool,
+    pub player_reporting_hovered: bool,
+    pub player_reporting_enabled: bool,
     pub disconnect_hovered: bool,
     pub disconnect_enabled: bool,
 }
@@ -627,7 +631,8 @@ const HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const HUD_PAUSE_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const HUD_PAUSE_SECOND_ROW_TOP_OFFSET: i32 = 32;
 const HUD_PAUSE_THIRD_ROW_TOP_OFFSET: i32 = 56;
-const HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET: i32 = 104;
+const HUD_PAUSE_FOURTH_ROW_TOP_OFFSET: i32 = 80;
+const HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET: i32 = 128;
 const HUD_PAUSE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const HUD_PAUSE_BACKGROUND_TOP_TINT: [f32; 4] =
     [16.0 / 255.0, 16.0 / 255.0, 16.0 / 255.0, 192.0 / 255.0];
@@ -5992,6 +5997,34 @@ fn push_hud_pause_screen<'a>(
             obfuscated_pool,
             frame_index,
             surface_size,
+            hud_pause_options_button_rect(surface_size),
+            "Options",
+            screen.options_hovered,
+            screen.options_enabled,
+        );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_player_reporting_button_rect(surface_size),
+            "Player Reporting",
+            screen.player_reporting_hovered,
+            screen.player_reporting_enabled,
+        );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
             hud_pause_disconnect_button_rect(surface_size),
             "Disconnect",
             screen.disconnect_hovered,
@@ -7107,6 +7140,28 @@ fn hud_pause_report_bugs_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i
     (
         width / 2 + 4,
         height / 4 + HUD_PAUSE_THIRD_ROW_TOP_OFFSET,
+        HUD_PAUSE_HALF_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_options_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + HUD_PAUSE_FOURTH_ROW_TOP_OFFSET,
+        HUD_PAUSE_HALF_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_player_reporting_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 + 4,
+        height / 4 + HUD_PAUSE_FOURTH_ROW_TOP_OFFSET,
         HUD_PAUSE_HALF_BUTTON_WIDTH,
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
@@ -10826,6 +10881,10 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         send_feedback_hovered: screen.send_feedback_hovered,
         report_bugs_hovered: screen.report_bugs_hovered,
         report_bugs_enabled: screen.report_bugs_enabled,
+        options_hovered: screen.options_hovered,
+        options_enabled: screen.options_enabled,
+        player_reporting_hovered: screen.player_reporting_hovered,
+        player_reporting_enabled: screen.player_reporting_enabled,
         disconnect_hovered: screen.disconnect_hovered,
         disconnect_enabled: screen.disconnect_enabled,
     })
@@ -15224,6 +15283,10 @@ mod tests {
             send_feedback_hovered: true,
             report_bugs_hovered: true,
             report_bugs_enabled: false,
+            options_hovered: true,
+            options_enabled: false,
+            player_reporting_hovered: true,
+            player_reporting_enabled: false,
             disconnect_hovered: true,
             disconnect_enabled: false,
         })
@@ -15236,6 +15299,10 @@ mod tests {
         assert!(screen.send_feedback_hovered);
         assert!(screen.report_bugs_hovered);
         assert!(!screen.report_bugs_enabled);
+        assert!(screen.options_hovered);
+        assert!(!screen.options_enabled);
+        assert!(screen.player_reporting_hovered);
+        assert!(!screen.player_reporting_enabled);
         assert!(screen.disconnect_hovered);
         assert!(!screen.disconnect_enabled);
 
@@ -15248,6 +15315,10 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            options_hovered: false,
+            options_enabled: false,
+            player_reporting_hovered: false,
+            player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
         })
@@ -15437,6 +15508,10 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            options_hovered: false,
+            options_enabled: false,
+            player_reporting_hovered: false,
+            player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
         };
@@ -15449,6 +15524,10 @@ mod tests {
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            options_hovered: false,
+            options_enabled: false,
+            player_reporting_hovered: false,
+            player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
         };
@@ -15526,12 +15605,28 @@ mod tests {
             (431, 176, 98, 20)
         );
         assert_eq!(
+            hud_pause_options_button_rect(PhysicalSize::new(320, 240)),
+            (58, 140, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_options_button_rect(PhysicalSize::new(854, 480)),
+            (325, 200, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_player_reporting_button_rect(PhysicalSize::new(320, 240)),
+            (164, 140, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_player_reporting_button_rect(PhysicalSize::new(854, 480)),
+            (431, 200, 98, 20)
+        );
+        assert_eq!(
             hud_pause_disconnect_button_rect(PhysicalSize::new(320, 240)),
-            (58, 164, 204, 20)
+            (58, 188, 204, 20)
         );
         assert_eq!(
             hud_pause_disconnect_button_rect(PhysicalSize::new(854, 480)),
-            (325, 224, 204, 20)
+            (325, 248, 204, 20)
         );
         assert_eq!(
             hud_stats_done_button_rect(PhysicalSize::new(320, 240)),

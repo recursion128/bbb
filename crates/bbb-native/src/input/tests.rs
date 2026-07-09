@@ -3969,7 +3969,7 @@ fn debug_pause_screen_disconnect_button_records_disconnect_request() {
         &None,
         MouseButton::Left,
         ElementState::Pressed,
-        Some(PhysicalPosition::new(68.0, 174.0)),
+        Some(PhysicalPosition::new(68.0, 198.0)),
         surface,
     ));
 

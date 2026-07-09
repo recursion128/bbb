@@ -87,7 +87,9 @@ use crate::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
         inventory_screen_selected_hotbar_slot_id, pause_screen_advancements_button_contains,
-        pause_screen_disconnect_button_contains, pause_screen_report_bugs_button_contains,
+        pause_screen_disconnect_button_contains, pause_screen_options_button_contains,
+        pause_screen_options_button_enabled, pause_screen_player_reporting_button_contains,
+        pause_screen_player_reporting_button_enabled, pause_screen_report_bugs_button_contains,
         pause_screen_report_bugs_button_enabled, pause_screen_return_to_game_button_contains,
         pause_screen_send_feedback_button_contains, pause_screen_stats_button_contains,
         recipe_book_button_position, recipe_book_main_gui_offset,
@@ -2951,6 +2953,12 @@ fn hud_pause_screen(
     let report_bugs_hovered = state.show_pause_menu
         && pause_screen_report_bugs_button_enabled()
         && pause_screen_report_bugs_button_contains(state.cursor_position, surface_size);
+    let options_hovered = state.show_pause_menu
+        && pause_screen_options_button_enabled()
+        && pause_screen_options_button_contains(state.cursor_position, surface_size);
+    let player_reporting_hovered = state.show_pause_menu
+        && pause_screen_player_reporting_button_enabled()
+        && pause_screen_player_reporting_button_contains(state.cursor_position, surface_size);
     let disconnect_enabled = !input.pause_screen_disconnect_requested();
     let disconnect_hovered = state.show_pause_menu
         && disconnect_enabled
@@ -2969,6 +2977,10 @@ fn hud_pause_screen(
         send_feedback_hovered,
         report_bugs_hovered,
         report_bugs_enabled: pause_screen_report_bugs_button_enabled(),
+        options_hovered,
+        options_enabled: pause_screen_options_button_enabled(),
+        player_reporting_hovered,
+        player_reporting_enabled: pause_screen_player_reporting_button_enabled(),
         disconnect_hovered,
         disconnect_enabled,
     })

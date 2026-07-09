@@ -342,6 +342,7 @@ Screen Render Surfaces" 条目）：
   PauseScreen Send Feedback / Report Bugs link row shell、
   PauseScreen Disconnect button render/input/action、
   PauseScreen menu background gradient、
+  PauseScreen Options / Player Reporting row shell、
   SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys、
   DebugOptionsScreen input/search/list/profile/status/done screen shell、
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、
@@ -363,7 +364,7 @@ Screen Render Surfaces" 条目）：
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
-  styling polish、native pause tick-freeze eligibility/full PauseScreen remaining buttons/actions，
+  styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，
   低优先）。
 
 完成标准：新 UI/screen 工作不做临时配置 UI，启动配置仍从命令行进入；视觉
