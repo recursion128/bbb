@@ -1167,7 +1167,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    look-at/chunk stats remain future work.
+    look-at tags/fluid/entity/chunk stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1231,6 +1231,20 @@ When an agent does any of the following, update this file in the same slice:
     tracked `minecraft:worldgen/biome` registry entries. Boundary: the optional
     server biome row needs a local-server biome mirror; if registry content is
     unavailable, bbb reports `[unregistered <id>]` instead of a key.
+  - Done 2026-07-09 — Debug overlay looking-at block-state entry shell.
+    Vanilla anchors: `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` registers
+    `DebugEntryLookingAt.BlockStateInfo`; that entry uses
+    `cameraEntity.pick(20.0, 0.0F, false)`, writes to
+    `minecraft:looking_at_block`, and outputs `Targeted Block: x, y, z`, the
+    block state's registered name, and one `property: value` row per state
+    property. bbb now has a non-profile `LookingAtBlockState` entry id, keeps
+    it `Never` in default/performance profiles, filters it under reduced-debug
+    info, raycasts from the camera with the vanilla 20-block debug range, and
+    projects the loaded block state's name/properties as plain left-column
+    lines when custom-enabled. Boundary: vanilla underline and boolean
+    green/red text styling are not represented by the current plain debug text
+    model; server debug values, exact group layout, profile persistence, and
+    the block-tags/fluid/entity looking-at entries remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2446,7 +2460,8 @@ When an agent does any of the following, update this file in the same slice:
     vanilla-shaped heap/non-heap rows from native process memory.
     Custom-enabled light levels now render the client light row from the
     camera feet block, and custom-enabled biome renders the loaded camera feet
-    biome registry key. F3+B local-server
+    biome registry key. Custom-enabled looking-at block state now renders the
+    targeted block position, registry name, and state properties. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The

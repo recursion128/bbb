@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  chunk stats 等 individual non-default entry
+  tags/fluid/entity/chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5511,6 +5511,21 @@
   biome id，并通过已跟踪的 `minecraft:worldgen/biome` registry entries 映射为
   registry key。边界：optional server biome row 需要 local-server biome mirror；
   registry content 缺失时 native 显示 `[unregistered <id>]` 而非 key。
+- [x] debug overlay looking-at block-state entry shell（P2 native/runtime
+  slice，2026-07-09）：依据
+  `DebugScreenEntries.LOOKING_AT_BLOCK_STATE` 注册
+  `DebugEntryLookingAt.BlockStateInfo`；该 entry 使用
+  `cameraEntity.pick(20.0, 0.0F, false)`，加入
+  `minecraft:looking_at_block` group，并输出 `Targeted Block: x, y, z`、
+  block state 的 registered name、以及每个 state property 的
+  `property: value`。native 现在有非 profile 默认项 `LookingAtBlockState`
+  entry id，default / performance profiles 中保持 `Never`，reduced-debug 下按
+  默认 `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，用 vanilla
+  20-block debug range 从 camera raycast，并把 loaded block state 的坐标、名称
+  与属性投影为左列纯文本。边界：当前 debug text model 不承载 vanilla 的
+  underline / boolean green-red styling；server debug values、完整 group
+  layout、`DebugOptionsScreen` / `debug-profile.json` 持久化，以及
+  block-tags/fluid/entity looking-at entries 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

@@ -66,7 +66,10 @@ use crate::{
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
-    crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
+    crosshair::{
+        debug_looking_at_block_hit_from_camera, entity_target_outline_from_camera_at_partial_tick,
+        selection_outline_from_camera,
+    },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
     enchanting_table_book_scene::enchanting_table_book_model_instances_from_world_at_partial_tick,
@@ -3103,6 +3106,11 @@ fn hud_debug_overlay(
             }
         }
     }
+    if entry_enabled(DebugScreenEntryId::LookingAtBlockState) {
+        if let Some(looking_at_lines) = hud_debug_looking_at_block_state_lines(world, camera_pose) {
+            left_lines.extend(looking_at_lines);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3490,6 +3498,29 @@ fn hud_debug_biome_line(world: &WorldStore, camera_pose: CameraPose) -> Option<S
         .map(str::to_string)
         .unwrap_or_else(|| format!("[unregistered {biome_id}]"));
     Some(format!("Biome: {biome}"))
+}
+
+fn hud_debug_looking_at_block_state_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<Vec<String>> {
+    let hit = debug_looking_at_block_hit_from_camera(world, camera_pose)?;
+    let probe = world.probe_block(hit.pos)?;
+    let block_name = probe.block_name?;
+    let mut lines = vec![
+        format!(
+            "Targeted Block: {}, {}, {}",
+            hit.pos.x, hit.pos.y, hit.pos.z
+        ),
+        block_name,
+    ];
+    lines.extend(
+        probe
+            .block_properties
+            .into_iter()
+            .map(|(name, value)| format!("{name}: {value}")),
+    );
+    Some(lines)
 }
 
 fn camera_feet_block_position(camera: CameraPose) -> Option<BlockPos> {

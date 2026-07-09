@@ -15,6 +15,7 @@ use crate::block_outline::{
 
 const DEFAULT_BLOCK_INTERACTION_RANGE: f64 = 4.5;
 const DEFAULT_ENTITY_INTERACTION_RANGE: f64 = 3.0;
+const DEBUG_LOOKING_AT_RANGE: f64 = 20.0;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CrosshairBlockHit {
@@ -87,6 +88,21 @@ fn crosshair_block_hit_from_camera(
     pose: Option<CameraPose>,
 ) -> Option<CrosshairBlockHit> {
     crosshair_block_hit_from_ray(world, crosshair_ray_from_camera_pose(pose?))
+}
+
+pub(crate) fn debug_looking_at_block_hit_from_camera(
+    world: &WorldStore,
+    pose: Option<CameraPose>,
+) -> Option<CrosshairBlockHit> {
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_camera_pose(pose?),
+        DEBUG_LOOKING_AT_RANGE,
+        |pos| {
+            world
+                .probe_block(pos)
+                .map(|probe| BlockOutlineTarget::from_probe(&probe))
+        },
+    )
 }
 
 fn crosshair_block_hit_from_ray(

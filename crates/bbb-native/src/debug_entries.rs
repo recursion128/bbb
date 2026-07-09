@@ -25,6 +25,7 @@ pub(crate) enum DebugScreenEntryId {
     DayCount,
     LightLevels,
     Biome,
+    LookingAtBlockState,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -245,6 +246,10 @@ mod tests {
             entries.status(DebugScreenEntryId::Biome),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::LookingAtBlockState),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -316,5 +321,10 @@ mod tests {
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::LightLevels, true));
         entries.set_status(DebugScreenEntryId::Biome, DebugScreenEntryStatus::AlwaysOn);
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::Biome, true));
+        entries.set_status(
+            DebugScreenEntryId::LookingAtBlockState,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::LookingAtBlockState, true));
     }
 }

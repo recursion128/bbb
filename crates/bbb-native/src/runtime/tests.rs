@@ -1,5 +1,6 @@
 use super::*;
 use std::{
+    collections::BTreeMap,
     path::{Path, PathBuf},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -1258,6 +1259,57 @@ fn hud_debug_overlay_projects_custom_biome_from_camera_feet_block() {
     assert_eq!(
         overlay.left_lines,
         vec!["Biome: minecraft:cherry_grove".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
+fn hud_debug_overlay_projects_custom_looking_at_block_state() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let target = BlockPos { x: 0, y: 1, z: 0 };
+    let properties = BTreeMap::from([
+        ("facing".to_string(), "north".to_string()),
+        ("open".to_string(), "true".to_string()),
+    ]);
+    let block_state_id = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:barrel", &properties)
+        .expect("vanilla barrel block state");
+    set_lightmap_test_block(&mut world, target, block_state_id);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LookingAtBlockState,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom looking-at block-state entry should show with a target block");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "Targeted Block: 0, 1, 0".to_string(),
+            "minecraft:barrel".to_string(),
+            "facing: north".to_string(),
+            "open: true".to_string(),
+        ]
     );
     assert!(overlay.right_lines.is_empty());
 }
