@@ -1150,10 +1150,11 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, stored/enchantment rows, dynamic profile line,
-    TooltipDisplay hide/hidden-components gating, intangible projectile line,
-    and ominous bottle amplifier line, potion custom-effect lines, creative
-    suspicious-stew effect lines, map-id lines, instrument description lines,
-    tropical-fish pattern lines, banner-pattern rows, pot-decoration rows,
+    TooltipDisplay hide/hidden-components gating, map_id component type-id 46,
+    intangible projectile line, and ominous bottle amplifier line, potion
+    custom-effect lines, creative suspicious-stew effect lines, map-id lines,
+    instrument description lines, tropical-fish pattern lines,
+    banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1185,6 +1186,15 @@ When an agent does any of the following, update this file in the same slice:
     native HUD extraction into item-runtime tooltip options and projects the
     same map-id rows. Boundary: `TooltipDisplay` hiding and remaining component
     providers remain future work.
+  - Done 2026-07-09 — `minecraft:map_id` data component type-id 46. Vanilla
+    anchors: `DataComponentType.STREAM_CODEC` uses `ByteBufCodecs.registry`,
+    which reads/writes the `Registries.DATA_COMPONENT_TYPE` registry id, and
+    `DataComponents.MAP_ID` is registered after `MAP_COLOR`, giving it id 46 in
+    the 26.1 registry. bbb now decodes map-id summaries from component type id
+    46 and uses the same id for item model component predicates, item-frame map
+    detection, cartography/inventory changed-slot hashing, native map extraction,
+    and tooltip advanced component-count tests. Boundary: this was a narrow
+    `MAP_ID` correction, not a full audit of every hard-coded component id.
   - Done 2026-07-09 — Advanced tooltip instrument description line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls `DataComponents.INSTRUMENT`
     after tropical-fish pattern and before `DataComponents.MAP_ID`, and

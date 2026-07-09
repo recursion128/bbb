@@ -6622,6 +6622,14 @@
   type ids；native item tooltip 对已覆盖的 top-level provider 全部应用 hidden-components
   gate，并在非 creative hide-tooltip 时不显示 tooltip。边界：options persistence、
   未实现 provider、nested recursive item detail provider 与 op-warning tooltip 行仍未完成。
+- [x] map_id data component type-id 46（P2 protocol + native/world/item-runtime
+  slice，2026-07-09）：依据 `DataComponentType.STREAM_CODEC` 经
+  `ByteBufCodecs.registry` 读写 `Registries.DATA_COMPONENT_TYPE` registry id，
+  且 vanilla 26.1 `DataComponents.MAP_ID` 在 `MAP_COLOR` 之后注册为 id 46，
+  protocol summary、item model component predicate、item-frame map detection、
+  cartography/inventory changed-slot hashing、native map extraction 与 tooltip
+  advanced component-count 测试都已从旧 41 对齐到 46。边界：本 slice 只校正
+  `MAP_ID`，未做全量 data component id 审计。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

@@ -779,7 +779,7 @@ fn decode_typed_data_component_patch_summary(
             21 => {
                 summary.enchantment_glint_override = Some(decoder.read_bool()?);
             }
-            41 => {
+            46 => {
                 summary.map_id = Some(decoder.read_var_i32()?);
             }
             48 => {
@@ -3285,7 +3285,7 @@ mod tests {
         payload.write_var_i32(2);
         payload.write_var_i32(0);
 
-        payload.write_var_i32(41);
+        payload.write_var_i32(46);
         payload.write_var_i32(123);
         payload.write_var_i32(48);
         payload.write_var_i32(1);
@@ -3298,7 +3298,7 @@ mod tests {
             patch,
             DataComponentPatchSummary {
                 added: 2,
-                added_type_ids: vec![41, 48],
+                added_type_ids: vec![46, 48],
                 removed_type_ids: Vec::new(),
                 map_id: Some(123),
                 map_post_processing: Some(MapPostProcessingSummary::Scale),

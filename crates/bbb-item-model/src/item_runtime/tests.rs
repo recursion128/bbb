@@ -612,7 +612,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         runtime.tooltip_lines_for_stack_with_context(
             &ItemStackSummary {
                 component_patch: DataComponentPatchSummary {
-                    added_type_ids: vec![41, 48],
+                    added_type_ids: vec![46, 48],
                     map_id: Some(7),
                     map_post_processing: Some(MapPostProcessingSummary::Scale),
                     ..DataComponentPatchSummary::default()
@@ -8371,7 +8371,7 @@ fn native_item_runtime_resolves_component_select_values() {
         .is_none());
 
     // `DataComponents.MAP_ID` wraps an int (`MapId.CODEC`), so component
-    // select cases match JSON numbers and removed id 41 suppresses it.
+    // select cases match JSON numbers and removed id 46 suppresses it.
     assert_eq!(
         selected(6, DataComponentPatchSummary::default()),
         uv("component_map_id_fallback")
@@ -8391,7 +8391,7 @@ fn native_item_runtime_resolves_component_select_values() {
             6,
             DataComponentPatchSummary {
                 map_id: Some(123),
-                removed_type_ids: vec![41],
+                removed_type_ids: vec![46],
                 ..DataComponentPatchSummary::default()
             }
         ),

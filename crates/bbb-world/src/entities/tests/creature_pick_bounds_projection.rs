@@ -334,7 +334,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     added: 1,
-                    added_type_ids: vec![41],
+                    added_type_ids: vec![46],
                     removed_type_ids: Vec::new(),
                     ..DataComponentPatchSummary::default()
                 },
