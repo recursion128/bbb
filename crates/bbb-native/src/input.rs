@@ -11,14 +11,15 @@ use bbb_protocol::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
         VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -222,6 +223,12 @@ const AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
 const AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
 const ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 const ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
+const CHICKEN_VARIANT_DATA_ID: u8 = 18;
+const CHICKEN_DEFAULT_VARIANT_ID: i32 = 0;
+const CHICKEN_SOUND_VARIANT_DATA_ID: u8 = 19;
+const CHICKEN_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
+const CHICKEN_DEFAULT_CHICKEN_JOCKEY: bool = false;
+const CHICKEN_DEFAULT_EGG_LAY_TIME: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3641,6 +3648,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_BREEZE_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_chicken_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_COD_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
@@ -3821,6 +3834,49 @@ fn debug_push_abstract_fish_additional_save_data(entity: &EntityState, fields: &
     let from_bucket = debug_entity_data_bool_present(entity, ABSTRACT_FISH_FROM_BUCKET_DATA_ID)
         .unwrap_or(ABSTRACT_FISH_DEFAULT_FROM_BUCKET);
     fields.push(format!("FromBucket: {}", debug_snbt_bool(from_bucket)));
+}
+
+fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        CHICKEN_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::ChickenVariant,
+    )
+    .unwrap_or(CHICKEN_DEFAULT_VARIANT_ID);
+    let sound_variant = debug_entity_data_registry_id_present(
+        entity,
+        CHICKEN_SOUND_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::ChickenSoundVariant,
+    )
+    .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_ID);
+    fields.push(format!(
+        "IsChickenJockey: {}",
+        debug_snbt_bool(CHICKEN_DEFAULT_CHICKEN_JOCKEY)
+    ));
+    fields.push(format!("EggLayTime: {CHICKEN_DEFAULT_EGG_LAY_TIME}"));
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_chicken_variant_resource_id(variant))
+    ));
+    fields.push(format!(
+        "sound_variant: {}",
+        debug_snbt_string(debug_chicken_sound_variant_resource_id(sound_variant))
+    ));
+}
+
+fn debug_chicken_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:warm",
+        2 => "minecraft:cold",
+        _ => "minecraft:temperate",
+    }
+}
+
+fn debug_chicken_sound_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:picky",
+        _ => "minecraft:classic",
+    }
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
