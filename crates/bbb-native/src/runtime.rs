@@ -3139,6 +3139,11 @@ fn hud_debug_overlay(
     if entry_enabled(DebugScreenEntryId::Memory) {
         right_lines.extend(hud_debug_memory_lines(hud_debug_memory_snapshot()));
     }
+    if entry_enabled(DebugScreenEntryId::DetailedMemory) {
+        right_lines.extend(hud_debug_detailed_memory_lines(
+            hud_debug_detailed_memory_snapshot(),
+        ));
+    }
     if entry_enabled(DebugScreenEntryId::SystemSpecs) {
         if !right_lines.is_empty() {
             right_lines.push("".to_string());
@@ -3475,6 +3480,20 @@ struct HudDebugMemorySnapshot {
     allocation_rate_mib_per_s: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudDebugMemoryUsageSnapshot {
+    init_mib: u64,
+    used_mib: u64,
+    committed_mib: u64,
+    max_mib: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudDebugDetailedMemorySnapshot {
+    heap: HudDebugMemoryUsageSnapshot,
+    non_heap: HudDebugMemoryUsageSnapshot,
+}
+
 fn hud_debug_memory_snapshot() -> HudDebugMemorySnapshot {
     let used_kib = proc_kib_field("/proc/self/status", "VmRSS:").unwrap_or(0);
     let allocated_kib = proc_kib_field("/proc/self/status", "VmSize:").unwrap_or(used_kib);
@@ -3507,6 +3526,47 @@ fn hud_debug_memory_lines(snapshot: HudDebugMemorySnapshot) -> Vec<String> {
             snapshot.allocated_mib
         ),
     ]
+}
+
+fn hud_debug_detailed_memory_snapshot() -> HudDebugDetailedMemorySnapshot {
+    let status_path = "/proc/self/status";
+    let used_kib = proc_kib_field(status_path, "VmRSS:").unwrap_or(0);
+    let committed_kib = proc_kib_field(status_path, "VmSize:").unwrap_or(used_kib);
+    let max_kib =
+        proc_kib_field("/proc/meminfo", "MemTotal:").unwrap_or_else(|| committed_kib.max(used_kib));
+    let non_heap_used_kib = proc_kib_field(status_path, "VmExe:")
+        .unwrap_or(0)
+        .saturating_add(proc_kib_field(status_path, "VmLib:").unwrap_or(0))
+        .saturating_add(proc_kib_field(status_path, "VmStk:").unwrap_or(0));
+
+    HudDebugDetailedMemorySnapshot {
+        heap: HudDebugMemoryUsageSnapshot {
+            init_mib: 0,
+            used_mib: kib_to_mib(used_kib),
+            committed_mib: kib_to_mib(committed_kib),
+            max_mib: kib_to_mib(max_kib),
+        },
+        non_heap: HudDebugMemoryUsageSnapshot {
+            init_mib: 0,
+            used_mib: kib_to_mib(non_heap_used_kib),
+            committed_mib: kib_to_mib(non_heap_used_kib),
+            max_mib: 0,
+        },
+    }
+}
+
+fn hud_debug_detailed_memory_lines(snapshot: HudDebugDetailedMemorySnapshot) -> Vec<String> {
+    vec![
+        hud_debug_memory_usage_line("heap", snapshot.heap),
+        hud_debug_memory_usage_line("non-heap", snapshot.non_heap),
+    ]
+}
+
+fn hud_debug_memory_usage_line(kind: &str, usage: HudDebugMemoryUsageSnapshot) -> String {
+    format!(
+        "Memory ({kind}): i={:03}MiB u={:03}MiB c={:03}MiB m={:03}MiB",
+        usage.init_mib, usage.used_mib, usage.committed_mib, usage.max_mib
+    )
 }
 
 fn hud_debug_system_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<String> {

@@ -18,6 +18,7 @@ pub(crate) enum DebugScreenEntryId {
     Fps,
     Tps,
     Memory,
+    DetailedMemory,
     SystemSpecs,
     PlayerPosition,
     PlayerSectionPosition,
@@ -37,6 +38,7 @@ impl DebugScreenEntryId {
                     | Self::Fps
                     | Self::Tps
                     | Self::Memory
+                    | Self::DetailedMemory
                     | Self::SystemSpecs
                     | Self::PlayerSectionPosition
                     | Self::SimplePerformanceImpactors
@@ -226,6 +228,10 @@ mod tests {
             DebugScreenEntryStatus::Never
         );
         assert_eq!(
+            entries.status(DebugScreenEntryId::DetailedMemory),
+            DebugScreenEntryStatus::Never
+        );
+        assert_eq!(
             entries.status(DebugScreenEntryId::DayCount),
             DebugScreenEntryStatus::Never
         );
@@ -288,5 +294,10 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::DayCount, true));
+        entries.set_status(
+            DebugScreenEntryId::DetailedMemory,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(entries.is_currently_enabled(DebugScreenEntryId::DetailedMemory, true));
     }
 }

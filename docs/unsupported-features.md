@@ -1110,7 +1110,7 @@ When an agent does any of the following, update this file in the same slice:
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage,
     performance-profile GPU utilization entry shell, day-count debug entry
-    shell, F3+I
+    shell, detailed-memory debug entry shell, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
@@ -1166,7 +1166,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    detailed memory/look-at/light/biome/chunk stats remain future work.
+    look-at/light/biome/chunk stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1190,6 +1190,20 @@ When an agent does any of the following, update this file in the same slice:
     `Day #<world day_time / 24000>` when world time exists. Boundary: no
     `DebugOptionsScreen` or debug-profile persistence yet; broader clock
     timeline registry/display parity remains future work.
+  - Done 2026-07-09 — Debug overlay detailed-memory entry shell. Vanilla
+    anchors: `DebugScreenEntries.DETAILED_MEMORY` registers
+    `DebugEntryDetailedMemory`; the entry reads `MemoryMXBean`
+    `getHeapMemoryUsage()` and `getNonHeapMemoryUsage()`, writes both rows to
+    the `minecraft:memory` group, formats them as
+    `Memory (<kind>): i=%03dMiB u=%03dMiB c=%03dMiB m=%03dMiB`, and overrides
+    `isAllowed` to return true under reduced-debug info. bbb now has a
+    non-profile `DetailedMemory` entry id, keeps it `Never` in
+    default/performance profiles, allows it under reduced-debug info, and
+    projects custom-enabled native process memory in the same two-row field
+    shape. Boundary: bbb is a native client with no JVM `MemoryMXBean`, so the
+    numbers come from Linux `/proc` process fields rather than exact Java heap /
+    non-heap pools; full group layout/persistence still belongs to the future
+    `DebugOptionsScreen` work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2401,7 +2415,8 @@ When an agent does any of the following, update this file in the same slice:
     `toggleStatus` semantics, and reduced-debug filtering. The performance
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
     is visible, and custom-enabled day-count projects `Day #N` from the
-    overworld day clock. F3+B local-server
+    overworld day clock. Custom-enabled detailed memory now renders the
+    vanilla-shaped heap/non-heap rows from native process memory. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The

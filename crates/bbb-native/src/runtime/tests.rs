@@ -1223,6 +1223,36 @@ fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_detailed_memory_under_reduced_debug_info() {
+    let world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::DetailedMemory,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("detailed memory is allowed under reduced-debug info");
+
+    assert_eq!(overlay.left_lines, Vec::<String>::new());
+    assert_eq!(overlay.right_lines.len(), 2);
+    assert!(overlay.right_lines[0].starts_with("Memory (heap): "));
+    assert!(overlay.right_lines[1].starts_with("Memory (non-heap): "));
+}
+
+#[test]
 fn hud_debug_fps_sampler_reports_completed_one_second_windows() {
     let start = Instant::now();
     let mut sampler = HudDebugFpsSampler::default();
@@ -1576,6 +1606,30 @@ fn hud_debug_overlay_formats_memory_lines_like_vanilla_debug_entries() {
             "Mem: 12% 032/256MiB".to_string(),
             "Allocation rate: 007MiB/s".to_string(),
             "Allocated: 50% 128MiB".to_string(),
+        ]
+    );
+}
+
+#[test]
+fn hud_debug_overlay_formats_detailed_memory_lines_like_vanilla_debug_entry() {
+    assert_eq!(
+        hud_debug_detailed_memory_lines(HudDebugDetailedMemorySnapshot {
+            heap: HudDebugMemoryUsageSnapshot {
+                init_mib: 1,
+                used_mib: 32,
+                committed_mib: 128,
+                max_mib: 256,
+            },
+            non_heap: HudDebugMemoryUsageSnapshot {
+                init_mib: 0,
+                used_mib: 8,
+                committed_mib: 16,
+                max_mib: 0,
+            },
+        }),
+        vec![
+            "Memory (heap): i=001MiB u=032MiB c=128MiB m=256MiB".to_string(),
+            "Memory (non-heap): i=000MiB u=008MiB c=016MiB m=000MiB".to_string(),
         ]
     );
 }

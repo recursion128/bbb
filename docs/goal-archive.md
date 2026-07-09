@@ -5448,8 +5448,8 @@
   profile，默认 profile 继续驱动已有 overlay entry，performance profile 的 FPS
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
-  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 detailed memory /
-  look-at / light / biome / chunk stats 等 individual non-default entry
+  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
+  light / biome / chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5473,6 +5473,19 @@
   `WorldStore::world_time().day_time / 24000` 投影 `Day #N`。边界：实际
   `DebugOptionsScreen` / `debug-profile.json` 持久化尚未实现；更完整 clock
   timeline registry/display parity 留给后续。
+- [x] debug overlay detailed-memory entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.DETAILED_MEMORY` 注册
+  `DebugEntryDetailedMemory`，该 entry 读取 `MemoryMXBean`
+  `getHeapMemoryUsage()` / `getNonHeapMemoryUsage()`，写入
+  `minecraft:memory` group，并以
+  `Memory (<kind>): i=%03dMiB u=%03dMiB c=%03dMiB m=%03dMiB`
+  格式输出；它还覆盖 `isAllowed`，reduced-debug 下仍允许显示。native 现在有
+  非 profile 默认项 `DetailedMemory` entry id，default / performance profiles
+  中保持 `Never`，reduced-debug 下允许 custom status 启用；启用时在右列追加
+  vanilla-shaped heap / non-heap 两行。边界：bbb 没有 JVM `MemoryMXBean`，
+  数值来自 Linux `/proc` native process memory 字段，不是 Java heap /
+  non-heap pool 精确等价；完整 group layout、`DebugOptionsScreen` 和
+  `debug-profile.json` 持久化仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
