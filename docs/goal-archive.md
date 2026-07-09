@@ -6470,3 +6470,12 @@
   `Honey: n / 5` 行。边界：其它 block-state properties 在该 provider 中没有
   vanilla tooltip 行；其它 component provider tooltip、`TooltipDisplay`
   hidden-components 与 options 持久化仍未完成。
+- [x] advanced tooltip direct firework explosion detail lines（P2 item-runtime
+  slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 fireworks 之后调用
+  `DataComponents.FIREWORK_EXPLOSION` provider，以及 `FireworkExplosion.addToTooltip`
+  输出 shape、颜色名列表、fade-to 颜色名列表、trail/flicker 的灰色行，native item
+  tooltip 现在把 decoded direct `minecraft:firework_explosion` summary 投影为本地化
+  shape/color/fade/trail/twinkle 行，并按 vanilla `DyeColor.byFireworkColor` exact
+  match，未知 RGB 显示 `Custom`。边界：`minecraft:fireworks` 内的多 explosion
+  single/multiple-star grouping 仍待后续；其它 component provider tooltip、
+  `TooltipDisplay` hidden-components 与 options 持久化仍未完成。

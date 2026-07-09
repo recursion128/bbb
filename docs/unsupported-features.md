@@ -1146,7 +1146,7 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
-    bees/honey, dyed-color lines, and firework flight-duration lines,
+    bees/honey, dyed-color lines, and direct firework lines,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section
     coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -1198,9 +1198,24 @@ When an agent does any of the following, update this file in the same slice:
     flight duration when the duration is positive. bbb now projects decoded
     `minecraft:fireworks.flight_duration > 0` as the localized gray
     `Flight Duration: n` tooltip line before dyed-color, lore, and advanced
-    lines. Boundary: firework explosion star grouping, shape/color/trail/
-    twinkle detail lines, remaining component providers, `TooltipDisplay`
-    hiding, and options persistence remain future work.
+    lines. Boundary at the time: firework explosion star grouping, direct
+    shape/color/trail/twinkle detail lines, remaining component providers,
+    `TooltipDisplay` hiding, and options persistence remained future work;
+    direct firework explosion detail lines are covered by the later 2026-07-09
+    item below.
+  - Done 2026-07-09 — Advanced tooltip direct firework explosion detail lines.
+    Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
+    `addToTooltip(DataComponents.FIREWORK_EXPLOSION, ...)` after fireworks and
+    before potion, trim, enchantment, dyed-color, profile, lore, and advanced
+    lines; `FireworkExplosion.addToTooltip` emits the gray shape line, optional
+    comma-separated color names, optional gray `fade_to` color list, and
+    optional gray `trail` / `flicker` lines. bbb now projects decoded direct
+    `minecraft:firework_explosion` summaries as those localized gray detail
+    lines, including vanilla firework-color name lookup and `Custom` for
+    unmatched RGB values. Boundary: grouping explosions inside the
+    `minecraft:fireworks` component into single/multiple star rows remains
+    future work, along with remaining component providers, `TooltipDisplay`
+    hiding, and options persistence.
   - Done 2026-07-09 — Advanced tooltip beehive honey block-state line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BLOCK_STATE, ...)` near the end of component
@@ -2334,7 +2349,7 @@ When an agent does any of the following, update this file in the same slice:
     same local debug feedback. Boundary: bbb does not add an in-game
     configuration UI or vanilla options-file persistence; component-provider
     tooltip parity remains open except for the later beehive bees/honey,
-    dyed-color, and firework flight-duration lines.
+    dyed-color, and direct firework lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2598,8 +2613,8 @@ When an agent does any of the following, update this file in the same slice:
     component-specific advanced tooltip additions were not modeled yet; startup
     configuration is tracked separately because bbb does not expose vanilla's
     in-game options UI. Effective component-count display, beehive bees/honey
-    lines, dyed-color lines, and firework flight-duration lines are covered by
-    later entries.
+    lines, dyed-color lines, and direct firework lines are covered by later
+    entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3276,7 +3291,7 @@ When an agent does any of the following, update this file in the same slice:
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
-    bees/honey, dyed-color lines, and firework flight-duration lines, F3+I full
+    bees/honey, dyed-color lines, and direct firework lines, F3+I full
     local entity saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

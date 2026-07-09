@@ -239,6 +239,107 @@ fn push_fireworks_tooltip_lines(
     ));
 }
 
+fn push_firework_explosion_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(shape) = component_patch.firework_explosion_shape else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key(&format!(
+                "item.minecraft.firework_star.shape.{}",
+                firework_explosion_shape_name(shape)
+            ))
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+    if !component_patch.firework_explosion_colors.is_empty() {
+        lines.push(NativeItemTooltipLine::plain(
+            firework_color_names(language, &component_patch.firework_explosion_colors),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+    if !component_patch.firework_explosion_fade_colors.is_empty() {
+        lines.push(NativeItemTooltipLine::plain(
+            format!(
+                "{} {}",
+                language.get_or_key("item.minecraft.firework_star.fade_to"),
+                firework_color_names(language, &component_patch.firework_explosion_fade_colors)
+            ),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+    if component_patch
+        .firework_explosion_has_trail
+        .unwrap_or_default()
+    {
+        lines.push(NativeItemTooltipLine::plain(
+            language
+                .get_or_key("item.minecraft.firework_star.trail")
+                .to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+    if component_patch
+        .firework_explosion_has_twinkle
+        .unwrap_or_default()
+    {
+        lines.push(NativeItemTooltipLine::plain(
+            language
+                .get_or_key("item.minecraft.firework_star.flicker")
+                .to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    }
+}
+
+fn firework_explosion_shape_name(shape: FireworkExplosionShapeSummary) -> &'static str {
+    match shape {
+        FireworkExplosionShapeSummary::SmallBall => "small_ball",
+        FireworkExplosionShapeSummary::LargeBall => "large_ball",
+        FireworkExplosionShapeSummary::Star => "star",
+        FireworkExplosionShapeSummary::Creeper => "creeper",
+        FireworkExplosionShapeSummary::Burst => "burst",
+    }
+}
+
+fn firework_color_names(language: &LanguageCatalog, colors: &[i32]) -> String {
+    colors
+        .iter()
+        .map(|color| {
+            language
+                .get_or_key(firework_color_translation_key(*color))
+                .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn firework_color_translation_key(color: i32) -> &'static str {
+    match color {
+        15_790_320 => "item.minecraft.firework_star.white",
+        15_435_844 => "item.minecraft.firework_star.orange",
+        12_801_229 => "item.minecraft.firework_star.magenta",
+        6_719_955 => "item.minecraft.firework_star.light_blue",
+        14_602_026 => "item.minecraft.firework_star.yellow",
+        4_312_372 => "item.minecraft.firework_star.lime",
+        14_188_952 => "item.minecraft.firework_star.pink",
+        4_408_131 => "item.minecraft.firework_star.gray",
+        11_250_603 => "item.minecraft.firework_star.light_gray",
+        2_651_799 => "item.minecraft.firework_star.cyan",
+        8_073_150 => "item.minecraft.firework_star.purple",
+        2_437_522 => "item.minecraft.firework_star.blue",
+        5_320_730 => "item.minecraft.firework_star.brown",
+        3_887_386 => "item.minecraft.firework_star.green",
+        11_743_532 => "item.minecraft.firework_star.red",
+        1_973_019 => "item.minecraft.firework_star.black",
+        _ => "item.minecraft.firework_star.custom_color",
+    }
+}
+
 fn push_block_state_tooltip_lines(
     language: &LanguageCatalog,
     block_state_properties: &BTreeMap<String, String>,
@@ -434,6 +535,7 @@ impl NativeItemRuntime {
             stack.component_patch.fireworks_flight_duration,
             &mut lines,
         );
+        push_firework_explosion_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_dyed_color_tooltip_lines(
             &self.language,
             stack.component_patch.dyed_color,

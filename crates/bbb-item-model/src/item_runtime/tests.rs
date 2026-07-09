@@ -220,6 +220,13 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.color": "Color: %s",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "container.beehive.honey": "Honey: %s / %s",
+                "item.minecraft.firework_star.shape.star": "Star-shaped",
+                "item.minecraft.firework_star.red": "Red",
+                "item.minecraft.firework_star.yellow": "Yellow",
+                "item.minecraft.firework_star.custom_color": "Custom",
+                "item.minecraft.firework_star.fade_to": "Fade to",
+                "item.minecraft.firework_star.trail": "Trail",
+                "item.minecraft.firework_star.flicker": "Twinkle",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -600,6 +607,31 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Honey: 4 / 5", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![68],
+                firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+                firework_explosion_colors: vec![11_743_532, 0x12_34_56],
+                firework_explosion_fade_colors: vec![14_602_026],
+                firework_explosion_has_trail: Some(true),
+                firework_explosion_has_twinkle: Some(true),
+                lore: vec!["After explosion".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Star-shaped", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Red, Custom", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Fade to Yellow", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Trail", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Twinkle", TOOLTIP_TEXT_GRAY),
+            lore_line("After explosion"),
         ])
     );
     assert_eq!(
