@@ -6175,8 +6175,15 @@
   front/left/right/back 输出每侧 item hover name 的灰色行。protocol summary
   现在记录 decoded `minecraft:pot_decorations` item ids；native item tooltip 用
   item registry 和 language catalog 投影 side item names，并保持在 container rows
-  之后。边界：全 brick elision 依赖 `minecraft:brick` registry id，
-  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+  之后。边界：全 brick elision 由后续 item 覆盖；dynamic/custom item registry remap
+  仍属后续。
+- [x] advanced tooltip pot-decoration all-brick elision（P2 item-runtime
+  slice，2026-07-09）：依据 `PotDecorations.getItem` 把 `Items.BRICK` 侧映射为
+  `Optional.empty`，`PotDecorations.EMPTY` 表示四侧全空，且
+  `PotDecorations.addToTooltip` 在等于 `EMPTY` 时不输出行，native item tooltip
+  现在解析 loaded `minecraft:brick` item id，并在 decoded 四侧全 brick 时抑制
+  pot-decoration tooltip rows，同时保留非 brick 侧 rows。边界：dynamic/custom item
+  registry remap 仍属后续。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

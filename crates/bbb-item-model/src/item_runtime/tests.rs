@@ -2121,6 +2121,62 @@ fn native_item_runtime_shows_spawner_block_entity_tooltips() {
 }
 
 #[test]
+fn native_item_runtime_elides_all_brick_pot_decoration_tooltips() {
+    let root = unique_temp_dir("item-runtime-pot-all-brick-tooltip");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_source(&root, &["decorated_pot", "brick", "test_sherd"]);
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "item.minecraft.decorated_pot": "Decorated Pot",
+                "item.minecraft.brick": "Brick",
+                "item.minecraft.test_sherd": "Test Sherd"
+            }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                pot_decorations_item_ids: vec![1, 1, 1, 1],
+                lore: vec!["After all-brick pot".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Decorated Pot", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            lore_line("After all-brick pot"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                pot_decorations_item_ids: vec![1, 1, 1, 2],
+                lore: vec!["After sherd pot".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Decorated Pot", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Sherd", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Brick", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Brick", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Brick", TOOLTIP_TEXT_GRAY),
+            lore_line("After sherd pot"),
+        ])
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn native_item_runtime_shows_entity_data_peaceful_warning() {
     let root = unique_temp_dir("item-runtime-entity-data-tooltip");
     let assets = assets_dir(&root);

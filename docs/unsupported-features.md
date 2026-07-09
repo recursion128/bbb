@@ -1265,9 +1265,17 @@ When an agent does any of the following, update this file in the same slice:
     emits an empty separator plus front/left/right/back side item hover names
     in gray when any side is not brick. bbb now preserves decoded pot
     decoration item ids and projects their localized item hover names in the
-    same side order after container rows. Boundary: exact all-brick elision
-    depends on having `minecraft:brick` in the loaded item registry, and
-    `TooltipDisplay` hidden-components remain future work.
+    same side order after container rows. Boundary: exact all-brick elision is
+    covered by the follow-up item below, and dynamic/custom item registry remaps
+    remain future work.
+  - Done 2026-07-09 — Advanced tooltip pot-decoration all-brick elision.
+    Vanilla anchors: `PotDecorations.getItem` maps `Items.BRICK` to
+    `Optional.empty`, `PotDecorations.EMPTY` is all empty sides, and
+    `PotDecorations.addToTooltip` emits no rows when the component equals
+    `EMPTY`. bbb now resolves the loaded `minecraft:brick` item id and suppresses
+    pot-decoration tooltip rows for explicit all-brick decoded side ids while
+    preserving non-brick side rows. Boundary: dynamic/custom item registry
+    remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip banner-pattern rows. Vanilla anchors:
     `BannerPattern.STREAM_CODEC` is a registry/direct holder whose nonzero
     holder ids decode as `holder_id - 1`; `BannerPatternLayers.addToTooltip`
