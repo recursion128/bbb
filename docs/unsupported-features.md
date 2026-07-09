@@ -197,8 +197,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
-  projection, remaining projectile owner references, left-owner flag, and non-default
-  private `hasBeenShot` projection, non-default private projectile flags such as
+  projection, remaining delayed/fence-knot leash projection, remaining projectile
+  owner references, left-owner flag, and non-default private `hasBeenShot`
+  projection, non-default private projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   scalar/timer/counter projection (including `PrimedTnt.explosionPower` and
   non-default `SpectralArrow.duration`, plus non-default

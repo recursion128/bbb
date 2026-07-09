@@ -3803,172 +3803,172 @@ fn debug_push_entity_additional_save_data(
 ) {
     match entity.entity_type_id {
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_creeper_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_CREAKING_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_creaking_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_shulker_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_slime_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_snow_golem_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BAT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_bat_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BEE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_bee_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_armadillo_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_axolotl_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BLAZE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_BREEZE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
             debug_push_camel_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_CAT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
             debug_push_cat_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_chicken_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_copper_golem_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_COD_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_dolphin_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
             debug_push_abstract_chested_horse_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_DROWNED_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_FOX_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_fox_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_FROG_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_frog_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_COW_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_cow_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_mooshroom_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SPIDER_ID | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_SKELETON_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_skeleton_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
             debug_push_skeleton_horse_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_happy_ghast_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_HOGLIN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_hoglin_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_HORSE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
             debug_push_horse_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_HUSK_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_LLAMA_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
@@ -3976,7 +3976,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_llama_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
@@ -3985,19 +3985,19 @@ fn debug_push_entity_additional_save_data(
             debug_push_trader_llama_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_bogged_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_endermite_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_neutral_mob_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_EVOKER_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
             debug_push_spellcaster_illager_additional_save_data(fields);
@@ -4006,29 +4006,29 @@ fn debug_push_entity_additional_save_data(
             debug_push_end_crystal_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_GHAST_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ghast_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_GIANT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_glow_squid_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_goat_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SQUID_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TADPOLE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_tadpole_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_INTERACTION_ID => {
@@ -4096,141 +4096,141 @@ fn debug_push_entity_additional_save_data(
             debug_push_shulker_bullet_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_iron_golem_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_OCELOT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_ocelot_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PANDA_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_panda_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PARROT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
             debug_push_parrot_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PHANTOM_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PIG_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_pig_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_piglin_additional_save_data(entity, fields);
             debug_push_piglin_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_piglin_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_PILLAGER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
             debug_push_inventory_carrier_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_neutral_mob_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_pufferfish_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_RABBIT_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_rabbit_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SALMON_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_salmon_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SHEEP_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_sheep_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SNIFFER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_PARCHED_ID
         | VANILLA_ENTITY_TYPE_STRAY_ID
         | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_abstract_fish_additional_save_data(entity, fields);
             debug_push_tropical_fish_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TURTLE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_turtle_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
             debug_push_ravager_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_VEX_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_VINDICATOR_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_abstract_villager_additional_save_data(fields);
             debug_push_wandering_trader_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_WITCH_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
             debug_push_wolf_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_WITHER_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_wither_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
@@ -4238,33 +4238,75 @@ fn debug_push_entity_additional_save_data(
             debug_push_wither_skull_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_abstract_horse_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
             debug_push_zombie_nautilus_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
             debug_push_neutral_mob_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
-            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zoglin_additional_save_data(entity, fields);
+        }
+        _ if debug_entity_type_writes_abstract_boat_save_data(entity.entity_type_id) => {
+            debug_push_leash_additional_save_data(world, entity, fields);
         }
         _ => {}
     }
+}
+
+fn debug_entity_type_writes_abstract_boat_save_data(entity_type_id: i32) -> bool {
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
+        VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID, VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID, VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID, VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID, VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID, VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID,
+    };
+
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID
+            | VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
+            | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
+            | VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID
+            | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID
+            | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID
+            | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID
+            | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID
+            | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_OAK_BOAT_ID
+            | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID
+            | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
+            | VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID
+            | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
+    )
 }
 
 fn debug_entity_default_air_supply(entity_type_id: i32) -> i32 {
@@ -4522,7 +4564,11 @@ fn debug_armor_stand_pose_snbt(entity: &EntityState) -> Option<String> {
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
-fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_mob_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let flags = debug_entity_data_byte_present(entity, MOB_FLAGS_DATA_ID).unwrap_or(0);
     let can_pick_up_loot = debug_mob_default_can_pick_up_loot(entity.entity_type_id);
     fields.push(format!(
@@ -4535,6 +4581,7 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
             entity.entity_type_id
         ))
     ));
+    debug_push_leash_additional_save_data(world, entity, fields);
     fields.push(format!(
         "LeftHanded: {}",
         debug_snbt_bool(flags & MOB_FLAG_LEFT_HANDED != 0)
@@ -4542,6 +4589,23 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     if flags & MOB_FLAG_NO_AI != 0 {
         fields.push("NoAI: 1b".to_string());
     }
+}
+
+fn debug_push_leash_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let Some(holder_id) = entity.leash_holder_id else {
+        return;
+    };
+    let Some(holder) = world.probe_entity(holder_id) else {
+        return;
+    };
+    fields.push(format!(
+        "leash: {{UUID: {}}}",
+        debug_snbt_uuid_int_array(holder.uuid)
+    ));
 }
 
 fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
