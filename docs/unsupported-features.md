@@ -1110,7 +1110,8 @@ When an agent does any of the following, update this file in the same slice:
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage,
     performance-profile GPU utilization entry shell, day-count debug entry
-    shell, detailed-memory debug entry shell, F3+I
+    shell, detailed-memory debug entry shell, light-levels debug entry shell,
+    F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
@@ -1166,7 +1167,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    look-at/light/biome/chunk stats remain future work.
+    look-at/biome/chunk stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1204,6 +1205,20 @@ When an agent does any of the following, update this file in the same slice:
     numbers come from Linux `/proc` process fields rather than exact Java heap /
     non-heap pools; full group layout/persistence still belongs to the future
     `DebugOptionsScreen` work.
+  - Done 2026-07-09 — Debug overlay light-levels entry shell. Vanilla
+    anchors: `DebugScreenEntries.LIGHT_LEVELS` registers `DebugEntryLight`;
+    the entry reads the camera entity `blockPosition()`, gets raw brightness
+    from `LevelLightEngine.getRawBrightness(feetPos, 0)`, gets sky/block from
+    `LevelReader.getBrightness(LightLayer.SKY/BLOCK, feetPos)`, and formats
+    `Client Light: <raw> (<sky> sky, <block> block)`. `getRawBrightness` is
+    `max(blockLight, skyLight - darkening)`, so with darkening `0` bbb uses
+    `max(sky, block)`. bbb now has a non-profile `LightLevels` entry id, keeps
+    it `Never` in default/performance profiles, filters it under reduced-debug
+    info, and projects custom-enabled client light from the loaded camera feet
+    block. Boundary: vanilla's optional `Server Light` row behind
+    `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` needs a local-server light
+    mirror and remains future work; full debug group layout/persistence still
+    belongs to `DebugOptionsScreen`.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2416,7 +2431,9 @@ When an agent does any of the following, update this file in the same slice:
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
     is visible, and custom-enabled day-count projects `Day #N` from the
     overworld day clock. Custom-enabled detailed memory now renders the
-    vanilla-shaped heap/non-heap rows from native process memory. F3+B local-server
+    vanilla-shaped heap/non-heap rows from native process memory.
+    Custom-enabled light levels now render the client light row from the
+    camera feet block. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The

@@ -3089,6 +3089,13 @@ fn hud_debug_overlay(
             left_lines.push(day_count_line);
         }
     }
+    if entry_enabled(DebugScreenEntryId::LightLevels) {
+        if let Some(camera_pose) = camera_pose {
+            if let Some(light_line) = hud_debug_light_line(world, camera_pose) {
+                left_lines.push(light_line);
+            }
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3454,6 +3461,28 @@ fn hud_debug_day_count_line(world: &WorldStore) -> Option<String> {
         "Day #{}",
         day_time / VANILLA_OVERWORLD_DAY_PERIOD_TICKS
     ))
+}
+
+fn hud_debug_light_line(world: &WorldStore, camera_pose: CameraPose) -> Option<String> {
+    let feet_pos = camera_feet_block_position(camera_pose)?;
+    let light = world.sample_block_light(feet_pos)?;
+    let raw = light.sky.max(light.block);
+    Some(format!(
+        "Client Light: {raw} ({} sky, {} block)",
+        light.sky, light.block
+    ))
+}
+
+fn camera_feet_block_position(camera: CameraPose) -> Option<BlockPos> {
+    let [x, y, z] = camera.position;
+    if ![x, y, z].into_iter().all(f32::is_finite) {
+        return None;
+    }
+    Some(BlockPos {
+        x: x.floor() as i32,
+        y: y.floor() as i32,
+        z: z.floor() as i32,
+    })
 }
 
 fn hud_debug_visibility_label(visible: bool) -> &'static str {

@@ -1167,6 +1167,58 @@ fn hud_debug_overlay_projects_custom_day_count_entry_from_world_day_clock() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_light_levels_from_camera_feet_block() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut chunk = empty_lightmap_test_chunk_with_biome(world.dimension(), 42);
+    let mut sky = vec![0; TEST_LIGHT_ARRAY_BYTES];
+    let mut block = vec![0; TEST_LIGHT_ARRAY_BYTES];
+    let nibble_index = section_block_index(0, 1, 0);
+    set_test_light_nibble(&mut sky, nibble_index, 4);
+    set_test_light_nibble(&mut block, nibble_index, 13);
+    let light_section_index = 0 - (world.dimension().min_section_y() - 1);
+    let light_mask = single_bit_mask(usize::try_from(light_section_index).unwrap());
+    chunk.light = LightData {
+        sky_y_mask: light_mask.clone(),
+        block_y_mask: light_mask,
+        empty_sky_y_mask: Vec::new(),
+        empty_block_y_mask: Vec::new(),
+        sky_updates: vec![sky],
+        block_updates: vec![block],
+    };
+    world.insert_decoded_chunk(chunk);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LightLevels,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.25, 1.0, 0.25],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom light entry should show with loaded camera block");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec!["Client Light: 13 (4 sky, 13 block)".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

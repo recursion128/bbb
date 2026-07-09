@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  light / biome / chunk stats 等 individual non-default entry
+  biome / chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5485,6 +5485,20 @@
   vanilla-shaped heap / non-heap 两行。边界：bbb 没有 JVM `MemoryMXBean`，
   数值来自 Linux `/proc` native process memory 字段，不是 Java heap /
   non-heap pool 精确等价；完整 group layout、`DebugOptionsScreen` 和
+  `debug-profile.json` 持久化仍待后续。
+- [x] debug overlay light-levels entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.LIGHT_LEVELS` 注册
+  `DebugEntryLight`，该 entry 使用 camera entity `blockPosition()`，调用
+  `LevelLightEngine.getRawBrightness(feetPos, 0)` 与
+  `LevelReader.getBrightness(LightLayer.SKY/BLOCK, feetPos)`，输出
+  `Client Light: <raw> (<sky> sky, <block> block)`；`getRawBrightness` 为
+  `max(blockLight, skyLight - darkening)`，darkening 为 0 时即
+  `max(block, sky)`。native 现在有非 profile 默认项 `LightLevels` entry id，
+  default / performance profiles 中保持 `Never`，reduced-debug 下沿用默认
+  `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，从 camera feet block
+  的 loaded chunk light 投影 client light 行。边界：vanilla 在
+  `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` 下追加的 `Server Light` 行
+  需要 local-server light mirror；完整 group layout、`DebugOptionsScreen` 和
   `debug-profile.json` 持久化仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
