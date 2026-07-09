@@ -6098,8 +6098,7 @@
   current creative -> survival / otherwise creative；后续 F4 按 creative ->
   survival -> adventure -> spectator 循环；释放 F3 时若选择不同于当前 game
   type，则经既有 `ChangeGameMode` net command 发送并关闭该非暂停 screen。边界：
-  HUD rendering、first-mouse suppression、hover/mouse release 与 cursor capture
-  仍待后续。
+  HUD rendering、first-mouse suppression、hover 与 cursor capture 仍待后续。
 - [x] debug overlay F3+F4 GameModeSwitcher render-state shell（P2
   native/renderer slice，2026-07-09）：依据 `GameModeSwitcherScreen`
   `extractBackground` / `extractRenderState` 的布局，vanilla 在屏幕中心绘制
@@ -6111,7 +6110,7 @@
   switcher 打开时把 selected mode 投影为该布局，即使普通 F3 overlay 未打开也保留
   switcher-only HUD overlay；renderer sanitizer 也保留该状态。边界：实际背景/
   selection sprite / item icon / 文本像素绘制、first-mouse suppression、
-  hover/mouse release 与 cursor capture 仍待后续。
+  hover 与 cursor capture 仍待后续。
 - [x] debug overlay F3+F4 GameModeSwitcher background/slot/text rendering（P2
   renderer/native slice，2026-07-09）：依据 `GameModeSwitcherScreen.extractBackground`
   对 `textures/gui/container/gamemode_switcher.png` 使用 `0,0 -> 125/128,75/128`
@@ -6121,7 +6120,7 @@
   现在启动加载这三个 HUD 资源，renderer 从 `HudDebugGameModeSwitcher` 实际绘制背景、
   四个 slot、selected overlay 和两行居中文本；新增 helper layout/UV 测试与
   offscreen pixel-readback 测试覆盖 layer order。边界：item icon、
-  first-mouse suppression、hover/mouse release 与 cursor capture 仍待后续。
+  first-mouse suppression、hover 与 cursor capture 仍待后续。
 - [x] debug overlay F3+F4 GameModeSwitcher hover/first-mouse/cursor capture（P2
   native/platform slice，2026-07-09）：依据 `GameModeSwitcherScreen.extractRenderState`
   的 first mouse latch 与 slot hover 规则，native switcher state 现在记录首次鼠标坐标、
@@ -6129,8 +6128,7 @@
   adventure / spectator slot 后更新 selected mode，并在额外 F4 循环时重置 latch。
   main event loop 在 switcher 打开时通过 `runtime_wants_cursor` 释放/显示 cursor，
   `CursorMoved` 送入 switcher hit-test，普通 mouse input 不再重新捕获第一人称输入。
-  边界：item icon 与 mouse-release selection for non-key debug modifier binding
-  仍待后续。
+  边界：item icon 仍待后续。
 - [x] debug overlay F3+F4 GameModeSwitcher screen interruption parity（P2
   native input slice，2026-07-09）：依据 `KeyboardHandler.handleDebugKeys`
   对 `keyDebugSwitchGameMode` 的 `level != null && screen == null` 条件，以及
@@ -6139,8 +6137,16 @@
   本地库存、book、dialog、advancements、pending/active sign editor screen 时
   打开本地 switcher；被 screen 阻止的 F4 返回非 debug action，F3 release
   仍是普通 overlay toggle；已打开 switcher 的额外 F4 循环保持可用。边界：
-  item icon 与 mouse-release selection for non-key debug modifier binding
-  仍待后续。
+  item icon 仍待后续。
+- [x] debug overlay F3+F4 GameModeSwitcher mouse-release path not-needed
+  decision（P2 docs slice，2026-07-09）：依据 `Options.keyDebugModifier`
+  默认是 `InputConstants.Type.KEYSYM` F3、`GameModeSwitcherScreen.mouseReleased`
+  仅检查 `keyDebugModifier.matchesMouse(event)`，以及 `KeyMapping.matchesMouse`
+  只在 key mapping 为 `MOUSE` 类型时匹配的行为，bbb 当前无 keybind rebinding
+  或 mouse-bound debug modifier 配置，native debug modifier 是硬编码 F3
+  keyboard path；因此 vanilla mouse-release close/select 分支在现有 native 输入
+  面没有生产者，判 not-needed until keybind rebinding / mouse debug modifier
+  support exists。边界：item icon 仍待后续。
 - [x] debug overlay ordinary F3 keymap audit（P2 docs slice，2026-07-08）：对照
   `Options.debugKeys` 与 `KeyboardHandler.handleDebugKeys`，普通 F3 keymap 的
   `A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` 均已有本地实现、shell 或明确剩余项；

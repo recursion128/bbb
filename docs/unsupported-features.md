@@ -1128,7 +1128,8 @@ When an agent does any of the following, update this file in the same slice:
     shell, F3+F4 GameModeSwitcher render-state shell, F3+F4
     GameModeSwitcher background/slot/text rendering, F3+F4 GameModeSwitcher
     hover/first-mouse/cursor capture, F3+F4 GameModeSwitcher screen
-    interruption parity, and ordinary F3 keymap audit:
+    interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
+    decision, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
@@ -1136,7 +1137,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen,
-    F3+F4 GameModeSwitcher item icon/mouse-release parity, native pause
+    F3+F4 GameModeSwitcher item icon parity, native pause
     loop/PauseScreen, and `SharedConstants.DEBUG_HOTKEYS` /
     `DEBUG_FEATURE_COUNT` gated dev hotkeys remain (large, low priority).
 - Evidence / boundary:
@@ -2047,7 +2048,7 @@ When an agent does any of the following, update this file in the same slice:
     gameplay F4 handling, and shows the game-mode help line in the overlay.
     Boundary: successful F3+N and the F3+F4 input/command shell are covered
     below; exact permission-source parity plus GameModeSwitcher item icons
-    and mouse-release selection are not implemented.
+    are not implemented.
   - Done 2026-07-08 — Debug overlay F3+N spectator change-game-mode request
     routing. Vanilla anchors: `KeyboardHandler.handleDebugKeys` sends
     `ServerboundChangeGameModePacket(SPECTATOR)` when
@@ -2057,8 +2058,7 @@ When an agent does any of the following, update this file in the same slice:
     existing `ChangeGameMode` net command with `Spectator` / previous mode /
     `Creative`, emits no success feedback, and keeps the no-permission debug
     feedback path unchanged. Boundary: exact vanilla permission-source parity
-    and F3+F4 GameModeSwitcher item icon/mouse-release parity remain future
-    work.
+    and F3+F4 GameModeSwitcher item icon parity remain future work.
   - Done 2026-07-08 — Debug overlay F3+F4 GameModeSwitcher input/command
     shell. Vanilla anchors: `GameModeSwitcherScreen.getDefaultSelected` picks
     `previousPlayerMode`, otherwise `SURVIVAL` when currently creative or
@@ -2070,8 +2070,7 @@ When an agent does any of the following, update this file in the same slice:
     F3+F4, cycles selection on additional F4 presses, consumes gameplay input
     while open, and queues the existing `ChangeGameMode` command on F3 release.
     Boundary: HUD rendering of slots/icons/text/background, first-mouse
-    suppression, hover selection, mouse-release selection, and cursor capture
-    remain future work.
+    suppression, hover selection, and cursor capture remain future work.
   - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher render-state
     shell. Vanilla anchors: `GameModeSwitcherScreen` extracts a 125x75
     background centered at `width / 2 - 62`, `height / 2 - 58`, four 26x26
@@ -2083,8 +2082,7 @@ When an agent does any of the following, update this file in the same slice:
     layout even while the ordinary F3 overlay is hidden, and preserves that
     switcher-only overlay through HUD sanitization. Boundary: actual pixel
     rendering of the background/sprites/icons/text, first-mouse suppression,
-    hover selection, mouse-release selection, and cursor capture remain future
-    work.
+    hover selection, and cursor capture remain future work.
   - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher background/slot/text
     rendering. Vanilla anchors: `GameModeSwitcherScreen.extractBackground`
     blits `textures/gui/container/gamemode_switcher.png` at UV
@@ -2095,8 +2093,8 @@ When an agent does any of the following, update this file in the same slice:
     three HUD assets, draws the switcher background, all slots, selected overlay
     and two centered text rows from `HudDebugGameModeSwitcher`, and covers the
     layer order with an offscreen pixel-readback renderer test. Boundary: item
-    icons, first-mouse suppression, hover selection, mouse-release selection,
-    and cursor capture remain future work.
+    icons, first-mouse suppression, hover selection, and cursor capture remain
+    future work.
   - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher hover,
     first-mouse suppression, and cursor capture. Vanilla anchors:
     `GameModeSwitcherScreen.extractRenderState` stores the first mouse
@@ -2107,8 +2105,7 @@ When an agent does any of the following, update this file in the same slice:
     the native switcher state, hit-tests the vanilla slot geometry on
     `CursorMoved`, resets the latch after additional F4 presses, consumes mouse
     input while the switcher is open, and releases cursor capture through
-    `runtime_wants_cursor`. Boundary: item icons and mouse-release selection
-    for a non-key debug modifier binding remain future work.
+    `runtime_wants_cursor`. Boundary: item icons remain future work.
   - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher screen
     interruption parity. Vanilla anchors: `KeyboardHandler.handleDebugKeys`
     only creates `GameModeSwitcherScreen` when `keyDebugSwitchGameMode`
@@ -2119,8 +2116,17 @@ When an agent does any of the following, update this file in the same slice:
     switcher over chat/command entry, container/local inventory, book, dialog,
     advancements, or pending/active sign editor state, returns false so the
     F4 press is not marked as a debug action, and keeps the already-open
-    switcher F4 cycle path unchanged. Boundary: item icons and mouse-release
-    selection for a non-key debug modifier binding remain future work.
+    switcher F4 cycle path unchanged. Boundary: item icons remain future work.
+  - Done 2026-07-09 — Debug overlay F3+F4 GameModeSwitcher mouse-release
+    path not-needed decision. Vanilla anchors: `Options.keyDebugModifier`
+    defaults to `InputConstants.Type.KEYSYM` F3, `GameModeSwitcherScreen`
+    only uses `mouseReleased` for `keyDebugModifier.matchesMouse(event)`, and
+    `KeyMapping.matchesMouse` returns true only when that key mapping is of
+    type `MOUSE`. bbb currently has no keybind rebinding or mouse-bound debug
+    modifier configuration; the native debug modifier is the hard-coded F3
+    keyboard path. Therefore the vanilla mouse-release switcher close/select
+    branch has no native producer until a keybind rebinding or mouse debug
+    modifier feature exists. Boundary: item icons remain future work.
   - Done 2026-07-08 — Debug overlay ordinary F3 keymap audit. Vanilla anchors:
     `Options.debugKeys` contains the ordinary F3 mappings already tracked in
     this row (`A/B/C/D/G/H/I/N/P/S/T/V/L/F4/F6/1/2/3/4` plus F3 itself), while
@@ -2784,9 +2790,9 @@ When an agent does any of the following, update this file in the same slice:
     Authorized F3+N now queues the spectator/previous-mode change-game-mode
     request. F3+F4 now has a native GameModeSwitcher input/command shell, a
     renderer-neutral HUD render-state shell, background/slot/text rendering,
-    hover selection, first-mouse suppression, cursor capture, and screen
-    interruption parity. The debug entry status/profile model now owns
-    default/performance/custom
+    hover selection, first-mouse suppression, cursor capture, screen
+    interruption parity, and the mouse-release not-needed decision. The debug
+    entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
     `toggleStatus` semantics, and reduced-debug filtering. The performance
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
@@ -2839,7 +2845,7 @@ When an agent does any of the following, update this file in the same slice:
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output, actual
     DebugOptionsScreen, F3+F4
-    GameModeSwitcher item icon/mouse-release parity, native pause loop/PauseScreen, and
+    GameModeSwitcher item icon parity, native pause loop/PauseScreen, and
     `SharedConstants.DEBUG_HOTKEYS` / `DEBUG_FEATURE_COUNT` gated dev hotkeys.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
