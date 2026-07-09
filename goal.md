@@ -354,13 +354,14 @@ Screen Render Surfaces" 条目）：
   DebugOptionsScreen double-click word selection、
   DebugOptionsScreen search text-field sprite styling、
   DebugOptionsScreen button sprite styling、
+  DebugOptionsScreen button hover highlighted sprite styling、
   ordinary F3 keymap audit 已完成；
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
   sampling and ProfileResults tree navigation、
-  profiling metrics recorder/output、DebugOptionsScreen narration/full widget
+  profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining buttons/actions，
   低优先）。
 

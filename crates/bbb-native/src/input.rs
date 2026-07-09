@@ -275,7 +275,10 @@ pub(crate) struct DebugOptionsScreenHudState {
     pub(crate) total_rows: usize,
     pub(crate) visible_rows: usize,
     pub(crate) default_profile_active: bool,
+    pub(crate) default_profile_hovered: bool,
     pub(crate) performance_profile_active: bool,
+    pub(crate) performance_profile_hovered: bool,
+    pub(crate) done_hovered: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -287,6 +290,7 @@ pub(crate) enum DebugOptionsScreenHudRow {
         entry: DebugScreenEntryId,
         path: String,
         status: DebugScreenEntryStatus,
+        hovered_status: Option<DebugScreenEntryStatus>,
         allowed: bool,
     },
 }
@@ -1007,6 +1011,15 @@ impl ClientInputState {
         let scroll_row = screen
             .scroll_row
             .min(debug_options_max_scroll_row(total_rows, visible_rows));
+        let hovered_status_button = screen.cursor_position.and_then(|(mouse_x, mouse_y)| {
+            self.debug_options_status_button_at(mouse_x, mouse_y, surface_size, reduced_debug_info)
+        });
+        let hovered_profile_button = screen.cursor_position.and_then(|(mouse_x, mouse_y)| {
+            debug_options_profile_button_at(mouse_x, mouse_y, surface_size)
+        });
+        let done_hovered = screen.cursor_position.is_some_and(|(mouse_x, mouse_y)| {
+            debug_options_done_button_contains(mouse_x, mouse_y, surface_size)
+        });
         let rows = rows
             .into_iter()
             .skip(scroll_row)
@@ -1019,6 +1032,9 @@ impl ClientInputState {
                     entry,
                     path: entry.path().to_string(),
                     status: self.debug_entries.status(entry),
+                    hovered_status: hovered_status_button
+                        .filter(|(hovered_entry, _)| *hovered_entry == entry)
+                        .map(|(_, status)| status),
                     allowed: entry.is_allowed(reduced_debug_info),
                 },
             })
@@ -1056,9 +1072,13 @@ impl ClientInputState {
             default_profile_active: !self
                 .debug_entries
                 .is_using_profile(DebugScreenProfile::Default),
+            default_profile_hovered: hovered_profile_button == Some(DebugScreenProfile::Default),
             performance_profile_active: !self
                 .debug_entries
                 .is_using_profile(DebugScreenProfile::Performance),
+            performance_profile_hovered: hovered_profile_button
+                == Some(DebugScreenProfile::Performance),
+            done_hovered,
         })
     }
 

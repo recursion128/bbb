@@ -6054,6 +6054,7 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
         HudDebugOptionsRow::Entry {
             path: "biome".to_string(),
             status: HudDebugOptionsEntryStatus::AlwaysOn,
+            hovered_status: None,
             allowed: true,
         }
     );
@@ -6095,6 +6096,7 @@ fn hud_debug_options_screen_projects_not_allowed_tooltip_under_reduced_debug_inf
         HudDebugOptionsRow::Entry {
             path: "biome".to_string(),
             status: HudDebugOptionsEntryStatus::Never,
+            hovered_status: None,
             allowed: false,
         }
     );

@@ -2917,12 +2917,14 @@ fn debug_options_screen_projects_vanilla_order_and_search_filter() {
                 entry: DebugScreenEntryId::Biome,
                 path: "biome".to_string(),
                 status: DebugScreenEntryStatus::Never,
+                hovered_status: None,
                 allowed: true,
             },
             DebugOptionsScreenHudRow::Entry {
                 entry: DebugScreenEntryId::ChunkGenerationStats,
                 path: "chunk_generation_stats".to_string(),
                 status: DebugScreenEntryStatus::Never,
+                hovered_status: None,
                 allowed: true,
             },
         ]
@@ -3455,6 +3457,85 @@ fn debug_options_screen_buttons_update_status_and_profiles() {
         .unwrap();
     assert!(state.default_profile_active);
     assert!(!state.performance_profile_active);
+}
+
+#[test]
+fn debug_options_screen_projects_button_hover_state() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("entity_hitboxes"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let content_x = debug_options_content_x(surface);
+    let buttons_start = content_x + DEBUG_OPTIONS_ROW_WIDTH - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    let always_x = buttons_start + DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 2 + 2;
+    let entry_y = DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT + 2;
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(always_x),
+            f64::from(entry_y)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    let hovered_status = state.rows.iter().find_map(|row| match row {
+        DebugOptionsScreenHudRow::Entry {
+            entry,
+            hovered_status,
+            ..
+        } if *entry == DebugScreenEntryId::EntityHitboxes => *hovered_status,
+        _ => None,
+    });
+    assert_eq!(hovered_status, Some(DebugScreenEntryStatus::AlwaysOn));
+    assert!(!state.default_profile_hovered);
+    assert!(!state.performance_profile_hovered);
+    assert!(!state.done_hovered);
+
+    let (default_x, performance_x, done_x) = debug_options_footer_button_xs(surface);
+    let footer_y = debug_options_footer_button_y(surface) + 2;
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(default_x + 2),
+            f64::from(footer_y)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(state.default_profile_hovered);
+    assert!(!state.performance_profile_hovered);
+    assert!(!state.done_hovered);
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(performance_x + 2),
+            f64::from(footer_y)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(!state.default_profile_hovered);
+    assert!(state.performance_profile_hovered);
+    assert!(!state.done_hovered);
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(done_x + 2),
+            f64::from(footer_y)
+        )),
+        surface,
+    ));
+    let state = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(!state.default_profile_hovered);
+    assert!(!state.performance_profile_hovered);
+    assert!(state.done_hovered);
 }
 
 #[test]

@@ -3006,11 +3006,13 @@ fn hud_debug_options_screen(
             DebugOptionsScreenHudRow::Entry {
                 path,
                 status,
+                hovered_status,
                 allowed,
                 ..
             } => HudDebugOptionsRow::Entry {
                 path,
                 status: hud_debug_options_status(status),
+                hovered_status: hovered_status.map(hud_debug_options_status),
                 allowed,
             },
         })
@@ -3032,7 +3034,10 @@ fn hud_debug_options_screen(
         total_rows: state.total_rows,
         visible_rows: state.visible_rows,
         default_profile_active: state.default_profile_active,
+        default_profile_hovered: state.default_profile_hovered,
         performance_profile_active: state.performance_profile_active,
+        performance_profile_hovered: state.performance_profile_hovered,
+        done_hovered: state.done_hovered,
     })
 }
 

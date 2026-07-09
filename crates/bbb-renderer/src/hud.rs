@@ -159,7 +159,10 @@ pub struct HudDebugOptionsScreen {
     pub total_rows: usize,
     pub visible_rows: usize,
     pub default_profile_active: bool,
+    pub default_profile_hovered: bool,
     pub performance_profile_active: bool,
+    pub performance_profile_hovered: bool,
+    pub done_hovered: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -173,6 +176,37 @@ pub struct HudDebugOptionsTooltip {
 struct HudDebugOptionsButtonSprites<'a> {
     normal: Option<&'a HudSpriteGpu>,
     disabled: Option<&'a HudSpriteGpu>,
+    highlighted: Option<&'a HudSpriteGpu>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudDebugOptionsButtonSpriteSlot {
+    Normal,
+    Disabled,
+    Highlighted,
+}
+
+impl<'a> HudDebugOptionsButtonSprites<'a> {
+    fn get(self, active: bool, highlighted: bool) -> Option<&'a HudSpriteGpu> {
+        match hud_debug_options_button_sprite_slot(active, highlighted) {
+            HudDebugOptionsButtonSpriteSlot::Normal => self.normal,
+            HudDebugOptionsButtonSpriteSlot::Disabled => self.disabled.or(self.normal),
+            HudDebugOptionsButtonSpriteSlot::Highlighted => self.highlighted.or(self.normal),
+        }
+    }
+}
+
+fn hud_debug_options_button_sprite_slot(
+    active: bool,
+    highlighted: bool,
+) -> HudDebugOptionsButtonSpriteSlot {
+    if !active {
+        HudDebugOptionsButtonSpriteSlot::Disabled
+    } else if highlighted {
+        HudDebugOptionsButtonSpriteSlot::Highlighted
+    } else {
+        HudDebugOptionsButtonSpriteSlot::Normal
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,6 +225,7 @@ pub enum HudDebugOptionsRow {
     Entry {
         path: String,
         status: HudDebugOptionsEntryStatus,
+        hovered_status: Option<HudDebugOptionsEntryStatus>,
         allowed: bool,
     },
 }
@@ -4403,6 +4438,7 @@ impl Renderer {
                 HudDebugOptionsButtonSprites {
                     normal: self.hud_widget_button.as_ref(),
                     disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
                 },
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
@@ -6257,6 +6293,7 @@ fn push_hud_debug_options_screen<'a>(
             HudDebugOptionsRow::Entry {
                 path,
                 status,
+                hovered_status,
                 allowed,
             } => {
                 push_hud_debug_options_entry(
@@ -6273,6 +6310,7 @@ fn push_hud_debug_options_screen<'a>(
                     button_sprites,
                     path,
                     *status,
+                    *hovered_status,
                     *allowed,
                 );
             }
@@ -6299,7 +6337,10 @@ fn push_hud_debug_options_screen<'a>(
         surface_size,
         button_sprites,
         screen.default_profile_active,
+        screen.default_profile_hovered,
         screen.performance_profile_active,
+        screen.performance_profile_hovered,
+        screen.done_hovered,
     );
     push_hud_debug_options_tooltip(
         vertices,
@@ -6529,6 +6570,7 @@ fn push_hud_debug_options_entry<'a>(
     button_sprites: HudDebugOptionsButtonSprites<'a>,
     path: &str,
     status: HudDebugOptionsEntryStatus,
+    hovered_status: Option<HudDebugOptionsEntryStatus>,
     allowed: bool,
 ) {
     let name_tint = if allowed {
@@ -6576,6 +6618,7 @@ fn push_hud_debug_options_entry<'a>(
             HUD_DEBUG_OPTIONS_STATUS_BUTTON_HEIGHT,
             label,
             status != button_status,
+            hovered_status == Some(button_status),
             hud_debug_options_status_tint(button_status, status == button_status),
             button_sprites,
         );
@@ -6594,7 +6637,10 @@ fn push_hud_debug_options_footer<'a>(
     surface_size: PhysicalSize<u32>,
     button_sprites: HudDebugOptionsButtonSprites<'a>,
     default_profile_active: bool,
+    default_profile_hovered: bool,
     performance_profile_active: bool,
+    performance_profile_hovered: bool,
+    done_hovered: bool,
 ) {
     let y = hud_debug_options_footer_button_y(surface_size);
     let (default_x, performance_x, done_x) = hud_debug_options_footer_button_xs(surface_size);
@@ -6613,6 +6659,7 @@ fn push_hud_debug_options_footer<'a>(
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Default",
         default_profile_active,
+        default_profile_hovered,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -6631,6 +6678,7 @@ fn push_hud_debug_options_footer<'a>(
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Performance",
         performance_profile_active,
+        performance_profile_hovered,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -6649,6 +6697,7 @@ fn push_hud_debug_options_footer<'a>(
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Done",
         true,
+        done_hovered,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -6785,14 +6834,11 @@ fn push_hud_debug_options_button<'a>(
     height: i32,
     label: &str,
     active: bool,
+    highlighted: bool,
     text_tint: [f32; 4],
     button_sprites: HudDebugOptionsButtonSprites<'a>,
 ) {
-    let sprite = if active {
-        button_sprites.normal
-    } else {
-        button_sprites.disabled.or(button_sprites.normal)
-    };
+    let sprite = button_sprites.get(active, highlighted);
     if let Some(sprite) = sprite {
         push_hud_draw_with_uv_and_tint(
             vertices,
@@ -10823,7 +10869,10 @@ fn sanitize_hud_debug_options_screen(
         total_rows: screen.total_rows.min(256),
         visible_rows,
         default_profile_active: screen.default_profile_active,
+        default_profile_hovered: screen.default_profile_hovered,
         performance_profile_active: screen.performance_profile_active,
+        performance_profile_hovered: screen.performance_profile_hovered,
+        done_hovered: screen.done_hovered,
     })
 }
 
@@ -10836,12 +10885,14 @@ fn sanitize_hud_debug_options_row(row: HudDebugOptionsRow) -> Option<HudDebugOpt
         HudDebugOptionsRow::Entry {
             path,
             status,
+            hovered_status,
             allowed,
         } => {
             let path = sanitize_hud_text_line(path)?;
             Some(HudDebugOptionsRow::Entry {
                 path,
                 status,
+                hovered_status,
                 allowed,
             })
         }
@@ -15244,11 +15295,13 @@ mod tests {
                 HudDebugOptionsRow::Entry {
                     path: "biome".to_string(),
                     status: HudDebugOptionsEntryStatus::AlwaysOn,
+                    hovered_status: Some(HudDebugOptionsEntryStatus::AlwaysOn),
                     allowed: true,
                 },
                 HudDebugOptionsRow::Entry {
                     path: "fps".to_string(),
                     status: HudDebugOptionsEntryStatus::InOverlay,
+                    hovered_status: None,
                     allowed: false,
                 },
             ],
@@ -15256,7 +15309,10 @@ mod tests {
             total_rows: 3,
             visible_rows: 2,
             default_profile_active: false,
+            default_profile_hovered: true,
             performance_profile_active: true,
+            performance_profile_hovered: false,
+            done_hovered: true,
         })
         .expect("debug options screen");
 
@@ -15272,7 +15328,10 @@ mod tests {
             Some("NoReduced")
         );
         assert!(!screen.default_profile_active);
+        assert!(screen.default_profile_hovered);
         assert!(screen.performance_profile_active);
+        assert!(!screen.performance_profile_hovered);
+        assert!(screen.done_hovered);
 
         let wide_search = format!("{}a", "\u{1f600}".repeat(16));
         let wide = sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
@@ -15288,7 +15347,10 @@ mod tests {
             total_rows: 0,
             visible_rows: 0,
             default_profile_active: true,
+            default_profile_hovered: false,
             performance_profile_active: true,
+            performance_profile_hovered: false,
+            done_hovered: false,
         })
         .expect("wide debug options screen");
         assert_eq!(wide.search_text, "\u{1f600}".repeat(16));
@@ -15309,7 +15371,10 @@ mod tests {
             total_rows: 0,
             visible_rows: 0,
             default_profile_active: true,
+            default_profile_hovered: false,
             performance_profile_active: true,
+            performance_profile_hovered: false,
+            done_hovered: false,
         })
         .is_none());
     }
@@ -15338,6 +15403,26 @@ mod tests {
 
         assert_eq!(outer, (269, 6, 116, 20));
         assert_eq!(inner, (270, 7, 114, 18));
+    }
+
+    #[test]
+    fn debug_options_button_sprite_slot_matches_vanilla_widget_sprites() {
+        assert_eq!(
+            hud_debug_options_button_sprite_slot(true, false),
+            HudDebugOptionsButtonSpriteSlot::Normal
+        );
+        assert_eq!(
+            hud_debug_options_button_sprite_slot(true, true),
+            HudDebugOptionsButtonSpriteSlot::Highlighted
+        );
+        assert_eq!(
+            hud_debug_options_button_sprite_slot(false, false),
+            HudDebugOptionsButtonSpriteSlot::Disabled
+        );
+        assert_eq!(
+            hud_debug_options_button_sprite_slot(false, true),
+            HudDebugOptionsButtonSpriteSlot::Disabled
+        );
     }
 
     #[test]
