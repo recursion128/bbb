@@ -44,17 +44,17 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
         VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
-        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -248,6 +248,7 @@ const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_DAMAGE: f64 = 2.0;
 const ABSTRACT_ARROW_DEFAULT_SOUND_EVENT: &str = "minecraft:entity.arrow.hit";
+const SPECTRAL_ARROW_DEFAULT_DURATION: i32 = 200;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
@@ -4039,6 +4040,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_projectile_additional_save_data(fields);
             debug_push_abstract_arrow_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
+            debug_push_projectile_additional_save_data(fields);
+            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_spectral_arrow_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             debug_push_projectile_additional_save_data(fields);
             debug_push_shulker_bullet_additional_save_data(fields);
@@ -4254,6 +4260,10 @@ fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: 
         "SoundEvent: {}",
         debug_snbt_string(ABSTRACT_ARROW_DEFAULT_SOUND_EVENT)
     ));
+}
+
+fn debug_push_spectral_arrow_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("Duration: {SPECTRAL_ARROW_DEFAULT_DURATION}"));
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(
