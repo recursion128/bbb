@@ -6263,6 +6263,14 @@
   边界：更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local ghast save field（P2 native slice，
+  2026-07-09）：依据 `Ghast.addAdditionalSaveData` 先调用 `Mob` 保存链，再写
+  `ExplosionPower` byte；vanilla 初始化 `explosionPower` 为 1，NBT 读取也使用
+  同一默认值。native 现在对授权 Shift+F3+I 本地 ghast recreate command 追加
+  Mob 字段和默认 `ExplosionPower: 1b`。边界：非默认 ghast explosion power、
+  更广泛的 Mob save data、passengers 以及其他 entity-specific
+  `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

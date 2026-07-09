@@ -9,8 +9,9 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
-        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -209,6 +210,7 @@ const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
 const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
+const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3530,6 +3532,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bat_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_GHAST_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ghast_additional_save_data(fields);
+        }
         _ => {}
     }
 }
@@ -3590,6 +3596,10 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     let flags =
         debug_entity_data_byte_present(entity, BAT_FLAGS_DATA_ID).unwrap_or(BAT_DEFAULT_FLAGS);
     fields.push(format!("BatFlags: {flags}b"));
+}
+
+fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {
