@@ -169,6 +169,12 @@ pub struct HudDebugOptionsTooltip {
     pub y: i32,
 }
 
+#[derive(Clone, Copy)]
+struct HudDebugOptionsButtonSprites<'a> {
+    normal: Option<&'a HudSpriteGpu>,
+    disabled: Option<&'a HudSpriteGpu>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct HudDebugOptionsScrollbarRect {
     x: i32,
@@ -570,8 +576,10 @@ const HUD_DEBUG_OPTIONS_FOOTER_HEIGHT: i32 = 33;
 const HUD_DEBUG_OPTIONS_ROW_WIDTH: i32 = 350;
 const HUD_DEBUG_OPTIONS_ROW_HEIGHT: i32 = 20;
 const HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH: i32 = 60;
+const HUD_DEBUG_OPTIONS_STATUS_BUTTON_HEIGHT: i32 = 16;
 const HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH: i32 = 120;
 const HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
+const HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT: i32 = 20;
 const HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
 const HUD_DEBUG_OPTIONS_SEARCH_WIDTH: i32 = HUD_DEBUG_OPTIONS_ROW_WIDTH / 3;
 const HUD_DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
@@ -1780,6 +1788,16 @@ impl Renderer {
 
     pub fn upload_hud_widget_button(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_widget_button = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_button_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_button_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -4382,6 +4400,10 @@ impl Renderer {
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
                 self.hud_widget_text_field_highlighted.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                },
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
@@ -6143,6 +6165,7 @@ fn push_hud_debug_options_screen<'a>(
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
     text_field_highlighted: Option<&'a HudSpriteGpu>,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
@@ -6247,6 +6270,7 @@ fn push_hud_debug_options_screen<'a>(
                     surface_size,
                     content_x,
                     y,
+                    button_sprites,
                     path,
                     *status,
                     *allowed,
@@ -6273,6 +6297,7 @@ fn push_hud_debug_options_screen<'a>(
         obfuscated_pool,
         frame_index,
         surface_size,
+        button_sprites,
         screen.default_profile_active,
         screen.performance_profile_active,
     );
@@ -6501,6 +6526,7 @@ fn push_hud_debug_options_entry<'a>(
     surface_size: PhysicalSize<u32>,
     content_x: i32,
     y: i32,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
     path: &str,
     status: HudDebugOptionsEntryStatus,
     allowed: bool,
@@ -6547,9 +6573,11 @@ fn push_hud_debug_options_entry<'a>(
             x,
             y,
             HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH,
+            HUD_DEBUG_OPTIONS_STATUS_BUTTON_HEIGHT,
             label,
             status != button_status,
             hud_debug_options_status_tint(button_status, status == button_status),
+            button_sprites,
         );
     }
 }
@@ -6564,6 +6592,7 @@ fn push_hud_debug_options_footer<'a>(
     obfuscated_pool: &HudObfuscatedGlyphPool,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
     default_profile_active: bool,
     performance_profile_active: bool,
 ) {
@@ -6581,9 +6610,11 @@ fn push_hud_debug_options_footer<'a>(
         default_x,
         y,
         HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
+        HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Default",
         default_profile_active,
         HUD_TINT_WHITE,
+        button_sprites,
     );
     push_hud_debug_options_button(
         vertices,
@@ -6597,9 +6628,11 @@ fn push_hud_debug_options_footer<'a>(
         performance_x,
         y,
         HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
+        HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Performance",
         performance_profile_active,
         HUD_TINT_WHITE,
+        button_sprites,
     );
     push_hud_debug_options_button(
         vertices,
@@ -6613,9 +6646,11 @@ fn push_hud_debug_options_footer<'a>(
         done_x,
         y,
         HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH,
+        HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
         "Done",
         true,
         HUD_TINT_WHITE,
+        button_sprites,
     );
 }
 
@@ -6747,37 +6782,64 @@ fn push_hud_debug_options_button<'a>(
     x: i32,
     y: i32,
     width: i32,
+    height: i32,
     label: &str,
     active: bool,
     text_tint: [f32; 4],
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
 ) {
-    let background_tint = if active {
-        [0.18, 0.18, 0.18, 0.92]
+    let sprite = if active {
+        button_sprites.normal
     } else {
-        [0.08, 0.08, 0.08, 0.86]
+        button_sprites.disabled.or(button_sprites.normal)
     };
-    push_hud_debug_tinted_rect(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        x,
-        y,
-        width.max(0) as u32,
-        16,
-        background_tint,
-    );
-    push_hud_debug_tinted_rect(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        x,
-        y,
-        width.max(0) as u32,
-        1,
-        [0.8, 0.8, 0.8, 0.75],
-    );
+    if let Some(sprite) = sprite {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            sprite,
+            surface_size,
+            absolute_hud_rect(
+                x as f32,
+                y as f32,
+                width.max(0) as u32,
+                height.max(0) as u32,
+            ),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TINT_WHITE,
+        );
+    } else {
+        let background_tint = if active {
+            [0.18, 0.18, 0.18, 0.92]
+        } else {
+            [0.08, 0.08, 0.08, 0.86]
+        };
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            x,
+            y,
+            width.max(0) as u32,
+            height.max(0) as u32,
+            background_tint,
+        );
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            x,
+            y,
+            width.max(0) as u32,
+            1,
+            [0.8, 0.8, 0.8, 0.75],
+        );
+    }
     push_hud_debug_options_centered_text_in_width(
         vertices,
         commands,
@@ -6790,7 +6852,7 @@ fn push_hud_debug_options_button<'a>(
         label,
         x,
         width,
-        y + 4,
+        y + (height - 8).max(0) / 2,
         if active {
             text_tint
         } else {

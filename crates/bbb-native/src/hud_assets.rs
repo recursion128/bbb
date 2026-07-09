@@ -171,6 +171,12 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_button.height,
         &widget_button.rgba,
     )?;
+    let widget_button_disabled = hud_sprite(&sprites, "widget/button_disabled")?;
+    renderer.upload_hud_widget_button_disabled(
+        widget_button_disabled.width,
+        widget_button_disabled.height,
+        &widget_button_disabled.rgba,
+    )?;
     let widget_button_highlighted = hud_sprite(&sprites, "widget/button_highlighted")?;
     renderer.upload_hud_widget_button_highlighted(
         widget_button_highlighted.width,
