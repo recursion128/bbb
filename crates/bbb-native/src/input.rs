@@ -35,10 +35,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -350,6 +350,7 @@ const SPELLCASTER_ILLAGER_DEFAULT_SPELL_TICKS: i32 = 0;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
+const WANDERING_TRADER_DEFAULT_DESPAWN_DELAY: i32 = 0;
 const WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
 const WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
@@ -3917,6 +3918,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_patrolling_monster_additional_save_data(fields);
             debug_push_raider_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_abstract_villager_additional_save_data(fields);
+            debug_push_wandering_trader_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_WITCH_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -4399,6 +4406,10 @@ fn debug_push_inventory_carrier_additional_save_data(fields: &mut Vec<String>) {
     fields.push("Inventory: []".to_string());
 }
 
+fn debug_push_abstract_villager_additional_save_data(fields: &mut Vec<String>) {
+    debug_push_inventory_carrier_additional_save_data(fields);
+}
+
 fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let size =
         debug_entity_data_int_present(entity, PHANTOM_SIZE_DATA_ID).unwrap_or(PHANTOM_DEFAULT_SIZE);
@@ -4539,6 +4550,12 @@ fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec
         debug_entity_data_int_present(entity, WITHER_INVULNERABLE_TICKS_DATA_ID)
             .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
     fields.push(format!("Invul: {invulnerable_ticks}"));
+}
+
+fn debug_push_wandering_trader_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "DespawnDelay: {WANDERING_TRADER_DEFAULT_DESPAWN_DELAY}"
+    ));
 }
 
 fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
