@@ -4381,6 +4381,7 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_widget_text_field_highlighted.as_ref(),
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
@@ -6141,6 +6142,7 @@ fn push_hud_debug_options_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    text_field_highlighted: Option<&'a HudSpriteGpu>,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
@@ -6204,6 +6206,7 @@ fn push_hud_debug_options_screen<'a>(
         screen.search_cursor,
         screen.search_selection,
         screen.search_cursor_visible,
+        text_field_highlighted,
     );
 
     let content_x = hud_debug_options_content_x(surface_size);
@@ -6630,33 +6633,49 @@ fn push_hud_debug_options_search_box<'a>(
     search_cursor: usize,
     search_selection: usize,
     search_cursor_visible: bool,
+    text_field_highlighted: Option<&'a HudSpriteGpu>,
 ) {
     let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
         - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
     let y = 6;
     let (outer, inner) = hud_debug_options_search_box_rects(surface_size);
-    push_hud_debug_tinted_rect(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        outer.0,
-        outer.1,
-        outer.2,
-        outer.3,
-        [0.95, 0.95, 0.95, 1.0],
-    );
-    push_hud_debug_tinted_rect(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        inner.0,
-        inner.1,
-        inner.2,
-        inner.3,
-        [0.0, 0.0, 0.0, 0.75],
-    );
+    if let Some(text_field_highlighted) = text_field_highlighted {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            text_field_highlighted,
+            surface_size,
+            absolute_hud_rect(outer.0 as f32, outer.1 as f32, outer.2, outer.3),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TINT_WHITE,
+        );
+    } else {
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            outer.0,
+            outer.1,
+            outer.2,
+            outer.3,
+            [0.95, 0.95, 0.95, 1.0],
+        );
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            inner.0,
+            inner.1,
+            inner.2,
+            inner.3,
+            [0.0, 0.0, 0.0, 0.75],
+        );
+    }
     let input = HudInventoryTextInputDecoration {
         cursor: search_cursor,
         selection: search_selection,

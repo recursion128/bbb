@@ -1147,7 +1147,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox full widget styling polish, and native pause
+    DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
     (large, low priority).
 - Evidence / boundary:
@@ -1277,9 +1277,19 @@ When an agent does any of the following, update this file in the same slice:
     `x + 4` / centered-y text position. bbb now draws the DebugOptionsScreen
     search box as a bordered focused text field with a 1px light outer frame,
     dark inner fill, the existing bordered text origin, cursor, and selection.
-    Boundary: exact vanilla text-field sprites/nine-slice texture, narration,
-    scrollbar dragging, and full widget sprite styling remain future polish;
-    mouse click/drag selection is covered by the later 2026-07-09 item below.
+    Boundary: exact vanilla text-field sprite rendering is covered by the later
+    2026-07-09 item below; narration, scrollbar dragging, and full widget
+    sprite styling remain future polish; mouse click/drag selection is covered
+    by the later 2026-07-09 item below.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen search text-field
+    sprite styling. Vanilla anchors: `EditBox.SPRITES` uses
+    `widget/text_field_highlighted` for the active/focused bordered field, and
+    `EditBox.extractWidgetRenderState` blits that sprite at the widget bounds
+    before drawing text. bbb now renders the DebugOptionsScreen search
+    background with the uploaded `widget/text_field_highlighted` HUD sprite,
+    retaining the prior rect fallback when the sprite is unavailable. Boundary:
+    narration, scrollbar dragging, remaining button/scrollbar widget sprite
+    styling, and broader full-widget polish remain future.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen search mouse
     selection behavior. Vanilla anchors: `EditBox.onClick` moves the cursor to
     `findClickedPositionInText`, extends selection when Shift is held,
@@ -1290,8 +1300,8 @@ When an agent does any of the following, update this file in the same slice:
     selection, drag from the search box to update the highlight, and release
     left mouse to stop selection. Boundary: variable-width hit-testing and
     double-click word selection are covered by later 2026-07-09 items below;
-    narration, scrollbar dragging, exact text-field sprites/nine-slice texture,
-    and full widget sprite styling remain future polish.
+    narration, scrollbar dragging, and remaining full widget sprite styling
+    remain future polish.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen variable-width search
     hit-testing. Vanilla anchors: `EditBox.findClickedPositionInText` clamps
     `floor(mouseX) - textX` to `getInnerWidth`, then maps that pixel budget
@@ -1302,9 +1312,8 @@ When an agent does any of the following, update this file in the same slice:
     advance model retained for tests and no-font fallback. Boundary:
     horizontal display-start hit-testing is covered by the later 2026-07-09
     item below; double-click word selection is covered by the later 2026-07-09
-    item below; narration, scrollbar dragging, exact text-field
-    sprites/nine-slice texture, and full widget sprite styling remain future
-    polish.
+    item below; narration, scrollbar dragging, and remaining full widget sprite
+    styling remain future polish.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen horizontal search
     display hit-testing. Vanilla anchors: `EditBox.setCursorPosition` calls
     `scrollTo(cursorPos)`, and `findClickedPositionInText` maps the click
@@ -1313,17 +1322,16 @@ When an agent does any of the following, update this file in the same slice:
     so DebugOptionsScreen search click and drag hit-testing use the same
     visible substring origin as the rendered text. Boundary: double-click word
     selection is covered by the later 2026-07-09 item below; narration,
-    scrollbar dragging, exact text-field sprites/nine-slice texture, and full
-    widget sprite styling remain future polish.
+    scrollbar dragging, and remaining full widget sprite styling remain future
+    polish.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen double-click word
     selection. Vanilla anchors: `MouseHandler.DOUBLE_CLICK_THRESHOLD_MS` is
     250ms, `EditBox.onClick(..., doubleClick = true)` calls `selectWord`, and
     `selectWord` expands from the clicked position to `getWordPosition(-1)`
     and `getWordPosition(1)`. bbb now tracks recent DebugOptionsScreen left
     clicks and selects the clicked search word on a 250ms double-click.
-    Boundary: narration, scrollbar dragging, exact text-field
-    sprites/nine-slice texture, and full widget sprite styling remain future
-    polish.
+    Boundary: narration, scrollbar dragging, and remaining full widget sprite
+    styling remain future polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -3146,7 +3154,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox full widget styling polish, native pause
+    DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
