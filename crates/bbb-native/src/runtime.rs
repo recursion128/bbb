@@ -2131,11 +2131,14 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
+    let renderer_counters = renderer.counters();
     let hud_debug_overlay = hud_debug_overlay_at_partial_tick(
         input,
         world,
         camera_pose,
         entity_partial_tick,
+        &renderer_counters,
+        render_distance_chunks,
         surface_size,
         hud_debug_fps_sampler,
         client_framerate_limit,
@@ -3076,6 +3079,8 @@ fn hud_debug_overlay(
         world,
         camera_pose,
         1.0,
+        &bbb_renderer::RendererCounters::default(),
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         surface_size,
         fps_sampler,
         client_framerate_limit,
@@ -3091,6 +3096,8 @@ fn hud_debug_overlay_at_partial_tick(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
     entity_partial_tick: f32,
+    renderer_counters: &bbb_renderer::RendererCounters,
+    render_distance_chunks: u32,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
     client_framerate_limit: u32,
@@ -3170,6 +3177,13 @@ fn hud_debug_overlay_at_partial_tick(
         {
             left_lines.extend(looking_at_lines);
         }
+    }
+    if entry_enabled(DebugScreenEntryId::ChunkRenderStats) {
+        left_lines.push(hud_debug_chunk_render_stats_line(
+            renderer_counters,
+            render_distance_chunks,
+            false,
+        ));
     }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
@@ -3687,6 +3701,23 @@ fn hud_debug_looking_at_entity(
         return None;
     };
     world.probe_entity(hit.entity_id)
+}
+
+fn hud_debug_chunk_render_stats_line(
+    counters: &bbb_renderer::RendererCounters,
+    render_distance_chunks: u32,
+    smart_cull: bool,
+) -> String {
+    let smart_cull = if smart_cull { "(s) " } else { "" };
+    format!(
+        "C: {}/{} {}D: {}, pC: {:03}, aB: {:02}",
+        counters.visible_sections,
+        counters.uploaded_sections,
+        smart_cull,
+        render_distance_chunks,
+        counters.queued_sections,
+        0
+    )
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {

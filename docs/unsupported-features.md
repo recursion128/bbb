@@ -1167,7 +1167,8 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    look-at chunk stats remain future work.
+    chunk generation/source plus entity/particle render stats remain future
+    work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1324,6 +1325,23 @@ When an agent does any of the following, update this file in the same slice:
     stored tag map order, while exact vanilla holder tag iteration order, group
     layout, profile persistence, and deeper shared crosshair raycast parity
     remain future work.
+  - Done 2026-07-09 — Debug overlay chunk-render-stats entry shell. Vanilla
+    anchors: `DebugScreenEntries.CHUNK_RENDER_STATS` registers
+    `DebugEntryChunkRenderStats`; it calls
+    `Minecraft.getInstance().levelRenderer.getSectionStatistics()`, emits that
+    line directly, and overrides `isAllowed` so reduced-debug info still allows
+    it. `LevelRenderer.getSectionStatistics()` formats
+    `C: <rendered>/<total> <smartCull>D: <viewDistance>, <dispatcher stats>`,
+    while `SectionRenderDispatcher.getStats()` contributes
+    `pC: %03d, aB: %02d`. bbb now has a non-profile
+    `ChunkRenderStats` entry id, keeps it `Never` in default/performance
+    profiles, allows it under reduced-debug info, and projects
+    `C: visible/uploaded D: render_distance, pC: queued, aB: 00` from renderer
+    terrain counters when custom-enabled. Boundary: bbb does not yet mirror the
+    vanilla `ViewArea` total section count, smart-cull flag, or section buffer
+    pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
+    frame timing, group layout, profile persistence, chunk generation/source
+    stats, and entity/particle render stats remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2550,6 +2568,8 @@ When an agent does any of the following, update this file in the same slice:
     name.
     Custom-enabled looking-at entity tags now renders tracked `#tag` rows for
     the target entity type.
+    Custom-enabled chunk render stats now renders a vanilla-shaped
+    section-statistics line from renderer terrain counters.
     F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server

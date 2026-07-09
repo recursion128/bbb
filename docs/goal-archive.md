@@ -5448,9 +5448,9 @@
   profile，默认 profile 继续驱动已有 overlay entry，performance profile 的 FPS
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
-  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  chunk stats 等 individual non-default entry
-  renderers 仍待后续。
+  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 chunk
+  generation/source 与 entity/particle render stats 等 individual non-default
+  entry renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
   `DebugScreenEntries.GPU_UTILIZATION`、performance profile 中该 entry 的
@@ -5605,6 +5605,23 @@
   tags；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
   order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json`
   持久化，以及 shared crosshair entity raycast 的更深 parity gap 仍待后续。
+- [x] debug overlay chunk-render-stats entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.CHUNK_RENDER_STATS` 注册
+  `DebugEntryChunkRenderStats`；该 entry 调用
+  `Minecraft.getInstance().levelRenderer.getSectionStatistics()` 并直接输出
+  该行，同时覆盖 `isAllowed` 以便 reduced-debug info 下仍允许显示。
+  `LevelRenderer.getSectionStatistics()` 格式为
+  `C: <rendered>/<total> <smartCull>D: <viewDistance>, <dispatcher stats>`，
+  `SectionRenderDispatcher.getStats()` 提供 `pC: %03d, aB: %02d`。native
+  现在有非 profile 默认项 `ChunkRenderStats` entry id，default /
+  performance profiles 中保持 `Never`，reduced-debug 下允许；custom status
+  启用时，基于 renderer terrain counters 投影
+  `C: visible/uploaded D: render_distance, pC: queued, aB: 00` 左列纯文本。
+  边界：当前尚未 mirror vanilla `ViewArea` total section count、smart-cull
+  flag 或 section buffer pool free count，因此 `uploaded_sections` 与
+  `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
+  `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation/source
+  stats、entity/particle render stats 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

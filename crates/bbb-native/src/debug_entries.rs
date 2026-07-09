@@ -31,6 +31,7 @@ pub(crate) enum DebugScreenEntryId {
     LookingAtFluidTags,
     LookingAtEntity,
     LookingAtEntityTags,
+    ChunkRenderStats,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -49,6 +50,7 @@ impl DebugScreenEntryId {
                     | Self::DetailedMemory
                     | Self::SystemSpecs
                     | Self::PlayerSectionPosition
+                    | Self::ChunkRenderStats
                     | Self::SimplePerformanceImpactors
                     | Self::GpuUtilization
             )
@@ -275,6 +277,10 @@ mod tests {
             entries.status(DebugScreenEntryId::LookingAtEntityTags),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::ChunkRenderStats),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -376,5 +382,10 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::LookingAtEntityTags, true));
+        entries.set_status(
+            DebugScreenEntryId::ChunkRenderStats,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(entries.is_currently_enabled(DebugScreenEntryId::ChunkRenderStats, true));
     }
 }

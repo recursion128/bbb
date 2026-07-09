@@ -1596,6 +1596,51 @@ fn hud_debug_overlay_projects_custom_looking_at_entity_tags() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info() {
+    let world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::ChunkRenderStats,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let renderer_counters = bbb_renderer::RendererCounters {
+        visible_sections: 7,
+        uploaded_sections: 10,
+        queued_sections: 3,
+        ..Default::default()
+    };
+
+    let overlay = hud_debug_overlay_at_partial_tick(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        1.0,
+        &renderer_counters,
+        12,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("chunk render stats should be allowed under reduced debug info");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec!["C: 7/10 D: 12, pC: 003, aB: 00".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
