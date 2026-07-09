@@ -37,6 +37,25 @@ fn colored_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemToo
     }
 }
 
+fn charged_projectile_detail_line(text: &str, child_color: u32) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: format!("  {text}"),
+        tint: TOOLTIP_TEXT_GRAY,
+        runs: vec![
+            HudStyledTextRun {
+                text: "  ".to_string(),
+                style: HudTextStyle::default(),
+                color: Some(0xAA_AA_AA),
+            },
+            HudStyledTextRun {
+                text: text.to_string(),
+                style: HudTextStyle::default(),
+                color: Some(child_color),
+            },
+        ],
+    }
+}
+
 fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.to_string(),
@@ -911,6 +930,17 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         count: 1,
                         component_patch: DataComponentPatchSummary {
                             item_name: Some("Charged Custom".to_string()),
+                            container_loot: true,
+                            potion_custom_effects: vec![MobEffectInstanceSummary {
+                                effect_id: 18,
+                                amplifier: 1,
+                                duration: 200,
+                                ambient: false,
+                                show_particles: true,
+                                show_icon: true,
+                                hidden_effect: None,
+                            }],
+                            unbreakable: true,
                             ..DataComponentPatchSummary::default()
                         },
                     },
@@ -924,6 +954,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Projectile: 2 x Test Combo", TOOLTIP_TEXT_WHITE),
             tooltip_line("Projectile: Charged Custom", TOOLTIP_TEXT_WHITE),
+            charged_projectile_detail_line("Unknown contents", 0xAA_AA_AA),
+            charged_projectile_detail_line("Poison II (00:10)", 0xFF_55_55),
+            charged_projectile_detail_line("Unbreakable", 0x55_55_FF),
             tooltip_line("Flight Duration: 1", TOOLTIP_TEXT_GRAY),
             lore_line("After charged projectiles"),
         ])

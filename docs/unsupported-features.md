@@ -1409,10 +1409,22 @@ When an agent does any of the following, update this file in the same slice:
     `item.minecraft.crossbow.projectile.multiple(count, display_name)`. bbb
     now projects decoded `minecraft:charged_projectiles` templates into those
     localized header rows using the nested stack hover-name precedence.
-    Boundary: recursive projectile detail rows with vanilla's gray two-space
-    prefix and exact nested display-name run styling remain future work, along
-    with remaining component providers, `TooltipDisplay` hiding, and options
-    persistence.
+    Boundary: recursive projectile detail rows are covered by the later
+    2026-07-09 item below; exact nested display-name run styling remains future
+    work, along with remaining component providers and options persistence.
+  - Done 2026-07-09 — Advanced tooltip charged-projectiles recursive detail
+    rows. Vanilla anchor: `ChargedProjectiles.addProjectileTooltip` calls
+    `projectile.addDetailsToTooltip(context, projectileDisplay, null,
+    TooltipFlag.NORMAL, ...)` after each projectile header, then wraps each
+    nested detail as `Component.literal("  ").append(line).withStyle(GRAY)`.
+    bbb now routes both top-level and nested stack detail rows through one
+    provider-order helper, emits projectile detail rows after each grouped
+    header with the two-space gray prefix, keeps colored child effect/unit
+    lines, and uses normal tooltip flags for nested projectile details.
+    Boundary: nested header display-name run styling is still flattened,
+    stack-specific map tooltip context is only available for the hovered stack,
+    potion attribute modifier rows remain unimplemented, and broader
+    provider/options persistence parity stays future work.
   - Done 2026-07-09 — Advanced tooltip container-loot unknown-content line.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.CONTAINER_LOOT, ...)` after bees and before
