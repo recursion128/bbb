@@ -10,8 +10,9 @@ use bbb_protocol::{
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -211,6 +212,10 @@ const SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 const BAT_FLAGS_DATA_ID: u8 = 16;
 const BAT_DEFAULT_FLAGS: i8 = 0;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
+const IRON_GOLEM_PLAYER_CREATED_FLAG: i8 = 1;
+const IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
+const NEUTRAL_MOB_DEFAULT_ANGER_END_TIME: i64 = 0;
 const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
@@ -3543,6 +3548,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_iron_golem_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -3613,6 +3622,18 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
+}
+
+fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let flags = debug_entity_data_byte_present(entity, IRON_GOLEM_FLAGS_DATA_ID)
+        .unwrap_or(IRON_GOLEM_DEFAULT_FLAGS);
+    fields.push(format!(
+        "PlayerCreated: {}",
+        debug_snbt_bool(flags & IRON_GOLEM_PLAYER_CREATED_FLAG != 0)
+    ));
+    fields.push(format!(
+        "anger_end_time: {NEUTRAL_MOB_DEFAULT_ANGER_END_TIME}L"
+    ));
 }
 
 fn debug_push_patrolling_monster_additional_save_data(fields: &mut Vec<String>) {

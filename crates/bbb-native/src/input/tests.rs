@@ -2,8 +2,9 @@ use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-    VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-    VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+    VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
 };
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
@@ -3063,6 +3064,89 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
              PersistenceRequired: 0b, LeftHanded: 1b, ExplosionPower: 1b}"
+        )
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    let messages = &world.client_chat().messages;
+    assert_eq!(messages.len(), 1);
+    assert_eq!(
+        messages[0].content,
+        "[Debug]: Copied client-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    grant_debug_recreate_nbt_permission(&mut world);
+    world.apply_add_entity(AddEntity {
+        id: 50,
+        uuid: Uuid::from_u128(50),
+        entity_type_id: VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
+            },
+            ProtocolEntityDataValue {
+                data_id: IRON_GOLEM_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(IRON_GOLEM_PLAYER_CREATED_FLAG),
+            },
+        ],
+    }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        y_rot: 0.0,
+        x_rot: 0.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+    input.set_shift_key(KeyCode::ShiftLeft, true);
+
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+    assert!(input.handle_debug_overlay_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyI),
+        ElementState::Pressed,
+        Some(&mut world),
+        None,
+        Some(&mut clipboard)
+    ));
+
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some(
+            "/summon minecraft:iron_golem 0.00 0.00 3.00 \
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
+             PersistenceRequired: 0b, LeftHanded: 1b, PlayerCreated: 1b, \
+             anger_end_time: 0L}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());

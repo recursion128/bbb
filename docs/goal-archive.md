@@ -6271,6 +6271,16 @@
   更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local iron-golem save fields（P2 native slice，
+  2026-07-09）：依据 `IronGolem.addAdditionalSaveData` 调用 Mob 保存链后写
+  `PlayerCreated`，再由 `NeutralMob.addPersistentAngerSaveData` 写
+  `anger_end_time` 与 nullable `angry_at`；`PlayerCreated` 来自
+  `IronGolem.DATA_FLAGS_ID` 16 的 bit 1。native 现在对授权 Shift+F3+I 本地
+  iron-golem recreate command 追加 Mob 字段、metadata-derived `PlayerCreated`，
+  以及默认 `anger_end_time: 0L`。边界：non-default persistent anger end
+  time/target、更广泛的 Mob save data、passengers 以及其他 entity-specific
+  `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local ravager save fields（P2 native slice，
   2026-07-09）：依据 `Ravager.addAdditionalSaveData` 在
   `PatrollingMonster` 与 `Raider` 父类字段之后写入 `AttackTick`、`StunTick`、
