@@ -3317,6 +3317,64 @@ fn debug_options_screen_search_mouse_hit_testing_uses_display_start() {
 }
 
 #[test]
+fn debug_options_screen_search_double_click_selects_word() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("alpha beta"));
+    input
+        .debug_options_screen
+        .as_mut()
+        .unwrap()
+        .last_left_click_at = Some(Instant::now());
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 8),
+            f64::from(search_y + 2)
+        )),
+        surface,
+        false,
+    ));
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_selection, 6);
+    assert_eq!(screen.search_cursor, 10);
+}
+
+#[test]
+fn debug_options_screen_search_double_click_requires_vanilla_threshold() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("alpha beta"));
+    input
+        .debug_options_screen
+        .as_mut()
+        .unwrap()
+        .last_left_click_at = Some(Instant::now() - DEBUG_OPTIONS_DOUBLE_CLICK_THRESHOLD);
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    let text_x = search_x + DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET;
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        winit::event::MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(
+            f64::from(text_x + DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE * 8),
+            f64::from(search_y + 2)
+        )),
+        surface,
+        false,
+    ));
+    let screen = input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_cursor, 8);
+    assert_eq!(screen.search_selection, 8);
+}
+
+#[test]
 fn debug_options_screen_search_shift_click_extends_selection() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

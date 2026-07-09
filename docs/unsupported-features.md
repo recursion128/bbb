@@ -1147,8 +1147,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox double-click selection/full widget
-    styling polish, and native pause
+    DebugOptionsScreen narration/EditBox full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining buttons/actions remain
     (large, low priority).
 - Evidence / boundary:
@@ -1289,10 +1288,10 @@ When an agent does any of the following, update this file in the same slice:
     inner width from `textX`. bbb now lets DebugOptionsScreen left-click the
     search box to place the search cursor, Shift-click to extend the existing
     selection, drag from the search box to update the highlight, and release
-    left mouse to stop selection. Boundary: double-click word selection,
+    left mouse to stop selection. Boundary: variable-width hit-testing and
+    double-click word selection are covered by later 2026-07-09 items below;
     narration, scrollbar dragging, exact text-field sprites/nine-slice texture,
-    and full widget sprite styling remain future polish; variable-width
-    hit-testing is covered by the later 2026-07-09 item below.
+    and full widget sprite styling remain future polish.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen variable-width search
     hit-testing. Vanilla anchors: `EditBox.findClickedPositionInText` clamps
     `floor(mouseX) - textX` to `getInnerWidth`, then maps that pixel budget
@@ -1302,9 +1301,10 @@ When an agent does any of the following, update this file in the same slice:
     `Renderer::hud_plain_text_cursor_for_width`, with the previous ASCII
     advance model retained for tests and no-font fallback. Boundary:
     horizontal display-start hit-testing is covered by the later 2026-07-09
-    item below; double-click word selection, narration, scrollbar dragging,
-    exact text-field sprites/nine-slice texture, and full widget sprite styling
-    remain future polish.
+    item below; double-click word selection is covered by the later 2026-07-09
+    item below; narration, scrollbar dragging, exact text-field
+    sprites/nine-slice texture, and full widget sprite styling remain future
+    polish.
   - Done 2026-07-09 — Debug overlay DebugOptionsScreen horizontal search
     display hit-testing. Vanilla anchors: `EditBox.setCursorPosition` calls
     `scrollTo(cursorPos)`, and `findClickedPositionInText` maps the click
@@ -1312,7 +1312,16 @@ When an agent does any of the following, update this file in the same slice:
     text-input display-start calculation and from-display-start cursor mapping,
     so DebugOptionsScreen search click and drag hit-testing use the same
     visible substring origin as the rendered text. Boundary: double-click word
-    selection, narration, scrollbar dragging, exact text-field
+    selection is covered by the later 2026-07-09 item below; narration,
+    scrollbar dragging, exact text-field sprites/nine-slice texture, and full
+    widget sprite styling remain future polish.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen double-click word
+    selection. Vanilla anchors: `MouseHandler.DOUBLE_CLICK_THRESHOLD_MS` is
+    250ms, `EditBox.onClick(..., doubleClick = true)` calls `selectWord`, and
+    `selectWord` expands from the clicked position to `getWordPosition(-1)`
+    and `getWordPosition(1)`. bbb now tracks recent DebugOptionsScreen left
+    clicks and selects the clicked search word on a 250ms double-click.
+    Boundary: narration, scrollbar dragging, exact text-field
     sprites/nine-slice texture, and full widget sprite styling remain future
     polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
@@ -3137,8 +3146,7 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen narration/EditBox double-click selection/full widget
-    styling polish, native pause
+    DebugOptionsScreen narration/EditBox full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:

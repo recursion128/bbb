@@ -113,6 +113,7 @@ const DEBUG_OPTIONS_SEARCH_TEXT_X_OFFSET: i32 = 4;
 const DEBUG_OPTIONS_SEARCH_INNER_WIDTH: i32 = DEBUG_OPTIONS_SEARCH_WIDTH - 8;
 const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
+const DEBUG_OPTIONS_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 
 pub(crate) trait DebugOptionsSearchTextMeasurer {
     fn debug_options_search_display_start_for_width(
@@ -258,6 +259,7 @@ struct DebugOptionsScreenState {
     search_cursor: usize,
     search_selection: usize,
     search_selecting: bool,
+    last_left_click_at: Option<Instant>,
     scroll_row: usize,
     cursor_position: Option<(i32, i32)>,
 }
@@ -1310,9 +1312,15 @@ impl ClientInputState {
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
             return true;
         }
+        let now = Instant::now();
+        let double_click = self
+            .debug_options_screen
+            .as_ref()
+            .is_some_and(|screen| debug_options_screen_is_double_click(screen, now));
         let Some((mouse_x, mouse_y)) = cursor_position.and_then(physical_position_floor_i32) else {
             if let Some(screen) = self.debug_options_screen.as_mut() {
                 screen.search_selecting = false;
+                screen.last_left_click_at = None;
             }
             return true;
         };
@@ -1325,10 +1333,17 @@ impl ClientInputState {
                 text_measurer,
             )
         });
+        if let Some(screen) = self.debug_options_screen.as_mut() {
+            screen.last_left_click_at = Some(now);
+        }
         if let Some(cursor) = search_cursor {
             let shift_down = self.shift_down();
             if let Some(screen) = self.debug_options_screen.as_mut() {
-                move_debug_options_search_cursor(screen, cursor, shift_down);
+                if double_click {
+                    select_debug_options_search_word_at(screen, cursor);
+                } else {
+                    move_debug_options_search_cursor(screen, cursor, shift_down);
+                }
                 screen.search_selecting = true;
             }
             return true;
@@ -2366,6 +2381,13 @@ fn move_debug_options_search_cursor(
     }
 }
 
+fn select_debug_options_search_word_at(screen: &mut DebugOptionsScreenState, cursor: usize) {
+    let word_start = text_edit::word_position(&screen.search_text, cursor, -1);
+    let word_end = text_edit::word_position(&screen.search_text, cursor, 1);
+    move_debug_options_search_cursor(screen, word_start, false);
+    move_debug_options_search_cursor(screen, word_end, true);
+}
+
 fn select_debug_options_search_text(screen: &mut DebugOptionsScreenState) {
     screen.search_selection = 0;
     screen.search_cursor = text_edit::char_len(&screen.search_text);
@@ -2495,6 +2517,13 @@ fn debug_options_search_display_start(
         scroll_to,
         DEBUG_OPTIONS_SEARCH_INNER_WIDTH,
     )
+}
+
+fn debug_options_screen_is_double_click(screen: &DebugOptionsScreenState, now: Instant) -> bool {
+    screen
+        .last_left_click_at
+        .and_then(|last| now.checked_duration_since(last))
+        .is_some_and(|elapsed| elapsed < DEBUG_OPTIONS_DOUBLE_CLICK_THRESHOLD)
 }
 
 pub(crate) fn debug_options_search_cursor_for_text_offset_fallback(
