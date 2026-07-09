@@ -6156,6 +6156,15 @@
   tooltip 按 vanilla `ByIdMap` 语义把未知 pattern/color 回退 KOB/white，并投影
   本地化 predefined/type/color 行。边界：`TooltipDisplay` hidden-components 与其它
   component provider tooltip 仍未完成。
+- [x] advanced tooltip pot-decoration rows（P2 protocol + item-runtime slice，
+  2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 banner patterns 之后、
+  written-book 之前调用 `DataComponents.POT_DECORATIONS`，以及
+  `PotDecorations.addToTooltip` 在非全 brick 时输出一个空分隔行，再按
+  front/left/right/back 输出每侧 item hover name 的灰色行。protocol summary
+  现在记录 decoded `minecraft:pot_decorations` item ids；native item tooltip 用
+  item registry 和 language catalog 投影 side item names，并保持在 container rows
+  之后。边界：全 brick elision 依赖 `minecraft:brick` registry id，banner pattern
+  rows、`TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

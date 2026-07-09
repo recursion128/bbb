@@ -881,6 +881,26 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
+                pot_decorations_item_ids: vec![0, 0, 0, 0],
+                lore: vec!["After pot decorations".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Test Combo", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Test Combo", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Test Combo", TOOLTIP_TEXT_GRAY),
+            tooltip_line("Test Combo", TOOLTIP_TEXT_GRAY),
+            lore_line("After pot decorations"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
                 jukebox_direct_song: Some(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(0),

@@ -1152,8 +1152,8 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
-    tropical-fish pattern lines, F3+I full local entity saveWithoutId parity,
-    full vanilla profiler section coverage,
+    tropical-fish pattern lines, pot-decoration rows, F3+I full local entity
+    saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
@@ -1208,6 +1208,16 @@ When an agent does any of the following, update this file in the same slice:
     semantics for unknown ids, and projects localized predefined/type/color
     tooltip rows in provider order. Boundary: `TooltipDisplay`
     hidden-components and remaining component providers remain future work.
+  - Done 2026-07-09 — Advanced tooltip pot-decoration rows. Vanilla anchors:
+    `ItemStack.addDetailsToTooltip` calls `DataComponents.POT_DECORATIONS`
+    after banner patterns and before written-book content; `PotDecorations`
+    emits an empty separator plus front/left/right/back side item hover names
+    in gray when any side is not brick. bbb now preserves decoded pot
+    decoration item ids and projects their localized item hover names in the
+    same side order after container rows. Boundary: exact all-brick elision
+    depends on having `minecraft:brick` in the loaded item registry, banner
+    pattern tooltip rows and `TooltipDisplay` hidden-components remain future
+    work.
   - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
@@ -2514,7 +2524,7 @@ When an agent does any of the following, update this file in the same slice:
     rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
     effect lines, map-id lines, instrument description lines, and tropical-fish
-    pattern lines.
+    pattern lines, and pot-decoration rows.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2784,7 +2794,8 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
-    and tropical-fish pattern lines are covered by later entries.
+    tropical-fish pattern lines, and pot-decoration rows are covered by later
+    entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3467,7 +3478,7 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
-    lines, tropical-fish pattern lines, F3+I full local entity
+    lines, tropical-fish pattern lines, pot-decoration rows, F3+I full local entity
     saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

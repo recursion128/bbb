@@ -140,6 +140,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub container_loot: bool,
     #[serde(default)]
+    pub pot_decorations_item_ids: Vec<i32>,
+    #[serde(default)]
     pub bees_count: usize,
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
@@ -785,6 +787,9 @@ fn decode_typed_data_component_patch_summary(
             75 => {
                 summary.container_items = decode_item_container_contents(decoder)?;
                 summary.container_item_count = Some(summary.container_items.len());
+            }
+            74 => {
+                summary.pot_decorations_item_ids = decode_pot_decorations_item_ids(decoder)?;
             }
             79 => {
                 summary.container_loot = true;
@@ -2086,11 +2091,17 @@ fn decode_direct_banner_pattern(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_pot_decorations(decoder: &mut Decoder<'_>) -> Result<()> {
-    let item_count = read_bounded_len(decoder, MAX_POT_DECORATIONS)?;
-    for _ in 0..item_count {
-        decoder.read_var_i32()?;
-    }
+    let _ = decode_pot_decorations_item_ids(decoder)?;
     Ok(())
+}
+
+fn decode_pot_decorations_item_ids(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
+    let item_count = read_bounded_len(decoder, MAX_POT_DECORATIONS)?;
+    let mut item_ids = Vec::with_capacity(item_count);
+    for _ in 0..item_count {
+        item_ids.push(decoder.read_var_i32()?);
+    }
+    Ok(item_ids)
 }
 
 fn decode_bees(decoder: &mut Decoder<'_>) -> Result<usize> {
@@ -2830,6 +2841,33 @@ mod tests {
     }
 
     #[test]
+    fn decodes_pot_decorations_item_ids() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(74);
+        payload.write_var_i32(4);
+        payload.write_var_i32(10);
+        payload.write_var_i32(11);
+        payload.write_var_i32(12);
+        payload.write_var_i32(13);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![74],
+                pot_decorations_item_ids: vec![10, 11, 12, 13],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_hover_text_component_summaries() {
         let mut payload = Encoder::new();
         payload.write_var_i32(4);
@@ -3554,6 +3592,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                pot_decorations_item_ids: vec![1, 2, 3, 4],
                 bees_count: 1,
                 lodestone_target: Some(LodestoneTargetSummary {
                     dimension: "minecraft:overworld".to_string(),

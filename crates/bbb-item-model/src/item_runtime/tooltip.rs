@@ -1239,6 +1239,48 @@ impl NativeItemRuntime {
         }
     }
 
+    fn push_pot_decorations_tooltip_lines(
+        &self,
+        item_ids: &[i32],
+        lines: &mut Vec<NativeItemTooltipLine>,
+    ) {
+        if item_ids.is_empty() {
+            return;
+        }
+
+        let brick_id = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.protocol_id("minecraft:brick"));
+        let side_ids = [
+            item_ids.get(3).copied().or(brick_id),
+            item_ids.get(1).copied().or(brick_id),
+            item_ids.get(2).copied().or(brick_id),
+            item_ids.first().copied().or(brick_id),
+        ];
+        if brick_id.is_some_and(|brick_id| side_ids.iter().all(|id| *id == Some(brick_id))) {
+            return;
+        }
+
+        lines.push(NativeItemTooltipLine::plain(
+            String::new(),
+            TOOLTIP_TEXT_WHITE,
+        ));
+        for item_id in side_ids.into_iter().flatten() {
+            let Some(item_name) = self.item_hover_name_for_protocol_id(item_id) else {
+                continue;
+            };
+            lines.push(NativeItemTooltipLine::plain(item_name, TOOLTIP_TEXT_GRAY));
+        }
+    }
+
+    fn item_hover_name_for_protocol_id(&self, item_id: i32) -> Option<String> {
+        Some(localized_item_name(
+            &self.language,
+            self.item_resource_id(item_id)?,
+        ))
+    }
+
     pub fn tooltip_lines_for_stack(
         &self,
         stack: &ItemStackSummary,
@@ -1300,6 +1342,10 @@ impl NativeItemRuntime {
             &mut lines,
         );
         self.push_container_items_tooltip_lines(&stack.component_patch.container_items, &mut lines);
+        self.push_pot_decorations_tooltip_lines(
+            &stack.component_patch.pot_decorations_item_ids,
+            &mut lines,
+        );
         if let Some(book) = &stack.component_patch.written_book {
             push_written_book_tooltip_lines(&self.language, book, &mut lines);
         }
