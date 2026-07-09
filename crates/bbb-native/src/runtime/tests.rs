@@ -1429,6 +1429,69 @@ fn hud_debug_overlay_projects_custom_looking_at_fluid_state() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_looking_at_fluid_tags() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.record_registry_entries(
+        "minecraft:fluid",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:water"),
+            RegistryPacketEntry::stub("minecraft:flowing_water"),
+            RegistryPacketEntry::stub("minecraft:lava"),
+        ],
+    );
+    apply_fluid_tags(
+        &mut world,
+        vec![
+            ("minecraft:flowing_only", vec![1]),
+            ("minecraft:lava", vec![2]),
+            ("minecraft:water", vec![0, 1]),
+        ],
+    );
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let target = BlockPos { x: 0, y: 1, z: 0 };
+    let properties = BTreeMap::from([("level".to_string(), "1".to_string())]);
+    let block_state_id = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:water", &properties)
+        .expect("vanilla flowing water block state");
+    set_lightmap_test_block(&mut world, target, block_state_id);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::LookingAtFluidTags,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom looking-at fluid-tags entry should show target tags");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "#minecraft:flowing_only".to_string(),
+            "#minecraft:water".to_string(),
+        ]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
@@ -13828,6 +13891,21 @@ fn apply_block_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
     world.apply_update_tags(bbb_protocol::packets::UpdateTags {
         registries: vec![bbb_protocol::packets::RegistryTags {
             registry: "minecraft:block".to_string(),
+            tags: tags
+                .into_iter()
+                .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {
+                    tag: tag.to_string(),
+                    entries,
+                })
+                .collect(),
+        }],
+    });
+}
+
+fn apply_fluid_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:fluid".to_string(),
             tags: tags
                 .into_iter()
                 .map(|(tag, entries)| bbb_protocol::packets::TagNetworkPayload {

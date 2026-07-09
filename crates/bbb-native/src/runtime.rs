@@ -3121,6 +3121,11 @@ fn hud_debug_overlay(
             left_lines.extend(looking_at_lines);
         }
     }
+    if entry_enabled(DebugScreenEntryId::LookingAtFluidTags) {
+        if let Some(looking_at_lines) = hud_debug_looking_at_fluid_tag_lines(world, camera_pose) {
+            left_lines.extend(looking_at_lines);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3573,6 +3578,29 @@ fn hud_debug_looking_at_fluid_state_lines(
         lines.push(format!("level: {}", fluid.amount));
     }
     Some(lines)
+}
+
+fn hud_debug_looking_at_fluid_tag_lines(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Option<Vec<String>> {
+    let hit = debug_looking_at_fluid_hit_from_camera(world, camera_pose)?;
+    let fluid = world.probe_block(hit.pos)?.fluid?;
+    let fluid_name = hud_debug_fluid_state_name(fluid);
+    let fluid_id = world
+        .registry_content("minecraft:fluid")?
+        .entries
+        .iter()
+        .position(|entry| entry.id == fluid_name)?;
+    let fluid_id = i32::try_from(fluid_id).ok()?;
+    let tags = world.registry_tags("minecraft:fluid")?;
+    Some(
+        tags.tags
+            .iter()
+            .filter(|(_, entries)| entries.contains(&fluid_id))
+            .map(|(tag, _)| format!("#{tag}"))
+            .collect(),
+    )
 }
 
 fn hud_debug_fluid_state_name(fluid: TerrainFluidState) -> &'static str {
