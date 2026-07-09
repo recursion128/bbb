@@ -46,16 +46,16 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -240,6 +240,8 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
 const ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 = 9;
 const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
@@ -3717,7 +3719,7 @@ fn debug_copy_recreate_entity_command(
         entity_type, entity.position.x, entity.position.y, entity.position.z
     );
     if add_nbt {
-        if let Some(snbt) = debug_local_entity_pretty_snbt(&entity) {
+        if let Some(snbt) = debug_local_entity_pretty_snbt(world, &entity) {
             command.push(' ');
             command.push_str(&snbt);
         }
@@ -3728,7 +3730,7 @@ fn debug_copy_recreate_entity_command(
     })
 }
 
-fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
+fn debug_local_entity_pretty_snbt(world: &WorldStore, entity: &EntityState) -> Option<String> {
     let mut fields = Vec::new();
     if let Some(motion) = debug_snbt_vec3d("Motion", entity.delta_movement) {
         fields.push(motion);
@@ -3779,11 +3781,15 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
             fields.push(format!("TicksFrozen: {ticks_frozen}"));
         }
     }
-    debug_push_entity_additional_save_data(entity, &mut fields);
+    debug_push_entity_additional_save_data(world, entity, &mut fields);
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
-fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_entity_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     match entity.entity_type_id {
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
@@ -4029,6 +4035,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_FIREBALL_ID => {
             debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_fireball_additional_save_data(fields);
+        }
+        VANILLA_ENTITY_TYPE_TNT_ID => {
+            debug_push_primed_tnt_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
             debug_push_experience_orb_additional_save_data(entity, fields);
@@ -4315,6 +4324,22 @@ fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
     ));
+}
+
+fn debug_push_primed_tnt_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let fuse = debug_entity_data_int_present(entity, PRIMED_TNT_FUSE_DATA_ID)
+        .unwrap_or(PRIMED_TNT_DEFAULT_FUSE as i32) as i16;
+    fields.push(format!("fuse: {fuse}s"));
+    if let Some(block_state) = world.primed_tnt_block_state(entity.id) {
+        fields.push(format!(
+            "block_state: {}",
+            debug_snbt_block_state(&block_state.name, &block_state.properties)
+        ));
+    }
 }
 
 fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -5624,6 +5649,36 @@ fn debug_snbt_string(value: &str) -> String {
     out.push_str(&body);
     out.push(quote);
     out
+}
+
+fn debug_snbt_compound_key(value: &str) -> String {
+    if value
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '+'))
+    {
+        value.to_string()
+    } else {
+        debug_snbt_string(value)
+    }
+}
+
+fn debug_snbt_block_state(name: &str, properties: &BTreeMap<String, String>) -> String {
+    let mut fields = vec![format!("Name: {}", debug_snbt_string(name))];
+    if !properties.is_empty() {
+        let properties = properties
+            .iter()
+            .map(|(key, value)| {
+                format!(
+                    "{}: {}",
+                    debug_snbt_compound_key(key),
+                    debug_snbt_string(value)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        fields.push(format!("Properties: {{{properties}}}"));
+    }
+    format!("{{{}}}", fields.join(", "))
 }
 
 fn debug_snbt_uuid_int_array(uuid: uuid::Uuid) -> String {

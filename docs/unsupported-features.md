@@ -200,7 +200,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining projectile owner references, left-owner flag, and non-default
   private `hasBeenShot` projection, non-default private projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
-  timer/counter projection (including non-default `SpectralArrow.duration`),
+  scalar/timer/counter projection (including `PrimedTnt.explosionPower` and
+  non-default `SpectralArrow.duration`),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
