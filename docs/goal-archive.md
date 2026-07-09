@@ -7023,3 +7023,11 @@
   `PersistenceRequired`、`LeftHanded` 与 `NoAI`。边界：silverfish merge/wake-up
   AI state 不进入 vanilla save NBT；`LivingEntity` 的 health/attributes/brain/
   equipment 等复杂 state 仍不在本地轻量 F3+I 覆盖内。
+- [x] Debug overlay F3+I local guardian-family save fields（P2 native input
+  slice，2026-07-09）：依据 vanilla 26.1 `Guardian` 只定义 `DATA_ID_MOVING` 与
+  `DATA_ID_ATTACK_TARGET`，不覆写 `addAdditionalSaveData`；`ElderGuardian` 继承
+  `Guardian` 且同样不覆写 save，保存链落在 `Mob.addAdditionalSaveData` 的 mob 字段。
+  native F3+I 本地实体复制现在对 guardian 与 elder_guardian 输出 `CanPickUpLoot`、
+  `PersistenceRequired`、`LeftHanded` 与 `NoAI`。边界：moving/attack-target 是客户端
+  行为 metadata，不是 vanilla save NBT 字段；`LivingEntity` 的 health/attributes/
+  brain/equipment 等复杂 state 仍不在本地轻量 F3+I 覆盖内。
