@@ -1146,10 +1146,10 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence beyond beehive
-    bees/honey, dyed-color lines, and firework flight/direct/grouped explosion
-    lines, charged-projectiles headers, container-loot unknown-content line,
-    container item-count/more rows, jukebox song descriptions, armor trim rows,
-    stored/enchantment rows, TooltipDisplay
+    bees/empty-bees/honey, dyed-color lines, and firework flight/direct/grouped
+    explosion lines, charged-projectiles headers, container-loot unknown-content
+    line, container item-count/more rows, jukebox song descriptions,
+    custom/datapack trim registry remaps, stored/enchantment rows, TooltipDisplay
     hide/hidden-components gating, map_id component type-id 46, disc fragment
     item-specific description line, smithing template item-specific rows, direct
     painting variant rows, spawner block-entity rows, entity-data peaceful
@@ -1499,9 +1499,9 @@ When an agent does any of the following, update this file in the same slice:
     leading-space material description. bbb now projects decoded direct trim
     material + direct trim pattern payloads into those three rows after jukebox
     playable and before dyed-color. Boundary: holder-id material/pattern text is
-    covered by the later entry below; exact material style transfer,
-    hidden-components filtering, and remaining component providers remain future
-    work.
+    covered by the later entry below, exact material style transfer is covered
+    by the direct style item below, and remaining component providers remain
+    future work.
   - Done 2026-07-09 — Advanced tooltip holder-id armor trim rows. Vanilla
     anchors: `ArmorTrim.addToTooltip` emits the upgrade title, then the resolved
     pattern holder description styled by the resolved material holder, then the
@@ -1512,16 +1512,27 @@ When an agent does any of the following, update this file in the same slice:
     localizes those descriptions, emits the same three rows when direct payloads
     are absent, and honors hidden component type id 56. Boundary: holder-id
     material color styling is covered by the later entry below; custom/datapack
-    trim registry remaps and direct inline trim component styles remain future
-    work.
+    trim registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip holder-id armor trim material colors.
     Vanilla anchors: `TrimMaterials.bootstrap` assigns a material `Style` color
     to each built-in material description, and `ArmorTrim.addToTooltip` applies
     that material style to the pattern row via `copyWithStyle(this.material)`.
     bbb now locks the vanilla 26.1 material colors beside the built-in trim
     material holder order and emits holder-id pattern/material rows with the
-    material color run. Boundary: direct inline trim component style preservation
-    and custom/datapack trim registry remaps remain future work.
+    material color run. Boundary: direct inline trim component style
+    preservation is covered by the follow-up item below, and custom/datapack
+    trim registry remaps remain future work.
+  - Done 2026-07-09 — Advanced tooltip direct armor trim component styles.
+    Vanilla anchors: `TrimMaterial.DIRECT_STREAM_CODEC` and
+    `TrimPattern.DIRECT_STREAM_CODEC` carry `ComponentSerialization.STREAM_CODEC`
+    descriptions; `ArmorTrim.addToTooltip` emits the pattern description through
+    `TrimPattern.copyWithStyle(material)` and the material description directly.
+    bbb now preserves styled runs for decoded direct trim material and pattern
+    descriptions, keeps the leading space as its own run, applies the material
+    style to direct pattern rows, and renders direct material rows with their
+    own component style. Boundary: material root style is inferred from the
+    first non-empty flattened material run for direct payloads; custom/datapack
+    trim registry remaps remain future work.
   - Done 2026-07-09 — Advanced tooltip dynamic profile line. Vanilla anchors:
     `ItemStack.addDetailsToTooltip` calls `DataComponents.PROFILE` after
     dyed-color and before lore; `ResolvableProfile.Dynamic.addToTooltip`

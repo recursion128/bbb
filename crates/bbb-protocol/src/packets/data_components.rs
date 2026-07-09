@@ -162,11 +162,11 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
     #[serde(default)]
-    pub armor_trim_material_direct: Option<TrimMaterialSummary>,
+    pub armor_trim_material_direct: Option<Box<TrimMaterialSummary>>,
     #[serde(default)]
     pub armor_trim_pattern_id: Option<i32>,
     #[serde(default)]
-    pub armor_trim_pattern_direct: Option<TrimPatternSummary>,
+    pub armor_trim_pattern_direct: Option<Box<TrimPatternSummary>>,
     #[serde(default)]
     pub tropical_fish_pattern_id: Option<i32>,
     #[serde(default)]
@@ -266,12 +266,16 @@ pub struct TrimMaterialSummary {
     pub asset_name: String,
     pub override_armor_assets: BTreeMap<String, String>,
     pub description: String,
+    #[serde(default)]
+    pub description_styled: Option<Box<[StyledTextRun]>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TrimPatternSummary {
     pub asset_id: String,
     pub description: String,
+    #[serde(default)]
+    pub description_styled: Option<Box<[StyledTextRun]>>,
     pub decal: bool,
 }
 
@@ -748,9 +752,9 @@ fn decode_typed_data_component_patch_summary(
             56 => {
                 let trim = decode_armor_trim(decoder)?;
                 summary.armor_trim_material_id = trim.material_id;
-                summary.armor_trim_material_direct = trim.material_direct;
+                summary.armor_trim_material_direct = trim.material_direct.map(Box::new);
                 summary.armor_trim_pattern_id = trim.pattern_id;
-                summary.armor_trim_pattern_direct = trim.pattern_direct;
+                summary.armor_trim_pattern_direct = trim.pattern_direct.map(Box::new);
             }
             88 => {
                 summary.tropical_fish_pattern_id = Some(decoder.read_var_i32()?);
@@ -1960,11 +1964,13 @@ fn decode_direct_trim_material(decoder: &mut Decoder<'_>) -> Result<()> {
 
 fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<TrimMaterialSummary> {
     let (asset_name, override_armor_assets) = decode_material_asset_group_summary(decoder)?;
-    let description = decode_component_summary_from_decoder(decoder)?;
+    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let description = styled_runs_summary_text(&description_styled);
     Ok(TrimMaterialSummary {
         asset_name,
         override_armor_assets,
         description,
+        description_styled: Some(description_styled.into_boxed_slice()),
     })
 }
 
@@ -2007,11 +2013,13 @@ fn decode_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<TrimPatternHo
 
 fn decode_direct_trim_pattern_summary(decoder: &mut Decoder<'_>) -> Result<TrimPatternSummary> {
     let asset_id = read_resource_location(decoder)?;
-    let description = decode_component_summary_from_decoder(decoder)?;
+    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let description = styled_runs_summary_text(&description_styled);
     let decal = decoder.read_bool()?;
     Ok(TrimPatternSummary {
         asset_id,
         description,
+        description_styled: Some(description_styled.into_boxed_slice()),
         decal,
     })
 }
@@ -2974,6 +2982,11 @@ mod tests {
 
     #[test]
     fn decodes_inline_trim_pattern_payload() {
+        let mut styled_pattern = vec![10u8];
+        write_named_nbt_string(&mut styled_pattern, "text", "Test pattern");
+        write_named_nbt_byte(&mut styled_pattern, "bold", 1);
+        styled_pattern.push(0);
+
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
         payload.write_var_i32(0);
@@ -2981,7 +2994,7 @@ mod tests {
         payload.write_var_i32(2);
         payload.write_var_i32(0);
         payload.write_string("minecraft:test_pattern");
-        payload.write_bytes(&nbt_string_root("Test pattern"));
+        payload.write_bytes(&styled_pattern);
         payload.write_bool(true);
 
         let payload = payload.into_inner();
@@ -2993,11 +3006,21 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![56],
                 armor_trim_material_id: Some(1),
-                armor_trim_pattern_direct: Some(TrimPatternSummary {
+                armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
                     asset_id: "minecraft:test_pattern".to_string(),
                     description: "Test pattern".to_string(),
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test pattern".to_string(),
+                            style: crate::ComponentStyle {
+                                bold: Some(true),
+                                ..Default::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
                     decal: true,
-                }),
+                })),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -3006,6 +3029,12 @@ mod tests {
 
     #[test]
     fn decodes_inline_trim_material_payload() {
+        let mut styled_material = vec![10u8];
+        write_named_nbt_string(&mut styled_material, "text", "Test material");
+        write_named_nbt_byte(&mut styled_material, "italic", 1);
+        write_named_nbt_string(&mut styled_material, "color", "gold");
+        styled_material.push(0);
+
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
         payload.write_var_i32(0);
@@ -3015,7 +3044,7 @@ mod tests {
         payload.write_var_i32(1);
         payload.write_string("minecraft:iron");
         payload.write_string("test_material_iron");
-        payload.write_bytes(&nbt_string_root("Test material"));
+        payload.write_bytes(&styled_material);
         payload.write_var_i32(1);
 
         let payload = payload.into_inner();
@@ -3026,14 +3055,25 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![56],
-                armor_trim_material_direct: Some(TrimMaterialSummary {
+                armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
                     asset_name: "test_material".to_string(),
                     override_armor_assets: BTreeMap::from([(
                         "minecraft:iron".to_string(),
                         "test_material_iron".to_string()
                     )]),
                     description: "Test material".to_string(),
-                }),
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test material".to_string(),
+                            style: crate::ComponentStyle {
+                                italic: Some(true),
+                                color: Some(0xFF_AA_00),
+                                ..Default::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
+                })),
                 armor_trim_pattern_id: Some(0),
                 ..DataComponentPatchSummary::default()
             }

@@ -2,6 +2,7 @@ use super::*;
 use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
+use bbb_protocol::StyledTextRun;
 use chrono::TimeZone;
 use std::{
     collections::BTreeMap,
@@ -35,6 +36,25 @@ fn colored_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemToo
             color: Some(color),
         }],
     }
+}
+
+fn trim_tooltip_line(text: &str, description_run: HudStyledTextRun) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: format!(" {text}"),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs: vec![HudStyledTextRun::plain(" "), description_run],
+    }
+}
+
+fn colored_trim_tooltip_line(text: &str, color: u32) -> NativeItemTooltipLine {
+    trim_tooltip_line(
+        text,
+        HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle::default(),
+            color: Some(color),
+        },
+    )
 }
 
 fn charged_projectile_detail_line(text: &str, child_color: u32) -> NativeItemTooltipLine {
@@ -1552,16 +1572,37 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                armor_trim_material_direct: Some(TrimMaterialSummary {
+                armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
                     asset_name: "test_material".to_string(),
                     override_armor_assets: BTreeMap::new(),
                     description: "Test material".to_string(),
-                }),
-                armor_trim_pattern_direct: Some(TrimPatternSummary {
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test material".to_string(),
+                            style: bbb_protocol::ComponentStyle {
+                                italic: Some(true),
+                                color: Some(0x12_34_56),
+                                ..bbb_protocol::ComponentStyle::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
+                })),
+                armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
                     asset_id: "minecraft:test_pattern".to_string(),
                     description: "Test pattern".to_string(),
+                    description_styled: Some(
+                        vec![StyledTextRun {
+                            text: "Test pattern".to_string(),
+                            style: bbb_protocol::ComponentStyle {
+                                bold: Some(true),
+                                ..bbb_protocol::ComponentStyle::default()
+                            },
+                        }]
+                        .into_boxed_slice()
+                    ),
                     decal: false,
-                }),
+                })),
                 dyed_color: Some(0x11_22_33),
                 lore: vec!["After trim".to_string()],
                 ..DataComponentPatchSummary::default()
@@ -1570,8 +1611,29 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
-            tooltip_line(" Test pattern", TOOLTIP_TEXT_WHITE),
-            tooltip_line(" Test material", TOOLTIP_TEXT_WHITE),
+            trim_tooltip_line(
+                "Test pattern",
+                HudStyledTextRun {
+                    text: "Test pattern".to_string(),
+                    style: HudTextStyle {
+                        bold: true,
+                        italic: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0x12_34_56),
+                }
+            ),
+            trim_tooltip_line(
+                "Test material",
+                HudStyledTextRun {
+                    text: "Test material".to_string(),
+                    style: HudTextStyle {
+                        italic: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0x12_34_56),
+                }
+            ),
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After trim"),
         ])
@@ -1590,8 +1652,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
-            colored_tooltip_line(" Sentry Armor Trim", TOOLTIP_TEXT_WHITE, 0xEC_EC_EC),
-            colored_tooltip_line(" Iron Material", TOOLTIP_TEXT_WHITE, 0xEC_EC_EC),
+            colored_trim_tooltip_line("Sentry Armor Trim", 0xEC_EC_EC),
+            colored_trim_tooltip_line("Iron Material", 0xEC_EC_EC),
             lore_line("After trim holder"),
         ])
     );
@@ -5712,19 +5774,21 @@ fn native_item_runtime_resolves_component_condition_predicates() {
     );
     let exact_trim = DataComponentPatchSummary {
         added_type_ids: vec![56],
-        armor_trim_material_direct: Some(TrimMaterialSummary {
+        armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
             asset_name: "test_material".to_string(),
             override_armor_assets: BTreeMap::from([(
                 "minecraft:iron".to_string(),
                 "test_material_iron".to_string(),
             )]),
             description: "Test material".to_string(),
-        }),
-        armor_trim_pattern_direct: Some(TrimPatternSummary {
+            description_styled: None,
+        })),
+        armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
             asset_id: "minecraft:test_pattern".to_string(),
             description: "Test pattern".to_string(),
+            description_styled: None,
             decal: true,
-        }),
+        })),
         ..DataComponentPatchSummary::default()
     };
     assert_eq!(
@@ -5735,10 +5799,15 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected_with_trim_keys(
             90,
             named_bundle_entry(DataComponentPatchSummary {
-                armor_trim_pattern_direct: Some(TrimPatternSummary {
+                armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
                     decal: false,
-                    ..exact_trim.armor_trim_pattern_direct.clone().unwrap()
-                }),
+                    ..exact_trim
+                        .armor_trim_pattern_direct
+                        .clone()
+                        .unwrap()
+                        .as_ref()
+                        .clone()
+                })),
                 ..exact_trim.clone()
             })
         ),
@@ -5748,10 +5817,15 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected_with_trim_keys(
             90,
             named_bundle_entry(DataComponentPatchSummary {
-                armor_trim_material_direct: Some(TrimMaterialSummary {
+                armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
                     description: "Other material".to_string(),
-                    ..exact_trim.armor_trim_material_direct.clone().unwrap()
-                }),
+                    ..exact_trim
+                        .armor_trim_material_direct
+                        .clone()
+                        .unwrap()
+                        .as_ref()
+                        .clone()
+                })),
                 ..exact_trim.clone()
             })
         ),

@@ -6654,23 +6654,31 @@
   `item.minecraft.smithing_template.upgrade`、leading-space pattern description
   与 leading-space material description，native item tooltip 现在把 decoded direct trim
   material + direct trim pattern payload 投影为这三行，并保持在 jukebox playable 之后、
-  dyed-color 之前。边界：holder-id material/pattern registry resolution、material style
-  transfer 精确还原、`TooltipDisplay` hidden-components 与其它 component provider
-  tooltip 仍未完成。
+  dyed-color 之前。边界：holder-id material/pattern registry resolution 与 material
+  style transfer 分别由后续 item 覆盖；其它 component provider tooltip 仍未完成。
 - [x] advanced tooltip holder-id armor trim rows（P2 item-runtime slice，
   2026-07-09）：依据 `ArmorTrim.addToTooltip` 使用 resolved trim material/pattern
   holders 输出三行，以及 `TrimMaterials.bootstrap` / `TrimPatterns.bootstrap` 的
   vanilla 26.1 holder 顺序，native item tooltip 现在把 built-in holder ids 映射为
   `trim_material.<namespace>.<path>` / `trim_pattern.<namespace>.<path>` 本地化文本，
   在 direct payload 缺席时输出 upgrade、pattern、material 三行，并应用 hidden
-  component type id 56。边界：custom/datapack trim registry remap 与 exact material
-  style transfer 仍属后续。
+  component type id 56。边界：custom/datapack trim registry remap 仍属后续。
 - [x] advanced tooltip holder-id armor trim material colors（P2 item-runtime
   slice，2026-07-09）：依据 `TrimMaterials.bootstrap` 为每个内置 material
   description 设置 `Style.EMPTY.withColor(...)`，以及 `ArmorTrim.addToTooltip` 对
   pattern row 调用 `copyWithStyle(this.material)`，native item tooltip 现在把 built-in
   holder-id trim pattern/material 两行的 run color 设为对应 material 颜色。边界：
-  direct inline trim component style preservation 与 custom/datapack trim registry
+  direct inline trim component style preservation 由后续 item 覆盖；custom/datapack
+  trim registry remap 仍属后续。
+- [x] advanced tooltip direct armor trim component styles（P2 item-runtime
+  slice，2026-07-09）：依据 `TrimMaterial.DIRECT_STREAM_CODEC` 与
+  `TrimPattern.DIRECT_STREAM_CODEC` 使用 `ComponentSerialization.STREAM_CODEC`
+  传输 description，且 `ArmorTrim.addToTooltip` 对 pattern description 调用
+  `TrimPattern.copyWithStyle(material)`、对 material description 直接输出，native
+  protocol summary 现在保留 direct trim material/pattern description styled runs，
+  item tooltip 把 leading space 保持为独立 run，并将 material style 合入 direct
+  pattern 行、保留 direct material 行自身样式。边界：direct payload 的 material
+  root style 由首个非空 flattened material run 推断；custom/datapack trim registry
   remap 仍属后续。
 - [x] advanced tooltip stored/enchantment rows（P2 item-runtime + native
   slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 trim 之后调用

@@ -1886,18 +1886,23 @@ fn push_armor_trim_tooltip_lines(
         TOOLTIP_TEXT_GRAY,
     ));
     lines.push(armor_trim_description_line(
-        format!(" {pattern_description}"),
-        material_tooltip.color,
+        &pattern_description,
+        &material_tooltip.style,
     ));
     lines.push(armor_trim_description_line(
-        format!(" {}", material_tooltip.description),
-        material_tooltip.color,
+        &material_tooltip.description,
+        &ComponentStyle::default(),
     ));
 }
 
 struct ArmorTrimMaterialTooltip {
-    description: String,
-    color: Option<u32>,
+    description: ArmorTrimDescription,
+    style: ComponentStyle,
+}
+
+struct ArmorTrimDescription {
+    text: String,
+    runs: Vec<StyledTextRun>,
 }
 
 fn armor_trim_material_tooltip(
@@ -1906,18 +1911,31 @@ fn armor_trim_material_tooltip(
     material: Option<&TrimMaterialSummary>,
 ) -> Option<ArmorTrimMaterialTooltip> {
     if let Some(material) = material {
-        return Some(ArmorTrimMaterialTooltip {
-            description: material.description.clone(),
-            color: None,
-        });
+        let description = armor_trim_direct_description(
+            &material.description,
+            material.description_styled.as_deref(),
+        );
+        let style = armor_trim_material_style(&description.runs);
+        return Some(ArmorTrimMaterialTooltip { description, style });
     }
     let material_id = material_id?;
     let key = vanilla_trim_material_key(material_id)?;
-    Some(ArmorTrimMaterialTooltip {
-        description: language
-            .get_or_key(&description_key("trim_material", key))
-            .to_string(),
+    let text = language
+        .get_or_key(&description_key("trim_material", key))
+        .to_string();
+    let style = ComponentStyle {
         color: vanilla_trim_material_color(material_id),
+        ..ComponentStyle::default()
+    };
+    Some(ArmorTrimMaterialTooltip {
+        description: ArmorTrimDescription {
+            text: text.clone(),
+            runs: vec![StyledTextRun {
+                text,
+                style: style.clone(),
+            }],
+        },
+        style,
     })
 }
 
@@ -1925,16 +1943,48 @@ fn armor_trim_pattern_description(
     language: &LanguageCatalog,
     pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
-) -> Option<String> {
+) -> Option<ArmorTrimDescription> {
     if let Some(pattern) = pattern {
-        return Some(pattern.description.clone());
+        return Some(armor_trim_direct_description(
+            &pattern.description,
+            pattern.description_styled.as_deref(),
+        ));
     }
     let key = vanilla_trim_pattern_key(pattern_id?)?;
-    Some(
-        language
-            .get_or_key(&description_key("trim_pattern", key))
-            .to_string(),
-    )
+    let text = language
+        .get_or_key(&description_key("trim_pattern", key))
+        .to_string();
+    Some(ArmorTrimDescription {
+        text: text.clone(),
+        runs: vec![StyledTextRun {
+            text,
+            style: ComponentStyle::default(),
+        }],
+    })
+}
+
+fn armor_trim_direct_description(
+    text: &str,
+    styled: Option<&[StyledTextRun]>,
+) -> ArmorTrimDescription {
+    let runs = match styled {
+        Some(runs) if !runs.is_empty() => runs.to_vec(),
+        _ => vec![StyledTextRun {
+            text: text.to_string(),
+            style: ComponentStyle::default(),
+        }],
+    };
+    ArmorTrimDescription {
+        text: text.to_string(),
+        runs,
+    }
+}
+
+fn armor_trim_material_style(runs: &[StyledTextRun]) -> ComponentStyle {
+    runs.iter()
+        .find(|run| !run.text.is_empty())
+        .map(|run| run.style.clone())
+        .unwrap_or_default()
 }
 
 fn vanilla_trim_material_key(id: i32) -> Option<&'static str> {
@@ -1955,18 +2005,21 @@ fn vanilla_trim_pattern_key(id: i32) -> Option<&'static str> {
         .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index).copied())
 }
 
-fn armor_trim_description_line(text: String, color: Option<u32>) -> NativeItemTooltipLine {
-    match color {
-        Some(color) => NativeItemTooltipLine {
-            text: text.clone(),
-            tint: TOOLTIP_TEXT_WHITE,
-            runs: vec![HudStyledTextRun {
-                text,
-                style: HudTextStyle::default(),
-                color: Some(color),
-            }],
-        },
-        None => NativeItemTooltipLine::plain(text, TOOLTIP_TEXT_WHITE),
+fn armor_trim_description_line(
+    description: &ArmorTrimDescription,
+    base: &ComponentStyle,
+) -> NativeItemTooltipLine {
+    let mut runs = Vec::with_capacity(description.runs.len() + 1);
+    runs.push(HudStyledTextRun::plain(" "));
+    runs.extend(hud_runs_from_component(
+        &description.runs,
+        &description.text,
+        base,
+    ));
+    NativeItemTooltipLine {
+        text: format!(" {}", description.text),
+        tint: TOOLTIP_TEXT_WHITE,
+        runs,
     }
 }
 
@@ -2507,9 +2560,9 @@ impl NativeItemRuntime {
             push_armor_trim_tooltip_lines(
                 &self.language,
                 component_patch.armor_trim_material_id,
-                component_patch.armor_trim_material_direct.as_ref(),
+                component_patch.armor_trim_material_direct.as_deref(),
                 component_patch.armor_trim_pattern_id,
-                component_patch.armor_trim_pattern_direct.as_ref(),
+                component_patch.armor_trim_pattern_direct.as_deref(),
                 lines,
             );
         }
