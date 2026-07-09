@@ -14,13 +14,14 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -240,6 +241,8 @@ const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
+const GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING: i32 = 0;
 const INTERACTION_WIDTH_DATA_ID: u8 = 8;
 const INTERACTION_HEIGHT_DATA_ID: u8 = 9;
 const INTERACTION_RESPONSE_DATA_ID: u8 = 10;
@@ -3633,6 +3636,11 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_glow_squid_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_INTERACTION_ID => {
             debug_push_interaction_additional_save_data(entity, fields);
         }
@@ -3790,6 +3798,12 @@ fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mu
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
+}
+
+fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let dark_ticks = debug_entity_data_int_present(entity, GLOW_SQUID_DARK_TICKS_DATA_ID)
+        .unwrap_or(GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING);
+    fields.push(format!("DarkTicksRemaining: {dark_ticks}"));
 }
 
 fn debug_push_happy_ghast_additional_save_data(fields: &mut Vec<String>) {

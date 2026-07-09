@@ -206,7 +206,8 @@ surfaces" 节；整体低优先）：
   `ItemStack.addDetailsToTooltip` 的 component 分派补齐，已实现者由代码确认。
 - F3+I 本地实体 `saveWithoutId` 继续逐实体补全：对照各实体 vanilla
   `addAdditionalSaveData`，推进剩余实体族、仍需本地 owner、private timer /
-  reference 投影或 codec-backed SNBT 投影的保存状态。
+  reference 投影、registry-backed variant 投影或 codec-backed SNBT 投影的保存
+  状态。
 - vanilla profiler section 全覆盖 + profiling metrics recorder/output。
 - DebugOptionsScreen narration / focus / 完整 widget styling polish。
 - native pause tick-freeze eligibility 与 PauseScreen 剩余 action/subscreen。
