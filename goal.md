@@ -314,7 +314,8 @@ Screen Render Surfaces" 条目）：
   block-tags debug entry shell、looking-at fluid-state debug entry shell、
   looking-at fluid-tags debug entry shell、looking-at entity debug entry
   shell、looking-at entity-tags debug entry shell、chunk-render-stats debug
-  entry shell、entity-render-stats debug entry shell、particle-render-stats
+  entry shell、chunk-generation-stats debug entry client-only shell、
+  entity-render-stats debug entry shell、particle-render-stats
   debug entry shell、chunk-source-stats debug entry shell、
   sound-cache debug entry shell、debug-profile.json persistence、
   F3+I local block-entity NBT capture、

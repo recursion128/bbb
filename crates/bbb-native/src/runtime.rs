@@ -3204,6 +3204,13 @@ fn hud_debug_overlay_at_partial_tick(
             false,
         ));
     }
+    if entry_enabled(DebugScreenEntryId::ChunkGenerationStats) {
+        if let Some(chunk_generation_lines) =
+            hud_debug_chunk_generation_stats_lines(world, camera_pose)
+        {
+            left_lines.extend(chunk_generation_lines);
+        }
+    }
     if entry_enabled(DebugScreenEntryId::EntityRenderStats) {
         left_lines.push(hud_debug_entity_render_stats_line(world));
     }
@@ -3791,6 +3798,15 @@ fn hud_debug_chunk_render_stats_line(
         counters.queued_sections,
         0
     )
+}
+
+fn hud_debug_chunk_generation_stats_lines(
+    _world: &WorldStore,
+    _camera_pose: Option<CameraPose>,
+) -> Option<Vec<String>> {
+    // Vanilla only displays this entry when the debug level is an integrated
+    // ServerLevel. bbb does not own a local-server ChunkGenerator mirror yet.
+    None
 }
 
 fn hud_debug_entity_render_stats_line(world: &WorldStore) -> String {

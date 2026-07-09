@@ -75,6 +75,7 @@ pub(crate) enum DebugScreenEntryId {
     LookingAtEntity,
     LookingAtEntityTags,
     ChunkRenderStats,
+    ChunkGenerationStats,
     EntityRenderStats,
     ParticleRenderStats,
     ChunkSourceStats,
@@ -108,6 +109,7 @@ impl DebugScreenEntryId {
             Self::LookingAtEntity => "minecraft:looking_at_entity",
             Self::LookingAtEntityTags => "minecraft:looking_at_entity_tags",
             Self::ChunkRenderStats => "minecraft:chunk_render_stats",
+            Self::ChunkGenerationStats => "minecraft:chunk_generation_stats",
             Self::EntityRenderStats => "minecraft:entity_render_stats",
             Self::ParticleRenderStats => "minecraft:particle_render_stats",
             Self::ChunkSourceStats => "minecraft:chunk_source_stats",
@@ -145,6 +147,7 @@ impl DebugScreenEntryId {
             "minecraft:looking_at_entity" => Some(Self::LookingAtEntity),
             "minecraft:looking_at_entity_tags" => Some(Self::LookingAtEntityTags),
             "minecraft:chunk_render_stats" => Some(Self::ChunkRenderStats),
+            "minecraft:chunk_generation_stats" => Some(Self::ChunkGenerationStats),
             "minecraft:entity_render_stats" => Some(Self::EntityRenderStats),
             "minecraft:particle_render_stats" => Some(Self::ParticleRenderStats),
             "minecraft:chunk_source_stats" => Some(Self::ChunkSourceStats),
@@ -520,6 +523,10 @@ mod tests {
             DebugScreenEntryStatus::Never
         );
         assert_eq!(
+            entries.status(DebugScreenEntryId::ChunkGenerationStats),
+            DebugScreenEntryStatus::Never
+        );
+        assert_eq!(
             entries.status(DebugScreenEntryId::EntityRenderStats),
             DebugScreenEntryStatus::Never
         );
@@ -647,6 +654,11 @@ mod tests {
         );
         assert!(entries.is_currently_enabled(DebugScreenEntryId::ChunkRenderStats, true));
         entries.set_status(
+            DebugScreenEntryId::ChunkGenerationStats,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::ChunkGenerationStats, true));
+        entries.set_status(
             DebugScreenEntryId::EntityRenderStats,
             DebugScreenEntryStatus::AlwaysOn,
         );
@@ -713,6 +725,10 @@ mod tests {
         let loaded =
             DebugScreenEntryList::load_from_debug_profile_file(&path, DebugScreenProfile::Default)
                 .unwrap();
+        assert_eq!(
+            loaded.status(DebugScreenEntryId::ChunkGenerationStats),
+            DebugScreenEntryStatus::AlwaysOn
+        );
         assert_eq!(
             loaded.status(DebugScreenEntryId::EntityHitboxes),
             DebugScreenEntryStatus::InOverlay

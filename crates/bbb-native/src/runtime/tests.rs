@@ -1686,6 +1686,36 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
 }
 
 #[test]
+fn hud_debug_overlay_suppresses_custom_chunk_generation_stats_without_integrated_server() {
+    let world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::ChunkGenerationStats,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.5, 0.0, -2.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    );
+
+    assert_eq!(overlay, None);
+}
+
+#[test]
 fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_info() {
     let mut world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

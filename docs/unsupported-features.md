@@ -1114,7 +1114,8 @@ When an agent does any of the following, update this file in the same slice:
     heightmap debug entry shell, biome debug entry shell, looking-at
     block/fluid/entity state+tag entry shells, chunk/entity/particle render
     stats entry shells, chunk-source-stats entry shell, sound-cache debug entry
-    shell, debug-profile.json persistence, F3+I local block-entity NBT capture,
+    shell, chunk-generation-stats debug entry client-only shell,
+    debug-profile.json persistence, F3+I local block-entity NBT capture,
     advanced tooltip component-count display, F3+I local entity transform NBT capture, debug
     feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
     feedback payload, profiler chart numeric-key routing shell, and F3+N spectator
@@ -1365,7 +1366,22 @@ When an agent does any of the following, update this file in the same slice:
     terrain counters when custom-enabled. Boundary: bbb does not yet mirror the
     vanilla `ViewArea` total section count, smart-cull flag, or section buffer
     pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
-    frame timing, group layout, and chunk generation stats remain future work.
+    frame timing and group layout remain future work.
+  - Done 2026-07-09 — Debug overlay chunk-generation-stats entry client-only
+    shell. Vanilla anchors: `DebugScreenEntries.CHUNK_GENERATION_STATS`
+    registers `DebugEntryChunkGeneration`; the entry uses the camera entity
+    feet position, but only displays when `serverOrClientLevel` is an
+    integrated `ServerLevel`. It then reads `ServerChunkCache.getGenerator()`,
+    `randomState()`, `ChunkGenerator.addDebugScreenInfo`, the generator
+    `BiomeSource.addDebugInfo`, and appends `Blending: Old` for old-noise
+    server chunks. bbb now has a known `ChunkGenerationStats` entry id, keeps
+    it `Never` in default/performance profiles, filters it under reduced-debug
+    info, round-trips vanilla `minecraft:chunk_generation_stats` custom
+    statuses as a known entry, and intentionally emits no HUD lines in the
+    current client-only runtime. Boundary: bbb has no integrated local-server
+    `ServerLevel`, `ChunkGenerator`, `RandomState`, `BiomeSource`, or
+    server-chunk old-noise mirror yet; actual generation debug rows remain
+    future local-server mirror work.
   - Done 2026-07-09 — Debug overlay entity-render-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.ENTITY_RENDER_STATS` registers
     `DebugEntryEntityRenderStats`; it calls
@@ -2639,9 +2655,11 @@ When an agent does any of the following, update this file in the same slice:
     `toggleStatus` semantics, and reduced-debug filtering. The performance
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
     is visible, and `--debug-profile-store PATH` now reads/writes vanilla-shaped
-    `debug-profile.json` data for custom statuses. Custom-enabled sound cache
-    now renders the vanilla-shaped buffer-count/MiB row from native audio
-    counters. Custom-enabled day-count
+    `debug-profile.json` data for custom statuses. Custom-enabled chunk
+    generation stats are recognized as a vanilla entry but emit no client-only
+    HUD rows until bbb owns an integrated server generator mirror.
+    Custom-enabled sound cache now renders the vanilla-shaped buffer-count/MiB
+    row from native audio counters. Custom-enabled day-count
     projects `Day #N` from the overworld day clock. Custom-enabled detailed
     memory now renders the vanilla-shaped heap/non-heap rows from native process
     memory. Custom-enabled light levels now render the client light row from the

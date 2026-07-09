@@ -5644,7 +5644,22 @@
   边界：当前尚未 mirror vanilla `ViewArea` total section count、smart-cull
   flag 或 section buffer pool free count，因此 `uploaded_sections` 与
   `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
-  `DebugOptionsScreen`、chunk generation stats 仍待后续。
+  `DebugOptionsScreen` 仍待后续。
+- [x] debug overlay chunk-generation-stats entry client-only shell（P2
+  native/runtime slice，2026-07-09）：依据
+  `DebugScreenEntries.CHUNK_GENERATION_STATS` 注册
+  `DebugEntryChunkGeneration`；该 entry 读取 camera feet pos，但只有
+  `serverOrClientLevel` 是 integrated `ServerLevel` 时才 display。进入
+  display 后，它通过 `ServerChunkCache.getGenerator()` / `randomState()` 调用
+  `ChunkGenerator.addDebugScreenInfo`，再调用 generator `BiomeSource.addDebugInfo`，
+  并在 server chunk `isOldNoiseGeneration()` 时追加 `Blending: Old`。native
+  现在把 `minecraft:chunk_generation_stats` 作为已知 `ChunkGenerationStats`
+  entry id，default / performance profiles 中保持 `Never`，reduced-debug 下按
+  默认 `DebugScreenEntry.isAllowed` 过滤，debug-profile custom 状态也按已知
+  entry 往返；当前 client-only runtime 按 vanilla 条件不输出 HUD 行。边界：
+  bbb 尚无 integrated local-server `ServerLevel`、`ChunkGenerator`、
+  `RandomState`、`BiomeSource` 或 server-chunk old-noise mirror，实际 generation
+  debug rows 仍待后续 local-server mirror 工作。
 - [x] debug overlay entity-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.ENTITY_RENDER_STATS` 注册
   `DebugEntryEntityRenderStats`；该 entry 调用
